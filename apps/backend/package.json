@@ -9,6 +9,8 @@
     "start": "node dist/main.js",
     "build": "nest build",
     "start:dev": "dotenv -e .env -- nest start --watch",
+    "normalize-roles": "ts-node scripts/normalize-roles.ts",
+    "normalize-roles-sql": "npx prisma db execute --file scripts/normalize-roles.sql",
     "format": "prettier --write \"src/**/*.ts\""
   },
   "dependencies": {

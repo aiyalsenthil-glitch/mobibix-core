@@ -1,33 +1,45 @@
+import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
 import {
   Controller,
   Get,
+  Post,
+  Body,
   UseGuards,
   Req,
-  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantService } from './tenant.service';
+import { SubscriptionGuard } from '../billing/guards/subscription.guard';
 
 @Controller('tenant')
+@UseGuards(JwtAuthGuard, SubscriptionGuard)
 export class TenantController {
-  constructor(private readonly tenantService: TenantService) {}
+  constructor(
+    private readonly tenantService: TenantService,
+    private readonly subscriptionsService: SubscriptionsService,
+  ) {}
 
-  // ✅ THIS IS THE IMPORTANT ENDPOINT
-  @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMyTenant(@Req() req: any) {
+    return this.tenantService.findById();
+  }
+
+  @Post()
+  async create(@Req() req: any, @Body() body: { name: string }) {
     const user = req.user;
-
-    if (!user?.tenantId) {
-      throw new NotFoundException('User has no tenant');
+    if (!user?.id) {
+      throw new BadRequestException('Authentication required');
+    }
+    if (!body?.name) {
+      throw new BadRequestException('Tenant name required');
     }
 
-    const tenant = await this.tenantService.findById(user.tenantId);
-
-    if (!tenant) {
-      throw new NotFoundException('Tenant not found');
-    }
-
-    return tenant;
+    return this.tenantService.createTenant(user.id, body.name);
+  }
+  @UseGuards(JwtAuthGuard)
+  @Get('subscription')
+  getMySubscription(@Req() req: any) {
+    return this.subscriptionsService.getSubscriptionByTenant(req.user.tenantId);
   }
 }

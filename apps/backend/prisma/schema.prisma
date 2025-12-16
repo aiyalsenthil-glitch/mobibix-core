@@ -16,6 +16,7 @@ model Tenant {
   id        String   @id @default(cuid())
   name      String
   code      String   @unique
+  subscription TenantSubscription?
   createdAt DateTime @default(now())
 
   users   User[]
@@ -46,3 +47,42 @@ model Member {
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 }
+model Plan {
+  id            String   @id @default(cuid())
+  name          String
+  price         Int?
+  durationDays  Int
+  features      Json?
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subscriptions TenantSubscription[]
+}
+
+model TenantSubscription {
+  id        String   @id @default(cuid())
+
+  tenantId  String
+  planId    String
+
+  status    SubscriptionStatus
+  startDate DateTime
+  endDate   DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+ tenant Tenant @relation(fields: [tenantId], references: [id])
+  plan   Plan   @relation(fields: [planId], references: [id])
+  
+  @@unique([tenantId])
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+

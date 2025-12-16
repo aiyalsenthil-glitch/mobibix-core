@@ -2,7 +2,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import admin from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
-import prisma from '../prisma/prismaClient';
+import { PrismaService } from '../prisma/prisma.service';
 
 import type { auth } from 'REMOVED_AUTH_PROVIDER-admin';
 
@@ -10,7 +10,10 @@ import type { auth } from 'REMOVED_AUTH_PROVIDER-admin';
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async verifyFirebaseIdToken(idToken: string) {
     try {
@@ -39,15 +42,16 @@ export class AuthService {
         ? (decodedToken as unknown as Record<string, string>).picture
         : null;
 
-    const role = tenantId ? 'staff' : 'owner';
+    const role = (tenantId ? 'staff' : 'owner').toLowerCase();
 
     try {
-      const user = await prisma.user.upsert({
+      const user = await this.prisma.user.upsert({
         where: { REMOVED_AUTH_PROVIDERUid },
         update: {
           email: email ?? undefined,
           fullName: fullName ?? undefined,
           avatar: avatar ?? undefined,
+          role,
         },
         create: {
           REMOVED_AUTH_PROVIDERUid,
@@ -72,8 +76,16 @@ export class AuthService {
     role?: string;
   }) {
     if (!payload?.sub) return null;
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
-    return user ?? null;
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
+    if (!user) return null;
+    if (typeof user.role === 'string' && user.role.length > 0) {
+      user.role = user.role.toLowerCase();
+    } else {
+      user.role = 'member';
+    }
+    return user;
   }
 
   createBackendToken(user: {
@@ -84,7 +96,7 @@ export class AuthService {
     const payload = {
       sub: user.id,
       tenantId: user.tenantId ?? null,
-      role: user.role ?? 'member',
+      role: (user.role ?? 'member').toLowerCase(),
     };
     return this.jwtService.sign(payload);
   }

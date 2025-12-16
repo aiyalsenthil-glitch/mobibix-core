@@ -1,17 +1,49 @@
-// apps/backend/src/prisma/prisma.service.ts
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Scope } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
-@Injectable()
-export class PrismaService
-  extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
-  async onModuleInit() {
-    await this.$connect();
+@Injectable({ scope: Scope.REQUEST })
+export class PrismaService extends PrismaClient {
+  private tenantId: string | null = null;
+
+  constructor() {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error('DATABASE_URL environment variable is not set');
+    }
+
+    const adapter = new PrismaPg({ connectionString });
+
+    super({
+      adapter,
+    });
   }
 
-  async onModuleDestroy() {
-    await this.$disconnect();
+  setTenantId(tenantId: string) {
+    this.tenantId = tenantId;
+  }
+
+  /** 🔒 Enforced tenant filter helper */
+  tenantWhere<T extends object>(where?: T): T {
+    if (!this.tenantId) {
+      throw new Error('Tenant context is missing');
+    }
+    return {
+      ...(where ?? {}),
+      tenantId: this.tenantId,
+    } as T;
+  }
+  // Add this method alongside tenantWhere():
+  tenantWhereOptional<T extends object>(where?: T): T | { tenantId: null } {
+    if (!this.tenantId) {
+      return {} as T; // Skip filtering, or return empty
+    }
+    return {
+      ...(where ?? {}),
+      tenantId: this.tenantId,
+    } as T;
+  }
+  getTenantId() {
+    return this.tenantId;
   }
 }
