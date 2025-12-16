@@ -1,8 +1,14 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import prisma from '../prismaClient';
+import prisma from '../prisma/prismaClient';
 
 @Injectable()
 export class TenantService {
+  async findById(id: string) {
+    return prisma.tenant.findUnique({
+      where: { id },
+    });
+  }
+
   async createTenant(userId: string, name: string) {
     // Check if user already has a tenant
     const user = await prisma.user.findUnique({

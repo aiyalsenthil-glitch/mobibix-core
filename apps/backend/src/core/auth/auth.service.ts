@@ -1,8 +1,9 @@
 // apps/backend/src/auth/auth.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import admin from '../REMOVED_AUTH_PROVIDERAdmin';
-import prisma from '../prismaClient';
+import admin from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
+import prisma from '../prisma/prismaClient';
+
 import type { auth } from 'REMOVED_AUTH_PROVIDER-admin';
 
 @Injectable()
