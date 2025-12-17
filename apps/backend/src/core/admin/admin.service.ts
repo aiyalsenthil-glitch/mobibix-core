@@ -6,7 +6,6 @@ import {
   Param,
   Body,
   UseGuards,
-  BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -29,42 +28,7 @@ export class AdminController {
   ) {}
 
   // ─────────────────────────────────────────────
-  // BOOTSTRAP PLATFORM ADMIN (DEV ONLY)
-  // ─────────────────────────────────────────────
-  @Post('bootstrap')
-  async bootstrapAdmin(@Body() body: { email: string; REMOVED_AUTH_PROVIDERUid: string }) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new BadRequestException('Bootstrap disabled in production');
-    }
-
-    const existingAdmin = await this.prisma.user.findFirst({
-      where: { role: 'admin' },
-    });
-
-    if (existingAdmin) {
-      return {
-        message: 'Admin already exists',
-        adminId: existingAdmin.id,
-      };
-    }
-
-    const admin = await this.prisma.user.create({
-      data: {
-        email: body.email,
-        REMOVED_AUTH_PROVIDERUid: body.REMOVED_AUTH_PROVIDERUid,
-        role: 'admin',
-        tenantId: null,
-      },
-    });
-
-    return {
-      message: 'Platform admin created',
-      admin,
-    };
-  }
-
-  // ─────────────────────────────────────────────
-  // LIST ALL TENANTS
+  // LIST ALL TENANTS + SUBSCRIPTION
   // ─────────────────────────────────────────────
   @Get('tenants')
   async listTenants() {
@@ -72,7 +36,7 @@ export class AdminController {
   }
 
   // ─────────────────────────────────────────────
-  // TENANT SUBSCRIPTION
+  // GET TENANT SUBSCRIPTION
   // ─────────────────────────────────────────────
   @Get('tenants/:tenantId/subscription')
   async getTenantSubscription(@Param('tenantId') tenantId: string) {
@@ -80,7 +44,7 @@ export class AdminController {
   }
 
   // ─────────────────────────────────────────────
-  // EXTEND TRIAL
+  // EXTEND TRIAL (ADMIN ACTION)
   // ─────────────────────────────────────────────
   @Patch('tenants/:tenantId/extend-trial')
   async extendTrial(
@@ -91,7 +55,7 @@ export class AdminController {
   }
 
   // ─────────────────────────────────────────────
-  // SEED PLANS
+  // SEED DEFAULT PLANS (ONE-TIME ADMIN)
   // ─────────────────────────────────────────────
   @Post('seed-plans')
   async seedPlans() {
@@ -99,7 +63,7 @@ export class AdminController {
   }
 
   // ─────────────────────────────────────────────
-  // CHANGE STATUS
+  // CHANGE SUBSCRIPTION STATUS
   // ─────────────────────────────────────────────
   @Patch('tenants/:tenantId/status')
   async changeStatus(
@@ -110,7 +74,18 @@ export class AdminController {
   }
 
   // ─────────────────────────────────────────────
-  // PAYMENT HISTORY
+  // UPGRADE PLAN (ADMIN OVERRIDE)
+  // ─────────────────────────────────────────────
+  @Patch('tenants/:tenantId/upgrade')
+  async upgradeTenant(
+    @Param('tenantId') tenantId: string,
+    @Body() body: { plan: 'BASIC' | 'PRO' },
+  ) {
+    return this.subscriptionsService.upgradeSubscription(tenantId, body.plan);
+  }
+
+  // ─────────────────────────────────────────────
+  // PAYMENT HISTORY (ADMIN BILLING VIEW)
   // ─────────────────────────────────────────────
   @Get('tenants/:tenantId/payments')
   async getTenantPayments(@Param('tenantId') tenantId: string) {

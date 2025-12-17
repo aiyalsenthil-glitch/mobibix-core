@@ -42,4 +42,9 @@ export class TenantController {
   getMySubscription(@Req() req: any) {
     return this.subscriptionsService.getSubscriptionByTenant(req.user.tenantId);
   }
+
+  @Get('usage')
+  async getUsage(@Req() req: any) {
+    return this.tenantService.getUsageStats(req.user.tenantId);
+  }
 }

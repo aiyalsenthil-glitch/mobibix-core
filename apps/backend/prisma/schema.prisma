@@ -21,6 +21,7 @@ model Tenant {
 
   users   User[]
   members Member[]
+  payments Payment[] 
 }
 
 model User {
@@ -78,7 +79,21 @@ model TenantSubscription {
   
   @@unique([tenantId])
 }
+model Payment {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  planName           String
+  amount             Int
+  currency           String
 
+  REMOVED_PAYMENT_INFRAOrderId    String
+  REMOVED_PAYMENT_INFRAPaymentId String
+  REMOVED_PAYMENT_INFRASignature String
+
+  createdAt          DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
 enum SubscriptionStatus {
   TRIAL
   ACTIVE

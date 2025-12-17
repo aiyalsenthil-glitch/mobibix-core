@@ -1,0 +1,11 @@
+import { Module } from '@nestjs/common';
+import { AdminController } from './admin.controller';
+import { TenantModule } from '../tenant/tenant.module';
+import { BillingModule } from '../billing/billing.module';
+import { AuthModule } from '../auth/auth.module';
+
+@Module({
+  imports: [AuthModule, TenantModule, BillingModule],
+  controllers: [AdminController],
+})
+export class AdminModule {}

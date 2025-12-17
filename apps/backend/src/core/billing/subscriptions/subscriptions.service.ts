@@ -1,10 +1,41 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SubscriptionStatus } from '@prisma/client';
 
 @Injectable()
 export class SubscriptionsService {
   constructor(private readonly prisma: PrismaService) {}
+  async upgradeSubscription(tenantId: string, planName: 'BASIC' | 'PRO') {
+    const plan = await this.prisma.plan.findFirst({
+      where: { name: planName },
+    });
+
+    if (!plan) {
+      throw new NotFoundException('Plan not found');
+    }
+
+    const existingSub = await this.prisma.tenantSubscription.findUnique({
+      where: { tenantId },
+    });
+
+    if (!existingSub) {
+      throw new NotFoundException('Subscription not found');
+    }
+
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + plan.durationDays);
+
+    return this.prisma.tenantSubscription.update({
+      where: { tenantId },
+      data: {
+        planId: plan.id,
+        status: 'ACTIVE',
+        startDate,
+        endDate,
+      },
+    });
+  }
 
   async assignTrialSubscription(tenantId: string, planId: string) {
     const startDate = new Date();

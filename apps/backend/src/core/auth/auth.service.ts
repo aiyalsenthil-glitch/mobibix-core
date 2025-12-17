@@ -1,9 +1,7 @@
-// apps/backend/src/auth/auth.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import admin from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
 import { PrismaService } from '../prisma/prisma.service';
-
 import type { auth } from 'REMOVED_AUTH_PROVIDER-admin';
 
 @Injectable()
@@ -25,48 +23,63 @@ export class AuthService {
     }
   }
 
+  /**
+   * Find or create user from Firebase token.
+   * IMPORTANT:
+   * - Role is set ONLY on first creation
+   * - Role is NEVER modified on login
+   */
   async findOrCreateUser(decodedToken: auth.DecodedIdToken, tenantId?: string) {
     const REMOVED_AUTH_PROVIDERUid = decodedToken.uid;
     const email = decodedToken.email ?? null;
 
-    // safely extract optional fields
     const fullName =
-      typeof (decodedToken as unknown as Record<string, unknown>).name ===
-      'string'
-        ? (decodedToken as unknown as Record<string, string>).name
+      typeof (decodedToken as Record<string, unknown>).name === 'string'
+        ? (decodedToken as Record<string, string>).name
         : null;
 
     const avatar =
-      typeof (decodedToken as unknown as Record<string, unknown>).picture ===
-      'string'
-        ? (decodedToken as unknown as Record<string, string>).picture
+      typeof (decodedToken as Record<string, unknown>).picture === 'string'
+        ? (decodedToken as Record<string, string>).picture
         : null;
 
-    const role = (tenantId ? 'staff' : 'owner').toLowerCase();
-
     try {
-      const user = await this.prisma.user.upsert({
+      // 1️⃣ Check if user already exists
+      let user = await this.prisma.user.findUnique({
         where: { REMOVED_AUTH_PROVIDERUid },
-        update: {
-          email: email ?? undefined,
-          fullName: fullName ?? undefined,
-          avatar: avatar ?? undefined,
-          role,
-        },
-        create: {
-          REMOVED_AUTH_PROVIDERUid,
-          email,
-          fullName,
-          avatar,
-          tenantId: tenantId ?? null,
-          role,
-        },
       });
+
+      if (!user) {
+        // 2️⃣ First-time user → assign default role
+        const initialRole = tenantId ? 'staff' : 'owner';
+
+        user = await this.prisma.user.create({
+          data: {
+            REMOVED_AUTH_PROVIDERUid,
+            email,
+            fullName,
+            avatar,
+            tenantId: tenantId ?? null,
+            role: initialRole,
+          },
+        });
+      } else {
+        // 3️⃣ Existing user → update ONLY profile fields (NOT role)
+        user = await this.prisma.user.update({
+          where: { REMOVED_AUTH_PROVIDERUid },
+          data: {
+            email: email ?? undefined,
+            fullName: fullName ?? undefined,
+            avatar: avatar ?? undefined,
+            // ❌ role intentionally NOT updated
+          },
+        });
+      }
 
       return user;
     } catch (err: unknown) {
-      this.logger.error('Prisma upsert user error', err as Error);
-      throw new Error('Database error while creating user');
+      this.logger.error('Prisma user create/update error', err as Error);
+      throw new Error('Database error while handling user');
     }
   }
 
@@ -76,15 +89,20 @@ export class AuthService {
     role?: string;
   }) {
     if (!payload?.sub) return null;
+
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
     });
+
     if (!user) return null;
+
+    // normalize role
     if (typeof user.role === 'string' && user.role.length > 0) {
       user.role = user.role.toLowerCase();
     } else {
       user.role = 'member';
     }
+
     return user;
   }
 
@@ -98,6 +116,7 @@ export class AuthService {
       tenantId: user.tenantId ?? null,
       role: (user.role ?? 'member').toLowerCase(),
     };
+
     return this.jwtService.sign(payload);
   }
 }

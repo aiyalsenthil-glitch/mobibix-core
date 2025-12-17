@@ -1,3 +1,5 @@
+import { BadRequestException } from '@nestjs/common';
+import { PLAN_LIMITS } from '../billing/plan-limits';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberDto } from './dto/create-member.dto';
@@ -11,6 +13,27 @@ export class MembersService {
   // CREATE MEMBER
   // ─────────────────────────────────────────────
   async createMember(tenantId: string, dto: CreateMemberDto) {
+    const subscription = await this.prisma.tenantSubscription.findUnique({
+      where: { tenantId },
+      include: { plan: true },
+    });
+
+    const planName = subscription?.plan?.name ?? 'TRIAL';
+    const limits = PLAN_LIMITS[planName];
+
+    if (limits?.maxMembers !== null) {
+      const count = await this.prisma.member.count({
+        where: { tenantId },
+      });
+
+      if (count >= limits.maxMembers) {
+        // 🚨 SOFT ENFORCEMENT
+        throw new BadRequestException(
+          `Member limit reached for ${planName} plan`,
+        );
+      }
+    }
+
     return this.prisma.member.create({
       data: {
         ...dto,

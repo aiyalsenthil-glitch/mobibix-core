@@ -1,19 +1,27 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import express from 'express';
+import * as bodyParser from 'body-parser';
 
-async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+async function bootstrap() {
+  // Create express server
+  const server = express();
 
-  const port = process.env.PORT ? Number(process.env.PORT) : 3000;
-  await app.listen(port);
+  // RAW body ONLY for Razorpay webhook
+  server.post(
+    '/payments/webhook',
+    bodyParser.raw({ type: 'application/json' }),
+  );
 
-  console.log(`Server listening on port ${port}`);
+  // JSON for all other routes
+  server.use(bodyParser.json());
+
+  // Wrap express with Nest
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
+
+  await app.listen(3000);
+  console.log('Server listening on port 3000');
 }
 
-bootstrap().catch((err: unknown) => {
-  if (err instanceof Error) {
-    console.error('Bootstrap error:', err.message);
-  } else {
-    console.error('Unknown bootstrap error:', err);
-  }
-});
+bootstrap();

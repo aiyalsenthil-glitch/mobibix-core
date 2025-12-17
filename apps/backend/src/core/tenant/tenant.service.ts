@@ -42,17 +42,24 @@ export class TenantService {
       throw new BadRequestException('User already has a tenant');
     }
 
+    // 🔑 Ensure BASIC / PRO plans exist (safe, idempotent)
+    await this.plansService.ensureDefaultPlans();
+
+    // 🔑 Ensure TRIAL plan exists
+    const trialPlan = await this.plansService.getOrCreateTrialPlan();
+
     const code = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
 
     const tenant = await this.prisma.tenant.create({
       data: { name, code },
     });
-    const trialPlan = await this.plansService.getOrCreateTrialPlan();
 
+    // 🔑 Assign TRIAL subscription
     await this.subscriptionsService.assignTrialSubscription(
       tenant.id,
       trialPlan.id,
     );
+
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -62,5 +69,40 @@ export class TenantService {
     });
 
     return tenant;
+  }
+  async getUsageStats(tenantId: string) {
+    const subscription = await this.prisma.tenantSubscription.findUnique({
+      where: { tenantId },
+      include: { plan: true },
+    });
+
+    const membersUsed = await this.prisma.member.count({
+      where: { tenantId },
+    });
+
+    const planName = subscription?.plan?.name ?? 'TRIAL';
+
+    let membersLimit: number | null = null;
+
+    if (planName === 'TRIAL') membersLimit = 25;
+    if (planName === 'BASIC') membersLimit = 100;
+    if (planName === 'PRO') membersLimit = null;
+
+    let daysLeft: number | null = null;
+
+    if (subscription?.endDate) {
+      const now = new Date();
+      const end = new Date(subscription.endDate);
+      const diff = end.getTime() - now.getTime();
+      daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+    }
+
+    return {
+      plan: planName,
+      status: subscription?.status ?? 'NONE',
+      membersUsed,
+      membersLimit,
+      daysLeft,
+    };
   }
 }
