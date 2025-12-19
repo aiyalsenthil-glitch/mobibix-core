@@ -37,6 +37,29 @@ export class SubscriptionsService {
     });
   }
 
+  async getCurrentActiveSubscription(tenantId: string) {
+    // Accept both ACTIVE and TRIAL subscriptions as "current" so trial tenants
+    // can use features during their trial window.
+    return this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+        status: { in: ['ACTIVE', 'TRIAL'] },
+        startDate: {
+          lte: new Date(),
+        },
+        endDate: {
+          gt: new Date(),
+        },
+      },
+      orderBy: {
+        startDate: 'desc',
+      },
+      include: {
+        plan: true,
+      },
+    });
+  }
+
   async assignTrialSubscription(tenantId: string, planId: string) {
     const startDate = new Date();
     const endDate = new Date();
@@ -73,6 +96,17 @@ export class SubscriptionsService {
       data: {
         endDate: newEndDate,
         status: 'TRIAL',
+      },
+    });
+  }
+  async getActiveSubscriptionByTenant(tenantId: string) {
+    return this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+        status: 'ACTIVE',
+      },
+      include: {
+        plan: true,
       },
     });
   }

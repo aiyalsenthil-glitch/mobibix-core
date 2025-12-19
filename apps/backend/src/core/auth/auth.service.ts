@@ -15,8 +15,7 @@ export class AuthService {
 
   async verifyFirebaseIdToken(idToken: string) {
     try {
-      const decoded = await admin.auth().verifyIdToken(idToken);
-      return decoded;
+      return await admin.auth().verifyIdToken(idToken);
     } catch (err: unknown) {
       this.logger.error('Firebase token verification failed', err as Error);
       throw new Error('Invalid Firebase ID token');
@@ -25,13 +24,15 @@ export class AuthService {
 
   /**
    * Find or create user from Firebase token.
-   * IMPORTANT:
+   *
+   * RULES (LOCK THESE):
    * - Role is set ONLY on first creation
    * - Role is NEVER modified on login
+   * - StaffInvite is consumed only once
    */
-  async findOrCreateUser(decodedToken: auth.DecodedIdToken, tenantId?: string) {
+  async findOrCreateUser(decodedToken: auth.DecodedIdToken) {
     const REMOVED_AUTH_PROVIDERUid = decodedToken.uid;
-    const email = decodedToken.email ?? null;
+    const email: string | null = decodedToken.email ?? null;
 
     const fullName =
       typeof (decodedToken as Record<string, unknown>).name === 'string'
@@ -44,14 +45,29 @@ export class AuthService {
         : null;
 
     try {
-      // 1️⃣ Check if user already exists
+      // 1️⃣ Check if user already exists (by Firebase UID)
       let user = await this.prisma.user.findUnique({
         where: { REMOVED_AUTH_PROVIDERUid },
       });
 
+      // 2️⃣ Check staff invite ONLY if email exists
+      let invite: { id: string; tenantId: string } | null = null;
+
+      if (email) {
+        invite = await this.prisma.staffInvite.findFirst({
+          where: { email },
+        });
+      }
+
+      // 3️⃣ Create user if first-time login
       if (!user) {
-        // 2️⃣ First-time user → assign default role
-        const initialRole = tenantId ? 'staff' : 'owner';
+        let role: 'owner' | 'staff' = 'owner';
+        let tenantId: string | null = null;
+
+        if (invite) {
+          role = 'staff';
+          tenantId = invite.tenantId;
+        }
 
         user = await this.prisma.user.create({
           data: {
@@ -59,26 +75,25 @@ export class AuthService {
             email,
             fullName,
             avatar,
-            tenantId: tenantId ?? null,
-            role: initialRole,
+            role,
+            tenantId,
           },
         });
-      } else {
-        // 3️⃣ Existing user → update ONLY profile fields (NOT role)
-        user = await this.prisma.user.update({
-          where: { REMOVED_AUTH_PROVIDERUid },
-          data: {
-            email: email ?? undefined,
-            fullName: fullName ?? undefined,
-            avatar: avatar ?? undefined,
-            // ❌ role intentionally NOT updated
-          },
-        });
+
+        // 4️⃣ Consume invite (one-time use)
+        if (invite) {
+          await this.prisma.staffInvite.delete({
+            where: { id: invite.id },
+          });
+        }
       }
+
+      // ❗ IMPORTANT: DO NOT UPDATE ROLE HERE
+      // ❗ Login must never modify role or tenantId
 
       return user;
     } catch (err: unknown) {
-      this.logger.error('Prisma user create/update error', err as Error);
+      this.logger.error('Prisma user create error', err as Error);
       throw new Error('Database error while handling user');
     }
   }
@@ -96,7 +111,7 @@ export class AuthService {
 
     if (!user) return null;
 
-    // normalize role
+    // normalize role (defensive)
     if (typeof user.role === 'string' && user.role.length > 0) {
       user.role = user.role.toLowerCase();
     } else {

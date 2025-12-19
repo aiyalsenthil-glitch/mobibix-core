@@ -1,4 +1,4 @@
-// apps/backend/src/auth/auth.controller.ts
+// apps/backend/src/core/auth/auth.controller.ts
 import { Body, Controller, Post, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ExchangeDto } from './dto/exchange.dto';
@@ -9,24 +9,26 @@ export class AuthController {
 
   @Post('exchange')
   async exchange(@Body() body: ExchangeDto) {
-    const { idToken, tenantCode } = body;
+    const { idToken } = body;
+
     if (!idToken) {
       throw new BadRequestException('idToken is required');
     }
 
-    // Verify Firebase ID token (returns auth.DecodedIdToken)
+    // 1️⃣ Verify Firebase ID token
     const decoded = await this.authService.verifyFirebaseIdToken(idToken);
 
-    // Upsert / find user and attach tenant if tenantCode provided
-    const user = await this.authService.findOrCreateUser(decoded, tenantCode);
+    // 2️⃣ Find or create user
+    // (role + tenant handled internally: owner / staff invite)
+    const user = await this.authService.findOrCreateUser(decoded);
 
-    // Issue backend JWT
+    // 3️⃣ Issue backend JWT
     const token = this.authService.createBackendToken(user);
 
     return {
       token,
       userId: user.id,
-      tenantId: user.tenantId || null,
+      tenantId: user.tenantId ?? null,
       role: user.role,
     };
   }

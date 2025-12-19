@@ -21,10 +21,10 @@ export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
   // ─────────────────────────────────────────────
-  // CREATE MEMBER (OWNER, ADMIN)
+  // CREATE MEMBER (OWNER, STAFF)
   // ─────────────────────────────────────────────
   @Post()
-  @Roles(Role.OWNER, Role.ADMIN)
+  @Roles(Role.OWNER, Role.STAFF)
   create(@Req() req: any, @Body() dto: CreateMemberDto) {
     return this.membersService.createMember(req.user.tenantId, dto);
   }

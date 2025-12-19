@@ -3,9 +3,10 @@ import { MembersController } from './members.controller';
 import { MembersService } from './members.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
+import { SubscriptionsModule } from '../billing/subscriptions/subscriptions.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, SubscriptionsModule],
   controllers: [MembersController],
   providers: [MembersService],
   exports: [MembersService],

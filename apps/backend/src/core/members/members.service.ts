@@ -1,97 +1,105 @@
-import { BadRequestException } from '@nestjs/common';
-import { PLAN_LIMITS } from '../billing/plan-limits';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
+import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
+import { PLAN_LIMITS } from '../billing/plan-limits';
 
 @Injectable()
 export class MembersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subscriptionsService: SubscriptionsService,
+  ) {}
 
-  // ─────────────────────────────────────────────
-  // CREATE MEMBER
-  // ─────────────────────────────────────────────
   async createMember(tenantId: string, dto: CreateMemberDto) {
-    const subscription = await this.prisma.tenantSubscription.findUnique({
-      where: { tenantId },
-      include: { plan: true },
-    });
+    console.log('🚀 createMember() CALLED');
 
-    const planName = subscription?.plan?.name ?? 'TRIAL';
-    const limits = PLAN_LIMITS[planName];
-
-    if (limits?.maxMembers !== null) {
-      const count = await this.prisma.member.count({
-        where: { tenantId },
-      });
-
-      if (count >= limits.maxMembers) {
-        // 🚨 SOFT ENFORCEMENT
-        throw new BadRequestException(
-          `Member limit reached for ${planName} plan`,
-        );
-      }
+    if (!tenantId) {
+      throw new ForbiddenException('Tenant not found');
     }
 
+    // 1️⃣ Get current active subscription (SINGLE SOURCE OF TRUTH)
+    const subscription =
+      await this.subscriptionsService.getCurrentActiveSubscription(tenantId);
+
+    if (!subscription) {
+      throw new ForbiddenException('No active subscription found');
+    }
+
+    // 2️⃣ Count existing members (ONLY members table)
+    const memberCount = await this.prisma.member.count({
+      where: { tenantId },
+    });
+
+    // 3️⃣ Read plan features (robust fallback to PLAN_LIMITS)
+    const features = subscription.plan.features as
+      | { maxMembers?: number | null }
+      | undefined;
+
+    // Prefer explicit plan.features.maxMembers when provided and numeric.
+    // Otherwise fall back to canonical PLAN_LIMITS mapping by plan name.
+    let maxMembers: number | null | undefined = undefined;
+    if (features && typeof features.maxMembers === 'number') {
+      maxMembers = features.maxMembers;
+    } else {
+      const fallback = PLAN_LIMITS[subscription.plan.name];
+      maxMembers = fallback ? fallback.maxMembers : null;
+    }
+    // 4️⃣ Enforce member limit
+    // IMPORTANT RULE:
+    // - number → enforce
+    // - null / undefined → unlimited
+    if (typeof maxMembers === 'number' && memberCount >= maxMembers) {
+      throw new ForbiddenException(
+        'Member limit reached for your current plan. Please upgrade.',
+      );
+    }
+
+    // 5️⃣ Create member
     return this.prisma.member.create({
       data: {
-        ...dto,
         tenantId,
+        name: dto.name,
+        phone: dto.phone,
+        email: dto.email ?? null,
       },
     });
   }
 
-  // ─────────────────────────────────────────────
-  // LIST MEMBERS (TENANT ISOLATED)
-  // ─────────────────────────────────────────────
   async listMembers(tenantId: string) {
     return this.prisma.member.findMany({
-      where: {
-        tenantId,
+      where: { tenantId },
+      orderBy: {
+        createdAt: 'desc',
       },
     });
   }
 
-  // ─────────────────────────────────────────────
-  // GET SINGLE MEMBER (TENANT ISOLATED)
-  // ─────────────────────────────────────────────
   async getMemberById(tenantId: string, memberId: string) {
-    const member = await this.prisma.member.findFirst({
+    return this.prisma.member.findFirst({
       where: {
         id: memberId,
         tenantId,
       },
     });
-
-    if (!member) {
-      throw new NotFoundException('Member not found');
-    }
-
-    return member;
   }
 
-  // ─────────────────────────────────────────────
-  // UPDATE MEMBER (TENANT ISOLATED)
-  // ─────────────────────────────────────────────
   async updateMember(tenantId: string, memberId: string, dto: UpdateMemberDto) {
-    const member = await this.prisma.member.findFirst({
+    return this.prisma.member.updateMany({
       where: {
         id: memberId,
         tenantId,
       },
+      data: dto,
     });
+  }
 
-    if (!member) {
-      throw new NotFoundException('Member not found');
-    }
-
-    return this.prisma.member.update({
+  async deleteMember(tenantId: string, memberId: string) {
+    return this.prisma.member.deleteMany({
       where: {
         id: memberId,
-      },
-      data: {
-        ...dto,
+        tenantId,
       },
     });
   }

@@ -32,6 +32,16 @@ export class PlansService {
       }
     }
   }
+  async getActivePlans() {
+    return this.prisma.plan.findMany({
+      where: {
+        isActive: true,
+      },
+      orderBy: {
+        price: 'asc',
+      },
+    });
+  }
 
   async getOrCreateTrialPlan() {
     const existing = await this.prisma.plan.findFirst({

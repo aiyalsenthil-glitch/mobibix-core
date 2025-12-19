@@ -5,13 +5,13 @@ import { PrismaModule } from './core/prisma/prisma.module';
 import { AuthModule } from './core/auth/auth.module';
 import { TenantModule } from './core/tenant/tenant.module';
 import { UsersModule } from './core/users/users.module';
+import { StaffModule } from './core/staff/staff.module';
 import { MembersModule } from './core/members/members.module';
 import { BillingModule } from './core/billing/billing.module';
 import { AdminModule } from './core/admin/admin.module';
 import { PaymentsModule } from './core/billing/payments/payments.module';
 import { GymModule } from './modules/gym/gym.module';
 import { rawBodyMiddleware } from './common/middleware/raw-body.middleware';
-
 import { TenantContextInterceptor } from './core/tenant/tenant-context.interceptor';
 
 @Module({
@@ -27,6 +27,7 @@ import { TenantContextInterceptor } from './core/tenant/tenant-context.intercept
     MembersModule,
     BillingModule,
     PaymentsModule,
+    StaffModule,
     AdminModule, // ✅ imported, not redefined
     GymModule,
   ],
