@@ -6,21 +6,20 @@ import {
   Scope,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { PrismaService } from '../prisma/prisma.service';
+import { runWithAsyncContext, setCtx } from '../cls/async-context';
 
 @Injectable({ scope: Scope.REQUEST })
 export class TenantContextInterceptor implements NestInterceptor {
-  constructor(private readonly prisma: PrismaService) {}
-
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
-
     const user = request.user;
 
-    if (user?.tenantId) {
-      this.prisma.setTenantId(user.tenantId);
-    }
+    return runWithAsyncContext(() => {
+      if (user?.tenantId) {
+        setCtx('tenantId', user.tenantId);
+      }
 
-    return next.handle();
+      return next.handle();
+    });
   }
 }

@@ -1,35 +1,33 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
-import { PrismaModule } from './core/prisma/prisma.module';
-import { AuthModule } from './core/auth/auth.module';
-import { TenantModule } from './core/tenant/tenant.module';
-import { UsersModule } from './core/users/users.module';
-import { StaffModule } from './core/staff/staff.module';
-import { MembersModule } from './core/members/members.module';
-import { BillingModule } from './core/billing/billing.module';
-import { AdminModule } from './core/admin/admin.module';
-import { PaymentsModule } from './core/billing/payments/payments.module';
+
+import { CoreModule } from './core/core.module';
 import { GymModule } from './modules/gym/gym.module';
+import { HealthModule } from './health/health.module';
+
 import { rawBodyMiddleware } from './common/middleware/raw-body.middleware';
 import { TenantContextInterceptor } from './core/tenant/tenant-context.interceptor';
 
+import { ScheduleModule } from '@nestjs/schedule';
+
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
+    // 🌍 Global env config
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
     }),
-    PrismaModule,
-    AuthModule,
-    TenantModule,
-    UsersModule,
-    MembersModule,
-    BillingModule,
-    PaymentsModule,
-    StaffModule,
-    AdminModule, // ✅ imported, not redefined
+
+    // 🔒 Core Engine (ALL core logic lives here)
+    CoreModule,
+
+    // 🧩 Business modules
     GymModule,
+
+    // 🩺 Platform infra
+    HealthModule,
   ],
   providers: [
     {

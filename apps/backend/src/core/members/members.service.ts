@@ -4,17 +4,21 @@ import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
 import { PLAN_LIMITS } from '../billing/plan-limits';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class MembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly auditService: AuditService,
   ) {}
-
+  async countAll(): Promise<number> {
+    return this.prisma.member.count({
+      where: this.prisma.tenantWhere(),
+    });
+  }
   async createMember(tenantId: string, dto: CreateMemberDto) {
-    console.log('🚀 createMember() CALLED');
-
     if (!tenantId) {
       throw new ForbiddenException('Tenant not found');
     }
@@ -95,12 +99,33 @@ export class MembersService {
     });
   }
 
-  async deleteMember(tenantId: string, memberId: string) {
-    return this.prisma.member.deleteMany({
+  async deleteMember(user: any, memberId: string) {
+    const member = await this.prisma.member.findFirst({
       where: {
         id: memberId,
-        tenantId,
+        tenantId: user.tenantId,
       },
     });
+
+    if (!member) {
+      return { message: 'Member not found' };
+    }
+
+    await this.prisma.member.delete({
+      where: { id: memberId },
+    });
+
+    await this.auditService.log({
+      tenantId: user.tenantId,
+      userId: user.id,
+      action: 'DELETE',
+      entity: 'MEMBER',
+      entityId: memberId,
+      meta: {
+        memberName: member.name,
+      },
+    });
+
+    return { message: 'Member deleted successfully' };
   }
 }

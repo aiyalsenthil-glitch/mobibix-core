@@ -1,11 +1,13 @@
-import { Injectable, Scope } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { getCtx, setCtx } from '../cls/async-context';
 
-@Injectable({ scope: Scope.REQUEST })
-export class PrismaService extends PrismaClient {
-  private tenantId: string | null = null;
-
+@Injectable()
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   constructor() {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
@@ -14,36 +16,48 @@ export class PrismaService extends PrismaClient {
 
     const adapter = new PrismaPg({ connectionString });
 
-    super({
-      adapter,
-    });
+    super({ adapter });
+  }
+
+  async onModuleInit() {
+    await this.$connect();
+  }
+
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
+
+  /** 🔒 Tenant context helpers using AsyncLocalStorage */
+  tenantWhere<T extends object>(where?: T): T {
+    const tenantId = getCtx('tenantId');
+    if (!tenantId) {
+      throw new Error('Tenant context is missing');
+    }
+
+    return {
+      ...(where ?? {}),
+      tenantId,
+    } as T;
+  }
+
+  tenantWhereOptional<T extends object>(where?: T): T {
+    const tenantId = getCtx('tenantId');
+    if (!tenantId) {
+      return where ?? ({} as T);
+    }
+
+    return {
+      ...(where ?? {}),
+      tenantId,
+    } as T;
+  }
+
+  // compatibility helpers (some modules read tenant id directly)
+  getTenantId() {
+    return getCtx('tenantId');
   }
 
   setTenantId(tenantId: string) {
-    this.tenantId = tenantId;
-  }
-
-  /** 🔒 Enforced tenant filter helper */
-  tenantWhere<T extends object>(where?: T): T {
-    if (!this.tenantId) {
-      throw new Error('Tenant context is missing');
-    }
-    return {
-      ...(where ?? {}),
-      tenantId: this.tenantId,
-    } as T;
-  }
-  // Add this method alongside tenantWhere():
-  tenantWhereOptional<T extends object>(where?: T): T | { tenantId: null } {
-    if (!this.tenantId) {
-      return {} as T; // Skip filtering, or return empty
-    }
-    return {
-      ...(where ?? {}),
-      tenantId: this.tenantId,
-    } as T;
-  }
-  getTenantId() {
-    return this.tenantId;
+    setCtx('tenantId', tenantId);
   }
 }

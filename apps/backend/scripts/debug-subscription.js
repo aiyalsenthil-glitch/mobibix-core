@@ -15,10 +15,6 @@ async function main() {
 
   const memberCount = await prisma.member.count({ where: { tenantId } });
 
-  console.log('tenantId:', tenantId);
-  console.log('subscription:', subscription);
-  console.log('memberCount:', memberCount);
-
   await prisma.$disconnect();
 }
 

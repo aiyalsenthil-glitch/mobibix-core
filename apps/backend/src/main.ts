@@ -1,27 +1,47 @@
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
+import { HttpAdapterHost } from '@nestjs/core';
 import express from 'express';
 import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
-  // Create express server
+  // 1️⃣ Create raw express server
   const server = express();
 
-  // RAW body ONLY for Razorpay webhook
+  // 2️⃣ Razorpay webhook needs RAW body
   server.post(
     '/payments/webhook',
     bodyParser.raw({ type: 'application/json' }),
   );
 
-  // JSON for all other routes
+  // 3️⃣ All other routes use JSON
   server.use(bodyParser.json());
 
-  // Wrap express with Nest
+  // 4️⃣ Create Nest app ONCE using ExpressAdapter
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
 
+  // 5️⃣ Enable shutdown hooks (IMPORTANT)
+  app.enableShutdownHooks();
+
+  // 6️⃣ Graceful HTTP shutdown
+  const httpAdapterHost = app.get(HttpAdapterHost);
+  const serverInstance = httpAdapterHost.httpAdapter.getInstance();
+
+  if (serverInstance?.close) {
+    serverInstance.close();
+  }
+
+  // 7️⃣ CORS (safe default, domain-free)
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
+
+  // 8️⃣ Start server
   await app.listen(3000);
-  console.log('Server listening on port 3000');
+  console.log('🚀 Server listening on port 3000');
 }
 
 bootstrap();
