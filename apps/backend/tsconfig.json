@@ -20,9 +20,7 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false,
-
-    "ignoreDeprecations": "6.0"
+    "noFallthroughCasesInSwitch": false
   },
   "exclude": ["node_modules", "dist", "dist/**", "prisma/generated"]
 }
