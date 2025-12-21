@@ -5,9 +5,12 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
-    "build": "npx nest build",
     "start:dev": "dotenv -e .env -- nest start --watch",
     "start:prod": "node dist/main.js",
     "normalize-roles": "ts-node scripts/normalize-roles.ts",
