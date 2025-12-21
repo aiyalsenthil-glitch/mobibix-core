@@ -7,8 +7,9 @@
   "license": "UNLICENSED",
   "scripts": {
     "start": "node dist/main.js",
-    "build": "nest build",
+    "build": "npx nest build",
     "start:dev": "dotenv -e .env -- nest start --watch",
+    "start:prod": "node dist/main.js",
     "normalize-roles": "ts-node scripts/normalize-roles.ts",
     "normalize-roles-sql": "npx prisma db execute --file scripts/normalize-roles.sql",
     "format": "prettier --write \"src/**/*.ts\""
