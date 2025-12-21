@@ -9,10 +9,10 @@
     "node": "20.x"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "npx prisma generate && tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
-    "start:dev": "dotenv -e .env -- nest start --watch",
     "start:prod": "node dist/main.js",
+    "start:dev": "dotenv -e .env -- nest start --watch",
     "normalize-roles": "ts-node scripts/normalize-roles.ts",
     "normalize-roles-sql": "npx prisma db execute --file scripts/normalize-roles.sql",
     "format": "prettier --write \"src/**/*.ts\""
