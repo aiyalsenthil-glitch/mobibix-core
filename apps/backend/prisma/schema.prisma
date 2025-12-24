@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,110 +7,193 @@ datasource db {
 }
 
 model Tenant {
-  id String @id @default(cuid())
-
-  // 🔹 IDENTITY
-  name       String // Display name
-  legalName  String? // Invoice / legal docs
-  tenantType String // GYM, SHOP, CLINIC, CRM (future)
-
-  code String @unique // short code / slug
-
-  // 🔹 CONTACT
+  id           String              @id @default(cuid())
+  name         String
+  legalName    String?
+  tenantType   String
+  code         String              @unique
   contactPhone String
   contactEmail String?
   website      String?
-
-  // 🔹 BRANDING
-  logoUrl String?
-
-  // 🔹 ADDRESS
+  logoUrl      String?
   addressLine1 String
   addressLine2 String?
   city         String
   state        String
   pincode      String
-  country      String  @default("India")
-
-  // 🔹 BUSINESS / TAX
+  country      String              @default("India")
   gstNumber    String?
-  taxId        String? // GLOBAL (VAT, EIN, etc.)
-  businessType String? // Sole / Pvt / LLC / LLP
-  currency     String  @default("INR")
-  timezone     String  @default("Asia/Kolkata")
-
-  // 🔹 SUBSCRIPTION
+  taxId        String?
+  businessType String?
+  currency     String              @default("INR")
+  timezone     String              @default("Asia/Kolkata")
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  kioskToken   String?             @unique
+  auditLogs    AuditLog[]
+  members      Member[]
+  payments     Payment[]
   subscription TenantSubscription?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  users     User[]
-  members   Member[]
-  payments  Payment[]
-  auditLogs AuditLog[]
+  users        User[]
 }
 
 model User {
-  id          String @id @default(uuid())
-  REMOVED_AUTH_PROVIDERUid String @unique
-
-  email    String?
-  fullName String?
-  avatar   String?
-
-  role     UserRole
-  tenantId String?
-
-  permissions Json? // fine for feature flags
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  tenant    Tenant?    @relation(fields: [tenantId], references: [id])
-  auditLogs AuditLog[]
-}
-
-enum UserRole {
-  ADMIN // Platform owner (YOU)
-  OWNER // Tenant owner
-  STAFF
+  id          String     @id @default(uuid())
+  REMOVED_AUTH_PROVIDERUid String     @unique
+  email       String?
+  fullName    String?
+  avatar      String?
+  role        UserRole
+  tenantId    String?
+  permissions Json?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  auditLogs   AuditLog[]
+  tenant      Tenant?    @relation(fields: [tenantId], references: [id])
 }
 
 model Member {
-  id       String @id @default(uuid())
-  tenantId String
-
-  // Identity
-  fullName String
-  phone    String
-  gender   Gender
-
-  // Membership
+  id                String              @id @default(uuid())
+  tenantId          String
+  fullName          String
+  phone             String
+  gender            Gender
   membershipPlanId  String
   membershipStartAt DateTime
   membershipEndAt   DateTime
   feeAmount         Int
   paymentStatus     MemberPaymentStatus
-
-  // Fitness (GYM ONLY)
-  heightCm    Float
-  weightKg    Float
-  fitnessGoal FitnessGoal
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-
-  // Relations (REQUIRED by Prisma)
-  gymMemberships GymMembership[]
-  attendances    GymAttendance[]
-  payments       MemberPayment[]
+  heightCm          Float
+  weightKg          Float
+  fitnessGoal       FitnessGoal
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  attendances       GymAttendance[]
+  gymMemberships    GymMembership[]
+  tenant            Tenant              @relation(fields: [tenantId], references: [id])
+  payments          MemberPayment[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, phone])
   @@index([tenantId])
+}
+
+model StaffInvite {
+  id        String   @id @default(uuid())
+  email     String
+  tenantId  String
+  createdAt DateTime @default(now())
+}
+
+model MemberPayment {
+  id        String              @id @default(cuid())
+  tenantId  String
+  memberId  String
+  amount    Int
+  status    MemberPaymentStatus
+  method    String?
+  reference String?
+  gstRate   Float?
+  gstAmount Float?
+  total     Int?
+  createdAt DateTime            @default(now())
+  member    Member              @relation(fields: [memberId], references: [id])
+
+  @@index([tenantId])
+  @@index([memberId])
+}
+
+model Plan {
+  id            String               @id @default(cuid())
+  name          String
+  level         Int
+  price         Int
+  currency      String               @default("INR")
+  durationDays  Int
+  memberLimit   Int                  @default(0)
+  features      Json?
+  isActive      Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  subscriptions TenantSubscription[]
+}
+
+model TenantSubscription {
+  id        String             @id @default(cuid())
+  tenantId  String             @unique
+  planId    String
+  status    SubscriptionStatus
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  plan      Plan               @relation(fields: [planId], references: [id])
+  tenant    Tenant             @relation(fields: [tenantId], references: [id])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  tenantId          String
+  planId            String
+  amount            Int
+  currency          String        @default("INR")
+  status            PaymentStatus
+  provider          String
+  providerOrderId   String
+  providerPaymentId String?
+  providerSignature String?
+  meta              Json?
+  createdAt         DateTime      @default(now())
+  tenant            Tenant        @relation(fields: [tenantId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  action    String
+  entity    String
+  entityId  String?
+  meta      Json?
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model GymMembership {
+  id        String           @id @default(cuid())
+  tenantId  String
+  memberId  String
+  startDate DateTime
+  endDate   DateTime
+  status    MembershipStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  member    Member           @relation(fields: [memberId], references: [id])
+
+  @@index([tenantId])
+  @@index([memberId])
+}
+
+model GymAttendance {
+  id           String           @id @default(cuid())
+  tenantId     String
+  memberId     String
+  checkInTime  DateTime
+  checkOutTime DateTime?
+  source       AttendanceSource @default(MANUAL)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  member       Member           @relation(fields: [memberId], references: [id])
+
+  @@index([tenantId])
+  @@index([memberId])
+}
+
+enum UserRole {
+  ADMIN
+  OWNER
+  STAFF
 }
 
 enum Gender {
@@ -138,94 +215,6 @@ enum MemberPaymentStatus {
   PARTIAL
 }
 
-model StaffInvite {
-  id        String   @id @default(uuid())
-  email     String
-  tenantId  String
-  createdAt DateTime @default(now())
-}
-
-model MemberPayment {
-  id       String @id @default(cuid())
-  tenantId String
-  memberId String
-
-  amount Int
-  status MemberPaymentStatus
-
-  method    String? // CASH, UPI, CARD, ONLINE
-  reference String? // txn id / note
-
-  gstRate   Float? // future
-  gstAmount Float? // future
-  total     Int? // future
-
-  createdAt DateTime @default(now())
-
-  member Member @relation(fields: [memberId], references: [id])
-
-  @@index([tenantId])
-  @@index([memberId])
-}
-
-model Plan {
-  id    String @id @default(cuid())
-  name  String
-  level Int
-
-  price        Int
-  currency     String @default("INR")
-  durationDays Int
-
-  memberLimit Int     @default(0)
-  features    Json?
-  isActive    Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  subscriptions TenantSubscription[]
-}
-
-model TenantSubscription {
-  id String @id @default(cuid())
-
-  tenantId String
-  planId   String
-
-  status    SubscriptionStatus
-  startDate DateTime
-  endDate   DateTime
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  plan      Plan     @relation(fields: [planId], references: [id])
-
-  @@unique([tenantId])
-}
-
-model Payment {
-  id       String @id @default(cuid())
-  tenantId String
-  planId   String
-
-  amount   Int
-  currency String        @default("INR")
-  status   PaymentStatus
-
-  provider          String // RAZORPAY, STRIPE
-  providerOrderId   String
-  providerPaymentId String?
-  providerSignature String?
-
-  meta Json? // webhook payloads
-
-  createdAt DateTime @default(now())
-
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-}
-
 enum PaymentStatus {
   SUCCESS
   FAILED
@@ -237,59 +226,6 @@ enum SubscriptionStatus {
   ACTIVE
   EXPIRED
   CANCELLED
-}
-
-model AuditLog {
-  id        String   @id @default(uuid())
-  tenantId  String
-  userId    String
-  action    String
-  entity    String
-  entityId  String?
-  meta      Json?
-  createdAt DateTime @default(now())
-
-  user   User   @relation(fields: [userId], references: [id])
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-}
-
-model GymMembership {
-  id       String @id @default(cuid())
-  tenantId String
-  memberId String
-
-  startDate DateTime
-  endDate   DateTime
-
-  status MembershipStatus @default(ACTIVE)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  member Member @relation(fields: [memberId], references: [id])
-
-  @@index([tenantId])
-  @@index([memberId])
-}
-
-model GymAttendance {
-  id       String @id @default(cuid())
-  tenantId String
-  memberId String
-
-  checkInTime  DateTime
-  checkOutTime DateTime?
-
-  source AttendanceSource @default(MANUAL)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  member Member @relation(fields: [memberId], references: [id])
-
-  @@index([tenantId])
-  @@index([memberId])
 }
 
 enum AttendanceSource {

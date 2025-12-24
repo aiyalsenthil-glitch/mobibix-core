@@ -1,10 +1,15 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlansService } from '../billing/plans/plans.service';
 import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
 import { CreateTenantDto } from './dto/tenant.dto';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class TenantService {
@@ -78,7 +83,35 @@ export class TenantService {
 
     return tenant;
   }
+  async getPublicTenantByCode(code: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { code },
+      select: {
+        id: true,
+        name: true,
+        kioskToken: true,
+      },
+    });
 
+    if (!tenant || !tenant.kioskToken) {
+      throw new NotFoundException('Gym not available');
+    }
+
+    return tenant;
+  }
+
+  async generateKioskToken(tenantId: string) {
+    const token = randomBytes(32).toString('hex');
+
+    return this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { kioskToken: token },
+      select: {
+        id: true,
+        kioskToken: true,
+      },
+    });
+  }
   /**
    * ============================
    * GET TENANT BY ID

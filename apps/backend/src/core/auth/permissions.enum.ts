@@ -21,4 +21,7 @@ export enum Permission {
 
   // SaaS / Billing
   PLAN_UPGRADE = 'PLAN_UPGRADE',
+
+  //Tenant
+  TENANT_MANAGE = 'TENANT_MANAGE',
 }

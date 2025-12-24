@@ -12,18 +12,15 @@ export class GymAttendanceCron implements OnModuleInit {
     this.logger.log('🔥 GymAttendanceCron CONSTRUCTOR LOADED');
   }
 
-  @Cron('59 23 * * *') // production
-  //@Cron('*/10 * * * * *') // every 10 seconds
-  async autoCloseAttendance() {
-    const now = new Date();
-
-    const result = await this.prisma.gymAttendance.updateMany({
-      where: { checkOutTime: null },
-      data: { checkOutTime: now },
+  @Cron('0 0 * * *') // every day at 12:00 AM
+  async autoCheckout() {
+    await this.prisma.gymAttendance.updateMany({
+      where: {
+        checkOutTime: null,
+      },
+      data: {
+        checkOutTime: new Date(),
+      },
     });
-
-    if (result.count > 0) {
-      this.logger.log(`Auto-closed ${result.count} attendance records`);
-    }
   }
 }

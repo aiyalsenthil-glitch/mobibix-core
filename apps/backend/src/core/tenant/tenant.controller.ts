@@ -6,12 +6,15 @@ import {
   Req,
   UseGuards,
   ForbiddenException,
+  Param,
 } from '@nestjs/common';
 
 import { TenantService } from './tenant.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SubscriptionGuard } from '../billing/guards/subscription.guard';
 import { CreateTenantDto } from './dto/tenant.dto';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { Permission } from '../auth/permissions.enum';
 
 @Controller('tenant')
 export class TenantController {
@@ -79,5 +82,16 @@ export class TenantController {
   @Get('usage')
   async getUsage(@Req() req: any) {
     return this.tenantService.getUsage(req.user.tenantId);
+  }
+  @UseGuards(JwtAuthGuard)
+  @Permissions(Permission.TENANT_MANAGE)
+  @Post('kiosk-token')
+  generateKioskToken(@Req() req: any) {
+    console.log('KIOSK TOKEN API HIT');
+    return this.tenantService.generateKioskToken(req.user.tenantId);
+  }
+  @Get('public/by-code/:code')
+  getPublicByCode(@Param('code') code: string) {
+    return this.tenantService.getPublicTenantByCode(code);
   }
 }

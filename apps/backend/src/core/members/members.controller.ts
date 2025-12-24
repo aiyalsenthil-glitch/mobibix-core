@@ -85,4 +85,9 @@ export class MembersController {
   listExpiring(@Req() req: any) {
     return this.membersService.listExpiringSoon(req.user.tenantId, 5);
   }
+  @Permissions(Permission.MEMBER_VIEW)
+  @Get(':id')
+  getById(@Req() req: any, @Param('id') id: string) {
+    return this.membersService.getMemberById(req.user.tenantId, id);
+  }
 }
