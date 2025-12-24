@@ -1,5 +1,7 @@
-import { Controller, Post, Body, Req, UseGuards, Query } from '@nestjs/common';
+import { Controller, Post, Body, Req, UseGuards, Get } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
+import { Permissions } from '../../../core/auth/decorators/permissions.decorator';
+import { Permission } from '../../../core/auth/permissions.enum';
 import { GymAttendanceService } from './gym-attendance.service';
 
 @Controller('gym/attendance')
@@ -7,21 +9,21 @@ import { GymAttendanceService } from './gym-attendance.service';
 export class GymAttendanceController {
   constructor(private readonly attendanceService: GymAttendanceService) {}
 
+  @Permissions(Permission.ATTENDANCE_MARK)
   @Post('check-in')
-  async checkIn(
-    @Req() req: any,
-    @Body('memberId') memberId: string,
-    @Query('source') source?: 'MANUAL' | 'QR' | 'BIOMETRIC',
-  ) {
-    return this.attendanceService.checkIn(
-      req.user.tenantId,
-      memberId,
-      source ?? 'MANUAL',
-    );
+  checkIn(@Req() req: any, @Body('memberId') memberId: string) {
+    return this.attendanceService.checkIn(req.user.tenantId, memberId);
   }
 
+  @Permissions(Permission.ATTENDANCE_MARK)
   @Post('check-out')
-  async checkOut(@Req() req: any, @Body('memberId') memberId: string) {
+  checkOut(@Req() req: any, @Body('memberId') memberId: string) {
     return this.attendanceService.checkOut(req.user.tenantId, memberId);
+  }
+
+  @Permissions(Permission.ATTENDANCE_VIEW)
+  @Get('today')
+  today(@Req() req: any) {
+    return this.attendanceService.getTodayAttendance(req.user.tenantId);
   }
 }

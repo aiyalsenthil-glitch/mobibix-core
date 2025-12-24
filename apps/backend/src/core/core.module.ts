@@ -8,6 +8,7 @@ import { BillingModule } from './billing/billing.module';
 import { AuditModule } from './audit/audit.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StaffModule } from './staff/staff.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { StaffModule } from './staff/staff.module';
     BillingModule,
     AuditModule,
     StaffModule,
+    AdminModule,
   ],
   exports: [
     AuthModule,

@@ -2,13 +2,13 @@ import {
   Controller,
   Post,
   Body,
-  Req,
-  UseGuards,
   BadRequestException,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @UseGuards(JwtAuthGuard)
@@ -24,44 +24,51 @@ export class PaymentsVerifyController {
     @Req() req: any,
     @Body()
     body: {
-      REMOVED_PAYMENT_INFRA_order_id: string;
-      REMOVED_PAYMENT_INFRA_payment_id: string;
-      REMOVED_PAYMENT_INFRA_signature: string;
-      plan: 'BASIC' | 'PRO';
+      orderId: string;
+      paymentId: string;
+      signature: string;
+      planId: string;
     },
   ) {
-    const { REMOVED_PAYMENT_INFRA_order_id, REMOVED_PAYMENT_INFRA_payment_id, REMOVED_PAYMENT_INFRA_signature, plan } =
-      body;
+    const { orderId, paymentId, signature, planId } = body;
 
+    if (!orderId || !paymentId || !signature || !planId) {
+      throw new BadRequestException('Missing payment details');
+    }
+
+    // 1️⃣ Verify Razorpay signature (FINAL & CORRECT)
     const generatedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
-      .update(`${REMOVED_PAYMENT_INFRA_order_id}|${REMOVED_PAYMENT_INFRA_payment_id}`)
+      .update(`${orderId}|${paymentId}`)
       .digest('hex');
 
-    if (generatedSignature !== REMOVED_PAYMENT_INFRA_signature) {
+    if (generatedSignature !== signature) {
       throw new BadRequestException('Invalid payment signature');
     }
+
+    // 2️⃣ Upgrade subscription (SOURCE OF TRUTH)
+    await this.subscriptionsService.upgradeSubscription(
+      req.user.tenantId,
+      planId,
+    );
+
+    // 3️⃣ Store payment record (NO plan.price here)
     await this.prisma.payment.create({
       data: {
         tenantId: req.user.tenantId,
-        planName: plan,
-        amount: plan === 'BASIC' ? 999 : 1999,
+        planId,
+
+        amount: 0, // pricing handled elsewhere
         currency: 'INR',
-        REMOVED_PAYMENT_INFRAOrderId: REMOVED_PAYMENT_INFRA_order_id,
-        REMOVED_PAYMENT_INFRAPaymentId: REMOVED_PAYMENT_INFRA_payment_id,
-        REMOVED_PAYMENT_INFRASignature: REMOVED_PAYMENT_INFRA_signature,
+        status: 'SUCCESS',
+
+        provider: 'RAZORPAY',
+        providerOrderId: orderId,
+        providerPaymentId: paymentId,
+        providerSignature: signature,
       },
     });
 
-    // ✅ PAYMENT VERIFIED — UPGRADE TENANT
-    await this.subscriptionsService.upgradeSubscription(
-      req.user.tenantId,
-      plan,
-    );
-
-    return {
-      success: true,
-      plan,
-    };
+    return { success: true };
   }
 }

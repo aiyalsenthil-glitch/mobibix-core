@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
+import { isMembershipExpired } from '../../../common/utils/membership.util';
 
 @Injectable()
 export class GymAttendanceService {
@@ -17,10 +18,25 @@ export class GymAttendanceService {
     memberId: string,
     source: 'MANUAL' | 'QR' | 'BIOMETRIC' = 'MANUAL',
   ) {
+    const member = await this.prisma.member.findFirst({
+      where: {
+        id: memberId,
+        tenantId,
+      },
+    });
+    if (!member) {
+      throw new BadRequestException('Member not found');
+    }
+
+    if (isMembershipExpired(member.membershipEndAt)) {
+      throw new ForbiddenException('Membership expired');
+    }
+
     const now = new Date();
 
     const activeMembership = await this.prisma.gymMembership.findFirst({
       where: {
+        tenantId,
         memberId,
         status: 'ACTIVE',
         startDate: { lte: now },
@@ -59,10 +75,7 @@ export class GymAttendanceService {
    */
   async checkOut(tenantId: string, memberId: string) {
     const openAttendance = await this.prisma.gymAttendance.findFirst({
-      where: {
-        memberId,
-        checkOutTime: null,
-      },
+      where: { tenantId, memberId, checkOutTime: null },
       orderBy: { checkInTime: 'desc' },
     });
 
@@ -77,7 +90,7 @@ export class GymAttendanceService {
       },
     });
   }
-  async listTodayAttendance() {
+  async listTodayAttendance(tenantId: string) {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
 
@@ -86,6 +99,7 @@ export class GymAttendanceService {
 
     return this.prisma.gymAttendance.findMany({
       where: {
+        tenantId,
         checkInTime: {
           gte: start,
           lte: end,
@@ -98,7 +112,7 @@ export class GymAttendanceService {
         member: {
           select: {
             id: true,
-            name: true,
+            fullName: true,
             phone: true,
           },
         },
@@ -110,7 +124,7 @@ export class GymAttendanceService {
    * TODAY ATTENDANCE COUNT
    * ✅ tenant is resolved by Prisma tenant context
    */
-  async countTodayAttendance() {
+  async countTodayAttendance(tenantId: string) {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
 
@@ -119,11 +133,47 @@ export class GymAttendanceService {
 
     return this.prisma.gymAttendance.count({
       where: {
+        tenantId,
         checkInTime: {
           gte: start,
           lte: end,
         },
       },
     });
+  }
+
+  async getTodayAttendance(tenantId: string) {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    return {
+      items: await this.prisma.gymAttendance
+        .findMany({
+          where: {
+            tenantId,
+            checkInTime: {
+              gte: startOfDay,
+            },
+          },
+          include: {
+            member: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+          orderBy: {
+            checkInTime: 'desc',
+          },
+        })
+        .then((rows) =>
+          rows.map((r) => ({
+            id: r.id,
+            memberName: r.member.fullName,
+            checkInTime: r.checkInTime,
+            checkOutTime: r.checkOutTime,
+          })),
+        ),
+    };
   }
 }

@@ -13,11 +13,43 @@ datasource db {
 }
 
 model Tenant {
-  id           String              @id @default(cuid())
-  name         String
-  code         String              @unique
+  id String @id @default(cuid())
+
+  // 🔹 IDENTITY
+  name       String // Display name
+  legalName  String? // Invoice / legal docs
+  tenantType String // GYM, SHOP, CLINIC, CRM (future)
+
+  code String @unique // short code / slug
+
+  // 🔹 CONTACT
+  contactPhone String
+  contactEmail String?
+  website      String?
+
+  // 🔹 BRANDING
+  logoUrl String?
+
+  // 🔹 ADDRESS
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  pincode      String
+  country      String  @default("India")
+
+  // 🔹 BUSINESS / TAX
+  gstNumber    String?
+  taxId        String? // GLOBAL (VAT, EIN, etc.)
+  businessType String? // Sole / Pvt / LLC / LLP
+  currency     String  @default("INR")
+  timezone     String  @default("Asia/Kolkata")
+
+  // 🔹 SUBSCRIPTION
   subscription TenantSubscription?
-  createdAt    DateTime            @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   users     User[]
   members   Member[]
@@ -26,34 +58,84 @@ model Tenant {
 }
 
 model User {
-  id          String     @id @default(uuid())
-  REMOVED_AUTH_PROVIDERUid String     @unique
-  email       String?
-  fullName    String? // store REMOVED_AUTH_PROVIDER/display name
-  avatar      String?
-  role        String?    @default("member")
-  tenantId    String? // optional FK to Tenant
-  tenant      Tenant?    @relation(fields: [tenantId], references: [id])
-  permissions Json? // JSON field to store user permissions
-  auditLogs   AuditLog[]
+  id          String @id @default(uuid())
+  REMOVED_AUTH_PROVIDERUid String @unique
+
+  email    String?
+  fullName String?
+  avatar   String?
+
+  role     UserRole
+  tenantId String?
+
+  permissions Json? // fine for feature flags
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant?    @relation(fields: [tenantId], references: [id])
+  auditLogs AuditLog[]
+}
+
+enum UserRole {
+  ADMIN // Platform owner (YOU)
+  OWNER // Tenant owner
+  STAFF
 }
 
 model Member {
-  id             String          @id @default(uuid())
-  tenantId       String
-  name           String
-  phone          String
-  email          String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  gymMemberships GymMembership[]
-  gymAttendances GymAttendance[]
+  id       String @id @default(uuid())
+  tenantId String
+
+  // Identity
+  fullName String
+  phone    String
+  gender   Gender
+
+  // Membership
+  membershipPlanId  String
+  membershipStartAt DateTime
+  membershipEndAt   DateTime
+  feeAmount         Int
+  paymentStatus     MemberPaymentStatus
+
+  // Fitness (GYM ONLY)
+  heightCm    Float
+  weightKg    Float
+  fitnessGoal FitnessGoal
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
+  // Relations (REQUIRED by Prisma)
+  gymMemberships GymMembership[]
+  attendances    GymAttendance[]
+  payments       MemberPayment[]
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, phone])
   @@index([tenantId])
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum FitnessGoal {
+  WEIGHT_LOSS
+  MUSCLE_GAIN
+  GENERAL_FITNESS
+  WEIGHT_GAIN
+}
+
+enum MemberPaymentStatus {
+  PAID
+  DUE
+  PARTIAL
 }
 
 model StaffInvite {
@@ -63,13 +145,41 @@ model StaffInvite {
   createdAt DateTime @default(now())
 }
 
+model MemberPayment {
+  id       String @id @default(cuid())
+  tenantId String
+  memberId String
+
+  amount Int
+  status MemberPaymentStatus
+
+  method    String? // CASH, UPI, CARD, ONLINE
+  reference String? // txn id / note
+
+  gstRate   Float? // future
+  gstAmount Float? // future
+  total     Int? // future
+
+  createdAt DateTime @default(now())
+
+  member Member @relation(fields: [memberId], references: [id])
+
+  @@index([tenantId])
+  @@index([memberId])
+}
+
 model Plan {
-  id           String  @id @default(cuid())
-  name         String
-  price        Int?
+  id    String @id @default(cuid())
+  name  String
+  level Int
+
+  price        Int
+  currency     String @default("INR")
   durationDays Int
-  features     Json?
-  isActive     Boolean @default(true)
+
+  memberLimit Int     @default(0)
+  features    Json?
+  isActive    Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -98,17 +208,28 @@ model TenantSubscription {
 model Payment {
   id       String @id @default(cuid())
   tenantId String
-  planName String
-  amount   Int
-  currency String
+  planId   String
 
-  REMOVED_PAYMENT_INFRAOrderId   String
-  REMOVED_PAYMENT_INFRAPaymentId String
-  REMOVED_PAYMENT_INFRASignature String
+  amount   Int
+  currency String        @default("INR")
+  status   PaymentStatus
+
+  provider          String // RAZORPAY, STRIPE
+  providerOrderId   String
+  providerPaymentId String?
+  providerSignature String?
+
+  meta Json? // webhook payloads
 
   createdAt DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+enum PaymentStatus {
+  SUCCESS
+  FAILED
+  PENDING
 }
 
 enum SubscriptionStatus {

@@ -1,4 +1,13 @@
-import { Controller, Post, Get, Body, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  UseGuards,
+  Req,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -10,16 +19,29 @@ export class PaymentsController {
     private readonly paymentsService: PaymentsService,
     private readonly prisma: PrismaService,
   ) {}
-
   // ─────────────────────────────────────────────
   // CREATE RAZORPAY ORDER
   // ─────────────────────────────────────────────
   @Post('create-order')
-  async createOrder(@Req() req: any, @Body() body: { plan: 'BASIC' | 'PRO' }) {
-    const amount = body.plan === 'BASIC' ? 999 : 1999;
+  async createOrder(@Req() req: any, @Body() body: { planId: string }) {
+    // 1️⃣ Validate plan exists
+    const plan = await this.prisma.plan.findUnique({
+      where: { id: body.planId },
+    });
 
-    const order = await this.paymentsService.createOrder(amount);
+    if (!plan) {
+      throw new NotFoundException('Plan not found');
+    }
 
+    // 2️⃣ Validate price
+    if (plan.price === null) {
+      throw new BadRequestException('Invalid plan price');
+    }
+
+    // 3️⃣ Create Razorpay order
+    const order = await this.paymentsService.createOrder(plan.price);
+
+    // 4️⃣ Return data needed by Android
     return {
       orderId: order.id,
       amount: order.amount,
@@ -32,10 +54,23 @@ export class PaymentsController {
   // PAYMENT HISTORY (TENANT)
   // ─────────────────────────────────────────────
   @Get('history')
-  async getPaymentHistory(@Req() req: any) {
+  async getHistory(@Req() req: any) {
     return this.prisma.payment.findMany({
-      where: { tenantId: req.user.tenantId },
-      orderBy: { createdAt: 'desc' },
+      where: {
+        tenantId: req.user.tenantId,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        planId: true,
+        amount: true,
+        currency: true,
+        status: true,
+        provider: true,
+        createdAt: true,
+      },
     });
   }
 }

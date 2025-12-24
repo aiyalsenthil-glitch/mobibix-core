@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, LOG_LEVELS } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -9,12 +9,14 @@ export class PlansService {
       {
         name: 'BASIC',
         price: 999,
+        level: 1,
         durationDays: 30,
-        features: { maxMembers: 100 },
+        features: { maxMembers: null },
       },
       {
         name: 'PRO',
         price: 1999,
+        level: 2,
         durationDays: 365,
         features: { maxMembers: null },
       },
@@ -38,7 +40,36 @@ export class PlansService {
         isActive: true,
       },
       orderBy: {
-        price: 'asc',
+        level: 'asc',
+      },
+    });
+  }
+  async updatePlan(
+    planId: string,
+    data: {
+      price?: number;
+      durationDays?: number;
+      memberLimit?: number;
+      isActive?: boolean;
+    },
+  ) {
+    return this.prisma.plan.update({
+      where: { id: planId },
+      data,
+    });
+  }
+  async createPlan(data: {
+    name: string;
+    level: number;
+    price: number;
+    durationDays: number;
+    memberLimit: number;
+  }) {
+    return this.prisma.plan.create({
+      data: {
+        ...data,
+        isActive: true,
+        features: {},
       },
     });
   }
@@ -54,6 +85,7 @@ export class PlansService {
       data: {
         name: 'TRIAL',
         price: 0,
+        level: 0,
         durationDays: 14,
         isActive: true,
         features: {},

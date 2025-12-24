@@ -1,53 +1,69 @@
-// src/core/users/users.service.ts
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { User } from '@prisma/client';
+import { User, UserRole } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // 🔹 Get user by ID
   async findById(userId: string): Promise<User> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new NotFoundException('User not found');
     }
 
     return user;
   }
 
-  async createUser(tenantId: string, dto: CreateUserDto): Promise<User> {
-    const existing = await this.prisma.user.findFirst({
-      where: { email: dto.email },
+  // 🔹 Get users by tenant
+  async findByTenant(tenantId: string): Promise<User[]> {
+    return this.prisma.user.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
     });
+  }
 
-    if (existing) {
-      throw new BadRequestException('User already exists');
-    }
-
+  // 🔹 Create STAFF user (used by staff invite / admin)
+  async createStaffUser(data: {
+    REMOVED_AUTH_PROVIDERUid: string;
+    email?: string | null;
+    fullName?: string | null;
+    tenantId: string;
+  }): Promise<User> {
     return this.prisma.user.create({
       data: {
-        email: dto.email,
-        role: typeof dto.role === 'string' ? dto.role.toLowerCase() : dto.role,
-        fullName: dto.fullName,
-        tenantId,
-        REMOVED_AUTH_PROVIDERUid: `pending_${Date.now()}`,
+        REMOVED_AUTH_PROVIDERUid: data.REMOVED_AUTH_PROVIDERUid,
+        email: data.email ?? null,
+        fullName: data.fullName ?? null,
+        tenantId: data.tenantId,
+        role: UserRole.STAFF,
       },
     });
   }
 
-  async listUsers(tenantId: string): Promise<User[]> {
-    if (!tenantId) {
-      return [];
-    }
+  // 🔹 Update user profile (name / avatar)
+  async updateProfile(
+    userId: string,
+    data: {
+      fullName?: string;
+      avatar?: string;
+    },
+  ): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data,
+    });
+  }
 
-    return this.prisma.user.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: 'desc' },
+  // 🔹 Promote / change role (ADMIN only – future use)
+  async updateRole(userId: string, role: UserRole): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { role },
     });
   }
 }

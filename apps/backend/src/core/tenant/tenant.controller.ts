@@ -1,50 +1,83 @@
-import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
 import {
+  Body,
   Controller,
   Get,
   Post,
-  Body,
-  UseGuards,
   Req,
-  BadRequestException,
+  UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+
 import { TenantService } from './tenant.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SubscriptionGuard } from '../billing/guards/subscription.guard';
+import { CreateTenantDto } from './dto/tenant.dto';
 
 @Controller('tenant')
-@UseGuards(JwtAuthGuard, SubscriptionGuard)
 export class TenantController {
-  constructor(
-    private readonly tenantService: TenantService,
-    private readonly subscriptionsService: SubscriptionsService,
-  ) {}
+  constructor(private readonly tenantService: TenantService) {}
 
+  /**
+   * ============================
+   * TENANT ONBOARDING (PRODUCTION)
+   * ============================
+   *
+   * - Used ONLY when owner has no tenant
+   * - NO SubscriptionGuard here
+   * - Requires full tenant details
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post()
+  async createTenant(@Req() req: any, @Body() dto: CreateTenantDto) {
+    const userId = req.user.sub;
+
+    const tenant = await this.tenantService.createTenant(userId, dto);
+
+    // 🔥 Fetch updated user (now has tenantId)
+    const updatedUser = await this.tenantService.getUserForAuth(userId);
+
+    if (!updatedUser) {
+      throw new Error('User not found after tenant creation');
+    }
+
+    const token = this.tenantService.issueJwt(updatedUser);
+
+    return {
+      tenant,
+      token,
+    };
+  }
+  /**
+   * ============================
+   * GET MY TENANT (OWNER / STAFF)
+   * ============================
+   *
+   * - Requires tenantId
+   * - No subscription check
+   */
+  @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMyTenant(@Req() req: any) {
-    return this.tenantService.findById();
-  }
+    const tenantId = req.user.tenantId;
 
-  @Post()
-  async create(@Req() req: any, @Body() body: { name: string }) {
-    const user = req.user;
-    if (!user?.id) {
-      throw new BadRequestException('Authentication required');
-    }
-    if (!body?.name) {
-      throw new BadRequestException('Tenant name required');
+    if (!tenantId) {
+      throw new ForbiddenException('Tenant not created yet');
     }
 
-    return this.tenantService.createTenant(user.id, body.name);
-  }
-  @UseGuards(JwtAuthGuard)
-  @Get('subscription')
-  getMySubscription(@Req() req: any) {
-    return this.subscriptionsService.getSubscriptionByTenant(req.user.tenantId);
+    return this.tenantService.findById(tenantId);
   }
 
+  /**
+   * ============================
+   * TENANT USAGE / BILLING
+   * ============================
+   *
+   * - Requires active subscription
+   * - Used after onboarding
+   */
+  @UseGuards(JwtAuthGuard, SubscriptionGuard)
   @Get('usage')
   async getUsage(@Req() req: any) {
-    return this.tenantService.getUsageStats(req.user.tenantId);
+    return this.tenantService.getUsage(req.user.tenantId);
   }
 }

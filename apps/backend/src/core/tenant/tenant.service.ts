@@ -1,7 +1,10 @@
-import { PlansService } from '../billing/plans/plans.service';
-import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlansService } from '../billing/plans/plans.service';
+import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
+import { CreateTenantDto } from './dto/tenant.dto';
+import { JwtService } from '@nestjs/jwt';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class TenantService {
@@ -9,27 +12,15 @@ export class TenantService {
     private readonly prisma: PrismaService,
     private readonly plansService: PlansService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly jwtService: JwtService,
   ) {}
 
-  async findById() {
-    const tenantId = this.prisma.getTenantId();
-    if (!tenantId) {
-      return null; // Owner hasn't created tenant yet
-    }
-    return this.prisma.tenant.findFirst({
-      where: { id: tenantId },
-    });
-  }
-  async listTenantsWithSubscription() {
-    return this.prisma.tenant.findMany({
-      include: {
-        subscription: {
-          include: { plan: true },
-        },
-      },
-    });
-  }
-  async createTenant(userId: string, name: string) {
+  /**
+   * ============================
+   * CREATE TENANT (ONBOARDING)
+   * ============================
+   */
+  async createTenant(userId: string, dto: CreateTenantDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -42,35 +33,69 @@ export class TenantService {
       throw new BadRequestException('User already has a tenant');
     }
 
-    // 🔑 Ensure BASIC / PRO plans exist (safe, idempotent)
+    // Ensure base plans exist (idempotent)
     await this.plansService.ensureDefaultPlans();
-
-    // 🔑 Ensure TRIAL plan exists
     const trialPlan = await this.plansService.getOrCreateTrialPlan();
 
-    const code = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+    const code =
+      dto.code ??
+      dto.name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
 
     const tenant = await this.prisma.tenant.create({
-      data: { name, code },
+      data: {
+        name: dto.name,
+        legalName: dto.legalName,
+        code,
+
+        tenantType: dto.tenantType,
+        contactPhone: dto.contactPhone,
+
+        addressLine1: dto.addressLine1,
+        city: dto.city,
+        state: dto.state,
+        pincode: dto.pincode,
+        country: dto.country,
+
+        currency: dto.currency,
+        timezone: dto.timezone,
+      },
     });
 
-    // 🔑 Assign TRIAL subscription
+    // Assign trial subscription
     await this.subscriptionsService.assignTrialSubscription(
       tenant.id,
       trialPlan.id,
     );
 
+    // Link owner to tenant
     await this.prisma.user.update({
       where: { id: userId },
       data: {
         tenantId: tenant.id,
-        role: 'owner',
+        role: UserRole.OWNER,
       },
     });
 
     return tenant;
   }
-  async getUsageStats(tenantId: string) {
+
+  /**
+   * ============================
+   * GET TENANT BY ID
+   * ============================
+   */
+  async findById(tenantId: string) {
+    return this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
+  }
+
+  /**
+   * ============================
+   * TENANT USAGE / PLAN INFO
+   * ============================
+   */
+  async getUsage(tenantId: string) {
     const subscription = await this.prisma.tenantSubscription.findUnique({
       where: { tenantId },
       include: { plan: true },
@@ -80,13 +105,13 @@ export class TenantService {
       where: { tenantId },
     });
 
-    const planName = subscription?.plan?.name ?? 'TRIAL';
+    const plan = subscription?.plan;
 
     let membersLimit: number | null = null;
 
-    if (planName === 'TRIAL') membersLimit = 25;
-    if (planName === 'BASIC') membersLimit = 100;
-    if (planName === 'PRO') membersLimit = null;
+    if (plan?.name === 'TRIAL') membersLimit = 25;
+    if (plan?.name === 'BASIC') membersLimit = 100;
+    if (plan?.name === 'PRO') membersLimit = null;
 
     let daysLeft: number | null = null;
 
@@ -98,11 +123,38 @@ export class TenantService {
     }
 
     return {
-      plan: planName,
+      plan: plan?.name ?? 'NONE',
       status: subscription?.status ?? 'NONE',
       membersUsed,
       membersLimit,
       daysLeft,
     };
+  }
+
+  /**
+   * ============================
+   * ADMIN / INTERNAL
+   * ============================
+   */
+  async listTenantsWithSubscription() {
+    return this.prisma.tenant.findMany({
+      include: {
+        subscription: {
+          include: { plan: true },
+        },
+      },
+    });
+  }
+  async getUserForAuth(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+  }
+  issueJwt(user: { id: string; tenantId: string | null; role: UserRole }) {
+    return this.jwtService.sign({
+      sub: user.id,
+      tenantId: user.tenantId,
+      role: user.role,
+    });
   }
 }

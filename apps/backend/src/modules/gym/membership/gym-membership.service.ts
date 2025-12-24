@@ -25,9 +25,12 @@ export class GymMembershipService {
     });
   }
 
-  async getLatestMembership(memberId: string) {
+  async getLatestMembership(tenantId: string, memberId: string) {
     return this.prisma.gymMembership.findFirst({
-      where: { memberId },
+      where: {
+        tenantId,
+        memberId,
+      },
       orderBy: { startDate: 'desc' },
     });
   }
@@ -53,13 +56,16 @@ export class GymMembershipService {
       },
     });
   }
-  async countExpiringSoon(days: number = 3) {
+
+  // ✅ FIXED: tenantId added
+  async countExpiringSoon(tenantId: string, days: number = 3) {
     const today = new Date();
     const future = new Date();
     future.setDate(today.getDate() + days);
 
     return this.prisma.gymMembership.count({
       where: {
+        tenantId,
         startDate: { lte: today },
         endDate: { gte: today, lte: future },
         status: 'ACTIVE',
@@ -67,13 +73,15 @@ export class GymMembershipService {
     });
   }
 
-  async listExpiringSoon(days: number = 3) {
+  // ✅ FIXED: tenantId added
+  async listExpiringSoon(tenantId: string, days: number = 3) {
     const today = new Date();
     const future = new Date();
     future.setDate(today.getDate() + days);
 
     return this.prisma.gymMembership.findMany({
       where: {
+        tenantId,
         startDate: { lte: today },
         endDate: { gte: today, lte: future },
         status: 'ACTIVE',
@@ -83,11 +91,48 @@ export class GymMembershipService {
         member: {
           select: {
             id: true,
-            name: true,
+            fullName: true,
             phone: true,
           },
         },
       },
     });
+  }
+
+  // ✅ FINAL API used by Android
+  async getExpiringMemberships(tenantId: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const expiringBefore = new Date();
+    expiringBefore.setDate(today.getDate() + 3);
+    expiringBefore.setHours(23, 59, 59, 999);
+
+    const memberships = await this.prisma.gymMembership.findMany({
+      where: {
+        tenantId,
+        status: 'ACTIVE',
+        endDate: {
+          gte: today,
+          lte: expiringBefore,
+        },
+      },
+      include: {
+        member: {
+          select: { fullName: true },
+        },
+      },
+      orderBy: { endDate: 'asc' },
+    });
+
+    return {
+      items: memberships.map((m) => ({
+        id: m.id,
+        memberName: m.member.fullName,
+        startDate: m.startDate,
+        endDate: m.endDate,
+        status: m.status,
+      })),
+    };
   }
 }

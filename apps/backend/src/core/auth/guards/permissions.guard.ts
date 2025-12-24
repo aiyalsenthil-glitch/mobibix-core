@@ -7,7 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 import { Permission } from '../permissions.enum';
-import { Role } from '../roles.enum';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -28,7 +28,7 @@ export class PermissionsGuard implements CanActivate {
     const user = request.user;
 
     // 🔥 OWNER ALWAYS ALLOWED (FIRST CHECK)
-    if (user?.role === Role.OWNER || user?.role === 'owner') {
+    if (user?.role === UserRole.OWNER || user?.role === 'owner') {
       return true;
     }
 

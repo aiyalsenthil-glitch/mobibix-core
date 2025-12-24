@@ -19,6 +19,6 @@ export enum Permission {
   // Dashboard
   DASHBOARD_VIEW = 'DASHBOARD_VIEW',
 
-  // SaaS / Billing
+  // SaaS billing
   PLAN_UPGRADE = 'PLAN_UPGRADE',
 }

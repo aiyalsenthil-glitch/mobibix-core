@@ -3,74 +3,86 @@ import {
   Get,
   Post,
   Patch,
-  Body,
+  Delete,
   Param,
+  Body,
   Req,
   UseGuards,
-  Delete,
+  ForbiddenException,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { Permission } from '../auth/permissions.enum';
 import { MembersService } from './members.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../auth/roles.enum';
-import { Permissions } from '../auth/decorators/permissions.decorator';
-import { Permission } from '../auth/permissions.enum';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { MemberPaymentStatus } from '@prisma/client';
 
 @Controller('members')
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard)
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
-  // ─────────────────────────────────────────────
-  // CREATE MEMBER (OWNER + STAFF WITH PERMISSION)
-  // ─────────────────────────────────────────────
-  @Post()
-  @Permissions(Permission.ADD_MEMBER)
-  create(@Req() req: any, @Body() dto: CreateMemberDto) {
-    return this.membersService.createMember(req.user.tenantId, dto);
-  }
-
-  // ─────────────────────────────────────────────
-  // LIST MEMBERS (OWNER, ADMIN, STAFF)
-  // ─────────────────────────────────────────────
+  @Permissions(Permission.MEMBER_VIEW)
   @Get()
-  @Roles(Role.OWNER, Role.ADMIN, Role.STAFF)
   list(@Req() req: any) {
     return this.membersService.listMembers(req.user.tenantId);
   }
 
-  // ─────────────────────────────────────────────
-  // GET SINGLE MEMBER (OWNER, ADMIN, STAFF)
-  // ─────────────────────────────────────────────
-  @Get(':id')
-  @Roles(Role.OWNER, Role.ADMIN, Role.STAFF)
-  getById(@Req() req: any, @Param('id') id: string) {
-    return this.membersService.getMemberById(req.user.tenantId, id);
+  @Permissions(Permission.MEMBER_CREATE)
+  @Post()
+  create(@Req() req: any, @Body() dto: CreateMemberDto) {
+    console.log('JWT USER:', req.user);
+    if (!req.user.tenantId) {
+      throw new ForbiddenException('Tenant not initialized');
+    }
+    return this.membersService.createMember(req.user.tenantId, dto);
   }
 
-  // ─────────────────────────────────────────────
-  // Delete MEMBER (OWNER + STAFF WITH PERMISSION)
-  // ─────────────────────────────────────────────
-  @Delete(':id')
-  @Permissions(Permission.DELETE_MEMBER)
-  remove(@Req() req: any, @Param('id') id: string) {
-    return this.membersService.deleteMember(req.user, id);
-  }
-
-  // ─────────────────────────────────────────────
-  // UPDATE MEMBER (OWNER + STAFF WITH PERMISSION)
-  // ─────────────────────────────────────────────
+  @Permissions(Permission.MEMBER_EDIT)
   @Patch(':id')
-  @Permissions(Permission.EDIT_MEMBER)
   update(
     @Req() req: any,
     @Param('id') id: string,
     @Body() dto: UpdateMemberDto,
   ) {
     return this.membersService.updateMember(req.user.tenantId, id, dto);
+  }
+
+  @Permissions(Permission.MEMBER_EDIT)
+  @Delete(':id')
+  delete(@Req() req: any, @Param('id') id: string) {
+    return this.membersService.deleteMember(req.user, id);
+  }
+  @Permissions(Permission.MEMBER_VIEW)
+  @Get('stats/expiring-soon')
+  countExpiring(@Req() req: any) {
+    return this.membersService.countExpiringSoon(req.user.tenantId, 5);
+  }
+  @Permissions(Permission.MEMBER_EDIT)
+  @Post(':id/renew')
+  renew(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body()
+    body: {
+      feeAmount: number;
+      paymentStatus: MemberPaymentStatus;
+      method?: string;
+      reference?: string;
+    },
+  ) {
+    return this.membersService.renewMembership(req.user.tenantId, id, body);
+  }
+  @Permissions(Permission.MEMBER_VIEW)
+  @Get(':id/payments')
+  getPayments(@Req() req: any, @Param('id') id: string) {
+    return this.membersService.getMemberPayments(req.user.tenantId, id);
+  }
+
+  @Permissions(Permission.MEMBER_VIEW)
+  @Get('filter/expiring-soon')
+  listExpiring(@Req() req: any) {
+    return this.membersService.listExpiringSoon(req.user.tenantId, 5);
   }
 }

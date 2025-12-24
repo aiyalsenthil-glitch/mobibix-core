@@ -73,7 +73,10 @@ export class PaymentsWebhookController {
     const payment = payload.payload.payment.entity;
 
     const exists = await this.prisma.payment.findFirst({
-      where: { REMOVED_PAYMENT_INFRAPaymentId: payment.id },
+      where: {
+        provider: 'RAZORPAY',
+        providerPaymentId: payment.id,
+      },
     });
 
     if (exists) {

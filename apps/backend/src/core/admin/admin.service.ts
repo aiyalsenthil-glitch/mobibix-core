@@ -10,15 +10,15 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../auth/roles.enum';
 import { TenantService } from '../tenant/tenant.service';
 import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
 import { PlansService } from '../billing/plans/plans.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { UserRole } from '@prisma/client';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(UserRole.ADMIN)
 export class AdminController {
   constructor(
     private readonly tenantService: TenantService,

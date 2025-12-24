@@ -12,8 +12,10 @@ import { MembersService } from '../../core/members/members.service';
 import { CreateMemberDto } from '../../core/members/dto/create-member.dto';
 import { UpdateMemberDto } from '../../core/members/dto/update-member.dto';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
+import { Permissions } from '../../core/auth/decorators/permissions.decorator';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
-import { Role } from '../../core/auth/roles.enum';
+import { UserRole } from '@prisma/client';
+import { Permission } from 'src/core/auth/guards/permissions.enum';
 
 @Controller('gym/members')
 @UseGuards(JwtAuthGuard)
@@ -21,29 +23,34 @@ export class GymMembersController {
   constructor(private readonly membersService: MembersService) {}
 
   // Gym creates a member (OWNER, ADMIN)
+  @Permissions(Permission.MEMBER_CREATE)
   @Post()
-  @Roles(Role.OWNER, Role.ADMIN)
+  createMember() {}
+
+  @Post()
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
   create(@Req() req: any, @Body() dto: CreateMemberDto) {
     return this.membersService.createMember(req.user.tenantId, dto);
   }
 
   // Gym lists members (OWNER, ADMIN, STAFF)
+  @Permissions(Permission.MEMBER_VIEW)
   @Get()
-  @Roles(Role.OWNER, Role.ADMIN, Role.STAFF)
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.STAFF)
   list(@Req() req: any) {
     return this.membersService.listMembers(req.user.tenantId);
   }
 
   // Gym gets single member
   @Get(':id')
-  @Roles(Role.OWNER, Role.ADMIN, Role.STAFF)
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.STAFF)
   getById(@Req() req: any, @Param('id') id: string) {
     return this.membersService.getMemberById(req.user.tenantId, id);
   }
 
   // Gym updates member (OWNER, ADMIN)
   @Patch(':id')
-  @Roles(Role.OWNER, Role.ADMIN)
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
   update(
     @Req() req: any,
     @Param('id') id: string,

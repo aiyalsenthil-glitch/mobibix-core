@@ -11,15 +11,15 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../auth/roles.enum';
 import { TenantService } from '../tenant/tenant.service';
 import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
 import { PlansService } from '../billing/plans/plans.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { UserRole } from '@prisma/client';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(UserRole.ADMIN)
 export class AdminController {
   constructor(
     private readonly tenantService: TenantService,
@@ -38,7 +38,7 @@ export class AdminController {
     }
 
     const existingAdmin = await this.prisma.user.findFirst({
-      where: { role: 'admin' },
+      where: { role: UserRole.ADMIN },
     });
 
     if (existingAdmin) {
@@ -52,7 +52,7 @@ export class AdminController {
       data: {
         email: body.email,
         REMOVED_AUTH_PROVIDERUid: body.REMOVED_AUTH_PROVIDERUid,
-        role: 'admin',
+        role: UserRole.ADMIN,
         tenantId: null,
       },
     });
@@ -89,13 +89,34 @@ export class AdminController {
   ) {
     return this.subscriptionsService.extendTrial(tenantId, body.extraDays);
   }
+  // ─────────────────────────────────────────────
+  // Create PLAN (PLATFORM ADMIN)
+  // ─────────────────────────────────────────────
+  @Post('plans')
+  createPlan(@Body() body) {
+    return this.plansService.createPlan(body);
+  }
 
-  // ─────────────────────────────────────────────
-  // SEED PLANS
-  // ─────────────────────────────────────────────
   @Post('seed-plans')
   async seedPlans() {
     return this.plansService.ensureDefaultPlans();
+  }
+  // ─────────────────────────────────────────────
+  // UPDATE PLAN (PLATFORM ADMIN)
+  // ─────────────────────────────────────────────
+  @Patch('plans/:planId')
+  @Patch('plans/:planId')
+  async updatePlan(
+    @Param('planId') planId: string,
+    @Body()
+    body: {
+      price?: number;
+      durationDays?: number;
+      memberLimit?: number;
+      isActive?: boolean;
+    },
+  ) {
+    return this.plansService.updatePlan(planId, body);
   }
 
   // ─────────────────────────────────────────────

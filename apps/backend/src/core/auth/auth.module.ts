@@ -1,42 +1,33 @@
-// src/auth/auth.module.ts
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import type { JwtModuleOptions } from '@nestjs/jwt';
-import type { SignOptions } from 'jsonwebtoken';
-import { PrismaModule } from '../prisma/prisma.module';
-import { AuthController } from './auth.controller';
+
 import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
+
+import { PrismaService } from '../prisma/prisma.service';
+import { FirebaseAdminService } from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
 
 @Module({
   imports: [
-    ConfigModule,
-    PrismaModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService): JwtModuleOptions => {
-        const secret = config.get<string>('JWT_SECRET');
-        const expiresIn = config.get<string>('JWT_EXPIRES_IN') ?? '7d';
-
-        if (!secret) {
-          throw new Error('JWT_SECRET is required');
-        }
-
-        return {
-          secret,
-          signOptions: {
-            expiresIn: expiresIn as unknown as SignOptions['expiresIn'],
-          },
-        };
-      },
+    JwtModule.register({
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: '7d' },
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtAuthGuard],
-
-  // 🔑 Export AuthService, JwtModule and JwtAuthGuard for global guard wiring
-  exports: [AuthService, JwtModule, JwtAuthGuard],
+  providers: [
+    AuthService,
+    JwtAuthGuard, // 🔥 PROVIDE HERE
+    RolesGuard,
+    PrismaService,
+    FirebaseAdminService,
+  ],
+  exports: [
+    JwtAuthGuard, // 🔥 EXPORT GUARD
+    RolesGuard,
+    JwtModule, // 🔥 EXPORT JwtService
+  ],
 })
 export class AuthModule {}

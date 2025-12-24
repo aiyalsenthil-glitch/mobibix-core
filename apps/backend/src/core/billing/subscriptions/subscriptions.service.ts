@@ -1,40 +1,65 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SubscriptionStatus } from '@prisma/client';
 
 @Injectable()
 export class SubscriptionsService {
   constructor(private readonly prisma: PrismaService) {}
-  async upgradeSubscription(tenantId: string, planName: 'BASIC' | 'PRO') {
-    const plan = await this.prisma.plan.findFirst({
-      where: { name: planName },
+  async upgradeSubscription(tenantId: string, planId: string) {
+    const newPlan = await this.prisma.plan.findUnique({
+      where: { id: planId },
     });
 
-    if (!plan) {
-      throw new NotFoundException('Plan not found');
+    if (!newPlan || newPlan.level === null) {
+      throw new NotFoundException('Invalid plan');
     }
 
-    const existingSub = await this.prisma.tenantSubscription.findUnique({
-      where: { tenantId },
-    });
+    const currentSub = await this.getCurrentActiveSubscription(tenantId);
 
-    if (!existingSub) {
-      throw new NotFoundException('Subscription not found');
+    if (!currentSub || currentSub.plan.level === null) {
+      throw new NotFoundException('Active subscription not found');
+    }
+
+    // 🔥 UPGRADE-ONLY RULE (NOW TYPE-SAFE)
+    if (newPlan.level <= currentSub.plan.level) {
+      throw new BadRequestException(
+        'Cannot downgrade or reselect the same plan',
+      );
     }
 
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + plan.durationDays);
+    endDate.setDate(endDate.getDate() + newPlan.durationDays);
 
     return this.prisma.tenantSubscription.update({
       where: { tenantId },
       data: {
-        planId: plan.id,
+        planId: newPlan.id,
         status: 'ACTIVE',
         startDate,
         endDate,
       },
     });
+  }
+
+  async canAddMember(tenantId: string): Promise<boolean> {
+    const subscription = await this.getCurrentActiveSubscription(tenantId);
+    if (!subscription) return false;
+
+    const plan = subscription.plan;
+    const features = plan.features as any;
+
+    if (!features?.memberLimit) return true;
+
+    const memberCount = await this.prisma.member.count({
+      where: { tenantId },
+    });
+
+    return memberCount < features.memberLimit;
   }
 
   async getCurrentActiveSubscription(tenantId: string) {
