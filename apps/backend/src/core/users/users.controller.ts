@@ -15,8 +15,11 @@ export class UsersController {
   @Patch('me')
   updateMyProfile(
     @Req() req: any,
-    @Body() body: { name?: string; phone?: string },
+    @Body() body: { fullName?: string; phone?: string },
   ) {
-    return this.usersService.updateProfile(req.user.id, body);
+    return this.usersService.updateProfile(
+      req.user.sub, // ✅ THIS IS IMPORTANT
+      body,
+    );
   }
 }

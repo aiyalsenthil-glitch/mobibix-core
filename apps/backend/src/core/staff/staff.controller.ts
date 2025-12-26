@@ -14,6 +14,9 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { UsersService } from '../users/users.service';
 import { StaffService } from './staff.service';
+import { Permission } from '../auth/permissions.enum';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 
 @Controller('staff')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -24,9 +27,10 @@ export class StaffController {
   ) {}
 
   // ✅ OWNER: list staff
-  @Roles(UserRole.OWNER)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.STAFF_MANAGE)
   @Get()
-  async list(@Req() req: any) {
+  listStaff(@Req() req: any) {
     return this.staffService.listStaff(req.user.tenantId);
   }
 

@@ -22,7 +22,7 @@ export class StaffService {
         id: true,
         fullName: true,
         email: true,
-        createdAt: true,
+        phone: true,
       },
     });
   }

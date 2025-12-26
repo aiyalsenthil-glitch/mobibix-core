@@ -45,6 +45,7 @@ model User {
   avatar      String?
   role        UserRole
   tenantId    String?
+  phone       String?
   permissions Json?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
