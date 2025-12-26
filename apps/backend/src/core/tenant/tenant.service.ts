@@ -83,6 +83,13 @@ export class TenantService {
 
     return tenant;
   }
+  async updateTenantName(tenantId: string, name: string) {
+    return this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { name },
+    });
+  }
+
   async getPublicByCode(code: string) {
     return this.prisma.tenant.findFirst({
       where: { code },

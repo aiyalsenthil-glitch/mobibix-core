@@ -7,6 +7,7 @@ import {
   UseGuards,
   ForbiddenException,
   Param,
+  Patch,
 } from '@nestjs/common';
 
 import { TenantService } from './tenant.service';
@@ -15,6 +16,7 @@ import { SubscriptionGuard } from '../billing/guards/subscription.guard';
 import { CreateTenantDto } from './dto/tenant.dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permissions.enum';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 
 @Controller('tenant')
 export class TenantController {
@@ -92,5 +94,11 @@ export class TenantController {
   @Get('public/by-code/:code')
   getByCode(@Param('code') code: string) {
     return this.tenantService.getPublicByCode(code);
+  }
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.TENANT_MANAGE)
+  @Patch('me')
+  updateMyGym(@Req() req: any, @Body() body: { name: string }) {
+    return this.tenantService.updateTenantName(req.user.tenantId, body.name);
   }
 }

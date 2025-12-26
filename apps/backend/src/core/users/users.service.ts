@@ -50,7 +50,7 @@ export class UsersService {
     userId: string,
     data: {
       fullName?: string;
-      avatar?: string;
+      phone?: string;
     },
   ): Promise<User> {
     return this.prisma.user.update({

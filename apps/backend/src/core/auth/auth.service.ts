@@ -16,6 +16,7 @@ export class AuthService {
    * Firebase token → App JWT
    * This is the ONLY place where user + role is decided.
    */
+
   async loginWithFirebase(REMOVED_AUTH_PROVIDERToken: string) {
     if (!REMOVED_AUTH_PROVIDERToken) {
       throw new UnauthorizedException('Missing Firebase token');
@@ -73,6 +74,12 @@ export class AuthService {
         });
       }
     }
+    // ✅ FETCH TENANT DETAILS (ADD THIS)
+    const tenant = user.tenantId
+      ? await this.prisma.tenant.findUnique({
+          where: { id: user.tenantId },
+        })
+      : null;
 
     // ✅ ISSUE JWT AFTER FINAL ROLE / TENANT IS SET
     const token = this.jwtService.sign({
