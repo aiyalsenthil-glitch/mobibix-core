@@ -83,9 +83,19 @@ export class AuthService {
 
     return {
       token,
-      userId: user.id,
-      tenantId: user.tenantId,
-      role: user.role,
+      user: {
+        id: user.id,
+        role: user.role,
+        name: user.fullName,
+        email: user.email,
+        tenantId: user.tenantId,
+      },
+      tenant: tenant
+        ? {
+            id: tenant.id,
+            name: tenant.name,
+          }
+        : null,
     };
   }
 }

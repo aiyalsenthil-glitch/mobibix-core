@@ -83,6 +83,10 @@ model StaffInvite {
   tenantId  String
   email     String
   role      UserRole @default(STAFF)
+
+   name      String?   // ✅ add
+  phone     String?   // ✅ add
+
   accepted  Boolean  @default(false)
   createdAt DateTime @default(now())
 

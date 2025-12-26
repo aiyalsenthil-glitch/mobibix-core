@@ -11,4 +11,12 @@ export class UsersController {
   async list(@Req() req: any) {
     return this.usersService.findByTenant(req.user.tenantId);
   }
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  updateMyProfile(
+    @Req() req: any,
+    @Body() body: { name?: string; phone?: string },
+  ) {
+    return this.usersService.updateProfile(req.user.id, body);
+  }
 }
