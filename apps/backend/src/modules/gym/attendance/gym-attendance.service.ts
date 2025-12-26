@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { isMembershipExpired } from '../../../common/utils/membership.util';
-import { getCronPrisma } from 'src/core/prisma/prisma.cron';
 
 @Injectable()
 export class GymAttendanceService {

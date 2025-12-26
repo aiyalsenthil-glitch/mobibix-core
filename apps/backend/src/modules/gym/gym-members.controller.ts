@@ -15,7 +15,7 @@ import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { Permissions } from '../../core/auth/decorators/permissions.decorator';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
-import { Permission } from 'src/core/auth/guards/permissions.enum';
+import { Permission } from '../../core/auth/guards/permissions.enum';
 
 @Controller('gym/members')
 @UseGuards(JwtAuthGuard)

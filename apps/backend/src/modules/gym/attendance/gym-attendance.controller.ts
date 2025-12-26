@@ -3,7 +3,7 @@ import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Permissions } from '../../../core/auth/decorators/permissions.decorator';
 import { Permission } from '../../../core/auth/permissions.enum';
 import { GymAttendanceService } from './gym-attendance.service';
-import { PermissionsGuard } from 'src/core/auth/guards/permissions.guard';
+import { PermissionsGuard } from '../../../core/auth/guards/permissions.guard';
 
 @Controller('gym/attendance')
 export class GymAttendanceController {
