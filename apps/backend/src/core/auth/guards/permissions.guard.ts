@@ -8,6 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 import { Permission } from '../permissions.enum';
 import { UserRole } from '@prisma/client';
+import { ROLE_PERMISSIONS } from '../permissions.map';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -26,18 +27,21 @@ export class PermissionsGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
+    if (!user || !user.role) {
+      throw new ForbiddenException('No user role found');
+    }
 
-    // 🔥 OWNER ALWAYS ALLOWED (FIRST CHECK)
-    if (user?.role === UserRole.OWNER || user?.role === 'owner') {
+    // 🔥 OWNER ALWAYS ALLOWED
+    if (user.role === UserRole.OWNER) {
       return true;
     }
 
-    const userPermissions: string[] = Array.isArray(user?.permissions)
-      ? user.permissions
-      : [];
+    // ✅ GET PERMISSIONS FROM ROLE MAP
+    const roleKey = user.role?.toUpperCase?.() as UserRole;
+    const rolePermissions = ROLE_PERMISSIONS[roleKey] ?? [];
 
-    const hasPermission = requiredPermissions.every((p) =>
-      userPermissions.includes(p),
+    const hasPermission = requiredPermissions.every((permission) =>
+      rolePermissions.includes(permission),
     );
 
     if (!hasPermission) {

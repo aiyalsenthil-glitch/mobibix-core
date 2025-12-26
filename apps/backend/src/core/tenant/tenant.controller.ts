@@ -87,11 +87,10 @@ export class TenantController {
   @Permissions(Permission.TENANT_MANAGE)
   @Post('kiosk-token')
   generateKioskToken(@Req() req: any) {
-    console.log('KIOSK TOKEN API HIT');
     return this.tenantService.generateKioskToken(req.user.tenantId);
   }
   @Get('public/by-code/:code')
-  getPublicByCode(@Param('code') code: string) {
-    return this.tenantService.getPublicTenantByCode(code);
+  getByCode(@Param('code') code: string) {
+    return this.tenantService.getPublicByCode(code);
   }
 }

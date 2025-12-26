@@ -83,6 +83,13 @@ export class TenantService {
 
     return tenant;
   }
+  async getPublicByCode(code: string) {
+    return this.prisma.tenant.findFirst({
+      where: { code },
+      select: { id: true, name: true },
+    });
+  }
+
   async getPublicTenantByCode(code: string) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { code },

@@ -79,11 +79,16 @@ model Member {
 }
 
 model StaffInvite {
-  id        String   @id @default(uuid())
-  email     String
+  id        String   @id @default(cuid())
   tenantId  String
+  email     String
+  role      UserRole @default(STAFF)
+  accepted  Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  @@unique([tenantId, email])
 }
+
 
 model MemberPayment {
   id        String              @id @default(cuid())

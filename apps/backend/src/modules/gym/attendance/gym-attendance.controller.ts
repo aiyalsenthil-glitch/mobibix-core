@@ -1,16 +1,9 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Req,
-  UseGuards,
-  Get,
-  Headers,
-} from '@nestjs/common';
+import { Controller, Post, Body, Req, UseGuards, Get } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Permissions } from '../../../core/auth/decorators/permissions.decorator';
 import { Permission } from '../../../core/auth/permissions.enum';
 import { GymAttendanceService } from './gym-attendance.service';
+import { PermissionsGuard } from 'src/core/auth/guards/permissions.guard';
 
 @Controller('gym/attendance')
 export class GymAttendanceController {
@@ -20,21 +13,21 @@ export class GymAttendanceController {
   // AUTHENTICATED (STAFF / OWNER)
   // ========================
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions(Permission.ATTENDANCE_MARK)
   @Post('check-in')
   checkIn(@Req() req: any, @Body('memberId') memberId: string) {
     return this.attendanceService.checkIn(req.user.tenantId, memberId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions(Permission.ATTENDANCE_MARK)
   @Post('check-out')
   checkOut(@Req() req: any, @Body('memberId') memberId: string) {
     return this.attendanceService.checkOut(req.user.tenantId, memberId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('today')
   today(@Req() req: any) {
@@ -45,22 +38,45 @@ export class GymAttendanceController {
   // KIOSK / QR (NO JWT)
   // ========================
 
-  @Post('qr/check-in')
-  checkInByQr(
-    @Headers('x-kiosk-token') kioskToken: string,
-    @Body() body: { phone: string },
-  ) {
-    return this.attendanceService.checkInByKiosk(kioskToken, body.phone);
+  @Post('qr/check')
+  checkByQr(@Body() body: { tenantId: string; phone: string }) {
+    return this.attendanceService.checkInOrOutByPhone(
+      body.tenantId,
+      body.phone,
+    );
+  }
+  // ========================
+  // CHECKIN CHEKOUT BY STAFF
+  // ========================
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.ATTENDANCE_MARK)
+  @Post('staff/check')
+  checkByPhoneStaff(@Req() req: any, @Body('phone') phone: string) {
+    return this.attendanceService.checkInOrOutByPhone(req.user.tenantId, phone);
   }
 
-  @Post('qr/check-out')
-  checkOutByQr(
-    @Headers('x-kiosk-token') kioskToken: string,
-    @Body() body: { phone: string },
-  ) {
-    return this.attendanceService.checkOutByPhoneByKiosk(
-      kioskToken,
-      body.phone,
+  //Today attendance count
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.ATTENDANCE_VIEW)
+  @Get('today-count')
+  countToday(@Req() req: any) {
+    return this.attendanceService.countTodayAttendance(req.user.tenantId);
+  }
+  //Currently inside count
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.ATTENDANCE_VIEW)
+  @Get('inside-count')
+  countInside(@Req() req: any) {
+    return this.attendanceService.countCurrentlyCheckedInMembers(
+      req.user.tenantId,
+    );
+  }
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.ATTENDANCE_VIEW)
+  @Get('inside-members')
+  getInsideMembers(@Req() req: any) {
+    return this.attendanceService.listCurrentlyCheckedInMembers(
+      req.user.tenantId,
     );
   }
 }

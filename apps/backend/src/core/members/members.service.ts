@@ -10,6 +10,8 @@ import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { isMembershipExpired } from '../../common/utils/membership.util';
 import { MemberPaymentStatus } from '@prisma/client';
+import { startOfDay, endOfDay, addDays } from 'date-fns';
+import { RenewMemberDto } from './dto/renew-member.dto';
 
 @Injectable()
 export class MembersService {
@@ -36,11 +38,6 @@ export class MembersService {
   }
 
   async createMember(tenantId: string, dto: CreateMemberDto) {
-    console.log('CreateMember:', {
-      tenantId,
-      dto,
-    });
-
     const subscription = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
@@ -113,6 +110,21 @@ export class MembersService {
       },
     });
   }
+  //count expired members
+  async countExpiredToday(tenantId: string) {
+    const start = startOfDay(new Date());
+    const end = endOfDay(new Date());
+
+    return this.prisma.member.count({
+      where: {
+        tenantId,
+        membershipEndAt: {
+          gte: start,
+          lte: end,
+        },
+      },
+    });
+  }
 
   async updateMember(tenantId: string, memberId: string, dto: UpdateMemberDto) {
     return this.prisma.member.update({
@@ -180,12 +192,7 @@ export class MembersService {
   async renewMembership(
     tenantId: string,
     memberId: string,
-    dto: {
-      feeAmount: number;
-      paymentStatus: MemberPaymentStatus;
-      method?: string;
-      reference?: string;
-    },
+    dto: RenewMemberDto,
   ) {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -213,10 +220,14 @@ export class MembersService {
       data: {
         tenantId,
         memberId,
-        amount: dto.feeAmount,
-        status: dto.paymentStatus,
-        method: dto.method,
-        reference: dto.reference,
+
+        amount: dto.feeAmount, // ✅ REQUIRED BY PRISMA
+
+        status: dto.paymentStatus ?? MemberPaymentStatus.PAID,
+
+        method: dto.method ?? 'CASH',
+
+        reference: dto.reference ?? null,
       },
     });
 
@@ -234,23 +245,26 @@ export class MembersService {
       },
     });
   }
-
+  //get member by id
   async getMemberById(tenantId: string, memberId: string) {
-    const member = await this.prisma.member.findFirst({
+    return this.prisma.member.findFirst({
       where: {
         id: memberId,
         tenantId,
       },
+      include: {
+        payments: {
+          orderBy: { createdAt: 'desc' },
+        },
+        attendances: {
+          orderBy: { checkInTime: 'desc' },
+          take: 10, // last 10 visits
+        },
+      },
     });
-
-    if (!member) return null;
-
-    return {
-      ...member,
-      isExpired: isMembershipExpired(member.membershipEndAt),
-    };
   }
 
+  //delete member
   async deleteMember(user: any, memberId: string) {
     const res = await this.prisma.member.deleteMany({
       where: {
@@ -268,5 +282,65 @@ export class MembersService {
     });
 
     return res;
+  }
+  //Find expired members today
+  async findExpiredToday(tenantId: string) {
+    const start = startOfDay(new Date());
+    const end = endOfDay(new Date());
+
+    return this.prisma.member.findMany({
+      where: {
+        tenantId,
+        membershipEndAt: {
+          gte: start,
+          lte: end,
+        },
+      },
+      select: {
+        id: true,
+        fullName: true,
+        phone: true,
+        membershipEndAt: true,
+        paymentStatus: true,
+      },
+      orderBy: {
+        membershipEndAt: 'asc',
+      },
+    });
+  }
+  //findByphone
+  async findByPhone(tenantId: string, phone: string) {
+    return this.prisma.member.findFirst({
+      where: {
+        tenantId,
+        phone,
+      },
+    });
+  }
+
+  //Expiring soon members
+  async findExpiringSoon(tenantId: string, days: number) {
+    const start = new Date();
+    const end = addDays(start, days);
+
+    return this.prisma.member.findMany({
+      where: {
+        tenantId,
+        membershipEndAt: {
+          gte: start,
+          lte: end,
+        },
+      },
+      select: {
+        id: true,
+        fullName: true,
+        phone: true,
+        membershipEndAt: true,
+        paymentStatus: true,
+      },
+      orderBy: {
+        membershipEndAt: 'asc',
+      },
+    });
   }
 }

@@ -9,6 +9,9 @@ import {
   Req,
   UseGuards,
   ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
@@ -16,10 +19,11 @@ import { Permission } from '../auth/permissions.enum';
 import { MembersService } from './members.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
-import { MemberPaymentStatus } from '@prisma/client';
+import { RenewMemberDto } from './dto/renew-member.dto';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 
 @Controller('members')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
@@ -32,7 +36,6 @@ export class MembersController {
   @Permissions(Permission.MEMBER_CREATE)
   @Post()
   create(@Req() req: any, @Body() dto: CreateMemberDto) {
-    console.log('JWT USER:', req.user);
     if (!req.user.tenantId) {
       throw new ForbiddenException('Tenant not initialized');
     }
@@ -59,32 +62,56 @@ export class MembersController {
   countExpiring(@Req() req: any) {
     return this.membersService.countExpiringSoon(req.user.tenantId, 5);
   }
-  @Permissions(Permission.MEMBER_EDIT)
   @Post(':id/renew')
-  renew(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body()
-    body: {
-      feeAmount: number;
-      paymentStatus: MemberPaymentStatus;
-      method?: string;
-      reference?: string;
-    },
-  ) {
-    return this.membersService.renewMembership(req.user.tenantId, id, body);
+  @Permissions(Permission.MEMBER_EDIT)
+  renew(@Req() req: any, @Param('id') id: string, @Body() dto: RenewMemberDto) {
+    return this.membersService.renewMembership(req.user.tenantId, id, dto);
   }
+
   @Permissions(Permission.MEMBER_VIEW)
   @Get(':id/payments')
   getPayments(@Req() req: any, @Param('id') id: string) {
     return this.membersService.getMemberPayments(req.user.tenantId, id);
   }
-
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.MEMBER_VIEW)
+  @Get('expired-today-count')
+  countExpiredToday(@Req() req: any) {
+    return this.membersService.countExpiredToday(req.user.tenantId);
+  }
+  @Get('filter/expired-today')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.MEMBER_VIEW)
+  expiredToday(@Req() req: any) {
+    return this.membersService.findExpiredToday(req.user.tenantId);
+  }
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions(Permission.MEMBER_VIEW)
   @Get('filter/expiring-soon')
-  listExpiring(@Req() req: any) {
-    return this.membersService.listExpiringSoon(req.user.tenantId, 5);
+  getExpiringSoon(@Req() req: any, @Query('days') days?: string) {
+    const limitDays = Number(days ?? 5); // default 5 days
+    return this.membersService.findExpiringSoon(req.user.tenantId, limitDays);
   }
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.MEMBER_VIEW)
+  @Get('search')
+  async searchByPhone(@Req() req: any, @Query('phone') phone: string) {
+    if (!phone) {
+      throw new BadRequestException('phone is required');
+    }
+
+    const member = await this.membersService.findByPhone(
+      req.user.tenantId,
+      phone,
+    );
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    return member;
+  }
+
   @Permissions(Permission.MEMBER_VIEW)
   @Get(':id')
   getById(@Req() req: any, @Param('id') id: string) {

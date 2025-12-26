@@ -8,6 +8,7 @@ import { HealthModule } from './health/health.module';
 
 import { rawBodyMiddleware } from './common/middleware/raw-body.middleware';
 import { TenantContextInterceptor } from './core/tenant/tenant-context.interceptor';
+import { StaffModule } from './core/staff/staff.module';
 
 import { ScheduleModule } from '@nestjs/schedule';
 

@@ -5,11 +5,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { isMembershipExpired } from '../../../common/utils/membership.util';
+import { getCronPrisma } from 'src/core/prisma/prisma.cron';
 
 @Injectable()
 export class GymAttendanceService {
   constructor(private readonly prisma: PrismaService) {}
-
+  private normalizePhone(phone: string): string {
+    return phone.replace(/\D/g, '').slice(-10);
+  }
   /**
    * CHECK-IN
    */
@@ -34,21 +37,6 @@ export class GymAttendanceService {
 
     const now = new Date();
 
-    const activeMembership = await this.prisma.gymMembership.findFirst({
-      where: {
-        tenantId,
-        memberId,
-        status: 'ACTIVE',
-        startDate: { lte: now },
-        endDate: { gte: now },
-      },
-      orderBy: { startDate: 'desc' },
-    });
-
-    if (!activeMembership) {
-      throw new ForbiddenException('Member does not have an active membership');
-    }
-
     const openAttendance = await this.prisma.gymAttendance.findFirst({
       where: {
         memberId,
@@ -71,33 +59,39 @@ export class GymAttendanceService {
   }
 
   // CHECK-IN BY PHONE (QR)//
-  async checkInByPhone(tenantId: string, phone: string) {
+  async checkInOrOutByPhone(tenantId: string, phone: string) {
+    const normalizedPhone = this.normalizePhone(phone);
+
     const member = await this.prisma.member.findFirst({
-      where: { tenantId, phone },
+      where: { tenantId, phone: normalizedPhone },
     });
 
     if (!member) {
-      throw new BadRequestException('Member not found');
+      throw new BadRequestException('MEMBER_NOT_FOUND');
     }
 
     if (isMembershipExpired(member.membershipEndAt)) {
-      throw new ForbiddenException('Membership expired');
+      throw new ForbiddenException('MEMBERSHIP_EXPIRED');
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    if (member.paymentStatus === 'DUE') {
+      throw new ForbiddenException('PAYMENT_DUE');
+    }
 
-    const existing = await this.prisma.gymAttendance.findFirst({
+    const openAttendance = await this.prisma.gymAttendance.findFirst({
       where: {
         tenantId,
         memberId: member.id,
-        checkInTime: { gte: today },
         checkOutTime: null,
       },
     });
 
-    if (existing) {
-      throw new BadRequestException('Already checked in');
+    // 🔁 TOGGLE LOGIC
+    if (openAttendance) {
+      return this.prisma.gymAttendance.update({
+        where: { id: openAttendance.id },
+        data: { checkOutTime: new Date() },
+      });
     }
 
     return this.prisma.gymAttendance.create({
@@ -105,38 +99,7 @@ export class GymAttendanceService {
         tenantId,
         memberId: member.id,
         checkInTime: new Date(),
-      },
-    });
-  }
-
-  // CHECK-OUT BY PHONE (QR)//
-
-  async checkOutByPhone(tenantId: string, phone: string) {
-    const member = await this.prisma.member.findFirst({
-      where: { tenantId, phone },
-    });
-
-    if (!member) {
-      throw new BadRequestException('Member not found');
-    }
-
-    const attendance = await this.prisma.gymAttendance.findFirst({
-      where: {
-        tenantId,
-        memberId: member.id,
-        checkOutTime: null,
-      },
-      orderBy: { checkInTime: 'desc' },
-    });
-
-    if (!attendance) {
-      throw new BadRequestException('No active check-in found');
-    }
-
-    return this.prisma.gymAttendance.update({
-      where: { id: attendance.id },
-      data: {
-        checkOutTime: new Date(),
+        source: 'QR',
       },
     });
   }
@@ -189,29 +152,6 @@ export class GymAttendanceService {
         },
       },
     });
-  }
-  async checkInByKiosk(kioskToken: string, phone: string) {
-    const tenant = await this.prisma.tenant.findFirst({
-      where: { kioskToken },
-    });
-
-    if (!tenant) {
-      throw new ForbiddenException('Invalid kiosk token');
-    }
-
-    return this.checkInByPhone(tenant.id, phone);
-  }
-
-  async checkOutByPhoneByKiosk(kioskToken: string, phone: string) {
-    const tenant = await this.prisma.tenant.findFirst({
-      where: { kioskToken },
-    });
-
-    if (!tenant) {
-      throw new ForbiddenException('Invalid kiosk token');
-    }
-
-    return this.checkOutByPhone(tenant.id, phone);
   }
 
   /**
@@ -269,5 +209,30 @@ export class GymAttendanceService {
           })),
         ),
     };
+  }
+  //list currently checked-in members
+  async listCurrentlyCheckedInMembers(tenantId: string) {
+    return this.prisma.gymAttendance.findMany({
+      where: {
+        tenantId,
+        checkOutTime: null,
+      },
+      include: {
+        member: true,
+      },
+      orderBy: {
+        checkInTime: 'desc',
+      },
+    });
+  }
+
+  //count currently checked-in members
+  async countCurrentlyCheckedInMembers(tenantId: string) {
+    return this.prisma.gymAttendance.count({
+      where: {
+        tenantId,
+        checkOutTime: null,
+      },
+    });
   }
 }

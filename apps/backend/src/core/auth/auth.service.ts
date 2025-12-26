@@ -43,11 +43,38 @@ export class AuthService {
           REMOVED_AUTH_PROVIDERUid: decoded.uid,
           email: decoded.email ?? null,
           fullName: decoded.name ?? null,
-          role: UserRole.OWNER,
+          role: UserRole.OWNER, // default
           tenantId: null,
         },
       });
     }
+
+    // ✅ STAFF INVITE AUTO-ACCEPT (CORRECT PLACE)
+    if (decoded.email) {
+      const invite = await this.prisma.staffInvite.findFirst({
+        where: {
+          email: decoded.email,
+          accepted: false,
+        },
+      });
+
+      if (invite) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            tenantId: invite.tenantId,
+            role: UserRole.STAFF,
+          },
+        });
+
+        await this.prisma.staffInvite.update({
+          where: { id: invite.id },
+          data: { accepted: true },
+        });
+      }
+    }
+
+    // ✅ ISSUE JWT AFTER FINAL ROLE / TENANT IS SET
     const token = this.jwtService.sign({
       sub: user.id,
       tenantId: user.tenantId,

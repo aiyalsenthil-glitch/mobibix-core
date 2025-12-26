@@ -29,6 +29,7 @@
     "@prisma/client": "^7.2.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
+    "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "REMOVED_AUTH_PROVIDER-admin": "^13.6.0",
     "jsonwebtoken": "^9.0.3",
