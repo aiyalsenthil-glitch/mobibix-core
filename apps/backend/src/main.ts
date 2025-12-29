@@ -43,7 +43,7 @@ async function bootstrap() {
     serverInstance.close();
   }
 
-  // 9️⃣ Start server
+  // 9️⃣ Start server at rendered port or 3000
   const port = process.env.PORT !== undefined ? Number(process.env.PORT) : 3000;
 
   await app.listen(port);
