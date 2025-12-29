@@ -124,6 +124,36 @@ export class SubscriptionsService {
       },
     });
   }
+  async changePlan(tenantId: string, planName: string) {
+    // 1️⃣ Find plan
+    const plan = await this.prisma.plan.findFirst({
+      where: {
+        name: planName,
+        isActive: true,
+      },
+    });
+
+    if (!plan) {
+      throw new BadRequestException('Invalid or inactive plan');
+    }
+
+    // 2️⃣ Calculate new dates
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(startDate.getDate() + plan.durationDays);
+
+    // 3️⃣ Update subscription
+    return this.prisma.tenantSubscription.update({
+      where: { tenantId },
+      data: {
+        planId: plan.id,
+        status: 'ACTIVE',
+        startDate,
+        endDate,
+      },
+    });
+  }
+
   async getActiveSubscriptionByTenant(tenantId: string) {
     return this.prisma.tenantSubscription.findFirst({
       where: {

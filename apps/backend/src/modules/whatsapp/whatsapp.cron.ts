@@ -30,6 +30,25 @@ export class WhatsAppCron {
     expiryDate.setDate(today.getDate() + 3);
 
     for (const setting of settings) {
+      const subscription = await this.prisma.tenantSubscription.findUnique({
+        where: { tenantId: setting.tenantId },
+        include: { plan: true },
+      });
+
+      // No subscription or no plan → skip
+      if (!subscription || !subscription.plan) {
+        continue;
+      }
+
+      // ❌ BASIC plan must not get WhatsApp
+      if (
+        subscription.status !== 'ACTIVE' ||
+        subscription.plan.name === 'TRIAL' ||
+        subscription.plan.name === 'BASIC'
+      ) {
+        continue;
+      }
+
       const members = await this.prisma.member.findMany({
         where: {
           tenantId: setting.tenantId,

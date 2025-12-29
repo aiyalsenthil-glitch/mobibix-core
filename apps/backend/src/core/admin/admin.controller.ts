@@ -105,7 +105,6 @@ export class AdminController {
   // UPDATE PLAN (PLATFORM ADMIN)
   // ─────────────────────────────────────────────
   @Patch('plans/:planId')
-  @Patch('plans/:planId')
   async updatePlan(
     @Param('planId') planId: string,
     @Body()
@@ -117,6 +116,20 @@ export class AdminController {
     },
   ) {
     return this.plansService.updatePlan(planId, body);
+  }
+  // ─────────────────────────────────────────────
+  // CHANGE TENANT PLAN (ADMIN)
+  // ─────────────────────────────────────────────
+  @Patch('tenants/:tenantId/plan')
+  async changeTenantPlan(
+    @Param('tenantId') tenantId: string,
+    @Body() body: { planName: string },
+  ) {
+    if (!body.planName) {
+      throw new BadRequestException('planName is required');
+    }
+
+    return this.subscriptionsService.changePlan(tenantId, body.planName);
   }
 
   // ─────────────────────────────────────────────

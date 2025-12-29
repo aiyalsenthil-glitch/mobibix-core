@@ -5,17 +5,21 @@ import { Injectable } from '@nestjs/common';
 export class FirebaseAdminService {
   constructor() {
     if (!admin.apps.length) {
-      const json = process.env.FIREBASE_SERVICE_ACCOUNT;
+      const base64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 
-      if (!json) {
-        throw new Error('Missing FIREBASE_SERVICE_ACCOUNT env var');
+      if (!base64) {
+        throw new Error('Missing FIREBASE_SERVICE_ACCOUNT_BASE64 env var');
       }
 
+      // Decode base64 → JSON
+      const json = Buffer.from(base64, 'base64').toString('utf8');
       const serviceAccount = JSON.parse(json);
 
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
+
+      console.log('🔥 Firebase Admin initialized:', admin.apps.length);
     }
   }
 

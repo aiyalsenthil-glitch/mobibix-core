@@ -10,6 +10,32 @@ import { UserRole } from '@prisma/client';
 @Injectable()
 export class StaffService {
   constructor(private readonly prisma: PrismaService) {}
+  private async ensureProPlan(tenantId: string) {
+    const subscription = await this.prisma.tenantSubscription.findUnique({
+      where: { tenantId },
+      include: { plan: true },
+    });
+
+    if (!subscription) {
+      throw new ForbiddenException(
+        'No active subscription found. Please upgrade.',
+      );
+    }
+
+    // 🔒 Block expired / trial
+    if (subscription.status !== 'ACTIVE') {
+      throw new ForbiddenException(
+        'Your subscription is not active. Please upgrade.',
+      );
+    }
+
+    // 🔒 Only PRO can manage staff
+    if (subscription.plan.name !== 'PRO') {
+      throw new ForbiddenException(
+        'Staff management is available only in Pro plan',
+      );
+    }
+  }
 
   // ✅ List staff for tenant
   async listStaff(tenantId: string) {
@@ -36,6 +62,8 @@ export class StaffService {
       fullName: string;
     },
   ) {
+    await this.ensureProPlan(tenantId);
+
     const existing = await this.prisma.user.findFirst({
       where: {
         REMOVED_AUTH_PROVIDERUid: data.REMOVED_AUTH_PROVIDERUid,
@@ -107,6 +135,8 @@ export class StaffService {
     const invite = await this.prisma.staffInvite.findUnique({
       where: { id: inviteId },
     });
+
+    await this.ensureProPlan(tenantId);
 
     if (!invite || invite.tenantId !== tenantId) {
       throw new NotFoundException('Invite not found');

@@ -13,6 +13,7 @@ import { MemberPaymentStatus } from '@prisma/client';
 import { startOfDay, endOfDay, addDays } from 'date-fns';
 import { RenewMemberDto } from './dto/renew-member.dto';
 import { endOfDayDate } from '../../common/utils/date.util';
+import { normalizePhone } from '../../common/utils/phone.util';
 
 @Injectable()
 export class MembersService {
@@ -42,17 +43,24 @@ export class MembersService {
     if (!subscription.plan || !subscription.plan.isActive) {
       throw new ForbiddenException('Subscription plan is inactive');
     }
+    if (subscription.status === 'EXPIRED') {
+      throw new ForbiddenException(
+        'Your trial has expired. Please upgrade to continue.',
+      );
+    }
 
     const limit = subscription.plan.memberLimit;
     if (limit > 0) {
       const count = await this.prisma.member.count({ where: { tenantId } });
       if (count >= limit) {
-        throw new ForbiddenException('Member limit reached');
+        throw new ForbiddenException(
+          `Member limit reached for ${subscription.plan.name} plan. Please upgrade.`,
+        );
       }
     }
-
+    const normalizedPhone = normalizePhone(dto.phone);
     const existing = await this.prisma.member.findFirst({
-      where: { tenantId, phone: dto.phone },
+      where: { tenantId, phone: normalizedPhone },
     });
 
     if (existing) {
@@ -83,7 +91,7 @@ export class MembersService {
       data: {
         tenantId,
         fullName: dto.fullName,
-        phone: dto.phone,
+        phone: normalizedPhone,
         gender: dto.gender,
         membershipPlanId: dto.membershipPlanId,
         membershipStartAt: new Date(dto.membershipStartAt),
@@ -236,7 +244,7 @@ export class MembersService {
       where: { id: memberId },
       data: {
         fullName: dto.fullName,
-        phone: dto.phone,
+        phone: dto.phone ? normalizePhone(dto.phone) : undefined,
         heightCm: dto.heightCm,
         weightKg: dto.weightKg,
         fitnessGoal: dto.fitnessGoal,
@@ -504,10 +512,12 @@ export class MembersService {
   }
   //findByphone
   async findByPhone(tenantId: string, phone: string) {
+    const normalized = normalizePhone(phone);
+
     return this.prisma.member.findFirst({
       where: {
         tenantId,
-        phone,
+        phone: normalized,
       },
     });
   }

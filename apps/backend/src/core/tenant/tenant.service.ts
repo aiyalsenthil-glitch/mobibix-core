@@ -153,12 +153,7 @@ export class TenantService {
     });
 
     const plan = subscription?.plan;
-
-    let membersLimit: number | null = null;
-
-    if (plan?.name === 'TRIAL') membersLimit = 25;
-    if (plan?.name === 'BASIC') membersLimit = 100;
-    if (plan?.name === 'PRO') membersLimit = null;
+    const membersLimit = plan?.memberLimit ?? null;
 
     let daysLeft: number | null = null;
 
