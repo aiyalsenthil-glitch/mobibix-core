@@ -19,6 +19,10 @@ async function bootstrap() {
   );
 
   server.use(bodyParser.json());
+  // 🔥 EARLY HEALTH CHECK (for Render)
+  server.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+  });
 
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
 
