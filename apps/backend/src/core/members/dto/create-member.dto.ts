@@ -4,6 +4,9 @@ import {
   IsNumber,
   IsString,
   IsDateString,
+  IsInt,
+  Min,
+  IsOptional,
 } from 'class-validator';
 import { Gender, FitnessGoal, MemberPaymentStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
@@ -40,8 +43,10 @@ export class CreateMemberDto {
   @IsNumber()
   feeAmount: number;
 
-  @IsEnum(MemberPaymentStatus)
-  paymentStatus: MemberPaymentStatus;
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  paidAmount?: number;
 
   // -------------------------
   // Fitness (REQUIRED)

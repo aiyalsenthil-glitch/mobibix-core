@@ -15,6 +15,15 @@ export class GymAttendanceService {
   /**
    * CHECK-IN
    */
+  private getPaymentState(member: any) {
+    const paid = member.paidAmount ?? 0;
+    const fee = member.feeAmount ?? 0;
+
+    if (paid <= 0) return 'DUE';
+    if (paid < fee) return 'PARTIAL';
+    return 'PAID';
+  }
+
   async checkIn(
     tenantId: string,
     memberId: string,
@@ -38,6 +47,7 @@ export class GymAttendanceService {
 
     const openAttendance = await this.prisma.gymAttendance.findFirst({
       where: {
+        tenantId,
         memberId,
         checkOutTime: null,
       },
@@ -57,7 +67,7 @@ export class GymAttendanceService {
     });
   }
 
-  // CHECK-IN BY PHONE (QR)//
+  // CHECK-IN OUT BY PHONE (QR)//
   async checkInOrOutByPhone(tenantId: string, phone: string) {
     const normalizedPhone = this.normalizePhone(phone);
 
@@ -72,10 +82,15 @@ export class GymAttendanceService {
     if (isMembershipExpired(member.membershipEndAt)) {
       throw new ForbiddenException('MEMBERSHIP_EXPIRED');
     }
+    const paymentState = this.getPaymentState(member);
+    const dueAmount = member.feeAmount - member.paidAmount;
 
-    if (member.paymentStatus === 'DUE') {
-      throw new ForbiddenException('PAYMENT_DUE');
+    if (paymentState === 'DUE') {
+      throw new ForbiddenException('PAYMENT_REQUIRED');
     }
+
+    // PARTIAL → allow with warning (frontend handles)
+    // PAID → allow
 
     const openAttendance = await this.prisma.gymAttendance.findFirst({
       where: {
@@ -93,12 +108,12 @@ export class GymAttendanceService {
       });
     }
 
-    return this.prisma.gymAttendance.create({
+    await this.prisma.gymAttendance.create({
       data: {
         tenantId,
         memberId: member.id,
         checkInTime: new Date(),
-        source: 'QR',
+        source: 'QR', // you already have this 👍
       },
     });
   }

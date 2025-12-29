@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import { FirebaseAdminService } from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
+import { GoogleExchangeDto } from './dto/google-exchange.dto';
 
 @Injectable()
 export class AuthService {
@@ -13,10 +14,27 @@ export class AuthService {
   ) {}
 
   /**
-   * Firebase token → App JWT
-   * This is the ONLY place where user + role is decided.
+   * 🌐 PUBLIC ENTRY
+   * Google / Firebase token → App JWT
+   * Controller calls THIS method
    */
+  async exchangeGoogleToken(dto: GoogleExchangeDto) {
+    if (!dto?.idToken) {
+      throw new UnauthorizedException('Missing Google/Firebase token');
+    }
 
+    // Delegate to single trusted login flow
+    return this.loginWithFirebase(dto.idToken);
+  }
+
+  /**
+   * 🔒 CORE AUTH LOGIC
+   * This is the ONLY place where:
+   * - user is created
+   * - role is assigned
+   * - tenant is attached
+   * - JWT is issued
+   */
   async loginWithFirebase(REMOVED_AUTH_PROVIDERToken: string) {
     if (!REMOVED_AUTH_PROVIDERToken) {
       throw new UnauthorizedException('Missing Firebase token');
@@ -34,6 +52,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid Firebase payload');
     }
 
+    // 🔍 Find or create user
     let user = await this.prisma.user.findUnique({
       where: { REMOVED_AUTH_PROVIDERUid: decoded.uid },
     });
@@ -44,13 +63,13 @@ export class AuthService {
           REMOVED_AUTH_PROVIDERUid: decoded.uid,
           email: decoded.email ?? null,
           fullName: decoded.name ?? null,
-          role: UserRole.OWNER, // default
+          role: UserRole.OWNER, // default role
           tenantId: null,
         },
       });
     }
 
-    // ✅ STAFF INVITE AUTO-ACCEPT (CORRECT PLACE)
+    // ✅ STAFF INVITE AUTO-ACCEPT
     if (decoded.email) {
       const invite = await this.prisma.staffInvite.findFirst({
         where: {
@@ -74,14 +93,15 @@ export class AuthService {
         });
       }
     }
-    // ✅ FETCH TENANT DETAILS (ADD THIS)
+
+    // 🏢 Fetch tenant details (if assigned)
     const tenant = user.tenantId
       ? await this.prisma.tenant.findUnique({
           where: { id: user.tenantId },
         })
       : null;
 
-    // ✅ ISSUE JWT AFTER FINAL ROLE / TENANT IS SET
+    // 🔐 Issue JWT (FINAL authority)
     const token = this.jwtService.sign({
       sub: user.id,
       tenantId: user.tenantId,

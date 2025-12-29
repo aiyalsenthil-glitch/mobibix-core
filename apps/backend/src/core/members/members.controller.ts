@@ -39,6 +39,7 @@ export class MembersController {
     if (!req.user.tenantId) {
       throw new ForbiddenException('Tenant not initialized');
     }
+
     return this.membersService.createMember(req.user.tenantId, dto);
   }
 
@@ -62,11 +63,6 @@ export class MembersController {
   countExpiring(@Req() req: any) {
     return this.membersService.countExpiringSoon(req.user.tenantId, 5);
   }
-  @Post(':id/renew')
-  @Permissions(Permission.MEMBER_EDIT)
-  renew(@Req() req: any, @Param('id') id: string, @Body() dto: RenewMemberDto) {
-    return this.membersService.renewMembership(req.user.tenantId, id, dto);
-  }
 
   @Permissions(Permission.MEMBER_VIEW)
   @Get(':id/payments')
@@ -79,19 +75,7 @@ export class MembersController {
   countExpiredToday(@Req() req: any) {
     return this.membersService.countExpiredToday(req.user.tenantId);
   }
-  @Get('filter/expired-today')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @Permissions(Permission.MEMBER_VIEW)
-  expiredToday(@Req() req: any) {
-    return this.membersService.findExpiredToday(req.user.tenantId);
-  }
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @Permissions(Permission.MEMBER_VIEW)
-  @Get('filter/expiring-soon')
-  getExpiringSoon(@Req() req: any, @Query('days') days?: string) {
-    const limitDays = Number(days ?? 5); // default 5 days
-    return this.membersService.findExpiringSoon(req.user.tenantId, limitDays);
-  }
+
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions(Permission.MEMBER_VIEW)
   @Get('search')
@@ -111,6 +95,11 @@ export class MembersController {
 
     return member;
   }
+  //  @Permissions(Permission.MEMBER_VIEW)
+  // @Get('renewal-due')
+  // listRenewalDue(@Req() req: any) {
+  // return this.membersService.listMembershipsDue(req.user.tenantId);
+  //}
 
   @Permissions(Permission.MEMBER_VIEW)
   @Get(':id')

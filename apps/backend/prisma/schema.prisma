@@ -62,7 +62,9 @@ model Member {
   membershipPlanId  String
   membershipStartAt DateTime
   membershipEndAt   DateTime
+  monthlyFee        Int   // ✅ BASE MONTHLY FEE
   feeAmount         Int
+  paidAmount        Int      @default(0)
   paymentStatus     MemberPaymentStatus
   heightCm          Float
   weightKg          Float
@@ -78,6 +80,7 @@ model Member {
   @@unique([tenantId, phone])
   @@index([tenantId])
 }
+
 
 model StaffInvite {
   id        String   @id @default(cuid())
@@ -105,6 +108,7 @@ model MemberPayment {
   reference String?
   gstRate   Float?
   gstAmount Float?
+  durationDays  Int?     // ✅ NEW (30 / 60 / 90)
   total     Int?
   createdAt DateTime            @default(now())
   member    Member              @relation(fields: [memberId], references: [id])
@@ -183,6 +187,23 @@ model GymMembership {
 
   @@index([tenantId])
   @@index([memberId])
+}
+model WhatsAppSetting {
+  id        String   @id @default(uuid())
+  tenantId  String   @unique
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model WhatsAppLog {
+  id        String   @id @default(uuid())
+  tenantId  String
+  memberId  String
+  phone     String
+  type      String
+  status    String
+  error     String?
+  sentAt    DateTime @default(now())
 }
 
 model GymAttendance {

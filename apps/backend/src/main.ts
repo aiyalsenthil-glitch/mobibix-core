@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { join } from 'path';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
@@ -9,6 +10,10 @@ import * as bodyParser from 'body-parser';
 async function bootstrap() {
   // 1️⃣ Create raw express server
   const server = express();
+  server.use(express.static(join(__dirname, '..', 'public')));
+  server.get('/checkin/:tenantCode', (req, res) => {
+    res.sendFile(join(__dirname, '..', 'public/checkin/index.html'));
+  });
 
   // 2️⃣ Razorpay webhook needs RAW body
   server.post(
@@ -22,24 +27,23 @@ async function bootstrap() {
   // 4️⃣ Create Nest app ONCE using ExpressAdapter
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
 
-  // 5️⃣ Enable shutdown hooks (IMPORTANT)
+  // 5️⃣ Enable shutdown hooks
   app.enableShutdownHooks();
 
-  // 6️⃣ Graceful HTTP shutdown
-  const httpAdapterHost = app.get(HttpAdapterHost);
-  const serverInstance = httpAdapterHost.httpAdapter.getInstance();
-
-  if (serverInstance?.close) {
-    serverInstance.close();
-  }
-
-  // 7️⃣ CORS (safe default, domain-free)
+  // 7️⃣ CORS (safe default)
   app.enableCors({
     origin: true,
     credentials: true,
   });
 
-  // 8️⃣ Start server
+  // 8️⃣ Graceful shutdown (optional but safe)
+  const httpAdapterHost = app.get(HttpAdapterHost);
+  const serverInstance = httpAdapterHost.httpAdapter.getInstance();
+  if (serverInstance?.close) {
+    serverInstance.close();
+  }
+
+  // 9️⃣ Start server
   const port = process.env.PORT || 3000;
   await app.listen(port);
 

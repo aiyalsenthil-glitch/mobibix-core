@@ -13,24 +13,4 @@ export class GymDashboardController {
   getOwnerDashboard(@Req() req: any) {
     return this.dashboardService.getOwnerDashboard(req.user.tenantId);
   }
-
-  @Get('expiring-soon')
-  async expiringSoon(@Req() req: any) {
-    return {
-      days: 3,
-      items: await this.dashboardService.getExpiringMemberships(
-        req.user.tenantId,
-        3,
-      ),
-    };
-  }
-
-  @Get('today-attendance-list')
-  async todayAttendanceList(@Req() req: any) {
-    return {
-      items: await this.dashboardService.getTodayAttendanceList(
-        req.user.tenantId,
-      ),
-    };
-  }
 }

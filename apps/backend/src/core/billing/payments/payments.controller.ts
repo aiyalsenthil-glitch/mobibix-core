@@ -11,6 +11,8 @@ import {
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Public } from '../../auth/decorators/public.decorator';
+import type { Request } from 'express';
 
 @UseGuards(JwtAuthGuard)
 @Controller('payments')
@@ -19,8 +21,21 @@ export class PaymentsController {
     private readonly paymentsService: PaymentsService,
     private readonly prisma: PrismaService,
   ) {}
+
   // ─────────────────────────────────────────────
-  // CREATE RAZORPAY ORDER
+  // 🌐 RAZORPAY WEBHOOK (PUBLIC – NO JWT)
+  // ─────────────────────────────────────────────
+  @Public()
+  @Post('webhook')
+  async handleWebhook(@Req() req: Request) {
+    // TODO: verify Razorpay signature here
+    // const signature = req.headers['x-REMOVED_PAYMENT_INFRA-signature'];
+
+    return { status: 'ok' };
+  }
+
+  // ─────────────────────────────────────────────
+  // 🔒 CREATE RAZORPAY ORDER (JWT REQUIRED)
   // ─────────────────────────────────────────────
   @Post('create-order')
   async createOrder(@Req() req: any, @Body() body: { planId: string }) {
@@ -51,7 +66,7 @@ export class PaymentsController {
   }
 
   // ─────────────────────────────────────────────
-  // PAYMENT HISTORY (TENANT)
+  // 🔒 PAYMENT HISTORY (JWT + TENANT)
   // ─────────────────────────────────────────────
   @Get('history')
   async getHistory(@Req() req: any) {

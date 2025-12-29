@@ -1,15 +1,15 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_INTERCEPTOR } from '@nestjs/core';
 
 import { CoreModule } from './core/core.module';
 import { GymModule } from './modules/gym/gym.module';
 import { HealthModule } from './health/health.module';
 
 import { rawBodyMiddleware } from './common/middleware/raw-body.middleware';
-import { TenantContextInterceptor } from './core/tenant/tenant-context.interceptor';
-import { StaffModule } from './core/staff/staff.module';
-
+import { AuthModule } from './core/auth/auth.module';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './core/auth/guards/jwt-auth.guard';
+import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -23,7 +23,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 
     // 🔒 Core Engine (ALL core logic lives here)
     CoreModule,
-
+    AuthModule,
+    WhatsAppModule,
     // 🧩 Business modules
     GymModule,
 
@@ -32,8 +33,8 @@ import { ScheduleModule } from '@nestjs/schedule';
   ],
   providers: [
     {
-      provide: APP_INTERCEPTOR,
-      useClass: TenantContextInterceptor,
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
     },
   ],
 })

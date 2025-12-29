@@ -12,6 +12,7 @@ import { isMembershipExpired } from '../../common/utils/membership.util';
 import { MemberPaymentStatus } from '@prisma/client';
 import { startOfDay, endOfDay, addDays } from 'date-fns';
 import { RenewMemberDto } from './dto/renew-member.dto';
+import { endOfDayDate } from '../../common/utils/date.util';
 
 @Injectable()
 export class MembersService {
@@ -20,22 +21,6 @@ export class MembersService {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly auditService: AuditService,
   ) {}
-
-  async listMembers(tenantId: string) {
-    if (!tenantId) {
-      throw new ForbiddenException('Tenant not initialized');
-    }
-
-    const members = await this.prisma.member.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return members.map((member) => ({
-      ...member,
-      isExpired: isMembershipExpired(member.membershipEndAt),
-    }));
-  }
 
   async createMember(tenantId: string, dto: CreateMemberDto) {
     const subscription = await this.prisma.tenantSubscription.findFirst({
@@ -81,7 +66,19 @@ export class MembersService {
         'Membership end date cannot be before start date',
       );
     }
+    const fee = dto.feeAmount;
+    const baseMonthlyFee = dto.feeAmount; // ✅ clear meaning
+    const paid = dto.paidAmount ?? 0;
 
+    let paymentStatus: MemberPaymentStatus;
+
+    if (paid <= 0) {
+      paymentStatus = 'DUE';
+    } else if (paid < fee) {
+      paymentStatus = 'PARTIAL';
+    } else {
+      paymentStatus = 'PAID';
+    }
     return this.prisma.member.create({
       data: {
         tenantId,
@@ -91,8 +88,155 @@ export class MembersService {
         membershipPlanId: dto.membershipPlanId,
         membershipStartAt: new Date(dto.membershipStartAt),
         membershipEndAt: new Date(dto.membershipEndAt),
-        feeAmount: dto.feeAmount,
-        paymentStatus: dto.paymentStatus,
+
+        monthlyFee: baseMonthlyFee, // ✅ BASE MONTHLY FEE
+        feeAmount: baseMonthlyFee, // ⚠️ optional (can remove later)
+
+        paidAmount: paid,
+        paymentStatus,
+        heightCm: dto.heightCm,
+        weightKg: dto.weightKg,
+        fitnessGoal: dto.fitnessGoal,
+      },
+    });
+  }
+  async listMembers(tenantId: string) {
+    if (!tenantId) {
+      throw new ForbiddenException('Tenant not initialized');
+    }
+
+    const members = await this.prisma.member.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return members.map((member) => ({
+      ...member,
+      isExpired: isMembershipExpired(member.membershipEndAt),
+    }));
+  }
+  // ===============================
+  // MEMBERSHIP RENEWAL DUE
+  // (expired + overdue)
+  // ===============================
+  async listMembershipsDue(tenantId: string) {
+    const endToday = endOfDay(new Date());
+    return this.prisma.member.findMany({
+      where: {
+        tenantId,
+        membershipEndAt: {
+          lte: endToday, // Filter for members due or expired
+        },
+      },
+    });
+  }
+
+  //get member by id
+  async getMemberById(tenantId: string, memberId: string) {
+    return this.prisma.member.findFirst({
+      where: {
+        id: memberId,
+        tenantId,
+      },
+      include: {
+        payments: {
+          orderBy: { createdAt: 'desc' },
+        },
+        attendances: {
+          orderBy: { checkInTime: 'desc' },
+          take: 10, // last 10 visits
+        },
+      },
+    });
+  }
+  async getPaymentDueMembers(tenantId: string) {
+    const members = await this.prisma.member.findMany({
+      where: { tenantId },
+      select: {
+        id: true,
+        fullName: true,
+        phone: true,
+        feeAmount: true,
+        paidAmount: true,
+      },
+    });
+
+    return members
+      .map((m) => {
+        const paid = m.paidAmount ?? 0;
+        const due = m.feeAmount - paid;
+
+        return {
+          memberId: m.id,
+          fullName: m.fullName, // since Android uses fullName
+          phone: m.phone,
+
+          feeAmount: m.feeAmount, // ✅ ADD
+          paidAmount: paid, // ✅ ADD
+          dueAmount: due,
+        };
+      })
+      .filter((m) => m.dueAmount > 0);
+  }
+  async collectPayment(tenantId: string, memberId: string, amount: number) {
+    if (amount <= 0) {
+      throw new BadRequestException('Invalid payment amount');
+    }
+
+    const member = await this.prisma.member.findFirst({
+      where: { id: memberId, tenantId },
+    });
+
+    if (!member) {
+      throw new BadRequestException('Member not found');
+    }
+
+    const newPaid = member.paidAmount + amount;
+
+    if (newPaid > member.feeAmount) {
+      throw new BadRequestException('Payment exceeds total fee');
+    }
+
+    let paymentStatus: MemberPaymentStatus;
+    if (newPaid <= 0) {
+      paymentStatus = 'DUE';
+    } else if (newPaid < member.feeAmount) {
+      paymentStatus = 'PARTIAL';
+    } else {
+      paymentStatus = 'PAID';
+    }
+
+    // ✅ update member (Option A source of truth)
+    const updatedMember = await this.prisma.member.update({
+      where: { id: memberId },
+      data: {
+        paidAmount: newPaid,
+        paymentStatus,
+      },
+    });
+
+    // 🟡 optional audit trail (do NOT use for logic)
+    await this.prisma.memberPayment.create({
+      data: {
+        tenantId,
+        memberId,
+        amount,
+        status: paymentStatus,
+        method: 'CASH',
+      },
+    });
+
+    return updatedMember;
+  }
+
+  async updateMember(tenantId: string, memberId: string, dto: UpdateMemberDto) {
+    await this.getMemberById(tenantId, memberId);
+
+    return this.prisma.member.update({
+      where: { id: memberId },
+      data: {
+        fullName: dto.fullName,
+        phone: dto.phone,
         heightCm: dto.heightCm,
         weightKg: dto.weightKg,
         fitnessGoal: dto.fitnessGoal,
@@ -126,25 +270,6 @@ export class MembersService {
     });
   }
 
-  async updateMember(tenantId: string, memberId: string, dto: UpdateMemberDto) {
-    return this.prisma.member.update({
-      where: {
-        id_tenantId: {
-          id: memberId,
-          tenantId,
-        },
-      },
-      data: {
-        ...dto,
-        membershipStartAt: dto.membershipStartAt
-          ? new Date(dto.membershipStartAt)
-          : undefined,
-        membershipEndAt: dto.membershipEndAt
-          ? new Date(dto.membershipEndAt)
-          : undefined,
-      },
-    });
-  }
   async countExpiringSoon(tenantId: string, days: number = 5): Promise<number> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -163,73 +288,127 @@ export class MembersService {
       },
     });
   }
-  async listExpiringSoon(tenantId: string, days: number = 5) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  async listExpiringSoon(tenantId: string, days = 7) {
+    const start = endOfDay(new Date()); // 👈 after today ends
+    const end = endOfDay(addDays(start, days)); // 👈 end of Nth day
 
-    const endDate = new Date();
-    endDate.setDate(today.getDate() + days);
-    endDate.setHours(23, 59, 59, 999);
-
-    const members = await this.prisma.member.findMany({
+    return this.prisma.member.findMany({
       where: {
         tenantId,
         membershipEndAt: {
-          gte: today,
-          lte: endDate,
+          gt: start,
+          lte: end,
         },
       },
       orderBy: {
         membershipEndAt: 'asc',
       },
     });
-
-    return members.map((m) => ({
-      ...m,
-      isExpired: isMembershipExpired(m.membershipEndAt),
-    }));
   }
+
   async renewMembership(
     tenantId: string,
+    userId: string,
+    role: 'OWNER' | 'STAFF',
     memberId: string,
     dto: RenewMemberDto,
   ) {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const end = new Date(start);
-    end.setDate(end.getDate() + 30);
+    const duration = dto.durationDays ?? 30;
+    const fee = dto.feeAmount;
+    const paid = dto.paidAmount ?? 0;
+    const { feeAmount: _renewalTotalFee, ...safeDto } = dto;
+    const allowedDurations = [30, 60, 90];
+    if (!allowedDurations.includes(duration)) {
+      throw new BadRequestException(
+        'Invalid duration. Allowed values: 30, 60, 90 days',
+      );
+    }
+
+    if (paid < 0 || paid > fee) {
+      throw new BadRequestException('Invalid paid amount');
+    }
+    // 🔒 BACKEND ROLE VALIDATION (EXACT PLACE)
+    if (dto.isFeeOverridden === true && role !== 'OWNER') {
+      throw new ForbiddenException('Only owner can override membership fee');
+    }
+    let paymentStatus: MemberPaymentStatus;
+    if (paid <= 0) {
+      paymentStatus = 'DUE';
+    } else if (paid < fee) {
+      paymentStatus = 'PARTIAL';
+    } else {
+      paymentStatus = 'PAID';
+    }
+
+    const existingMember = await this.prisma.member.findUnique({
+      where: {
+        id_tenantId: { id: memberId, tenantId },
+      },
+      select: {
+        membershipEndAt: true,
+      },
+    });
+
+    if (!existingMember) {
+      throw new BadRequestException('Member not found');
+    }
+
+    const baseDate =
+      existingMember.membershipEndAt && existingMember.membershipEndAt >= today
+        ? existingMember.membershipEndAt
+        : today;
+
+    const newEndDateRaw = new Date(baseDate);
+    newEndDateRaw.setDate(newEndDateRaw.getDate() + duration);
+
+    // 🔒 normalize expiry to end of day
+    const newEndDate = endOfDayDate(newEndDateRaw);
 
     const member = await this.prisma.member.update({
       where: {
-        id_tenantId: {
-          id: memberId,
+        id_tenantId: { id: memberId, tenantId },
+      },
+      data: {
+        membershipStartAt: today,
+        membershipEndAt: newEndDate,
+      },
+    });
+
+    // 💰 Payment audit
+    if (paid > 0) {
+      await this.prisma.memberPayment.create({
+        data: {
           tenantId,
+          memberId,
+          total: fee, // ✅ TOTAL RENEWAL FEE
+          amount: paid, // ✅ PAID NOW
+          status: paymentStatus,
+          method: dto.method ?? 'CASH',
+          reference: dto.reference ?? null,
+          durationDays: duration,
         },
-      },
-      data: {
-        membershipStartAt: start,
-        membershipEndAt: end,
-        feeAmount: dto.feeAmount,
-        paymentStatus: dto.paymentStatus,
-      },
-    });
+      });
+    }
 
-    // 🔹 record payment (future proof)
-    await this.prisma.memberPayment.create({
-      data: {
-        tenantId,
-        memberId,
-
-        amount: dto.feeAmount, // ✅ REQUIRED BY PRISMA
-
-        status: dto.paymentStatus ?? MemberPaymentStatus.PAID,
-
-        method: dto.method ?? 'CASH',
-
-        reference: dto.reference ?? null,
-      },
-    });
+    // 8️⃣ OWNER FEE OVERRIDE AUDIT 🔐
+    if (dto.isFeeOverridden === true) {
+      await this.prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId, // OR req.user.userId (see note below)
+          action: 'FEE_OVERRIDE',
+          entity: 'MEMBER',
+          entityId: memberId,
+          meta: {
+            overriddenFee: fee,
+            durationDays: duration,
+          },
+        },
+      });
+    }
 
     return member;
   }
@@ -245,23 +424,63 @@ export class MembersService {
       },
     });
   }
-  //get member by id
-  async getMemberById(tenantId: string, memberId: string) {
-    return this.prisma.member.findFirst({
+  async updateMemberByOwner(
+    tenantId: string,
+    userId: string,
+    role: 'OWNER' | 'STAFF',
+    memberId: string,
+    dto: UpdateMemberDto,
+  ) {
+    // 🔒 ROLE CHECK
+    if (role !== 'OWNER') {
+      throw new ForbiddenException('Only owner can edit member');
+    }
+
+    // 🚫 REMOVE FIELDS OWNER SHOULD NOT FORCE-EDIT
+    const {
+      paymentStatus, // ❌ ignore even if sent
+      ...safeData
+    } = dto;
+
+    // 🗓 Convert date strings → Date (IMPORTANT)
+    const updateData: any = {
+      ...safeData,
+    };
+
+    if (dto.membershipStartAt) {
+      updateData.membershipStartAt = endOfDayDate(
+        new Date(dto.membershipStartAt),
+      );
+    }
+
+    if (dto.membershipEndAt) {
+      updateData.membershipEndAt = endOfDayDate(new Date(dto.membershipEndAt));
+    }
+
+    // ✅ UPDATE MEMBER
+    const member = await this.prisma.member.update({
       where: {
-        id: memberId,
-        tenantId,
+        id_tenantId: {
+          id: memberId,
+          tenantId,
+        },
       },
-      include: {
-        payments: {
-          orderBy: { createdAt: 'desc' },
-        },
-        attendances: {
-          orderBy: { checkInTime: 'desc' },
-          take: 10, // last 10 visits
-        },
+      data: updateData,
+    });
+
+    // 🔐 AUDIT LOG
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action: 'MEMBER_EDIT',
+        entity: 'MEMBER',
+        entityId: memberId,
+        meta: updateData,
       },
     });
+
+    return member;
   }
 
   //delete member
@@ -283,31 +502,6 @@ export class MembersService {
 
     return res;
   }
-  //Find expired members today
-  async findExpiredToday(tenantId: string) {
-    const start = startOfDay(new Date());
-    const end = endOfDay(new Date());
-
-    return this.prisma.member.findMany({
-      where: {
-        tenantId,
-        membershipEndAt: {
-          gte: start,
-          lte: end,
-        },
-      },
-      select: {
-        id: true,
-        fullName: true,
-        phone: true,
-        membershipEndAt: true,
-        paymentStatus: true,
-      },
-      orderBy: {
-        membershipEndAt: 'asc',
-      },
-    });
-  }
   //findByphone
   async findByPhone(tenantId: string, phone: string) {
     return this.prisma.member.findFirst({
@@ -318,6 +512,70 @@ export class MembersService {
     });
   }
 
+  //find members for renewal dashboard
+  async findExpiringBetween(tenantId: string, from: Date, to: Date) {
+    return this.prisma.member.findMany({
+      where: {
+        tenantId,
+        membershipEndAt: {
+          gte: from,
+          lte: to,
+        },
+        paymentStatus: {
+          in: ['DUE', 'PARTIAL'],
+        },
+      },
+      select: {
+        id: true,
+        feeAmount: true,
+        paymentStatus: true,
+      },
+    });
+  }
+  // 1️⃣ Memberships needing renewal (prepaid)
+  async countMembershipsDue(tenantId: string) {
+    const endToday = endOfDay(new Date());
+
+    return this.prisma.member.count({
+      where: {
+        tenantId,
+        membershipEndAt: {
+          lte: endToday,
+        },
+      },
+    });
+  }
+
+  // 2️⃣ Payments pending (prepaid)
+  async getPaymentsPending(tenantId: string) {
+    return this.prisma.member.findMany({
+      where: {
+        tenantId,
+      },
+      select: {
+        id: true,
+        feeAmount: true,
+        paidAmount: true, // ✅ ADD THIS
+        paymentStatus: true,
+      },
+    });
+  }
+
+  // 3️⃣ Expiring this week
+  async countExpiringThisWeek(tenantId: string, days = 7) {
+    const start = startOfDay(new Date());
+    const end = endOfDay(addDays(start, days));
+
+    return this.prisma.member.count({
+      where: {
+        tenantId,
+        membershipEndAt: {
+          gte: start,
+          lte: end,
+        },
+      },
+    });
+  }
   //Expiring soon members
   async findExpiringSoon(tenantId: string, days: number) {
     const start = new Date();

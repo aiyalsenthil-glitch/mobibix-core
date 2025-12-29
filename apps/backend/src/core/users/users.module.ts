@@ -3,10 +3,11 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthModule } from '../auth/auth.module';
+import { UsersMeController } from './users-me.controller';
 
 @Module({
   imports: [AuthModule], // 🔥 REQUIRED
-  controllers: [UsersController],
+  controllers: [UsersController, UsersMeController],
   providers: [UsersService, PrismaService],
   exports: [UsersService],
 })

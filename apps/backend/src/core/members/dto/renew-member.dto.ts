@@ -1,13 +1,21 @@
-import { MemberPaymentStatus } from '@prisma/client';
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class RenewMemberDto {
   @IsInt()
   @Min(1)
   feeAmount: number;
 
-  @IsEnum(MemberPaymentStatus)
-  paymentStatus: MemberPaymentStatus;
+  // how much collected at renewal time
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  paidAmount?: number;
+
+  // optional duration override (default = 30 days)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  durationDays?: number;
 
   @IsOptional()
   @IsString()
@@ -16,4 +24,9 @@ export class RenewMemberDto {
   @IsOptional()
   @IsString()
   reference?: string;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+  isFeeOverridden?: boolean;
 }

@@ -1,14 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { MembersService } from '../../../core/members/members.service';
 import { GymAttendanceService } from '../attendance/gym-attendance.service';
-import { GymMembershipService } from '../membership/gym-membership.service';
+import { startOfDay, endOfDay, addDays } from 'date-fns';
 
 @Injectable()
 export class GymDashboardService {
   constructor(
     private readonly membersService: MembersService,
     private readonly attendanceService: GymAttendanceService,
-    private readonly membershipService: GymMembershipService,
   ) {}
 
   async getOwnerDashboard(tenantId: string) {
@@ -17,23 +16,75 @@ export class GymDashboardService {
     const todayAttendance =
       await this.attendanceService.countTodayAttendance(tenantId);
 
-    const expiringSoon = await this.membershipService.countExpiringSoon(
+    const membershipsDue =
+      await this.membersService.countMembershipsDue(tenantId);
+
+    const expiringThisWeek = await this.membersService.countExpiringThisWeek(
       tenantId,
-      3,
+      7,
     );
+
+    const pending = await this.membersService.getPaymentsPending(tenantId);
+
+    // 🔴 FIX: calculate real due amount (supports partial payments)
+    const expectedAmount = pending.reduce((sum, m) => {
+      const due = (m.feeAmount ?? 0) - (m.paidAmount ?? 0);
+      return due > 0 ? sum + due : sum;
+    }, 0);
 
     return {
       totalMembers,
       todayAttendance,
-      expiringSoon,
+      membershipsDue,
+      paymentsPending: pending.length,
+      expectedAmount,
+      expiringThisWeek,
     };
   }
 
-  async getTodayAttendanceList(tenantId: string) {
-    return this.attendanceService.listTodayAttendance(tenantId);
-  }
+  async getExpectedRenewals(tenantId: string, days: number) {
+    // IST offset = +5:30
+    const IST_OFFSET_MINUTES = 330;
 
-  async getExpiringMemberships(tenantId: string, days: number = 3) {
-    return this.membershipService.listExpiringSoon(tenantId, days);
+    const now = new Date();
+
+    // Convert "now" to IST
+    const nowIST = new Date(now.getTime() + IST_OFFSET_MINUTES * 60 * 1000);
+
+    let fromIST: Date;
+    let toIST: Date;
+
+    if (days === 0) {
+      // Renewals today (IST)
+      fromIST = startOfDay(nowIST);
+      toIST = endOfDay(nowIST);
+    } else {
+      fromIST = startOfDay(nowIST);
+      toIST = endOfDay(addDays(nowIST, days));
+    }
+
+    // Convert IST boundaries back to UTC for DB
+    const fromUTC = new Date(
+      fromIST.getTime() - IST_OFFSET_MINUTES * 60 * 1000,
+    );
+    const toUTC = new Date(toIST.getTime() - IST_OFFSET_MINUTES * 60 * 1000);
+    const members = await this.membersService.findExpiringBetween(
+      tenantId,
+      fromUTC,
+      toUTC,
+    );
+
+    let expectedAmount = 0;
+
+    for (const m of members) {
+      if (m.paymentStatus === 'DUE' || m.paymentStatus === 'PARTIAL') {
+        expectedAmount += m.feeAmount;
+      }
+    }
+
+    return {
+      count: members.length,
+      expectedAmount,
+    };
   }
 }

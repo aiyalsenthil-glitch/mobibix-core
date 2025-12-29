@@ -46,6 +46,7 @@ export class UsersService {
   }
 
   // 🔹 Update user profile (name / avatar)
+  // 🔹 Update user profile (name / phone)
   async updateProfile(
     userId: string,
     data: {
@@ -54,8 +55,11 @@ export class UsersService {
     },
   ): Promise<User> {
     return this.prisma.user.update({
-      where: { id: userId },
-      data,
+      where: { id: userId }, // ✅ FIXED
+      data: {
+        fullName: data.fullName,
+        phone: data.phone,
+      },
     });
   }
 

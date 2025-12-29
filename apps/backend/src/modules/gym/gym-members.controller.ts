@@ -6,56 +6,188 @@ import {
   Param,
   Body,
   Req,
+  Query,
   UseGuards,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { MembersService } from '../../core/members/members.service';
 import { CreateMemberDto } from '../../core/members/dto/create-member.dto';
 import { UpdateMemberDto } from '../../core/members/dto/update-member.dto';
+import { RenewMemberDto } from '../../core/members/dto/renew-member.dto';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../core/auth/guards/permissions.guard';
 import { Permissions } from '../../core/auth/decorators/permissions.decorator';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
+import { Permission } from '../../core/auth/permissions.enum';
 import { UserRole } from '@prisma/client';
-import { Permission } from '../../core/auth/guards/permissions.enum';
 
 @Controller('gym/members')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class GymMembersController {
   constructor(private readonly membersService: MembersService) {}
 
-  // Gym creates a member (OWNER, ADMIN)
+  // ======================
+  // CREATE / ADMISSION
+  // OWNER + STAFF
+  // ======================
   @Permissions(Permission.MEMBER_CREATE)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Post()
-  createMember() {}
-
-  @Post()
-  @Roles(UserRole.OWNER, UserRole.ADMIN)
   create(@Req() req: any, @Body() dto: CreateMemberDto) {
     return this.membersService.createMember(req.user.tenantId, dto);
   }
-
-  // Gym lists members (OWNER, ADMIN, STAFF)
+  // ======================
+  // RENEWAL / EXPIRY LISTS
+  // ======================
   @Permissions(Permission.MEMBER_VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Get('renewal-due')
+  listRenewalDue(@Req() req: any) {
+    return this.membersService.listMembershipsDue(req.user.tenantId);
+  }
+  @Get('payment-due')
+  getPaymentDue(@Req() req) {
+    return this.membersService.getPaymentDueMembers(req.user.tenantId);
+  }
+
+  @Permissions(Permission.MEMBER_VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Get('expiring-soon')
+  listExpiringSoon(@Req() req: any, @Query('days') days = '7') {
+    return this.membersService.listExpiringSoon(
+      req.user.tenantId,
+      Number(days),
+    );
+  }
+
+  // ======================
+  // LIST ALL MEMBERS
+  // OWNER + STAFF
+  // ======================
+  @Permissions(Permission.MEMBER_VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get()
-  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.STAFF)
   list(@Req() req: any) {
     return this.membersService.listMembers(req.user.tenantId);
   }
 
-  // Gym gets single member
-  @Get(':id')
-  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.STAFF)
-  getById(@Req() req: any, @Param('id') id: string) {
-    return this.membersService.getMemberById(req.user.tenantId, id);
+  @Patch(':id/owner-edit')
+  async updateMemberByOwner(
+    @Req() req,
+    @Param('id') memberId: string,
+    @Body() dto: UpdateMemberDto,
+  ) {
+    return this.membersService.updateMemberByOwner(
+      req.user.tenantId,
+      req.user.userId,
+      req.user.role,
+      memberId,
+      dto,
+    );
   }
 
-  // Gym updates member (OWNER, ADMIN)
+  // ======================
+  // UPDATE MEMBER
+  // OWNER + STAFF (admission fixes)
+  // ======================
+  @Permissions(Permission.MEMBER_EDIT)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Patch(':id')
-  @Roles(UserRole.OWNER, UserRole.ADMIN)
   update(
     @Req() req: any,
     @Param('id') id: string,
     @Body() dto: UpdateMemberDto,
   ) {
     return this.membersService.updateMember(req.user.tenantId, id, dto);
+  }
+
+  // ======================
+  // RENEW MEMBERSHIP
+  // ======================
+  @Post(':id/renew')
+  async renewMember(
+    @Req() req,
+    @Param('id') memberId: string,
+    @Body() dto: RenewMemberDto,
+  ) {
+    return this.membersService.renewMembership(
+      req.user.tenantId,
+      req.user.userId,
+      req.user.role,
+      memberId,
+      dto,
+    );
+  }
+
+  // ======================
+  // PAYMENT HISTORY
+  // ======================
+  @Permissions(Permission.MEMBER_VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Get(':id/payments')
+  getPayments(@Req() req: any, @Param('id') id: string) {
+    return this.membersService.getMemberPayments(req.user.tenantId, id);
+  }
+
+  // @Permissions(Permission.MEMBER_VIEW)
+  //@Roles(UserRole.OWNER, UserRole.STAFF)
+  //@Get('expired-today')
+  //expiredToday(@Req() req: any) {
+  //return this.membersService.findExpiredToday(req.user.tenantId);
+  //}
+
+  // ======================
+  // PAYMENT PENDING
+  // ======================
+  @Permissions(Permission.MEMBER_VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Get('payment-pending')
+  paymentPending(@Req() req: any) {
+    return this.membersService.getPaymentsPending(req.user.tenantId);
+  }
+
+  // ======================
+  // SEARCH BY PHONE
+  // ======================
+  @Permissions(Permission.MEMBER_VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Get('search')
+  async searchByPhone(@Req() req: any, @Query('phone') phone: string) {
+    if (!phone) {
+      throw new BadRequestException('phone is required');
+    }
+
+    const member = await this.membersService.findByPhone(
+      req.user.tenantId,
+      phone,
+    );
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    return member;
+  }
+  @Post('collect-payment')
+  async collectPayment(
+    @Req() req,
+    @Body() body: { memberId: string; amount: number },
+  ) {
+    return this.membersService.collectPayment(
+      req.user.tenantId,
+      body.memberId,
+      body.amount,
+    );
+  }
+
+  // ======================
+  // GET MEMBER BY ID
+  // ======================
+  @Permissions(Permission.MEMBER_VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Get(':id')
+  getById(@Req() req: any, @Param('id') id: string) {
+    return this.membersService.getMemberById(req.user.tenantId, id);
   }
 }
