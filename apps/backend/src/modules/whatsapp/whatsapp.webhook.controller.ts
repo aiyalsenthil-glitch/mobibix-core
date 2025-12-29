@@ -1,5 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
-
+import { Public } from '../../core/auth/decorators/public.decorator';
+@Public()
 @Controller('webhook/whatsapp')
 export class WhatsAppWebhookController {
   @Get()
