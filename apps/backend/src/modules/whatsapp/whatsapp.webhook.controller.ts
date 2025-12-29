@@ -12,11 +12,8 @@ export class WhatsAppWebhookController {
     const VERIFY_TOKEN = 'NotifyHub_Verify'; // same as Meta UI
 
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('✅ WhatsApp webhook verified');
       return challenge; // 👈 Nest will send 200 automatically
     }
-
-    console.log('❌ WhatsApp webhook verification failed');
     return 'Forbidden';
   }
 }

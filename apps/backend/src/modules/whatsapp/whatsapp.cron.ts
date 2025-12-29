@@ -32,17 +32,28 @@ export class WhatsAppCron {
     for (const setting of settings) {
       const subscription = await this.prisma.tenantSubscription.findUnique({
         where: { tenantId: setting.tenantId },
-        include: { plan: true },
+        include: {
+          plan: true,
+          tenant: {
+            select: {
+              name: true,
+            },
+          },
+        },
       });
 
-      // No subscription or no plan → skip
-      if (!subscription || !subscription.plan) {
+      // ❌ No active subscription / no plan / no tenant
+      if (
+        !subscription ||
+        !subscription.plan ||
+        !subscription.tenant ||
+        subscription.status !== 'ACTIVE'
+      ) {
         continue;
       }
 
-      // ❌ BASIC plan must not get WhatsApp
+      // ❌ TRIAL & BASIC plans should NOT get WhatsApp
       if (
-        subscription.status !== 'ACTIVE' ||
         subscription.plan.name === 'TRIAL' ||
         subscription.plan.name === 'BASIC'
       ) {
@@ -63,7 +74,11 @@ export class WhatsAppCron {
         const result = await this.sender.sendTemplateMessage(
           member.phone,
           WhatsAppTemplates.EXPIRY,
-          [member.fullName, '3'],
+          [
+            member.fullName, // {{1}}
+            subscription.tenant.name, // {{2}} Gym name
+            '3', // {{3}} days remaining
+          ],
         );
 
         await this.logger.log({

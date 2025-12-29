@@ -8,9 +8,7 @@ export class GymAttendanceCron implements OnModuleInit {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  onModuleInit() {
-    this.logger.log('🔥 GymAttendanceCron CONSTRUCTOR LOADED');
-  }
+  onModuleInit() {}
 
   @Cron('0 0 * * *') // every day at 12:00 AM
   async autoCheckout() {

@@ -23,7 +23,7 @@ export class WhatsAppSender {
           type: 'template',
           template: {
             name: templateName,
-            language: { code: 'en_US' },
+            language: { code: 'en' },
             components: parameters.length
               ? [
                   {
