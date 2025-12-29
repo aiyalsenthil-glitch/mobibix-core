@@ -3,15 +3,16 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class WhatsAppSender {
-  private phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  private token = process.env.WHATSAPP_ACCESS_TOKEN;
+  private readonly phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  private readonly token = process.env.WHATSAPP_ACCESS_TOKEN;
+  private readonly apiVersion = process.env.WHATSAPP_API_VERSION || 'v22.0';
 
   async sendTemplateMessage(
     phone: string,
     templateName: string,
     parameters: string[],
-  ) {
-    const url = `https://graph.facebook.com/v18.0/${this.phoneNumberId}/messages`;
+  ): Promise<{ success: boolean; error?: any }> {
+    const url = `https://graph.facebook.com/${this.apiVersion}/${this.phoneNumberId}/messages`;
 
     try {
       await axios.post(
@@ -23,15 +24,17 @@ export class WhatsAppSender {
           template: {
             name: templateName,
             language: { code: 'en_US' },
-            components: [
-              {
-                type: 'body',
-                parameters: parameters.map((text) => ({
-                  type: 'text',
-                  text,
-                })),
-              },
-            ],
+            components: parameters.length
+              ? [
+                  {
+                    type: 'body',
+                    parameters: parameters.map((text) => ({
+                      type: 'text',
+                      text,
+                    })),
+                  },
+                ]
+              : [],
           },
         },
         {

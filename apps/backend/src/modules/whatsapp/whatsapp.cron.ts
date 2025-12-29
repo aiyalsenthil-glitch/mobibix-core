@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { WhatsAppSender } from './whatsapp.sender';
@@ -6,7 +6,7 @@ import { WhatsAppTemplates } from './whatsapp.templates';
 import { WhatsAppLogger } from './whatsapp.logger';
 
 @Injectable()
-export class WhatsAppCron implements OnModuleInit {
+export class WhatsAppCron {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sender: WhatsAppSender,
@@ -14,48 +14,48 @@ export class WhatsAppCron implements OnModuleInit {
   ) {}
 
   /**
-   * 🔥 HARD-CODED TEST (RUNS ON SERVER START)
-   * This ignores DB completely
-   */
-  async onModuleInit() {
-    console.log('🚀 WhatsApp HARD-CODED TEST STARTED');
-
-    await this.sendHardcodedTestMessage();
-  }
-
-  /**
-   * 🧪 Sends WhatsApp to ONE fixed test number
-   */
-  async sendHardcodedTestMessage() {
-    const TEST_PHONE = '918838822461'; // 👈 PUT YOUR VERIFIED TEST NUMBER HERE
-
-    console.log('📱 Sending WhatsApp to hardcoded number:', TEST_PHONE);
-
-    const result = await this.sender.sendTemplateMessage(
-      TEST_PHONE,
-      WhatsAppTemplates.TEST,
-      [],
-    );
-
-    console.log('📨 WhatsApp API result:', result);
-
-    // Optional log (safe even if tenantId is fake)
-    await this.logger.log({
-      tenantId: 'TEST_TENANT',
-      memberId: 'TEST_MEMBER',
-      phone: TEST_PHONE,
-      type: 'TEST',
-      status: result.success ? 'SENT' : 'FAILED',
-      error: result.success ? undefined : JSON.stringify(result.error),
-    });
-  }
-
-  /**
-   * ⏰ REAL CRON (NOT USED NOW)
-   * Kept only so file structure stays future-ready
+   * ⏰ Daily expiry reminder
+   * Runs every day at 6 AM
    */
   @Cron('0 6 * * *')
-  async handleDailyWhatsApp() {
-    // DO NOTHING FOR NOW
+  async sendExpiryReminders() {
+    const settings = await this.prisma.whatsAppSetting.findMany({
+      where: { enabled: true },
+    });
+
+    if (!settings.length) return;
+
+    const today = new Date();
+    const expiryDate = new Date();
+    expiryDate.setDate(today.getDate() + 3);
+
+    for (const setting of settings) {
+      const members = await this.prisma.member.findMany({
+        where: {
+          tenantId: setting.tenantId,
+          membershipEndAt: {
+            gte: today,
+            lte: expiryDate,
+          },
+        },
+      });
+
+      for (const member of members) {
+        const result = await this.sender.sendTemplateMessage(
+          member.phone,
+          WhatsAppTemplates.EXPIRY,
+          [member.fullName, '3'],
+        );
+
+        await this.logger.log({
+          tenantId: setting.tenantId,
+          memberId: member.id,
+          phone: member.phone,
+          type: 'EXPIRY',
+          status: result.success ? 'SENT' : 'FAILED',
+          error: result.success ? undefined : JSON.stringify(result.error),
+        });
+      }
+    }
   }
 }
