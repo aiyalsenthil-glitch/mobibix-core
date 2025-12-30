@@ -27,12 +27,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
 
   app.enableCors({
-    origin: [
-      'https://www.mobibix.in',
-      'https://mobibix.in',
-      'http://localhost_REPLACED:3000',
-      'http://127.0.0.1:5500',
-    ],
+    origin: ['https://www.mobibix.in', 'https://mobibix.in'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   });
 

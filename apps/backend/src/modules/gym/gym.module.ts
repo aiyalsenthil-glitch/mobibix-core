@@ -11,17 +11,21 @@ import { SubscriptionCron } from '../../core/billing/subscriptions/subscription.
 import { GymDashboardController } from './dashboard/gym-dashboard.controller';
 import { GymDashboardService } from './dashboard/gym-dashboard.service';
 import { GymMembersController } from './gym-members.controller';
-import { PaymentsController } from './payments/payments.controller';
 import { PublicCheckinModule } from './public-checkin/public-checkin.module';
+import { PaymentsModule } from '../../core/billing/payments/payments.module';
 
 @Module({
-  imports: [CoreModule, GymDashboardModule, PublicCheckinModule],
+  imports: [
+    CoreModule,
+    GymDashboardModule,
+    PublicCheckinModule,
+    PaymentsModule,
+  ],
   controllers: [
     GymAttendanceController,
     GymMembershipController,
     GymDashboardController,
     GymMembersController,
-    PaymentsController,
   ],
   providers: [
     GymAttendanceService,
