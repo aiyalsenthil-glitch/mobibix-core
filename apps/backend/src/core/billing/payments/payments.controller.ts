@@ -21,7 +21,13 @@ export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) {
+    console.log(
+      '🔑 Razorpay Key Loaded:',
+      process.env.RAZORPAY_KEY_ID,
+      process.env.RAZORPAY_KEY_SECRET ? 'SECRET_OK' : 'SECRET_MISSING',
+    );
+  }
 
   // ─────────────────────────────────────────────
   // 🌐 RAZORPAY WEBHOOK (PUBLIC – NO JWT)
