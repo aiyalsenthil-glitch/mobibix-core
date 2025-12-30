@@ -30,6 +30,9 @@ model Tenant {
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
   kioskToken   String?             @unique
+  whatsappEnabled Boolean @default(true)
+  maxMembers      Int @default(50)
+
   auditLogs    AuditLog[]
   members      Member[]
   payments     Payment[]
@@ -69,6 +72,8 @@ model Member {
   heightCm          Float
   weightKg          Float
   fitnessGoal       FitnessGoal
+  paymentDueDate   DateTime
+  paymentReminderSent Boolean @default(false)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
   attendances       GymAttendance[]

@@ -102,6 +102,7 @@ export class MembersService {
 
         paidAmount: paid,
         paymentStatus,
+        paymentDueDate: new Date(dto.membershipStartAt),
         heightCm: dto.heightCm,
         weightKg: dto.weightKg,
         fitnessGoal: dto.fitnessGoal,

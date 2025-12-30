@@ -14,81 +14,96 @@ export class WhatsAppCron {
   ) {}
 
   /**
-   * ⏰ Daily expiry reminder
-   * Runs every day at 6 AM
+   * ⏰ Payment Due Reminder
+   * Runs every day at 6 AM IST
+   * Rule:
+   * - Only PAYMENT DUE
+   * - 1 day before due date
+   * - Max 50 members per tenant
+   * - 1 reminder per member (no repeat)
    */
   @Cron('0 6 * * *')
-  async sendExpiryReminders() {
+  async sendPaymentDueReminders() {
+    // 1️⃣ Find all tenants where WhatsApp is enabled
     const settings = await this.prisma.whatsAppSetting.findMany({
       where: { enabled: true },
     });
 
     if (!settings.length) return;
 
-    const today = new Date();
-    const expiryDate = new Date();
-    expiryDate.setDate(today.getDate() + 3);
+    // 2️⃣ Calculate tomorrow (start & end)
+    const tomorrowStart = new Date();
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    tomorrowStart.setHours(0, 0, 0, 0);
 
+    const tomorrowEnd = new Date(tomorrowStart);
+    tomorrowEnd.setHours(23, 59, 59, 999);
+
+    // 3️⃣ Loop tenants
     for (const setting of settings) {
-      const subscription = await this.prisma.tenantSubscription.findUnique({
+      // 4️⃣ Count members ONCE per tenant
+      const memberCount = await this.prisma.member.count({
         where: { tenantId: setting.tenantId },
-        include: {
-          plan: true,
-          tenant: {
-            select: {
-              name: true,
-            },
-          },
-        },
       });
 
-      // ❌ No active subscription / no plan / no tenant
-      if (
-        !subscription ||
-        !subscription.plan ||
-        !subscription.tenant ||
-        subscription.status !== 'ACTIVE'
-      ) {
+      // ❌ Skip tenant if member limit exceeded
+      if (memberCount > 50) {
         continue;
       }
 
-      // ❌ TRIAL & BASIC plans should NOT get WhatsApp
-      if (
-        subscription.plan.name === 'TRIAL' ||
-        subscription.plan.name === 'BASIC'
-      ) {
-        continue;
-      }
-
+      // 5️⃣ Find members whose payment is due tomorrow
       const members = await this.prisma.member.findMany({
         where: {
           tenantId: setting.tenantId,
-          membershipEndAt: {
-            gte: today,
-            lte: expiryDate,
+          paymentDueDate: {
+            gte: tomorrowStart,
+            lte: tomorrowEnd,
           },
+          paymentReminderSent: false,
         },
       });
 
+      // 6️⃣ Loop members
       for (const member of members) {
-        const result = await this.sender.sendTemplateMessage(
-          member.phone,
-          WhatsAppTemplates.EXPIRY,
-          [
-            member.fullName, // {{1}}
-            subscription.tenant.name, // {{2}} Gym name
-            '3', // {{3}} days remaining
-          ],
-        );
+        try {
+          // 7️⃣ Send WhatsApp (UTILITY)
+          const result = await this.sender.sendTemplateMessage(
+            member.phone,
+            WhatsAppTemplates.PAYMENT_DUE,
+            [
+              String(member.feeAmount), // {{1}} amount
+              member.paymentDueDate.toDateString(), // {{2}} due date
+            ],
+          );
 
-        await this.logger.log({
-          tenantId: setting.tenantId,
-          memberId: member.id,
-          phone: member.phone,
-          type: 'EXPIRY',
-          status: result.success ? 'SENT' : 'FAILED',
-          error: result.success ? undefined : JSON.stringify(result.error),
-        });
+          // 8️⃣ If success → mark reminder sent
+          if (result.success) {
+            await this.prisma.member.update({
+              where: { id: member.id },
+              data: { paymentReminderSent: true },
+            });
+          }
+
+          // 9️⃣ Log result
+          await this.logger.log({
+            tenantId: setting.tenantId,
+            memberId: member.id,
+            phone: member.phone,
+            type: 'PAYMENT_DUE',
+            status: result.success ? 'SENT' : 'FAILED',
+            error: result.success ? undefined : JSON.stringify(result.error),
+          });
+        } catch (err) {
+          // 🔴 Hard failure (unexpected)
+          await this.logger.log({
+            tenantId: setting.tenantId,
+            memberId: member.id,
+            phone: member.phone,
+            type: 'PAYMENT_DUE',
+            status: 'FAILED',
+            error: err.message,
+          });
+        }
       }
     }
   }
