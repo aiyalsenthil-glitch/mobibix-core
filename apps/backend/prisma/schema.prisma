@@ -129,6 +129,7 @@ model Plan {
   price         Int
   currency      String               @default("INR")
   durationDays  Int
+  billingCycle  BillingCycle @default(MONTHLY)
   memberLimit   Int                  @default(0)
   features      Json?
   isActive      Boolean              @default(true)
@@ -136,7 +137,10 @@ model Plan {
   updatedAt     DateTime             @updatedAt
   subscriptions TenantSubscription[]
 }
-
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
 model TenantSubscription {
   id        String             @id @default(cuid())
   tenantId  String             @unique

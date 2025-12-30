@@ -1,24 +1,50 @@
-import { Injectable, LOG_LEVELS } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { BillingCycle } from '@prisma/client';
 
 @Injectable()
 export class PlansService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * 🔒 Single source of truth for plan duration
+   */
+  private resolveDurationDays(
+    name: string,
+    billingCycle: BillingCycle,
+  ): number {
+    if (name === 'TRIAL') return 14;
+    return billingCycle === BillingCycle.ANNUAL ? 365 : 30;
+  }
+
+  /**
+   * Seed default plans (safe to run multiple times)
+   */
   async ensureDefaultPlans() {
     const plans = [
       {
         name: 'BASIC',
-        price: 999,
+        price: 99,
         level: 1,
-        durationDays: 30,
-        features: { maxMembers: null },
+        billingCycle: BillingCycle.MONTHLY,
+        memberLimit: 0,
+        features: {},
+      },
+      {
+        name: 'PLUS',
+        price: 199,
+        level: 2,
+        billingCycle: BillingCycle.MONTHLY,
+        memberLimit: 0,
+        features: {},
       },
       {
         name: 'PRO',
         price: 1999,
-        level: 2,
-        durationDays: 365,
-        features: { maxMembers: null },
+        level: 3,
+        billingCycle: BillingCycle.ANNUAL,
+        memberLimit: 0,
+        features: {},
       },
     ];
 
@@ -29,51 +55,87 @@ export class PlansService {
 
       if (!exists) {
         await this.prisma.plan.create({
-          data: plan,
+          data: {
+            ...plan,
+            durationDays: this.resolveDurationDays(
+              plan.name,
+              plan.billingCycle,
+            ),
+            isActive: true,
+          },
         });
       }
     }
   }
+
+  /**
+   * Get all active plans
+   */
   async getActivePlans() {
     return this.prisma.plan.findMany({
-      where: {
-        isActive: true,
-      },
-      orderBy: {
-        level: 'asc',
-      },
+      where: { isActive: true },
+      orderBy: { level: 'asc' },
     });
   }
+
+  /**
+   * Admin update plan (duration is AUTO controlled)
+   */
   async updatePlan(
     planId: string,
     data: {
       price?: number;
-      durationDays?: number;
+      billingCycle?: BillingCycle;
       memberLimit?: number;
       isActive?: boolean;
     },
   ) {
+    const existing = await this.prisma.plan.findUnique({
+      where: { id: planId },
+    });
+
+    if (!existing) {
+      throw new Error('Plan not found');
+    }
+
+    const billingCycle = data.billingCycle ?? existing.billingCycle;
+
+    const durationDays = this.resolveDurationDays(existing.name, billingCycle);
+
     return this.prisma.plan.update({
       where: { id: planId },
-      data,
+      data: {
+        ...data,
+        durationDays,
+      },
     });
   }
+
+  /**
+   * Admin create plan
+   */
   async createPlan(data: {
     name: string;
     level: number;
     price: number;
-    durationDays: number;
+    billingCycle: BillingCycle;
     memberLimit: number;
   }) {
+    const durationDays = this.resolveDurationDays(data.name, data.billingCycle);
+
     return this.prisma.plan.create({
       data: {
         ...data,
+        durationDays,
         isActive: true,
         features: {},
       },
     });
   }
 
+  /**
+   * Trial plan (system only)
+   */
   async getOrCreateTrialPlan() {
     const existing = await this.prisma.plan.findFirst({
       where: { name: 'TRIAL' },
@@ -86,6 +148,7 @@ export class PlansService {
         name: 'TRIAL',
         price: 0,
         level: 0,
+        billingCycle: BillingCycle.MONTHLY,
         durationDays: 14,
         isActive: true,
         features: {},
