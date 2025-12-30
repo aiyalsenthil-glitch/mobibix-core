@@ -39,30 +39,46 @@ export class PaymentsController {
   // ─────────────────────────────────────────────
   @Post('create-order')
   async createOrder(@Req() req: any, @Body() body: { planId: string }) {
-    // 1️⃣ Validate plan exists
-    const plan = await this.prisma.plan.findUnique({
-      where: { id: body.planId },
-    });
+    console.log('🔥 HIT create-order route');
 
-    if (!plan) {
-      throw new NotFoundException('Plan not found');
+    try {
+      // 1️⃣ Validate plan exists
+      const plan = await this.prisma.plan.findUnique({
+        where: { id: body.planId },
+      });
+
+      if (!plan) {
+        throw new NotFoundException('Plan not found');
+      }
+
+      // 2️⃣ Validate price
+      if (plan.price === null || plan.price <= 0) {
+        throw new BadRequestException('Invalid plan price');
+      }
+
+      // 3️⃣ Create Razorpay order
+      const order = await this.paymentsService.createOrder(plan.price);
+
+      // 4️⃣ Return data to frontend
+      return {
+        orderId: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        key: process.env.RAZORPAY_KEY_ID,
+      };
+    } catch (err: any) {
+      console.error('❌ Create-order failed:', err);
+
+      // rethrow known HTTP errors
+      if (err?.status) {
+        throw err;
+      }
+
+      // unknown / Razorpay / env errors
+      throw new InternalServerErrorException(
+        err?.message || 'Payment order creation failed',
+      );
     }
-
-    // 2️⃣ Validate price
-    if (plan.price === null) {
-      throw new BadRequestException('Invalid plan price');
-    }
-
-    // 3️⃣ Create Razorpay order
-    const order = await this.paymentsService.createOrder(plan.price);
-
-    // 4️⃣ Return data needed by Android
-    return {
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      key: process.env.RAZORPAY_KEY_ID,
-    };
   }
 
   // ─────────────────────────────────────────────
