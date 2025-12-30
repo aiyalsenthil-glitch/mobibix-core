@@ -57,7 +57,7 @@ export class PaymentsController {
 
       // 3️⃣ Create Razorpay order
       const order = await this.paymentsService.createOrder({
-        amount: plan.price, // rupees
+        amount: plan.price,
         tenantId: req.user.tenantId,
         planId: plan.id,
       });
