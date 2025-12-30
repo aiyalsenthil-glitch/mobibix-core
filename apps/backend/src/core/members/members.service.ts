@@ -221,6 +221,9 @@ export class MembersService {
       data: {
         paidAmount: newPaid,
         paymentStatus,
+
+        // ✅ reset reminder only
+        paymentReminderSent: false,
       },
     });
 
@@ -383,6 +386,10 @@ export class MembersService {
       data: {
         membershipStartAt: today,
         membershipEndAt: newEndDate,
+
+        // ✅ IMPORTANT FOR WHATSAPP CRON
+        paymentDueDate: newEndDate,
+        paymentReminderSent: false,
       },
     });
 
