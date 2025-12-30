@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
@@ -11,13 +11,16 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       secretOrKey: process.env.JWT_SECRET as string,
     });
   }
-
   async validate(payload: any) {
+    if (!payload.sub) {
+      throw new UnauthorizedException('Invalid JWT payload');
+    }
+
     return {
-      userId: payload.sub,
-      tenantId: payload.tenantId,
+      sub: payload.sub, // ✅ MUST be `sub`
+      tenantId: payload.tenantId ?? null,
       role: payload.role,
-      permissions: payload.permissions,
+      permissions: payload.permissions ?? [],
     };
   }
 }

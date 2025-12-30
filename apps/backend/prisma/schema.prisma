@@ -168,6 +168,8 @@ model Payment {
   meta              Json?
   createdAt         DateTime      @default(now())
   tenant            Tenant        @relation(fields: [tenantId], references: [id])
+  
+  @@unique([provider, providerPaymentId])
 }
 
 model AuditLog {

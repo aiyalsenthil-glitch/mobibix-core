@@ -1,13 +1,9 @@
-import {
-  Controller,
-  Post,
-  Headers,
-  Req,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
-import * as crypto from 'crypto';
+import { Controller, Post, Req, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Public } from '../../auth/decorators/public.decorator';
+import type { Request } from 'express';
+import * as crypto from 'crypto';
+import { PaymentStatus } from '@prisma/client';
 
 @Controller('payments')
 export class PaymentsWebhookController {
@@ -15,105 +11,51 @@ export class PaymentsWebhookController {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  @Public()
   @Post('webhook')
-  async handleWebhook(
-    @Req() req: any,
-    @Headers('x-REMOVED_PAYMENT_INFRA-signature') signature: string,
-  ) {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    if (!secret) {
-      this.logger.error('RAZORPAY_WEBHOOK_SECRET is not set');
-      throw new BadRequestException('Webhook secret missing');
-    }
+  async handleWebhook(@Req() req: Request) {
+    try {
+      const signature = req.headers['x-REMOVED_PAYMENT_INFRA-signature'] as string;
+      const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+      if (!signature || !secret) return;
 
-    // Prefer the captured raw body buffer (set by main.ts). If not present,
-    // fall back to stringifying the parsed body (best-effort).
-    const rawBody: Buffer =
-      req.rawBody ??
-      (Buffer.isBuffer(req.body)
-        ? req.body
-        : Buffer.from(JSON.stringify(req.body)));
+      const rawBody = (req as any).rawBody;
+      const expected = crypto
+        .createHmac('sha256', secret)
+        .update(rawBody)
+        .digest('hex');
 
-    if (!signature) {
-      this.logger.warn('Missing x-REMOVED_PAYMENT_INFRA-signature header');
-      throw new BadRequestException('Missing signature header');
-    }
+      if (expected !== signature) {
+        this.logger.warn('Invalid webhook signature');
+        return;
+      }
 
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(rawBody)
-      .digest('hex');
+      const payload = JSON.parse(rawBody.toString());
+      const event = payload.event;
 
-    // Use timingSafeEqual for comparison to avoid timing attacks and ensure
-    // we compare buffers of equal length.
-    const sigBuf = Buffer.from(signature, 'utf8');
-    const expBuf = Buffer.from(expectedSignature, 'utf8');
+      this.logger.log(`🔔 Razorpay event: ${event}`);
 
-    this.logger.debug(
-      `rawBody.length=${rawBody.length} sigLen=${sigBuf.length} expLen=${expBuf.length}`,
-    );
+      if (event !== 'payment.captured') return;
 
-    if (
-      sigBuf.length !== expBuf.length ||
-      !crypto.timingSafeEqual(sigBuf, expBuf)
-    ) {
-      this.logger.warn('Invalid webhook signature', {
-        signature,
-        expected: expectedSignature,
+      const p = payload.payload.payment.entity;
+
+      await this.prisma.payment.create({
+        data: {
+          tenantId: p.notes?.tenantId, // must be sent during order creation
+          planId: p.notes?.planId, // must be sent during order creation
+          amount: p.amount,
+          currency: p.currency,
+          status: PaymentStatus.SUCCESS, // ✅ CORRECT ENUM
+          provider: 'RAZORPAY',
+          providerOrderId: p.order_id,
+          providerPaymentId: p.id,
+          providerSignature: signature,
+        },
       });
-      throw new BadRequestException('Invalid webhook signature');
+
+      this.logger.log(`💰 Payment SUCCESS: ${p.id}`);
+    } catch (err) {
+      this.logger.error('Webhook error', err);
     }
-
-    const payload = JSON.parse(rawBody.toString());
-
-    if (payload.event !== 'payment.captured') {
-      return { status: 'ignored' };
-    }
-
-    const payment = payload.payload.payment.entity;
-
-    const exists = await this.prisma.payment.findFirst({
-      where: {
-        provider: 'RAZORPAY',
-        providerPaymentId: payment.id,
-      },
-    });
-
-    if (exists) {
-      return { status: 'already_processed' };
-    }
-
-    return { status: 'processed' };
-  }
-
-  // Debug endpoint: returns computed signature and a short raw-body snippet.
-  // Only enabled outside production to avoid leaking sensitive data.
-  @Post('webhook-debug')
-  async debugWebhook(@Req() req: any) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new BadRequestException('Not allowed in production');
-    }
-
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    if (!secret) {
-      throw new BadRequestException('Webhook secret missing');
-    }
-
-    const rawBody: Buffer =
-      req.rawBody ??
-      (Buffer.isBuffer(req.body)
-        ? req.body
-        : Buffer.from(JSON.stringify(req.body)));
-
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(rawBody)
-      .digest('hex');
-
-    return {
-      expectedSignature,
-      rawBodySnippet: rawBody.toString('utf8', 0, 500),
-      rawBodyLength: rawBody.length,
-    };
   }
 }

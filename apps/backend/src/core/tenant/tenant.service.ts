@@ -26,6 +26,11 @@ export class TenantService {
    * ============================
    */
   async createTenant(userId: string, dto: CreateTenantDto) {
+    // 🔒 Safety guard (prevents Prisma crash)
+    if (!userId) {
+      throw new BadRequestException('Invalid user session');
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -38,41 +43,35 @@ export class TenantService {
       throw new BadRequestException('User already has a tenant');
     }
 
-    // Ensure base plans exist (idempotent)
     await this.plansService.ensureDefaultPlans();
     const trialPlan = await this.plansService.getOrCreateTrialPlan();
 
     const code =
       dto.code ??
-      dto.name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+      `${dto.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
 
     const tenant = await this.prisma.tenant.create({
       data: {
         name: dto.name,
         legalName: dto.legalName,
         code,
-
         tenantType: dto.tenantType,
         contactPhone: dto.contactPhone,
-
         addressLine1: dto.addressLine1,
         city: dto.city,
         state: dto.state,
         pincode: dto.pincode,
         country: dto.country,
-
         currency: dto.currency,
         timezone: dto.timezone,
       },
     });
 
-    // Assign trial subscription
     await this.subscriptionsService.assignTrialSubscription(
       tenant.id,
       trialPlan.id,
     );
 
-    // Link owner to tenant
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -83,6 +82,7 @@ export class TenantService {
 
     return tenant;
   }
+
   async updateTenantName(tenantId: string, name: string) {
     return this.prisma.tenant.update({
       where: { id: tenantId },
