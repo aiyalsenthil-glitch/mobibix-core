@@ -17,47 +17,70 @@ export class PaymentsWebhookController {
     try {
       const signature = req.headers['x-REMOVED_PAYMENT_INFRA-signature'] as string;
       const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-      if (!signature || !secret) return;
 
-      const rawBody = (req as any).rawBody;
-      const expected = crypto
+      if (!signature || !secret) {
+        this.logger.warn('Missing webhook signature or secret');
+        return;
+      }
+
+      const rawBody: Buffer = (req as any).rawBody;
+      if (!rawBody) {
+        this.logger.warn('Raw body missing');
+        return;
+      }
+
+      // 🔐 Verify signature
+      const expectedSignature = crypto
         .createHmac('sha256', secret)
         .update(rawBody)
         .digest('hex');
 
-      if (expected !== signature) {
+      if (expectedSignature !== signature) {
         this.logger.warn('Invalid webhook signature');
         return;
       }
-      console.log('✅ WEBHOOK REACHED NESTJS');
-      console.log('Event Type:', req.body.event);
-      return { status: 'ok' };
+
+      // ✅ Parse payload ONLY AFTER signature verification
       const payload = JSON.parse(rawBody.toString());
       const event = payload.event;
 
-      this.logger.log(`🔔 Razorpay event: ${event}`);
+      this.logger.log(`🔔 Razorpay webhook received: ${event}`);
 
-      if (event !== 'payment.captured') return;
-
-      const p = payload.payload.payment.entity;
-
-      await this.prisma.payment.create({
+      // 📌 Store webhook event for admin dashboard (recommended)
+      await this.prisma.webhookEvent.create({
         data: {
-          tenantId: p.notes?.tenantId, // must be sent during order creation
-          planId: p.notes?.planId, // must be sent during order creation
-          amount: p.amount,
-          currency: p.currency,
-          status: PaymentStatus.SUCCESS, // ✅ CORRECT ENUM
           provider: 'RAZORPAY',
-          providerOrderId: p.order_id,
-          providerPaymentId: p.id,
-          providerSignature: signature,
+          eventType: event,
+          referenceId:
+            payload.payload?.payment?.entity?.id ??
+            payload.payload?.order?.entity?.id ??
+            null,
+          payload: payload,
         },
       });
 
-      this.logger.log(`💰 Payment SUCCESS: ${p.id}`);
+      // 💰 Handle captured payments
+      if (event === 'payment.captured') {
+        const payment = payload.payload.payment.entity;
+
+        await this.prisma.payment.create({
+          data: {
+            tenantId: payment.notes?.tenantId,
+            planId: payment.notes?.planId,
+            amount: payment.amount,
+            currency: payment.currency,
+            status: PaymentStatus.SUCCESS,
+            provider: 'RAZORPAY',
+            providerOrderId: payment.order_id,
+            providerPaymentId: payment.id,
+            providerSignature: signature,
+          },
+        });
+
+        this.logger.log(`💰 Payment SUCCESS saved: ${payment.id}`);
+      }
     } catch (err) {
-      this.logger.error('Webhook error', err);
+      this.logger.error('Webhook processing error', err);
     }
   }
 }

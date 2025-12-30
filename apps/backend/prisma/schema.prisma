@@ -216,6 +216,14 @@ model WhatsAppLog {
   error     String?
   sentAt    DateTime @default(now())
 }
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String   // RAZORPAY
+  eventType   String   // payment.captured
+  referenceId String?  // paymentId / orderId
+  payload     Json
+  receivedAt  DateTime @default(now())
+}
 
 model GymAttendance {
   id           String           @id @default(cuid())
