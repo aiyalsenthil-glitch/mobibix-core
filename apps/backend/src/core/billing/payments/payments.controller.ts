@@ -20,7 +20,9 @@ export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) {
+    console.log('✅ PaymentsController initialized');
+  }
 
   // ─────────────────────────────────────────────
   // 🌐 RAZORPAY WEBHOOK (PUBLIC – NO JWT)

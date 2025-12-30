@@ -12,7 +12,7 @@ import { GymDashboardController } from './dashboard/gym-dashboard.controller';
 import { GymDashboardService } from './dashboard/gym-dashboard.service';
 import { GymMembersController } from './gym-members.controller';
 import { PublicCheckinModule } from './public-checkin/public-checkin.module';
-import { PaymentsModule } from '../../core/billing/payments/payments.module';
+import { PaymentsModule } from '../../core/billing//payments/payments.module';
 
 @Module({
   imports: [
