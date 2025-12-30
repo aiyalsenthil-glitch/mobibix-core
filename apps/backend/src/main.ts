@@ -13,12 +13,16 @@ async function bootstrap() {
     res.sendFile(join(__dirname, '..', 'public/checkin/index.html'));
   });
 
-  server.post(
-    '/payments/webhook',
-    bodyParser.raw({ type: 'application/json' }),
+  server.use(
+    bodyParser.json({
+      verify: (req: any, res, buf) => {
+        if (req.originalUrl === '/payments/webhook') {
+          req.rawBody = buf;
+        }
+      },
+    }),
   );
 
-  server.use(bodyParser.json());
   // 🔥 EARLY HEALTH CHECK (for Render)
   server.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok' });

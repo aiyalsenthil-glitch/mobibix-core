@@ -41,6 +41,7 @@ export class PaymentsController {
   // ─────────────────────────────────────────────
   @Post('create-order')
   async createOrder(@Req() req: any, @Body() body: { planId: string }) {
+    console.log('🔥 HIT create-order route');
     // 1️⃣ Validate plan exists
     const plan = await this.prisma.plan.findUnique({
       where: { id: body.planId },
