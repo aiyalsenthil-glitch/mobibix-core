@@ -4,6 +4,7 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 import { WhatsAppSender } from './whatsapp.sender';
 import { WhatsAppTemplates } from './whatsapp.templates';
 import { WhatsAppLogger } from './whatsapp.logger';
+import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
 
 @Injectable()
 export class WhatsAppCron {
@@ -68,12 +69,11 @@ export class WhatsAppCron {
         try {
           // 7️⃣ Send WhatsApp (UTILITY)
           const result = await this.sender.sendTemplateMessage(
+            setting.tenantId,
+            WhatsAppFeature.PAYMENT_DUE,
             member.phone,
             WhatsAppTemplates.PAYMENT_DUE,
-            [
-              String(member.feeAmount), // {{1}} amount
-              member.paymentDueDate.toDateString(), // {{2}} due date
-            ],
+            [String(member.feeAmount), member.paymentDueDate.toDateString()],
           );
 
           // 8️⃣ If success → mark reminder sent

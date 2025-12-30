@@ -1,5 +1,10 @@
 import axios from 'axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
+import { PrismaService } from '../../core/prisma/prisma.service';
+import {
+  WHATSAPP_PLAN_RULES,
+  WhatsAppFeature,
+} from '../../core/billing/whatsapp-rules';
 
 @Injectable()
 export class WhatsAppSender {
@@ -7,11 +12,58 @@ export class WhatsAppSender {
   private readonly token = process.env.WHATSAPP_ACCESS_TOKEN;
   private readonly apiVersion = process.env.WHATSAPP_API_VERSION || 'v22.0';
 
+  constructor(private readonly prisma: PrismaService) {}
+
   async sendTemplateMessage(
+    tenantId: string,
+    feature: WhatsAppFeature,
     phone: string,
     templateName: string,
     parameters: string[],
-  ): Promise<{ success: boolean; error?: any }> {
+  ): Promise<{ success: boolean; error?: any; skipped?: boolean }> {
+    // ─────────────────────────────
+    // 1️⃣ Load subscription + plan
+    // ─────────────────────────────
+    const subscription = await this.prisma.tenantSubscription.findUnique({
+      where: { tenantId },
+      include: { plan: true },
+    });
+
+    if (!subscription?.plan) {
+      return { success: false, skipped: true };
+    }
+
+    const planName = subscription.plan.name as keyof typeof WHATSAPP_PLAN_RULES;
+    const rule = WHATSAPP_PLAN_RULES[planName];
+
+    // ─────────────────────────────
+    // 2️⃣ Plan-level WhatsApp block
+    // ─────────────────────────────
+    if (!rule?.enabled) {
+      return { success: false, skipped: true };
+    }
+
+    // ─────────────────────────────
+    // 3️⃣ Feature check
+    // ─────────────────────────────
+    if (!rule.features.includes(feature)) {
+      return { success: false, skipped: true };
+    }
+
+    // ─────────────────────────────
+    // 4️⃣ Member limit check
+    // ─────────────────────────────
+    const memberCount = await this.prisma.member.count({
+      where: { tenantId },
+    });
+
+    if (memberCount > rule.maxMembers) {
+      return { success: false, skipped: true };
+    }
+
+    // ─────────────────────────────
+    // 5️⃣ SEND WHATSAPP
+    // ─────────────────────────────
     const url = `https://graph.facebook.com/${this.apiVersion}/${this.phoneNumberId}/messages`;
 
     try {

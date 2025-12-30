@@ -17,6 +17,7 @@ import { CreateTenantDto } from './dto/tenant.dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permissions.enum';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { TenantStatusGuard } from './guards/tenant-status.guard';
 
 @Controller('tenant')
 export class TenantController {
@@ -31,7 +32,7 @@ export class TenantController {
    * - NO SubscriptionGuard here
    * - Requires full tenant details
    */
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, TenantStatusGuard)
   @Post()
   async createTenant(@Req() req: any, @Body() dto: CreateTenantDto) {
     const userId = req.user.sub;

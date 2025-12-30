@@ -17,6 +17,10 @@ import { StaffService } from './staff.service';
 import { Permission } from '../auth/permissions.enum';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import {
+  PlanFeatureGuard,
+  RequirePlanFeature,
+} from '../billing/guards/plan-feature.guard';
 
 @Controller('staff')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -35,6 +39,8 @@ export class StaffController {
   }
 
   // ✅ OWNER: TEMP create staff (staff must have logged in once)
+  @UseGuards(JwtAuthGuard, PlanFeatureGuard)
+  @RequirePlanFeature('staffAllowed')
   @Roles(UserRole.OWNER)
   @Post()
   async create(
@@ -55,6 +61,8 @@ export class StaffController {
   }
 
   // ✅ OWNER: INVITE staff by email (PROPER FLOW)
+  @UseGuards(JwtAuthGuard, PlanFeatureGuard)
+  @RequirePlanFeature('staffAllowed')
   @Roles(UserRole.OWNER)
   @Post('invite')
   async invite(@Req() req: any, @Body('email') email: string) {

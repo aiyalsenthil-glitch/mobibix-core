@@ -21,9 +21,10 @@ import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { RenewMemberDto } from './dto/renew-member.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { TenantStatusGuard } from '../tenant/guards/tenant-status.guard';
 
 @Controller('members')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
