@@ -17,6 +17,8 @@ import { PlansService } from '../billing/plans/plans.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 
+import { Public } from '../auth/decorators/public.decorator';
+
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
@@ -31,6 +33,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // BOOTSTRAP PLATFORM ADMIN (DEV ONLY)
   // ─────────────────────────────────────────────
+  @Public()
   @Post('bootstrap')
   async bootstrapAdmin(@Body() body: { email: string; REMOVED_AUTH_PROVIDERUid: string }) {
     if (process.env.NODE_ENV === 'production') {

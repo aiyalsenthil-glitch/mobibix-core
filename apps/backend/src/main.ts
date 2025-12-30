@@ -27,8 +27,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
 
   app.enableCors({
-    origin: ['https://mobibix.in', 'http://localhost_REPLACED:3000'],
-    credentials: true,
+    origin: [
+      'https://www.mobibix.in',
+      'https://mobibix.in',
+      'http://localhost_REPLACED:3000',
+      'http://127.0.0.1:5500',
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   });
 
   const port = process.env.PORT !== undefined ? Number(process.env.PORT) : 3000;
