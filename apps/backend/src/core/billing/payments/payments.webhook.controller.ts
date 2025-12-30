@@ -29,7 +29,9 @@ export class PaymentsWebhookController {
         this.logger.warn('Invalid webhook signature');
         return;
       }
-
+      console.log('✅ WEBHOOK REACHED NESTJS');
+      console.log('Event Type:', req.body.event);
+      return { status: 'ok' };
       const payload = JSON.parse(rawBody.toString());
       const event = payload.event;
 
