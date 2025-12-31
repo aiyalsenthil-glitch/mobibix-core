@@ -5,6 +5,7 @@ import {
   WHATSAPP_PLAN_RULES,
   WhatsAppFeature,
 } from '../../core/billing/whatsapp-rules';
+import { toWhatsAppPhone } from '../../common/utils/phone.util';
 
 @Injectable()
 export class WhatsAppSender {
@@ -71,7 +72,7 @@ export class WhatsAppSender {
         url,
         {
           messaging_product: 'whatsapp',
-          to: phone,
+          to: toWhatsAppPhone(phone), // ✅ ADD 91 HERE ONLY
           type: 'template',
           template: {
             name: templateName,

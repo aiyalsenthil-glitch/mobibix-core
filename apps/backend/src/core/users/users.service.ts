@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { User, UserRole } from '@prisma/client';
+import { normalizePhone } from 'src/common/utils/phone.util';
 
 @Injectable()
 export class UsersService {
@@ -58,7 +59,7 @@ export class UsersService {
       where: { id: userId }, // ✅ FIXED
       data: {
         fullName: data.fullName,
-        phone: data.phone,
+        phone: data.phone ? normalizePhone(data.phone) : undefined,
       },
     });
   }

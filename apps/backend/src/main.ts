@@ -8,9 +8,12 @@ import * as bodyParser from 'body-parser';
 async function bootstrap() {
   const server = express();
 
-  server.use(express.static(join(__dirname, '..', 'public')));
+  server.use(express.static(join(__dirname, '..', '..', 'public')));
+
   server.get('/checkin/:tenantCode', (req, res) => {
-    res.sendFile(join(__dirname, '..', 'public/checkin/index.html'));
+    res.sendFile(
+      join(__dirname, '..', '..', 'public', 'checkin', 'index.html'),
+    );
   });
 
   server.use(

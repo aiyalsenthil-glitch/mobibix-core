@@ -1,22 +1,29 @@
 /**
- * Normalize phone numbers to international format (India default)
+ * Normalize phone numbers to canonical format (India)
  *
- * Rules:
- * - Remove spaces, +, -, ()
- * - If 10 digits → prefix with 91
- * - If already starts with country code → keep
+ * Canonical format:
+ * - Last 10 digits only
+ *
+ * Examples:
+ * +91 97895 09543 → 9789509543
+ * 919789509543   → 9789509543
+ * 9789509543     → 9789509543
  */
 export function normalizePhone(phone: string): string {
   if (!phone) return phone;
 
-  // Remove all non-digit characters
-  let digits = phone.replace(/\D/g, '');
+  const digits = phone.replace(/\D/g, '');
 
-  // India default: 10-digit local number
-  if (digits.length === 10) {
-    return '91' + digits;
+  // Always keep last 10 digits
+  return digits.slice(-10);
+}
+/**
+ * Convert canonical phone (10 digits) to WhatsApp format
+ */
+export function toWhatsAppPhone(phone10: string): string {
+  if (!phone10 || phone10.length !== 10) {
+    throw new Error('Invalid phone for WhatsApp');
   }
 
-  // Already normalized (e.g. 91xxxxxxxxxx)
-  return digits;
+  return `91${phone10}`;
 }

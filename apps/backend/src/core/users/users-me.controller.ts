@@ -23,11 +23,10 @@ export class UsersMeController {
   }
 
   @Patch('me')
-  async updateMe(
-    @Req() req: AuthenticatedRequest,
-    @Body() body: { fullName?: string; phone?: string },
-  ): Promise<User> {
-    // 🔥 THIS IS THE FIX
-    return this.usersService.updateProfile(req.user.userId, body);
+  updateMe(@Req() req, @Body() body: { fullName?: string; phone?: string }) {
+    return this.usersService.updateProfile(
+      req.user.sub, // ✅ THIS IS THE USER ID
+      body,
+    );
   }
 }
