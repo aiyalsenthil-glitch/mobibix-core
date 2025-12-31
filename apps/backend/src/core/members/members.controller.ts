@@ -19,7 +19,6 @@ import { Permission } from '../auth/permissions.enum';
 import { MembersService } from './members.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
-import { RenewMemberDto } from './dto/renew-member.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { TenantStatusGuard } from '../tenant/guards/tenant-status.guard';
 
@@ -96,11 +95,6 @@ export class MembersController {
 
     return member;
   }
-  //  @Permissions(Permission.MEMBER_VIEW)
-  // @Get('renewal-due')
-  // listRenewalDue(@Req() req: any) {
-  // return this.membersService.listMembershipsDue(req.user.tenantId);
-  //}
 
   @Permissions(Permission.MEMBER_VIEW)
   @Get(':id')

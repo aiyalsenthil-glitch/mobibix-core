@@ -224,6 +224,21 @@ model WebhookEvent {
   payload     Json
   receivedAt  DateTime @default(now())
 }
+model WebhookLog {
+  id          String   @id @default(uuid())
+  provider    String   // "REMOVED_PAYMENT_INFRA"
+  event       String   // payment.captured, order.paid
+  entityId    String?  // payment_id / order_id
+  tenantId    String?
+  planId      String?
+  status      String   // SUCCESS | FAILED | RECEIVED
+  payload     Json
+  error       String?
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([event])
+}
 
 model GymAttendance {
   id           String           @id @default(cuid())

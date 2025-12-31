@@ -333,6 +333,10 @@ export class MembersService {
     const paid = dto.paidAmount ?? 0;
     const { feeAmount: _renewalTotalFee, ...safeDto } = dto;
     const allowedDurations = [30, 60, 90];
+    if (!userId || typeof userId !== 'string') {
+      throw new ForbiddenException('Invalid authenticated user');
+    }
+
     if (!allowedDurations.includes(duration)) {
       throw new BadRequestException(
         'Invalid duration. Allowed values: 30, 60, 90 days',
@@ -408,23 +412,25 @@ export class MembersService {
         },
       });
     }
+    // 🧾 Audit log for fee override / renewal
+    await this.prisma.auditLog.create({
+      data: {
+        action: dto.isFeeOverridden ? 'FEE_OVERRIDE' : 'MEMBERSHIP_RENEWED',
+        entity: 'MEMBER',
+        entityId: memberId,
 
-    // 8️⃣ OWNER FEE OVERRIDE AUDIT 🔐
-    if (dto.isFeeOverridden === true) {
-      await this.prisma.auditLog.create({
-        data: {
-          tenantId,
-          userId, // OR req.user.userId (see note below)
-          action: 'FEE_OVERRIDE',
-          entity: 'MEMBER',
-          entityId: memberId,
-          meta: {
-            overriddenFee: fee,
-            durationDays: duration,
-          },
+        tenant: { connect: { id: tenantId } },
+        user: { connect: { id: userId } },
+
+        meta: {
+          durationDays: duration,
+          feeAmount: fee,
+          paidAmount: paid,
+          paymentStatus,
+          overridden: dto.isFeeOverridden === true,
         },
-      });
-    }
+      },
+    });
 
     return member;
   }

@@ -82,6 +82,14 @@ export class TenantService {
 
     return tenant;
   }
+  async searchTenants(query: string) {
+    return this.prisma.tenant.findMany({
+      where: {
+        OR: [{ name: { contains: query, mode: 'insensitive' } }],
+      },
+      take: 20,
+    });
+  }
 
   async updateTenantName(tenantId: string, name: string) {
     return this.prisma.tenant.update({
@@ -143,21 +151,35 @@ export class TenantService {
    * ============================
    */
   async getUsage(tenantId: string) {
+    if (!tenantId) {
+      throw new BadRequestException('Tenant not initialized');
+    }
+
     const subscription = await this.prisma.tenantSubscription.findUnique({
       where: { tenantId },
       include: { plan: true },
     });
 
+    if (!subscription) {
+      return {
+        plan: 'NONE',
+        status: 'NONE',
+        membersUsed: 0,
+        membersLimit: null,
+        daysLeft: null,
+      };
+    }
+
     const membersUsed = await this.prisma.member.count({
       where: { tenantId },
     });
 
-    const plan = subscription?.plan;
+    const plan = subscription.plan;
     const membersLimit = plan?.memberLimit ?? null;
 
     let daysLeft: number | null = null;
 
-    if (subscription?.endDate) {
+    if (subscription.endDate) {
       const now = new Date();
       const end = new Date(subscription.endDate);
       const diff = end.getTime() - now.getTime();
@@ -165,8 +187,8 @@ export class TenantService {
     }
 
     return {
-      plan: plan?.name ?? 'NONE',
-      status: subscription?.status ?? 'NONE',
+      plan: plan.name,
+      status: subscription.status,
       membersUsed,
       membersLimit,
       daysLeft,

@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillingCycle } from '@prisma/client';
-
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 @Injectable()
 export class PlansService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subscriptionsService: SubscriptionsService,
+  ) {}
 
   /**
    * 🔒 Single source of truth for plan duration
@@ -68,12 +71,36 @@ export class PlansService {
     }
   }
 
+  async getPlansWithUpgradeInfo(tenantId: string) {
+    const currentSub =
+      await this.subscriptionsService.getCurrentActiveSubscription(tenantId);
+
+    const currentLevel = currentSub?.plan?.level ?? 0;
+
+    const plans = await this.prisma.plan.findMany({
+      where: {
+        isActive: true,
+        level: { gt: 0 }, // hide TRIAL
+      },
+      orderBy: { level: 'asc' },
+    });
+
+    return plans.map((plan) => ({
+      ...plan,
+      isCurrent: plan.level === currentLevel,
+      canUpgrade: plan.level > currentLevel,
+    }));
+  }
+
   /**
    * Get all active plans
    */
   async getActivePlans() {
     return this.prisma.plan.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        level: { gt: 0 }, // 👈 hide TRIAL from users
+      },
       orderBy: { level: 'asc' },
     });
   }

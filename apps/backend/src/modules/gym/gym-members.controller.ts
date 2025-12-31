@@ -103,17 +103,20 @@ export class GymMembersController {
   }
 
   // ======================
-  // RENEW MEMBERSHIP
+  // RENEW MEMBERSHIP (🔥 FIXED)
   // ======================
+  @Permissions(Permission.MEMBER_EDIT)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Post(':id/renew')
-  async renewMember(
-    @Req() req,
+  renewMember(
+    @Req() req: any,
     @Param('id') memberId: string,
     @Body() dto: RenewMemberDto,
   ) {
+    // ✅ IMPORTANT: use sub, NOT userId
     return this.membersService.renewMembership(
       req.user.tenantId,
-      req.user.userId,
+      req.user.sub, // ✅ THIS FIXES EVERYTHING
       req.user.role,
       memberId,
       dto,

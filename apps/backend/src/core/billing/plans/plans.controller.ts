@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, UseGuards, Req } from '@nestjs/common';
 import { PlansService } from './plans.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
@@ -10,5 +10,10 @@ export class PlansController {
   @Get()
   async listPlans() {
     return this.plansService.getActivePlans();
+  }
+  @UseGuards(JwtAuthGuard)
+  @Get('available')
+  async getAvailablePlans(@Req() req: any) {
+    return this.plansService.getPlansWithUpgradeInfo(req.user.tenantId);
   }
 }

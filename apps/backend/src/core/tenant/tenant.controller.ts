@@ -18,6 +18,7 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permissions.enum';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { TenantStatusGuard } from './guards/tenant-status.guard';
+import { Query } from '@nestjs/common';
 
 @Controller('tenant')
 export class TenantController {
@@ -72,6 +73,20 @@ export class TenantController {
 
     return this.tenantService.findById(tenantId);
   }
+  @UseGuards(JwtAuthGuard)
+  @Get('admin/search')
+  async searchTenants(@Req() req: any, @Query('q') q: string) {
+    // 🔒 Admin-only check
+    if (req.user.role !== 'ADMIN') {
+      throw new ForbiddenException('Admin access only');
+    }
+
+    if (!q || q.trim().length < 2) {
+      return [];
+    }
+
+    return this.tenantService.searchTenants(q);
+  }
 
   /**
    * ============================
@@ -81,11 +96,12 @@ export class TenantController {
    * - Requires active subscription
    * - Used after onboarding
    */
-  @UseGuards(JwtAuthGuard, SubscriptionGuard)
+  @UseGuards(JwtAuthGuard)
   @Get('usage')
-  async getUsage(@Req() req: any) {
+  getUsage(@Req() req: any) {
     return this.tenantService.getUsage(req.user.tenantId);
   }
+
   @UseGuards(JwtAuthGuard)
   @Permissions(Permission.TENANT_MANAGE)
   @Post('kiosk-token')

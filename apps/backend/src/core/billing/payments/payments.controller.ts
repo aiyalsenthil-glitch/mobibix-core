@@ -29,10 +29,37 @@ export class PaymentsController {
   @Public()
   @Post('webhook')
   async handleWebhook(@Req() req: Request) {
-    // TODO: verify Razorpay signature here
-    // const signature = req.headers['x-REMOVED_PAYMENT_INFRA-signature'];
+    const event = req.body;
 
-    return { status: 'ok' };
+    // ⚠️ Later: verify Razorpay signature
+    if (event.event !== 'payment.captured') {
+      return { ignored: true };
+    }
+
+    const payment = event.payload.payment.entity;
+
+    const tenantId = payment.notes?.tenantId;
+    const planId = payment.notes?.planId;
+
+    if (!tenantId || !planId) {
+      throw new BadRequestException('Missing tenantId or planId in payment');
+    }
+
+    // ✅ SAVE REAL PAYMENT
+    await this.prisma.payment.updateMany({
+      where: {
+        providerOrderId: payment.order_id,
+        tenantId,
+      },
+      data: {
+        providerPaymentId: payment.id,
+        amount: payment.amount / 100, // final confirmed amount
+        currency: payment.currency,
+        status: 'SUCCESS', // enum-safe
+      },
+    });
+
+    return { status: 'payment saved' };
   }
 
   // ─────────────────────────────────────────────
@@ -56,12 +83,27 @@ export class PaymentsController {
       }
 
       // 3️⃣ Create Razorpay order
+      // 3️⃣ Create Razorpay order
       const order = await this.paymentsService.createOrder({
         amount: plan.price,
         tenantId: req.user.tenantId,
         planId: plan.id,
       });
 
+      // 4️⃣ SAVE INIT PAYMENT (IMPORTANT STEP-2)
+      await this.prisma.payment.create({
+        data: {
+          tenantId: req.user.tenantId,
+          planId: plan.id,
+          provider: 'RAZORPAY',
+          providerOrderId: order.id,
+          amount: plan.price, // INR value
+          currency: 'INR',
+          status: 'PENDING', // 👈 INIT STATE
+        },
+      });
+
+      // 5️⃣ RETURN SAME RESPONSE (Android unchanged)
       return {
         orderId: order.id,
         amount: order.amount,
