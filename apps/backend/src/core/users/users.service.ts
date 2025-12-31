@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { User, UserRole } from '@prisma/client';
-import { normalizePhone } from 'src/common/utils/phone.util';
+import { normalizePhone } from '../../common/utils/phone.util';
 
 @Injectable()
 export class UsersService {
