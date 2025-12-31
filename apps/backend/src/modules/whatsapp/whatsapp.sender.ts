@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import {
   WHATSAPP_PLAN_RULES,
