@@ -32,7 +32,7 @@ async function bootstrap() {
   });
 
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
-
+  app.setGlobalPrefix('api'); // 👈 ADD THIS
   app.enableCors({
     origin: ['https://www.mobibix.in', 'https://mobibix.in'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
