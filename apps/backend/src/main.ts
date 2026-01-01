@@ -66,12 +66,19 @@ async function bootstrap() {
    * Express CORS already handles OPTIONS
    * Nest CORS handles internal responses
    */
+  // main.ts
   app.enableCors({
-    origin: ['https://www.mobibix.in', 'https://mobibix.in'],
+    // Allow all origins for the mobile API or use a callback to validate
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'Accept',
+      'X-Requested-With', // Added for better mobile compatibility
+    ],
+    credentials: true,
   });
-
   /**
    * 9️⃣ Start server
    */
