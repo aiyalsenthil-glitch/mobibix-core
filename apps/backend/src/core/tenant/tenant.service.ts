@@ -98,13 +98,6 @@ export class TenantService {
     });
   }
 
-  async getPublicByCode(code: string) {
-    return this.prisma.tenant.findFirst({
-      where: { code },
-      select: { id: true, name: true },
-    });
-  }
-
   async getPublicTenantByCode(code: string) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { code },
@@ -142,6 +135,14 @@ export class TenantService {
   async findById(tenantId: string) {
     return this.prisma.tenant.findUnique({
       where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        legalName: true,
+        tenantType: true,
+        code: true, // 🔥 REQUIRED for QR
+        contactPhone: true,
+      },
     });
   }
 

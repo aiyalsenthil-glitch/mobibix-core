@@ -71,7 +71,7 @@ export class TenantController {
       throw new ForbiddenException('Tenant not created yet');
     }
 
-    return this.tenantService.findById(tenantId);
+    return this.tenantService.findById(req.user.tenantId);
   }
   @UseGuards(JwtAuthGuard)
   @Get('admin/search')
@@ -108,10 +108,7 @@ export class TenantController {
   generateKioskToken(@Req() req: any) {
     return this.tenantService.generateKioskToken(req.user.tenantId);
   }
-  @Get('public/by-code/:code')
-  getByCode(@Param('code') code: string) {
-    return this.tenantService.getPublicByCode(code);
-  }
+
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions(Permission.TENANT_MANAGE)
   @Patch('me')
