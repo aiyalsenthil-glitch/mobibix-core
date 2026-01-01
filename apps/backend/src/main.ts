@@ -35,9 +35,9 @@ async function bootstrap() {
   app.setGlobalPrefix('api'); // 👈 ADD THIS
   app.enableCors({
     origin: ['https://www.mobibix.in', 'https://mobibix.in'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
   });
-
   const port = process.env.PORT !== undefined ? Number(process.env.PORT) : 3000;
   await app.listen(port);
 
