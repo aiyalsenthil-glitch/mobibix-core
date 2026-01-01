@@ -63,7 +63,7 @@ export class TenantController {
    * - No subscription check
    */
   @UseGuards(JwtAuthGuard)
-  @Get('profile')
+  @Post('profile')
   async getMyTenant(@Req() req: any) {
     const tenantId = req.user.tenantId;
 
