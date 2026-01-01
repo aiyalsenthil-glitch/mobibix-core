@@ -71,8 +71,9 @@ export class TenantController {
       throw new ForbiddenException('Tenant not created yet');
     }
 
-    return this.tenantService.findById(req.user.tenantId);
+    return this.tenantService.findById(tenantId);
   }
+
   @UseGuards(JwtAuthGuard)
   @Get('admin/search')
   async searchTenants(@Req() req: any, @Query('q') q: string) {

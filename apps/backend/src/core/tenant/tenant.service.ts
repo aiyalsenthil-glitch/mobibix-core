@@ -131,17 +131,23 @@ export class TenantService {
    * ============================
    */
   async findById(tenantId: string) {
-    return this.prisma.tenant.findUnique({
+    const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
       select: {
         id: true,
         name: true,
         legalName: true,
         tenantType: true,
-        code: true, // 🔥 REQUIRED for QR
+        code: true,
         contactPhone: true,
       },
     });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found'); // 🔥 NOT 400
+    }
+
+    return tenant;
   }
 
   /**
