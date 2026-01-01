@@ -64,9 +64,10 @@ export class MembersService {
     });
 
     if (existing) {
-      throw new BadRequestException(
-        'Member already exists with this phone number',
-      );
+      throw new BadRequestException({
+        code: 'MOBILE_ALREADY_EXISTS',
+        message: 'Mobile number already exists',
+      });
     }
 
     if (new Date(dto.membershipEndAt) < new Date(dto.membershipStartAt)) {
