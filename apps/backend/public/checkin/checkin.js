@@ -12,7 +12,7 @@ async function lookup() {
   }
 
   try {
-    const res = await fetch('api/public/checkin/lookup', {
+    const res = await fetch('/public/checkin/lookup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tenantCode, phone }),
@@ -47,7 +47,7 @@ async function lookup() {
 
 async function confirmAction() {
   try {
-    const res = await fetch('api/public/checkin/confirm', {
+    const res = await fetch('/public/checkin/confirm', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tenantCode, memberId }),

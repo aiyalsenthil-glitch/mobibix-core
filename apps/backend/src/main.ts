@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { join } from 'path';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { RequestMethod } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import express from 'express';
 import * as bodyParser from 'body-parser';
@@ -32,7 +33,10 @@ async function bootstrap() {
   });
 
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
-  app.setGlobalPrefix('api'); // 👈 ADD THIS
+  app.setGlobalPrefix('api', {
+    exclude: [{ path: 'public/(.*)', method: RequestMethod.ALL }],
+  });
+  // 👈 ADD THIS
   app.enableCors({
     origin: ['https://www.mobibix.in', 'https://mobibix.in'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
