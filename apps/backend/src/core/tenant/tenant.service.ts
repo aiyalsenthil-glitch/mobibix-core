@@ -46,9 +46,7 @@ export class TenantService {
     await this.plansService.ensureDefaultPlans();
     const trialPlan = await this.plansService.getOrCreateTrialPlan();
 
-    const code =
-      dto.code ??
-      `${dto.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+    const code = dto.code ?? randomBytes(4).toString('hex').toUpperCase();
 
     const tenant = await this.prisma.tenant.create({
       data: {
