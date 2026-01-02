@@ -22,4 +22,12 @@ export const PLAN_CAPABILITIES = {
     whatsapp: true,
     reports: true,
   },
+
+  ULTIMATE: {
+    staffAllowed: true,
+    maxStaff: Infinity,
+    attendance: true,
+    whatsapp: true,
+    reports: true,
+  },
 } as const;

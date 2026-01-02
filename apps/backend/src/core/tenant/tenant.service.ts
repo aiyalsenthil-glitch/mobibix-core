@@ -10,6 +10,7 @@ import { CreateTenantDto } from './dto/tenant.dto';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
+import { PLAN_CAPABILITIES } from '../billing/plan-capabilities';
 
 @Injectable()
 export class TenantService {
@@ -156,10 +157,10 @@ export class TenantService {
    * ============================
    */
   async getUsage(tenantId: string | null) {
-    // 🔑 IMPORTANT: onboarding signal
     if (!tenantId) {
       return {
         hasTenant: false,
+        plan: null,
       };
     }
 
@@ -171,8 +172,9 @@ export class TenantService {
     if (!subscription) {
       return {
         hasTenant: true,
-        plan: 'NONE',
-        status: 'NONE',
+        tenantId,
+        plan: null,
+        status: null,
         membersUsed: 0,
         membersLimit: null,
         daysLeft: null,
@@ -184,24 +186,34 @@ export class TenantService {
     });
 
     const plan = subscription.plan;
-    const membersLimit = plan?.memberLimit ?? null;
+    const features = (plan.features ?? {}) as {
+      staff?: boolean;
+      whatsapp?: boolean;
+    };
 
-    let daysLeft: number | null = null;
+    const now = new Date();
+    const end = new Date(subscription.endDate);
+    const daysLeft = Math.max(
+      0,
+      Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+    );
 
-    if (subscription.endDate) {
-      const now = new Date();
-      const end = new Date(subscription.endDate);
-      const diff = end.getTime() - now.getTime();
-      daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-    }
+    const capability = PLAN_CAPABILITIES[plan.name];
 
     return {
       hasTenant: true,
       tenantId,
-      plan: plan.name,
       status: subscription.status,
+      plan: {
+        name: plan.name,
+        level: plan.level,
+        memberLimit: capability.memberLimit,
+        staffAllowed: capability.staffAllowed,
+        whatsappAllowed: capability.whatsappAllowed,
+        maxStaff: capability.maxStaff,
+      },
       membersUsed,
-      membersLimit,
+      membersLimit: capability.memberLimit,
       daysLeft,
     };
   }

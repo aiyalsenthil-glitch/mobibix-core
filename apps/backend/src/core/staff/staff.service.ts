@@ -6,11 +6,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
+import { PLAN_CAPABILITIES } from '../billing/plan-capabilities';
 
 @Injectable()
 export class StaffService {
   constructor(private readonly prisma: PrismaService) {}
-  private async ensureProPlan(tenantId: string) {
+
+  // 🔒 Ensure plan allows staff management (PLUS / PRO)
+  private async ensureStaffAllowed(tenantId: string) {
     const subscription = await this.prisma.tenantSubscription.findUnique({
       where: { tenantId },
       include: { plan: true },
@@ -22,19 +25,34 @@ export class StaffService {
       );
     }
 
-    // 🔒 Block expired / trial
     if (subscription.status !== 'ACTIVE') {
       throw new ForbiddenException(
         'Your subscription is not active. Please upgrade.',
       );
     }
 
-    // 🔒 Only PRO can manage staff
-    if (subscription.plan.name !== 'PRO') {
+    const planName = subscription.plan.name;
+    const capability = PLAN_CAPABILITIES[planName];
+
+    if (!capability?.staffAllowed) {
       throw new ForbiddenException(
-        'Staff management is available only in Pro plan',
+        'Staff management is not allowed in your current plan',
       );
     }
+
+    // 🔒 Enforce staff count limit
+    const currentStaffCount = await this.prisma.user.count({
+      where: {
+        tenantId,
+        role: UserRole.STAFF,
+      },
+    });
+
+    if (currentStaffCount >= capability.maxStaff) {
+      throw new ForbiddenException('Staff limit reached for your current plan');
+    }
+
+    return subscription;
   }
 
   // ✅ List staff for tenant
@@ -53,7 +71,7 @@ export class StaffService {
     });
   }
 
-  // ✅ Create staff (TEMP / Phase-1)
+  // ✅ Create staff (Phase-1 flow)
   async createStaff(
     tenantId: string,
     data: {
@@ -62,7 +80,7 @@ export class StaffService {
       fullName: string;
     },
   ) {
-    await this.ensureProPlan(tenantId);
+    await this.ensureStaffAllowed(tenantId);
 
     const existing = await this.prisma.user.findFirst({
       where: {
@@ -84,8 +102,10 @@ export class StaffService {
     });
   }
 
-  // ✅ Invite staff by email (PROPER FLOW)
+  // ✅ Invite staff by email
   async inviteByEmail(tenantId: string, email: string) {
+    await this.ensureStaffAllowed(tenantId);
+
     const existing = await this.prisma.staffInvite.findFirst({
       where: {
         tenantId,
@@ -93,7 +113,6 @@ export class StaffService {
       },
     });
 
-    // ✅ Already invited but not accepted
     if (existing && !existing.accepted) {
       return {
         status: 'ALREADY_INVITED',
@@ -101,7 +120,6 @@ export class StaffService {
       };
     }
 
-    // ✅ Already accepted → already staff
     if (existing && existing.accepted) {
       return {
         status: 'ALREADY_JOINED',
@@ -109,7 +127,6 @@ export class StaffService {
       };
     }
 
-    // ✅ Fresh invite
     return this.prisma.staffInvite.create({
       data: {
         tenantId,
@@ -117,7 +134,8 @@ export class StaffService {
       },
     });
   }
-  //List staff invites for tenant
+
+  // ✅ List staff invites
   async listInvites(tenantId: string) {
     return this.prisma.staffInvite.findMany({
       where: { tenantId },
@@ -130,13 +148,14 @@ export class StaffService {
       },
     });
   }
-  //Revoke staff invite by email
+
+  // ✅ Revoke invite
   async revokeInvite(tenantId: string, inviteId: string) {
+    await this.ensureStaffAllowed(tenantId);
+
     const invite = await this.prisma.staffInvite.findUnique({
       where: { id: inviteId },
     });
-
-    await this.ensureProPlan(tenantId);
 
     if (!invite || invite.tenantId !== tenantId) {
       throw new NotFoundException('Invite not found');
