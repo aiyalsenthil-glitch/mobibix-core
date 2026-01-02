@@ -194,36 +194,33 @@ export class GymAttendanceService {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    return {
-      items: await this.prisma.gymAttendance
-        .findMany({
-          where: {
-            tenantId,
-            checkInTime: {
-              gte: startOfDay,
-            },
+    const rows = await this.prisma.gymAttendance.findMany({
+      where: {
+        tenantId,
+        checkInTime: {
+          gte: startOfDay,
+        },
+      },
+      include: {
+        member: {
+          select: {
+            fullName: true,
           },
-          include: {
-            member: {
-              select: {
-                fullName: true,
-              },
-            },
-          },
-          orderBy: {
-            checkInTime: 'desc',
-          },
-        })
-        .then((rows) =>
-          rows.map((r) => ({
-            id: r.id,
-            memberName: r.member.fullName,
-            checkInTime: r.checkInTime,
-            checkOutTime: r.checkOutTime,
-          })),
-        ),
-    };
+        },
+      },
+      orderBy: {
+        checkInTime: 'desc',
+      },
+    });
+
+    return rows.map((r) => ({
+      id: r.id,
+      memberName: r.member.fullName,
+      checkInTime: r.checkInTime,
+      checkOutTime: r.checkOutTime,
+    }));
   }
+
   //list currently checked-in members
   async listCurrentlyCheckedInMembers(tenantId: string) {
     return this.prisma.gymAttendance.findMany({
