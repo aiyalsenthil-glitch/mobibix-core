@@ -180,38 +180,25 @@ export class TenantService {
         daysLeft: null,
       };
     }
-
-    const membersUsed = await this.prisma.member.count({
-      where: { tenantId },
-    });
-
     const plan = subscription.plan;
-    const features = (plan.features ?? {}) as {
-      staff?: boolean;
-      whatsapp?: boolean;
-    };
 
-    const now = new Date();
-    const end = new Date(subscription.endDate);
-    const daysLeft = Math.max(
-      0,
-      Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
-    );
-
-    const capability = PLAN_CAPABILITIES[plan.name];
+    // 🔐 SAFETY: fallback capability
+    const capability =
+      PLAN_CAPABILITIES[plan.name] ?? PLAN_CAPABILITIES['TRIAL'];
 
     return {
       hasTenant: true,
       tenantId,
       status: subscription.status,
+
       plan: {
         name: plan.name,
         level: plan.level,
         memberLimit: capability.memberLimit,
         staffAllowed: capability.staffAllowed,
-        whatsappAllowed: capability.whatsappAllowed,
-        maxStaff: capability.maxStaff,
+        whatsappAllowed: capability.whatsapp,
       },
+
       membersUsed,
       membersLimit: capability.memberLimit,
       daysLeft,
