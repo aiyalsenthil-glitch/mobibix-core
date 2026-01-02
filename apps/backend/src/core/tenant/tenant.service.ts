@@ -157,6 +157,7 @@ export class TenantService {
    * ============================
    */
   async getUsage(tenantId: string | null) {
+    // 0️⃣ No tenant yet → onboarding
     if (!tenantId) {
       return {
         hasTenant: false,
@@ -164,12 +165,14 @@ export class TenantService {
       };
     }
 
+    // 1️⃣ Fetch subscription + plan
     const subscription = await this.prisma.tenantSubscription.findUnique({
       where: { tenantId },
       include: { plan: true },
     });
 
-    if (!subscription) {
+    // 2️⃣ If tenant exists but no subscription yet
+    if (!subscription || !subscription.plan) {
       return {
         hasTenant: true,
         tenantId,
@@ -180,12 +183,32 @@ export class TenantService {
         daysLeft: null,
       };
     }
+
     const plan = subscription.plan;
 
-    // 🔐 SAFETY: fallback capability
+    // 3️⃣ Resolve plan capability safely (fallback to TRIAL)
     const capability =
       PLAN_CAPABILITIES[plan.name] ?? PLAN_CAPABILITIES['TRIAL'];
 
+    // 4️⃣ Count members
+    const membersUsed = await this.prisma.member.count({
+      where: {
+        tenantId,
+      },
+    });
+
+    // 5️⃣ Calculate days left
+    let daysLeft: number | null = null;
+
+    if (subscription.endDate) {
+      const now = new Date();
+      const end = new Date(subscription.endDate);
+
+      const diffMs = end.getTime() - now.getTime();
+      daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    }
+
+    // 6️⃣ Final response (stable contract)
     return {
       hasTenant: true,
       tenantId,
