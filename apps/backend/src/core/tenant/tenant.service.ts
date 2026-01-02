@@ -186,9 +186,8 @@ export class TenantService {
 
     const plan = subscription.plan;
 
-    // 3️⃣ Resolve plan capability safely (fallback to TRIAL)
-    const capability =
-      PLAN_CAPABILITIES[plan.name] ?? PLAN_CAPABILITIES['TRIAL'];
+    const planKey = plan.name.toUpperCase();
+    const capability = PLAN_CAPABILITIES[planKey] ?? PLAN_CAPABILITIES.TRIAL;
 
     // 4️⃣ Count members
     const membersUsed = await this.prisma.member.count({

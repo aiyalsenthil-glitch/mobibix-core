@@ -1,28 +1,32 @@
 export const PLAN_CAPABILITIES = {
-  BASIC: {
+  TRIAL: {
     staffAllowed: false,
     maxStaff: 0,
-    attendance: true,
+    memberLimit: 25,
     whatsapp: false,
     reports: false,
   },
-
+  BASIC: {
+    staffAllowed: false,
+    maxStaff: 0,
+    memberLimit: 50,
+    whatsapp: false,
+    reports: false,
+  },
   PLUS: {
     staffAllowed: true,
     maxStaff: 3,
-    attendance: true,
+    memberLimit: 100,
     whatsapp: true,
     reports: true,
   },
-
   PRO: {
     staffAllowed: true,
-    maxStaff: Infinity,
-    attendance: true,
+    maxStaff: Number.MAX_SAFE_INTEGER,
+    memberLimit: 9999,
     whatsapp: true,
     reports: true,
   },
-
   ULTIMATE: {
     staffAllowed: true,
     maxStaff: Infinity,
