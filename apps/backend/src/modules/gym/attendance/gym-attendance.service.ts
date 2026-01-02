@@ -240,6 +240,30 @@ export class GymAttendanceService {
     });
   }
 
+  //GET recent attendance for member
+  async getRecentAttendanceForMember(
+    tenantId: string,
+    memberId: string,
+    limit = 5,
+  ) {
+    return this.prisma.gymAttendance.findMany({
+      where: {
+        tenantId,
+        memberId,
+      },
+      orderBy: {
+        checkInTime: 'desc',
+      },
+      take: limit,
+      select: {
+        id: true,
+        checkInTime: true,
+        checkOutTime: true,
+        source: true,
+      },
+    });
+  }
+
   //count currently checked-in members
   async countCurrentlyCheckedInMembers(tenantId: string) {
     return this.prisma.gymAttendance.count({

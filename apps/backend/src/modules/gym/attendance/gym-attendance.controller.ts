@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Req, UseGuards, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Req,
+  UseGuards,
+  Get,
+  Param,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Permissions } from '../../../core/auth/decorators/permissions.decorator';
 import { Permission } from '../../../core/auth/permissions.enum';
@@ -71,6 +79,17 @@ export class GymAttendanceController {
       req.user.tenantId,
     );
   }
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.ATTENDANCE_VIEW)
+  @Get('member/:memberId/recent')
+  getRecentForMember(@Req() req: any, @Param('memberId') memberId: string) {
+    return this.attendanceService.getRecentAttendanceForMember(
+      req.user.tenantId,
+      memberId,
+      5,
+    );
+  }
+
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('inside-members')
