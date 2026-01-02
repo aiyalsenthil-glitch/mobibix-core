@@ -155,9 +155,12 @@ export class TenantService {
    * TENANT USAGE / PLAN INFO
    * ============================
    */
-  async getUsage(tenantId: string) {
+  async getUsage(tenantId: string | null) {
+    // 🔑 IMPORTANT: onboarding signal
     if (!tenantId) {
-      throw new BadRequestException('Tenant not initialized');
+      return {
+        hasTenant: false,
+      };
     }
 
     const subscription = await this.prisma.tenantSubscription.findUnique({
@@ -167,6 +170,7 @@ export class TenantService {
 
     if (!subscription) {
       return {
+        hasTenant: true,
         plan: 'NONE',
         status: 'NONE',
         membersUsed: 0,
@@ -192,6 +196,8 @@ export class TenantService {
     }
 
     return {
+      hasTenant: true,
+      tenantId,
       plan: plan.name,
       status: subscription.status,
       membersUsed,
