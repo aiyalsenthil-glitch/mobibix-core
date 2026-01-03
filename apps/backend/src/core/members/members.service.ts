@@ -271,7 +271,14 @@ export class MembersService {
   }
 
   async updateMember(tenantId: string, memberId: string, dto: UpdateMemberDto) {
-    await this.getMemberById(tenantId, memberId);
+    const exists = await this.prisma.member.findFirst({
+      where: { id: memberId, tenantId },
+      select: { id: true },
+    });
+
+    if (!exists) {
+      throw new BadRequestException('Member not found');
+    }
 
     return this.prisma.member.update({
       where: { id: memberId },
