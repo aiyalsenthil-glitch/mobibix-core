@@ -122,6 +122,12 @@ export class GymMembersController {
       dto,
     );
   }
+  //Summary for Web View
+  @Get('summary')
+  async listMembersSummary(@Req() req: any) {
+    const tenantId = req.user.tenantId;
+    return this.membersService.listMembersWithStatus(tenantId);
+  }
 
   // ======================
   // PAYMENT HISTORY

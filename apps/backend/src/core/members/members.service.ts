@@ -315,6 +315,24 @@ export class MembersService {
       },
     });
   }
+  async listMembersWithStatus(tenantId: string) {
+    return this.prisma.member.findMany({
+      where: {
+        tenantId,
+        isDeleted: false,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        fullName: true,
+        phone: true,
+        membershipStatus: true,
+        membershipEndDate: true,
+      },
+    });
+  }
 
   async renewMembership(
     tenantId: string,
