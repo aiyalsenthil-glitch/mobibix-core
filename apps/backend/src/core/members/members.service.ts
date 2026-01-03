@@ -165,25 +165,22 @@ export class MembersService {
       fullName: member.fullName,
       phone: member.phone,
 
-      // ✅ WEB-FRIENDLY FIELD NAMES
-      membershipStartDate: member.membershipStartAt,
-      membershipEndDate: member.membershipEndAt,
+      // ✅ ANDROID FIELD NAMES (DO NOT RENAME)
+      membershipStartAt: member.membershipStartAt,
+      membershipEndAt: member.membershipEndAt,
 
-      // ✅ PAYMENT SUMMARY
-      totalFee: member.feeAmount,
+      feeAmount: member.feeAmount ?? 0,
       paidAmount: member.paidAmount ?? 0,
-      pendingAmount: member.feeAmount - (member.paidAmount ?? 0),
-
       paymentStatus: member.paymentStatus,
 
-      // ✅ ATTENDANCE (ANDROID PARITY)
-      attendance: member.attendances.map((a) => ({
-        inTime: a.checkInTime,
-        outTime: a.checkOutTime,
-      })),
+      // ✅ EDIT SCREEN NEEDS THESE
+      heightCm: member.heightCm,
+      weightKg: member.weightKg,
+      fitnessGoal: member.fitnessGoal,
 
-      // 🟡 OPTIONAL (future use)
+      // 🟡 optional (details screen only)
       payments: member.payments,
+      attendance: member.attendances,
     };
   }
 
