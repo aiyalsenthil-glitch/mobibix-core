@@ -65,7 +65,7 @@ export class GymMembersController {
   // DELETE MEMBER
   // OWNER ONLY
   // ======================
-  @Permissions(Permission.MEMBER_DELETE)
+  @Permissions(Permission.MEMBER_EDIT)
   @Roles(UserRole.OWNER)
   @Delete(':id')
   async delete(@Req() req: any, @Param('id') memberId: string) {
