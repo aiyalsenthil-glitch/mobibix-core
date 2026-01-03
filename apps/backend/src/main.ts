@@ -22,7 +22,12 @@ async function bootstrap() {
    */
   server.use(
     cors({
-      origin: ['https://www.mobibix.in', 'https://mobibix.in'],
+      origin: [
+        'http://localhost_REPLACED:3000',
+        'https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com',
+        'https://mobibix.in',
+        'https://www.mobibix.in',
+      ],
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
     }),
