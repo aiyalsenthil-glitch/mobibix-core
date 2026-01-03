@@ -316,10 +316,9 @@ export class MembersService {
     });
   }
   async listMembersWithStatus(tenantId: string) {
-    return this.prisma.member.findMany({
+    const members = await this.prisma.member.findMany({
       where: {
         tenantId,
-        isDeleted: false,
       },
       orderBy: {
         createdAt: 'desc',
@@ -328,10 +327,24 @@ export class MembersService {
         id: true,
         fullName: true,
         phone: true,
-        membershipStatus: true,
-        membershipEndDate: true,
+        membershipEndAt: true,
+        paymentStatus: true, // optional but useful
       },
     });
+
+    return members.map((m) => ({
+      id: m.id,
+      fullName: m.fullName,
+      phone: m.phone,
+      membershipEndDate: m.membershipEndAt,
+
+      // ✅ DERIVED STATUS (SOURCE OF TRUTH)
+      membershipStatus: isMembershipExpired(m.membershipEndAt)
+        ? 'EXPIRED'
+        : 'ACTIVE',
+
+      paymentStatus: m.paymentStatus,
+    }));
   }
 
   async renewMembership(
