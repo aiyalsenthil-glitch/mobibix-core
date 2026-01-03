@@ -10,6 +10,7 @@ import {
   UseGuards,
   BadRequestException,
   NotFoundException,
+  Delete,
 } from '@nestjs/common';
 import { MembersService } from '../../core/members/members.service';
 import { CreateMemberDto } from '../../core/members/dto/create-member.dto';
@@ -59,6 +60,16 @@ export class GymMembersController {
       req.user.tenantId,
       Number(days),
     );
+  }
+  // ======================
+  // DELETE MEMBER
+  // OWNER ONLY
+  // ======================
+  @Permissions(Permission.MEMBER_DELETE)
+  @Roles(UserRole.OWNER)
+  @Delete(':id')
+  async delete(@Req() req: any, @Param('id') memberId: string) {
+    return this.membersService.deleteMember(req.user, memberId);
   }
 
   // ======================
