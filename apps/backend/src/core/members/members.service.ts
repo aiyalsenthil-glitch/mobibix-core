@@ -140,7 +140,7 @@ export class MembersService {
 
   //get member by id
   async getMemberById(tenantId: string, memberId: string) {
-    return this.prisma.member.findFirst({
+    const member = await this.prisma.member.findFirst({
       where: {
         id: memberId,
         tenantId,
@@ -151,11 +151,42 @@ export class MembersService {
         },
         attendances: {
           orderBy: { checkInTime: 'desc' },
-          take: 10, // last 10 visits
+          take: 10,
         },
       },
     });
+
+    if (!member) {
+      throw new BadRequestException('Member not found');
+    }
+
+    return {
+      id: member.id,
+      fullName: member.fullName,
+      phone: member.phone,
+
+      // ✅ WEB-FRIENDLY FIELD NAMES
+      membershipStartDate: member.membershipStartAt,
+      membershipEndDate: member.membershipEndAt,
+
+      // ✅ PAYMENT SUMMARY
+      totalFee: member.feeAmount,
+      paidAmount: member.paidAmount ?? 0,
+      pendingAmount: member.feeAmount - (member.paidAmount ?? 0),
+
+      paymentStatus: member.paymentStatus,
+
+      // ✅ ATTENDANCE (ANDROID PARITY)
+      attendance: member.attendances.map((a) => ({
+        inTime: a.checkInTime,
+        outTime: a.checkOutTime,
+      })),
+
+      // 🟡 OPTIONAL (future use)
+      payments: member.payments,
+    };
   }
+
   async getPaymentDueMembers(tenantId: string) {
     const members = await this.prisma.member.findMany({
       where: { tenantId },
