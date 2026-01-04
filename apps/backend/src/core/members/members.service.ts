@@ -114,7 +114,11 @@ export class MembersService {
     }
 
     const members = await this.prisma.member.findMany({
-      where: { tenantId },
+      where: {
+        tenantId,
+        isActive: true,
+      },
+
       orderBy: { createdAt: 'desc' },
     });
 
@@ -145,7 +149,9 @@ export class MembersService {
       where: {
         id: memberId,
         tenantId,
+        isActive: true,
       },
+
       include: {
         payments: {
           orderBy: { createdAt: 'desc' },
@@ -220,7 +226,11 @@ export class MembersService {
     }
 
     const member = await this.prisma.member.findFirst({
-      where: { id: memberId, tenantId },
+      where: {
+        id: memberId,
+        tenantId,
+        isActive: true,
+      },
     });
 
     if (!member) {
@@ -270,7 +280,12 @@ export class MembersService {
 
   async updateMember(tenantId: string, memberId: string, dto: UpdateMemberDto) {
     const exists = await this.prisma.member.findFirst({
-      where: { id: memberId, tenantId },
+      where: {
+        id: memberId,
+        tenantId,
+        isActive: true,
+      },
+
       select: { id: true },
     });
 
@@ -427,8 +442,11 @@ export class MembersService {
 
     const existingMember = await this.prisma.member.findUnique({
       where: {
-        id_tenantId: { id: memberId, tenantId },
+        id: memberId,
+        tenantId,
+        isActive: true,
       },
+
       select: {
         membershipEndAt: true,
       },
@@ -451,8 +469,11 @@ export class MembersService {
 
     const member = await this.prisma.member.update({
       where: {
-        id_tenantId: { id: memberId, tenantId },
+        id: memberId,
+        tenantId,
+        isActive: true,
       },
+
       data: {
         membershipStartAt: today,
         membershipEndAt: newEndDate,
@@ -573,30 +594,40 @@ export class MembersService {
 
   //delete member
   async deleteMember(user: any, memberId: string) {
-    const res = await this.prisma.member.deleteMany({
+    const member = await this.prisma.member.findFirst({
       where: {
         id: memberId,
         tenantId: user.tenantId,
       },
+      select: { id: true },
     });
 
-    if (res.count === 0) {
+    if (!member) {
       throw new NotFoundException('Member not found');
     }
 
-    // 🛡️ Audit must NEVER break delete
+    await this.prisma.member.update({
+      where: {
+        id_tenantId: {
+          id: memberId,
+          tenantId: user.tenantId,
+        },
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    // audit (safe)
     try {
       await this.auditService.log({
         tenantId: user.tenantId,
         userId: user.sub,
-        action: 'MEMBER_DELETED',
+        action: 'MEMBER_DISABLED',
         entity: 'MEMBER',
         entityId: memberId,
       });
-    } catch (err) {
-      // log only, never throw
-      console.error('Audit log failed for MEMBER_DELETED:', err);
-    }
+    } catch {}
 
     return { success: true };
   }
