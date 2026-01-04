@@ -2,6 +2,7 @@ import {
   Injectable,
   ForbiddenException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
@@ -579,6 +580,11 @@ export class MembersService {
       },
     });
 
+    // 🔒 IMPORTANT: handle already-deleted / invalid member
+    if (res.count === 0) {
+      throw new NotFoundException('Member not found');
+    }
+
     await this.auditService.log({
       tenantId: user.tenantId,
       userId: user.sub,
@@ -587,8 +593,9 @@ export class MembersService {
       entityId: memberId,
     });
 
-    return res;
+    return { success: true };
   }
+
   //findByphone
   async findByPhone(tenantId: string, phone: string) {
     const normalized = normalizePhone(phone);
