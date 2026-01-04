@@ -49,6 +49,14 @@ export class PlansService {
         memberLimit: 0,
         features: {},
       },
+      {
+        name: 'Ultimate',
+        price: 4999,
+        level: 4,
+        billingCycle: BillingCycle.ANNUAL,
+        memberLimit: 0,
+        features: {},
+      },
     ];
 
     for (const plan of plans) {
