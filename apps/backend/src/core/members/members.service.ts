@@ -580,18 +580,23 @@ export class MembersService {
       },
     });
 
-    // 🔒 IMPORTANT: handle already-deleted / invalid member
     if (res.count === 0) {
       throw new NotFoundException('Member not found');
     }
 
-    await this.auditService.log({
-      tenantId: user.tenantId,
-      userId: user.sub,
-      action: 'MEMBER_DELETED',
-      entity: 'MEMBER',
-      entityId: memberId,
-    });
+    // 🛡️ Audit must NEVER break delete
+    try {
+      await this.auditService.log({
+        tenantId: user.tenantId,
+        userId: user.sub,
+        action: 'MEMBER_DELETED',
+        entity: 'MEMBER',
+        entityId: memberId,
+      });
+    } catch (err) {
+      // log only, never throw
+      console.error('Audit log failed for MEMBER_DELETED:', err);
+    }
 
     return { success: true };
   }
