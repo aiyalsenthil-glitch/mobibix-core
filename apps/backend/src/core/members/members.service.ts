@@ -396,14 +396,15 @@ export class MembersService {
     const fee = dto.feeAmount;
     const paid = dto.paidAmount ?? 0;
     const { feeAmount: _renewalTotalFee, ...safeDto } = dto;
-    const allowedDurations = [30, 60, 90];
+    const allowedDurations = [30, 60, 90, 180, 365];
+
     if (!userId || typeof userId !== 'string') {
       throw new ForbiddenException('Invalid authenticated user');
     }
 
     if (!allowedDurations.includes(duration)) {
       throw new BadRequestException(
-        'Invalid duration. Allowed values: 30, 60, 90 days',
+        'Invalid duration. Allowed: 1, 2, 3, 6, or 12 months',
       );
     }
 
