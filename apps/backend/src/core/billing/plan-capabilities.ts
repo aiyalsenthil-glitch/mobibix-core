@@ -29,7 +29,7 @@ export const PLAN_CAPABILITIES = {
   },
   ULTIMATE: {
     staffAllowed: true,
-    maxStaff: Infinity,
+    maxStaff: Number.MAX_SAFE_INTEGER,
     attendance: true,
     whatsapp: true,
     reports: true,

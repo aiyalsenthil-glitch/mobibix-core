@@ -13,4 +13,7 @@ export const PLAN_LIMITS: Record<
   PRO: {
     maxMembers: null, // unlimited
   },
+  ULTIMATE: {
+    maxMembers: null, // unlimited
+  },
 };
