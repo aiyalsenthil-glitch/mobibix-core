@@ -136,8 +136,9 @@ export class MembersService {
     return this.prisma.member.findMany({
       where: {
         tenantId,
+        isActive: true,
         membershipEndAt: {
-          lte: endToday, // Filter for members due or expired
+          lte: endToday,
         },
       },
     });
@@ -193,7 +194,11 @@ export class MembersService {
 
   async getPaymentDueMembers(tenantId: string) {
     const members = await this.prisma.member.findMany({
-      where: { tenantId },
+      where: {
+        tenantId,
+        isActive: true,
+      },
+
       select: {
         id: true,
         fullName: true,
@@ -370,7 +375,9 @@ export class MembersService {
     const members = await this.prisma.member.findMany({
       where: {
         tenantId,
+        isActive: true,
       },
+
       orderBy: {
         createdAt: 'desc',
       },
@@ -529,7 +536,8 @@ export class MembersService {
 
     return this.prisma.member.count({
       where: {
-        tenantId: tenantId,
+        tenantId,
+        isActive: true,
       },
     });
   }
