@@ -6,13 +6,11 @@ import {
   Req,
   UseGuards,
   ForbiddenException,
-  Param,
   Patch,
 } from '@nestjs/common';
 
 import { TenantService } from './tenant.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { SubscriptionGuard } from '../billing/guards/subscription.guard';
 import { CreateTenantDto } from './dto/tenant.dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permissions.enum';

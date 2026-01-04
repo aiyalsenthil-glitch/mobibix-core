@@ -92,6 +92,7 @@ export class MembersService {
         fullName: dto.fullName,
         phone: normalizedPhone,
         gender: dto.gender,
+        isActive: true,
         membershipPlanId: dto.membershipPlanId,
         membershipStartAt: new Date(dto.membershipStartAt),
         membershipEndAt: new Date(dto.membershipEndAt),
