@@ -62,7 +62,6 @@ export class StaffController {
 
   // ✅ OWNER: INVITE staff by email (PROPER FLOW)
   @UseGuards(JwtAuthGuard, PlanFeatureGuard)
-  @RequirePlanFeature('staffAllowed')
   @Roles(UserRole.OWNER)
   @Post('invite')
   async invite(@Req() req: any, @Body('email') email: string) {
