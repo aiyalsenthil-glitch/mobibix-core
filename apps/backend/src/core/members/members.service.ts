@@ -124,7 +124,14 @@ export class MembersService {
     });
 
     return members.map((member) => ({
-      ...member,
+      id: member.id,
+      fullName: member.fullName,
+      phone: member.phone,
+      photoUrl: member.photoUrl, // ✅ ADD THIS
+      membershipEndAt: member.membershipEndAt,
+      membershipStartAt: member.membershipStartAt,
+      paymentStatus: member.paymentStatus,
+      isActive: member.isActive,
       isExpired: isMembershipExpired(member.membershipEndAt),
     }));
   }

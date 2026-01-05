@@ -24,4 +24,9 @@ export class FirebaseAdminService {
   async verifyIdToken(token: string) {
     return admin.auth().verifyIdToken(token);
   }
+
+  // ✅ ADD THIS
+  async setCustomUserClaims(uid: string, claims: Record<string, any>) {
+    return admin.auth().setCustomUserClaims(uid, claims);
+  }
 }
