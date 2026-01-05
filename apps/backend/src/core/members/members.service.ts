@@ -173,7 +173,7 @@ export class MembersService {
       id: member.id,
       fullName: member.fullName,
       phone: member.phone,
-
+      photoUrl: member.photoUrl,
       // ✅ ANDROID FIELD NAMES (DO NOT RENAME)
       membershipStartAt: member.membershipStartAt,
       membershipEndAt: member.membershipEndAt,
@@ -307,6 +307,7 @@ export class MembersService {
         heightCm: dto.heightCm,
         weightKg: dto.weightKg,
         fitnessGoal: dto.fitnessGoal,
+        photoUrl: dto.photoUrl,
       },
     });
   }

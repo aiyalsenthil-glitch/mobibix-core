@@ -19,6 +19,10 @@ export class UpdateMemberDto {
   phone?: string;
 
   @IsOptional()
+  @IsString()
+  photoUrl?: string;
+
+  @IsOptional()
   @IsEnum(Gender)
   gender?: Gender;
 

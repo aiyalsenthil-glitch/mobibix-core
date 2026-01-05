@@ -60,6 +60,7 @@ model Member {
   id                String              @id @default(uuid())
   tenantId          String
   fullName          String
+  photoUrl          String?
   phone             String
   gender            Gender
   membershipPlanId  String
