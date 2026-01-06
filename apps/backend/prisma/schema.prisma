@@ -75,6 +75,8 @@ model Member {
   fitnessGoal       FitnessGoal
   paymentDueDate   DateTime
   paymentReminderSent Boolean @default(false)
+  welcomeMessageSent Boolean @default(false)
+
   isActive Boolean  @default(true)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt

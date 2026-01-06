@@ -15,6 +15,9 @@ import { startOfDay, endOfDay, addDays } from 'date-fns';
 import { RenewMemberDto } from './dto/renew-member.dto';
 import { endOfDayDate } from '../../common/utils/date.util';
 import { normalizePhone } from '../../common/utils/phone.util';
+import { WhatsAppSender } from '../../modules/whatsapp/whatsapp.sender';
+import { WhatsAppTemplates } from '../../modules/whatsapp/whatsapp.templates';
+import { WhatsAppFeature } from '../billing/whatsapp-rules';
 
 @Injectable()
 export class MembersService {
@@ -22,6 +25,7 @@ export class MembersService {
     private readonly prisma: PrismaService,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly auditService: AuditService,
+    private readonly whatsAppSender: WhatsAppSender, // ✅ ADD
   ) {}
 
   async createMember(tenantId: string, dto: CreateMemberDto) {
@@ -86,7 +90,7 @@ export class MembersService {
     } else {
       paymentStatus = 'PAID';
     }
-    return this.prisma.member.create({
+    const member = await this.prisma.member.create({
       data: {
         tenantId,
         fullName: dto.fullName,
@@ -97,8 +101,8 @@ export class MembersService {
         membershipStartAt: new Date(dto.membershipStartAt),
         membershipEndAt: new Date(dto.membershipEndAt),
 
-        monthlyFee: baseMonthlyFee, // ✅ BASE MONTHLY FEE
-        feeAmount: baseMonthlyFee, // ⚠️ optional (can remove later)
+        monthlyFee: baseMonthlyFee,
+        feeAmount: baseMonthlyFee,
 
         paidAmount: paid,
         paymentStatus,
@@ -108,7 +112,41 @@ export class MembersService {
         fitnessGoal: dto.fitnessGoal,
       },
     });
+    // ─────────────────────────────
+    // ✅ Welcome WhatsApp (ULTIMATE)
+    // ─────────────────────────────
+    try {
+      if (member.isActive && !member.welcomeMessageSent) {
+        // 🔹 Get tenant plan
+        const planName = subscription.plan.name;
+
+        if (planName === 'ULTIMATE') {
+          const result = await this.whatsAppSender.sendTemplateMessage(
+            tenantId,
+            WhatsAppFeature.WELCOME,
+            member.phone,
+            WhatsAppTemplates.WELCOME,
+            [
+              member.membershipStartAt.toLocaleDateString(),
+              member.membershipEndAt.toLocaleDateString(),
+            ],
+          );
+
+          if (result.success) {
+            await this.prisma.member.update({
+              where: { id: member.id },
+              data: { welcomeMessageSent: true },
+            });
+          }
+        }
+      }
+    } catch (err) {
+      // ❌ Never fail member creation due to WhatsApp
+      console.error('Welcome WhatsApp failed', err.message);
+    }
+    return member;
   }
+
   async listMembers(tenantId: string) {
     if (!tenantId) {
       throw new ForbiddenException('Tenant not initialized');

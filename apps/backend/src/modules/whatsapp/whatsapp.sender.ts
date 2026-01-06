@@ -47,7 +47,7 @@ export class WhatsAppSender {
     // ─────────────────────────────
     // 3️⃣ Feature check
     // ─────────────────────────────
-    if (!rule.features.includes(feature)) {
+    if (!(rule.features as WhatsAppFeature[]).includes(feature)) {
       return { success: false, skipped: true };
     }
 

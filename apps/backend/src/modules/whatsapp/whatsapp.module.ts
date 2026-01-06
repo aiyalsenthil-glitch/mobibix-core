@@ -10,5 +10,6 @@ import { WhatsAppWebhookController } from './whatsapp.webhook.controller';
   controllers: [WhatsAppWebhookController],
   imports: [ScheduleModule.forRoot()],
   providers: [PrismaService, WhatsAppSender, WhatsAppCron, WhatsAppLogger],
+  exports: [WhatsAppSender], // ✅ ADD THIS LINE
 })
 export class WhatsAppModule {}
