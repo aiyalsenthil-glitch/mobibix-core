@@ -145,7 +145,7 @@ export class GymAttendanceService {
     const end = new Date();
     end.setHours(23, 59, 59, 999);
 
-    return this.prisma.gymAttendance.findMany({
+    const records = await this.prisma.gymAttendance.findMany({
       where: {
         tenantId,
         checkInTime: {
@@ -153,9 +153,7 @@ export class GymAttendanceService {
           lte: end,
         },
       },
-      orderBy: {
-        checkInTime: 'desc',
-      },
+      orderBy: { checkInTime: 'desc' },
       include: {
         member: {
           select: {
@@ -166,6 +164,16 @@ export class GymAttendanceService {
         },
       },
     });
+
+    // ✅ FLATTEN (this exposes attendanceId)
+    return records.map((r) => ({
+      attendanceId: r.id, // ← THIS IS THE ATTENDANCE ID
+      checkInTime: r.checkInTime,
+      checkOutTime: r.checkOutTime,
+      memberId: r.member.id,
+      memberName: r.member.fullName,
+      phone: r.member.phone,
+    }));
   }
 
   /**

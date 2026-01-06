@@ -39,7 +39,7 @@ export class GymAttendanceController {
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('today')
   today(@Req() req: any) {
-    return this.attendanceService.getTodayAttendance(req.user.tenantId);
+    return this.attendanceService.listTodayAttendance(req.user.tenantId);
   }
 
   // ========================
