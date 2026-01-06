@@ -7,6 +7,7 @@ import {
   UseGuards,
   ForbiddenException,
   Patch,
+  Put,
 } from '@nestjs/common';
 
 import { TenantService } from './tenant.service';
@@ -85,6 +86,17 @@ export class TenantController {
     }
 
     return this.tenantService.searchTenants(q);
+  }
+  @UseGuards(JwtAuthGuard)
+  @Put('logo')
+  updateLogo(@Req() req: any, @Body() body: { logoUrl: string }) {
+    const tenantId = req.user.tenantId;
+
+    if (!tenantId) {
+      throw new ForbiddenException('Tenant not found');
+    }
+
+    return this.tenantService.updateLogo(tenantId, body.logoUrl);
   }
 
   /**

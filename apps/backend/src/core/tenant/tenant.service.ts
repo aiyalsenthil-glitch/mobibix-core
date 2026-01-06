@@ -226,6 +226,15 @@ export class TenantService {
       daysLeft,
     };
   }
+  // ============================
+  // UPDATE TENANT LOGO
+  // ============================
+  async updateLogo(tenantId: string, logoUrl: string) {
+    return this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { logoUrl },
+    });
+  }
 
   /**
    * ============================
