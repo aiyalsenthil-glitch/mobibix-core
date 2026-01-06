@@ -52,6 +52,7 @@ model User {
   permissions Json?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  welcomeEmailSent Boolean  @default(false)
   auditLogs   AuditLog[]
   tenant      Tenant?    @relation(fields: [tenantId], references: [id])
 }

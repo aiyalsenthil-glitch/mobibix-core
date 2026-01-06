@@ -111,8 +111,6 @@ export class PaymentsController {
         key: process.env.RAZORPAY_KEY_ID,
       };
     } catch (err: any) {
-      console.error('❌ Create-order failed:', err);
-
       // rethrow known HTTP errors
       if (err?.status) {
         throw err;

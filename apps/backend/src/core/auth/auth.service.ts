@@ -134,9 +134,6 @@ export class AuthService {
           : null,
       };
     } catch (err) {
-      // 🔥 CRITICAL: log exact reason
-      console.error('❌ AUTH LOGIN FAILED:', err);
-
       // Firebase / auth errors → 401
       if (
         err instanceof UnauthorizedException ||

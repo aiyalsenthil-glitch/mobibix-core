@@ -23,6 +23,7 @@ export class UsersService {
         id: true,
         email: true,
         fullName: true,
+        phone: true,
         avatar: true,
         role: true,
         createdAt: true,
@@ -69,22 +70,16 @@ export class UsersService {
     data: {
       fullName?: string;
       phone?: string;
+      avatar?: string;
     },
   ): Promise<User> {
     return this.prisma.user.update({
-      where: { id: userId }, // ✅ FIXED
+      where: { id: userId },
       data: {
         fullName: data.fullName,
+        avatar: data.avatar, // ✅ ADD THIS
         phone: data.phone ? normalizePhone(data.phone) : undefined,
       },
-    });
-  }
-
-  // 🔹 Promote / change role (ADMIN only – future use)
-  async updateRole(userId: string, role: UserRole): Promise<User> {
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { role },
     });
   }
 }

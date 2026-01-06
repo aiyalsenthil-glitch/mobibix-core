@@ -87,7 +87,8 @@ export class TenantController {
 
     return this.tenantService.searchTenants(q);
   }
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.TENANT_MANAGE)
   @Put('logo')
   updateLogo(@Req() req: any, @Body() body: { logoUrl: string }) {
     const tenantId = req.user.tenantId;
@@ -123,7 +124,21 @@ export class TenantController {
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions(Permission.TENANT_MANAGE)
   @Patch('me')
-  updateMyGym(@Req() req: any, @Body() body: { name: string }) {
-    return this.tenantService.updateTenantName(req.user.tenantId, body.name);
+  updateMyGym(
+    @Req() req: any,
+    @Body()
+    body: {
+      name?: string;
+      contactPhone?: string;
+      contactEmail?: string;
+      website?: string;
+      addressLine1?: string;
+      addressLine2?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+    },
+  ) {
+    return this.tenantService.updateTenant(req.user.tenantId, body);
   }
 }

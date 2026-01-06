@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PLAN_CAPABILITIES } from '../billing/plan-capabilities';
+import { normalizePhone } from '../../common/utils/phone.util';
 
 @Injectable()
 export class TenantService {
@@ -90,10 +91,36 @@ export class TenantService {
     });
   }
 
-  async updateTenantName(tenantId: string, name: string) {
+  async updateTenant(
+    tenantId: string,
+    data: {
+      name?: string;
+      contactPhone?: string;
+      contactEmail?: string;
+      website?: string;
+      addressLine1?: string;
+      addressLine2?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+    },
+  ) {
     return this.prisma.tenant.update({
       where: { id: tenantId },
-      data: { name },
+      data: {
+        name: data.name,
+        contactPhone: data.contactPhone
+          ? normalizePhone(data.contactPhone)
+          : undefined,
+
+        contactEmail: data.contactEmail,
+        website: data.website,
+        addressLine1: data.addressLine1,
+        addressLine2: data.addressLine2,
+        city: data.city,
+        state: data.state,
+        pincode: data.pincode,
+      },
     });
   }
 
@@ -141,11 +168,22 @@ export class TenantService {
         tenantType: true,
         code: true,
         contactPhone: true,
+        contactEmail: true,
+        website: true,
+        logoUrl: true,
+        addressLine1: true,
+        addressLine2: true,
+        city: true,
+        state: true,
+        pincode: true,
+        country: true,
+        currency: true,
+        timezone: true,
       },
     });
 
     if (!tenant) {
-      throw new NotFoundException('Tenant not found'); // 🔥 NOT 400
+      throw new NotFoundException('Tenant not found');
     }
 
     return tenant;

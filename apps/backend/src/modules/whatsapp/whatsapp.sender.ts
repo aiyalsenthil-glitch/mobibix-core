@@ -23,10 +23,14 @@ export class WhatsAppSender {
     parameters: string[],
   ): Promise<{ success: boolean; error?: any; skipped?: boolean }> {
     // ─────────────────────────────
-    // 1️⃣ Load subscription + plan
+    // 1️⃣ Load ACTIVE/TRIAL subscription
     // ─────────────────────────────
-    const subscription = await this.prisma.tenantSubscription.findUnique({
-      where: { tenantId },
+    const subscription = await this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+        status: { in: ['ACTIVE', 'TRIAL'] },
+      },
+      orderBy: { startDate: 'desc' },
       include: { plan: true },
     });
 
@@ -37,15 +41,22 @@ export class WhatsAppSender {
     const planName = subscription.plan.name as keyof typeof WHATSAPP_PLAN_RULES;
     const rule = WHATSAPP_PLAN_RULES[planName];
 
+    console.log('[WA DEBUG]', {
+      tenantId,
+      plan: planName,
+      enabled: rule?.enabled,
+      features: rule?.features,
+    });
+
     // ─────────────────────────────
-    // 2️⃣ Plan-level WhatsApp block
+    // 2️⃣ Plan-level block
     // ─────────────────────────────
     if (!rule?.enabled) {
       return { success: false, skipped: true };
     }
 
     // ─────────────────────────────
-    // 3️⃣ Feature check
+    // 3️⃣ Feature-level block
     // ─────────────────────────────
     if (!(rule.features as WhatsAppFeature[]).includes(feature)) {
       return { success: false, skipped: true };
@@ -58,36 +69,34 @@ export class WhatsAppSender {
       where: { tenantId },
     });
 
-    if (memberCount > rule.maxMembers) {
+    if (rule.maxMembers > 0 && memberCount > rule.maxMembers) {
       return { success: false, skipped: true };
     }
 
     // ─────────────────────────────
-    // 5️⃣ SEND WHATSAPP
+    // 5️⃣ SEND WHATSAPP (Cloud API)
     // ─────────────────────────────
     const url = `https://graph.facebook.com/${this.apiVersion}/${this.phoneNumberId}/messages`;
 
     try {
-      await axios.post(
+      const res = await axios.post(
         url,
         {
           messaging_product: 'whatsapp',
-          to: toWhatsAppPhone(phone), // ✅ ADD 91 HERE ONLY
+          to: toWhatsAppPhone(phone),
           type: 'template',
           template: {
             name: templateName,
-            language: { code: 'en' },
-            components: parameters.length
-              ? [
-                  {
-                    type: 'body',
-                    parameters: parameters.map((text) => ({
-                      type: 'text',
-                      text,
-                    })),
-                  },
-                ]
-              : [],
+            language: { code: 'en' }, // ✅ VERIFIED FROM API
+            components: [
+              {
+                type: 'body',
+                parameters: parameters.map((text) => ({
+                  type: 'text',
+                  text,
+                })),
+              },
+            ],
           },
         },
         {
@@ -98,8 +107,10 @@ export class WhatsAppSender {
         },
       );
 
+      console.log('[WA META RESPONSE]', res.data);
       return { success: true };
     } catch (error) {
+      console.error('[WA META ERROR]', error.response?.data || error.message);
       return {
         success: false,
         error: error.response?.data || error.message,
