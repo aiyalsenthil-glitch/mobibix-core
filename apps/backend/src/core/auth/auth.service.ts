@@ -38,7 +38,6 @@ export class AuthService {
       // 1️⃣ Verify Firebase token
       // ─────────────────────────────
       const decoded = await this.REMOVED_AUTH_PROVIDERAdmin.verifyIdToken(REMOVED_AUTH_PROVIDERToken);
-      console.log('🔥 FIREBASE TOKEN CLAIMS:', decoded);
 
       if (!decoded?.uid) {
         throw new UnauthorizedException('Invalid Firebase payload');

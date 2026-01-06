@@ -63,7 +63,6 @@ export class TenantController {
   @UseGuards(JwtAuthGuard)
   @Get('current')
   async getMyTenant(@Req() req: any) {
-    console.log('🔥 HIT /tenant/profile');
     const tenantId = req.user.tenantId;
 
     if (!tenantId) {
