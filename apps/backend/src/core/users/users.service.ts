@@ -8,9 +8,16 @@ export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   // 🔹 Get user by ID
-  async findById(userId: string): Promise<User> {
+  async findById(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        avatar: true,
+        role: true,
+      },
     });
 
     if (!user) {
