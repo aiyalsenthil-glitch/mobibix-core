@@ -3,6 +3,7 @@ import { PlansModule } from './plans/plans.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { SubscriptionGuard } from './guards/subscription.guard';
 import { PaymentsModule } from './payments/payments.module';
+import { SubscriptionExpiryCron } from './subscriptions/subscription-expiry.cron';
 
 @Module({
   imports: [
@@ -10,7 +11,7 @@ import { PaymentsModule } from './payments/payments.module';
     SubscriptionsModule,
     PaymentsModule, // ✅ CORRECT
   ],
-  providers: [SubscriptionGuard],
+  providers: [SubscriptionGuard, SubscriptionExpiryCron],
   exports: [
     PlansModule,
     SubscriptionsModule,

@@ -100,7 +100,7 @@ export class MembersService {
         membershipPlanId: dto.membershipPlanId,
         membershipStartAt: new Date(dto.membershipStartAt),
         membershipEndAt: new Date(dto.membershipEndAt),
-
+        photoUrl: dto.photoUrl,
         monthlyFee: baseMonthlyFee,
         feeAmount: baseMonthlyFee,
 

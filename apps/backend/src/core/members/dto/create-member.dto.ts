@@ -26,6 +26,9 @@ export class CreateMemberDto {
   @IsEnum(Gender)
   gender: Gender;
 
+  @IsOptional()
+  @IsString()
+  photoUrl?: string;
   // -------------------------
   // Membership
   // -------------------------

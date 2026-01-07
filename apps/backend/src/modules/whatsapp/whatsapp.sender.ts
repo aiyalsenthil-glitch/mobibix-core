@@ -41,13 +41,6 @@ export class WhatsAppSender {
     const planName = subscription.plan.name as keyof typeof WHATSAPP_PLAN_RULES;
     const rule = WHATSAPP_PLAN_RULES[planName];
 
-    console.log('[WA DEBUG]', {
-      tenantId,
-      plan: planName,
-      enabled: rule?.enabled,
-      features: rule?.features,
-    });
-
     // ─────────────────────────────
     // 2️⃣ Plan-level block
     // ─────────────────────────────
@@ -107,7 +100,6 @@ export class WhatsAppSender {
         },
       );
 
-      console.log('[WA META RESPONSE]', res.data);
       return { success: true };
     } catch (error) {
       console.error('[WA META ERROR]', error.response?.data || error.message);

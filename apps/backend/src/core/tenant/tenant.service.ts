@@ -12,6 +12,8 @@ import { UserRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PLAN_CAPABILITIES } from '../billing/plan-capabilities';
 import { normalizePhone } from '../../common/utils/phone.util';
+import { EmailService } from '../../common/email/email.service';
+import { welcomeEmailTemplate } from '../../common/email/templates/welcome.template';
 
 @Injectable()
 export class TenantService {
@@ -66,6 +68,25 @@ export class TenantService {
         timezone: dto.timezone,
       },
     });
+    // Send welcome email after gym creation
+    if (!user.welcomeEmailSent && user.email) {
+      try {
+        const emailService = new EmailService();
+
+        await emailService.sendEmail({
+          to: user.email,
+          subject: 'Welcome to GymPilot 🎉',
+          html: welcomeEmailTemplate(tenant.name),
+        });
+
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { welcomeEmailSent: true },
+        });
+      } catch (err) {
+        console.error('Welcome email failed', err);
+      }
+    }
 
     await this.subscriptionsService.assignTrialSubscription(
       tenant.id,

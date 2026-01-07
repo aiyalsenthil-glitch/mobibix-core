@@ -19,6 +19,7 @@ import { PaymentsModule } from '../../core/billing//payments/payments.module';
     CoreModule,
     GymDashboardModule,
     PublicCheckinModule,
+
     PaymentsModule,
   ],
   controllers: [
