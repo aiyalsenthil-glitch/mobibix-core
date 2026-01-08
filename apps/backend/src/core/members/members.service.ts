@@ -13,7 +13,7 @@ import { isMembershipExpired } from '../../common/utils/membership.util';
 import { MemberPaymentStatus } from '@prisma/client';
 import { startOfDay, endOfDay, addDays } from 'date-fns';
 import { RenewMemberDto } from './dto/renew-member.dto';
-import { endOfDayDate } from '../../common/utils/date.util';
+import { formatDateDDMMYYYY } from '../../common/utils/date.util';
 import { normalizePhone } from '../../common/utils/phone.util';
 import { WhatsAppSender } from '../../modules/whatsapp/whatsapp.sender';
 import { WhatsAppTemplates } from '../../modules/whatsapp/whatsapp.templates';
@@ -214,8 +214,8 @@ export class MembersService {
             member.phone,
             WhatsAppTemplates.WELCOME,
             [
-              member.membershipStartAt.toLocaleDateString(),
-              member.membershipEndAt.toLocaleDateString(),
+              formatDateDDMMYYYY(member.membershipStartAt),
+              formatDateDDMMYYYY(member.membershipEndAt),
             ],
           );
 
