@@ -5,10 +5,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SubscriptionStatus } from '@prisma/client';
+import { EmailService } from 'src/common/email/email.service';
 
 @Injectable()
 export class SubscriptionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
   async upgradeSubscription(tenantId: string, planId: string) {
     const newPlan = await this.prisma.plan.findUnique({
       where: { id: planId },
@@ -19,10 +23,20 @@ export class SubscriptionsService {
     }
 
     const currentSub = await this.getCurrentActiveSubscription(tenantId);
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: {
+        users: {
+          where: { role: 'OWNER' },
+        },
+      },
+    });
 
     if (!currentSub || currentSub.plan.level === null) {
       throw new NotFoundException('Active subscription not found');
     }
+    const oldPlanName = currentSub.plan.name;
+    const newPlanName = newPlan.name;
 
     // 🔥 UPGRADE-ONLY RULE (NOW TYPE-SAFE)
     if (newPlan.level <= currentSub.plan.level) {
@@ -34,17 +48,58 @@ export class SubscriptionsService {
     const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + newPlan.durationDays);
-
-    return this.prisma.tenantSubscription.update({
-      where: { tenantId },
+    // Send email notification about the upgrade
+    const updatedSub = await this.prisma.tenantSubscription.update({
+      where: { id: currentSub.id },
       data: {
         planId: newPlan.id,
         status: 'ACTIVE',
         startDate,
         endDate,
-        expiryReminderSentAt: null, // 👈 reset for new cycle
+        expiryReminderSentAt: null,
       },
     });
+    // 📧 Send plan upgrade email (non-blocking)
+    try {
+      const ownerEmail = tenant?.users?.[0]?.email;
+
+      if (ownerEmail) {
+        await this.emailService.sendEmail({
+          to: ownerEmail,
+          subject: 'Your GymPilot plan has been upgraded 🎉',
+          html: `
+        <h3>Plan Upgraded Successfully</h3>
+        <p>Hello${tenant?.name ? ` ${tenant.name}` : ''},</p>
+        <p>Your GymPilot plan has been upgraded.</p>
+        <p>
+          <b>${oldPlanName}</b> → <b>${newPlanName}</b>
+        </p>
+        <p>
+          Effective from <b>${startDate.toDateString()}</b>
+        </p>
+        <br/>
+        <p>If you have any questions, contact support anytime.</p>
+        <p>— Team GymPilot</p>
+      `,
+        });
+      }
+    } catch (err) {
+      // ❗ Do NOT fail upgrade if email fails
+      console.error(
+        '[Subscription] Plan upgrade email failed for tenant',
+        tenantId,
+        err,
+      );
+    }
+    console.log(
+      '[Subscription] Plan upgraded',
+      tenantId,
+      oldPlanName,
+      '→',
+      newPlanName,
+    );
+
+    return updatedSub;
   }
 
   async canAddMember(tenantId: string): Promise<boolean> {
@@ -103,22 +158,35 @@ export class SubscriptionsService {
   }
 
   async getSubscriptionByTenant(tenantId: string) {
-    return this.prisma.tenantSubscription.findUnique({
-      where: { tenantId },
+    return this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+      },
+      orderBy: {
+        startDate: 'desc',
+      },
       include: {
         plan: true,
       },
     });
   }
+
   async extendTrial(tenantId: string, extraDays: number) {
     const sub = await this.getSubscriptionByTenant(tenantId);
     if (!sub) return null;
+    console.log(
+      '[Subscription] Trial extended',
+      tenantId,
+      'by',
+      extraDays,
+      'days',
+    );
 
     const newEndDate = new Date(sub.endDate);
     newEndDate.setDate(newEndDate.getDate() + extraDays);
 
     return this.prisma.tenantSubscription.update({
-      where: { tenantId },
+      where: { id: sub.id },
       data: {
         endDate: newEndDate,
         status: 'TRIAL',
@@ -144,13 +212,18 @@ export class SubscriptionsService {
     endDate.setDate(startDate.getDate() + plan.durationDays);
 
     // 3️⃣ Update subscription
+    const currentSub = await this.getCurrentActiveSubscription(tenantId);
+    if (!currentSub) {
+      throw new NotFoundException('Active subscription not found');
+    }
     return this.prisma.tenantSubscription.update({
-      where: { tenantId },
+      where: { id: currentSub.id },
       data: {
         planId: plan.id,
         status: 'ACTIVE',
         startDate,
         endDate,
+        expiryReminderSentAt: null,
       },
     });
   }
@@ -171,8 +244,13 @@ export class SubscriptionsService {
     tenantId: string,
     status: 'ACTIVE' | 'EXPIRED' | 'CANCELLED',
   ) {
+    const currentSub = await this.getCurrentActiveSubscription(tenantId);
+    if (!currentSub) {
+      throw new NotFoundException('Active subscription not found');
+    }
+
     return this.prisma.tenantSubscription.update({
-      where: { tenantId },
+      where: { id: currentSub.id },
       data: { status },
     });
   }

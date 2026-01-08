@@ -33,15 +33,24 @@ export class PlanFeatureGuard implements CanActivate {
 
     if (!tenantId) return true;
 
-    const subscription = await this.prisma.tenantSubscription.findUnique({
-      where: { tenantId },
+    const subscription = await this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+        status: { in: ['ACTIVE', 'TRIAL'] },
+      },
+      orderBy: {
+        startDate: 'desc',
+      },
       include: { plan: true },
     });
 
     if (!subscription?.plan) {
       throw new ForbiddenException('PLAN_REQUIRED');
     }
-
+    // 🔓 TRIAL has full access
+    if (subscription?.status === 'TRIAL') {
+      return true;
+    }
     const planName = subscription.plan.name as keyof typeof PLAN_CAPABILITIES;
     const plan = PLAN_CAPABILITIES[planName];
 

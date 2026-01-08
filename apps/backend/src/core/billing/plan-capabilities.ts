@@ -1,11 +1,15 @@
 export const PLAN_CAPABILITIES = {
   TRIAL: {
-    staffAllowed: false,
-    maxStaff: 0,
-    memberLimit: 25,
-    whatsapp: false,
-    reports: false,
+    staffAllowed: true,
+    staff: true,
+    staffInvite: true,
+    maxStaff: 3,
+    memberLimit: 25, // keep limit if you want
+    attendance: true,
+    whatsapp: true,
+    reports: true,
   },
+
   BASIC: {
     staffAllowed: false,
     maxStaff: 0,

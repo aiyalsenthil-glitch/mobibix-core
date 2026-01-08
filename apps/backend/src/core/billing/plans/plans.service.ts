@@ -50,7 +50,7 @@ export class PlansService {
         features: {},
       },
       {
-        name: 'Ultimate',
+        name: 'ULTIMATE',
         price: 4999,
         level: 4,
         billingCycle: BillingCycle.ANNUAL,
