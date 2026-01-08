@@ -71,12 +71,19 @@ export class MembersService {
     if (existing) {
       throw new BadRequestException('MOBILE_ALREADY_EXISTS');
     }
+    // ✅ BACKEND SOURCE OF TRUTH
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    if (new Date(dto.membershipEndAt) < new Date(dto.membershipStartAt)) {
-      throw new BadRequestException(
-        'Membership end date cannot be before start date',
-      );
-    }
+    // ✅ FIXED: always 30 days for new member
+    const membershipStartAt = today;
+
+    const membershipEndRaw = new Date(today);
+    membershipEndRaw.setDate(membershipEndRaw.getDate() + 30);
+
+    // normalize to end of day
+    const membershipEndAt = endOfDayDate(membershipEndRaw);
+
     const fee = dto.feeAmount;
     const baseMonthlyFee = dto.feeAmount; // ✅ clear meaning
     const paid = dto.paidAmount ?? 0;
@@ -98,20 +105,24 @@ export class MembersService {
         gender: dto.gender,
         isActive: true,
         membershipPlanId: dto.membershipPlanId,
-        membershipStartAt: new Date(dto.membershipStartAt),
-        membershipEndAt: new Date(dto.membershipEndAt),
+
+        // ✅ FIXED
+        membershipStartAt,
+        membershipEndAt,
+        paymentDueDate: membershipEndAt,
+
         photoUrl: dto.photoUrl,
         monthlyFee: baseMonthlyFee,
         feeAmount: baseMonthlyFee,
-
         paidAmount: paid,
         paymentStatus,
-        paymentDueDate: new Date(dto.membershipStartAt),
+
         heightCm: dto.heightCm,
         weightKg: dto.weightKg,
         fitnessGoal: dto.fitnessGoal,
       },
     });
+
     // ─────────────────────────────
     // ✅ Welcome WhatsApp (ULTIMATE)
     // ─────────────────────────────

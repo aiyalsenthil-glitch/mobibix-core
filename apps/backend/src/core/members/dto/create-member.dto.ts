@@ -36,12 +36,6 @@ export class CreateMemberDto {
   @IsNotEmpty()
   membershipPlanId: string;
 
-  @IsDateString()
-  membershipStartAt: string;
-
-  @IsDateString()
-  membershipEndAt: string;
-
   @Type(() => Number)
   @IsNumber()
   feeAmount: number;
