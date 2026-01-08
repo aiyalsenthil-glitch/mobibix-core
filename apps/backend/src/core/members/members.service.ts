@@ -19,6 +19,90 @@ import { WhatsAppSender } from '../../modules/whatsapp/whatsapp.sender';
 import { WhatsAppTemplates } from '../../modules/whatsapp/whatsapp.templates';
 import { WhatsAppFeature } from '../billing/whatsapp-rules';
 
+// ─────────────────────────────
+// ✅ Membership duration resolver
+// ─────────────────────────────
+function calculateMembershipDates(durationCode: string) {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+
+  switch (durationCode) {
+    case 'D30':
+      end.setDate(end.getDate() + 30);
+      break;
+    case 'D60':
+      end.setDate(end.getDate() + 60);
+      break;
+    case 'D90':
+      end.setDate(end.getDate() + 90);
+      break;
+    case 'M6':
+      end.setMonth(end.getMonth() + 6);
+      break;
+    case 'Y1':
+      end.setFullYear(end.getFullYear() + 1);
+      break;
+    default:
+      throw new BadRequestException('Invalid duration');
+  }
+
+  // normalize to end of day
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+}
+// ─────────────────────────────
+// Extend membership from base date
+// ─────────────────────────────
+
+function extendMembershipFromBase(baseDate: Date, durationCode: string) {
+  const end = new Date(baseDate);
+
+  switch (durationCode) {
+    case 'D30':
+      end.setDate(end.getDate() + 30);
+      break;
+    case 'D60':
+      end.setDate(end.getDate() + 60);
+      break;
+    case 'D90':
+      end.setDate(end.getDate() + 90);
+      break;
+    case 'M6':
+      end.setMonth(end.getMonth() + 6);
+      break;
+    case 'Y1':
+      end.setFullYear(end.getFullYear() + 1);
+      break;
+    default:
+      throw new BadRequestException('Invalid duration');
+  }
+
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+// ─────────────────────────────
+// Duration code to days mapper
+// ─────────────────────────────
+function durationCodeToDays(code: 'D30' | 'D60' | 'D90' | 'M6' | 'Y1'): number {
+  switch (code) {
+    case 'D30':
+      return 30;
+    case 'D60':
+      return 60;
+    case 'D90':
+      return 90;
+    case 'M6':
+      return 180;
+    case 'Y1':
+      return 365;
+    default:
+      throw new BadRequestException('Invalid duration code');
+  }
+}
+
 @Injectable()
 export class MembersService {
   constructor(
@@ -71,18 +155,6 @@ export class MembersService {
     if (existing) {
       throw new BadRequestException('MOBILE_ALREADY_EXISTS');
     }
-    // ✅ BACKEND SOURCE OF TRUTH
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // ✅ FIXED: always 30 days for new member
-    const membershipStartAt = today;
-
-    const membershipEndRaw = new Date(today);
-    membershipEndRaw.setDate(membershipEndRaw.getDate() + 30);
-
-    // normalize to end of day
-    const membershipEndAt = endOfDayDate(membershipEndRaw);
 
     const fee = dto.feeAmount;
     const baseMonthlyFee = dto.feeAmount; // ✅ clear meaning
@@ -97,6 +169,9 @@ export class MembersService {
     } else {
       paymentStatus = 'PAID';
     }
+    const { start: membershipStartAt, end: membershipEndAt } =
+      calculateMembershipDates(dto.durationCode);
+
     const member = await this.prisma.member.create({
       data: {
         tenantId,
@@ -112,13 +187,14 @@ export class MembersService {
         paymentDueDate: membershipEndAt,
 
         photoUrl: dto.photoUrl,
+        //Payment details
         monthlyFee: baseMonthlyFee,
-        feeAmount: baseMonthlyFee,
-        paidAmount: paid,
+        feeAmount: dto.feeAmount,
+        paidAmount: dto.paidAmount ?? 0,
         paymentStatus,
 
-        heightCm: dto.heightCm,
-        weightKg: dto.weightKg,
+        heightCm: dto.heightCm ?? 0,
+        weightKg: dto.weightKg ?? 0,
         fitnessGoal: dto.fitnessGoal,
       },
     });
@@ -182,6 +258,8 @@ export class MembersService {
       paymentStatus: member.paymentStatus,
       isActive: member.isActive,
       isExpired: isMembershipExpired(member.membershipEndAt),
+      heightCm: member.heightCm,
+      weightKg: member.weightKg,
     }));
   }
   // ===============================
@@ -354,17 +432,18 @@ export class MembersService {
     if (!exists) {
       throw new BadRequestException('Member not found');
     }
+    const updateData: any = {};
+
+    if (dto.fullName !== undefined) updateData.fullName = dto.fullName;
+    if (dto.phone !== undefined) updateData.phone = normalizePhone(dto.phone);
+    if (dto.heightCm !== undefined) updateData.heightCm = dto.heightCm;
+    if (dto.weightKg !== undefined) updateData.weightKg = dto.weightKg;
+    if (dto.fitnessGoal !== undefined) updateData.fitnessGoal = dto.fitnessGoal;
+    if (dto.photoUrl !== undefined) updateData.photoUrl = dto.photoUrl;
 
     return this.prisma.member.update({
       where: { id: memberId },
-      data: {
-        fullName: dto.fullName,
-        phone: dto.phone ? normalizePhone(dto.phone) : undefined,
-        heightCm: dto.heightCm,
-        weightKg: dto.weightKg,
-        fitnessGoal: dto.fitnessGoal,
-        photoUrl: dto.photoUrl,
-      },
+      data: updateData,
     });
   }
   async getMemberPayments(tenantId: string, memberId: string) {
@@ -470,48 +549,34 @@ export class MembersService {
     memberId: string,
     dto: RenewMemberDto,
   ) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const duration = dto.durationDays ?? 30;
-    const fee = dto.feeAmount;
-    const paid = dto.paidAmount ?? 0;
-    const { feeAmount: _renewalTotalFee, ...safeDto } = dto;
-    const allowedDurations = [30, 60, 90, 180, 365];
-
+    // ─────────────────────────────
+    // 1️⃣ Basic validation
+    // ─────────────────────────────
     if (!userId || typeof userId !== 'string') {
       throw new ForbiddenException('Invalid authenticated user');
     }
 
-    if (!allowedDurations.includes(duration)) {
-      throw new BadRequestException(
-        'Invalid duration. Allowed: 1, 2, 3, 6, or 12 months',
-      );
-    }
+    const fee = dto.feeAmount;
+    const paid = dto.paidAmount ?? 0;
 
     if (paid < 0 || paid > fee) {
       throw new BadRequestException('Invalid paid amount');
     }
-    // 🔒 BACKEND ROLE VALIDATION (EXACT PLACE)
+
+    // 🔒 Fee override only by OWNER
     if (dto.isFeeOverridden === true && role !== 'OWNER') {
       throw new ForbiddenException('Only owner can override membership fee');
     }
-    let paymentStatus: MemberPaymentStatus;
-    if (paid <= 0) {
-      paymentStatus = 'DUE';
-    } else if (paid < fee) {
-      paymentStatus = 'PARTIAL';
-    } else {
-      paymentStatus = 'PAID';
-    }
 
-    const existingMember = await this.prisma.member.findUnique({
+    // ─────────────────────────────
+    // 2️⃣ Load existing member
+    // ─────────────────────────────
+    const existingMember = await this.prisma.member.findFirst({
       where: {
         id: memberId,
         tenantId,
         isActive: true,
       },
-
       select: {
         membershipEndAt: true,
       },
@@ -521,50 +586,84 @@ export class MembersService {
       throw new BadRequestException('Member not found');
     }
 
+    // ─────────────────────────────
+    // 3️⃣ Decide base date (expiry logic)
+    // ─────────────────────────────
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const baseDate =
       existingMember.membershipEndAt && existingMember.membershipEndAt >= today
         ? existingMember.membershipEndAt
         : today;
 
-    const newEndDateRaw = new Date(baseDate);
-    newEndDateRaw.setDate(newEndDateRaw.getDate() + duration);
+    // ─────────────────────────────
+    // 4️⃣ Calculate NEW end date (durationCode)
+    // ─────────────────────────────
+    const newMembershipEndAt = extendMembershipFromBase(
+      baseDate,
+      dto.durationCode,
+    );
 
-    // 🔒 normalize expiry to end of day
-    const newEndDate = endOfDayDate(newEndDateRaw);
+    // ─────────────────────────────
+    // 5️⃣ Payment status
+    // ─────────────────────────────
+    let paymentStatus: MemberPaymentStatus;
 
+    if (paid <= 0) {
+      paymentStatus = 'DUE';
+    } else if (paid < fee) {
+      paymentStatus = 'PARTIAL';
+    } else {
+      paymentStatus = 'PAID';
+    }
+
+    // ─────────────────────────────
+    // 6️⃣ Update member (SOURCE OF TRUTH)
+    // ─────────────────────────────
     const member = await this.prisma.member.update({
       where: {
         id: memberId,
         tenantId,
         isActive: true,
       },
-
       data: {
         membershipStartAt: today,
-        membershipEndAt: newEndDate,
+        membershipEndAt: newMembershipEndAt,
 
-        // ✅ IMPORTANT FOR WHATSAPP CRON
-        paymentDueDate: newEndDate,
+        // ✅ Important for WhatsApp cron
+        paymentDueDate: newMembershipEndAt,
         paymentReminderSent: false,
+
+        feeAmount: fee,
+        paidAmount: paid,
+        paymentStatus,
       },
     });
 
-    // 💰 Payment audit
+    // ─────────────────────────────
+    // 7️⃣ Payment audit (if any)
+    // ─────────────────────────────
     if (paid > 0) {
       await this.prisma.memberPayment.create({
         data: {
           tenantId,
           memberId,
-          total: fee, // ✅ TOTAL RENEWAL FEE
-          amount: paid, // ✅ PAID NOW
+          total: fee,
+          amount: paid,
           status: paymentStatus,
           method: dto.method ?? 'CASH',
           reference: dto.reference ?? null,
-          durationDays: duration,
+
+          // ✅ STORE DURATION CODE (NOT DAYS)
+          durationDays: durationCodeToDays(dto.durationCode),
         },
       });
     }
-    // 🧾 Audit log for fee override / renewal
+
+    // ─────────────────────────────
+    // 8️⃣ Audit log
+    // ─────────────────────────────
     await this.prisma.auditLog.create({
       data: {
         action: dto.isFeeOverridden ? 'FEE_OVERRIDE' : 'MEMBERSHIP_RENEWED',
@@ -575,7 +674,7 @@ export class MembersService {
         user: { connect: { id: userId } },
 
         meta: {
-          durationDays: duration,
+          durationCode: dto.durationCode,
           feeAmount: fee,
           paidAmount: paid,
           paymentStatus,
@@ -621,15 +720,16 @@ export class MembersService {
     const updateData: any = {
       ...safeData,
     };
-
-    if (dto.membershipStartAt) {
-      updateData.membershipStartAt = endOfDayDate(
-        new Date(dto.membershipStartAt),
-      );
+    if (dto.heightCm !== undefined) {
+      updateData.heightCm = dto.heightCm;
     }
 
-    if (dto.membershipEndAt) {
-      updateData.membershipEndAt = endOfDayDate(new Date(dto.membershipEndAt));
+    if (dto.weightKg !== undefined) {
+      updateData.weightKg = dto.weightKg;
+    }
+
+    if (dto.fitnessGoal !== undefined) {
+      updateData.fitnessGoal = dto.fitnessGoal;
     }
 
     // ✅ UPDATE MEMBER

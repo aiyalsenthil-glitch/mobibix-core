@@ -3,12 +3,13 @@ import {
   IsNotEmpty,
   IsNumber,
   IsString,
-  IsDateString,
   IsInt,
   Min,
+  Max,
   IsOptional,
+  IsIn,
 } from 'class-validator';
-import { Gender, FitnessGoal, MemberPaymentStatus } from '@prisma/client';
+import { Gender, FitnessGoal } from '@prisma/client';
 import { Type } from 'class-transformer';
 
 export class CreateMemberDto {
@@ -46,16 +47,28 @@ export class CreateMemberDto {
   paidAmount?: number;
 
   // -------------------------
+  // Subscription Duration
+  // -------------------------
+  @IsString()
+  @IsNotEmpty()
+  @IsIn(['D30', 'D60', 'D90', 'M6', 'Y1'])
+  durationCode: 'D30' | 'D60' | 'D90' | 'M6' | 'Y1';
+
+  // -------------------------
   // Fitness (REQUIRED)
   // -------------------------
-  @Type(() => Number)
-  @IsNumber()
-  heightCm: number;
 
-  @Type(() => Number)
-  @IsNumber()
-  weightKg: number;
+  @IsOptional()
+  @IsInt()
+  @Min(50)
+  @Max(250)
+  heightCm?: number;
 
+  @IsOptional()
+  @IsInt()
+  @Min(20)
+  @Max(300)
+  weightKg?: number;
   @IsEnum(FitnessGoal)
   fitnessGoal: FitnessGoal;
 }

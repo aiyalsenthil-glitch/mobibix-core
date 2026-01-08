@@ -1,21 +1,18 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min, IsIn } from 'class-validator';
 
 export class RenewMemberDto {
   @IsInt()
   @Min(1)
   feeAmount: number;
 
-  // how much collected at renewal time
   @IsOptional()
   @IsInt()
   @Min(0)
   paidAmount?: number;
 
-  // optional duration override (default = 30 days)
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  durationDays?: number;
+  // ✅ SINGLE SOURCE OF TRUTH
+  @IsIn(['D30', 'D60', 'D90', 'M6', 'Y1'])
+  durationCode: 'D30' | 'D60' | 'D90' | 'M6' | 'Y1';
 
   @IsOptional()
   @IsString()
@@ -28,5 +25,7 @@ export class RenewMemberDto {
   @IsOptional()
   @IsString()
   reason?: string;
+
+  @IsOptional()
   isFeeOverridden?: boolean;
 }
