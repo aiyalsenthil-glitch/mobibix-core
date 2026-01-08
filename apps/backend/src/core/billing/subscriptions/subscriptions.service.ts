@@ -42,6 +42,7 @@ export class SubscriptionsService {
         status: 'ACTIVE',
         startDate,
         endDate,
+        expiryReminderSentAt: null, // 👈 reset for new cycle
       },
     });
   }

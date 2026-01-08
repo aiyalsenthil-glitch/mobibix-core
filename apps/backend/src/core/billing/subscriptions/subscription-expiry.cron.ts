@@ -5,7 +5,10 @@ import { EmailService } from '../../../common/email/email.service';
 
 @Injectable()
 export class SubscriptionExpiryCron {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   // 🔒 Prevent parallel executions
   private isRunning = false;
@@ -32,8 +35,6 @@ export class SubscriptionExpiryCron {
     try {
       console.log('[CRON][Expiry] Job started');
 
-      const emailService = new EmailService();
-
       // 📅 RANGE window: today → next 7 days
       const start = new Date();
       start.setHours(0, 0, 0, 0);
@@ -53,7 +54,9 @@ export class SubscriptionExpiryCron {
             gte: start,
             lte: end,
           },
+          expiryReminderSentAt: null, // 👈 PREVENT DUPLICATES
         },
+
         include: {
           tenant: {
             include: {
@@ -97,7 +100,7 @@ export class SubscriptionExpiryCron {
         try {
           console.log(`[CRON][Expiry] Sending expiry email to ${owner.email}`);
 
-          await emailService.sendEmail({
+          await this.emailService.sendEmail({
             to: owner.email,
             subject: 'Your GymPilot plan expires soon ⏰',
             html: `
@@ -108,6 +111,12 @@ export class SubscriptionExpiryCron {
               <br/>
               <p>— Team GymPilot</p>
             `,
+          });
+          await this.prisma.tenantSubscription.update({
+            where: { id: sub.id },
+            data: {
+              expiryReminderSentAt: new Date(),
+            },
           });
 
           console.log(
