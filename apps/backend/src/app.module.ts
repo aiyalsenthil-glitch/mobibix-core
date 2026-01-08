@@ -27,7 +27,6 @@ import { ScheduleModule } from '@nestjs/schedule';
     WhatsAppModule,
     // 🧩 Business modules
     GymModule,
-    ScheduleModule.forRoot(),
 
     // 🩺 Platform infra
     HealthModule,

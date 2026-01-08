@@ -1,5 +1,7 @@
+import { Injectable } from '@nestjs/common';
 import { Resend } from 'resend';
 
+@Injectable() // 🔥 REQUIRED
 export class EmailService {
   private resend: Resend;
 
@@ -20,16 +22,12 @@ export class EmailService {
       console.warn('RESEND_API_KEY missing, email skipped');
       return;
     }
-    console.log('RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
 
-    const result = await this.resend.emails.send({
+    return this.resend.emails.send({
       from: 'GymPilot <no-reply@notify.mobibix.in>',
       to,
       subject,
       html,
     });
-
-    console.log('Resend response:', result);
-    return result;
   }
 }

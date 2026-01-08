@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
-import { EmailService } from '../../../common/email/email.service';
+import { EmailService } from '../../../common/email';
 
 @Injectable()
 export class SubscriptionExpiryCron {
