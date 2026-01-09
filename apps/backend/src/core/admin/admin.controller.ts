@@ -7,6 +7,7 @@ import {
   Body,
   UseGuards,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -145,12 +146,23 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // CHANGE STATUS
   // ─────────────────────────────────────────────
-  @Patch('tenants/:tenantId/status')
   async changeStatus(
-    @Param('tenantId') tenantId: string,
-    @Body() body: { status: 'ACTIVE' | 'EXPIRED' | 'CANCELLED' },
+    tenantId: string,
+    status: 'ACTIVE' | 'EXPIRED' | 'CANCELLED',
   ) {
-    return this.subscriptionsService.changeStatus(tenantId, body.status);
+    const currentSub = await this.prisma.tenantSubscription.findFirst({
+      where: { tenantId },
+      orderBy: { startDate: 'desc' },
+    });
+
+    if (!currentSub) {
+      throw new NotFoundException('Subscription not found');
+    }
+
+    return this.prisma.tenantSubscription.update({
+      where: { id: currentSub.id },
+      data: { status },
+    });
   }
 
   // ─────────────────────────────────────────────
