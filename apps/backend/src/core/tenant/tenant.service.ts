@@ -302,13 +302,35 @@ export class TenantService {
    */
   async listTenantsWithSubscription() {
     return this.prisma.tenant.findMany({
-      include: {
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        createdAt: true,
+
+        users: {
+          where: { role: UserRole.OWNER },
+          select: { email: true },
+        },
+
         subscription: {
-          include: { plan: true },
+          select: {
+            status: true,
+            startDate: true,
+            endDate: true,
+            plan: {
+              select: {
+                name: true,
+                price: true,
+                durationDays: true,
+              },
+            },
+          },
         },
       },
     });
   }
+
   async getUserForAuth(userId: string) {
     return this.prisma.user.findUnique({
       where: { id: userId },

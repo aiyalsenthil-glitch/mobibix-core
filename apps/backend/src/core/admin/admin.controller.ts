@@ -81,6 +81,13 @@ export class AdminController {
   async getTenantSubscription(@Param('tenantId') tenantId: string) {
     return this.subscriptionsService.getSubscriptionByTenant(tenantId);
   }
+  // ─────────────────────────────────────────────
+  // TENANT USAGE (ADMIN)
+  // ─────────────────────────────────────────────
+  @Get('tenants/:tenantId/usage')
+  async getTenantUsage(@Param('tenantId') tenantId: string) {
+    return this.tenantService.getUsage(tenantId);
+  }
 
   // ─────────────────────────────────────────────
   // EXTEND TRIAL
