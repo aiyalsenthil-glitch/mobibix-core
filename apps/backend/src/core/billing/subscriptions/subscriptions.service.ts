@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SubscriptionStatus } from '@prisma/client';
-import { EmailService } from 'src/common/email/email.service';
+import { EmailService } from '../../../common/email/email.service';
 
 @Injectable()
 export class SubscriptionsService {
