@@ -301,34 +301,24 @@ export class TenantService {
    * ============================
    */
   async listTenantsWithSubscription() {
-    return this.prisma.tenant.findMany({
-      select: {
-        id: true,
-        name: true,
-        code: true,
-        createdAt: true,
-
+    const tenants = await this.prisma.tenant.findMany({
+      include: {
         users: {
           where: { role: UserRole.OWNER },
           select: { email: true },
         },
-
         subscription: {
-          select: {
-            status: true,
-            startDate: true,
-            endDate: true,
-            plan: {
-              select: {
-                name: true,
-                price: true,
-                durationDays: true,
-              },
-            },
-          },
+          include: { plan: true },
         },
       },
     });
+
+    return tenants.map((t) => ({
+      id: t.id,
+      name: t.name,
+      ownerEmail: t.users[0]?.email ?? null,
+      subscription: t.subscription,
+    }));
   }
 
   async getUserForAuth(userId: string) {
