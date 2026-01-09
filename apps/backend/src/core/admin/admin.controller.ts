@@ -66,6 +66,13 @@ export class AdminController {
       admin,
     };
   }
+  // ─────────────────────────────────────────────
+  // LIST ALL PLANS (ADMIN)
+  // ─────────────────────────────────────────────
+  @Get('plans')
+  async listAllPlans() {
+    return this.plansService.getPlans(); // all plans (active + inactive)
+  }
 
   // ─────────────────────────────────────────────
   // LIST ALL TENANTS
@@ -144,12 +151,19 @@ export class AdminController {
   }
 
   // ─────────────────────────────────────────────
-  // CHANGE STATUS
+  // CHANGE STATUS (ADMIN)
   // ─────────────────────────────────────────────
+  @Patch('tenants/:tenantId/status')
   async changeStatus(
-    tenantId: string,
-    status: 'ACTIVE' | 'EXPIRED' | 'CANCELLED',
+    @Param('tenantId') tenantId: string,
+    @Body() body: { status: 'ACTIVE' | 'EXPIRED' | 'CANCELLED' },
   ) {
+    const { status } = body;
+
+    if (!['ACTIVE', 'EXPIRED', 'CANCELLED'].includes(status)) {
+      throw new BadRequestException('Invalid status');
+    }
+
     const currentSub = await this.prisma.tenantSubscription.findFirst({
       where: { tenantId },
       orderBy: { startDate: 'desc' },

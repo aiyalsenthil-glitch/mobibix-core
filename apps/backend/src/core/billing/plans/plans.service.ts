@@ -167,6 +167,14 @@ export class PlansService {
       },
     });
   }
+  /**   * Get all plans (active + inactive)
+   */
+
+  async getPlans() {
+    return this.prisma.plan.findMany({
+      orderBy: { level: 'asc' },
+    });
+  }
 
   /**
    * Trial plan (system only)
