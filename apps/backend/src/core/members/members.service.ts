@@ -556,11 +556,22 @@ export class MembersService {
       throw new ForbiddenException('Invalid authenticated user');
     }
 
-    const fee = dto.feeAmount;
-    const paid = dto.paidAmount ?? 0;
+    const fee = Number(dto.feeAmount);
+    const paid = Number(dto.paidAmount ?? 0);
+
+    if (isNaN(fee) || fee <= 0) {
+      throw new BadRequestException('Invalid fee amount');
+    }
+
+    if (isNaN(paid) || paid < 0 || paid > fee) {
+      throw new BadRequestException('Invalid paid amount');
+    }
 
     if (paid < 0 || paid > fee) {
       throw new BadRequestException('Invalid paid amount');
+    }
+    if (!['D30', 'D60', 'D90', 'M6', 'Y1'].includes(dto.durationCode)) {
+      throw new BadRequestException('Invalid duration code');
     }
 
     // 🔒 Fee override only by OWNER
