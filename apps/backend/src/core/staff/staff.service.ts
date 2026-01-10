@@ -120,10 +120,22 @@ export class StaffService {
 
     // allow re-invite if user exists but has no tenant
 
-    return this.prisma.staffInvite.create({
-      data: {
+    await this.prisma.staffInvite.upsert({
+      where: {
+        tenantId_email: {
+          tenantId,
+          email,
+        },
+      },
+      update: {
+        accepted: false, // reset invite
+        createdAt: new Date(), // refresh timestamp (optional)
+      },
+
+      create: {
         tenantId,
         email,
+        role: UserRole.STAFF,
       },
     });
   }
