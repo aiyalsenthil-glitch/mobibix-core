@@ -49,10 +49,10 @@ export class GymDashboardService {
         tenantId,
         createdAt: {
           gte: startOfMonth,
-          lt: startOfNextMonth, // safer than lte
+          lt: startOfNextMonth,
         },
         status: {
-          in: ['PAID', 'PARTIAL'], // ✅ INCLUDE PARTIAL
+          in: ['PAID', 'PARTIAL'], // ✅ CRITICAL FIX
         },
       },
       _sum: {
