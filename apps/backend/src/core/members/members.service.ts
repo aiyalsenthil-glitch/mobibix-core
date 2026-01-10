@@ -302,26 +302,28 @@ export class MembersService {
     if (!member) {
       throw new BadRequestException('Member not found');
     }
+    const feeAmount = member.feeAmount ?? 0;
+    const paidAmount = member.paidAmount ?? 0;
+    const pendingAmount = Math.max(feeAmount - paidAmount, 0);
 
     return {
       id: member.id,
       fullName: member.fullName,
       phone: member.phone,
       photoUrl: member.photoUrl,
-      // ✅ ANDROID FIELD NAMES (DO NOT RENAME)
+
       membershipStartAt: member.membershipStartAt,
       membershipEndAt: member.membershipEndAt,
 
-      feeAmount: member.feeAmount ?? 0,
-      paidAmount: member.paidAmount ?? 0,
+      feeAmount,
+      paidAmount,
+      pendingAmount, // ✅ ADD THIS
       paymentStatus: member.paymentStatus,
 
-      // ✅ EDIT SCREEN NEEDS THESE
       heightCm: member.heightCm,
       weightKg: member.weightKg,
       fitnessGoal: member.fitnessGoal,
 
-      // 🟡 optional (details screen only)
       payments: member.payments,
       attendance: member.attendances,
     };

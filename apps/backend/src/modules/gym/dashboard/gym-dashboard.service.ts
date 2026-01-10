@@ -38,16 +38,21 @@ export class GymDashboardService {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
+    const startOfNextMonth = new Date(startOfMonth);
+    startOfNextMonth.setMonth(startOfNextMonth.getMonth() + 1);
+
     const endOfMonth = new Date(startOfMonth);
     endOfMonth.setMonth(endOfMonth.getMonth() + 1);
     endOfMonth.setMilliseconds(-1);
-
     const monthlyRevenueAgg = await this.prisma.memberPayment.aggregate({
       where: {
         tenantId,
         createdAt: {
           gte: startOfMonth,
-          lte: endOfMonth,
+          lt: startOfNextMonth, // safer than lte
+        },
+        status: {
+          in: ['PAID', 'PARTIAL'], // ✅ INCLUDE PARTIAL
         },
       },
       _sum: {
