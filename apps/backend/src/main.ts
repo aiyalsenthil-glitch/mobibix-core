@@ -1,5 +1,3 @@
-console.log('🔥 MAIN.TS FILE LOADED');
-
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
