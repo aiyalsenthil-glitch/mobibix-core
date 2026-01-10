@@ -188,8 +188,8 @@ export class StaffService {
     return this.prisma.user.update({
       where: { id: staffUserId },
       data: {
-        role: UserRole.USER, // 👈 downgrade
-        tenantId: null, // 👈 detach from gym
+        role: UserRole.STAFF, // keep role
+        tenantId: null, // detach from gym
       },
     });
   }

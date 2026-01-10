@@ -215,7 +215,7 @@ model WhatsAppSetting {
 model WhatsAppLog {
   id        String   @id @default(uuid())
   tenantId  String
-  memberId  String
+  memberId  String?
   phone     String
   type      String
   status    String
