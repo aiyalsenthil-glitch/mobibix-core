@@ -171,4 +171,26 @@ export class StaffService {
 
     return { success: true };
   }
+  // ✅ Remove staff from tenant
+  async removeStaff(tenantId: string, staffUserId: string) {
+    const staff = await this.prisma.user.findUnique({
+      where: { id: staffUserId },
+    });
+
+    if (!staff || staff.tenantId !== tenantId) {
+      throw new NotFoundException('Staff not found');
+    }
+
+    if (staff.role !== UserRole.STAFF) {
+      throw new BadRequestException('User is not staff');
+    }
+
+    return this.prisma.user.update({
+      where: { id: staffUserId },
+      data: {
+        role: UserRole.USER, // 👈 downgrade
+        tenantId: null, // 👈 detach from gym
+      },
+    });
+  }
 }

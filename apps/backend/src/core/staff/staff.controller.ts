@@ -78,4 +78,14 @@ export class StaffController {
   async revokeInvite(@Req() req: any, @Param('id') inviteId: string) {
     return this.staffService.revokeInvite(req.user.tenantId, inviteId);
   }
+  // ✅ OWNER: Remove staff from tenant
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.STAFF_MANAGE)
+  @Delete(':staffUserId')
+  async removeStaff(
+    @Req() req: any,
+    @Param('staffUserId') staffUserId: string,
+  ) {
+    return this.staffService.removeStaff(req.user.tenantId, staffUserId);
+  }
 }

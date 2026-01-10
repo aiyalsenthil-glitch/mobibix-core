@@ -1,4 +1,11 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Query,
+  Body,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Public } from '../../core/auth/decorators/public.decorator';
 @Public()
 @Controller('webhook/whatsapp')
@@ -9,11 +16,17 @@ export class WhatsAppWebhookController {
     @Query('hub.verify_token') token: string,
     @Query('hub.challenge') challenge: string,
   ) {
-    const VERIFY_TOKEN = 'NotifyHub_Verify'; // same as Meta UI
-
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      return challenge; // 👈 Nest will send 200 automatically
+    if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+      return challenge;
     }
-    return 'Forbidden';
+
+    throw new ForbiddenException('Invalid verify token');
+  }
+
+  // Optional (can stay empty for Phase-1)
+  @Post()
+  @Public()
+  handleWebhook(@Body() body: any) {
+    return { received: true };
   }
 }

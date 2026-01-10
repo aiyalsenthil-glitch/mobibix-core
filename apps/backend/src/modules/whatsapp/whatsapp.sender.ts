@@ -6,6 +6,7 @@ import {
   WhatsAppFeature,
 } from '../../core/billing/whatsapp-rules';
 import { toWhatsAppPhone } from '../../common/utils/phone.util';
+import { WhatsAppLogger } from './whatsapp.logger';
 
 @Injectable()
 export class WhatsAppSender {
@@ -13,7 +14,10 @@ export class WhatsAppSender {
   private readonly token = process.env.WHATSAPP_ACCESS_TOKEN;
   private readonly apiVersion = process.env.WHATSAPP_API_VERSION || 'v22.0';
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: WhatsAppLogger,
+  ) {}
 
   async sendTemplateMessage(
     tenantId: string,
@@ -65,6 +69,16 @@ export class WhatsAppSender {
     if (rule.maxMembers > 0 && memberCount > rule.maxMembers) {
       return { success: false, skipped: true };
     }
+    await this.prisma.whatsappSettings.upsert({
+      where: { tenantId },
+      update: {},
+      create: {
+        tenantId,
+        isEnabled: true,
+        provider: 'META',
+        senderPhone: process.env.WHATSAPP_PHONE_NUMBER,
+      },
+    });
 
     // ─────────────────────────────
     // 5️⃣ SEND WHATSAPP (Cloud API)
@@ -72,7 +86,7 @@ export class WhatsAppSender {
     const url = `https://graph.facebook.com/${this.apiVersion}/${this.phoneNumberId}/messages`;
 
     try {
-      const res = await axios.post(
+      await axios.post(
         url,
         {
           messaging_product: 'whatsapp',
@@ -80,7 +94,7 @@ export class WhatsAppSender {
           type: 'template',
           template: {
             name: templateName,
-            language: { code: 'en' }, // ✅ VERIFIED FROM API
+            language: { code: 'en' },
             components: [
               {
                 type: 'body',
@@ -100,13 +114,34 @@ export class WhatsAppSender {
         },
       );
 
+      // ✅ LOG SUCCESS
+      await this.logger.log({
+        tenantId,
+        memberId: null, // pass memberId later if needed
+        phone,
+        type: feature,
+        status: 'SENT',
+      });
+
       return { success: true };
     } catch (error) {
-      console.error('[WA META ERROR]', error.response?.data || error.message);
-      return {
-        success: false,
-        error: error.response?.data || error.message,
-      };
+      const errMsg = error.response?.data
+        ? JSON.stringify(error.response.data)
+        : error.message;
+
+      // ❌ LOG FAILURE
+      await this.logger.log({
+        tenantId,
+        memberId: null,
+        phone,
+        type: feature,
+        status: 'FAILED',
+        error: errMsg,
+      });
+
+      console.error('[WA META ERROR]', errMsg);
+
+      return { success: false, error: errMsg };
     }
   }
 }
