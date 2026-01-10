@@ -106,26 +106,19 @@ export class StaffService {
   async inviteByEmail(tenantId: string, email: string) {
     await this.ensureStaffAllowed(tenantId);
 
-    const existing = await this.prisma.staffInvite.findFirst({
-      where: {
-        tenantId,
-        email,
-      },
+    // check if user already exists
+    const existingUser = await this.prisma.user.findFirst({
+      where: { email },
     });
 
-    if (existing && !existing.accepted) {
+    if (existingUser && existingUser.tenantId === tenantId) {
       return {
-        status: 'ALREADY_INVITED',
-        message: 'Staff already invited',
+        status: 'ALREADY_JOINED',
+        message: 'User is already staff in this gym',
       };
     }
 
-    if (existing && existing.accepted) {
-      return {
-        status: 'ALREADY_JOINED',
-        message: 'Staff already joined this gym',
-      };
-    }
+    // allow re-invite if user exists but has no tenant
 
     return this.prisma.staffInvite.create({
       data: {
@@ -188,7 +181,7 @@ export class StaffService {
     return this.prisma.user.update({
       where: { id: staffUserId },
       data: {
-        role: UserRole.STAFF, // keep role
+        role: UserRole.USER, // 👈 downgrade
         tenantId: null, // detach from gym
       },
     });

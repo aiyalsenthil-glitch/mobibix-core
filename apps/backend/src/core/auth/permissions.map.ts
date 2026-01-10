@@ -30,4 +30,5 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     // OR Option 2: leave empty if not used yet
     // (recommended only if ADMIN not active)
   ],
+  USER: [],
 };
