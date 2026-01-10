@@ -74,7 +74,7 @@ export class WhatsAppSender {
       update: {},
       create: {
         tenantId,
-        isEnabled: true,
+        enabled: true, // ✅ correct field
         provider: 'META',
         senderPhone: process.env.WHATSAPP_PHONE_NUMBER,
       },
