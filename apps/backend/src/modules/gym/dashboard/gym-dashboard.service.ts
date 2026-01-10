@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { MembersService } from '../../../core/members/members.service';
 import { GymAttendanceService } from '../attendance/gym-attendance.service';
 import { startOfDay, endOfDay, addDays } from 'date-fns';
+import { PrismaService } from 'src/core/prisma/prisma.service';
 
 @Injectable()
 export class GymDashboardService {
   constructor(
     private readonly membersService: MembersService,
     private readonly attendanceService: GymAttendanceService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async getOwnerDashboard(tenantId: string) {
@@ -31,6 +33,29 @@ export class GymDashboardService {
       const due = (m.feeAmount ?? 0) - (m.paidAmount ?? 0);
       return due > 0 ? sum + due : sum;
     }, 0);
+    // 📊 Monthly Revenue (from MemberPayment)
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const endOfMonth = new Date(startOfMonth);
+    endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+    endOfMonth.setMilliseconds(-1);
+
+    const monthlyRevenueAgg = await this.prisma.memberPayment.aggregate({
+      where: {
+        tenantId,
+        createdAt: {
+          gte: startOfMonth,
+          lte: endOfMonth,
+        },
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    const monthlyRevenue = monthlyRevenueAgg._sum.amount ?? 0;
 
     return {
       totalMembers,
@@ -39,6 +64,7 @@ export class GymDashboardService {
       paymentsPending: pending.length,
       expectedAmount,
       expiringThisWeek,
+      monthlyRevenue,
     };
   }
 

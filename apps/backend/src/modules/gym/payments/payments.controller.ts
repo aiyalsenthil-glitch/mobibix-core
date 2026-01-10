@@ -1,5 +1,4 @@
 import { PrismaService } from '../../../core/prisma/prisma.service';
-
 import {
   Controller,
   Post,
@@ -10,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 
-@UseGuards(JwtAuthGuard) // ✅ ADD THIS
+@UseGuards(JwtAuthGuard)
 @Controller('gym/payments')
 export class PaymentsController {
   constructor(private readonly prisma: PrismaService) {}
@@ -18,12 +17,13 @@ export class PaymentsController {
   @Post('receive')
   async receivePayment(
     @Req() req,
-    @Body() body: { memberId: string; amount: number },
+    @Body() body: { memberId: string; amount: number; method?: string },
   ) {
+    // 1️⃣ Fetch member securely
     const member = await this.prisma.member.findFirst({
       where: {
         id: body.memberId,
-        tenantId: req.user.tenantId, // 🔒 security
+        tenantId: req.user.tenantId,
       },
     });
 
@@ -31,16 +31,44 @@ export class PaymentsController {
       throw new NotFoundException('Member not found');
     }
 
+    // 2️⃣ Calculate new paid amount
     const newPaid = member.paidAmount + body.amount;
 
+    // 3️⃣ Decide payment status CORRECTLY
+    let paymentStatus: 'PAID' | 'PARTIAL' | 'DUE';
+
+    if (newPaid >= member.feeAmount) {
+      paymentStatus = 'PAID';
+    } else if (newPaid > 0) {
+      paymentStatus = 'PARTIAL';
+    } else {
+      paymentStatus = 'DUE';
+    }
+
+    // 4️⃣ Create payment transaction (SOURCE OF TRUTH)
+    await this.prisma.memberPayment.create({
+      data: {
+        tenantId: req.user.tenantId,
+        memberId: member.id,
+        amount: body.amount,
+        status: paymentStatus === 'PAID' ? 'PAID' : 'PARTIAL',
+        method: body.method ?? 'CASH',
+      },
+    });
+
+    // 5️⃣ Update member aggregate (CACHE)
     await this.prisma.member.update({
       where: { id: member.id },
       data: {
         paidAmount: newPaid,
-        paymentStatus: newPaid >= member.feeAmount ? 'PAID' : 'DUE',
+        paymentStatus,
       },
     });
 
-    return { success: true };
+    return {
+      success: true,
+      paymentStatus,
+      pendingAmount: Math.max(member.feeAmount - newPaid, 0),
+    };
   }
 }
