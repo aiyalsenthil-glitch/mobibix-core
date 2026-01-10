@@ -69,7 +69,7 @@ export class WhatsAppSender {
     if (rule.maxMembers > 0 && memberCount > rule.maxMembers) {
       return { success: false, skipped: true };
     }
-    await this.prisma.WhatsAppSettings.upsert({
+    await this.prisma.WhatsAppSetting.upsert({
       where: { tenantId },
       update: {},
       create: {
