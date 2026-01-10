@@ -67,7 +67,13 @@ export class GymDashboardService {
       todayAttendance,
       membershipsDue,
       paymentsPending: pending.length,
+
+      // ✅ dashboard pending money
+      pendingAmount: expectedAmount,
+
+      // ⚠️ keep for backward compatibility (optional)
       expectedAmount,
+
       expiringThisWeek,
       monthlyRevenue,
     };
