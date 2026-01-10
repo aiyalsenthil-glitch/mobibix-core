@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { MembersService } from '../../../core/members/members.service';
 import { GymAttendanceService } from '../attendance/gym-attendance.service';
 import { startOfDay, endOfDay, addDays } from 'date-fns';
-import { PrismaService } from 'src/core/prisma/prisma.service';
+import { PrismaService } from '../../../core/prisma/prisma.service';
 
 @Injectable()
 export class GymDashboardService {
