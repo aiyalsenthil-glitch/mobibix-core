@@ -7,11 +7,11 @@ export class WhatsAppLogger {
 
   async log(data: {
     tenantId: string;
-    memberId: string;
+    memberId: string | null;
     phone: string;
     type: string;
     status: string;
-    error?: string;
+    error?: string | null;
   }) {
     await this.prisma.whatsAppLog.create({
       data,
