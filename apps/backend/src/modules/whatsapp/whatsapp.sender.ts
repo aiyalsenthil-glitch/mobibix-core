@@ -76,7 +76,6 @@ export class WhatsAppSender {
         tenantId,
         enabled: true, // ✅ correct field
         provider: 'META',
-        senderPhone: process.env.WHATSAPP_PHONE_NUMBER,
       },
     });
 
