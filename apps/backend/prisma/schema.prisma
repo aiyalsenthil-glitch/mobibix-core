@@ -209,6 +209,7 @@ model WhatsAppSetting {
   id        String   @id @default(uuid())
   tenantId  String   @unique
   enabled   Boolean  @default(false)
+  provider    String? 
   createdAt DateTime @default(now())
 }
 
