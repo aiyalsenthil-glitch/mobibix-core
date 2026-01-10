@@ -349,7 +349,7 @@ export class MembersService {
         const due = m.feeAmount - paid;
 
         return {
-          memberId: m.id,
+          id: m.id,
           fullName: m.fullName, // since Android uses fullName
           phone: m.phone,
 
