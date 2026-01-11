@@ -40,7 +40,7 @@ export class StaffController {
 
   // ✅ OWNER: TEMP create staff (staff must have logged in once)
   @UseGuards(JwtAuthGuard, PlanFeatureGuard)
-  @RequirePlanFeature('staffAllowed')
+  @RequirePlanFeature('staff')
   @Roles(UserRole.OWNER)
   @Post()
   async create(

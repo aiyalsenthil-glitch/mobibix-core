@@ -30,6 +30,10 @@ export class PlanCapabilityGuard implements CanActivate {
     if (!subscription || !subscription.plan) {
       throw new ForbiddenException('Plan not found');
     }
+    // 🔓 TRIAL has full access
+    if (subscription.plan.name === 'TRIAL') {
+      return true;
+    }
 
     const planName = subscription.plan.name;
     const capability = PLAN_CAPABILITIES[planName];
