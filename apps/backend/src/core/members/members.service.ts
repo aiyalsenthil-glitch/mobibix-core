@@ -198,6 +198,31 @@ export class MembersService {
         fitnessGoal: dto.fitnessGoal,
       },
     });
+    // ─────────────────────────────
+    // ✅ Admission payment record (LEDGER)
+    // ─────────────────────────────
+    if (paid > 0) {
+      await this.prisma.memberPayment.create({
+        data: {
+          tenantId,
+          memberId: member.id,
+          amount: paid,
+          status: paymentStatus,
+          method: 'ADMISSION',
+          reference: 'MEMBER_CREATE', // ✅ future-proof
+        },
+      });
+
+      console.log(
+        '[Payment][ADMISSION]',
+        'member=',
+        member.id,
+        'amount=',
+        paid,
+        'tenant=',
+        tenantId,
+      );
+    }
 
     // ─────────────────────────────
     // ✅ Welcome WhatsApp (ULTIMATE)
@@ -414,8 +439,21 @@ export class MembersService {
         amount,
         status: paymentStatus,
         method: 'CASH',
+        reference: 'MANUAL_COLLECT', // ✅ future-proof
       },
     });
+
+    console.log(
+      '[Payment][COLLECT]',
+      'member=',
+      memberId,
+      'amount=',
+      amount,
+      'status=',
+      paymentStatus,
+      'tenant=',
+      tenantId,
+    );
 
     return updatedMember;
   }
@@ -672,6 +710,17 @@ export class MembersService {
           durationDays: durationCodeToDays(dto.durationCode),
         },
       });
+      console.log(
+        '[Payment][RENEW]',
+        'member=',
+        memberId,
+        'amount=',
+        paid,
+        'status=',
+        paymentStatus,
+        'tenant=',
+        tenantId,
+      );
     }
 
     // ─────────────────────────────
