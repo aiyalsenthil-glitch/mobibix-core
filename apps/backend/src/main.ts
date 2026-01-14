@@ -3,22 +3,29 @@ import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import express from 'express';
 import cors from 'cors';
+import * as bodyParser from 'body-parser';
 import { join } from 'path';
 
 async function bootstrap() {
   /**
    * 1️⃣ Create raw Express server
-   *    Express will handle:
-   *    - CORS preflight (IMPORTANT)
-   *    - Static files
-   *    - QR page
    */
   const server = express();
 
   /**
-   * 🔥 2️⃣ ENABLE CORS AT EXPRESS LEVEL
-   * This is REQUIRED when using ExpressAdapter
-   * Otherwise OPTIONS requests die before NestJS
+   * 🔥 2️⃣ Enable raw body for Razorpay webhook
+   * MUST be on Express, NOT Nest app
+   */
+  server.use(
+    bodyParser.json({
+      verify: (req: any, _res, buf) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
+
+  /**
+   * 3️⃣ Enable CORS at Express level
    */
   server.use(
     cors({
@@ -35,58 +42,53 @@ async function bootstrap() {
   );
 
   /**
-   * 3️⃣ Serve static files ONLY under /public
+   * 4️⃣ Serve static files
    */
   server.use('/public', express.static(join(__dirname, '..', '..', 'public')));
 
   /**
-   * 4️⃣ QR Check-in page
-   * URL: /public/checkin/:tenantCode
+   * 5️⃣ QR check-in page
    */
-  server.get('/public/checkin/:tenantCode', (req, res) => {
+  server.get('/public/checkin/:tenantCode', (_req, res) => {
     res.sendFile(
       join(__dirname, '..', '..', 'public', 'checkin', 'index.html'),
     );
   });
 
   /**
-   * 5️⃣ Health check (Render / uptime monitors)
+   * 6️⃣ Health check
    */
   server.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok' });
   });
 
   /**
-   * 6️⃣ Create NestJS app on SAME Express instance
+   * 7️⃣ Create NestJS app ON SAME Express instance
    */
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
 
   /**
-   * 7️⃣ Global API prefix
-   * All Nest controllers => /api/*
+   * 8️⃣ Global API prefix
    */
   app.setGlobalPrefix('api');
 
   /**
-   * 8️⃣ (Optional but safe) Enable Nest CORS as well
-   * Express CORS already handles OPTIONS
-   * Nest CORS handles internal responses
+   * 9️⃣ Enable Nest CORS (safe)
    */
-  // main.ts
   app.enableCors({
-    // Allow all origins for the mobile API or use a callback to validate
     origin: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Authorization',
       'Content-Type',
       'Accept',
-      'X-Requested-With', // Added for better mobile compatibility
+      'X-Requested-With',
     ],
     credentials: true,
   });
+
   /**
-   * 9️⃣ Start server
+   * 🔟 Start server
    */
   const port = process.env.PORT || 3000;
   await app.listen(port);

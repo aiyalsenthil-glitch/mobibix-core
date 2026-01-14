@@ -18,6 +18,7 @@ import { normalizePhone } from '../../common/utils/phone.util';
 import { WhatsAppSender } from '../../modules/whatsapp/whatsapp.sender';
 import { WhatsAppTemplates } from '../../modules/whatsapp/whatsapp.templates';
 import { WhatsAppFeature } from '../billing/whatsapp-rules';
+import { TenantService } from '../tenant/tenant.service';
 
 // ─────────────────────────────
 // ✅ Membership duration resolver
@@ -110,6 +111,7 @@ export class MembersService {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly auditService: AuditService,
     private readonly whatsAppSender: WhatsAppSender, // ✅ ADD
+    private readonly tenantService: TenantService,
   ) {}
 
   async createMember(tenantId: string, dto: CreateMemberDto) {
@@ -124,7 +126,11 @@ export class MembersService {
         plan: true,
       },
     });
+    const usage = await this.tenantService.getUsage(tenantId);
 
+    if (usage.trialExpired) {
+      throw new ForbiddenException('TRIAL_EXPIRED');
+    }
     if (!subscription) {
       throw new ForbiddenException('No active subscription');
     }
@@ -212,16 +218,6 @@ export class MembersService {
           reference: 'MEMBER_CREATE', // ✅ future-proof
         },
       });
-
-      console.log(
-        '[Payment][ADMISSION]',
-        'member=',
-        member.id,
-        'amount=',
-        paid,
-        'tenant=',
-        tenantId,
-      );
     }
 
     // ─────────────────────────────
@@ -442,18 +438,6 @@ export class MembersService {
         reference: 'MANUAL_COLLECT', // ✅ future-proof
       },
     });
-
-    console.log(
-      '[Payment][COLLECT]',
-      'member=',
-      memberId,
-      'amount=',
-      amount,
-      'status=',
-      paymentStatus,
-      'tenant=',
-      tenantId,
-    );
 
     return updatedMember;
   }
@@ -710,17 +694,6 @@ export class MembersService {
           durationDays: durationCodeToDays(dto.durationCode),
         },
       });
-      console.log(
-        '[Payment][RENEW]',
-        'member=',
-        memberId,
-        'amount=',
-        paid,
-        'status=',
-        paymentStatus,
-        'tenant=',
-        tenantId,
-      );
     }
 
     // ─────────────────────────────

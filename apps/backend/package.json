@@ -17,6 +17,9 @@
     "normalize-roles-sql": "npx prisma db execute --file scripts/normalize-roles.sql",
     "format": "prettier --write \"src/**/*.ts\""
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
@@ -25,7 +28,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/schedule": "^6.1.0",
-    "@prisma/adapter-pg": "^7.1.0",
+    "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
@@ -36,6 +39,7 @@
     "passport": "^0.7.0",
     "passport-http-bearer": "^1.0.1",
     "passport-jwt": "^4.0.1",
+    "pg": "^8.16.3",
     "REMOVED_PAYMENT_INFRA": "^2.9.6",
     "reflect-metadata": "^0.2.2",
     "resend": "^6.6.0",

@@ -12,8 +12,6 @@ import {
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Public } from '../../auth/decorators/public.decorator';
-import type { Request } from 'express';
 
 @UseGuards(JwtAuthGuard)
 @Controller('payments')
@@ -22,45 +20,6 @@ export class PaymentsController {
     private readonly paymentsService: PaymentsService,
     private readonly prisma: PrismaService,
   ) {}
-
-  // ─────────────────────────────────────────────
-  // 🌐 RAZORPAY WEBHOOK (PUBLIC – NO JWT)
-  // ─────────────────────────────────────────────
-  @Public()
-  @Post('webhook')
-  async handleWebhook(@Req() req: Request) {
-    const event = req.body;
-
-    // ⚠️ Later: verify Razorpay signature
-    if (event.event !== 'payment.captured') {
-      return { ignored: true };
-    }
-
-    const payment = event.payload.payment.entity;
-
-    const tenantId = payment.notes?.tenantId;
-    const planId = payment.notes?.planId;
-
-    if (!tenantId || !planId) {
-      throw new BadRequestException('Missing tenantId or planId in payment');
-    }
-
-    // ✅ SAVE REAL PAYMENT
-    await this.prisma.payment.updateMany({
-      where: {
-        providerOrderId: payment.order_id,
-        tenantId,
-      },
-      data: {
-        providerPaymentId: payment.id,
-        amount: payment.amount / 100, // final confirmed amount
-        currency: payment.currency,
-        status: 'SUCCESS', // enum-safe
-      },
-    });
-
-    return { status: 'payment saved' };
-  }
 
   // ─────────────────────────────────────────────
   // 🔒 CREATE RAZORPAY ORDER (JWT REQUIRED)
@@ -131,6 +90,7 @@ export class PaymentsController {
     return this.prisma.payment.findMany({
       where: {
         tenantId: req.user.tenantId,
+        status: 'SUCCESS',
       },
       orderBy: {
         createdAt: 'desc',

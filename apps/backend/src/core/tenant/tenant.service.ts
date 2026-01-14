@@ -43,10 +43,6 @@ export class TenantService {
       throw new BadRequestException('User not found');
     }
 
-    if (user.tenantId) {
-      throw new BadRequestException('User already has a tenant');
-    }
-
     await this.plansService.ensureDefaultPlans();
     const trialPlan = await this.plansService.getOrCreateTrialPlan();
 
@@ -92,10 +88,9 @@ export class TenantService {
       tenant.id,
       trialPlan.id,
     );
-
-    await this.prisma.user.update({
-      where: { id: userId },
+    await this.prisma.userTenant.create({
       data: {
+        userId,
         tenantId: tenant.id,
         role: UserRole.OWNER,
       },
@@ -103,6 +98,7 @@ export class TenantService {
 
     return tenant;
   }
+
   async searchTenants(query: string) {
     return this.prisma.tenant.findMany({
       where: {
@@ -265,12 +261,27 @@ export class TenantService {
       const diffMs = end.getTime() - now.getTime();
       daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
     }
+    const now = new Date();
+    const end = subscription.endDate ? new Date(subscription.endDate) : null;
 
+    const isTrial =
+      subscription.status === 'TRIAL' &&
+      end !== null &&
+      end.getTime() > now.getTime();
+
+    const isTrialExpired =
+      subscription.status === 'TRIAL' &&
+      end !== null &&
+      end.getTime() <= now.getTime();
     // 6️⃣ Final response (stable contract)
     return {
       hasTenant: true,
       tenantId,
+
       status: subscription.status,
+
+      isTrial, // ✅ ADD
+      trialExpired: isTrialExpired, // ✅ ADD
 
       plan: {
         name: plan.name,
@@ -303,12 +314,12 @@ export class TenantService {
   async listTenantsWithSubscription() {
     const tenants = await this.prisma.tenant.findMany({
       include: {
-        users: {
+        subscription: true,
+        userTenants: {
           where: { role: UserRole.OWNER },
-          select: { email: true },
-        },
-        subscription: {
-          include: { plan: true },
+          include: {
+            user: { select: { email: true } },
+          },
         },
       },
     });
@@ -316,21 +327,26 @@ export class TenantService {
     return tenants.map((t) => ({
       id: t.id,
       name: t.name,
-      ownerEmail: t.users[0]?.email ?? null,
+      ownerEmail: t.userTenants[0]?.user.email ?? null,
+
       subscription: t.subscription,
     }));
   }
 
-  async getUserForAuth(userId: string) {
+  async getUserProfile(userId: string) {
     return this.prisma.user.findUnique({
       where: { id: userId },
     });
   }
-  issueJwt(user: { id: string; tenantId: string | null; role: UserRole }) {
+  issueJwt(payload: {
+    userId: string;
+    tenantId: string | null;
+    role: UserRole;
+  }) {
     return this.jwtService.sign({
-      sub: user.id,
-      tenantId: user.tenantId,
-      role: user.role,
+      sub: payload.userId,
+      tenantId: payload.tenantId,
+      role: payload.role,
     });
   }
 }

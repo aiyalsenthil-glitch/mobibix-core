@@ -5,10 +5,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { isMembershipExpired } from '../../../common/utils/membership.util';
+import { TenantService } from '../../../core/tenant/tenant.service';
 
 @Injectable()
 export class GymAttendanceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tenantService: TenantService,
+  ) {}
   private normalizePhone(phone: string): string {
     return phone.replace(/\D/g, '').slice(-10);
   }
@@ -35,6 +39,12 @@ export class GymAttendanceService {
         tenantId,
       },
     });
+    const usage = await this.tenantService.getUsage(tenantId);
+
+    if (usage.trialExpired) {
+      throw new ForbiddenException('TRIAL_EXPIRED');
+    }
+
     if (!member) {
       throw new BadRequestException('Member not found');
     }
@@ -70,6 +80,11 @@ export class GymAttendanceService {
   // CHECK-IN OUT BY PHONE (QR)//
   async checkInOrOutByPhone(tenantId: string, phone: string) {
     const normalizedPhone = this.normalizePhone(phone);
+    const usage = await this.tenantService.getUsage(tenantId);
+
+    if (usage.trialExpired) {
+      throw new ForbiddenException('TRIAL_EXPIRED');
+    }
 
     const member = await this.prisma.member.findFirst({
       where: { tenantId, phone: normalizedPhone },
@@ -141,6 +156,11 @@ export class GymAttendanceService {
   async listTodayAttendance(tenantId: string) {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
+    const usage = await this.tenantService.getUsage(tenantId);
+
+    if (usage.trialExpired) {
+      throw new ForbiddenException('TRIAL_EXPIRED');
+    }
 
     const end = new Date();
     end.setHours(23, 59, 59, 999);
@@ -227,6 +247,41 @@ export class GymAttendanceService {
       checkInTime: r.checkInTime,
       checkOutTime: r.checkOutTime,
     }));
+  }
+  //GET attendance status by phone number
+
+  async getAttendanceStatusByPhone(tenantId: string, phone: string) {
+    const normalizedPhone = this.normalizePhone(phone);
+
+    const member = await this.prisma.member.findFirst({
+      where: { tenantId, phone: normalizedPhone },
+    });
+
+    if (!member) {
+      throw new BadRequestException('MEMBER_NOT_FOUND');
+    }
+
+    const openAttendance = await this.prisma.gymAttendance.findFirst({
+      where: {
+        tenantId,
+        memberId: member.id,
+        checkOutTime: null,
+      },
+      orderBy: { checkInTime: 'desc' },
+    });
+    const paid = member.paidAmount ?? 0;
+    const fee = member.feeAmount ?? 0;
+    const pendingAmount = Math.max(fee - paid, 0);
+
+    return {
+      memberId: member.id,
+      name: member.fullName,
+      phone: member.phone,
+      isInside: !!openAttendance,
+      checkInTime: openAttendance?.checkInTime ?? null,
+      paymentStatus: this.getPaymentState(member), // PAID | PARTIAL | DUE
+      pendingAmount, // ✅ ADD THIS
+    };
   }
 
   //list currently checked-in members

@@ -30,7 +30,7 @@ export class PlansService {
         price: 99,
         level: 1,
         billingCycle: BillingCycle.MONTHLY,
-        memberLimit: 0,
+        memberLimit: 100,
         features: {},
       },
       {
@@ -38,7 +38,7 @@ export class PlansService {
         price: 199,
         level: 2,
         billingCycle: BillingCycle.MONTHLY,
-        memberLimit: 0,
+        memberLimit: 150,
         features: {},
       },
       {

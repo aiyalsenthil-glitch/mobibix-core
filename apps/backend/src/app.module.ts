@@ -11,6 +11,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './core/auth/guards/jwt-auth.guard';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { GymAppModule } from './modules/gymapp/gym-app.module';
 
 @Module({
   imports: [
@@ -27,7 +28,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     WhatsAppModule,
     // 🧩 Business modules
     GymModule,
-
+    GymAppModule,
     // 🩺 Platform infra
     HealthModule,
   ],

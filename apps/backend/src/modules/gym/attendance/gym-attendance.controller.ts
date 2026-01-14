@@ -41,6 +41,18 @@ export class GymAttendanceController {
   today(@Req() req: any) {
     return this.attendanceService.listTodayAttendance(req.user.tenantId);
   }
+  // ========================
+  // STATUS BY PHONE
+  // ========================
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions(Permission.ATTENDANCE_VIEW)
+  @Get('status-by-phone/:phone')
+  getStatusByPhone(@Req() req: any, @Param('phone') phone: string) {
+    return this.attendanceService.getAttendanceStatusByPhone(
+      req.user.tenantId,
+      phone,
+    );
+  }
 
   // ========================
   // KIOSK / QR (NO JWT)

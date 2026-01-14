@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module';
 import { SubscriptionsModule } from '../billing/subscriptions/subscriptions.module';
 import { AuditModule } from '../audit/audit.module';
 import { WhatsAppModule } from '../../modules/whatsapp/whatsapp.module';
+import { TenantModule } from '../tenant/tenant.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { WhatsAppModule } from '../../modules/whatsapp/whatsapp.module';
     SubscriptionsModule,
     AuditModule,
     WhatsAppModule, // ✅ ADD THIS
+    TenantModule,
   ],
   controllers: [MembersController],
   providers: [MembersService],

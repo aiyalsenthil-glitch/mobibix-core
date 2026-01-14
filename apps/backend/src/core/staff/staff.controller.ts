@@ -52,11 +52,10 @@ export class StaffController {
       fullName?: string;
     },
   ) {
-    return this.usersService.createStaffUser({
+    return this.staffService.createStaff(req.user.tenantId, {
       REMOVED_AUTH_PROVIDERUid: body.REMOVED_AUTH_PROVIDERUid,
-      email: body.email ?? null,
-      fullName: body.fullName ?? null,
-      tenantId: req.user.tenantId,
+      email: body.email,
+      fullName: body.fullName,
     });
   }
 

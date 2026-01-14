@@ -60,4 +60,51 @@ export class PrismaService
   setTenantId(tenantId: string) {
     setCtx('tenantId', tenantId);
   }
+  /**
+   * 🔁 ONE-TIME BACKFILL:
+   * Copy User.tenantId + User.role → UserTenant
+   * Safe to run multiple times (idempotent)
+   */
+  async backfillUserTenants() {
+    const users = await this.user.findMany({
+      where: {
+        tenantId: { not: null },
+        role: { in: ['OWNER', 'STAFF'] },
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        role: true,
+      },
+    });
+
+    let created = 0;
+    let skipped = 0;
+
+    for (const user of users) {
+      if (!user.tenantId || !user.role) {
+        skipped++;
+        continue;
+      }
+
+      await this.userTenant.upsert({
+        where: {
+          userId_tenantId: {
+            userId: user.id,
+            tenantId: user.tenantId,
+          },
+        },
+        update: {
+          role: user.role,
+        },
+        create: {
+          userId: user.id,
+          tenantId: user.tenantId,
+          role: user.role,
+        },
+      });
+
+      created++;
+    }
+  }
 }

@@ -1,0 +1,72 @@
+Folder PATH listing
+Volume serial number is 4AA6-9446
+E:\PROJECTS\GYM-SAAS\APPS\BACKEND\SRC
++---common
+|   +---email
+|   |   \---templates
+|   +---middleware
+|   \---utils
++---core
+|   +---admin
+|   +---audit
+|   +---auth
+|   |   +---decorators
+|   |   +---dto
+|   |   +---guards
+|   |   \---strategies
+|   +---billing
+|   |   +---guards
+|   |   +---payments
+|   |   +---plans
+|   |   |   \---dto
+|   |   \---subscriptions
+|   |       \---dto
+|   +---cls
+|   +---REMOVED_AUTH_PROVIDER
+|   +---members
+|   |   \---dto
+|   +---prisma
+|   +---staff
+|   +---tenant
+|   |   +---dto
+|   |   \---guards
+|   \---users
+|       \---dto
++---health
+\---modules
+    +---gym
+    |   +---attendance
+    |   +---dashboard
+    |   +---membership
+    |   +---payments
+    |   \---public-checkin
+    \---whatsapp
+Folder PATH listing
+Volume serial number is 4AA6-9446
+E:\PROJECTS\GYM-SAAS\APPS\BACKEND\PRISMA
+\---migrations
+    +---20251224040934_dev
+    +---20251224053331_member_composite_key
+    +---20251224054418_new
+    +---20251224075007_add_member_payment_relation
+    +---20251224103827_add_kiosk_token
+    +---20251225051844_staff_invite
+    +---20251226053731_add_user_profile
+    +---20251226072033_add_user_phone
+    +---20251227105910_add_paid_amount
+    +---20251227154826_add_payment_duration
+    +---20251228091545_add_fee_amount_to_member_payment
+    +---20251229053947_whatsapp_phase1
+    +---20251230125509_whatsapp_phase1
+    +---20251230132659_add_billing_cycle_to_plan
+    +---20251230162035_razo
+    +---20251230172244_add_webhook_events
+    +---20251231125345_add_webhook_logs
+    +---20260104091948_add_member_is_active
+    +---20260105054401_add_member_photo
+    +---20260106045728_add_welcome_message_flag
+    +---20260106114546_add_welcome_email_flag
+    +---20260107131410_add_expiry_reminder_flag
+    +---20260110050259_whatsapp_log_nullable_fields
+    +---20260110051449_add_whatsapp_provider
+    \---20260110054642_add_user_role

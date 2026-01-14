@@ -45,7 +45,8 @@ export class SubscriptionsController {
     return {
       plan: sub.plan.name,
       planLevel: sub.plan.level, // 👈 ADD THIS
-      memberLimit: features?.memberLimit ?? 0,
+      memberLimit: features?.memberLimit ?? (sub.plan.level === 1 ? 100 : 0),
+
       daysLeft,
       isTrial: sub.status === 'TRIAL',
     };

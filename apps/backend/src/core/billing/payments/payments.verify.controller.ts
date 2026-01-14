@@ -10,6 +10,7 @@ import * as crypto from 'crypto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PaymentStatus } from '@prisma/client';
 
 @UseGuards(JwtAuthGuard)
 @Controller('payments')
@@ -53,17 +54,22 @@ export class PaymentsVerifyController {
     );
 
     // 3️⃣ Store payment record (NO plan.price here)
-    await this.prisma.payment.create({
-      data: {
-        tenantId: req.user.tenantId,
-        planId,
-
-        amount: 0, // pricing handled elsewhere
-        currency: 'INR',
-        status: 'SUCCESS',
-
+    const existingPayment = await this.prisma.payment.findFirst({
+      where: {
         provider: 'RAZORPAY',
         providerOrderId: orderId,
+        tenantId: req.user.tenantId,
+      },
+    });
+
+    if (!existingPayment) {
+      throw new BadRequestException('Payment order not found');
+    }
+
+    await this.prisma.payment.update({
+      where: { id: existingPayment.id },
+      data: {
+        status: PaymentStatus.SUCCESS,
         providerPaymentId: paymentId,
         providerSignature: signature,
       },

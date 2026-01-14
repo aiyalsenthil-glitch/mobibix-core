@@ -41,7 +41,7 @@ export class StaffService {
     }
 
     // 🔒 Enforce staff count limit
-    const currentStaffCount = await this.prisma.user.count({
+    const currentStaffCount = await this.prisma.userTenant.count({
       where: {
         tenantId,
         role: UserRole.STAFF,
@@ -57,49 +57,65 @@ export class StaffService {
 
   // ✅ List staff for tenant
   async listStaff(tenantId: string) {
-    return this.prisma.user.findMany({
+    return this.prisma.userTenant.findMany({
       where: {
         tenantId,
         role: UserRole.STAFF,
       },
       select: {
-        id: true,
-        fullName: true,
-        email: true,
-        phone: true,
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+          },
+        },
       },
     });
   }
 
-  // ✅ Create staff (Phase-1 flow)
+  // ✅ Create staff (attach existing user to tenant)
   async createStaff(
     tenantId: string,
     data: {
       REMOVED_AUTH_PROVIDERUid: string;
-      email: string;
-      fullName: string;
+      email?: string;
+      fullName?: string;
     },
   ) {
     await this.ensureStaffAllowed(tenantId);
 
-    const existing = await this.prisma.user.findFirst({
+    // 1️⃣ Find existing user
+    const existingUser = await this.prisma.user.findFirst({
       where: {
-        REMOVED_AUTH_PROVIDERUid: data.REMOVED_AUTH_PROVIDERUid,
+        OR: [{ REMOVED_AUTH_PROVIDERUid: data.REMOVED_AUTH_PROVIDERUid }, { email: data.email }],
       },
     });
 
-    if (!existing) {
-      throw new BadRequestException('User not found. Staff must login once.');
+    if (!existingUser) {
+      throw new BadRequestException('User does not exist');
     }
 
-    return this.prisma.user.update({
-      where: { id: existing.id },
-      data: {
+    // 2️⃣ Attach user to tenant as STAFF
+    await this.prisma.userTenant.upsert({
+      where: {
+        userId_tenantId: {
+          userId: existingUser.id,
+          tenantId,
+        },
+      },
+      update: {
+        role: UserRole.STAFF,
+      },
+      create: {
+        userId: existingUser.id,
         tenantId,
         role: UserRole.STAFF,
-        fullName: data.fullName,
       },
     });
+
+    return { success: true };
   }
 
   // ✅ Invite staff by email
@@ -111,11 +127,22 @@ export class StaffService {
       where: { email },
     });
 
-    if (existingUser && existingUser.tenantId === tenantId) {
-      return {
-        status: 'ALREADY_JOINED',
-        message: 'User is already staff in this gym',
-      };
+    if (existingUser) {
+      const exists = await this.prisma.userTenant.findUnique({
+        where: {
+          userId_tenantId: {
+            userId: existingUser.id,
+            tenantId,
+          },
+        },
+      });
+
+      if (exists) {
+        return {
+          status: 'ALREADY_JOINED',
+          message: 'User is already staff in this gym',
+        };
+      }
     }
 
     // allow re-invite if user exists but has no tenant
@@ -178,24 +205,28 @@ export class StaffService {
   }
   // ✅ Remove staff from tenant
   async removeStaff(tenantId: string, staffUserId: string) {
-    const staff = await this.prisma.user.findUnique({
-      where: { id: staffUserId },
+    const staff = await this.prisma.userTenant.findUnique({
+      where: {
+        userId_tenantId: {
+          userId: staffUserId,
+          tenantId,
+        },
+      },
     });
 
-    if (!staff || staff.tenantId !== tenantId) {
+    if (!staff || staff.role !== UserRole.STAFF) {
       throw new NotFoundException('Staff not found');
     }
 
-    if (staff.role !== UserRole.STAFF) {
-      throw new BadRequestException('User is not staff');
-    }
-
-    return this.prisma.user.update({
-      where: { id: staffUserId },
-      data: {
-        role: UserRole.USER, // 👈 downgrade
-        tenantId: null, // detach from gym
+    await this.prisma.userTenant.delete({
+      where: {
+        userId_tenantId: {
+          userId: staffUserId,
+          tenantId,
+        },
       },
     });
+
+    return { success: true };
   }
 }

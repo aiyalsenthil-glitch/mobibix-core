@@ -58,27 +58,23 @@ export class PaymentsWebhookController {
           payload: payload,
         },
       });
-
-      // 💰 Handle captured payments
       if (event === 'payment.captured') {
         const payment = payload.payload.payment.entity;
 
-        await this.prisma.payment.create({
-          data: {
-            tenantId: payment.notes?.tenantId,
-            planId: payment.notes?.planId,
-            amount: payment.amount,
-            currency: payment.currency,
-            status: PaymentStatus.SUCCESS,
-            provider: 'RAZORPAY',
+        await this.prisma.payment.updateMany({
+          where: {
             providerOrderId: payment.order_id,
+          },
+          data: {
             providerPaymentId: payment.id,
-            providerSignature: signature,
+            status: PaymentStatus.SUCCESS,
+            amount: payment.amount / 100,
+            currency: payment.currency,
           },
         });
-
-        this.logger.log(`💰 Payment SUCCESS saved: ${payment.id}`);
       }
+      return { received: true };
+      // 💰 Handle captured payments
     } catch (err) {
       this.logger.error('Webhook processing error', err);
     }

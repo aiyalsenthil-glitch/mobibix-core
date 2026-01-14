@@ -26,15 +26,41 @@ export class SubscriptionsService {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
       include: {
-        users: {
+        userTenants: {
           where: { role: 'OWNER' },
+          include: {
+            user: true,
+          },
         },
       },
     });
 
-    if (!currentSub || currentSub.plan.level === null) {
-      throw new NotFoundException('Active subscription not found');
+    if (!currentSub) {
+      // Trial exists but expired → UPGRADE existing row
+      const existingSub = await this.prisma.tenantSubscription.findUnique({
+        where: { tenantId },
+      });
+
+      if (!existingSub) {
+        throw new NotFoundException('Subscription record not found');
+      }
+
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + newPlan.durationDays);
+
+      return this.prisma.tenantSubscription.update({
+        where: { tenantId },
+        data: {
+          planId: newPlan.id,
+          status: SubscriptionStatus.ACTIVE,
+          startDate,
+          endDate,
+          expiryReminderSentAt: null,
+        },
+      });
     }
+
     const oldPlanName = currentSub.plan.name;
     const newPlanName = newPlan.name;
 
@@ -61,7 +87,7 @@ export class SubscriptionsService {
     });
     // 📧 Send plan upgrade email (non-blocking)
     try {
-      const ownerEmail = tenant?.users?.[0]?.email;
+      const ownerEmail = tenant?.userTenants?.[0]?.user?.email;
 
       if (ownerEmail) {
         await this.emailService.sendEmail({

@@ -18,6 +18,7 @@ import { Permission } from '../auth/permissions.enum';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { TenantStatusGuard } from './guards/tenant-status.guard';
 import { Query } from '@nestjs/common';
+import { UserRole } from '@prisma/client/edge';
 
 @Controller('tenant')
 export class TenantController {
@@ -39,18 +40,15 @@ export class TenantController {
 
     const tenant = await this.tenantService.createTenant(userId, dto);
 
-    // 🔥 Fetch updated user (now has tenantId)
-    const updatedUser = await this.tenantService.getUserForAuth(userId);
-
-    if (!updatedUser) {
-      throw new Error('User not found after tenant creation');
-    }
-
-    const token = this.tenantService.issueJwt(updatedUser);
+    const token = this.tenantService.issueJwt({
+      userId,
+      tenantId: tenant.id,
+      role: UserRole.OWNER,
+    });
 
     return {
       tenant,
-      token,
+      accessToken: token,
     };
   }
   /**

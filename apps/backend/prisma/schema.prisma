@@ -4,102 +4,117 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  
 }
 
 model Tenant {
-  id           String              @id @default(cuid())
-  name         String
-  legalName    String?
-  tenantType   String
-  code         String              @unique
-  contactPhone String
-  contactEmail String?
-  website      String?
-  logoUrl      String?
-  addressLine1 String
-  addressLine2 String?
-  city         String
-  state        String
-  pincode      String
-  country      String              @default("India")
-  gstNumber    String?
-  taxId        String?
-  businessType String?
-  currency     String              @default("INR")
-  timezone     String              @default("Asia/Kolkata")
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-  kioskToken   String?             @unique
-  whatsappEnabled Boolean @default(true)
-  maxMembers      Int @default(50)
+  id              String              @id @default(cuid())
+  name            String
+  legalName       String?
+  tenantType      String
+  code            String              @unique
+  contactPhone    String
+  contactEmail    String?
+  website         String?
+  logoUrl         String?
+  addressLine1    String
+  addressLine2    String?
+  city            String
+  state           String
+  pincode         String
+  country         String              @default("India")
+  gstNumber       String?
+  taxId           String?
+  businessType    String?
+  currency        String              @default("INR")
+  timezone        String              @default("Asia/Kolkata")
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  kioskToken      String?             @unique
+  whatsappEnabled Boolean             @default(true)
+  maxMembers      Int                 @default(50)
+  userTenants     UserTenant[]
+  auditLogs       AuditLog[]
+  members         Member[]
+  payments        Payment[]
+  subscription    TenantSubscription?
+  users           User[]
+}
 
-  auditLogs    AuditLog[]
-  members      Member[]
-  payments     Payment[]
-  subscription TenantSubscription?
-  users        User[]
+model UserTenant {
+  id        String   @id @default(cuid())
+  userId    String
+  tenantId  String
+  role      UserRole
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([userId, tenantId])
+  @@index([tenantId])
 }
 
 model User {
-  id          String     @id @default(uuid())
-  REMOVED_AUTH_PROVIDERUid String     @unique
-  email       String?
-  fullName    String?
-  avatar      String?
-  role        UserRole
-  tenantId    String?
-  phone       String?
-  permissions Json?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  welcomeEmailSent Boolean  @default(false)
-  auditLogs   AuditLog[]
-  tenant      Tenant?    @relation(fields: [tenantId], references: [id])
+  id               String       @id @default(uuid())
+  REMOVED_AUTH_PROVIDERUid      String       @unique
+  email            String?
+  fullName         String?
+  avatar           String?
+  role             UserRole
+  tenantId         String?
+  phone            String?
+  permissions      Json?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  welcomeEmailSent Boolean      @default(false)
+  auditLogs        AuditLog[]
+  userTenants      UserTenant[]
+  tenant           Tenant?      @relation(fields: [tenantId], references: [id])
 }
 
 model Member {
-  id                String              @id @default(uuid())
-  tenantId          String
-  fullName          String
-  photoUrl          String?
-  phone             String
-  gender            Gender
-  membershipPlanId  String
-  membershipStartAt DateTime
-  membershipEndAt   DateTime
-  monthlyFee        Int   // ✅ BASE MONTHLY FEE
-  feeAmount         Int
-  paidAmount        Int      @default(0)
-  paymentStatus     MemberPaymentStatus
-  heightCm          Float
-  weightKg          Float
-  fitnessGoal       FitnessGoal
-  paymentDueDate   DateTime
-  paymentReminderSent Boolean @default(false)
-  welcomeMessageSent Boolean @default(false)
+  id                  String              @id @default(uuid())
+  tenantId            String
+  fullName            String
+  photoUrl            String?
+  phone               String
+  gender              Gender
+  membershipPlanId    String
+  membershipStartAt   DateTime
+  membershipEndAt     DateTime
+  monthlyFee          Int // ✅ BASE MONTHLY FEE
+  feeAmount           Int
+  paidAmount          Int                 @default(0)
+  paymentStatus       MemberPaymentStatus
+  heightCm            Float
+  weightKg            Float
+  fitnessGoal         FitnessGoal
+  paymentDueDate      DateTime
+  paymentReminderSent Boolean             @default(false)
+  welcomeMessageSent  Boolean             @default(false)
 
-  isActive Boolean  @default(true)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  attendances       GymAttendance[]
-  gymMemberships    GymMembership[]
-  tenant            Tenant              @relation(fields: [tenantId], references: [id])
-  payments          MemberPayment[]
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  attendances    GymAttendance[]
+  gymMemberships GymMembership[]
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  payments       MemberPayment[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, phone])
   @@index([tenantId])
 }
 
-
 model StaffInvite {
-  id        String   @id @default(cuid())
-  tenantId  String
-  email     String
-  role      UserRole @default(STAFF)
+  id       String   @id @default(cuid())
+  tenantId String
+  email    String
+  role     UserRole @default(STAFF)
 
-   name      String?   // ✅ add
-  phone     String?   // ✅ add
+  name  String? // ✅ add
+  phone String? // ✅ add
 
   accepted  Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -107,21 +122,20 @@ model StaffInvite {
   @@unique([tenantId, email])
 }
 
-
 model MemberPayment {
-  id        String              @id @default(cuid())
-  tenantId  String
-  memberId  String
-  amount    Int
-  status    MemberPaymentStatus
-  method    String?
-  reference String?
-  gstRate   Float?
-  gstAmount Float?
-  durationDays  Int?     // ✅ NEW (30 / 60 / 90)
-  total     Int?
-  createdAt DateTime            @default(now())
-  member    Member              @relation(fields: [memberId], references: [id])
+  id           String              @id @default(cuid())
+  tenantId     String
+  memberId     String
+  amount       Int
+  status       MemberPaymentStatus
+  method       String?
+  reference    String?
+  gstRate      Float?
+  gstAmount    Float?
+  durationDays Int? // ✅ NEW (30 / 60 / 90)
+  total        Int?
+  createdAt    DateTime            @default(now())
+  member       Member              @relation(fields: [memberId], references: [id])
 
   @@index([tenantId])
   @@index([memberId])
@@ -129,12 +143,12 @@ model MemberPayment {
 
 model Plan {
   id            String               @id @default(cuid())
-  name          String
+  name          String            @unique
   level         Int
   price         Int
   currency      String               @default("INR")
   durationDays  Int
-  billingCycle  BillingCycle @default(MONTHLY)
+  billingCycle  BillingCycle         @default(MONTHLY)
   memberLimit   Int                  @default(0)
   features      Json?
   isActive      Boolean              @default(true)
@@ -142,22 +156,24 @@ model Plan {
   updatedAt     DateTime             @updatedAt
   subscriptions TenantSubscription[]
 }
+
 enum BillingCycle {
   MONTHLY
   ANNUAL
 }
+
 model TenantSubscription {
-  id        String             @id @default(cuid())
-  tenantId  String             @unique
-  planId    String
-  status    SubscriptionStatus
-  startDate DateTime
-  endDate   DateTime
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
+  id                   String             @id @default(cuid())
+  tenantId             String             @unique
+  planId               String
+  status               SubscriptionStatus
+  startDate            DateTime
+  endDate              DateTime
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
   expiryReminderSentAt DateTime?
-  plan      Plan               @relation(fields: [planId], references: [id])
-  tenant    Tenant             @relation(fields: [tenantId], references: [id])
+  plan                 Plan               @relation(fields: [planId], references: [id])
+  tenant               Tenant             @relation(fields: [tenantId], references: [id])
 }
 
 model Payment {
@@ -174,8 +190,8 @@ model Payment {
   meta              Json?
   createdAt         DateTime      @default(now())
   tenant            Tenant        @relation(fields: [tenantId], references: [id])
-  
-  @@unique([provider, providerPaymentId])
+
+  @@unique([provider, providerPaymentId, providerOrderId])
 }
 
 model AuditLog {
@@ -205,43 +221,46 @@ model GymMembership {
   @@index([tenantId])
   @@index([memberId])
 }
+
 model WhatsAppSetting {
   id        String   @id @default(uuid())
   tenantId  String   @unique
   enabled   Boolean  @default(false)
-  provider    String? 
+  provider  String?
   createdAt DateTime @default(now())
 }
 
 model WhatsAppLog {
-  id        String   @id @default(uuid())
-  tenantId  String
-  memberId  String?
-  phone     String
-  type      String
-  status    String
-  error     String?
-  sentAt    DateTime @default(now())
+  id       String   @id @default(uuid())
+  tenantId String
+  memberId String?
+  phone    String
+  type     String
+  status   String
+  error    String?
+  sentAt   DateTime @default(now())
 }
+
 model WebhookEvent {
   id          String   @id @default(cuid())
-  provider    String   // RAZORPAY
-  eventType   String   // payment.captured
-  referenceId String?  // paymentId / orderId
+  provider    String // RAZORPAY
+  eventType   String // payment.captured
+  referenceId String? // paymentId / orderId
   payload     Json
   receivedAt  DateTime @default(now())
 }
+
 model WebhookLog {
-  id          String   @id @default(uuid())
-  provider    String   // "REMOVED_PAYMENT_INFRA"
-  event       String   // payment.captured, order.paid
-  entityId    String?  // payment_id / order_id
-  tenantId    String?
-  planId      String?
-  status      String   // SUCCESS | FAILED | RECEIVED
-  payload     Json
-  error       String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  provider  String // "REMOVED_PAYMENT_INFRA"
+  event     String // payment.captured, order.paid
+  entityId  String? // payment_id / order_id
+  tenantId  String?
+  planId    String?
+  status    String // SUCCESS | FAILED | RECEIVED
+  payload   Json
+  error     String?
+  createdAt DateTime @default(now())
 
   @@index([tenantId])
   @@index([event])

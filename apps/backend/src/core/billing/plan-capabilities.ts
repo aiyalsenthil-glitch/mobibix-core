@@ -13,7 +13,7 @@ export const PLAN_CAPABILITIES = {
   BASIC: {
     staffAllowed: false,
     maxStaff: 0,
-    memberLimit: 50,
+    memberLimit: 100,
     whatsapp: false,
     reports: false,
   },
@@ -22,7 +22,7 @@ export const PLAN_CAPABILITIES = {
     staff: true, // 🔴 ADD
     staffInvite: true, // 🔴 ADD (if used)
     maxStaff: 3,
-    memberLimit: 100,
+    memberLimit: 999,
     whatsapp: true,
     reports: true,
   },

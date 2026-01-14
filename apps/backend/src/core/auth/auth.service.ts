@@ -56,7 +56,7 @@ export class AuthService {
             REMOVED_AUTH_PROVIDERUid: decoded.uid,
             email: decoded.email ?? null,
             fullName: decoded.name ?? null,
-            role: UserRole.OWNER,
+            role: UserRole.USER,
             tenantId: null,
           },
         });
@@ -74,9 +74,18 @@ export class AuthService {
         });
 
         if (invite) {
-          user = await this.prisma.user.update({
-            where: { id: user.id },
-            data: {
+          await this.prisma.userTenant.upsert({
+            where: {
+              userId_tenantId: {
+                userId: user.id,
+                tenantId: invite.tenantId,
+              },
+            },
+            update: {
+              role: UserRole.STAFF,
+            },
+            create: {
+              userId: user.id,
               tenantId: invite.tenantId,
               role: UserRole.STAFF,
             },
@@ -88,23 +97,55 @@ export class AuthService {
           });
         }
       }
+      // ─────────────────────────────
+      // 4️⃣ Resolve active tenant context
+      // ─────────────────────────────
+      const userTenants = await this.prisma.userTenant.findMany({
+        where: { userId: user.id },
+        include: { tenant: true },
+      });
+
+      const activeUserTenant = userTenants[0] ?? null;
+      // 🟢 FIRST LOGIN / NO TENANT FLOW
+      if (!activeUserTenant) {
+        // IMPORTANT:
+        // - DB is source of truth
+        // - Ignore any old Firebase custom claims
+        // - Do NOT sync claims
+        // - Just issue USER token
+
+        const token = this.jwtService.sign({
+          sub: user.id,
+          tenantId: null,
+          role: UserRole.USER,
+        });
+
+        return {
+          accessToken: token,
+          user: {
+            id: user.id,
+            email: user.email,
+            fullName: user.fullName,
+            role: UserRole.USER,
+            tenantId: null,
+          },
+          tenant: null,
+        };
+      }
 
       // ─────────────────────────────
       // 4️⃣ Fetch tenant (if exists)
       // ─────────────────────────────
-      const tenant = user.tenantId
-        ? await this.prisma.tenant.findUnique({
-            where: { id: user.tenantId },
-          })
-        : null;
+      const tenant = activeUserTenant?.tenant ?? null;
+
       // ─────────────────────────────
       // 4.5️⃣ Set Firebase custom claims (SAFE)
       // ─────────────────────────────
 
-      if (user.tenantId && decoded.tenantId !== user.tenantId) {
+      if (activeUserTenant && decoded.tenantId !== activeUserTenant.tenantId) {
         await this.REMOVED_AUTH_PROVIDERAdmin.setCustomUserClaims(user.REMOVED_AUTH_PROVIDERUid, {
-          tenantId: user.tenantId,
-          role: user.role,
+          tenantId: activeUserTenant.tenantId,
+          role: activeUserTenant.role,
         });
       }
 
@@ -113,18 +154,18 @@ export class AuthService {
       // ─────────────────────────────
       const token = this.jwtService.sign({
         sub: user.id,
-        tenantId: user.tenantId,
-        role: user.role,
+        tenantId: activeUserTenant?.tenantId ?? null,
+        role: activeUserTenant?.role ?? UserRole.USER,
       });
 
       return {
-        token,
+        accessToken: token,
         user: {
           id: user.id,
-          role: user.role,
+          tenantId: activeUserTenant?.tenantId ?? null,
+          role: activeUserTenant?.role ?? UserRole.USER,
           name: user.fullName,
           email: user.email,
-          tenantId: user.tenantId,
         },
         tenant: tenant
           ? {
