@@ -10,10 +10,10 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+//import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 
-@UseGuards(JwtAuthGuard)
+//@UseGuards(JwtAuthGuard)
 @Controller('payments')
 export class PaymentsController {
   constructor(
