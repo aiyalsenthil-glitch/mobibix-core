@@ -13,6 +13,7 @@ export class SubscriptionsService {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
   ) {}
+  //DONOT USE
   async upgradeSubscription(tenantId: string, planId: string) {
     const newPlan = await this.prisma.plan.findUnique({
       where: { id: planId },
@@ -37,8 +38,10 @@ export class SubscriptionsService {
 
     if (!currentSub) {
       // Trial exists but expired → UPGRADE existing row
-      const existingSub = await this.prisma.tenantSubscription.findUnique({
+      const existingSub = await this.prisma.tenantSubscription.findFirst({
         where: { tenantId },
+        orderBy: { endDate: 'desc' },
+        include: { plan: true },
       });
 
       if (!existingSub) {
@@ -49,7 +52,7 @@ export class SubscriptionsService {
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + newPlan.durationDays);
 
-      return this.prisma.tenantSubscription.update({
+      return this.prisma.tenantSubscription.updateMany({
         where: { tenantId },
         data: {
           planId: newPlan.id,
@@ -144,9 +147,95 @@ export class SubscriptionsService {
     return memberCount < features.memberLimit;
   }
 
+  //USETHIS
+  async buyPlan(tenantId: string, planId: string) {
+    const plan = await this.prisma.plan.findUnique({
+      where: { id: planId },
+    });
+
+    if (!plan) {
+      throw new NotFoundException('Invalid plan');
+    }
+
+    const now = new Date();
+
+    // Get current ACTIVE or TRIAL subscription
+    const current = await this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+        status: { in: ['ACTIVE', 'TRIAL'] },
+        endDate: { gt: now },
+      },
+      orderBy: { endDate: 'desc' },
+    });
+
+    // Get last scheduled subscription (if any)
+    const lastScheduled = await this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+        status: 'SCHEDULED',
+      },
+      orderBy: { startDate: 'desc' },
+    });
+
+    let startDate: Date;
+
+    if (lastScheduled) {
+      startDate = lastScheduled.endDate;
+    } else if (current) {
+      startDate = current.endDate;
+    } else {
+      startDate = now;
+    }
+
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + plan.durationDays);
+
+    const status: SubscriptionStatus = startDate > now ? 'SCHEDULED' : 'ACTIVE';
+
+    return this.prisma.tenantSubscription.create({
+      data: {
+        tenantId,
+        planId,
+        startDate,
+        endDate,
+        status,
+      },
+    });
+  }
+  async getUpcomingSubscription(tenantId: string) {
+    return this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+        status: 'SCHEDULED',
+        startDate: { gt: new Date() },
+      },
+      orderBy: { startDate: 'asc' },
+      include: { plan: true },
+    });
+  }
+
   async getCurrentActiveSubscription(tenantId: string) {
     // Accept both ACTIVE and TRIAL subscriptions as "current" so trial tenants
     // can use features during their trial window.
+    const now = new Date();
+
+    const scheduled = await this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+        status: 'SCHEDULED',
+        startDate: { lte: now },
+      },
+      orderBy: { startDate: 'asc' },
+    });
+
+    if (scheduled) {
+      await this.prisma.tenantSubscription.update({
+        where: { id: scheduled.id },
+        data: { status: 'ACTIVE' },
+      });
+    }
+
     return this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,

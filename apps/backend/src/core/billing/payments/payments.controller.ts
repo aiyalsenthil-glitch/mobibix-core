@@ -10,10 +10,10 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-//import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 
-//@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard)
 @Controller('payments')
 export class PaymentsController {
   constructor(
@@ -28,8 +28,6 @@ export class PaymentsController {
   async createOrder(@Req() req: any, @Body() body: { planId: string }) {
     try {
       // 1️⃣ Validate plan exists
-      console.log('BODY TYPE:', typeof body, body instanceof Buffer);
-
       const plan = await this.prisma.plan.findUnique({
         where: { id: body.planId },
       });

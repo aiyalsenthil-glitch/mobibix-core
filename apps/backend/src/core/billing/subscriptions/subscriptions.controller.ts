@@ -12,7 +12,6 @@ import { SubscriptionsService } from './subscriptions.service';
 @Controller('billing/subscription')
 export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
-
   @Get('current')
   async getCurrent(@Req() req: any) {
     if (!req.user || !req.user.tenantId) {
@@ -22,33 +21,63 @@ export class SubscriptionsController {
     const sub = await this.subscriptionsService.getCurrentActiveSubscription(
       req.user.tenantId,
     );
+    const upcoming = await this.subscriptionsService.getUpcomingSubscription(
+      req.user.tenantId,
+    );
 
+    // No active subscription → trial
     if (!sub) {
       return {
         plan: 'TRIAL',
+        planLevel: 0,
         memberLimit: 0,
         daysLeft: 0,
         isTrial: true,
+        subscriptionStatus: 'TRIAL',
+        canUpgrade: true,
+        isUnlimited: true,
       };
     }
 
-    const today = new Date();
+    const now = new Date();
+
     const daysLeft = Math.max(
       Math.ceil(
-        (sub.endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+        (sub.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
       ),
       0,
     );
 
-    const features = sub.plan.features as any;
+    const subscriptionStatus: 'ACTIVE' | 'TRIAL' | 'EXPIRED' =
+      sub.endDate < now
+        ? 'EXPIRED'
+        : sub.status === 'TRIAL'
+          ? 'TRIAL'
+          : 'ACTIVE';
 
+    const plan = sub.plan;
+    const isUnlimited = plan.memberLimit === 0;
+
+    // IMPORTANT BUSINESS RULE:
+    // Backend NEVER blocks upgrade based on expiry
+    const canUpgrade = true;
     return {
-      plan: sub.plan.name,
-      planLevel: sub.plan.level, // 👈 ADD THIS
-      memberLimit: features?.memberLimit ?? (sub.plan.level === 1 ? 100 : 0),
-
-      daysLeft,
-      isTrial: sub.status === 'TRIAL',
+      current: {
+        plan: plan.name,
+        planLevel: plan.level,
+        memberLimit: plan.memberLimit,
+        daysLeft,
+        isTrial: sub.status === 'TRIAL',
+        subscriptionStatus,
+        isUnlimited,
+      },
+      upcoming: upcoming
+        ? {
+            plan: upcoming.plan.name,
+            startsAt: upcoming.startDate,
+            endsAt: upcoming.endDate,
+          }
+        : null,
     };
   }
 }

@@ -14,7 +14,7 @@ export class StaffService {
 
   // 🔒 Ensure plan allows staff management (PLUS / PRO)
   private async ensureStaffAllowed(tenantId: string) {
-    const subscription = await this.prisma.tenantSubscription.findUnique({
+    const subscription = await this.prisma.tenantSubscription.findFirst({
       where: { tenantId },
       include: { plan: true },
     });

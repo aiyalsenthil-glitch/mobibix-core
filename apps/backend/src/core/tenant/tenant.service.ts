@@ -221,7 +221,7 @@ export class TenantService {
     }
 
     // 1️⃣ Fetch subscription + plan
-    const subscription = await this.prisma.tenantSubscription.findUnique({
+    const subscription = await this.prisma.tenantSubscription.findFirst({
       where: { tenantId },
       include: { plan: true },
     });

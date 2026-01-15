@@ -4,15 +4,14 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  
 }
 
 model Tenant {
-  id              String              @id @default(cuid())
+  id              String               @id @default(cuid())
   name            String
   legalName       String?
   tenantType      String
-  code            String              @unique
+  code            String               @unique
   contactPhone    String
   contactEmail    String?
   website         String?
@@ -22,23 +21,23 @@ model Tenant {
   city            String
   state           String
   pincode         String
-  country         String              @default("India")
+  country         String               @default("India")
   gstNumber       String?
   taxId           String?
   businessType    String?
-  currency        String              @default("INR")
-  timezone        String              @default("Asia/Kolkata")
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  kioskToken      String?             @unique
-  whatsappEnabled Boolean             @default(true)
-  maxMembers      Int                 @default(50)
-  userTenants     UserTenant[]
+  currency        String               @default("INR")
+  timezone        String               @default("Asia/Kolkata")
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  kioskToken      String?              @unique
+  maxMembers      Int                  @default(50)
+  whatsappEnabled Boolean              @default(true)
   auditLogs       AuditLog[]
   members         Member[]
   payments        Payment[]
-  subscription    TenantSubscription?
+  subscription    TenantSubscription[]
   users           User[]
+  userTenants     UserTenant[]
 }
 
 model UserTenant {
@@ -47,9 +46,8 @@ model UserTenant {
   tenantId  String
   role      UserRole
   createdAt DateTime @default(now())
-
-  user   User   @relation(fields: [userId], references: [id])
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, tenantId])
   @@index([tenantId])
@@ -63,44 +61,43 @@ model User {
   avatar           String?
   role             UserRole
   tenantId         String?
-  phone            String?
   permissions      Json?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
+  phone            String?
   welcomeEmailSent Boolean      @default(false)
   auditLogs        AuditLog[]
-  userTenants      UserTenant[]
   tenant           Tenant?      @relation(fields: [tenantId], references: [id])
+  userTenants      UserTenant[]
 }
 
 model Member {
   id                  String              @id @default(uuid())
   tenantId            String
   fullName            String
-  photoUrl            String?
   phone               String
   gender              Gender
   membershipPlanId    String
   membershipStartAt   DateTime
   membershipEndAt     DateTime
-  monthlyFee          Int // ✅ BASE MONTHLY FEE
   feeAmount           Int
-  paidAmount          Int                 @default(0)
   paymentStatus       MemberPaymentStatus
   heightCm            Float
   weightKg            Float
   fitnessGoal         FitnessGoal
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  paidAmount          Int                 @default(0)
+  monthlyFee          Int
   paymentDueDate      DateTime
   paymentReminderSent Boolean             @default(false)
+  isActive            Boolean             @default(true)
+  photoUrl            String?
   welcomeMessageSent  Boolean             @default(false)
-
-  isActive       Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  attendances    GymAttendance[]
-  gymMemberships GymMembership[]
-  tenant         Tenant          @relation(fields: [tenantId], references: [id])
-  payments       MemberPayment[]
+  attendances         GymAttendance[]
+  gymMemberships      GymMembership[]
+  tenant              Tenant              @relation(fields: [tenantId], references: [id])
+  payments            MemberPayment[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, phone])
@@ -108,16 +105,14 @@ model Member {
 }
 
 model StaffInvite {
-  id       String   @id @default(cuid())
-  tenantId String
-  email    String
-  role     UserRole @default(STAFF)
-
-  name  String? // ✅ add
-  phone String? // ✅ add
-
-  accepted  Boolean  @default(false)
+  id        String   @id @default(cuid())
+  email     String
+  tenantId  String
   createdAt DateTime @default(now())
+  accepted  Boolean  @default(false)
+  role      UserRole @default(STAFF)
+  name      String?
+  phone     String?
 
   @@unique([tenantId, email])
 }
@@ -132,9 +127,9 @@ model MemberPayment {
   reference    String?
   gstRate      Float?
   gstAmount    Float?
-  durationDays Int? // ✅ NEW (30 / 60 / 90)
   total        Int?
   createdAt    DateTime            @default(now())
+  durationDays Int?
   member       Member              @relation(fields: [memberId], references: [id])
 
   @@index([tenantId])
@@ -143,37 +138,35 @@ model MemberPayment {
 
 model Plan {
   id            String               @id @default(cuid())
-  name          String            @unique
+  name          String               @unique
   level         Int
   price         Int
   currency      String               @default("INR")
   durationDays  Int
-  billingCycle  BillingCycle         @default(MONTHLY)
   memberLimit   Int                  @default(0)
   features      Json?
   isActive      Boolean              @default(true)
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
+  billingCycle  BillingCycle         @default(MONTHLY)
   subscriptions TenantSubscription[]
-}
-
-enum BillingCycle {
-  MONTHLY
-  ANNUAL
 }
 
 model TenantSubscription {
   id                   String             @id @default(cuid())
-  tenantId             String             @unique
+  tenantId             String
   planId               String
   status               SubscriptionStatus
   startDate            DateTime
   endDate              DateTime
   createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  expiryReminderSentAt DateTime?
+  updatedAt            DateTime           @updatedAt @db.Timestamp(6)
+  expiryReminderSentAt DateTime?          @db.Timestamp(6)
   plan                 Plan               @relation(fields: [planId], references: [id])
   tenant               Tenant             @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([planId])
 }
 
 model Payment {
@@ -226,8 +219,8 @@ model WhatsAppSetting {
   id        String   @id @default(uuid())
   tenantId  String   @unique
   enabled   Boolean  @default(false)
-  provider  String?
   createdAt DateTime @default(now())
+  provider  String?
 }
 
 model WhatsAppLog {
@@ -243,21 +236,21 @@ model WhatsAppLog {
 
 model WebhookEvent {
   id          String   @id @default(cuid())
-  provider    String // RAZORPAY
-  eventType   String // payment.captured
-  referenceId String? // paymentId / orderId
+  provider    String
+  eventType   String
+  referenceId String?
   payload     Json
   receivedAt  DateTime @default(now())
 }
 
 model WebhookLog {
   id        String   @id @default(uuid())
-  provider  String // "REMOVED_PAYMENT_INFRA"
-  event     String // payment.captured, order.paid
-  entityId  String? // payment_id / order_id
+  provider  String
+  event     String
+  entityId  String?
   tenantId  String?
   planId    String?
-  status    String // SUCCESS | FAILED | RECEIVED
+  status    String
   payload   Json
   error     String?
   createdAt DateTime @default(now())
@@ -279,6 +272,11 @@ model GymAttendance {
 
   @@index([tenantId])
   @@index([memberId])
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
 }
 
 enum UserRole {
@@ -318,6 +316,7 @@ enum SubscriptionStatus {
   ACTIVE
   EXPIRED
   CANCELLED
+  SCHEDULED
 }
 
 enum AttendanceSource {

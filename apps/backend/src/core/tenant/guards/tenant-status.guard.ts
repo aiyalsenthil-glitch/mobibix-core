@@ -19,7 +19,7 @@ export class TenantStatusGuard implements CanActivate {
       return true;
     }
 
-    const subscription = await this.prisma.tenantSubscription.findUnique({
+    const subscription = await this.prisma.tenantSubscription.findFirst({
       where: { tenantId: user.tenantId },
       select: { status: true },
     });
