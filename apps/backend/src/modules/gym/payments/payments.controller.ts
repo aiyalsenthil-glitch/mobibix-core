@@ -8,8 +8,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
+import { TenantStatusGuard } from '../../../core/tenant/guards/tenant-status.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantStatusGuard)
 @Controller('gym/payments')
 export class PaymentsController {
   constructor(private readonly prisma: PrismaService) {}

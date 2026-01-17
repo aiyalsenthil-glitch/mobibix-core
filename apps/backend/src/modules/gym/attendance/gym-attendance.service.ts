@@ -39,20 +39,6 @@ export class GymAttendanceService {
         tenantId,
       },
     });
-    const usage = await this.tenantService.getUsage(tenantId);
-
-    if (usage.trialExpired) {
-      throw new ForbiddenException('TRIAL_EXPIRED');
-    }
-
-    if (!member) {
-      throw new BadRequestException('Member not found');
-    }
-
-    if (isMembershipExpired(member.membershipEndAt)) {
-      throw new ForbiddenException('Membership expired');
-    }
-
     const now = new Date();
 
     const openAttendance = await this.prisma.gymAttendance.findFirst({
@@ -80,22 +66,16 @@ export class GymAttendanceService {
   // CHECK-IN OUT BY PHONE (QR)//
   async checkInOrOutByPhone(tenantId: string, phone: string) {
     const normalizedPhone = this.normalizePhone(phone);
-    const usage = await this.tenantService.getUsage(tenantId);
-
-    if (usage.trialExpired) {
-      throw new ForbiddenException('TRIAL_EXPIRED');
-    }
-
     const member = await this.prisma.member.findFirst({
-      where: { tenantId, phone: normalizedPhone },
+      where: {
+        tenantId,
+        phone: normalizedPhone,
+        isActive: true,
+      },
     });
 
     if (!member) {
       throw new BadRequestException('MEMBER_NOT_FOUND');
-    }
-
-    if (isMembershipExpired(member.membershipEndAt)) {
-      throw new ForbiddenException('MEMBERSHIP_EXPIRED');
     }
     const paymentState = this.getPaymentState(member);
     const dueAmount = member.feeAmount - member.paidAmount;
@@ -156,12 +136,6 @@ export class GymAttendanceService {
   async listTodayAttendance(tenantId: string) {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
-    const usage = await this.tenantService.getUsage(tenantId);
-
-    if (usage.trialExpired) {
-      throw new ForbiddenException('TRIAL_EXPIRED');
-    }
-
     const end = new Date();
     end.setHours(23, 59, 59, 999);
 

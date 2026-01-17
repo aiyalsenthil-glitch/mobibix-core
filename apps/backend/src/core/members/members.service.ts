@@ -126,22 +126,10 @@ export class MembersService {
         plan: true,
       },
     });
-    const usage = await this.tenantService.getUsage(tenantId);
 
-    if (usage.trialExpired) {
-      throw new ForbiddenException('TRIAL_EXPIRED');
-    }
     if (!subscription) {
-      throw new ForbiddenException('No active subscription');
-    }
-
-    if (!subscription.plan || !subscription.plan.isActive) {
-      throw new ForbiddenException('Subscription plan is inactive');
-    }
-    if (subscription.status === 'EXPIRED') {
-      throw new ForbiddenException(
-        'Your trial has expired. Please upgrade to continue.',
-      );
+      // This should NEVER happen if TenantStatusGuard is applied
+      throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
     }
 
     const limit = subscription.plan.memberLimit;

@@ -22,9 +22,10 @@ import { Permissions } from '../../core/auth/decorators/permissions.decorator';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { Permission } from '../../core/auth/permissions.enum';
 import { UserRole } from '@prisma/client';
+import { TenantStatusGuard } from '../../core/tenant/guards/tenant-status.guard';
 
 @Controller('gym/members')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
 export class GymMembersController {
   constructor(private readonly membersService: MembersService) {}
 

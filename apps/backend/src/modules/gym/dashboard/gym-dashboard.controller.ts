@@ -3,9 +3,10 @@ import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Permissions } from '../../../core/auth/decorators/permissions.decorator';
 import { Permission } from '../../../core/auth/permissions.enum';
 import { GymDashboardService } from './gym-dashboard.service';
+import { TenantStatusGuard } from '../../../core/tenant/guards/tenant-status.guard';
 
 @Controller('gym/dashboard')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantStatusGuard)
 export class GymDashboardController {
   constructor(private readonly dashboardService: GymDashboardService) {}
   @Permissions(Permission.DASHBOARD_VIEW)
