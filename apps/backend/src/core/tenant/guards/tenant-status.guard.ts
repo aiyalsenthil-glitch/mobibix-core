@@ -13,74 +13,57 @@ export class TenantStatusGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-
     const tenantId: string | undefined = user?.tenantId;
 
-    /**
-     * 1️⃣ Allow onboarding / auth flows
-     */
     if (!tenantId) {
       return true;
-    }
-
-    /**
-     * 2️⃣ Load ALL subscriptions for tenant
-     */
-    const subscriptions = await this.prisma.tenantSubscription.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (!subscriptions.length) {
-      throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
     }
 
     const now = new Date();
 
     /**
-     * 3️⃣ ACTIVE subscription ALWAYS wins
-     */
-    const active = subscriptions.find(
-      (s) => s.status === 'ACTIVE' && (!s.endDate || s.endDate > now),
-    );
+     * 1️⃣ Fast path: check ACTIVE subscription (single row)
+     */ const active = await this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+        status: 'ACTIVE',
+        endDate: {
+          gt: new Date(),
+        },
+      },
+    });
 
     if (active) {
       return true;
     }
 
     /**
-     * 4️⃣ Valid TRIAL (not expired)
+     * 2️⃣ Fallback: check latest subscription only (single row)
      */
-    const trial = subscriptions.find((s) => s.status === 'TRIAL');
+    const latest = await this.prisma.tenantSubscription.findFirst({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    if (trial) {
-      if (trial.endDate && trial.endDate < now) {
+    if (!latest) {
+      throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
+    }
+
+    if (latest.status === 'TRIAL') {
+      if (latest.endDate && latest.endDate < now) {
         throw new ForbiddenException('TRIAL_EXPIRED');
       }
       return true;
     }
 
-    /**
-     * 5️⃣ Only SCHEDULED subscriptions exist
-     */
-    const hasScheduled = subscriptions.some((s) => s.status === 'SCHEDULED');
-
-    if (hasScheduled) {
+    if (latest.status === 'SCHEDULED') {
       throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
     }
 
-    /**
-     * 6️⃣ CANCELLED explicitly
-     */
-    const cancelled = subscriptions.find((s) => s.status === 'CANCELLED');
-
-    if (cancelled) {
+    if (latest.status === 'CANCELLED') {
       throw new ForbiddenException('ACCOUNT_DISABLED');
     }
 
-    /**
-     * 7️⃣ Everything else → expired
-     */
     throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
   }
 }
