@@ -4,7 +4,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
-import { isMembershipExpired } from '../../../common/utils/membership.util';
 import { TenantService } from '../../../core/tenant/tenant.service';
 
 @Injectable()

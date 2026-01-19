@@ -27,6 +27,20 @@ export class PaymentsController {
   @Post('create-order')
   async createOrder(@Req() req: any, @Body() body: { planId: string }) {
     try {
+      const tenantId = req.user?.tenantId;
+
+      if (!tenantId) {
+        throw new BadRequestException('Tenant not found for user');
+      }
+
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+      });
+
+      if (!tenant) {
+        throw new BadRequestException('Tenant does not exist');
+      }
+
       // 1️⃣ Validate plan exists
       const plan = await this.prisma.plan.findUnique({
         where: { id: body.planId },
@@ -45,14 +59,14 @@ export class PaymentsController {
       // 3️⃣ Create Razorpay order
       const order = await this.paymentsService.createOrder({
         amount: plan.price,
-        tenantId: req.user.tenantId,
+        tenantId,
         planId: plan.id,
       });
 
       // 4️⃣ SAVE INIT PAYMENT (IMPORTANT STEP-2)
       await this.prisma.payment.create({
         data: {
-          tenantId: req.user.tenantId,
+          tenantId,
           planId: plan.id,
           provider: 'RAZORPAY',
           providerOrderId: order.id,
