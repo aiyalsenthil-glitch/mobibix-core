@@ -180,13 +180,12 @@ export class StaffService {
   // ✅ List staff invites
   async listInvites(tenantId: string) {
     return this.prisma.staffInvite.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        accepted: true,
-        createdAt: true,
+      where: {
+        tenantId,
+        accepted: false, // 🔥 REQUIRED
+      },
+      orderBy: {
+        createdAt: 'desc',
       },
     });
   }
