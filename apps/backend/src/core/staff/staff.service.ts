@@ -86,7 +86,6 @@ export class StaffService {
   ) {
     await this.ensureStaffAllowed(tenantId);
 
-    // 1️⃣ Find existing user
     const existingUser = await this.prisma.user.findFirst({
       where: {
         OR: [{ REMOVED_AUTH_PROVIDERUid: data.REMOVED_AUTH_PROVIDERUid }, { email: data.email }],
@@ -97,7 +96,7 @@ export class StaffService {
       throw new BadRequestException('User does not exist');
     }
 
-    // 2️⃣ Attach user to tenant as STAFF
+    // ✅ Attach user as STAFF
     await this.prisma.userTenant.upsert({
       where: {
         userId_tenantId: {
@@ -114,6 +113,16 @@ export class StaffService {
         role: UserRole.STAFF,
       },
     });
+
+    // 🔥 FIX: remove invite once accepted
+    if (existingUser.email) {
+      await this.prisma.staffInvite.deleteMany({
+        where: {
+          tenantId,
+          email: existingUser.email,
+        },
+      });
+    }
 
     return { success: true };
   }
@@ -204,7 +213,16 @@ export class StaffService {
     return { success: true };
   }
   // ✅ Remove staff from tenant
-  async removeStaff(tenantId: string, staffUserId: string) {
+  async removeStaff(
+    tenantId: string,
+    staffUserId: string,
+    requesterUserId?: string,
+  ) {
+    // 🔒 Prevent self-removal
+    if (staffUserId === requesterUserId) {
+      throw new ForbiddenException('Owner cannot remove themselves');
+    }
+
     const staff = await this.prisma.userTenant.findUnique({
       where: {
         userId_tenantId: {
@@ -214,8 +232,13 @@ export class StaffService {
       },
     });
 
-    if (!staff || staff.role !== UserRole.STAFF) {
+    if (!staff) {
       throw new NotFoundException('Staff not found');
+    }
+
+    // 🔒 Prevent removing OWNER
+    if (staff.role === UserRole.OWNER) {
+      throw new ForbiddenException('Cannot remove owner');
     }
 
     await this.prisma.userTenant.delete({

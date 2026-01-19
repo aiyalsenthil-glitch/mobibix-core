@@ -85,6 +85,10 @@ export class StaffController {
     @Req() req: any,
     @Param('staffUserId') staffUserId: string,
   ) {
-    return this.staffService.removeStaff(req.user.tenantId, staffUserId);
+    return this.staffService.removeStaff(
+      req.user.tenantId,
+      staffUserId,
+      req.user.id,
+    );
   }
 }
