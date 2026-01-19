@@ -12,6 +12,11 @@ export class TenantStatusGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
+
+    if (request.method === 'POST' && request.route?.path === '/tenant') {
+      return true;
+    }
+
     const user = request.user;
     const tenantId: string | undefined = user?.tenantId;
 
