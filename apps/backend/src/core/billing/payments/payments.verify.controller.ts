@@ -47,12 +47,6 @@ export class PaymentsVerifyController {
       throw new BadRequestException('Invalid payment signature');
     }
 
-    // 2️⃣ Upgrade subscription (SOURCE OF TRUTH)
-    await this.subscriptionsService.upgradeSubscription(
-      req.user.tenantId,
-      planId,
-    );
-
     // 3️⃣ Store payment record (NO plan.price here)
     const existingPayment = await this.prisma.payment.findFirst({
       where: {
@@ -61,10 +55,19 @@ export class PaymentsVerifyController {
         tenantId: req.user.tenantId,
       },
     });
-
+    if (existingPayment?.status === PaymentStatus.SUCCESS) {
+      // Payment already confirmed via webhook
+      return { success: true, alreadyVerified: true };
+    }
     if (!existingPayment) {
       throw new BadRequestException('Payment order not found');
     }
+
+    // 2️⃣ Upgrade subscription (SOURCE OF TRUTH)
+    await this.subscriptionsService.upgradeSubscription(
+      req.user.tenantId,
+      planId,
+    );
 
     await this.prisma.payment.update({
       where: { id: existingPayment.id },

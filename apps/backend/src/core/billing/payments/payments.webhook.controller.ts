@@ -4,12 +4,16 @@ import { Public } from '../../auth/decorators/public.decorator';
 import type { Request } from 'express';
 import * as crypto from 'crypto';
 import { PaymentStatus } from '@prisma/client';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 @Controller('payments')
 export class PaymentsWebhookController {
   private readonly logger = new Logger(PaymentsWebhookController.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subscriptionsService: SubscriptionsService,
+  ) {}
 
   @Public()
   @Post('webhook')
@@ -61,20 +65,54 @@ export class PaymentsWebhookController {
         },
       });
       if (event === 'payment.captured') {
-        const payment = payload.payload.payment.entity;
+        const REMOVED_PAYMENT_INFRAPayment = payload.payload.payment.entity;
 
-        await this.prisma.payment.updateMany({
+        // 1️⃣ Find payment record
+        const paymentRecord = await this.prisma.payment.findFirst({
           where: {
-            providerOrderId: payment.order_id,
-          },
-          data: {
-            providerPaymentId: payment.id,
-            status: PaymentStatus.SUCCESS,
-            amount: payment.amount / 100,
-            currency: payment.currency,
+            provider: 'RAZORPAY',
+            providerOrderId: REMOVED_PAYMENT_INFRAPayment.order_id,
           },
         });
+
+        if (!paymentRecord) {
+          this.logger.warn(
+            `Payment record not found for order ${REMOVED_PAYMENT_INFRAPayment.order_id}`,
+          );
+          return { received: true };
+        }
+
+        // 2️⃣ Idempotency: if already processed, skip
+        if (paymentRecord.status === PaymentStatus.SUCCESS) {
+          this.logger.log(`Payment already processed: ${paymentRecord.id}`);
+          return { received: true };
+        }
+
+        // 3️⃣ Mark payment SUCCESS
+        await this.prisma.payment.update({
+          where: { id: paymentRecord.id },
+          data: {
+            providerPaymentId: REMOVED_PAYMENT_INFRAPayment.id,
+            status: PaymentStatus.SUCCESS,
+            amount: REMOVED_PAYMENT_INFRAPayment.amount / 100,
+            currency: REMOVED_PAYMENT_INFRAPayment.currency,
+          },
+        });
+
+        // 4️⃣ 🔥 ACTIVATE / QUEUE SUBSCRIPTION (THIS WAS MISSING)
+        await this.prisma.$transaction(async (tx) => {
+          // IMPORTANT: reuse backend business logic
+          await this.subscriptionsService.buyPlan(
+            paymentRecord.tenantId,
+            paymentRecord.planId,
+          );
+        });
+
+        this.logger.log(
+          `Subscription updated for tenant ${paymentRecord.tenantId}`,
+        );
       }
+
       return { received: true };
       // 💰 Handle captured payments
     } catch (err) {
