@@ -57,22 +57,23 @@ export class StaffService {
 
   // ✅ List staff for tenant
   async listStaff(tenantId: string) {
-    return this.prisma.userTenant.findMany({
+    const staff = await this.prisma.userTenant.findMany({
       where: {
         tenantId,
         role: UserRole.STAFF,
       },
-      select: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            phone: true,
-          },
-        },
+      include: {
+        user: true,
       },
     });
+
+    return staff.map((s) => ({
+      id: s.user.id, // 🔥 THIS FIXES EVERYTHING
+      email: s.user.email,
+      fullName: s.user.fullName,
+      phone: s.user.phone,
+      role: s.role,
+    }));
   }
 
   // ✅ Create staff (attach existing user to tenant)
