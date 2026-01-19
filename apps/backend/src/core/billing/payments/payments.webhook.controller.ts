@@ -14,6 +14,8 @@ export class PaymentsWebhookController {
   @Public()
   @Post('webhook')
   async handleWebhook(@Req() req: Request) {
+    console.log('🔥 RAZORPAY WEBHOOK HIT');
+
     try {
       const signature = req.headers['x-REMOVED_PAYMENT_INFRA-signature'] as string;
       const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
