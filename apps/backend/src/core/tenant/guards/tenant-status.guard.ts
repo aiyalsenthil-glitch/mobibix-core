@@ -27,14 +27,13 @@ export class TenantStatusGuard implements CanActivate {
     const now = new Date();
 
     /**
-     * 1️⃣ Fast path: check ACTIVE subscription (single row)
-     */ const active = await this.prisma.tenantSubscription.findFirst({
+     * 1️⃣ ACTIVE always wins
+     */
+    const active = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
         status: 'ACTIVE',
-        endDate: {
-          gt: new Date(),
-        },
+        endDate: { gt: now },
       },
     });
 
@@ -43,32 +42,37 @@ export class TenantStatusGuard implements CanActivate {
     }
 
     /**
-     * 2️⃣ Fallback: check latest subscription only (single row)
+     * 2️⃣ Valid TRIAL is treated as ACTIVE
      */
-    const latest = await this.prisma.tenantSubscription.findFirst({
-      where: { tenantId },
-      orderBy: { createdAt: 'desc' },
+    const trial = await this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+        status: 'TRIAL',
+        endDate: { gt: now },
+      },
     });
 
-    if (!latest) {
-      throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
-    }
-
-    if (latest.status === 'TRIAL') {
-      if (latest.endDate && latest.endDate < now) {
-        throw new ForbiddenException('TRIAL_EXPIRED');
-      }
+    if (trial) {
       return true;
     }
 
-    if (latest.status === 'SCHEDULED') {
-      throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
+    /**
+     * 3️⃣ If only SCHEDULED exists → deny
+     */
+    const scheduled = await this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+        status: 'SCHEDULED',
+      },
+    });
+
+    if (scheduled) {
+      throw new ForbiddenException('SUBSCRIPTION_NOT_STARTED');
     }
 
-    if (latest.status === 'CANCELLED') {
-      throw new ForbiddenException('ACCOUNT_DISABLED');
-    }
-
+    /**
+     * 4️⃣ Everything else → expired
+     */
     throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
   }
 }
