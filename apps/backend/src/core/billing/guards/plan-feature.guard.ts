@@ -33,14 +33,28 @@ export class PlanFeatureGuard implements CanActivate {
 
     if (!tenantId) return true;
 
+    const now = new Date();
+
     const subscription = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
-        status: { in: ['ACTIVE', 'TRIAL'] },
+        OR: [
+          {
+            status: 'ACTIVE',
+            startDate: { lte: now },
+            endDate: { gt: now },
+          },
+          {
+            status: 'TRIAL',
+            startDate: { lte: now },
+            endDate: { gt: now },
+          },
+        ],
       },
-      orderBy: {
-        startDate: 'desc',
-      },
+      orderBy: [
+        { status: 'desc' }, // ACTIVE > TRIAL
+        { startDate: 'desc' },
+      ],
       include: { plan: true },
     });
 

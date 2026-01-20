@@ -24,8 +24,7 @@ export class StaffService {
         'No active subscription found. Please upgrade.',
       );
     }
-
-    if (subscription.status !== 'ACTIVE') {
+    if (!['ACTIVE', 'TRIAL'].includes(subscription.status)) {
       throw new ForbiddenException(
         'Your subscription is not active. Please upgrade.',
       );

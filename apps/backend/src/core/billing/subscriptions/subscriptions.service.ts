@@ -177,13 +177,22 @@ export class SubscriptionsService {
       },
       orderBy: { startDate: 'desc' },
     });
-
     let startDate: Date;
 
-    if (lastScheduled) {
-      startDate = lastScheduled.endDate;
+    if (current?.status === 'TRIAL') {
+      // 🔥 Paid plan overrides trial immediately
+      startDate = now;
+
+      // Expire trial
+      await this.prisma.tenantSubscription.update({
+        where: { id: current.id },
+        data: { status: 'EXPIRED' },
+      });
     } else if (current) {
+      // ACTIVE → schedule after current ends
       startDate = current.endDate;
+    } else if (lastScheduled) {
+      startDate = lastScheduled.endDate;
     } else {
       startDate = now;
     }
