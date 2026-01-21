@@ -42,6 +42,25 @@ export class TenantService {
     if (!user) {
       throw new BadRequestException('User not found');
     }
+    const effectiveTenantType = dto.tenantType ?? 'GYM';
+
+    const existingUserTenant = await this.prisma.userTenant.findFirst({
+      where: {
+        userId,
+        tenant: {
+          tenantType: effectiveTenantType,
+        },
+      },
+      include: {
+        tenant: true,
+      },
+    });
+
+    if (existingUserTenant) {
+      throw new BadRequestException(
+        `Tenant already exists for type ${effectiveTenantType}`,
+      );
+    }
 
     await this.plansService.ensureDefaultPlans();
     const trialPlan = await this.plansService.getOrCreateTrialPlan();
@@ -53,7 +72,8 @@ export class TenantService {
         name: dto.name,
         legalName: dto.legalName,
         code,
-        tenantType: dto.tenantType,
+        tenantType: dto.tenantType ?? 'GYM',
+
         contactPhone: dto.contactPhone,
         addressLine1: dto.addressLine1,
         city: dto.city,

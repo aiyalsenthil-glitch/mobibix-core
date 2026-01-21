@@ -23,14 +23,18 @@ export class CreateShopDto {
   invoicePrefix: string;
 
   @IsOptional()
+  @IsString()
   gstNumber?: string;
 
   @IsOptional()
+  @IsString()
   website?: string;
 
   @IsOptional()
+  @IsString()
   logoUrl?: string;
 
   @IsOptional()
+  @IsString()
   invoiceFooter?: string;
 }

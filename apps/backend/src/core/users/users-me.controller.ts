@@ -9,7 +9,7 @@ export class UsersMeController {
 
   @Get('me')
   async getMe(@Req() req: any) {
-    return this.usersService.findById(req.user.sub);
+    return this.usersService.getMeWithTenant(req.user.sub);
   }
 
   @Patch('me')

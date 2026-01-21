@@ -56,6 +56,51 @@ export class UsersService {
       orderBy: { createdAt: 'desc' },
     });
   }
+  // 🔹 Get current user with tenant context (for /users/me)
+  async getMeWithTenant(userId: string) {
+    if (!userId) {
+      throw new BadRequestException('Invalid user id');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        avatar: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const userTenant = await this.prisma.userTenant.findFirst({
+      where: { userId },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            tenantType: true,
+          },
+        },
+      },
+    });
+
+    return {
+      ...user,
+
+      // 🔥 EFFECTIVE CONTEXT
+      role: userTenant?.role ?? UserRole.USER,
+      tenantId: userTenant?.tenantId ?? null,
+      tenantType: userTenant?.tenant?.tenantType ?? null,
+      tenantName: userTenant?.tenant?.name ?? null,
+    };
+  }
 
   // 🔹 Create STAFF user (used by staff invite / admin)
 

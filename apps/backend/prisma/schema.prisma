@@ -12,15 +12,15 @@ model Tenant {
   legalName        String?
   tenantType       String
   code             String               @unique
-  contactPhone     String
+  contactPhone     String?
   contactEmail     String?
   website          String?
   logoUrl          String?
-  addressLine1     String
+  addressLine1     String?
   addressLine2     String?
-  city             String
-  state            String
-  pincode          String
+  city             String?
+  state            String?
+  pincode          String?
   country          String               @default("India")
   gstNumber        String?
   taxId            String?

@@ -1,51 +1,55 @@
-import { IsNotEmpty, IsString } from 'class-validator';
-
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 export class CreateTenantDto {
   @IsString()
   @IsNotEmpty()
   name: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  legalName: string;
+  legalName?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  tenantType: string;
+  tenantType?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  code: string;
+  code?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  contactPhone: string;
+  contactPhone?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  addressLine1: string;
+  contactEmail?: string;
 
+  // ⬇️ ALL OPTIONAL FOR PHASE-1
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  city: string;
+  addressLine1?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  state: string;
+  city?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  pincode: string;
+  state?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  country: string;
+  pincode?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  currency: string;
+  country?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  timezone: string;
+  currency?: string;
+
+  @IsOptional()
+  @IsString()
+  timezone?: string;
 }
