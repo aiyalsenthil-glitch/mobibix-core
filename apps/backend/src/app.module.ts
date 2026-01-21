@@ -12,7 +12,7 @@ import { JwtAuthGuard } from './core/auth/guards/jwt-auth.guard';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { GymAppModule } from './modules/gymapp/gym-app.module';
-
+import { MobileShopModule } from './modules/mobileshop/mobileshop.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -31,6 +31,7 @@ import { GymAppModule } from './modules/gymapp/gym-app.module';
     GymAppModule,
     // 🩺 Platform infra
     HealthModule,
+    MobileShopModule,
   ],
   providers: [
     {

@@ -82,6 +82,7 @@ export class StaffService {
       REMOVED_AUTH_PROVIDERUid: string;
       email?: string;
       fullName?: string;
+      shopId?: string; // 👈 ADD THIS
     },
   ) {
     await this.ensureStaffAllowed(tenantId);
@@ -113,6 +114,26 @@ export class StaffService {
         role: UserRole.STAFF,
       },
     });
+    // 🔹 MOBILE ERP ONLY: assign staff to shop
+    if (data.shopId) {
+      await this.prisma.shopStaff.upsert({
+        where: {
+          userId_shopId: {
+            userId: existingUser.id,
+            shopId: data.shopId,
+          },
+        },
+        update: {
+          isActive: true,
+        },
+        create: {
+          tenantId,
+          userId: existingUser.id,
+          shopId: data.shopId,
+          role: UserRole.STAFF,
+        },
+      });
+    }
 
     // 🔥 FIX: remove invite once accepted
     if (existingUser.email) {

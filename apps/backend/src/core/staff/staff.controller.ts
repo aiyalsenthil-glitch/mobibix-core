@@ -12,7 +12,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
-import { UsersService } from '../users/users.service';
 import { StaffService } from './staff.service';
 import { Permission } from '../auth/permissions.enum';
 import { Permissions } from '../auth/decorators/permissions.decorator';
@@ -26,7 +25,6 @@ import {
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class StaffController {
   constructor(
-    private readonly usersService: UsersService, // ✅ inject
     private readonly staffService: StaffService, // ✅ inject
   ) {}
 
@@ -50,12 +48,14 @@ export class StaffController {
       REMOVED_AUTH_PROVIDERUid: string;
       email?: string;
       fullName?: string;
+      shopId?: string; // 👈 ADD THIS
     },
   ) {
     return this.staffService.createStaff(req.user.tenantId, {
       REMOVED_AUTH_PROVIDERUid: body.REMOVED_AUTH_PROVIDERUid,
       email: body.email,
       fullName: body.fullName,
+      shopId: body.shopId,
     });
   }
 

@@ -7,37 +7,44 @@ datasource db {
 }
 
 model Tenant {
-  id              String               @id @default(cuid())
-  name            String
-  legalName       String?
-  tenantType      String
-  code            String               @unique
-  contactPhone    String
-  contactEmail    String?
-  website         String?
-  logoUrl         String?
-  addressLine1    String
-  addressLine2    String?
-  city            String
-  state           String
-  pincode         String
-  country         String               @default("India")
-  gstNumber       String?
-  taxId           String?
-  businessType    String?
-  currency        String               @default("INR")
-  timezone        String               @default("Asia/Kolkata")
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-  kioskToken      String?              @unique
-  maxMembers      Int                  @default(50)
-  whatsappEnabled Boolean              @default(true)
-  auditLogs       AuditLog[]
-  members         Member[]
-  payments        Payment[]
-  subscription    TenantSubscription[]
-  users           User[]
-  userTenants     UserTenant[]
+  id               String               @id @default(cuid())
+  name             String
+  legalName        String?
+  tenantType       String
+  code             String               @unique
+  contactPhone     String
+  contactEmail     String?
+  website          String?
+  logoUrl          String?
+  addressLine1     String
+  addressLine2     String?
+  city             String
+  state            String
+  pincode          String
+  country          String               @default("India")
+  gstNumber        String?
+  taxId            String?
+  businessType     String?
+  currency         String               @default("INR")
+  timezone         String               @default("Asia/Kolkata")
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  kioskToken       String?              @unique
+  maxMembers       Int                  @default(50)
+  whatsappEnabled  Boolean              @default(true)
+  auditLogs        AuditLog[]
+  members          Member[]
+  payments         Payment[]
+  subscription     TenantSubscription[]
+  users            User[]
+  userTenants      UserTenant[]
+  shops            Shop[]
+  shopStaffs       ShopStaff[]
+  jobCards         JobCard[]
+  shopProducts     ShopProduct[]
+  stockEntries     StockLedger[]
+  invoices         Invoice[]
+  financialEntries FinancialEntry[]
 }
 
 model UserTenant {
@@ -69,6 +76,7 @@ model User {
   auditLogs        AuditLog[]
   tenant           Tenant?      @relation(fields: [tenantId], references: [id])
   userTenants      UserTenant[]
+  shopStaffs       ShopStaff[]
 }
 
 model Member {
@@ -272,6 +280,265 @@ model GymAttendance {
 
   @@index([tenantId])
   @@index([memberId])
+}
+
+model Shop {
+  id            String        @id @default(cuid())
+  tenantId      String
+  name          String
+  phone         String
+  addressLine1  String
+  addressLine2  String?
+  city          String
+  state         String
+  pincode       String
+  gstNumber     String?
+  invoicePrefix String
+  logoUrl       String?
+  website       String?
+  invoiceFooter String?
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  staff         ShopStaff[]
+  jobCards      JobCard[]
+  products      ShopProduct[]
+  stockEntries  StockLedger[]
+  invoices      Invoice[]
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  financialEntries FinancialEntry[]
+
+  @@unique([tenantId, invoicePrefix])
+  @@index([tenantId])
+}
+
+model ShopStaff {
+  id        String   @id @default(cuid())
+  tenantId  String
+  shopId    String
+  userId    String
+  role      UserRole @default(STAFF)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  shop   Shop   @relation(fields: [shopId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([userId, shopId])
+  @@index([tenantId])
+  @@index([shopId])
+}
+
+model JobCard {
+  id            String    @id @default(cuid())
+  tenantId      String
+  shopId        String
+  jobNumber     String
+  publicToken   String    @unique
+  customerName  String
+  customerPhone String
+  deviceBrand   String
+  deviceModel   String
+  imei          String?
+  problem       String
+  status        JobStatus @default(RECEIVED)
+  estimatedCost Int?
+  finalCost     Int?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  shop   Shop   @relation(fields: [shopId], references: [id])
+
+  @@unique([shopId, jobNumber])
+  @@index([tenantId])
+  @@index([shopId])
+}
+
+model HSNCode {
+  id          String          @id @default(cuid())
+  code        String          @unique
+  taxRate     Float
+  createdAt   DateTime        @default(now())
+  hsnProducts GlobalProduct[]
+}
+
+model ProductCategory {
+  id               String          @id @default(cuid())
+  name             String          @unique
+  createdAt        DateTime        @default(now())
+  categoryProducts GlobalProduct[]
+}
+
+model GlobalProduct {
+  id         String   @id @default(cuid())
+  name       String
+  categoryId String
+  hsnId      String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  category     ProductCategory @relation(fields: [categoryId], references: [id])
+  hsn          HSNCode         @relation(fields: [hsnId], references: [id])
+  shopProducts ShopProduct[]
+
+  @@unique([name, categoryId])
+  @@index([categoryId])
+  @@index([hsnId])
+}
+
+model ShopProduct {
+  id              String        @id @default(cuid())
+  tenantId        String
+  shopId          String
+  globalProductId String?
+  name            String
+  salePrice       Int?
+  costPrice       Int?
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  stockEntries    StockLedger[]
+  invoiceItems    InvoiceItem[]
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id])
+  shop   Shop           @relation(fields: [shopId], references: [id])
+  global GlobalProduct? @relation(fields: [globalProductId], references: [id])
+
+  @@unique([shopId, name])
+  @@index([tenantId])
+  @@index([shopId])
+}
+
+model StockLedger {
+  id            String         @id @default(cuid())
+  tenantId      String
+  shopId        String
+  shopProductId String
+  type          StockEntryType
+  quantity      Int
+  referenceType StockRefType?
+  referenceId   String?
+  note          String?
+  createdAt     DateTime       @default(now())
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id])
+  shop    Shop        @relation(fields: [shopId], references: [id])
+  product ShopProduct @relation(fields: [shopProductId], references: [id])
+
+  @@index([tenantId])
+  @@index([shopId])
+  @@index([shopProductId])
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  tenantId      String
+  shopId        String
+  invoiceNumber String
+  invoiceDate   DateTime      @default(now())
+  customerName  String
+  customerPhone String?
+  subTotal      Int
+  gstAmount     Int
+  totalAmount   Int
+  paymentMode   PaymentMode
+  status        InvoiceStatus @default(PAID)
+  createdAt     DateTime      @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  shop   Shop   @relation(fields: [shopId], references: [id])
+
+  items InvoiceItem[]
+
+  @@unique([shopId, invoiceNumber])
+  @@index([tenantId])
+  @@index([shopId])
+}
+
+model InvoiceItem {
+  id            String @id @default(cuid())
+  invoiceId     String
+  shopProductId String
+  quantity      Int
+  rate          Int
+  hsnCode       String
+  gstRate       Float
+  gstAmount     Int
+  lineTotal     Int
+
+  invoice Invoice     @relation(fields: [invoiceId], references: [id])
+  product ShopProduct @relation(fields: [shopProductId], references: [id])
+
+  @@index([invoiceId])
+}
+
+model FinancialEntry {
+  id            String          @id @default(cuid())
+  tenantId      String
+  shopId        String
+  type          FinanceType
+  amount        Int
+  mode          PaymentMode
+  referenceType FinanceRefType?
+  referenceId   String?
+  note          String?
+  createdAt     DateTime        @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  shop   Shop   @relation(fields: [shopId], references: [id])
+
+  @@index([tenantId])
+  @@index([shopId])
+}
+
+enum FinanceType {
+  IN
+  OUT
+}
+
+enum FinanceRefType {
+  INVOICE
+  JOB
+  PURCHASE
+  ADJUSTMENT
+}
+
+enum JobStatus {
+  RECEIVED
+  DIAGNOSING
+  WAITING_FOR_PARTS
+  IN_PROGRESS
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  PAID
+  CANCELLED
+}
+
+enum PaymentMode {
+  CASH
+  CARD
+  UPI
+  BANK
+}
+
+enum StockEntryType {
+  IN
+  OUT
+}
+
+enum StockRefType {
+  PURCHASE
+  SALE
+  REPAIR
+  ADJUSTMENT
 }
 
 enum BillingCycle {

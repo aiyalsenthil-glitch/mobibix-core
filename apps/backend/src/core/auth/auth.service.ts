@@ -26,13 +26,18 @@ export class AuthService {
       throw new UnauthorizedException('Missing Google/Firebase token');
     }
 
-    return this.loginWithFirebase(dto.idToken);
+    const tenantCode =
+      dto.tenantCode && dto.tenantCode.trim() !== ''
+        ? dto.tenantCode.trim()
+        : undefined;
+
+    return this.loginWithFirebase(dto.idToken, tenantCode);
   }
 
   /**
    * 🔒 CORE AUTH LOGIC
    */
-  async loginWithFirebase(REMOVED_AUTH_PROVIDERToken: string) {
+  async loginWithFirebase(REMOVED_AUTH_PROVIDERToken: string, tenantCode?: string) {
     try {
       // ─────────────────────────────
       // 1️⃣ Verify Firebase token
@@ -100,20 +105,42 @@ export class AuthService {
       // ─────────────────────────────
       // 4️⃣ Resolve active tenant context
       // ─────────────────────────────
-      const userTenants = await this.prisma.userTenant.findMany({
-        where: { userId: user.id },
-        include: { tenant: true },
-      });
 
-      const activeUserTenant = userTenants[0] ?? null;
-      // 🟢 FIRST LOGIN / NO TENANT FLOW
-      if (!activeUserTenant) {
-        // IMPORTANT:
-        // - DB is source of truth
-        // - Ignore any old Firebase custom claims
-        // - Do NOT sync claims
-        // - Just issue USER token
+      let activeUserTenant: {
+        tenantId: string;
+        role: UserRole;
+        tenant: {
+          id: string;
+          name: string;
+        };
+      } | null = null;
 
+      if (tenantCode) {
+        activeUserTenant = await this.prisma.userTenant.findFirst({
+          where: {
+            userId: user.id,
+            tenant: {
+              code: tenantCode,
+            },
+          },
+          include: { tenant: true },
+        });
+      } else {
+        const userTenants = await this.prisma.userTenant.findMany({
+          where: { userId: user.id },
+          include: { tenant: true },
+        });
+
+        activeUserTenant = userTenants[0] ?? null;
+      }
+
+      // 🚫 Tenant requested but user not linked → BLOCK
+      if (tenantCode && !activeUserTenant) {
+        throw new UnauthorizedException('User is not linked to this tenant');
+      }
+
+      // 🟢 First login without tenant context (allowed)
+      if (!tenantCode && !activeUserTenant) {
         const token = this.jwtService.sign({
           sub: user.id,
           tenantId: null,
@@ -132,12 +159,7 @@ export class AuthService {
           tenant: null,
         };
       }
-
-      // ─────────────────────────────
-      // 4️⃣ Fetch tenant (if exists)
-      // ─────────────────────────────
-      const tenant = activeUserTenant?.tenant ?? null;
-
+      const resolvedUserTenant = activeUserTenant!;
       // ─────────────────────────────
       // 4.5️⃣ Set Firebase custom claims (SAFE)
       // ─────────────────────────────
@@ -154,8 +176,8 @@ export class AuthService {
       // ─────────────────────────────
       const token = this.jwtService.sign({
         sub: user.id,
-        tenantId: activeUserTenant?.tenantId ?? null,
-        role: activeUserTenant?.role ?? UserRole.USER,
+        tenantId: resolvedUserTenant.tenantId,
+        role: resolvedUserTenant.role,
       });
 
       return {
@@ -167,12 +189,10 @@ export class AuthService {
           name: user.fullName,
           email: user.email,
         },
-        tenant: tenant
-          ? {
-              id: tenant.id,
-              name: tenant.name,
-            }
-          : null,
+        tenant: {
+          id: resolvedUserTenant.tenant.id,
+          name: resolvedUserTenant.tenant.name,
+        },
       };
     } catch (err) {
       // Firebase / auth errors → 401

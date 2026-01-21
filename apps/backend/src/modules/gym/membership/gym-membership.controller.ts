@@ -3,9 +3,10 @@ import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Permissions } from '../../../core/auth/decorators/permissions.decorator';
 import { Permission } from '../../../core/auth/permissions.enum';
 import { GymMembershipService } from './gym-membership.service';
+import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 
 @Controller('gym/memberships')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard)
 export class GymMembershipController {
   constructor(private readonly service: GymMembershipService) {}
 
