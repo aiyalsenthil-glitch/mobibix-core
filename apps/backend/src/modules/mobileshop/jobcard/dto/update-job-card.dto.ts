@@ -1,9 +1,17 @@
 export class UpdateJobCardDto {
   customerName?: string;
   customerPhone?: string;
+  customerAltPhone?: string;
+
+  deviceType?: string;
   deviceBrand?: string;
   deviceModel?: string;
-  imei?: string;
-  problem?: string;
+  deviceSerial?: string;
+
+  customerComplaint?: string;
+  physicalCondition?: string;
+
   estimatedCost?: number;
+  advancePaid?: number;
+  estimatedDelivery?: Date;
 }

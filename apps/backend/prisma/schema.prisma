@@ -45,6 +45,8 @@ model Tenant {
   stockEntries     StockLedger[]
   invoices         Invoice[]
   financialEntries FinancialEntry[]
+  ledgerCustomers  LedgerCustomer[]
+  ledgerAccounts   LedgerAccount[]
 }
 
 model UserTenant {
@@ -110,6 +112,67 @@ model Member {
   @@unique([id, tenantId])
   @@unique([tenantId, phone])
   @@index([tenantId])
+}
+
+model LedgerCustomer {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  phone     String
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  ledgers LedgerAccount[]
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+}
+
+model LedgerAccount {
+  id         String @id @default(cuid())
+  tenantId   String
+  customerId String
+
+  principalAmount   Int
+  expectedTotal     Int
+  installmentType   LedgerInstallmentType
+  installmentAmount Int
+  totalPeriods      Int
+
+  startDate DateTime
+  status    LedgerStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id])
+  customer LedgerCustomer @relation(fields: [customerId], references: [id])
+
+  collections LedgerCollection[]
+
+  @@index([tenantId])
+  @@index([customerId])
+}
+
+model LedgerCollection {
+  id       String @id @default(cuid())
+  tenantId String
+  ledgerId String
+
+  periodNo Int
+  dueDate  DateTime
+  amount   Int
+  paid     Boolean   @default(false)
+  paidAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  ledger LedgerAccount @relation(fields: [ledgerId], references: [id])
+
+  @@index([tenantId])
+  @@index([ledgerId])
 }
 
 model StaffInvite {
@@ -283,7 +346,7 @@ model GymAttendance {
 }
 
 model Shop {
-  id            String        @id @default(cuid())
+  id            String   @id @default(cuid())
   tenantId      String
   name          String
   phone         String
@@ -297,14 +360,16 @@ model Shop {
   logoUrl       String?
   website       String?
   invoiceFooter String?
-  isActive      Boolean       @default(true)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  staff         ShopStaff[]
-  jobCards      JobCard[]
-  products      ShopProduct[]
-  stockEntries  StockLedger[]
-  invoices      Invoice[]
+  terms         String[] @default([])
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  staff        ShopStaff[]
+  jobCards     JobCard[]
+  products     ShopProduct[]
+  stockEntries StockLedger[]
+  invoices     Invoice[]
 
   tenant           Tenant           @relation(fields: [tenantId], references: [id])
   financialEntries FinancialEntry[]
@@ -332,23 +397,42 @@ model ShopStaff {
 }
 
 model JobCard {
-  id            String    @id @default(cuid())
-  tenantId      String
-  shopId        String
-  jobNumber     String
-  publicToken   String    @unique
-  customerName  String
-  customerPhone String
-  deviceBrand   String
-  deviceModel   String
-  imei          String?
-  problem       String
-  status        JobStatus @default(RECEIVED)
-  estimatedCost Int?
-  finalCost     Int?
-  notes         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String @id @default(cuid())
+  tenantId    String
+  shopId      String
+  jobNumber   String
+  publicToken String @unique
+
+  // Customer
+  customerName     String
+  customerPhone    String
+  customerAltPhone String?
+
+  // Device
+  deviceType   String // Mobile, Laptop, etc.
+  deviceBrand  String
+  deviceModel  String
+  deviceSerial String? // IMEI / SNO
+
+  // Issue
+  customerComplaint String
+  physicalCondition String?
+
+  // Financial
+  estimatedCost     Int?
+  advancePaid       Int       @default(0)
+  finalCost         Int?
+  estimatedDelivery DateTime?
+
+  // Meta
+  createdByUserId String
+  createdByName   String
+
+  status JobStatus @default(RECEIVED)
+  notes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   shop   Shop   @relation(fields: [shopId], references: [id])
@@ -595,4 +679,16 @@ enum AttendanceSource {
 enum MembershipStatus {
   ACTIVE
   EXPIRED
+}
+
+enum LedgerInstallmentType {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum LedgerStatus {
+  ACTIVE
+  COMPLETED
+  CLOSED
 }

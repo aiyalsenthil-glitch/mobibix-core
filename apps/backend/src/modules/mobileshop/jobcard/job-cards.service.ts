@@ -68,6 +68,9 @@ export class JobCardsService {
         publicToken: crypto.randomUUID(),
         status: JobStatus.RECEIVED,
 
+        createdByUserId: user.sub,
+        createdByName: user.name ?? user.email,
+
         ...dto,
       },
     });
@@ -143,6 +146,7 @@ export class JobCardsService {
         status: true,
         deviceBrand: true,
         deviceModel: true,
+        estimatedDelivery: true,
         updatedAt: true,
       },
     });
