@@ -356,6 +356,7 @@ model Shop {
   state         String
   pincode       String
   gstNumber     String?
+  gstEnabled    Boolean  @default(false)
   invoicePrefix String
   logoUrl       String?
   website       String?
@@ -513,9 +514,9 @@ model StockLedger {
   shop    Shop        @relation(fields: [shopId], references: [id])
   product ShopProduct @relation(fields: [shopProductId], references: [id])
 
-  @@index([tenantId])
-  @@index([shopId])
-  @@index([shopProductId])
+  @@index([tenantId, shopId, createdAt])
+  @@index([shopProductId, createdAt])
+  @@index([tenantId, shopId, type])
 }
 
 model Invoice {

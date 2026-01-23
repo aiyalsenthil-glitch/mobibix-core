@@ -69,7 +69,7 @@ export class JobCardsService {
         status: JobStatus.RECEIVED,
 
         createdByUserId: user.sub,
-        createdByName: user.name ?? user.email,
+        createdByName: user.name ?? user.email ?? 'Staff',
 
         ...dto,
       },

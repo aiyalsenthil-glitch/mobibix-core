@@ -13,6 +13,8 @@ import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { GymAppModule } from './modules/gymapp/gym-app.module';
 import { MobileShopModule } from './modules/mobileshop/mobileshop.module';
+import { LedgerModule } from './modules/ledger/ledger.module';
+import { CacheModule } from '@nestjs/cache-manager';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -32,6 +34,12 @@ import { MobileShopModule } from './modules/mobileshop/mobileshop.module';
     // 🩺 Platform infra
     HealthModule,
     MobileShopModule,
+    LedgerModule,
+    CacheModule.register({
+      isGlobal: true,
+      ttl: 60,
+      max: 1000,
+    }),
   ],
   providers: [
     {

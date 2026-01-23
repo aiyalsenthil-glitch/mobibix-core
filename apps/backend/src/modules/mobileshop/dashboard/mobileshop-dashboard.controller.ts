@@ -1,0 +1,19 @@
+import { Controller, Get, Req, Query, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
+import { TenantStatusGuard } from '../../../core/tenant/guards/tenant-status.guard';
+import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
+import { Permissions } from '../../../core/auth/decorators/permissions.decorator';
+import { Permission } from '../../../core/auth/permissions.enum';
+import { MobileShopDashboardService } from './mobileshop-dashboard.service';
+
+@Controller('mobileshop/dashboard')
+@UseGuards(JwtAuthGuard, TenantStatusGuard, TenantRequiredGuard)
+export class MobileShopDashboardController {
+  constructor(private readonly dashboardService: MobileShopDashboardService) {}
+
+  @Permissions(Permission.DASHBOARD_VIEW)
+  @Get('owner')
+  getOwnerDashboard(@Req() req: any, @Query('shopId') shopId?: string) {
+    return this.dashboardService.getOwnerDashboard(req.user.tenantId, shopId);
+  }
+}

@@ -1,6 +1,12 @@
-import { IsOptional, IsString, IsArray } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsBoolean,
+  IsArray,
+  ArrayNotEmpty,
+} from 'class-validator';
 
-export class UpdateShopDto {
+export class UpdateShopSettingsDto {
   @IsOptional()
   @IsString()
   name?: string;
@@ -31,16 +37,18 @@ export class UpdateShopDto {
 
   @IsOptional()
   @IsString()
-  gstNumber?: string;
-
-  @IsOptional()
-  @IsString()
   website?: string;
 
+  // GST
+  @IsOptional()
+  @IsBoolean()
+  gstEnabled?: boolean;
+
   @IsOptional()
   @IsString()
-  logoUrl?: string;
+  gstNumber?: string;
 
+  // Invoice / Print
   @IsOptional()
   @IsString()
   invoiceFooter?: string;
@@ -49,4 +57,8 @@ export class UpdateShopDto {
   @IsArray()
   @IsString({ each: true })
   terms?: string[];
+
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
 }

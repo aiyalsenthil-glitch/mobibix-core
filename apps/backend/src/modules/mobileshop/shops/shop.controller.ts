@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { ShopService } from './shop.service';
 import { CreateShopDto } from './dto/create-shop.dto';
 import { UpdateShopDto } from './dto/update-shop.dto';
+import { UpdateShopSettingsDto } from './dto/update-shop-settings.dto';
 
 @Controller('mobileshop/shops')
 @UseGuards(JwtAuthGuard)
@@ -47,6 +48,28 @@ export class ShopController {
     @Body() dto: UpdateShopDto,
   ) {
     return this.shopService.updateShop(
+      req.user.tenantId,
+      req.user.role,
+      shopId,
+      dto,
+    );
+  }
+  @Get(':shopId/settings')
+  getSettings(@Req() req: any, @Param('shopId') shopId: string) {
+    if (!req.user.tenantId) {
+      throw new ForbiddenException('Tenant context missing');
+    }
+
+    return this.shopService.getShopSettings(req.user.tenantId, shopId);
+  }
+
+  @Patch(':shopId/settings')
+  updateSettings(
+    @Req() req: any,
+    @Param('shopId') shopId: string,
+    @Body() dto: UpdateShopSettingsDto,
+  ) {
+    return this.shopService.updateShopSettings(
       req.user.tenantId,
       req.user.role,
       shopId,
