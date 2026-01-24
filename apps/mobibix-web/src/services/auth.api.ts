@@ -7,21 +7,32 @@
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
 
-interface ExchangeTokenResponse {
+export type AuthRole = "owner" | "staff" | "member" | "admin";
+
+export interface AuthUserPayload {
+  id: string;
+  email: string;
+  name?: string;
+  REMOVED_AUTH_PROVIDERUid: string;
+  role: AuthRole;
+  tenantId?: string;
+}
+
+export interface ExchangeTokenResponse {
   accessToken: string;
-  user: {
-    id: string;
-    email: string;
-    name?: string;
-    REMOVED_AUTH_PROVIDERUid: string;
-    role: "owner" | "staff" | "member";
-    tenantId?: string;
-  };
+  user: AuthUserPayload;
   tenant?: {
     id: string;
     code: string;
     name: string;
   };
+  tenants?: Array<{
+    id: string;
+    code?: string;
+    name?: string;
+    role?: AuthRole;
+  }>;
+  tenantCount?: number;
 }
 
 interface AuthError {

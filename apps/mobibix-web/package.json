@@ -15,8 +15,10 @@
     "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "REMOVED_AUTH_PROVIDER": "^12.8.0",
     "lucide-react": "^0.562.0",
     "next": "16.1.4",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "tailwind-merge": "^3.4.0"

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -59,5 +60,14 @@ export class JobCardsController {
     @Body() dto: UpdateJobStatusDto,
   ) {
     return this.service.updateStatus(req.user, shopId, id, dto.status);
+  }
+
+  @Delete(':id')
+  delete(
+    @Param('shopId') shopId: string,
+    @Param('id') id: string,
+    @Req() req: any,
+  ) {
+    return this.service.delete(req.user, shopId, id);
   }
 }

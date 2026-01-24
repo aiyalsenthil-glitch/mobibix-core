@@ -3,7 +3,7 @@ import "./globals.css";
 import "./tailwind.css";
 import { Playfair_Display } from "next/font/google";
 import { Geist } from "next/font/google";
-import { AuthProvider } from "@/hooks/useAuth";
+import { Providers } from "./providers";
 
 export const metadata = {
   title: "MobiBix – Run Your Mobile Shop Smarter",
@@ -26,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="antialiased bg-black text-white">
-        <AuthProvider>{children}</AuthProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

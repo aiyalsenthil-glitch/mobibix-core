@@ -1,4 +1,12 @@
-import { IsArray, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class SalesInvoiceItemDto {
   @IsString()
@@ -8,8 +16,18 @@ export class SalesInvoiceItemDto {
   @Min(1)
   quantity: number;
 
-  @IsInt()
+  @IsNumber()
+  @Min(0)
   rate: number; // selling price per unit
+
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  gstRate: number; // GST rate percentage (frontend-calculated)
+
+  @IsNumber()
+  @Min(0)
+  gstAmount: number; // GST amount (frontend-calculated)
 }
 
 export class SalesInvoiceDto {

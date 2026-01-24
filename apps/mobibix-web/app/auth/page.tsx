@@ -3,20 +3,26 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithPopup } from "REMOVED_AUTH_PROVIDER/auth";
+import { signInWithPopup, signInWithEmailAndPassword } from "REMOVED_AUTH_PROVIDER/auth";
 import { auth, googleProvider } from "@/lib/REMOVED_AUTH_PROVIDER";
 import { useAuth } from "@/hooks/useAuth";
+import { getRoleRedirect } from "@/lib/auth-routes";
 
-export default function AuthPage() {
+export default function AuthPage({
+  mode = "signin",
+}: {
+  mode?: "signin" | "signup";
+}) {
   const router = useRouter();
   const {
     isAuthenticated,
     isLoading: authLoading,
     exchangeToken,
     error: authError,
+    authUser,
   } = useAuth();
 
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(mode === "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,10 +30,12 @@ export default function AuthPage() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      router.push("/dashboard");
+    if (authLoading) return;
+    if (isAuthenticated && authUser) {
+      const path = getRoleRedirect(authUser);
+      router.replace(path);
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [authLoading, isAuthenticated, authUser, router]);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -36,9 +44,6 @@ export default function AuthPage() {
 
       const result = await signInWithPopup(auth, googleProvider);
       await exchangeToken(result.user);
-
-      // Token exchange successful, redirect happens via useAuth
-      router.push("/dashboard");
     } catch (err: any) {
       console.error("Google sign-in error:", err);
       setError(
@@ -49,16 +54,19 @@ export default function AuthPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      console.log(isSignUp ? "Signing up..." : "Signing in...", {
-        email,
-        password,
-      });
+    try {
+      setLoading(true);
+      setError(null);
+      // Firebase email/password sign-in then backend exchange
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      await exchangeToken(result.user);
+    } catch (err: any) {
+      setError(err.message || "Login failed");
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   return (

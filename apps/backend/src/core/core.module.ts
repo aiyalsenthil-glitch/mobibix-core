@@ -9,6 +9,7 @@ import { AuditModule } from './audit/audit.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StaffModule } from './staff/staff.module';
 import { AdminModule } from './admin/admin.module';
+import { CustomersModule } from './customers/customers.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AdminModule } from './admin/admin.module';
     AuditModule,
     StaffModule,
     AdminModule,
+    CustomersModule,
   ],
   exports: [
     AuthModule,

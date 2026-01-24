@@ -1,6 +1,8 @@
 export class CreateJobCardDto {
-  customerName: string;
-  customerPhone: string;
+  customerId?: string;
+
+  customerName?: string;
+  customerPhone?: string;
   customerAltPhone?: string;
 
   deviceType: string;

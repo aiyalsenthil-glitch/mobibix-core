@@ -47,6 +47,7 @@ model Tenant {
   financialEntries FinancialEntry[]
   ledgerCustomers  LedgerCustomer[]
   ledgerAccounts   LedgerAccount[]
+  customers        Customer[]
 }
 
 model UserTenant {
@@ -110,6 +111,34 @@ model Member {
   payments            MemberPayment[]
 
   @@unique([id, tenantId])
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+}
+
+model Customer {
+  id       String @id @default(cuid())
+  tenantId String
+
+  name  String
+  phone String
+  email String?
+
+  state     String
+  gstNumber String?
+
+  businessType BusinessType @default(B2C)
+  partyType    PartyType    @default(CUSTOMER)
+
+  loyaltyPoints Int     @default(0)
+  isActive      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  invoices Invoice[]
+  jobCards JobCard[]
+
   @@unique([tenantId, phone])
   @@index([tenantId])
 }
@@ -398,13 +427,17 @@ model ShopStaff {
 }
 
 model JobCard {
-  id          String @id @default(cuid())
-  tenantId    String
-  shopId      String
+  id       String @id @default(cuid())
+  tenantId String
+  shopId   String
+
+  customerId String? // ✅ NEW (nullable)
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
   jobNumber   String
   publicToken String @unique
 
-  // Customer
+  // 🔒 KEEP LEGACY FIELDS FOR NOW
   customerName     String
   customerPhone    String
   customerAltPhone String?
@@ -441,6 +474,7 @@ model JobCard {
   @@unique([shopId, jobNumber])
   @@index([tenantId])
   @@index([shopId])
+  @@index([customerId]) // ✅ NEW
 }
 
 model HSNCode {
@@ -520,9 +554,13 @@ model StockLedger {
 }
 
 model Invoice {
-  id            String        @id @default(cuid())
-  tenantId      String
-  shopId        String
+  id       String @id @default(cuid())
+  tenantId String
+  shopId   String
+
+  customerId String? // ✅ NEW (nullable, SAFE)
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
   invoiceNumber String
   invoiceDate   DateTime      @default(now())
   customerName  String
@@ -539,9 +577,9 @@ model Invoice {
 
   items InvoiceItem[]
 
-  @@unique([shopId, invoiceNumber])
   @@index([tenantId])
   @@index([shopId])
+  @@index([customerId]) // ✅ NEW (for history lookup)
 }
 
 model InvoiceItem {
@@ -692,4 +730,15 @@ enum LedgerStatus {
   ACTIVE
   COMPLETED
   CLOSED
+}
+
+enum PartyType {
+  CUSTOMER
+  VENDOR
+  BOTH
+}
+
+enum BusinessType {
+  B2C
+  B2B
 }

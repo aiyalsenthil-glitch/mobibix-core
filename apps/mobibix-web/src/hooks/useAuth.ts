@@ -1,40 +1,68 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback, createContext, useContext, ReactNode } from 'react';
-import { User as FirebaseUser, onAuthStateChanged, signOut } from 'REMOVED_AUTH_PROVIDER/auth';
-import { auth } from '@/lib/REMOVED_AUTH_PROVIDER';
-import { exchangeFirebaseToken, clearAccessToken, isAuthenticated } from '@/services/auth.api';
+import {
+  useEffect,
+  useState,
+  useCallback,
+  createContext,
+  useContext,
+  ReactNode,
+  FC,
+  createElement,
+} from "react";
+import {
+  User as FirebaseUser,
+  onAuthStateChanged,
+  signOut,
+} from "REMOVED_AUTH_PROVIDER/auth";
+import { auth } from "@/lib/REMOVED_AUTH_PROVIDER";
+import {
+  exchangeFirebaseToken,
+  clearAccessToken,
+  isAuthenticated,
+  decodeAccessToken,
+  getAccessToken,
+  type ExchangeTokenResponse,
+  type AuthRole,
+} from "@/services/auth.api";
+import { getRoleRedirect, getPostLoginRedirect } from "@/lib/auth-routes";
+import { useRouter } from "next/navigation";
 
-interface AuthUser {
+export interface AuthUser {
   id: string;
   email: string;
   name?: string;
   REMOVED_AUTH_PROVIDERUid: string;
-  role: 'owner' | 'staff' | 'member';
+  role: AuthRole;
   tenantId?: string;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   REMOVED_AUTH_PROVIDERUser: FirebaseUser | null;
   authUser: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
   logout: () => Promise<void>;
-  exchangeToken: (REMOVED_AUTH_PROVIDERUser: FirebaseUser, tenantCode?: string) => Promise<void>;
+  exchangeToken: (
+    REMOVED_AUTH_PROVIDERUser: FirebaseUser,
+    tenantCode?: string,
+  ) => Promise<ExchangeTokenResponse>;
 }
 
-// Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Provider component
-export function AuthProvider({ children }: { children: ReactNode }) {
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
+  const router = useRouter();
   const [REMOVED_AUTH_PROVIDERUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Listen to Firebase auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setIsLoading(true);
@@ -42,17 +70,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (user) {
         setFirebaseUser(user);
-        
-        // Try to exchange token if not already authenticated
+
+        // If we already have a valid JWT but no authUser, derive it from token claims
+        if (isAuthenticated() && !authUser) {
+          const token = getAccessToken();
+          if (token) {
+            const claims = decodeAccessToken(token);
+            if (claims?.role) {
+              setAuthUser({
+                id: claims.sub || user.uid,
+                email: user.email || "",
+                name: user.displayName || undefined,
+                REMOVED_AUTH_PROVIDERUid: user.uid,
+                role: claims.role,
+                tenantId: claims.tenantId,
+              });
+              setIsLoading(false);
+              return;
+            }
+          }
+        }
+
         if (!isAuthenticated()) {
           try {
             const response = await exchangeFirebaseToken(
-              await user.getIdToken()
+              await user.getIdToken(),
             );
             setAuthUser(response.user);
           } catch (err: any) {
-            console.error('Auth exchange error:', err);
-            setError(err.message || 'Authentication failed');
+            console.error("Auth exchange error:", err);
+            setError(err.message || "Authentication failed");
             setFirebaseUser(null);
           }
         }
@@ -67,7 +114,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  // Exchange Firebase token for app JWT
   const exchangeToken = useCallback(
     async (REMOVED_AUTH_PROVIDERUser: FirebaseUser, tenantCode?: string) => {
       try {
@@ -76,20 +122,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const idToken = await REMOVED_AUTH_PROVIDERUser.getIdToken();
         const response = await exchangeFirebaseToken(idToken, tenantCode);
-        
+
         setAuthUser(response.user);
         setFirebaseUser(REMOVED_AUTH_PROVIDERUser);
+
+        // Post-login redirect based on tenant count/role
+        const redirectPath = getPostLoginRedirect(response);
+        router.replace(redirectPath);
+
+        return response as ExchangeTokenResponse;
       } catch (err: any) {
-        setError(err.message || 'Failed to exchange token');
+        setError(err.message || "Failed to exchange token");
         throw err;
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [router],
   );
 
-  // Logout
+  // Redirect if authUser already resolved (e.g., page reload with valid token)
+  useEffect(() => {
+    if (!authUser) return;
+    const path = getRoleRedirect(authUser);
+    router.replace(path);
+  }, [authUser, router]);
+
   const logout = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -99,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthUser(null);
       setError(null);
     } catch (err: any) {
-      setError(err.message || 'Logout failed');
+      setError(err.message || "Logout failed");
     } finally {
       setIsLoading(false);
     }
@@ -115,14 +173,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     exchangeToken,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  return createElement(AuthContext.Provider, { value }, children);
+};
 
-// Hook to use auth context
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within AuthProvider');
+    throw new Error("useAuth must be used within AuthProvider");
   }
   return context;
 }

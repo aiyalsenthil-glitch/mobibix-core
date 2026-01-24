@@ -5,11 +5,11 @@
 ### Example 1: Simple Auth Check & Redirect
 
 ```tsx
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ProtectedComponent() {
   const router = useRouter();
@@ -17,7 +17,7 @@ export default function ProtectedComponent() {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push('/auth');
+      router.push("/auth");
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -35,7 +35,7 @@ export default function ProtectedComponent() {
 ### Example 2: Display User Info
 
 ```tsx
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from "@/hooks/useAuth";
 
 export function UserProfile() {
   const { authUser, isAuthenticated } = useAuth();
@@ -46,7 +46,7 @@ export function UserProfile() {
     <div>
       <p>Email: {authUser?.email}</p>
       <p>Role: {authUser?.role}</p>
-      <p>Tenant: {authUser?.tenantId || 'Not assigned'}</p>
+      <p>Tenant: {authUser?.tenantId || "Not assigned"}</p>
     </div>
   );
 }
@@ -55,9 +55,9 @@ export function UserProfile() {
 ### Example 3: Make Authenticated API Calls
 
 ```tsx
-import { useEffect, useState } from 'react';
-import { authenticatedFetch } from '@/services/auth.api';
-import { useAuth } from '@/hooks/useAuth';
+import { useEffect, useState } from "react";
+import { authenticatedFetch } from "@/services/auth.api";
+import { useAuth } from "@/hooks/useAuth";
 
 export function MyData() {
   const { isAuthenticated } = useAuth();
@@ -68,11 +68,11 @@ export function MyData() {
 
     const fetchData = async () => {
       try {
-        const response = await authenticatedFetch('/gyms');
+        const response = await authenticatedFetch("/gyms");
         const result = await response.json();
         setData(result);
       } catch (error) {
-        console.error('Failed to fetch data:', error);
+        console.error("Failed to fetch data:", error);
       }
     };
 
@@ -86,7 +86,7 @@ export function MyData() {
 ### Example 4: Logout Button
 
 ```tsx
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from "@/hooks/useAuth";
 
 export function LogoutButton() {
   const { logout } = useAuth();
@@ -105,24 +105,24 @@ export function LogoutButton() {
 
 ```typescript
 import {
-  exchangeFirebaseToken,    // Main: Firebase token → app JWT
-  storeAccessToken,         // Save JWT to storage
-  getAccessToken,           // Retrieve stored JWT
-  clearAccessToken,         // Remove JWT (logout)
-  decodeAccessToken,        // Parse JWT payload
-  isAuthenticated,          // Check if token valid + not expired
-  getAuthHeader,            // Get Authorization header
-  authenticatedFetch,       // Make authenticated API calls
-} from '@/services/auth.api';
+  exchangeFirebaseToken, // Main: Firebase token → app JWT
+  storeAccessToken, // Save JWT to storage
+  getAccessToken, // Retrieve stored JWT
+  clearAccessToken, // Remove JWT (logout)
+  decodeAccessToken, // Parse JWT payload
+  isAuthenticated, // Check if token valid + not expired
+  getAuthHeader, // Get Authorization header
+  authenticatedFetch, // Make authenticated API calls
+} from "@/services/auth.api";
 
 // Example: Exchange Firebase token
-const response = await exchangeFirebaseToken(idToken, 'optional-tenant-code');
+const response = await exchangeFirebaseToken(idToken, "optional-tenant-code");
 console.log(response.user); // { id, email, name, role, tenantId }
 
 // Example: Check if authenticated
 if (isAuthenticated()) {
   const token = getAccessToken();
-  console.log('User logged in, token:', token);
+  console.log("User logged in, token:", token);
 }
 
 // Example: Decoded token content
@@ -130,21 +130,21 @@ const payload = decodeAccessToken(token);
 console.log(payload); // { sub, tenantId, role, iat, exp }
 
 // Example: API call
-const response = await authenticatedFetch('/api/gyms');
+const response = await authenticatedFetch("/api/gyms");
 const data = await response.json();
 
 // Example: Get header for custom fetch
 const headers = {
   ...getAuthHeader(),
-  'Content-Type': 'application/json',
+  "Content-Type": "application/json",
 };
 ```
 
 ## Firebase Functions
 
 ```typescript
-import { auth, googleProvider } from '@/lib/REMOVED_AUTH_PROVIDER';
-import { signInWithPopup, signOut } from 'REMOVED_AUTH_PROVIDER/auth';
+import { auth, googleProvider } from "@/lib/REMOVED_AUTH_PROVIDER";
+import { signInWithPopup, signOut } from "REMOVED_AUTH_PROVIDER/auth";
 
 // Sign in with Google
 const result = await signInWithPopup(auth, googleProvider);
@@ -160,25 +160,25 @@ await signOut(auth);
 ## Hook Usage in Components
 
 ```tsx
-'use client';
+"use client";
 
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AuthExample() {
   const {
-    REMOVED_AUTH_PROVIDERUser,      // Current Firebase user (or null)
-    authUser,          // App user from JWT (or null)
-    isLoading,         // True during auth operations
-    isAuthenticated,   // Boolean: user is authenticated
-    error,             // Error message (or null)
-    logout,            // Function to sign out
-    exchangeToken,     // Function to exchange Firebase→JWT
+    REMOVED_AUTH_PROVIDERUser, // Current Firebase user (or null)
+    authUser, // App user from JWT (or null)
+    isLoading, // True during auth operations
+    isAuthenticated, // Boolean: user is authenticated
+    error, // Error message (or null)
+    logout, // Function to sign out
+    exchangeToken, // Function to exchange Firebase→JWT
   } = useAuth();
 
   return (
     <div>
-      <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
-      <p>Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
+      <p>Loading: {isLoading ? "Yes" : "No"}</p>
+      <p>Authenticated: {isAuthenticated ? "Yes" : "No"}</p>
       {error && <p>Error: {error}</p>}
       {authUser && <p>User: {authUser.email}</p>}
       <button onClick={logout}>Logout</button>
@@ -196,7 +196,7 @@ interface AuthUser {
   email: string;
   name?: string;
   REMOVED_AUTH_PROVIDERUid: string;
-  role: 'owner' | 'staff' | 'member';
+  role: "owner" | "staff" | "member";
   tenantId?: string;
 }
 
@@ -220,11 +220,11 @@ interface AuthError {
 
 // JWT decoded payload
 interface JwtPayload {
-  sub: string;           // User ID
-  tenantId?: string;     // Tenant ID (if staff)
-  role: string;          // User role
-  iat: number;           // Issued at (seconds)
-  exp: number;           // Expires at (seconds)
+  sub: string; // User ID
+  tenantId?: string; // Tenant ID (if staff)
+  role: string; // User role
+  iat: number; // Issued at (seconds)
+  exp: number; // Expires at (seconds)
 }
 ```
 
@@ -250,10 +250,10 @@ NEXT_PUBLIC_API_URL=http://localhost_REPLACED:3000/api
 ### Pattern 1: Protected Page with Loading
 
 ```tsx
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ProtectedPage() {
   const router = useRouter();
@@ -264,7 +264,7 @@ export default function ProtectedPage() {
   }
 
   if (!isAuthenticated) {
-    router.push('/auth');
+    router.push("/auth");
     return null;
   }
 
@@ -275,12 +275,12 @@ export default function ProtectedPage() {
 ### Pattern 2: Conditional Rendering by Role
 
 ```tsx
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from "@/hooks/useAuth";
 
 export function AdminFeature() {
   const { authUser } = useAuth();
 
-  if (authUser?.role !== 'owner') {
+  if (authUser?.role !== "owner") {
     return <p>Admin access only</p>;
   }
 
@@ -291,7 +291,7 @@ export function AdminFeature() {
 ### Pattern 3: Tenant-Specific Content
 
 ```tsx
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from "@/hooks/useAuth";
 
 export function TenantSelector() {
   const { authUser } = useAuth();
@@ -309,8 +309,8 @@ export function TenantSelector() {
 ### Pattern 4: Logout with Redirect
 
 ```tsx
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 export function LogoutWithRedirect() {
   const router = useRouter();
@@ -318,7 +318,7 @@ export function LogoutWithRedirect() {
 
   const handleLogout = async () => {
     await logout();
-    router.push('/');
+    router.push("/");
   };
 
   return <button onClick={handleLogout}>Logout</button>;
@@ -331,20 +331,20 @@ export function LogoutWithRedirect() {
 
 ```typescript
 // This automatically adds Authorization header
-const response = await authenticatedFetch('/api/gyms');
+const response = await authenticatedFetch("/api/gyms");
 const data = await response.json();
 ```
 
 ### Pattern 2: POST with Auth
 
 ```typescript
-const response = await authenticatedFetch('/api/gyms', {
-  method: 'POST',
+const response = await authenticatedFetch("/api/gyms", {
+  method: "POST",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    name: 'My Gym',
+    name: "My Gym",
   }),
 });
 const result = await response.json();
@@ -353,19 +353,19 @@ const result = await response.json();
 ### Pattern 3: Error Handling
 
 ```typescript
-import { authenticatedFetch } from '@/services/auth.api';
+import { authenticatedFetch } from "@/services/auth.api";
 
 try {
-  const response = await authenticatedFetch('/api/gyms');
-  
+  const response = await authenticatedFetch("/api/gyms");
+
   if (!response.ok) {
     throw new Error(`API error: ${response.status}`);
   }
-  
+
   const data = await response.json();
   return data;
 } catch (error) {
-  console.error('Failed to fetch gyms:', error);
+  console.error("Failed to fetch gyms:", error);
   // Handle error (redirect to login, show message, etc.)
 }
 ```
@@ -375,34 +375,38 @@ try {
 ### Check If User is Authenticated
 
 ```typescript
-import { isAuthenticated, getAccessToken, decodeAccessToken } from '@/services/auth.api';
+import {
+  isAuthenticated,
+  getAccessToken,
+  decodeAccessToken,
+} from "@/services/auth.api";
 
-console.log('Is auth:', isAuthenticated());        // true/false
-console.log('Token:', getAccessToken());          // JWT string
-console.log('Decoded:', decodeAccessToken());     // JWT payload
+console.log("Is auth:", isAuthenticated()); // true/false
+console.log("Token:", getAccessToken()); // JWT string
+console.log("Decoded:", decodeAccessToken()); // JWT payload
 ```
 
 ### Check localStorage
 
 ```javascript
 // In browser DevTools console
-localStorage.getItem('auth_token');              // Get JWT
-sessionStorage.getItem('auth_token');            // Fallback
+localStorage.getItem("auth_token"); // Get JWT
+sessionStorage.getItem("auth_token"); // Fallback
 ```
 
 ### Monitor Auth State Changes
 
 ```tsx
-'use client';
+"use client";
 
-import { useAuth } from '@/hooks/useAuth';
-import { useEffect } from 'react';
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect } from "react";
 
 export function AuthMonitor() {
   const { authUser, isAuthenticated, isLoading, error } = useAuth();
 
   useEffect(() => {
-    console.log('Auth state:', {
+    console.log("Auth state:", {
       isAuthenticated,
       isLoading,
       authUser,
@@ -419,6 +423,7 @@ export function AuthMonitor() {
 ### Error: "Cannot find module '@/hooks/useAuth'"
 
 **Fix**: Make sure:
+
 1. `src/hooks/useAuth.ts` exists
 2. `tsconfig.json` has path alias: `"@/*": ["./src/*"]`
 3. Restart dev server
@@ -430,12 +435,14 @@ export function AuthMonitor() {
 ### Error: "Token expired"
 
 **Fix**: Token is checked on access. Either:
+
 1. User needs to re-login
 2. Implement token refresh (Phase 2)
 
 ### Error: "Failed to exchange token"
 
 **Fix**: Check:
+
 1. Backend is running on correct URL
 2. `/auth/google/exchange` endpoint exists
 3. Firebase Admin SDK properly configured
@@ -452,8 +459,8 @@ const handleEmailSignUp = async (email: string, password: string) => {
 
 // Tenant Creation
 const createTenant = async (name: string) => {
-  const response = await authenticatedFetch('/api/tenants', {
-    method: 'POST',
+  const response = await authenticatedFetch("/api/tenants", {
+    method: "POST",
     body: JSON.stringify({ name }),
   });
   return response.json();
