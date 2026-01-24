@@ -1,0 +1,472 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom CSS Variables */
+:root {
+  --color-bg: #000000;
+  --color-surface: #0a0a0a;
+  --color-primary: #3b82f6;
+  --color-secondary: #8b5cf6;
+  --font-display: "Playfair Display", serif;
+  --font-body: "Geist", sans-serif;
+
+  /* Dark mode colors */
+  --color-text: #ffffff;
+  --color-text-muted: #a8a29e;
+  --color-border: rgba(255, 255, 255, 0.05);
+  --color-card-bg: rgba(255, 255, 255, 0.02);
+  --color-card-border: rgba(255, 255, 255, 0.1);
+}
+
+/* Light Mode Variables */
+html.light-mode {
+  --color-bg: #ffffff;
+  --color-surface: #f5f5f5;
+  --color-primary: #2563eb;
+  --color-secondary: #7c3aed;
+
+  /* Light mode colors */
+  --color-text: #000000;
+  --color-text-muted: #78716c;
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-card-bg: rgba(0, 0, 0, 0.02);
+  --color-card-border: rgba(0, 0, 0, 0.1);
+}
+
+/* Theme Transition */
+.theme-transition,
+.theme-transition * {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease !important;
+}
+
+/* Base Styles */
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  overflow-x: hidden;
+}
+
+/* Light Mode Body Overrides */
+html.light-mode body {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* Light Mode Text Colors */
+html.light-mode .text-white {
+  color: #000000 !important;
+}
+
+html.light-mode .text-stone-300,
+html.light-mode .text-stone-400 {
+  color: #57534e !important;
+}
+
+html.light-mode .text-stone-500 {
+  color: #78716c !important;
+}
+
+html.light-mode .text-stone-600 {
+  color: #a8a29e !important;
+}
+
+html.light-mode .text-stone-700 {
+  color: #d6d3d1 !important;
+}
+
+html.light-mode .text-stone-800 {
+  color: #e7e5e4 !important;
+}
+
+/* Light Mode Background Colors */
+html.light-mode .bg-black {
+  background-color: #ffffff !important;
+}
+
+html.light-mode .bg-neutral-900,
+html.light-mode .bg-neutral-950 {
+  background-color: #f5f5f5 !important;
+}
+
+html.light-mode .bg-neutral-950\/30 {
+  background-color: #fafafa !important;
+}
+
+html.light-mode .bg-stone-800 {
+  background-color: #e7e5e4 !important;
+}
+
+html.light-mode .bg-stone-700 {
+  background-color: #d6d3d1 !important;
+}
+
+html.light-mode .bg-white\/5,
+html.light-mode .bg-white\/\[0\.02\],
+html.light-mode .bg-white\/\[0\.03\],
+html.light-mode .bg-white\/\[0\.04\] {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Light Mode Border Colors */
+html.light-mode .border-white\/5,
+html.light-mode .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light-mode .border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+html.light-mode .border-neutral-800 {
+  border-color: #e7e5e4 !important;
+}
+
+/* Light Mode Hover States */
+html.light-mode .hover\:text-white:hover {
+  color: #000000 !important;
+}
+
+html.light-mode .hover\:bg-white\/5:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+html.light-mode .hover\:border-white\/20:hover,
+html.light-mode .hover\:border-white\/40:hover {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Light Mode Gradients */
+html.light-mode .bg-gradient-to-b {
+  background-image: linear-gradient(
+    to bottom,
+    #ffffff,
+    #f9fafb,
+    #ffffff
+  ) !important;
+}
+
+html.light-mode .bg-gradient-to-br {
+  background-image: linear-gradient(
+    to bottom right,
+    rgba(0, 0, 0, 0.02),
+    transparent
+  ) !important;
+}
+
+/* Light Mode Glow Effects */
+html.light-mode .glow-text {
+  text-shadow:
+    0 0 20px rgba(37, 99, 235, 0.4),
+    0 0 40px rgba(37, 99, 235, 0.2),
+    0 0 60px rgba(37, 99, 235, 0.1);
+}
+
+html.light-mode .glow-box {
+  box-shadow:
+    0 0 10px rgba(37, 99, 235, 0.2),
+    0 0 20px rgba(37, 99, 235, 0.1);
+}
+
+/* Light Mode Phone Device */
+html.light-mode .phone-device {
+  background-color: #f5f5f5 !important;
+  border-color: #d6d3d1 !important;
+}
+
+html.light-mode .phone-glow {
+  box-shadow:
+    0 0 30px rgba(37, 99, 235, 0.15),
+    0 0 60px rgba(37, 99, 235, 0.08),
+    inset 0 0 30px rgba(37, 99, 235, 0.03);
+}
+
+/* Light Mode CTA Button */
+html.light-mode .theme-cta-button {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+html.light-mode .theme-cta-button .bg-stone-200 {
+  background-color: #1c1917 !important;
+}
+
+/* Light Mode Backdrop Blur */
+html.light-mode .backdrop-blur-sm {
+  backdrop-filter: blur(12px);
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+html.light-mode .backdrop-blur-md {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Light Mode Radial Gradients */
+html.light-mode .bg-blue-600\/20 {
+  background-color: rgba(37, 99, 235, 0.1) !important;
+}
+
+html.light-mode .bg-purple-500\/20 {
+  background-color: rgba(168, 85, 247, 0.1) !important;
+}
+
+html.light-mode .bg-indigo-900\/10 {
+  background-color: rgba(79, 70, 229, 0.05) !important;
+}
+
+html.light-mode .bg-purple-500\/5,
+html.light-mode .bg-blue-500\/5 {
+  background-color: rgba(59, 130, 246, 0.03) !important;
+}
+
+html.light-mode .bg-purple-500\/10,
+html.light-mode .bg-blue-500\/10 {
+  background-color: rgba(59, 130, 246, 0.05) !important;
+}
+
+/* Light Mode Shimmer Button */
+html.light-mode .shimmer-button {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+html.light-mode .shimmer-button .bg-white\/90 {
+  background-color: rgba(28, 25, 23, 0.9) !important;
+}
+
+html.light-mode .shimmer-button:hover {
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Theme Toggle Button */
+.theme-toggle-btn {
+  transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Typography */
+.font-playfair {
+  font-family: var(--font-display) !important;
+}
+
+.font-geist {
+  font-family: var(--font-body) !important;
+}
+
+/* Scroll Animations */
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 0.8s ease-out,
+    transform 0.8s ease-out;
+}
+
+.animate-on-scroll.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Glow Text Effect */
+.glow-text {
+  text-shadow:
+    0 0 20px rgba(59, 130, 246, 0.5),
+    0 0 40px rgba(59, 130, 246, 0.3),
+    0 0 60px rgba(59, 130, 246, 0.2);
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    text-shadow:
+      0 0 20px rgba(59, 130, 246, 0.5),
+      0 0 40px rgba(59, 130, 246, 0.3),
+      0 0 60px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    text-shadow:
+      0 0 30px rgba(59, 130, 246, 0.7),
+      0 0 60px rgba(59, 130, 246, 0.5),
+      0 0 90px rgba(59, 130, 246, 0.3);
+  }
+}
+
+/* Glow Box Effect */
+.glow-box {
+  box-shadow:
+    0 0 10px rgba(59, 130, 246, 0.3),
+    0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+/* 3D Phone Device */
+.phone-3d {
+  perspective: 1000px;
+  animation: float 6s ease-in-out infinite;
+}
+
+.phone-device {
+  transform: rotateY(-15deg) rotateX(5deg);
+  transition: transform 0.5s ease;
+}
+
+.phone-3d:hover .phone-device {
+  transform: rotateY(-10deg) rotateX(3deg);
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Phone Glow Effect */
+.phone-glow {
+  box-shadow:
+    0 0 30px rgba(59, 130, 246, 0.2),
+    0 0 60px rgba(59, 130, 246, 0.1),
+    inset 0 0 30px rgba(59, 130, 246, 0.05);
+  animation: phone-glow-pulse 4s ease-in-out infinite;
+}
+
+@keyframes phone-glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 30px rgba(59, 130, 246, 0.2),
+      0 0 60px rgba(59, 130, 246, 0.1),
+      inset 0 0 30px rgba(59, 130, 246, 0.05);
+  }
+  50% {
+    box-shadow:
+      0 0 40px rgba(59, 130, 246, 0.3),
+      0 0 80px rgba(59, 130, 246, 0.15),
+      inset 0 0 40px rgba(59, 130, 246, 0.08);
+  }
+}
+
+/* Shimmer Button Effect */
+.shimmer-button {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.shimmer-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.shimmer-button:hover {
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text);
+}
+
+/* Light Mode Scrollbar */
+html.light-mode ::-webkit-scrollbar-track {
+  background: #ffffff;
+}
+
+html.light-mode ::-webkit-scrollbar-thumb {
+  background: #d6d3d1;
+}
+
+html.light-mode ::-webkit-scrollbar-thumb:hover {
+  background: #a8a29e;
+}
+
+/* Responsive Typography */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 3rem;
+    line-height: 1;
+  }
+
+  h2 {
+    font-size: 2rem;
+    line-height: 1.2;
+  }
+}
+
+/* Utility Classes */
+.backdrop-blur-custom {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.text-gradient {
+  background: linear-gradient(to right, var(--color-text), #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Focus States for Accessibility */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .animate-on-scroll {
+    opacity: 1;
+    transform: none;
+  }
+}
