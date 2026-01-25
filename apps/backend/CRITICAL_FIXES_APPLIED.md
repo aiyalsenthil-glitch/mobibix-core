@@ -14,18 +14,21 @@ Applied three critical fixes to `repair/repair.service.ts` to address data integ
 ## ISSUE 1: shopProductId = dto.shopId ❌ → FIXED ✅
 
 ### Problem
+
 ```typescript
 // ❌ WRONG: Putting Shop ID into Product FK
-shopProductId: dto.shopId
+shopProductId: dto.shopId;
 ```
 
 **Why dangerous**:
+
 - `InvoiceItem.shopProductId` must reference `ShopProduct`
 - Putting Shop ID breaks foreign key constraint
 - Breaks: reports, joins, analytics, invoice reprints, migrations
 - Database integrity violation
 
 ### Solution Implemented
+
 ```typescript
 // ✅ CORRECT: Create/find SERVICE product for shop
 let serviceProductId: string;
@@ -68,6 +71,7 @@ const serviceItems = dto.services.map((service, idx) => ({
 ```
 
 **Benefits**:
+
 - ✅ Valid foreign key reference to ShopProduct
 - ✅ Enables proper reports and analytics
 - ✅ Supports invoice reprints with correct product reference
@@ -80,6 +84,7 @@ const serviceItems = dto.services.map((service, idx) => ({
 ## ISSUE 2: pricesIncludeTax IGNORED ❌ → FIXED ✅
 
 ### Problem
+
 ```typescript
 // ❌ DTO defines field but logic ignores it
 pricesIncludeTax?: boolean;
@@ -90,6 +95,7 @@ lineTotal = amount + gst
 ```
 
 **Why broken**:
+
 - Frontend already has "Prices are Tax Inclusive" checkbox
 - Backend ignores user choice
 - Causes incorrect invoices:
@@ -97,6 +103,7 @@ lineTotal = amount + gst
   - If user enters tax-exclusive price but flags inclusive: GST not applied correctly
 
 ### Solution Implemented
+
 ```typescript
 // ✅ Tax-inclusive/exclusive calculation helper
 const calculateTax = (
@@ -147,6 +154,7 @@ const partCalculations = (dto.parts || []).map((part) => {
 **Examples**:
 
 **Tax-Exclusive (pricesIncludeTax = false)**
+
 ```
 amount: 2000, gstRate: 18%, pricesIncludeTax: false
 base:   2000
@@ -155,6 +163,7 @@ total:  2360
 ```
 
 **Tax-Inclusive (pricesIncludeTax = true)**
+
 ```
 amount: 2360, gstRate: 18%, pricesIncludeTax: true
 base:   2000 (2360 / 1.18)
@@ -163,6 +172,7 @@ total:  2360
 ```
 
 **Benefits**:
+
 - ✅ Respects user's tax pricing choice
 - ✅ Correct calculations for both modes
 - ✅ Applies to services AND parts consistently
@@ -173,12 +183,14 @@ total:  2360
 ## ISSUE 3: SAC vs HSN Naming Confusion ⚠️ → FIXED ✅
 
 ### Problem
+
 ```typescript
 // ❌ Using hsnCode for SAC value
-hsnCode: '9987' // This is SAC, not HSN
+hsnCode: '9987'; // This is SAC, not HSN
 ```
 
 **Why confusing**:
+
 - **SAC** (Services Accounting Code) = for services (9987 for repair)
 - **HSN** (Harmonized System of Nomenclature) = for products (8517 for parts)
 - Mixing them breaks:
@@ -188,6 +200,7 @@ hsnCode: '9987' // This is SAC, not HSN
   - Audit trails
 
 ### Solution Implemented
+
 ```typescript
 // ✅ Correct: Use hsnCode field but document clearly
 const serviceItems = dto.services.map((service, idx) => ({
@@ -212,10 +225,12 @@ const partItems = (dto.parts || []).map((partDto, idx) => ({
 ```
 
 **Note**: Schema only has `hsnCode` field. Until schema is extended with separate `sacCode` field:
+
 - Services: Store SAC in `hsnCode` field with clear documentation
 - Parts: Store HSN in `hsnCode` field
 
 **Future Enhancement**: Schema migration should add:
+
 ```prisma
 model InvoiceItem {
   // ... existing fields ...
@@ -225,6 +240,7 @@ model InvoiceItem {
 ```
 
 **Benefits**:
+
 - ✅ Clear distinction between SAC and HSN
 - ✅ Supports future GSTR integration
 - ✅ Consistent with GST compliance
@@ -235,18 +251,21 @@ model InvoiceItem {
 ## Changes Summary
 
 ### Code Changes
+
 - **File**: `src/modules/mobileshop/repair/repair.service.ts`
 - **Method**: `generateRepairBill()`
 - **Lines changed**: ~120 lines
 - **Build impact**: ✅ No breaking changes
 
 ### Database Changes
+
 - **Impact**: None (creates optional `Repair Services` ShopProduct if not exists)
 - **Schema migration required**: No immediate, but recommended for future:
   - Add `SERVICE` to `ProductType` enum
   - Add `sacCode` field to `InvoiceItem` model
 
 ### API Contract Changes
+
 - **DTO**: `RepairBillDto.pricesIncludeTax` now **respected** (was ignored)
 - **Response**: Invoice items now use correct product references
 - **No breaking changes**: Existing clients work, but new tax-inclusive pricing now works correctly
@@ -256,6 +275,7 @@ model InvoiceItem {
 ## Verification
 
 ### Build Status
+
 ```
 ✅ Prisma Client: Generated (214ms)
 ✅ TypeScript: 0 errors
@@ -264,6 +284,7 @@ model InvoiceItem {
 ```
 
 ### Files Cleaned Up
+
 ```
 ✅ Removed: stock/repair.controller.ts (duplicate)
 ✅ Removed: stock/repair.service.ts (duplicate)
@@ -276,46 +297,52 @@ model InvoiceItem {
 ## Testing Recommendations
 
 ### Test 1: Tax-Exclusive Services
+
 ```json
 {
   "billingMode": "WITH_GST",
   "pricesIncludeTax": false,
   "serviceGstRate": 18,
-  "services": [
-    { "description": "Screen replacement", "amount": 2000 }
-  ]
+  "services": [{ "description": "Screen replacement", "amount": 2000 }]
 }
 ```
+
 **Expected**: Base: 2000, GST: 360, Total: 2360 ✅
 
 ### Test 2: Tax-Inclusive Services
+
 ```json
 {
   "billingMode": "WITH_GST",
   "pricesIncludeTax": true,
   "serviceGstRate": 18,
-  "services": [
-    { "description": "Screen replacement", "amount": 2360 }
-  ]
+  "services": [{ "description": "Screen replacement", "amount": 2360 }]
 }
 ```
+
 **Expected**: Base: 2000, GST: 360, Total: 2360 ✅
 
 ### Test 3: Mixed Services + Parts
+
 ```json
 {
   "billingMode": "WITH_GST",
   "pricesIncludeTax": false,
   "services": [{ "description": "Labor", "amount": 2000 }],
-  "parts": [{ "shopProductId": "...", "quantity": 1, "rate": 1000, "gstRate": 12 }]
+  "parts": [
+    { "shopProductId": "...", "quantity": 1, "rate": 1000, "gstRate": 12 }
+  ]
 }
 ```
+
 **Expected**:
+
 - Service: Base 2000, GST 360
 - Part: Base 1000, GST 120
 - Total: 3480 ✅
 
 ### Test 4: Service Product Creation
+
 **Step 1**: First bill for shop → Creates `Repair Services` product ✅  
 **Step 2**: Second bill for same shop → Reuses existing product ✅  
 **Step 3**: Invoice items reference valid product → Database integrity ✅
@@ -332,4 +359,3 @@ model InvoiceItem {
 - Tax calculation respects `pricesIncludeTax` flag for both services and parts
 
 ---
-
