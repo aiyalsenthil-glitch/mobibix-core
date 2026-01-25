@@ -50,13 +50,13 @@ export default function OwnerDashboard() {
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm text-blue-300">Tenant</p>
+            <p className="text-sm text-teal-300">Tenant</p>
             <h1 className="text-3xl font-bold">Owner Dashboard</h1>
             <p className="text-sm text-gray-400">Tenant ID: {tenantId}</p>
           </div>
           <button
             onClick={logout}
-            className="self-start md:self-auto rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white hover:border-blue-400 transition"
+            className="self-start md:self-auto rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white hover:border-teal-400 transition"
           >
             Logout
           </button>
@@ -75,7 +75,7 @@ export default function OwnerDashboard() {
                 value={shopId}
                 onChange={(e) => setShopId(e.target.value)}
                 placeholder="Shop ID"
-                className="bg-white/10 border border-white/20 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                className="bg-white/10 border border-white/20 rounded px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
               />
             </div>
           </div>
@@ -127,14 +127,14 @@ function LinkRow({
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="block bg-white/5 border border-white/10 rounded-lg px-4 py-3 hover:border-blue-400 transition-colors"
+      className="block bg-white/5 border border-white/10 rounded-lg px-4 py-3 hover:border-teal-400 transition-colors"
     >
       <div className="flex justify-between items-center gap-3">
         <div>
           <p className="font-medium">{label}</p>
           <p className="text-xs text-gray-400">{description}</p>
         </div>
-        <span className="text-xs text-blue-300">Open</span>
+        <span className="text-xs text-teal-300">Open</span>
       </div>
       <p className="text-[11px] text-gray-500 break-all mt-2">{href}</p>
     </a>

@@ -227,7 +227,7 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
 
           {/* Phone Existing Customer Info */}
           {!isEditing && phoneExistingCustomer && (
-            <div className="bg-blue-500/10 border border-blue-500/30 text-blue-300 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-teal-500/10 border border-teal-500/30 text-teal-300 px-4 py-3 rounded-lg text-sm">
               <div className="font-semibold mb-1">Customer exists!</div>
               <div className="text-xs">
                 Phone {phoneExistingCustomer.phone} is already registered to{" "}

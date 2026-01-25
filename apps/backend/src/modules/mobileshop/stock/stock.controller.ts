@@ -1,24 +1,9 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Req,
-  BadRequestException,
-} from '@nestjs/common';
+import { Controller, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/core/auth/guards/jwt-auth.guard';
 import { StockService } from './stock.service';
-import { PurchaseStockInDto } from './dto/purchase-stock-in.dto';
 
 @Controller('mobileshop/stock')
+@UseGuards(JwtAuthGuard)
 export class StockController {
   constructor(private readonly service: StockService) {}
-
-  @Post('in/purchase')
-  async purchaseIn(@Req() req, @Body() dto: PurchaseStockInDto) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Invalid tenant');
-    }
-
-    return this.service.purchaseStockIn(tenantId, dto);
-  }
 }

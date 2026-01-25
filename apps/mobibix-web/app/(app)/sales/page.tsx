@@ -1,46 +1,43 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { listShops, type Shop } from "@/services/shops.api";
 import {
   listInvoices,
   type SalesInvoice,
+  type InvoiceStatus,
   type PaymentMode,
 } from "@/services/sales.api";
-import { listShops, type Shop } from "@/services/shops.api";
-import { SalesInvoiceModal } from "./SalesInvoiceModal";
 
-const PAYMENT_MODE_LABELS: Record<PaymentMode, string> = {
-  CASH: "Cash",
-  UPI: "UPI",
-  CARD: "Card",
-  BANK: "Bank",
+const STATUS_COLORS: Record<InvoiceStatus, string> = {
+  PAID: "bg-green-500/15 text-green-400",
+  CANCELLED: "bg-red-500/15 text-red-400",
+};
+
+const PAYMENT_BADGES: Record<PaymentMode, string> = {
+  CASH: "bg-gray-500/15 text-gray-200",
+  UPI: "bg-purple-500/15 text-purple-300",
+  CARD: "bg-blue-500/15 text-blue-300",
+  BANK: "bg-amber-500/15 text-amber-300",
 };
 
 export default function SalesPage() {
-  const router = useRouter();
   const [shops, setShops] = useState<Shop[]>([]);
+  const [selectedShopId, setSelectedShopId] = useState("");
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [isLoadingShops, setIsLoadingShops] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedShopId, setSelectedShopId] = useState<string>("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Load shops on component mount
   useEffect(() => {
     const loadShops = async () => {
       try {
         setIsLoadingShops(true);
-        setError(null);
         const data = await listShops();
         setShops(data);
-        // Auto-select first shop
-        if (data.length > 0) {
-          setSelectedShopId(data[0].id);
-        }
+        // Auto-select first shop when available
+        if (data.length > 0) setSelectedShopId(data[0].id);
       } catch (err: any) {
-        console.error("Error loading shops:", err);
         setError(err.message || "Failed to load shops");
       } finally {
         setIsLoadingShops(false);
@@ -49,6 +46,13 @@ export default function SalesPage() {
 
     loadShops();
   }, []);
+
+  // Auto-load invoices whenever shop selection changes
+  useEffect(() => {
+    if (selectedShopId) {
+      void loadInvoices();
+    }
+  }, [selectedShopId]);
 
   const loadInvoices = async () => {
     if (!selectedShopId) {
@@ -60,12 +64,9 @@ export default function SalesPage() {
     try {
       setIsLoading(true);
       setError(null);
-      console.log(`Loading invoices for shop: ${selectedShopId}`);
       const data = await listInvoices(selectedShopId);
-      console.log(`Loaded ${data.length} invoices`, data);
       setInvoices(data);
     } catch (err: any) {
-      console.error("Error loading invoices:", err);
       setError(err.message || "Failed to load invoices");
       setInvoices([]);
     } finally {
@@ -73,29 +74,20 @@ export default function SalesPage() {
     }
   };
 
-  const handleRowClick = (invoiceId: string) => {
-    router.push(`/sales/${invoiceId}`);
-  };
-
-  const handleAddNew = () => {
-    setIsModalOpen(true);
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    loadInvoices();
+  const handleCreateInvoice = () => {
+    alert("Create Invoice coming soon – UI under construction.");
   };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-white">Sales Invoices</h1>
+        <h1 className="text-3xl font-bold text-white">Sales</h1>
         <button
-          onClick={handleAddNew}
+          onClick={handleCreateInvoice}
           disabled={!selectedShopId}
-          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 disabled:bg-teal-500/50 text-white rounded-lg font-medium transition"
+          className="px-6 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-bold transition shadow-lg"
         >
-          + New Invoice
+          + Create Invoice
         </button>
       </div>
 
@@ -118,15 +110,11 @@ export default function SalesPage() {
               <select
                 value={selectedShopId}
                 onChange={(e) => setSelectedShopId(e.target.value)}
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-teal-500"
+                className="w-full px-4 py-2 bg-stone-900 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
                 <option value="">-- Select a shop --</option>
                 {shops.map((shop) => (
-                  <option
-                    key={shop.id}
-                    value={shop.id}
-                    className="bg-stone-900"
-                  >
+                  <option key={shop.id} value={shop.id}>
                     {shop.name}
                   </option>
                 ))}
@@ -138,13 +126,13 @@ export default function SalesPage() {
             disabled={!selectedShopId || isLoading}
             className="mt-6 px-6 py-2 bg-teal-500 hover:bg-teal-600 disabled:bg-teal-500/50 text-white rounded-lg font-medium transition"
           >
-            {isLoading ? "Loading..." : "List"}
+            {isLoading ? "Loading..." : "Refresh"}
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-lg mb-4">
+        <div className="bg-red-500/15 border border-red-500/40 text-red-300 px-4 py-3 rounded-lg mb-6">
           {error}
         </div>
       )}
@@ -156,12 +144,14 @@ export default function SalesPage() {
       ) : invoices.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-stone-400 mb-4">
-            {selectedShopId ? "No sales yet" : "Select a shop and click List"}
+            {selectedShopId
+              ? "No invoices found"
+              : "Select a shop and click Refresh"}
           </p>
           {selectedShopId && (
             <button
-              onClick={handleAddNew}
-              className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-medium transition"
+              onClick={handleCreateInvoice}
+              className="px-6 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-lg font-bold transition shadow-lg"
             >
               Create your first invoice
             </button>
@@ -174,13 +164,16 @@ export default function SalesPage() {
               <thead className="bg-white/5 border-b border-white/10">
                 <tr>
                   <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
-                    Invoice No.
+                    Invoice #
+                  </th>
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
+                    Customer
                   </th>
                   <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
                     Amount
                   </th>
                   <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
-                    Payment Mode
+                    Payment
                   </th>
                   <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
                     Status
@@ -191,34 +184,38 @@ export default function SalesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
-                {invoices.map((invoice) => (
-                  <tr
-                    key={invoice.id}
-                    onClick={() => handleRowClick(invoice.id)}
-                    className="hover:bg-white/5 transition cursor-pointer"
-                  >
-                    <td className="px-4 py-3 text-sm text-white font-medium">
-                      {invoice.invoiceNumber}
+                {invoices.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-white/5 transition">
+                    <td className="px-4 py-3 text-sm font-semibold text-white">
+                      {inv.invoiceNumber}
                     </td>
                     <td className="px-4 py-3 text-sm text-stone-300">
-                      ₹ {invoice.totalAmount.toFixed(2)}
+                      {inv.customerName || "-"}
                     </td>
-                    <td className="px-4 py-3 text-sm text-stone-300">
-                      {PAYMENT_MODE_LABELS[invoice.paymentMode]}
+                    <td className="px-4 py-3 text-sm font-semibold text-white">
+                      $
+                      {inv.totalAmount.toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`px-3 py-1 rounded-lg text-xs font-medium ${
-                          invoice.status === "PAID"
-                            ? "bg-green-500/20 text-green-300"
-                            : "bg-red-500/20 text-red-300"
-                        }`}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${PAYMENT_BADGES[inv.paymentMode]}`}
                       >
-                        {invoice.status}
+                        {inv.paymentMode}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[inv.status]}`}
+                      >
+                        {inv.status}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-stone-400">
-                      {new Date(invoice.invoiceDate).toLocaleDateString()}
+                      {new Date(inv.invoiceDate).toLocaleDateString()}{" "}
+                      {new Date(inv.invoiceDate).toLocaleTimeString()}
                     </td>
                   </tr>
                 ))}
@@ -226,10 +223,6 @@ export default function SalesPage() {
             </table>
           </div>
         </div>
-      )}
-
-      {isModalOpen && selectedShopId && (
-        <SalesInvoiceModal shopId={selectedShopId} onClose={handleModalClose} />
       )}
     </div>
   );

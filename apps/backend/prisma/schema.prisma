@@ -1,3 +1,9 @@
+enum ProductType {
+  MOBILE
+  ACCESSORY
+  SPARE
+  SERVICE
+}
 generator client {
   provider = "prisma-client-js"
 }
@@ -48,6 +54,7 @@ model Tenant {
   ledgerCustomers  LedgerCustomer[]
   ledgerAccounts   LedgerAccount[]
   customers        Customer[]
+  imeis            IMEI[]
 }
 
 model UserTenant {
@@ -447,6 +454,7 @@ model JobCard {
   deviceBrand  String
   deviceModel  String
   deviceSerial String? // IMEI / SNO
+  devicePassword String? // Device lock/password
 
   // Issue
   customerComplaint String
@@ -454,8 +462,10 @@ model JobCard {
 
   // Financial
   estimatedCost     Int?
+  diagnosticCharge  Int? @default(0)
   advancePaid       Int       @default(0)
   finalCost         Int?
+  billType          String @default("WITHOUT_GST") // WITHOUT_GST, WITH_GST
   estimatedDelivery DateTime?
 
   // Meta
@@ -470,6 +480,7 @@ model JobCard {
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   shop   Shop   @relation(fields: [shopId], references: [id])
+  partsUsed RepairPartUsed[]
 
   @@unique([shopId, jobNumber])
   @@index([tenantId])
@@ -520,8 +531,12 @@ model ShopProduct {
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  type            ProductType   // MOBILE, ACCESSORY, SPARE
+  serialNumber    String?       @unique // For MOBILE/SPARE, globally unique if present
+  imeis           IMEI[]        // For MOBILE only
   stockEntries    StockLedger[]
   invoiceItems    InvoiceItem[]
+  partsUsed       RepairPartUsed[]
 
   tenant Tenant         @relation(fields: [tenantId], references: [id])
   shop   Shop           @relation(fields: [shopId], references: [id])
@@ -530,6 +545,22 @@ model ShopProduct {
   @@unique([shopId, name])
   @@index([tenantId])
   @@index([shopId])
+}
+
+model IMEI {
+  id            String       @id @default(cuid())
+  tenantId      String
+  shopProductId String
+  imei          String       @unique
+  invoiceId     String?      // Linked invoice when sold; null = available
+  createdAt     DateTime     @default(now())
+  product       ShopProduct  @relation(fields: [shopProductId], references: [id])
+  tenant        Tenant       @relation(fields: [tenantId], references: [id])
+  invoice       Invoice?     @relation(fields: [invoiceId], references: [id])
+
+  @@index([tenantId])
+  @@index([shopProductId])
+  @@index([invoiceId])
 }
 
 model StockLedger {
@@ -576,6 +607,7 @@ model Invoice {
   shop   Shop   @relation(fields: [shopId], references: [id])
 
   items InvoiceItem[]
+  imeis IMEI[]        // IMEIs sold via this invoice
 
   @@index([tenantId])
   @@index([shopId])
@@ -597,6 +629,20 @@ model InvoiceItem {
   product ShopProduct @relation(fields: [shopProductId], references: [id])
 
   @@index([invoiceId])
+}
+
+model RepairPartUsed {
+  id            String   @id @default(cuid())
+  jobCardId     String
+  shopProductId String
+  quantity      Int
+  createdAt     DateTime @default(now())
+
+  jobCard JobCard     @relation(fields: [jobCardId], references: [id])
+  product ShopProduct @relation(fields: [shopProductId], references: [id])
+
+  @@unique([jobCardId, shopProductId])
+  @@index([jobCardId])
 }
 
 model FinancialEntry {

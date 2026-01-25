@@ -1,68 +1,114 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { ProductType } from '@prisma/client';
 import { PrismaService } from 'src/core/prisma/prisma.service';
-import { PurchaseStockInDto } from './dto/purchase-stock-in.dto';
+import { StockInDto } from '../inventory/dto/stock-in.dto';
+
+export type StockBalance = {
+  productId: string;
+  name: string;
+  stockQty: number;
+  isNegative: boolean;
+};
 
 @Injectable()
 export class StockService {
   constructor(private prisma: PrismaService) {}
 
-  async purchaseStockIn(tenantId: string, dto: PurchaseStockInDto) {
-    if (!dto.items?.length) {
-      throw new BadRequestException('At least one item required');
+  async stockInSingleProduct(tenantId: string, dto: StockInDto) {
+    const product = await this.prisma.shopProduct.findFirst({
+      where: { id: dto.productId, tenantId, isActive: true },
+      select: { id: true, shopId: true, type: true },
+    });
+
+    if (!product) {
+      throw new BadRequestException('Invalid product');
     }
 
+    if (dto.type && dto.type !== product.type) {
+      throw new BadRequestException('Product type mismatch');
+    }
+
+    const quantity =
+      product.type === ProductType.MOBILE
+        ? dto.imeis?.length || 0
+        : (dto.quantity ?? 0);
+
+    if (!quantity) {
+      throw new BadRequestException('Quantity required');
+    }
+
+    // Create stock ledger entry for simple stock-in
     return this.prisma.$transaction(async (tx) => {
-      // validate shop belongs to tenant
-      const shop = await tx.shop.findFirst({
-        where: { id: dto.shopId, tenantId },
-        select: { id: true },
-      });
-
-      if (!shop) {
-        throw new BadRequestException('Invalid shop');
-      }
-
-      // validate products
-      const productIds = dto.items.map((i) => i.shopProductId);
-      const products = await tx.shopProduct.findMany({
-        where: {
-          id: { in: productIds },
-          tenantId,
-          shopId: dto.shopId,
-          isActive: true,
-        },
-        select: { id: true },
-      });
-
-      if (products.length !== productIds.length) {
-        throw new BadRequestException('Invalid product in items');
-      }
-
-      // create stock ledger entries
-      const entries = dto.items.map((i) => ({
+      const ledgerEntry = {
         tenantId,
-        shopId: dto.shopId,
-        shopProductId: i.shopProductId,
+        shopId: product.shopId,
+        shopProductId: product.id,
         type: 'IN' as const,
-        quantity: i.quantity,
+        quantity,
         referenceType: 'PURCHASE' as const,
-        referenceId: dto.purchaseRef ?? null,
-        note: dto.note ?? null,
-      }));
+        referenceId: null,
+      };
 
-      await tx.stockLedger.createMany({ data: entries });
+      await tx.stockLedger.create({ data: ledgerEntry });
 
-      // OPTIONAL: update last cost price (safe)
-      for (const i of dto.items) {
-        if (i.costPrice !== undefined) {
-          await tx.shopProduct.update({
-            where: { id: i.shopProductId },
-            data: { costPrice: i.costPrice },
-          });
-        }
+      // Handle IMEIs if mobile product
+      if (product.type === ProductType.MOBILE && dto.imeis?.length) {
+        await tx.iMEI.createMany({
+          data: dto.imeis.map((imei) => ({
+            tenantId,
+            shopProductId: product.id,
+            imei,
+          })),
+          skipDuplicates: true,
+        });
       }
 
-      return { success: true, entries: entries.length };
+      return { success: true };
+    });
+  }
+
+  async getStockBalances(
+    tenantId: string,
+    shopId?: string,
+  ): Promise<StockBalance[]> {
+    if (shopId) {
+      const shop = await this.prisma.shop.findFirst({
+        where: { id: shopId, tenantId },
+        select: { id: true },
+      });
+      if (!shop) throw new BadRequestException('Invalid shop');
+    }
+
+    const products = await this.prisma.shopProduct.findMany({
+      where: {
+        tenantId,
+        isActive: true,
+        ...(shopId ? { shopId } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        stockEntries: {
+          select: {
+            type: true,
+            quantity: true,
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return products.map((p) => {
+      const stockQty = p.stockEntries.reduce((sum, e) => {
+        return e.type === 'IN' ? sum + e.quantity : sum - e.quantity;
+      }, 0);
+
+      return {
+        productId: p.id,
+        name: p.name,
+        stockQty,
+        isNegative: stockQty < 0,
+      };
     });
   }
 }

@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { ProductType } from '@prisma/client';
 import { PrismaService } from 'src/core/prisma/prisma.service';
 import { SalesInvoiceDto } from './dto/sales-invoice.dto';
 
@@ -32,7 +33,7 @@ export class SalesService {
 
       if (!shop) throw new BadRequestException('Invalid shop');
 
-      // fetch products for validation (no longer need HSN for GST calc)
+      // fetch products for validation + type checking
       const productIds = dto.items.map((i) => i.shopProductId);
       const products = await tx.shopProduct.findMany({
         where: {
@@ -41,11 +42,68 @@ export class SalesService {
           shopId: dto.shopId,
           isActive: true,
         },
-        select: { id: true },
+        select: { id: true, type: true },
       });
 
       if (products.length !== productIds.length) {
         throw new BadRequestException('Invalid product in items');
+      }
+
+      // Build product type map
+      const productTypeMap = new Map(products.map((p) => [p.id, p.type]));
+
+      // Validate IMEI for MOBILE products and collect IMEIs
+      const allImeis: string[] = [];
+      const imeisByProduct = new Map<string, string[]>();
+
+      for (const item of dto.items) {
+        const productType = productTypeMap.get(item.shopProductId);
+        if (productType === ProductType.MOBILE) {
+          if (!item.imeis?.length) {
+            throw new BadRequestException(
+              `IMEIs required for mobile product ${item.shopProductId}`,
+            );
+          }
+          if (item.quantity !== item.imeis.length) {
+            throw new BadRequestException(
+              `Quantity (${item.quantity}) must match IMEI count (${item.imeis.length})`,
+            );
+          }
+          allImeis.push(...item.imeis);
+          imeisByProduct.set(item.shopProductId, item.imeis);
+        }
+      }
+
+      // Validate IMEI availability (must exist and not be sold)
+      if (allImeis.length > 0) {
+        const imeiRecords = await tx.iMEI.findMany({
+          where: {
+            imei: { in: allImeis },
+            tenantId,
+          },
+          select: { imei: true, shopProductId: true, invoiceId: true },
+        });
+
+        if (imeiRecords.length !== allImeis.length) {
+          throw new BadRequestException('One or more IMEIs not found');
+        }
+
+        // Validate IMEIs belong to correct products and are not sold
+        for (const record of imeiRecords) {
+          const expectedProductId = Array.from(imeisByProduct.entries()).find(
+            ([_, imeis]) => imeis.includes(record.imei),
+          )?.[0];
+          if (record.shopProductId !== expectedProductId) {
+            throw new BadRequestException(
+              `IMEI ${record.imei} does not belong to product ${expectedProductId}`,
+            );
+          }
+          if (record.invoiceId) {
+            throw new BadRequestException(
+              `IMEI ${record.imei} already sold on invoice`,
+            );
+          }
+        }
       }
 
       // 🔒 VALIDATE GST (frontend-calculated)
@@ -130,6 +188,14 @@ export class SalesService {
 
       await tx.stockLedger.createMany({ data: stockOutEntries });
 
+      // Link IMEIs to invoice (marks them as sold via reference)
+      if (allImeis.length > 0) {
+        await tx.iMEI.updateMany({
+          where: { imei: { in: allImeis } },
+          data: { invoiceId: invoice.id },
+        });
+      }
+
       return invoice;
     });
   }
@@ -208,6 +274,12 @@ export class SalesService {
 
       await tx.stockLedger.createMany({ data: oldStockInEntries });
 
+      // 3️⃣.5️⃣ Revert old IMEI links (mark as available again)
+      await tx.iMEI.updateMany({
+        where: { invoiceId: oldInvoice.id },
+        data: { invoiceId: null },
+      });
+
       // 4️⃣ Reverse old financial entry (OUT)
       await tx.financialEntry.create({
         data: {
@@ -222,7 +294,7 @@ export class SalesService {
         },
       });
 
-      // 5️⃣ Fetch new products for validation (no longer need HSN for GST calc)
+      // 5️⃣ Fetch new products for validation + type checking
       const productIds = dto.items.map((i) => i.shopProductId);
       const products = await tx.shopProduct.findMany({
         where: {
@@ -231,11 +303,68 @@ export class SalesService {
           shopId: dto.shopId,
           isActive: true,
         },
-        select: { id: true },
+        select: { id: true, type: true },
       });
 
       if (products.length !== productIds.length) {
         throw new BadRequestException('Invalid product in items');
+      }
+
+      // Build product type map
+      const productTypeMap = new Map(products.map((p) => [p.id, p.type]));
+
+      // Validate IMEI for MOBILE products and collect IMEIs
+      const newAllImeis: string[] = [];
+      const newImeisByProduct = new Map<string, string[]>();
+
+      for (const item of dto.items) {
+        const productType = productTypeMap.get(item.shopProductId);
+        if (productType === ProductType.MOBILE) {
+          if (!item.imeis?.length) {
+            throw new BadRequestException(
+              `IMEIs required for mobile product ${item.shopProductId}`,
+            );
+          }
+          if (item.quantity !== item.imeis.length) {
+            throw new BadRequestException(
+              `Quantity (${item.quantity}) must match IMEI count (${item.imeis.length})`,
+            );
+          }
+          newAllImeis.push(...item.imeis);
+          newImeisByProduct.set(item.shopProductId, item.imeis);
+        }
+      }
+
+      // Validate new IMEI availability (must exist and not be sold, or be from old invoice)
+      if (newAllImeis.length > 0) {
+        const imeiRecords = await tx.iMEI.findMany({
+          where: {
+            imei: { in: newAllImeis },
+            tenantId,
+          },
+          select: { imei: true, shopProductId: true, invoiceId: true },
+        });
+
+        if (imeiRecords.length !== newAllImeis.length) {
+          throw new BadRequestException('One or more IMEIs not found');
+        }
+
+        // Validate IMEIs belong to correct products and are not sold (or are from old invoice)
+        for (const record of imeiRecords) {
+          const expectedProductId = Array.from(
+            newImeisByProduct.entries(),
+          ).find(([_, imeis]) => imeis.includes(record.imei))?.[0];
+          if (record.shopProductId !== expectedProductId) {
+            throw new BadRequestException(
+              `IMEI ${record.imei} does not belong to product ${expectedProductId}`,
+            );
+          }
+          if (record.invoiceId && record.invoiceId !== oldInvoice.id) {
+            throw new BadRequestException(
+              `IMEI ${record.imei} already sold on different invoice`,
+            );
+          }
+        }
       }
 
       // 6️⃣ VALIDATE GST (frontend-calculated)
@@ -327,6 +456,14 @@ export class SalesService {
 
       await tx.stockLedger.createMany({ data: newStockOutEntries });
 
+      // 🔟.5️⃣ Link new IMEIs to updated invoice
+      if (newAllImeis.length > 0) {
+        await tx.iMEI.updateMany({
+          where: { imei: { in: newAllImeis } },
+          data: { invoiceId: updatedInvoice.id },
+        });
+      }
+
       return updatedInvoice;
     });
   }
@@ -358,6 +495,12 @@ export class SalesService {
         data: {
           status: 'CANCELLED',
         },
+      });
+
+      // 2️⃣.5️⃣ Revert IMEI links (mark as available again)
+      await tx.iMEI.updateMany({
+        where: { invoiceId: invoice.id },
+        data: { invoiceId: null },
       });
 
       // 3️⃣ Reverse stock (IN)

@@ -216,7 +216,7 @@ export default function StaffPage() {
                 </td>
                 <td className="px-6 py-4 text-stone-400">{member.email}</td>
                 <td className="px-6 py-4">
-                  <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm font-medium">
+                  <span className="px-3 py-1 bg-teal-500/20 text-teal-300 rounded-full text-sm font-medium">
                     {member.role}
                   </span>
                 </td>

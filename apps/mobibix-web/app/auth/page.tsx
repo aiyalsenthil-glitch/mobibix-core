@@ -80,7 +80,7 @@ export default function AuthPage({
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-100 hidden light-mode:block"></div>
 
         {/* Primary radial glow - dark mode blue center */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-blue-500/20 via-blue-500/5 to-transparent blur-[120px] pointer-events-none light-mode:hidden"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-teal-500/20 via-teal-500/5 to-transparent blur-[120px] pointer-events-none light-mode:hidden"></div>
 
         {/* Light Mode Primary glow - teal center */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-teal-400/15 via-teal-400/5 to-transparent blur-[120px] pointer-events-none hidden light-mode:block"></div>
@@ -92,7 +92,7 @@ export default function AuthPage({
         <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-gradient-radial from-teal-300/8 via-teal-300/0 to-transparent blur-[100px] pointer-events-none hidden light-mode:block"></div>
 
         {/* Tertiary glow - subtle from bottom-left (dark mode) */}
-        <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] bg-gradient-radial from-blue-600/5 via-blue-600/0 to-transparent blur-[100px] pointer-events-none light-mode:hidden"></div>
+        <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] bg-gradient-radial from-teal-600/5 via-teal-600/0 to-transparent blur-[100px] pointer-events-none light-mode:hidden"></div>
 
         {/* Tertiary glow - subtle from bottom-left (light mode) */}
         <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] bg-gradient-radial from-teal-200/5 via-teal-200/0 to-transparent blur-[100px] pointer-events-none hidden light-mode:block"></div>
@@ -109,7 +109,7 @@ export default function AuthPage({
       {/* Content */}
       <div className="relative z-10 w-full max-w-md px-4">
         {/* Soft glow behind the card - dark mode */}
-        <div className="absolute -inset-8 bg-gradient-to-b from-blue-500/10 to-transparent blur-2xl rounded-3xl opacity-40 pointer-events-none light-mode:hidden"></div>
+        <div className="absolute -inset-8 bg-gradient-to-b from-teal-500/10 to-transparent blur-2xl rounded-3xl opacity-40 pointer-events-none light-mode:hidden"></div>
 
         {/* Soft glow behind the card - light mode */}
         <div className="absolute -inset-8 bg-gradient-to-b from-teal-400/8 to-transparent blur-2xl rounded-3xl opacity-30 pointer-events-none hidden light-mode:block"></div>
@@ -126,7 +126,7 @@ export default function AuthPage({
             {/* Header */}
             <div className="mb-8 text-center">
               <div className="flex items-center justify-center gap-2 mb-6">
-                <div className="w-2 h-2 bg-blue-400 light-mode:bg-teal-500 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-teal-400 light-mode:bg-teal-500 rounded-full animate-pulse"></div>
                 <span className="text-xs font-semibold uppercase tracking-widest text-stone-400 light-mode:text-teal-700">
                   MobiBix
                 </span>
@@ -207,7 +207,7 @@ export default function AuthPage({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full px-4 py-2.5 rounded-lg bg-white/5 light-mode:bg-white/80 border border-white/10 light-mode:border-teal-300/30 text-white light-mode:text-slate-900 placeholder-stone-500 light-mode:placeholder-slate-500 focus:border-blue-500/50 light-mode:focus:border-teal-500/50 focus:bg-white/[0.08] light-mode:focus:bg-white focus:outline-none transition-all duration-300 text-sm"
+                className="w-full px-4 py-2.5 rounded-lg bg-white/5 light-mode:bg-white/80 border border-white/10 light-mode:border-teal-300/30 text-white light-mode:text-slate-900 placeholder-stone-500 light-mode:placeholder-slate-500 focus:border-teal-400/50 light-mode:focus:border-teal-500/50 focus:bg-white/[0.08] light-mode:focus:bg-white focus:outline-none transition-all duration-300 text-sm"
               />
             </div>
 
@@ -221,7 +221,7 @@ export default function AuthPage({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-2.5 rounded-lg bg-white/5 light-mode:bg-white/80 border border-white/10 light-mode:border-teal-300/30 text-white light-mode:text-slate-900 placeholder-stone-500 light-mode:placeholder-slate-500 focus:border-blue-500/50 light-mode:focus:border-teal-500/50 focus:bg-white/[0.08] light-mode:focus:bg-white focus:outline-none transition-all duration-300 text-sm"
+                className="w-full px-4 py-2.5 rounded-lg bg-white/5 light-mode:bg-white/80 border border-white/10 light-mode:border-teal-300/30 text-white light-mode:text-slate-900 placeholder-stone-500 light-mode:placeholder-slate-500 focus:border-teal-400/50 light-mode:focus:border-teal-500/50 focus:bg-white/[0.08] light-mode:focus:bg-white focus:outline-none transition-all duration-300 text-sm"
               />
             </div>
 
@@ -229,7 +229,7 @@ export default function AuthPage({
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="w-full px-4 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 light-mode:from-teal-500 light-mode:to-teal-600 hover:from-blue-600 hover:to-blue-700 light-mode:hover:from-teal-600 light-mode:hover:to-teal-700 text-white font-semibold transition-all duration-300 disabled:opacity-50 mb-4 group"
+              className="w-full px-4 py-3 rounded-lg bg-gradient-to-r from-teal-500 to-teal-600 light-mode:from-teal-500 light-mode:to-teal-600 hover:from-teal-600 hover:to-teal-700 light-mode:hover:from-teal-600 light-mode:hover:to-teal-700 text-white font-semibold transition-all duration-300 disabled:opacity-50 mb-4 group"
             >
               {loading
                 ? "Processing..."
@@ -243,7 +243,7 @@ export default function AuthPage({
               {isSignUp ? "Already have an account? " : "New to MobiBix? "}
               <button
                 onClick={() => setIsSignUp(!isSignUp)}
-                className="text-blue-400 light-mode:text-teal-600 hover:text-blue-300 light-mode:hover:text-teal-700 font-medium transition-colors"
+                className="text-teal-400 light-mode:text-teal-600 hover:text-teal-300 light-mode:hover:text-teal-700 font-medium transition-colors"
               >
                 {isSignUp ? "Sign In" : "Start Free Trial"}
               </button>

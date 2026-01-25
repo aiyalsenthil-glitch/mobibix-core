@@ -61,6 +61,21 @@ export class CustomersController {
     return this.service.findByPhone(tenantId, phone);
   }
 
+  @Get('search')
+  async search(
+    @Req() req,
+    @Query('query') query: string,
+    @Query('limit') limit?: string,
+  ) {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId || !query) {
+      throw new BadRequestException('Invalid request');
+    }
+
+    const limitNum = limit ? parseInt(limit, 10) : 5;
+    return this.service.searchCustomers(tenantId, query, limitNum);
+  }
+
   @Get()
   async getAll(@Req() req) {
     const tenantId = req.user?.tenantId;

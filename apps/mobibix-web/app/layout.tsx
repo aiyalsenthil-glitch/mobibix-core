@@ -1,6 +1,4 @@
-import "./main.css";
 import "./globals.css";
-import "./tailwind.css";
 import { Playfair_Display } from "next/font/google";
 import { Geist } from "next/font/google";
 import { Providers } from "./providers";
@@ -24,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="antialiased bg-black text-white">
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased bg-gray-50 dark:bg-gray-950 text-black dark:text-white transition-colors duration-200">
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -91,6 +91,29 @@ export async function getCustomerByPhone(
 }
 
 /**
+ * Search customers by name or phone (returns up to limit matches)
+ */
+export async function searchCustomers(
+  query: string,
+  limit: number = 5,
+): Promise<Customer[]> {
+  const response = await authenticatedFetch(
+    `/core/customers/search?query=${encodeURIComponent(query)}&limit=${limit}`,
+  );
+
+  if (response.status === 404) {
+    return [];
+  }
+
+  if (!response.ok) {
+    // Return empty array on error instead of throwing
+    return [];
+  }
+
+  return response.json();
+}
+
+/**
  * Create a new customer
  */
 export async function createCustomer(

@@ -103,13 +103,18 @@ export class JobCardsService {
         deviceBrand: dto.deviceBrand,
         deviceModel: dto.deviceModel,
         deviceSerial: dto.deviceSerial,
+        devicePassword: dto.devicePassword,
 
         customerComplaint: dto.customerComplaint,
         physicalCondition: dto.physicalCondition,
 
         estimatedCost: dto.estimatedCost,
+        diagnosticCharge: dto.diagnosticCharge,
         advancePaid: dto.advancePaid,
-        estimatedDelivery: dto.estimatedDelivery,
+        billType: dto.billType ?? 'WITHOUT_GST',
+        estimatedDelivery: dto.estimatedDelivery
+          ? new Date(dto.estimatedDelivery)
+          : null,
       },
     });
   }
@@ -187,14 +192,21 @@ export class JobCardsService {
     if (dto.deviceBrand !== undefined) data.deviceBrand = dto.deviceBrand;
     if (dto.deviceModel !== undefined) data.deviceModel = dto.deviceModel;
     if (dto.deviceSerial !== undefined) data.deviceSerial = dto.deviceSerial;
+    if (dto.devicePassword !== undefined)
+      data.devicePassword = dto.devicePassword;
     if (dto.customerComplaint !== undefined)
       data.customerComplaint = dto.customerComplaint;
     if (dto.physicalCondition !== undefined)
       data.physicalCondition = dto.physicalCondition;
     if (dto.estimatedCost !== undefined) data.estimatedCost = dto.estimatedCost;
+    if (dto.diagnosticCharge !== undefined)
+      data.diagnosticCharge = dto.diagnosticCharge;
     if (dto.advancePaid !== undefined) data.advancePaid = dto.advancePaid;
+    if (dto.billType !== undefined) data.billType = dto.billType;
     if (dto.estimatedDelivery !== undefined)
-      data.estimatedDelivery = dto.estimatedDelivery;
+      data.estimatedDelivery = dto.estimatedDelivery
+        ? new Date(dto.estimatedDelivery)
+        : null;
 
     return this.prisma.jobCard.update({
       where: { id },

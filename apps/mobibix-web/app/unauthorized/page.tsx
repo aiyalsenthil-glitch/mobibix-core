@@ -12,7 +12,7 @@ export default function UnauthorizedPage() {
         </p>
         <Link
           href="/auth"
-          className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg"
+          className="inline-block bg-teal-600 hover:bg-teal-700 text-white font-medium px-4 py-2 rounded-lg"
         >
           Go to sign in
         </Link>

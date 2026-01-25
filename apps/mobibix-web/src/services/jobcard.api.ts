@@ -31,12 +31,15 @@ export interface JobCard {
   deviceBrand: string;
   deviceModel: string;
   deviceSerial?: string;
+  devicePassword?: string;
 
   customerComplaint: string;
   physicalCondition?: string;
 
   estimatedCost?: number;
+  diagnosticCharge?: number;
   advancePaid?: number;
+  billType?: string;
   estimatedDelivery?: Date | string;
 
   createdByUserId: string;
@@ -57,12 +60,15 @@ export interface CreateJobCardDto {
   deviceBrand: string;
   deviceModel: string;
   deviceSerial?: string;
+  devicePassword?: string;
 
   customerComplaint: string;
   physicalCondition?: string;
 
   estimatedCost?: number;
+  diagnosticCharge?: number;
   advancePaid?: number;
+  billType?: string;
   estimatedDelivery?: Date | string;
 }
 
@@ -77,12 +83,15 @@ export interface UpdateJobCardDto {
   deviceBrand?: string;
   deviceModel?: string;
   deviceSerial?: string;
+  devicePassword?: string;
 
   customerComplaint?: string;
   physicalCondition?: string;
 
   estimatedCost?: number;
+  diagnosticCharge?: number;
   advancePaid?: number;
+  billType?: string;
   estimatedDelivery?: Date | string;
 }
 

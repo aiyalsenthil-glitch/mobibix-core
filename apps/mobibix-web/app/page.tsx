@@ -70,9 +70,9 @@ export default function HomePage() {
         <nav className="max-w-7xl mx-auto px-6 md:px-12 h-16 flex items-center justify-between">
           {/* Logo & Brand */}
           <div className="flex items-center gap-3 group cursor-pointer">
-            <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
+            <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-400 flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
               <span className="text-white font-bold text-sm">M</span>
-              <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-blue-400 to-cyan-300 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-300 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-bold uppercase tracking-widest text-white light-mode:text-slate-900">
@@ -116,8 +116,8 @@ export default function HomePage() {
               className="relative inline-flex items-center justify-center text-xs font-semibold px-4 py-1.5 rounded-lg overflow-hidden group"
             >
               {/* Animated background */}
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-cyan-400 to-teal-500 rounded-lg opacity-100 group-hover:opacity-90 transition-opacity duration-300"></div>
-              <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-teal-500 via-cyan-400 to-teal-500 rounded-lg opacity-100 group-hover:opacity-90 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-500 to-teal-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
               {/* Text */}
               <span className="relative z-10 text-white font-medium">
@@ -157,8 +157,8 @@ export default function HomePage() {
               {/* Status Badge */}
               <div className="mb-4 inline-flex items-center gap-2 px-3 py-0.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md mx-auto">
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
                 </span>
                 <span className="text-[10px] uppercase tracking-wider text-stone-300 font-medium whitespace-nowrap">
                   Now Live
@@ -168,7 +168,7 @@ export default function HomePage() {
               {/* Main Heading - modern, short and bold */}
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight tracking-tight text-white mb-3 font-extrabold">
                 <span className="inline-block">Run Your Digital Retail &</span>
-                <span className="inline-block ml-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-300 to-purple-400">
+                <span className="inline-block ml-2 text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-cyan-300 to-purple-400">
                   Service Business Smarter
                 </span>
               </h1>
@@ -185,7 +185,7 @@ export default function HomePage() {
                   href="/auth"
                   className="relative inline-flex items-center justify-center px-8 py-3 rounded-full text-base font-semibold text-black shadow-2xl overflow-hidden w-full sm:w-auto"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transform scale-100 transition-transform duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-cyan-400 rounded-full transform scale-100 transition-transform duration-300" />
                   <span className="relative z-10 flex items-center gap-2">
                     Start Free Trial <ArrowIcon />
                   </span>
@@ -195,7 +195,7 @@ export default function HomePage() {
                   href="/dashboard"
                   className="relative inline-flex items-center justify-center px-8 py-3 rounded-full text-base font-semibold text-black shadow-2xl overflow-hidden w-full sm:w-auto"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transform scale-100 transition-transform duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-cyan-400 rounded-full transform scale-100 transition-transform duration-300" />
                   <span className="relative z-10 flex items-center gap-2">
                     Get Started for Free <ArrowIcon />
                   </span>
@@ -260,13 +260,13 @@ export default function HomePage() {
                           </div>
                         </div>
                         {/* Revenue */}
-                        <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-lg p-3">
+                        <div className="bg-gradient-to-br from-teal-500/10 to-teal-600/5 border border-teal-500/20 rounded-lg p-3">
                           <p className="text-stone-400 text-xs">Revenue</p>
                           <div className="flex items-baseline gap-2 mt-1">
                             <p className="text-white text-lg font-bold">
                               $4.8K
                             </p>
-                            <p className="text-blue-400 text-xs">+32%</p>
+                            <p className="text-teal-400 text-xs">+32%</p>
                           </div>
                         </div>
                         {/* Services */}
@@ -285,7 +285,7 @@ export default function HomePage() {
                     </div>
                   </div>
                   {/* Glow Effect */}
-                  <div className="absolute -inset-20 bg-gradient-to-r from-teal-500/20 to-blue-500/20 rounded-full blur-3xl opacity-30 pointer-events-none"></div>
+                  <div className="absolute -inset-20 bg-gradient-to-r from-teal-500/20 to-teal-500/20 rounded-full blur-3xl opacity-30 pointer-events-none"></div>
                 </div>
               </div>
             </div>
@@ -327,7 +327,7 @@ export default function HomePage() {
                       backgroundSize: "20px 20px",
                     }}
                   ></div>
-                  <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-blue-900/20 via-transparent to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-teal-900/20 via-transparent to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
 
                   <div className="relative z-10">
                     <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-4 ring-1 ring-white/5 group-hover:ring-white/30 transition-all">
@@ -450,7 +450,7 @@ export default function HomePage() {
 
                 {/* Analytics */}
                 <div className="md:col-span-1 lg:col-span-1 relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.03] to-transparent p-6 flex flex-col justify-center group hover:bg-white/[0.04] transition-all duration-500 backdrop-blur-sm">
-                  <div className="absolute right-0 top-0 p-32 bg-blue-500/5 blur-3xl rounded-full translate-x-10 -translate-y-10 group-hover:bg-blue-500/10 transition-colors"></div>
+                  <div className="absolute right-0 top-0 p-32 bg-teal-500/5 blur-3xl rounded-full translate-x-10 -translate-y-10 group-hover:bg-teal-500/10 transition-colors"></div>
                   <AnalyticsIcon />
                   <h3 className="text-base font-medium mb-1 text-white relative z-10">
                     Revenue Intelligence
@@ -600,7 +600,7 @@ export default function HomePage() {
               onClick={() => setCurrentSlide(slide)}
               className={`w-2 h-2 rounded-full transition-all duration-300 ${
                 currentSlide === slide
-                  ? "bg-blue-500 w-8"
+                  ? "bg-teal-500 w-8"
                   : "bg-white/20 hover:bg-white/40"
               }`}
               aria-label={`Go to slide ${slide + 1}`}
@@ -663,7 +663,7 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-center gap-6">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse"></div>
                 <span className="text-sm font-medium uppercase tracking-[0.25em] text-white">
                   ShopFlow
                 </span>
@@ -777,7 +777,7 @@ function InventoryItem({
       </div>
       <div className="w-full h-2 bg-stone-800/50 rounded-full overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full"
+          className="h-full bg-gradient-to-r from-teal-500 to-teal-400 rounded-full"
           style={{ width: `${percentage}%` }}
         ></div>
       </div>
@@ -849,7 +849,7 @@ function CheckIcon() {
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="w-6 h-6 text-blue-400"
+      className="w-6 h-6 text-teal-400"
     >
       <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
@@ -914,7 +914,7 @@ function AnalyticsIcon() {
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="w-6 h-6 text-stone-400 mb-3 group-hover:text-blue-400 transition-colors relative z-10"
+      className="w-6 h-6 text-stone-400 mb-3 group-hover:text-teal-400 transition-colors relative z-10"
     >
       <path d="M3 3v18h18"></path>
       <path d="m19 9-5 5-4-4-3 3"></path>

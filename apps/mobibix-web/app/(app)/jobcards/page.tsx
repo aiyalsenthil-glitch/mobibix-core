@@ -23,7 +23,7 @@ const STATUS_OPTIONS: JobStatus[] = [
 ];
 
 const STATUS_COLORS: Record<JobStatus, string> = {
-  RECEIVED: "bg-blue-500/20 text-blue-300",
+  RECEIVED: "bg-teal-500/20 text-teal-300",
   DIAGNOSED: "bg-purple-500/20 text-purple-300",
   PARTS_ORDERED: "bg-yellow-500/20 text-yellow-300",
   IN_REPAIR: "bg-orange-500/20 text-orange-300",
@@ -131,9 +131,10 @@ export default function JobCardsPage() {
         <h1 className="text-3xl font-bold text-white">Job Cards</h1>
         <button
           onClick={handleAddNew}
-          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-medium transition"
+          disabled={!selectedShopId}
+          className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-bold transition shadow-lg"
         >
-          + Add New
+          + Create New Job Card
         </button>
       </div>
 
@@ -201,7 +202,7 @@ export default function JobCardsPage() {
           {selectedShopId && (
             <button
               onClick={handleAddNew}
-              className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-medium transition"
+              className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-lg font-bold transition shadow-lg"
             >
               Create your first job card
             </button>
@@ -316,6 +317,17 @@ export default function JobCardsPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Floating Action Button */}
+      {selectedShopId && (
+        <button
+          onClick={handleAddNew}
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white shadow-lg hover:shadow-xl transition flex items-center justify-center text-xl font-bold z-40"
+          title="Create new job card"
+        >
+          +
+        </button>
       )}
 
       {isModalOpen && (

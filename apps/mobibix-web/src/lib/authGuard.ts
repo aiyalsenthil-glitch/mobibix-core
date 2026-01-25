@@ -1,13 +1,13 @@
 "use client";
 
-import { AppRouterInstance } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   decodeAccessToken,
   getAccessToken,
   isAuthenticated,
 } from "@/services/auth.api";
 
-export function authGuard(router: AppRouterInstance): boolean {
+export function authGuard(router: ReturnType<typeof useRouter>): boolean {
   const token = getAccessToken();
 
   if (!token || !isAuthenticated()) {

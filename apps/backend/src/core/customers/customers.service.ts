@@ -81,6 +81,23 @@ export class CustomersService {
       },
     });
   }
+
+  async searchCustomers(tenantId: string, query: string, limit: number = 5) {
+    return this.prisma.customer.findMany({
+      where: {
+        tenantId,
+        isActive: true,
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { phone: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+    });
+  }
   async updateCustomer(
     tenantId: string,
     customerId: string,
