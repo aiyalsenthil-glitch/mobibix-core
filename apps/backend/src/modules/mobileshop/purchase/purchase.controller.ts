@@ -1,5 +1,5 @@
 import { Controller, Post, Body, UseGuards, Req } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/core/auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { PurchaseService } from './purchase.service';
 import { PurchaseStockInDto } from './dto/purchase-stock-in.dto';
 

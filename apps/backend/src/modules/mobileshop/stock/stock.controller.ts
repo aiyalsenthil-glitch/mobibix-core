@@ -1,5 +1,5 @@
 import { Controller, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/core/auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { StockService } from './stock.service';
 
 @Controller('mobileshop/stock')

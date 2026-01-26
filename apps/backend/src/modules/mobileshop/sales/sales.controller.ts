@@ -11,7 +11,7 @@ import {
   Patch,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/core/auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { SalesService } from './sales.service';
 import { SalesInvoiceDto } from './dto/sales-invoice.dto';
 

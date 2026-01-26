@@ -1,5 +1,5 @@
 import { Controller, Post, Body, Param, UseGuards, Req } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/core/auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { RepairService } from './repair.service';
 import { RepairStockOutDto } from './dto/repair-stock-out.dto';
 import { RepairBillDto } from './dto/repair-bill.dto';
