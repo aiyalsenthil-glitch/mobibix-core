@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { StockController } from './stock.controller';
 import { StockService } from './stock.service';
-import { PrismaService } from 'src/core/prisma/prisma.service';
+import { PrismaService } from '../../../core/prisma/prisma.service';
 import { StockSummaryController } from './stock-summary.controller';
 import { StockSummaryService } from './stock-summary.service';
 import { StockKpiController } from './stock-kpi.controller';

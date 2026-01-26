@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/core/prisma/prisma.service';
+import { PrismaService } from '../../../core/prisma/prisma.service';
 import { ProductType } from '@prisma/client';
 import { RepairStockOutDto } from './dto/repair-stock-out.dto';
 import { RepairBillDto, BillingMode } from './dto/repair-bill.dto';

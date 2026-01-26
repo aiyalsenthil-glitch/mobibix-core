@@ -4,7 +4,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { ProductType } from '@prisma/client';
-import { PrismaService } from 'src/core/prisma/prisma.service';
+import { PrismaService } from '../../../core/prisma/prisma.service';
 import { PurchaseStockInDto } from './dto/purchase-stock-in.dto';
 
 @Injectable()

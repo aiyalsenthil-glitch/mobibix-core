@@ -1,5 +1,5 @@
 import { Injectable, ConflictException } from '@nestjs/common';
-import { PrismaService } from 'src/core/prisma/prisma.service';
+import { PrismaService } from '../../../core/prisma/prisma.service';
 import { StockService, type StockBalance } from '../stock/stock.service';
 import { CreateProductDto } from './dto/create-product.dto';
 
