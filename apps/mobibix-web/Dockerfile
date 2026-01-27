@@ -9,8 +9,8 @@ RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files from apps/mobibix-web (build context is root)
+COPY apps/mobibix-web/package*.json ./
 
 # ============================================
 # Development Stage - Hot reload
@@ -20,8 +20,14 @@ FROM base AS development
 # Install all dependencies
 RUN npm ci
 
-# Copy application source
-COPY . .
+# Copy application source from apps/mobibix-web
+COPY apps/mobibix-web/src ./src
+COPY apps/mobibix-web/app ./app
+COPY apps/mobibix-web/public ./public
+COPY apps/mobibix-web/tsconfig.json ./
+COPY apps/mobibix-web/next.config.ts ./
+COPY apps/mobibix-web/tailwind.config.ts ./
+COPY apps/mobibix-web/postcss.config.mjs ./
 
 # Expose Next.js dev server port
 EXPOSE 3000
@@ -37,8 +43,14 @@ FROM base AS builder
 # Install dependencies
 RUN npm ci
 
-# Copy source code
-COPY . .
+# Copy source code from apps/mobibix-web
+COPY apps/mobibix-web/src ./src
+COPY apps/mobibix-web/app ./app
+COPY apps/mobibix-web/lib ./lib
+COPY apps/mobibix-web/tsconfig.json ./
+COPY apps/mobibix-web/next.config.ts ./
+COPY apps/mobibix-web/tailwind.config.ts ./
+COPY apps/mobibix-web/postcss.config.mjs ./
 
 # Build arguments for Firebase config
 ARG NEXT_PUBLIC_API_URL

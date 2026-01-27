@@ -26,13 +26,15 @@ services:
       target: development
     container_name: mobibix-backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       NODE_ENV: development
       DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/mobibix?schema=public"
       JWT_SECRET: ${JWT_SECRET:-your-development-jwt-secret-change-me}
       JWT_EXPIRES_IN: "7d"
       PORT: 3000
-      GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/REMOVED_AUTH_PROVIDER-service-account.json
+      GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/REMOVED_AUTH_PROVIDER-admin.json
     ports:
       - "3000:3000"
       - "9229:9229"
@@ -59,6 +61,8 @@ services:
       target: development
     container_name: mobibix-web
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       NODE_ENV: development
       NEXT_PUBLIC_API_URL: http://localhost_REPLACED:3000

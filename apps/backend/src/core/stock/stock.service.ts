@@ -29,8 +29,8 @@ export class StockService {
     }
 
     const quantity =
-      product.type === ProductType.MOBILE
-        ? dto.imeis?.length || 0
+      product.type === ProductType.GOODS && dto.imeis?.length
+        ? dto.imeis.length
         : (dto.quantity ?? 0);
 
     if (!quantity) {
@@ -51,8 +51,8 @@ export class StockService {
 
       await tx.stockLedger.create({ data: ledgerEntry });
 
-      // Handle IMEIs if mobile product
-      if (product.type === ProductType.MOBILE && dto.imeis?.length) {
+      // Handle IMEIs if goods product with IMEIs
+      if (product.type === ProductType.GOODS && dto.imeis?.length) {
         await tx.iMEI.createMany({
           data: dto.imeis.map((imei) => ({
             tenantId,

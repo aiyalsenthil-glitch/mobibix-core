@@ -52,16 +52,16 @@ export class SalesService {
       // Build product type map
       const productTypeMap = new Map(products.map((p) => [p.id, p.type]));
 
-      // Validate IMEI for MOBILE products and collect IMEIs
+      // Validate IMEI for GOODS products and collect IMEIs
       const allImeis: string[] = [];
       const imeisByProduct = new Map<string, string[]>();
 
       for (const item of dto.items) {
         const productType = productTypeMap.get(item.shopProductId);
-        if (productType === ProductType.MOBILE) {
+        if (productType === ProductType.GOODS && item.imeis?.length) {
           if (!item.imeis?.length) {
             throw new BadRequestException(
-              `IMEIs required for mobile product ${item.shopProductId}`,
+              `IMEIs required for goods product ${item.shopProductId}`,
             );
           }
           if (item.quantity !== item.imeis.length) {
@@ -356,10 +356,10 @@ export class SalesService {
 
       for (const item of dto.items) {
         const productType = productTypeMap.get(item.shopProductId);
-        if (productType === ProductType.MOBILE) {
+        if (productType === ProductType.GOODS && item.imeis?.length) {
           if (!item.imeis?.length) {
             throw new BadRequestException(
-              `IMEIs required for mobile product ${item.shopProductId}`,
+              `IMEIs required for goods product ${item.shopProductId}`,
             );
           }
           if (item.quantity !== item.imeis.length) {

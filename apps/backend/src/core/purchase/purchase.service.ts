@@ -64,10 +64,11 @@ export class PurchaseService {
         }
 
         // Normalize quantity and IMEIs
-        if (productType === ProductType.MOBILE) {
+        // NOTE: IMEI tracking now applies to GOODS type products
+        if (productType === ProductType.GOODS && item.imeis?.length) {
           const imeis = item.imeis ?? [];
           if (!imeis.length) {
-            throw new BadRequestException('IMEIs required for mobile stock-in');
+            throw new BadRequestException('IMEIs required for goods stock-in');
           }
           if (item.quantity !== undefined && item.quantity !== imeis.length) {
             throw new BadRequestException('Quantity must match IMEI count');

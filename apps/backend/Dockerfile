@@ -10,9 +10,9 @@ RUN apk add --no-cache openssl libc6-compat curl
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY prisma ./prisma/
+# Copy backend package files from apps/backend (build context is root)
+COPY apps/backend/package*.json ./
+COPY apps/backend/prisma ./prisma/
 
 # ============================================
 # Development Stage - Hot reload support
@@ -25,8 +25,11 @@ RUN npm ci
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Copy application source
-COPY . .
+# Copy application source from apps/backend
+COPY apps/backend/src ./src
+COPY apps/backend/tsconfig.json ./
+COPY apps/backend/tsconfig.build.json ./
+COPY apps/backend/nest-cli.json ./
 
 # Expose ports (app + debugger)
 EXPOSE 3000 9229
@@ -42,8 +45,11 @@ FROM base AS builder
 # Install all dependencies
 RUN npm ci
 
-# Copy source code
-COPY . .
+# Copy source code from apps/backend
+COPY apps/backend/src ./src
+COPY apps/backend/tsconfig.json ./
+COPY apps/backend/tsconfig.build.json ./
+COPY apps/backend/nest-cli.json ./
 
 # Generate Prisma Client
 RUN npx prisma generate

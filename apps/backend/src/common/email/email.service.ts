@@ -1,12 +1,25 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
 
 @Injectable() // 🔥 REQUIRED
 export class EmailService {
-  private resend: Resend;
+  private resend: Resend | null = null;
+  private logger = new Logger(EmailService.name);
 
   constructor() {
-    this.resend = new Resend(process.env.RESEND_API_KEY);
+    const apiKey = process.env.RESEND_API_KEY;
+    if (apiKey) {
+      try {
+        this.resend = new Resend(apiKey);
+        this.logger.log('Resend email service initialized');
+      } catch (error) {
+        this.logger.warn('Failed to initialize Resend', error);
+      }
+    } else {
+      this.logger.warn(
+        'Resend API key not provided. Email functionality will be disabled.',
+      );
+    }
   }
 
   async sendEmail({
@@ -18,9 +31,9 @@ export class EmailService {
     subject: string;
     html: string;
   }) {
-    if (!process.env.RESEND_API_KEY) {
-      console.warn('RESEND_API_KEY missing, email skipped');
-      return;
+    if (!this.resend) {
+      this.logger.warn('Resend not configured. Email skipped.');
+      return null;
     }
 
     return this.resend.emails.send({

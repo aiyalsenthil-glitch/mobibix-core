@@ -60,12 +60,12 @@ export class RepairService {
         throw new BadRequestException('Invalid product in items');
       }
 
-      // FIX 3: Block MOBILE products from being issued as repair parts
+      // FIX 3: Block GOODS products from being issued as repair parts
       // SAFETY: Also block SERVICE products (non-physical inventory items)
       for (const product of products) {
-        if (product.type === ProductType.MOBILE) {
+        if (product.type === ProductType.GOODS) {
           throw new BadRequestException(
-            'Mobile devices cannot be issued as repair parts',
+            'Goods products cannot be issued as repair parts. Use SPARE products only.',
           );
         }
         // ⚠️ SAFETY CHECK: Prevent SERVICE products from being used in stock operations

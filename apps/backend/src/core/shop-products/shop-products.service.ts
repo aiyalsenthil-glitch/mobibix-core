@@ -49,7 +49,7 @@ export class ShopProductsService {
           salePrice: dto.salePrice,
           costPrice: dto.costPrice,
           stockOnHand: 0,
-          type: 'ACCESSORY',
+          type: 'GOODS',
         },
       });
     } else {
@@ -73,7 +73,7 @@ export class ShopProductsService {
           salePrice: dto.salePrice,
           costPrice: dto.costPrice,
           stockOnHand: 0,
-          type: 'ACCESSORY',
+          type: 'GOODS',
         },
       });
     }
