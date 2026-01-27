@@ -244,10 +244,25 @@ export class SalesService {
     });
 
     if (!shop) {
+      // Check if tenant has any shops
+      const shopCount = await this.prisma.shop.count({
+        where: { tenantId },
+      });
+
+      if (shopCount === 0) {
+        return {
+          invoices: [],
+          empty: true,
+          message:
+            'No shops found. Create a shop to start creating sales invoices.',
+          createShopUrl: '/mobileshop/shops',
+        };
+      }
+
       throw new BadRequestException('Invalid shop');
     }
 
-    return this.prisma.invoice.findMany({
+    const invoices = await this.prisma.invoice.findMany({
       where: {
         tenantId,
         shopId,
@@ -264,6 +279,8 @@ export class SalesService {
         invoiceDate: true,
       },
     });
+
+    return { invoices, empty: false };
   }
   async updateInvoice(
     tenantId: string,

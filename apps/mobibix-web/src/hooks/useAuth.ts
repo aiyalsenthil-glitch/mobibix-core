@@ -64,6 +64,13 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // If Firebase is not initialized, skip auth setup
+    if (!auth) {
+      console.warn("Firebase not initialized. Authentication disabled.");
+      setIsLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setIsLoading(true);
       setError(null);
@@ -151,7 +158,9 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const logout = useCallback(async () => {
     try {
       setIsLoading(true);
-      await signOut(auth);
+      if (auth) {
+        await signOut(auth);
+      }
       clearAccessToken();
       setFirebaseUser(null);
       setAuthUser(null);

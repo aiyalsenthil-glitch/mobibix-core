@@ -16,21 +16,42 @@ const REMOVED_AUTH_PROVIDERConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = initializeApp(REMOVED_AUTH_PROVIDERConfig);
+// Check if Firebase is properly configured
+const isFirebaseConfigured = Object.values(REMOVED_AUTH_PROVIDERConfig).every(
+  (value) => typeof value === "string" && value.trim() !== "",
+);
 
-// Initialize Firebase Authentication
-const auth = getAuth(app);
+let app: any = null;
+let auth: any = null;
+let googleProvider: any = null;
 
-// Set persistence to LOCAL so sessions survive page refreshes
-setPersistence(auth, browserLocalPersistence).catch((error) => {
-  console.warn("Firebase persistence error:", error);
-});
+if (isFirebaseConfigured) {
+  try {
+    // Initialize Firebase
+    app = initializeApp(REMOVED_AUTH_PROVIDERConfig);
 
-// Initialize Google Auth Provider
-const googleProvider = new GoogleAuthProvider();
-googleProvider.addScope("profile");
-googleProvider.addScope("email");
+    // Initialize Firebase Authentication
+    auth = getAuth(app);
+
+    // Set persistence to LOCAL so sessions survive page refreshes
+    setPersistence(auth, browserLocalPersistence).catch((error) => {
+      console.warn("Firebase persistence error:", error);
+    });
+
+    // Initialize Google Auth Provider
+    googleProvider = new GoogleAuthProvider();
+    googleProvider.addScope("profile");
+    googleProvider.addScope("email");
+
+    console.log("Firebase initialized successfully");
+  } catch (error) {
+    console.warn("Failed to initialize Firebase:", error);
+  }
+} else {
+  console.warn(
+    "Firebase is not configured. Please set NEXT_PUBLIC_FIREBASE_* environment variables.",
+  );
+}
 
 export { auth, googleProvider };
 export default app;

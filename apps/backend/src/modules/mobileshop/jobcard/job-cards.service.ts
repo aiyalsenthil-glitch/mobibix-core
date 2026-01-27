@@ -20,6 +20,17 @@ export class JobCardsService {
       });
 
       if (!shop) {
+        // Check if tenant has any shops
+        const shopCount = await this.prisma.shop.count({
+          where: { tenantId: user.tenantId },
+        });
+
+        if (shopCount === 0) {
+          throw new BadRequestException(
+            'NO_SHOPS_FOUND|Create a shop to start creating job cards.|/mobileshop/shops',
+          );
+        }
+
         throw new BadRequestException('Shop not accessible');
       }
 
@@ -215,11 +226,27 @@ export class JobCardsService {
   }
 
   async list(user, shopId: string) {
-    await this.assertAccess(user, shopId);
-    return this.prisma.jobCard.findMany({
+    try {
+      await this.assertAccess(user, shopId);
+    } catch (e) {
+      if (e.message?.startsWith('NO_SHOPS_FOUND|')) {
+        const [, message, createShopUrl] = e.message.split('|');
+        return {
+          jobCards: [],
+          empty: true,
+          message,
+          createShopUrl,
+        };
+      }
+      throw e;
+    }
+
+    const jobCards = await this.prisma.jobCard.findMany({
       where: { shopId },
       orderBy: { createdAt: 'desc' },
     });
+
+    return { jobCards, empty: false };
   }
 
   async updateStatus(user, shopId: string, id: string, status: JobStatus) {

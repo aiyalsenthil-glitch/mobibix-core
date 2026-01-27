@@ -20,6 +20,30 @@ export class MobileShopDashboardService {
     });
     const shopIds = shops.map((s) => s.id);
 
+    // No shops yet → return empty dashboard instead of 400/500
+    if (shopIds.length === 0) {
+      return {
+        today: { salesAmount: 0, jobsReceived: 0 },
+        month: { salesAmount: 0, invoiceCount: 0 },
+        inventory: {
+          totalProducts: 0,
+          negativeStockCount: 0,
+          deadStockCount: 0,
+          fastMoving: [],
+        },
+        repairs: {
+          inProgress: 0,
+          waitingForParts: 0,
+          ready: 0,
+          deliveredToday: 0,
+        },
+        alerts: { negativeStock: [], deadStock: [] },
+        empty: true,
+        message: 'No shops found. Create a shop to start using the dashboard.',
+        createShopUrl: '/mobileshop/shops',
+      };
+    }
+
     // -------------------------
     // TODAY SNAPSHOT (existing)
     // -------------------------

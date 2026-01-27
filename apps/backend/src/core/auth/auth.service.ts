@@ -115,12 +115,18 @@ export class AuthService {
       } | null = null;
 
       if (tenantCode) {
+        const tenant = await this.prisma.tenant.findUnique({
+          where: { code: tenantCode },
+        });
+
+        if (!tenant) {
+          throw new UnauthorizedException('Tenant code is invalid');
+        }
+
         activeUserTenant = await this.prisma.userTenant.findFirst({
           where: {
             userId: user.id,
-            tenant: {
-              code: tenantCode,
-            },
+            tenantId: tenant.id,
           },
           include: { tenant: true },
         });

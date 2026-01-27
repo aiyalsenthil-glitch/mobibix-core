@@ -26,11 +26,9 @@ services:
       target: development
     container_name: mobibix-backend
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       NODE_ENV: development
-      DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/mobibix?schema=public"
+      DATABASE_URL: "postgresql://postgres.kpskhmjqvuncrtgthsxf:m5gztfER4UP2TVgD@aws-1-ap-south-1.pooler.supabase.com:6543/postgres"
       JWT_SECRET: ${JWT_SECRET:-your-development-jwt-secret-change-me}
       JWT_EXPIRES_IN: "7d"
       PORT: 3000
@@ -43,9 +41,6 @@ services:
       - ./apps/backend/prisma:/app/prisma:cached
       - ./apps/backend/secrets:/app/secrets:ro
       - backend_node_modules:/app/node_modules
-    depends_on:
-      postgres:
-        condition: service_healthy
     command: npm run start:dev
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost_REPLACED:3000/health"]
@@ -65,7 +60,7 @@ services:
       - .env
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_API_URL: http://localhost_REPLACED:3000
+      NEXT_PUBLIC_API_URL: http://localhost_REPLACED:3000/api
       NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY:-}
       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:-}
       NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID:-}
