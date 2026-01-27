@@ -37,6 +37,15 @@ export class SalesInvoiceItemDto {
   imeis?: string[]; // IMEI list for MOBILE products
 }
 
+export class PaymentMethodDto {
+  @IsString()
+  mode: 'CASH' | 'CARD' | 'UPI' | 'BANK' | 'CREDIT';
+
+  @IsNumber()
+  @Min(0)
+  amount: number;
+}
+
 export class SalesInvoiceDto {
   @IsString()
   shopId: string;
@@ -66,8 +75,13 @@ export class SalesInvoiceDto {
   @IsArray()
   items: SalesInvoiceItemDto[];
 
+  @IsOptional()
   @IsString()
-  paymentMode: 'CASH' | 'CARD' | 'UPI' | 'BANK';
+  paymentMode?: 'CASH' | 'CARD' | 'UPI' | 'BANK'; // Deprecated: use paymentMethods
+
+  @IsOptional()
+  @IsArray()
+  paymentMethods?: PaymentMethodDto[]; // Mixed payment support
 
   @IsOptional()
   @IsBoolean()

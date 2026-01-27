@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { listProducts, type ShopProduct } from "@/services/products.api";
 import { EditProductModal } from "./EditProductModal";
 import { useTheme } from "@/context/ThemeContext";
-import { useShopSelection } from "@/hooks/useShopSelection";
+import { useShop } from "@/context/ShopContext";
+import { NoShopsAlert } from "../components/NoShopsAlert";
 
 export default function ProductsPage() {
   const { theme } = useTheme();
@@ -15,7 +16,7 @@ export default function ProductsPage() {
     error: shopsError,
     selectShop,
     hasMultipleShops,
-  } = useShopSelection();
+  } = useShop();
 
   const [products, setProducts] = useState<ShopProduct[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -78,22 +79,18 @@ export default function ProductsPage() {
       </div>
 
       {/* Shop Filter Section - Only show if multiple shops */}
-      {hasMultipleShops && (
+      {isLoadingShops ? (
         <div className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg p-4 mb-6 shadow-sm">
-          <label
-            className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-stone-300" : "text-black"}`}
-          >
-            Select Shop
-          </label>
-          {isLoadingShops ? (
-            <div className="px-4 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-black dark:text-stone-300">
-              Loading shops...
-            </div>
-          ) : shops.length === 0 ? (
-            <div className="px-4 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-black dark:text-stone-300">
-              No shops available
-            </div>
-          ) : (
+          <div className="text-black dark:text-stone-300">Loading shops...</div>
+        </div>
+      ) : shops.length === 0 ? null : (
+        hasMultipleShops && (
+          <div className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg p-4 mb-6 shadow-sm">
+            <label
+              className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-stone-300" : "text-black"}`}
+            >
+              Select Shop
+            </label>
             <select
               value={selectedShopId}
               onChange={(e) => selectShop(e.target.value)}
@@ -109,8 +106,8 @@ export default function ProductsPage() {
                 </option>
               ))}
             </select>
-          )}
-        </div>
+          </div>
+        )
       )}
 
       {/* Search Bar */}
@@ -134,7 +131,11 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {isLoading ? (
+      {shops.length === 0 ? (
+        <div className="mb-6">
+          <NoShopsAlert variant="compact" />
+        </div>
+      ) : isLoading ? (
         <div className="text-center py-12 text-black dark:text-stone-400 font-medium">
           Loading products...
         </div>
@@ -244,11 +245,11 @@ export default function ProductsPage() {
                       </td>
                       <td className="px-6 py-4">
                         <button
-                        onClick={() => setEditingProduct(product)}
-                        className="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded text-sm font-medium transition"
-                      >
-                        Edit
-                      </button>
+                          onClick={() => setEditingProduct(product)}
+                          className="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded text-sm font-medium transition"
+                        >
+                          Edit
+                        </button>
                       </td>
                     </tr>
                   );

@@ -2,12 +2,15 @@
 
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { ShopProvider } from "@/context/ShopContext";
 import { ReactNode } from "react";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider>
+        <ShopProvider>{children}</ShopProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

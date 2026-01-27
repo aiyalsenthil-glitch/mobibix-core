@@ -108,7 +108,9 @@ export async function listJobCards(shopId: string): Promise<JobCard[]> {
     throw new Error(error.message || "Failed to fetch job cards");
   }
 
-  return response.json();
+  const data = await response.json();
+  // Backend returns { jobCards: [...], empty: false }
+  return data.jobCards || [];
 }
 
 /**

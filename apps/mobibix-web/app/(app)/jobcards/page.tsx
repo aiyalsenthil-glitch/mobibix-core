@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   listJobCards,
   updateJobCardStatus,
@@ -10,7 +10,9 @@ import {
 } from "@/services/jobcard.api";
 import { JobCardModal } from "./JobCardModal";
 import { useTheme } from "@/context/ThemeContext";
-import { useShopSelection } from "@/hooks/useShopSelection";
+import { useShop } from "@/context/ShopContext";
+import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
+import { NoShopsAlert } from "../components/NoShopsAlert";
 
 const STATUS_OPTIONS: JobStatus[] = [
   "RECEIVED",
@@ -51,48 +53,32 @@ export default function JobCardsPage() {
     error: shopsError,
     selectShop,
     hasMultipleShops,
-  } = useShopSelection();
+  } = useShop();
 
-  const [jobCards, setJobCards] = useState<JobCard[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
 
-  // Load job cards when shop selection changes
-  useEffect(() => {
-    const loadJobCards = async () => {
-      if (!selectedShopId) {
-        setError("Please select a shop");
-        setJobCards([]);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        setError(null);
-        console.log(`Loading job cards for shop: ${selectedShopId}`);
-        const data = await listJobCards(selectedShopId);
-        console.log(`Loaded ${data.length} job cards`, data);
-        setJobCards(data);
-      } catch (err: any) {
-        console.error("Error loading job cards:", err);
-        setError(err.message || "Failed to load job cards");
-        setJobCards([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadJobCards();
-  }, [selectedShopId]);
+  // Use modern hook for async data loading with built-in race condition prevention
+  const {
+    data: jobCards = [],
+    isLoading,
+    error,
+    reload,
+  } = useDeferredAsyncData(
+    useCallback(
+      () =>
+        selectedShopId ? listJobCards(selectedShopId) : Promise.resolve([]),
+      [selectedShopId],
+    ),
+    [selectedShopId],
+    [] as JobCard[], // Initial data
+  );
 
   const handleStatusChange = async (jobCardId: string, status: JobStatus) => {
     try {
       await updateJobCardStatus(selectedShopId, jobCardId, status);
       // Reload job cards after status change
-      const data = await listJobCards(selectedShopId);
-      setJobCards(data);
+      reload();
     } catch (err: any) {
       alert(err.message || "Failed to update status");
     }
@@ -103,8 +89,7 @@ export default function JobCardsPage() {
 
     try {
       await deleteJobCard(selectedShopId, jobCardId);
-      const data = await listJobCards(selectedShopId);
-      setJobCards(data);
+      reload();
     } catch (err: any) {
       alert(err.message || "Failed to delete job card");
     }
@@ -143,24 +128,20 @@ export default function JobCardsPage() {
       </div>
 
       {/* Shop Filter Section - Only show if multiple shops */}
-      {hasMultipleShops && (
+      {isLoadingShops ? (
         <div className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg p-4 mb-6 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <label
-                className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-stone-300" : "text-black"}`}
-              >
-                Select Shop
-              </label>
-              {isLoadingShops ? (
-                <div className="px-4 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-black dark:text-stone-300">
-                  Loading shops...
-                </div>
-              ) : shops.length === 0 ? (
-                <div className="px-4 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-black dark:text-stone-300">
-                  No shops available
-                </div>
-              ) : (
+          <div className="text-black dark:text-stone-300">Loading shops...</div>
+        </div>
+      ) : shops.length === 0 ? null : (
+        hasMultipleShops && (
+          <div className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg p-4 mb-6 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-stone-300" : "text-black"}`}
+                >
+                  Select Shop
+                </label>
                 <select
                   value={selectedShopId}
                   onChange={(e) => selectShop(e.target.value)}
@@ -176,10 +157,10 @@ export default function JobCardsPage() {
                     </option>
                   ))}
                 </select>
-              )}
+              </div>
             </div>
           </div>
-        </div>
+        )
       )}
 
       {(error || shopsError) && (
@@ -188,25 +169,31 @@ export default function JobCardsPage() {
         </div>
       )}
 
-      {isLoading ? (
+      {shops.length === 0 ? (
+        <div className="mb-6">
+          <NoShopsAlert variant="compact" />
+        </div>
+      ) : !selectedShopId ? (
+        <div className="text-center py-12">
+          <p className="text-black dark:text-stone-400 font-medium mb-4">
+            Select a shop from the filter above to view job cards
+          </p>
+        </div>
+      ) : isLoading ? (
         <div className="text-center py-12 text-black dark:text-stone-400 font-medium">
           Loading job cards...
         </div>
       ) : jobCards.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-black dark:text-stone-400 font-medium mb-4">
-            {selectedShopId
-              ? "No job cards found"
-              : "Select a shop to view job cards"}
+            No job cards found
           </p>
-          {selectedShopId && (
-            <button
-              onClick={handleAddNew}
-              className="px-6 py-2 bg-linear-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-lg font-bold transition shadow-lg"
-            >
-              Create your first job card
-            </button>
-          )}
+          <button
+            onClick={handleAddNew}
+            className="px-6 py-2 bg-linear-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-lg font-bold transition shadow-lg"
+          >
+            Create your first job card
+          </button>
         </div>
       ) : (
         <div

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { listProducts, type ShopProduct } from "@/services/products.api";
 import { stockIn } from "@/services/inventory.api";
 import { useTheme } from "@/context/ThemeContext";
-import { useShopSelection } from "@/hooks/useShopSelection";
+import { useShop } from "@/context/ShopContext";
+import { NoShopsAlert } from "../components/NoShopsAlert";
 
 export default function InventoryPage() {
   const { theme } = useTheme();
@@ -15,7 +16,7 @@ export default function InventoryPage() {
     error: shopsError,
     selectShop,
     hasMultipleShops,
-  } = useShopSelection();
+  } = useShop();
 
   const [products, setProducts] = useState<ShopProduct[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -99,28 +100,28 @@ export default function InventoryPage() {
       </div>
 
       {/* Shop Filter Section */}
-      {hasMultipleShops && (
+      {isLoadingShops ? (
         <div
           className={`border rounded-lg p-4 mb-6 shadow-sm ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"}`}
         >
-          <label
-            className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
+          <div className={theme === "dark" ? "text-gray-300" : "text-black"}>
+            Loading shops...
+          </div>
+        </div>
+      ) : shops.length === 0 ? (
+        <div className="mb-6">
+          <NoShopsAlert variant="compact" />
+        </div>
+      ) : (
+        hasMultipleShops && (
+          <div
+            className={`border rounded-lg p-4 mb-6 shadow-sm ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"}`}
           >
-            Select Shop
-          </label>
-          {isLoadingShops ? (
-            <div
-              className={`px-4 py-2 border rounded-lg ${theme === "dark" ? "bg-white/5 border-white/10 text-gray-300" : "bg-gray-50 border-gray-200 text-black"}`}
+            <label
+              className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
             >
-              Loading shops...
-            </div>
-          ) : shops.length === 0 ? (
-            <div
-              className={`px-4 py-2 border rounded-lg ${theme === "dark" ? "bg-white/5 border-white/10 text-gray-300" : "bg-gray-50 border-gray-200 text-black"}`}
-            >
-              No shops available
-            </div>
-          ) : (
+              Select Shop
+            </label>
             <select
               value={selectedShopId}
               onChange={(e) => selectShop(e.target.value)}
@@ -136,139 +137,141 @@ export default function InventoryPage() {
                 </option>
               ))}
             </select>
-          )}
-        </div>
+          </div>
+        )
       )}
 
       {/* Stock In Form */}
-      <div
-        className={`border rounded-lg p-6 mb-6 shadow-sm ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"}`}
-      >
-        <h2
-          className={`text-xl font-bold mb-4 ${theme === "dark" ? "text-white" : "text-black"}`}
+      {shops.length > 0 && (
+        <div
+          className={`border rounded-lg p-6 mb-6 shadow-sm ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"}`}
         >
-          Add Stock
-        </h2>
+          <h2
+            className={`text-xl font-bold mb-4 ${theme === "dark" ? "text-white" : "text-black"}`}
+          >
+            Add Stock
+          </h2>
 
-        <form onSubmit={handleStockIn} className="space-y-4">
-          {/* Product Selection */}
-          <div>
-            <label
-              className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
-            >
-              Product <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
+          <form onSubmit={handleStockIn} className="space-y-4">
+            {/* Product Selection */}
+            <div>
+              <label
+                className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
+              >
+                Product <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search product..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    theme === "dark"
+                      ? "bg-gray-800 border-white/20 text-white"
+                      : "bg-white border-gray-300 text-black"
+                  }`}
+                />
+                {searchQuery && (
+                  <div
+                    className={`absolute z-10 w-full mt-1 border rounded-lg shadow-lg max-h-60 overflow-auto ${theme === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+                  >
+                    {filteredProducts.map((product) => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedProduct(product);
+                          setSearchQuery(product.name);
+                        }}
+                        className={`w-full text-left px-4 py-2 hover:bg-teal-50 dark:hover:bg-teal-900/20 border-b last:border-0 ${
+                          theme === "dark"
+                            ? "border-gray-700 text-white"
+                            : "border-gray-100 text-gray-900"
+                        }`}
+                      >
+                        <div className="font-medium">{product.name}</div>
+                        <div
+                          className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                        >
+                          Current Stock: {product.stockQty || 0} | Sale Price: ₹
+                          {product.salePrice}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedProduct && (
+                <div
+                  className={`mt-2 p-2 rounded text-sm ${theme === "dark" ? "bg-teal-500/20 text-teal-200" : "bg-teal-50 text-teal-900"}`}
+                >
+                  Selected: {selectedProduct.name}
+                </div>
+              )}
+            </div>
+
+            {/* Quantity */}
+            <div>
+              <label
+                className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
+              >
+                Quantity <span className="text-red-500">*</span>
+              </label>
               <input
-                type="text"
-                placeholder="Search product..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                required
+                min="1"
+                placeholder="Enter quantity"
                 className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
                   theme === "dark"
                     ? "bg-gray-800 border-white/20 text-white"
                     : "bg-white border-gray-300 text-black"
                 }`}
               />
-              {searchQuery && (
-                <div
-                  className={`absolute z-10 w-full mt-1 border rounded-lg shadow-lg max-h-60 overflow-auto ${theme === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-                >
-                  {filteredProducts.map((product) => (
-                    <button
-                      key={product.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedProduct(product);
-                        setSearchQuery(product.name);
-                      }}
-                      className={`w-full text-left px-4 py-2 hover:bg-teal-50 dark:hover:bg-teal-900/20 border-b last:border-0 ${
-                        theme === "dark"
-                          ? "border-gray-700 text-white"
-                          : "border-gray-100 text-gray-900"
-                      }`}
-                    >
-                      <div className="font-medium">{product.name}</div>
-                      <div
-                        className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
-                      >
-                        Current Stock: {product.stockQty || 0} | Sale Price: ₹
-                        {product.salePrice}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
-            {selectedProduct && (
-              <div
-                className={`mt-2 p-2 rounded text-sm ${theme === "dark" ? "bg-teal-500/20 text-teal-200" : "bg-teal-50 text-teal-900"}`}
+
+            {/* Cost Price */}
+            <div>
+              <label
+                className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
               >
-                Selected: {selectedProduct.name}
+                Cost Price (₹) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                value={costPrice}
+                onChange={(e) => setCostPrice(e.target.value)}
+                required
+                min="0"
+                step="0.01"
+                placeholder="Enter cost price"
+                className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                  theme === "dark"
+                    ? "bg-gray-800 border-white/20 text-white"
+                    : "bg-white border-gray-300 text-black"
+                }`}
+              />
+            </div>
+
+            {error && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-200 px-4 py-3 rounded-lg">
+                {error}
               </div>
             )}
-          </div>
 
-          {/* Quantity */}
-          <div>
-            <label
-              className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
+            <button
+              type="submit"
+              disabled={isSubmitting || !selectedProduct}
+              className="w-full px-6 py-3 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition"
             >
-              Quantity <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              required
-              min="1"
-              placeholder="Enter quantity"
-              className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                theme === "dark"
-                  ? "bg-gray-800 border-white/20 text-white"
-                  : "bg-white border-gray-300 text-black"
-              }`}
-            />
-          </div>
-
-          {/* Cost Price */}
-          <div>
-            <label
-              className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
-            >
-              Cost Price (₹) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              value={costPrice}
-              onChange={(e) => setCostPrice(e.target.value)}
-              required
-              min="0"
-              step="0.01"
-              placeholder="Enter cost price"
-              className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                theme === "dark"
-                  ? "bg-gray-800 border-white/20 text-white"
-                  : "bg-white border-gray-300 text-black"
-              }`}
-            />
-          </div>
-
-          {error && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-700 dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-200 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isSubmitting || !selectedProduct}
-            className="w-full px-6 py-3 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition"
-          >
-            {isSubmitting ? "Adding Stock..." : "Add Stock"}
-          </button>
-        </form>
-      </div>
+              {isSubmitting ? "Adding Stock..." : "Add Stock"}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Products Table */}
       {(error || shopsError) && (

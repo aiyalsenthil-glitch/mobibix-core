@@ -14,10 +14,21 @@ interface ShopFormModalProps {
   onClose: () => void;
 }
 
+// Phone validation function - accepts 10 digits (Indian format)
+const validatePhone = (phone: string): string | null => {
+  const phoneRegex = /^[0-9]{10}$/;
+  if (!phone) return "Phone number is required";
+  if (!phoneRegex.test(phone.replace(/\D/g, ""))) {
+    return "Phone number must be 10 digits";
+  }
+  return null;
+};
+
 export function ShopFormModal({ shop, onClose }: ShopFormModalProps) {
   const isEdit = !!shop;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: shop?.name || "",
@@ -39,6 +50,14 @@ export function ShopFormModal({ shop, onClose }: ShopFormModalProps) {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
+
+    // Validate phone before submission
+    const phoneValidationError = validatePhone(formData.phone);
+    if (phoneValidationError) {
+      setPhoneError(phoneValidationError);
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       if (isEdit) {
@@ -94,7 +113,14 @@ export function ShopFormModal({ shop, onClose }: ShopFormModalProps) {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Validate phone on change
+    if (name === "phone") {
+      const error = validatePhone(value);
+      setPhoneError(error);
+    }
   };
 
   return (
@@ -149,9 +175,15 @@ export function ShopFormModal({ shop, onClose }: ShopFormModalProps) {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
+                  placeholder="10-digit phone number"
                   required
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-teal-500"
+                  className={`w-full px-4 py-2 bg-white/5 border rounded-lg text-white focus:outline-none focus:border-teal-500 ${
+                    phoneError ? "border-red-500" : "border-white/10"
+                  }`}
                 />
+                {phoneError && (
+                  <p className="text-red-400 text-xs mt-1">{phoneError}</p>
+                )}
               </div>
             </div>
           </div>

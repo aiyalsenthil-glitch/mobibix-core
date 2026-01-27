@@ -13,25 +13,46 @@ export class SalesService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const lastInvoice = await tx.invoice.findFirst({
-        where: { shopId: dto.shopId },
+      // validate shop and get state + invoicePrefix
+      const shop = await tx.shop.findFirst({
+        where: { id: dto.shopId, tenantId },
+        select: {
+          id: true,
+          gstEnabled: true,
+          state: true,
+          invoicePrefix: true,
+        },
+      });
+
+      if (!shop) throw new BadRequestException('Invalid shop');
+
+      // Generate formatted invoice number: {prefix}-{DDMMYY}-{sequence}
+      const today = new Date();
+      const dateStr =
+        String(today.getDate()).padStart(2, '0') +
+        String(today.getMonth() + 1).padStart(2, '0') +
+        String(today.getFullYear()).slice(-2);
+
+      // Find last invoice for today's date to get sequence number
+      const lastInvoiceToday = await tx.invoice.findFirst({
+        where: {
+          shopId: dto.shopId,
+          invoiceNumber: { startsWith: `${shop.invoicePrefix}-${dateStr}` },
+        },
         orderBy: { createdAt: 'desc' },
         select: { invoiceNumber: true },
       });
 
-      const nextNumber = lastInvoice
-        ? Number(lastInvoice.invoiceNumber) + 1
-        : 1;
+      // Extract sequence number from last invoice or start at 1
+      let sequenceNumber = 1;
+      if (lastInvoiceToday) {
+        const parts = lastInvoiceToday.invoiceNumber.split('-');
+        const lastSeq = parseInt(parts[parts.length - 1], 10);
+        sequenceNumber = lastSeq + 1;
+      }
 
-      const invoiceNumber = nextNumber.toString().padStart(5, '0');
+      const invoiceNumber = `${shop.invoicePrefix}-${dateStr}-${String(sequenceNumber).padStart(4, '0')}`;
       dto.invoiceNumber = invoiceNumber;
-      // validate shop and get state
-      const shop = await tx.shop.findFirst({
-        where: { id: dto.shopId, tenantId },
-        select: { id: true, gstEnabled: true, state: true },
-      });
-
-      if (!shop) throw new BadRequestException('Invalid shop');
 
       // fetch products for validation + type checking
       const productIds = dto.items.map((i) => i.shopProductId);
@@ -196,21 +217,39 @@ export class SalesService {
           sgst,
           igst,
           totalAmount: subTotal + gstAmount,
-          paymentMode: dto.paymentMode,
+          // Use first payment method or fall back to paymentMode for backward compatibility
+          paymentMode:
+            dto.paymentMethods?.[0]?.mode || dto.paymentMode || 'CASH',
           items: { create: invoiceItemsData },
         },
       });
-      await tx.financialEntry.create({
-        data: {
+
+      // Create financial entries for each payment method
+      if (dto.paymentMethods && dto.paymentMethods.length > 0) {
+        const financialEntries = dto.paymentMethods.map((pm) => ({
           tenantId,
           shopId: dto.shopId,
-          type: 'IN',
-          amount: subTotal + gstAmount,
-          mode: dto.paymentMode,
-          referenceType: 'INVOICE',
+          type: 'IN' as const,
+          amount: pm.amount,
+          mode: pm.mode,
+          referenceType: 'INVOICE' as const,
           referenceId: invoice.id,
-        },
-      });
+        }));
+        await tx.financialEntry.createMany({ data: financialEntries });
+      } else {
+        // Fallback for old paymentMode format
+        await tx.financialEntry.create({
+          data: {
+            tenantId,
+            shopId: dto.shopId,
+            type: 'IN',
+            amount: subTotal + gstAmount,
+            mode: dto.paymentMode || 'CASH',
+            referenceType: 'INVOICE',
+            referenceId: invoice.id,
+          },
+        });
+      }
 
       // STOCK OUT (negative allowed)
       const stockOutEntries = dto.items.map((i) => ({
@@ -273,6 +312,7 @@ export class SalesService {
       select: {
         id: true,
         invoiceNumber: true,
+        customerName: true,
         totalAmount: true,
         paymentMode: true,
         status: true,
@@ -487,25 +527,41 @@ export class SalesService {
           subTotal,
           gstAmount,
           totalAmount: subTotal + gstAmount,
-          paymentMode: dto.paymentMode,
+          paymentMode:
+            dto.paymentMethods?.[0]?.mode || dto.paymentMode || 'CASH',
           items: { create: invoiceItemsData },
         },
         include: { items: true },
       });
 
-      // 9️⃣ Create new financial entry (IN)
-      await tx.financialEntry.create({
-        data: {
+      // 9️⃣ Create new financial entries for each payment method
+      if (dto.paymentMethods && dto.paymentMethods.length > 0) {
+        const financialEntries = dto.paymentMethods.map((pm) => ({
           tenantId,
           shopId: dto.shopId,
-          type: 'IN',
-          amount: subTotal + gstAmount,
-          mode: dto.paymentMode,
-          referenceType: 'INVOICE',
+          type: 'IN' as const,
+          amount: pm.amount,
+          mode: pm.mode,
+          referenceType: 'INVOICE' as const,
           referenceId: updatedInvoice.id,
           note: 'Invoice updated - new entry',
-        },
-      });
+        }));
+        await tx.financialEntry.createMany({ data: financialEntries });
+      } else {
+        // Fallback for old paymentMode format
+        await tx.financialEntry.create({
+          data: {
+            tenantId,
+            shopId: dto.shopId,
+            type: 'IN',
+            amount: subTotal + gstAmount,
+            mode: dto.paymentMode || 'CASH',
+            referenceType: 'INVOICE',
+            referenceId: updatedInvoice.id,
+            note: 'Invoice updated - new entry',
+          },
+        });
+      }
 
       // 🔟 Create new stock entries (OUT)
       const newStockOutEntries = dto.items.map((i) => ({

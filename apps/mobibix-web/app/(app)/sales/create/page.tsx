@@ -6,7 +6,7 @@ import { searchCustomers, type Customer } from "@/services/customers.api";
 import { listProducts, type ShopProduct } from "@/services/products.api";
 import { createInvoice } from "@/services/sales.api";
 import { useTheme } from "@/context/ThemeContext";
-import { useShopSelection } from "@/hooks/useShopSelection";
+import { useShop } from "@/context/ShopContext";
 import { CustomerModal } from "../../customers/CustomerModal";
 import { ProductModal } from "../../products/ProductModal";
 
@@ -33,7 +33,15 @@ export default function CreateInvoicePage() {
     selectedShop,
     isLoadingShops,
     error: shopError,
-  } = useShopSelection(shopIdParam || undefined);
+    selectShop,
+  } = useShop();
+
+  // If shopId is in URL, select it
+  useEffect(() => {
+    if (shopIdParam && selectedShopId !== shopIdParam) {
+      selectShop(shopIdParam);
+    }
+  }, [shopIdParam, selectedShopId, selectShop]);
 
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null,
@@ -49,9 +57,11 @@ export default function CreateInvoicePage() {
   const [invoiceDate, setInvoiceDate] = useState(
     new Date().toISOString().split("T")[0],
   );
-  const [paymentMethod, setPaymentMethod] = useState<
-    "CASH" | "UPI" | "CARD" | "BANK"
-  >("CASH");
+
+  // Mixed payment support
+  const [paymentMethods, setPaymentMethods] = useState<
+    Array<{ mode: "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT"; amount: number }>
+  >([{ mode: "CASH", amount: 0 }]);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
 
   // Product search states (per item)
@@ -123,9 +133,11 @@ export default function CreateInvoicePage() {
       try {
         const results = await searchCustomers(value, 10);
         setCustomerResults(results);
-        setShowCustomerDropdown(true);
+        setShowCustomerDropdown(true); // Always show dropdown, even if empty
       } catch (err: any) {
         console.error("Customer search failed:", err);
+        setCustomerResults([]);
+        setShowCustomerDropdown(true); // Show dropdown even on error
       }
     } else {
       setCustomerResults([]);
@@ -376,6 +388,23 @@ export default function CreateInvoicePage() {
       return;
     }
 
+    // Validate payment methods
+    const totalPaid = paymentMethods.reduce((sum, p) => sum + p.amount, 0);
+    const paymentMethodsWithAmount = paymentMethods.filter((p) => p.amount > 0);
+
+    if (paymentMethodsWithAmount.length === 0) {
+      setError("Please add at least one payment method with amount");
+      return;
+    }
+
+    // Check if total paid matches grand total (with small tolerance for floating point)
+    if (Math.abs(totalPaid - grandTotal) > 0.01) {
+      setError(
+        `Total payment (₹${totalPaid.toFixed(2)}) must match invoice total (₹${grandTotal.toFixed(2)})`,
+      );
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -387,7 +416,7 @@ export default function CreateInvoicePage() {
         customerPhone: selectedCustomer.phone,
         customerState: selectedCustomer.state,
         customerGstin: selectedCustomer.gstNumber,
-        paymentMode: paymentMethod,
+        paymentMethods: paymentMethodsWithAmount, // Only include methods with amount > 0
         pricesIncludeTax,
         items: items.map((item) => ({
           shopProductId: item.shopProductId,
@@ -537,31 +566,50 @@ export default function CreateInvoicePage() {
                       : "bg-white border-gray-300 text-black placeholder-gray-500"
                   }`}
                 />
-                {showCustomerDropdown && customerResults.length > 0 && (
+                {showCustomerDropdown && (
                   <div className="absolute z-10 w-full mt-1 bg-white dark:bg-stone-900 border border-gray-200 dark:border-white/20 rounded-lg shadow-lg max-h-60 overflow-auto">
-                    {customerResults.map((customer) => (
-                      <button
-                        key={customer.id}
-                        onClick={() => selectCustomer(customer)}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-white/10 border-b border-gray-100 dark:border-white/10 last:border-0"
-                      >
-                        <div className="font-medium text-gray-900 dark:text-white">
-                          {customer.name}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                          {customer.phone} • {customer.state}
-                        </div>
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => {
-                        setShowCustomerDropdown(false);
-                        setIsCustomerModalOpen(true);
-                      }}
-                      className="w-full px-4 py-3 text-center text-teal-600 dark:text-teal-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium border-t border-gray-200 dark:border-white/20"
-                    >
-                      ⊕ Create New Customer
-                    </button>
+                    {customerResults.length > 0 ? (
+                      <>
+                        {customerResults.map((customer) => (
+                          <button
+                            key={customer.id}
+                            onClick={() => selectCustomer(customer)}
+                            className="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-white/10 border-b border-gray-100 dark:border-white/10 last:border-0"
+                          >
+                            <div className="font-medium text-gray-900 dark:text-white">
+                              {customer.name}
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                              {customer.phone} • {customer.state}
+                            </div>
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => {
+                            setShowCustomerDropdown(false);
+                            setIsCustomerModalOpen(true);
+                          }}
+                          className="w-full px-4 py-3 text-center text-teal-600 dark:text-teal-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium border-t border-gray-200 dark:border-white/20"
+                        >
+                          ⊕ Create New Customer
+                        </button>
+                      </>
+                    ) : (
+                      <div className="px-4 py-6 text-center">
+                        <p className="text-gray-600 dark:text-gray-400 mb-3">
+                          No customers found
+                        </p>
+                        <button
+                          onClick={() => {
+                            setShowCustomerDropdown(false);
+                            setIsCustomerModalOpen(true);
+                          }}
+                          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition"
+                        >
+                          ⊕ Create New Customer
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
                 {customerSearch.length > 0 &&
@@ -855,31 +903,144 @@ export default function CreateInvoicePage() {
 
       {/* Payment & Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Payment Method */}
+        {/* Payment Methods */}
         <div
           className={`border rounded-lg p-6 shadow-sm ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"}`}
         >
           <label
-            className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-black"}`}
+            className={`block text-sm font-medium mb-4 ${theme === "dark" ? "text-gray-300" : "text-black"}`}
           >
-            Payment Method
+            Payment Methods (Mixed Payments Allowed)
           </label>
-          <select
-            value={paymentMethod}
-            onChange={(e) =>
-              setPaymentMethod(e.target.value as typeof paymentMethod)
-            }
-            className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-              theme === "dark"
-                ? "bg-white/10 border-white/20 text-white"
-                : "bg-white border-gray-300 text-black"
-            }`}
+          <div className="space-y-3">
+            {paymentMethods.map((payment, index) => (
+              <div key={index} className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <label
+                    className={`block text-xs font-medium mb-1 ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}
+                  >
+                    Method
+                  </label>
+                  <select
+                    value={payment.mode}
+                    onChange={(e) => {
+                      const updated = [...paymentMethods];
+                      updated[index].mode = e.target
+                        .value as typeof payment.mode;
+                      setPaymentMethods(updated);
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm ${
+                      theme === "dark"
+                        ? "bg-white/10 border-white/20 text-white"
+                        : "bg-white border-gray-300 text-black"
+                    }`}
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="CARD">Card</option>
+                    <option value="BANK">Bank Transfer</option>
+                    <option value="CREDIT">Credit</option>
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label
+                    className={`block text-xs font-medium mb-1 ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}
+                  >
+                    Amount
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={payment.amount === 0 ? "" : payment.amount}
+                    onChange={(e) => {
+                      const updated = [...paymentMethods];
+                      updated[index].amount = parseFloat(e.target.value) || 0;
+                      setPaymentMethods(updated);
+                    }}
+                    placeholder="0.00"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm ${
+                      theme === "dark"
+                        ? "bg-white/10 border-white/20 text-white"
+                        : "bg-white border-gray-300 text-black"
+                    }`}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (paymentMethods.length > 1) {
+                      setPaymentMethods(
+                        paymentMethods.filter((_, i) => i !== index),
+                      );
+                    }
+                  }}
+                  disabled={paymentMethods.length === 1}
+                  className="px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setPaymentMethods([
+                ...paymentMethods,
+                { mode: "CASH", amount: 0 },
+              ]);
+            }}
+            className="mt-3 w-full px-4 py-2 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-500/10 rounded-lg font-medium transition text-sm"
           >
-            <option value="CASH">Cash</option>
-            <option value="UPI">UPI</option>
-            <option value="CARD">Card</option>
-            <option value="BANK">Bank Transfer</option>
-          </select>
+            + Add Payment Method
+          </button>
+
+          {/* Payment validation indicator */}
+          {(() => {
+            const totalPaid = paymentMethods.reduce(
+              (sum, p) => sum + p.amount,
+              0,
+            );
+            const isBalanced = Math.abs(totalPaid - grandTotal) < 0.01;
+            const paymentMethodsWithAmount = paymentMethods.filter(
+              (p) => p.amount > 0,
+            );
+
+            return (
+              <>
+                {paymentMethodsWithAmount.length > 0 && (
+                  <div
+                    className={`mt-4 pt-3 border-t ${
+                      theme === "dark" ? "border-white/10" : "border-gray-200"
+                    }`}
+                  >
+                    <div
+                      className={`flex items-center gap-2 text-sm font-medium ${
+                        isBalanced
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-amber-600 dark:text-amber-400"
+                      }`}
+                    >
+                      {isBalanced ? (
+                        <>
+                          <span>✓</span>
+                          <span>Payment Balanced</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>!</span>
+                          <span>
+                            Difference: ₹{(grandTotal - totalPaid).toFixed(2)}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Summary */}
@@ -931,6 +1092,51 @@ export default function CreateInvoicePage() {
             >
               <span>Grand Total:</span>
               <span>₹{grandTotal.toFixed(2)}</span>
+            </div>
+
+            {/* Payment Summary */}
+            <div
+              className={`border-t pt-3 ${theme === "dark" ? "border-white/20" : "border-gray-200"}`}
+            >
+              <div className="text-sm font-medium mb-2 text-gray-600 dark:text-gray-400">
+                Payment Summary:
+              </div>
+              {paymentMethods
+                .filter((p) => p.amount > 0)
+                .map((payment, idx) => (
+                  <div key={idx} className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-600 dark:text-gray-400">
+                      {payment.mode}:
+                    </span>
+                    <span>₹{payment.amount.toFixed(2)}</span>
+                  </div>
+                ))}
+              <div
+                className={`flex justify-between text-sm font-semibold mt-2 pt-2 ${theme === "dark" ? "border-white/20 border-t" : "border-gray-200 border-t"}`}
+              >
+                <span>Total Paid:</span>
+                <span>
+                  ₹
+                  {paymentMethods
+                    .reduce((sum, p) => sum + p.amount, 0)
+                    .toFixed(2)}
+                </span>
+              </div>
+              {paymentMethods.reduce((sum, p) => sum + p.amount, 0) <
+                grandTotal && (
+                <div
+                  className={`flex justify-between text-sm font-semibold mt-1 ${paymentMethods.reduce((sum, p) => sum + p.amount, 0) < grandTotal ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}
+                >
+                  <span>Remaining:</span>
+                  <span>
+                    ₹
+                    {(
+                      grandTotal -
+                      paymentMethods.reduce((sum, p) => sum + p.amount, 0)
+                    ).toFixed(2)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

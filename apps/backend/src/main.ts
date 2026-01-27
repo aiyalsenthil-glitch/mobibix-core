@@ -32,6 +32,7 @@ async function bootstrap() {
       origin: [
         'http://localhost_REPLACED:3000',
         'http://localhost_REPLACED:3001',
+        'http://localhost_REPLACED:3002',
         'https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com',
         'https://mobibix.in',
         'https://www.mobibix.in',

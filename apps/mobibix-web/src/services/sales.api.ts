@@ -3,8 +3,8 @@ import { authenticatedFetch } from "./auth.api";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
 
-export type PaymentMode = "CASH" | "UPI" | "CARD" | "BANK";
-export type InvoiceStatus = "PAID" | "CANCELLED";
+export type PaymentMode = "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT";
+export type InvoiceStatus = "PAID" | "CREDIT" | "CANCELLED";
 
 export interface SalesInvoice {
   id: string;
@@ -77,7 +77,9 @@ export async function listInvoices(shopId: string): Promise<SalesInvoice[]> {
       throw new Error(errorMessage);
     }
 
-    return response.json();
+    const data = await response.json();
+    // Backend returns { invoices: [...], empty: false }
+    return data.invoices || [];
   } catch (error: any) {
     console.error("List invoices error:", error);
     throw error;
@@ -156,6 +158,50 @@ export async function cancelInvoice(invoiceId: string): Promise<SalesInvoice> {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || "Failed to cancel invoice");
+  }
+
+  return response.json();
+}
+
+/**
+ * Record a payment against a credit invoice
+ */
+export async function recordPayment(
+  invoiceId: string,
+  data: {
+    amount: number;
+    paymentMethod: PaymentMode;
+    transactionRef?: string;
+    narration?: string;
+  },
+) {
+  const response = await authenticatedFetch(
+    `/mobileshop/sales/invoice/${invoiceId}/payment`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to record payment");
+  }
+
+  return response.json();
+}
+
+/**
+ * Get all payments recorded against an invoice
+ */
+export async function listPayments(invoiceId: string) {
+  const response = await authenticatedFetch(
+    `/mobileshop/sales/invoice/${invoiceId}/payments`,
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch payments");
   }
 
   return response.json();

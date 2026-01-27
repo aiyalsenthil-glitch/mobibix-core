@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { listShops, type Shop } from "@/services/shops.api";
 import {
   listPurchases,
   createPurchase,
@@ -18,6 +17,8 @@ import {
 import { listSuppliers, type Supplier } from "@/services/suppliers.api";
 import { authenticatedFetch } from "@/services/auth.api";
 import { useTheme } from "@/context/ThemeContext";
+import { useShop } from "@/context/ShopContext";
+import { NoShopsAlert } from "../components/NoShopsAlert";
 
 const STATUS_COLORS: Record<PurchaseStatus, string> = {
   DRAFT: "bg-gray-500/15 text-gray-400",
@@ -37,11 +38,10 @@ const PAYMENT_BADGES: Record<PaymentMode, string> = {
 export default function PurchasesPage() {
   const { theme } = useTheme();
   const router = useRouter();
-  const [shops, setShops] = useState<Shop[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const { shops, selectedShopId: contextSelectedShopId, selectShop, isLoadingShops } = useShop();
   const [selectedShopId, setSelectedShopId] = useState("");
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [isLoadingShops, setIsLoadingShops] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -79,73 +79,28 @@ export default function PurchasesPage() {
   });
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadSuppliers = async () => {
       try {
-        setIsLoadingShops(true);
         setError(null);
-        console.log("Loading shops and suppliers...");
-        console.log("API Base URL:", process.env.NEXT_PUBLIC_API_URL);
+        console.log("Loading suppliers...");
 
-        // Test API connection first
-        try {
-          const healthCheck = await authenticatedFetch("/health");
-          console.log("Health check response:", healthCheck.status);
-          if (!healthCheck.ok) {
-            console.warn("Health check failed:", healthCheck.status);
-          }
-        } catch (healthErr) {
-          console.warn("Health check error:", healthErr);
-        }
-
-        // Load shops and suppliers independently so one failure doesn't block the other
-        let shopsData: Shop[] = [];
-        let suppliersData: Supplier[] = [];
-        let shopsError: string | null = null;
-        let suppliersError: string | null = null;
-
-        try {
-          shopsData = await listShops();
-          console.log("Shops loaded:", shopsData);
-        } catch (err: any) {
-          console.error("Error loading shops:", err);
-          shopsError = err.message || "Failed to load shops";
-        }
-
-        try {
-          suppliersData = await listSuppliers();
-          console.log("Suppliers loaded:", suppliersData);
-        } catch (err: any) {
-          console.error("Error loading suppliers:", err);
-          suppliersError = err.message || "Failed to load suppliers";
-        }
-
-        setShops(shopsData);
+        const suppliersData = await listSuppliers();
+        console.log("Suppliers loaded:", suppliersData);
         setSuppliers(suppliersData);
-
-        // Show error only if both failed, or show combined error if one failed
-        if (shopsError && suppliersError) {
-          setError(
-            `Failed to load data: Shops - ${shopsError}, Suppliers - ${suppliersError}`,
-          );
-        } else if (shopsError) {
-          setError(`Failed to load shops: ${shopsError}`);
-        } else if (suppliersError) {
-          console.warn("Suppliers failed to load but shops are available");
-        }
       } catch (err: any) {
-        console.error("Error loading data:", err);
-        console.error("Error details:", {
-          message: err.message,
-          stack: err.stack,
-          response: err.response,
-        });
-        setError(
-          `Failed to load data: ${err.message}. Please make sure the backend API is running on ${process.env.NEXT_PUBLIC_API_URL}.`,
-        );
-        setShops([]);
+        console.error("Error loading suppliers:", err);
+        setError(err.message || "Failed to load suppliers");
         setSuppliers([]);
-      } finally {
-        setIsLoadingShops(false);
+      }
+    };
+
+    loadSuppliers();
+  }, []);
+
+  // Sync context selectedShopId to local state
+  useEffect(() => {
+    setSelectedShopId(contextSelectedShopId);
+  }, [contextSelectedShopId]);
       }
     };
 
@@ -378,17 +333,7 @@ export default function PurchasesPage() {
                 Loading shops...
               </span>
             </div>
-          ) : shops.length === 0 ? (
-            <div
-              className={`p-3 rounded-lg border ${theme === "dark" ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200"}`}
-            >
-              <p
-                className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
-              >
-                No shops available. Please create a shop first.
-              </p>
-            </div>
-          ) : (
+          ) : shops.length === 0 ? null : (
             <select
               value={selectedShopId}
               onChange={(e) => setSelectedShopId(e.target.value)}
@@ -1025,7 +970,9 @@ export default function PurchasesPage() {
         )}
 
         {/* Purchases List */}
-        {isLoading ? (
+        {shops.length === 0 ? (
+          <NoShopsAlert variant="compact" />
+        ) : isLoading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
             <p
