@@ -48,14 +48,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={`min-h-screen ${
-        isDark ? "bg-gray-950 text-white" : "bg-gray-50 text-black"
+        isDark ? "bg-gray-950 text-white" : "bg-gradient-to-br from-teal-50/30 via-white to-teal-50/20 text-black"
       } transition-colors duration-300`}
     >
       <Sidebar />
       <Topbar isCollapsed={mounted && isCollapsed} />
       <main
         className={`${marginLeft} pt-20 px-8 py-8 transition-all duration-300 ${
-          isDark ? "bg-gray-950" : "bg-gray-50"
+          isDark ? "bg-gray-950" : "bg-transparent"
         } min-h-screen`}
       >
         {children}

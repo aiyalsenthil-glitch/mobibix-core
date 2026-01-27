@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
-import { StockKpiService } from '../stock/stock-kpi.service';
+import { StockKpiService } from '../../../core/stock/stock-kpi.service';
 
 @Injectable()
 export class MobileShopDashboardService {

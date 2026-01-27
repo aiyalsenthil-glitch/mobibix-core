@@ -1,0 +1,92 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: mobibix-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mobibix
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # NestJS Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: development
+    container_name: mobibix-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/mobibix?schema=public"
+      JWT_SECRET: ${JWT_SECRET:-your-development-jwt-secret-change-me}
+      JWT_EXPIRES_IN: "7d"
+      PORT: 3000
+      GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/REMOVED_AUTH_PROVIDER-service-account.json
+    ports:
+      - "3000:3000"
+      - "9229:9229"
+    volumes:
+      - ./apps/backend/src:/app/src:cached
+      - ./apps/backend/prisma:/app/prisma:cached
+      - ./apps/backend/secrets:/app/secrets:ro
+      - backend_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npm run start:dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost_REPLACED:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Next.js Frontend
+  mobibix-web:
+    build:
+      context: .
+      dockerfile: apps/mobibix-web/Dockerfile
+      target: development
+    container_name: mobibix-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost_REPLACED:3000
+      NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY:-}
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:-}
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID:-}
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET:-}
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID:-}
+      NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID:-}
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./apps/mobibix-web/src:/app/src:cached
+      - ./apps/mobibix-web/app:/app/app:cached
+      - ./apps/mobibix-web/public:/app/public:cached
+      - ./apps/mobibix-web/lib:/app/lib:cached
+      - mobibix_web_next:/app/.next
+      - mobibix_web_node_modules:/app/node_modules
+    depends_on:
+      - backend
+    command: npm run dev
+
+volumes:
+  postgres_data:
+    driver: local
+  backend_node_modules:
+    driver: local
+  mobibix_web_node_modules:
+    driver: local
+  mobibix_web_next:
+    driver: local

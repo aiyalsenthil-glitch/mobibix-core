@@ -62,11 +62,32 @@ export async function exchangeFirebaseToken(
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      let errorData: any = {};
+      const contentType = response.headers.get("content-type");
+
+      try {
+        if (contentType?.includes("application/json")) {
+          errorData = await response.json();
+        } else {
+          const text = await response.text();
+          console.error("Response text:", text);
+          errorData = { message: text || "Non-JSON error response" };
+        }
+      } catch (parseError) {
+        console.error("Failed to parse error response:", parseError);
+        errorData = { message: "Failed to parse error response" };
+      }
+
       throw {
-        code: error.code || "EXCHANGE_FAILED",
-        message: error.message || "Failed to exchange token",
-        details: error,
+        code: errorData.code || "EXCHANGE_FAILED",
+        message:
+          errorData.message ||
+          `HTTP ${response.status}: Failed to exchange token`,
+        details: {
+          ...errorData,
+          status: response.status,
+          url: `${API_BASE_URL}/auth/google/exchange`,
+        },
       } as AuthError;
     }
 

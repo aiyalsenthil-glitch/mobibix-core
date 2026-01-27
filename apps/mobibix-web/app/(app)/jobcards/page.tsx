@@ -8,8 +8,9 @@ import {
   type JobCard,
   type JobStatus,
 } from "@/services/jobcard.api";
-import { listShops, type Shop } from "@/services/shops.api";
 import { JobCardModal } from "./JobCardModal";
+import { useTheme } from "@/context/ThemeContext";
+import { useShopSelection } from "@/hooks/useShopSelection";
 
 const STATUS_OPTIONS: JobStatus[] = [
   "RECEIVED",
@@ -23,76 +24,75 @@ const STATUS_OPTIONS: JobStatus[] = [
 ];
 
 const STATUS_COLORS: Record<JobStatus, string> = {
-  RECEIVED: "bg-teal-500/20 text-teal-300",
-  DIAGNOSED: "bg-purple-500/20 text-purple-300",
-  PARTS_ORDERED: "bg-yellow-500/20 text-yellow-300",
-  IN_REPAIR: "bg-orange-500/20 text-orange-300",
-  QUALITY_CHECK: "bg-cyan-500/20 text-cyan-300",
-  READY: "bg-green-500/20 text-green-300",
-  DELIVERED: "bg-gray-500/20 text-gray-300",
-  CANCELLED: "bg-red-500/20 text-red-300",
+  RECEIVED:
+    "bg-teal-200 text-teal-900 border-teal-400 dark:bg-teal-500/20 dark:text-teal-200 dark:border-teal-500/50",
+  DIAGNOSED:
+    "bg-purple-200 text-purple-900 border-purple-400 dark:bg-purple-500/20 dark:text-purple-200 dark:border-purple-500/50",
+  PARTS_ORDERED:
+    "bg-amber-200 text-amber-900 border-amber-400 dark:bg-amber-500/20 dark:text-amber-200 dark:border-amber-500/50",
+  IN_REPAIR:
+    "bg-orange-200 text-orange-900 border-orange-400 dark:bg-orange-500/20 dark:text-orange-200 dark:border-orange-500/50",
+  QUALITY_CHECK:
+    "bg-sky-200 text-sky-900 border-sky-400 dark:bg-sky-500/20 dark:text-sky-200 dark:border-sky-500/50",
+  READY:
+    "bg-green-200 text-green-900 border-green-400 dark:bg-green-500/20 dark:text-green-200 dark:border-green-500/50",
+  DELIVERED:
+    "bg-gray-300 text-gray-900 border-gray-500 dark:bg-gray-500/20 dark:text-gray-300 dark:border-gray-500/50",
+  CANCELLED:
+    "bg-rose-200 text-rose-900 border-rose-400 dark:bg-rose-500/20 dark:text-rose-200 dark:border-rose-500/50",
 };
 
 export default function JobCardsPage() {
-  const [shops, setShops] = useState<Shop[]>([]);
+  const { theme } = useTheme();
+  const {
+    shops,
+    selectedShopId,
+    isLoadingShops,
+    error: shopsError,
+    selectShop,
+    hasMultipleShops,
+  } = useShopSelection();
+
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
-  const [isLoadingShops, setIsLoadingShops] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedShopId, setSelectedShopId] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
 
-  // Load shops on component mount
+  // Load job cards when shop selection changes
   useEffect(() => {
-    const loadShops = async () => {
+    const loadJobCards = async () => {
+      if (!selectedShopId) {
+        setError("Please select a shop");
+        setJobCards([]);
+        return;
+      }
+
       try {
-        setIsLoadingShops(true);
+        setIsLoading(true);
         setError(null);
-        const data = await listShops();
-        setShops(data);
-        // Auto-select first shop
-        if (data.length > 0) {
-          setSelectedShopId(data[0].id);
-        }
+        console.log(`Loading job cards for shop: ${selectedShopId}`);
+        const data = await listJobCards(selectedShopId);
+        console.log(`Loaded ${data.length} job cards`, data);
+        setJobCards(data);
       } catch (err: any) {
-        console.error("Error loading shops:", err);
-        setError(err.message || "Failed to load shops");
+        console.error("Error loading job cards:", err);
+        setError(err.message || "Failed to load job cards");
+        setJobCards([]);
       } finally {
-        setIsLoadingShops(false);
+        setIsLoading(false);
       }
     };
 
-    loadShops();
-  }, []);
-
-  const loadJobCards = async () => {
-    if (!selectedShopId) {
-      setError("Please select a shop");
-      setJobCards([]);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setError(null);
-      console.log(`Loading job cards for shop: ${selectedShopId}`);
-      const data = await listJobCards(selectedShopId);
-      console.log(`Loaded ${data.length} job cards`, data);
-      setJobCards(data);
-    } catch (err: any) {
-      console.error("Error loading job cards:", err);
-      setError(err.message || "Failed to load job cards");
-      setJobCards([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    loadJobCards();
+  }, [selectedShopId]);
 
   const handleStatusChange = async (jobCardId: string, status: JobStatus) => {
     try {
       await updateJobCardStatus(selectedShopId, jobCardId, status);
-      await loadJobCards();
+      // Reload job cards after status change
+      const data = await listJobCards(selectedShopId);
+      setJobCards(data);
     } catch (err: any) {
       alert(err.message || "Failed to update status");
     }
@@ -103,7 +103,8 @@ export default function JobCardsPage() {
 
     try {
       await deleteJobCard(selectedShopId, jobCardId);
-      await loadJobCards();
+      const data = await listJobCards(selectedShopId);
+      setJobCards(data);
     } catch (err: any) {
       alert(err.message || "Failed to delete job card");
     }
@@ -122,131 +123,144 @@ export default function JobCardsPage() {
   const handleModalClose = () => {
     setIsModalOpen(false);
     setSelectedJobCard(null);
-    loadJobCards();
   };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-white">Job Cards</h1>
+        <h1
+          className={`text-3xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}
+        >
+          Job Cards
+        </h1>
         <button
           onClick={handleAddNew}
           disabled={!selectedShopId}
-          className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-bold transition shadow-lg"
+          className="px-6 py-2 bg-linear-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-bold transition shadow-lg"
         >
           + Create New Job Card
         </button>
       </div>
 
-      {/* Shop Filter Section */}
-      <div className="bg-white/5 border border-white/10 rounded-lg p-4 mb-6">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <label className="block text-sm text-stone-400 mb-2">
-              Select Shop
-            </label>
-            {isLoadingShops ? (
-              <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-stone-400">
-                Loading shops...
-              </div>
-            ) : shops.length === 0 ? (
-              <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-stone-400">
-                No shops available
-              </div>
-            ) : (
-              <select
-                value={selectedShopId}
-                onChange={(e) => setSelectedShopId(e.target.value)}
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-teal-500"
+      {/* Shop Filter Section - Only show if multiple shops */}
+      {hasMultipleShops && (
+        <div className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg p-4 mb-6 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <label
+                className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-stone-300" : "text-black"}`}
               >
-                <option value="">-- Select a shop --</option>
-                {shops.map((shop) => (
-                  <option
-                    key={shop.id}
-                    value={shop.id}
-                    className="bg-stone-900"
-                  >
-                    {shop.name}
-                  </option>
-                ))}
-              </select>
-            )}
+                Select Shop
+              </label>
+              {isLoadingShops ? (
+                <div className="px-4 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-black dark:text-stone-300">
+                  Loading shops...
+                </div>
+              ) : shops.length === 0 ? (
+                <div className="px-4 py-2 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-black dark:text-stone-300">
+                  No shops available
+                </div>
+              ) : (
+                <select
+                  value={selectedShopId}
+                  onChange={(e) => selectShop(e.target.value)}
+                  className={`w-full px-4 py-2 rounded-lg font-medium focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 ${
+                    theme === "dark"
+                      ? "bg-stone-900/40 border-white/20 text-white"
+                      : "bg-white border-gray-300 text-black"
+                  } border`}
+                >
+                  {shops.map((shop) => (
+                    <option key={shop.id} value={shop.id}>
+                      {shop.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
-          <button
-            onClick={loadJobCards}
-            disabled={!selectedShopId || isLoading}
-            className="mt-6 px-6 py-2 bg-teal-500 hover:bg-teal-600 disabled:bg-teal-500/50 text-white rounded-lg font-medium transition"
-          >
-            {isLoading ? "Loading..." : "List"}
-          </button>
         </div>
-      </div>
+      )}
 
-      {error && (
-        <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-lg mb-4">
-          {error}
+      {(error || shopsError) && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-200 px-4 py-3 rounded-lg mb-4">
+          {error || shopsError}
         </div>
       )}
 
       {isLoading ? (
-        <div className="text-center py-12 text-stone-400">
+        <div className="text-center py-12 text-black dark:text-stone-400 font-medium">
           Loading job cards...
         </div>
       ) : jobCards.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-stone-400 mb-4">
+          <p className="text-black dark:text-stone-400 font-medium mb-4">
             {selectedShopId
               ? "No job cards found"
-              : "Select a shop and click List"}
+              : "Select a shop to view job cards"}
           </p>
           {selectedShopId && (
             <button
               onClick={handleAddNew}
-              className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-lg font-bold transition shadow-lg"
+              className="px-6 py-2 bg-linear-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white rounded-lg font-bold transition shadow-lg"
             >
               Create your first job card
             </button>
           )}
         </div>
       ) : (
-        <div className="bg-white/5 border border-white/10 rounded-lg overflow-hidden">
+        <div
+          className={`bg-white dark:bg-white/5 border ${theme === "dark" ? "border-white/10" : "border-gray-300"} rounded-lg overflow-hidden shadow-sm`}
+        >
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-white/5 border-b border-white/10">
+              <thead
+                className={`${theme === "dark" ? "bg-white/5 border-white/10" : "bg-gray-200 border-gray-300"} border-b`}
+              >
                 <tr>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
-                    Job No.
-                  </th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
-                    Customer Name
-                  </th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
-                    Phone
-                  </th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
-                    Device
-                  </th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
-                    Status
-                  </th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
-                    Actions
-                  </th>
+                  {[
+                    "Job No.",
+                    "Customer Name",
+                    "Phone",
+                    "Device",
+                    "Status",
+                    "Actions",
+                  ].map((header) => (
+                    <th
+                      key={header}
+                      className={`text-left px-4 py-3 text-sm font-semibold ${theme === "dark" ? "text-stone-200" : "text-black"}`}
+                    >
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/10">
+              <tbody
+                className={`divide-y ${theme === "dark" ? "divide-white/10" : "divide-gray-300"}`}
+              >
                 {jobCards.map((job) => (
-                  <tr key={job.id} className="hover:bg-white/5 transition">
-                    <td className="px-4 py-3 text-sm text-white font-medium">
+                  <tr
+                    key={job.id}
+                    className="hover:bg-gray-50 dark:hover:bg-white/5 transition"
+                  >
+                    <td
+                      className={`px-4 py-3 text-sm font-medium ${theme === "dark" ? "text-white" : "text-black"}`}
+                    >
                       {job.jobNumber}
                     </td>
-                    <td className="px-4 py-3 text-sm text-stone-300">
+                    <td
+                      className={`px-4 py-3 text-sm ${theme === "dark" ? "text-stone-200" : "text-black"}`}
+                    >
                       {job.customerName}
                     </td>
-                    <td className="px-4 py-3 text-sm text-stone-400">
+                    <td
+                      className={`px-4 py-3 text-sm ${theme === "dark" ? "text-stone-400" : "text-black"}`}
+                    >
                       {job.customerPhone}
                     </td>
-                    <td className="px-4 py-3 text-sm text-stone-300">
+                    <td
+                      className={`px-4 py-3 text-sm ${theme === "dark" ? "text-stone-200" : "text-black"}`}
+                    >
                       {job.deviceBrand} {job.deviceModel}
                     </td>
                     <td className="px-4 py-3">
@@ -258,7 +272,7 @@ export default function JobCardsPage() {
                             e.target.value as JobStatus,
                           )
                         }
-                        className={`px-3 py-1 rounded-lg text-xs font-medium ${STATUS_COLORS[job.status]} bg-transparent border-0 focus:outline-none cursor-pointer`}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold border ${STATUS_COLORS[job.status]} focus:outline-none cursor-pointer appearance-none`}
                         disabled={
                           job.status === "DELIVERED" ||
                           job.status === "CANCELLED"
@@ -268,7 +282,7 @@ export default function JobCardsPage() {
                           <option
                             key={status}
                             value={status}
-                            className="bg-stone-900"
+                            className="bg-white dark:bg-stone-900 text-black dark:text-white"
                           >
                             {status.replace(/_/g, " ")}
                           </option>
@@ -276,10 +290,10 @@ export default function JobCardsPage() {
                       </select>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-black dark:text-white">
                         <button
                           onClick={() => handleEdit(job)}
-                          className="p-2 hover:bg-white/10 rounded-lg transition"
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition"
                           title="View/Edit"
                         >
                           👁️
@@ -288,7 +302,7 @@ export default function JobCardsPage() {
                           href={`/track/${job.publicToken}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 hover:bg-white/10 rounded-lg transition"
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition"
                           title="Public Track"
                         >
                           🔗
@@ -297,14 +311,14 @@ export default function JobCardsPage() {
                           href={`/jobcards/print/${job.id}?shopId=${selectedShopId}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 hover:bg-white/10 rounded-lg transition"
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition"
                           title="Print"
                         >
                           🖨️
                         </a>
                         <button
                           onClick={() => handleDelete(job.id)}
-                          className="p-2 hover:bg-red-500/20 rounded-lg transition"
+                          className="p-2 hover:bg-rose-50 dark:hover:bg-red-500/20 rounded-lg transition"
                           title="Delete"
                         >
                           🗑️
@@ -323,7 +337,7 @@ export default function JobCardsPage() {
       {selectedShopId && (
         <button
           onClick={handleAddNew}
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white shadow-lg hover:shadow-xl transition flex items-center justify-center text-xl font-bold z-40"
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-linear-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white shadow-lg hover:shadow-xl transition flex items-center justify-center text-xl font-bold z-40"
           title="Create new job card"
         >
           +

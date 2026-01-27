@@ -43,8 +43,11 @@ export interface InvoiceItem {
 
 export interface CreateInvoiceDto {
   shopId: string;
-  customerName?: string;
+  customerId?: string;
+  customerName: string;
   customerPhone?: string;
+  customerState?: string;
+  customerGstin?: string;
   paymentMode: PaymentMode;
   items: InvoiceItem[];
 }
@@ -53,16 +56,32 @@ export interface CreateInvoiceDto {
  * List all sales invoices for a shop (sorted by latest first on backend)
  */
 export async function listInvoices(shopId: string): Promise<SalesInvoice[]> {
-  const response = await authenticatedFetch(
-    `/mobileshop/sales/invoices?shopId=${shopId}`,
-  );
+  try {
+    const response = await authenticatedFetch(
+      `/mobileshop/sales/invoices?shopId=${shopId}`,
+    );
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch invoices");
+    if (!response.ok) {
+      let errorMessage = "Failed to fetch invoices";
+      try {
+        const error = await response.json();
+        errorMessage = error.message || errorMessage;
+        console.error("API Error:", {
+          status: response.status,
+          message: errorMessage,
+          shopId,
+        });
+      } catch (e) {
+        console.error("Failed to parse error response:", e);
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  } catch (error: any) {
+    console.error("List invoices error:", error);
+    throw error;
   }
-
-  return response.json();
 }
 
 /**

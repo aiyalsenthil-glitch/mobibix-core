@@ -15,6 +15,12 @@ import { GymAppModule } from './modules/gymapp/gym-app.module';
 import { MobileShopModule } from './modules/mobileshop/mobileshop.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { CacheModule } from '@nestjs/cache-manager';
+import { SuppliersModule } from './core/suppliers/suppliers.module';
+import { PurchasesModule } from './core/purchases/purchases.module';
+import { GlobalSuppliersModule } from './core/global-suppliers/global-suppliers.module';
+import { GlobalProductsModule } from './core/global-products/global-products.module';
+import { TenantProductsModule } from './core/tenant-products/tenant-products.module';
+import { ShopProductsModule } from './core/shop-products/shop-products.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -31,6 +37,12 @@ import { CacheModule } from '@nestjs/cache-manager';
     // 🧩 Business modules
     GymModule,
     GymAppModule,
+    SuppliersModule,
+    PurchasesModule,
+    GlobalSuppliersModule,
+    GlobalProductsModule,
+    TenantProductsModule,
+    ShopProductsModule,
     // 🩺 Platform infra
     HealthModule,
     MobileShopModule,

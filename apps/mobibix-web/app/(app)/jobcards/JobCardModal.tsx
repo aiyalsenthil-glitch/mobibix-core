@@ -9,56 +9,17 @@ import {
   type UpdateJobCardDto,
 } from "@/services/jobcard.api";
 import {
-  createCustomer,
   getCustomer,
   searchCustomers,
-  type BusinessType,
   type Customer,
-  type PartyType,
 } from "@/services/customers.api";
+import { CustomerModal } from "../customers/CustomerModal";
 
 interface JobCardModalProps {
   shopId: string;
   jobCard: JobCard | null;
   onClose: () => void;
 }
-
-const INDIAN_STATES = [
-  "Andhra Pradesh",
-  "Arunachal Pradesh",
-  "Assam",
-  "Bihar",
-  "Chhattisgarh",
-  "Goa",
-  "Gujarat",
-  "Haryana",
-  "Himachal Pradesh",
-  "Jharkhand",
-  "Karnataka",
-  "Kerala",
-  "Madhya Pradesh",
-  "Maharashtra",
-  "Manipur",
-  "Meghalaya",
-  "Mizoram",
-  "Nagaland",
-  "Odisha",
-  "Punjab",
-  "Rajasthan",
-  "Sikkim",
-  "Tamil Nadu",
-  "Telangana",
-  "Tripura",
-  "Uttar Pradesh",
-  "Uttarakhand",
-  "West Bengal",
-  "Ladakh",
-  "Jammu and Kashmir",
-  "Puducherry",
-  "Lakshadweep",
-  "Andaman and Nicobar Islands",
-  "Dadar and Nagar Haveli and Daman and Diu",
-];
 
 type StepFormData = {
   customerName: string;
@@ -77,227 +38,6 @@ type StepFormData = {
   billType: string;
   estimatedDelivery: string;
 };
-
-function AddCustomerDialog({
-  initialPhone,
-  onCancel,
-  onCreated,
-}: {
-  initialPhone: string;
-  onCancel: () => void;
-  onCreated: (customer: Customer) => void;
-}) {
-  const [form, setForm] = useState({
-    name: "",
-    phone: initialPhone,
-    email: "",
-    state: "",
-    businessType: "B2C" as BusinessType,
-    partyType: "CUSTOMER" as PartyType,
-    gstNumber: "",
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const isB2B = form.businessType === "B2B";
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    if (name === "businessType" && value === "B2C") {
-      setForm((prev) => ({ ...prev, gstNumber: "", businessType: "B2C" }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!form.name.trim() || !form.phone.trim() || !form.state) {
-      setError("Name, phone, and state are required");
-      return;
-    }
-
-    if (isB2B && !form.gstNumber.trim()) {
-      setError("GSTIN is required for B2B customers");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const customer = await createCustomer({
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-        email: form.email.trim() || undefined,
-        state: form.state,
-        businessType: form.businessType,
-        partyType: form.partyType,
-        gstNumber: form.gstNumber.trim() || undefined,
-      });
-      onCreated(customer);
-    } catch (err: any) {
-      setError(err.message || "Failed to create customer");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-xl font-bold text-gray-900">Add New Customer</h3>
-          <button
-            onClick={onCancel}
-            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"
-          >
-            ✕
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {error && (
-            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
-              <div className="flex-shrink-0 text-red-600 text-xl">⚠️</div>
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Full Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                placeholder="Enter customer name"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Phone Number <span className="text-red-500">*</span>
-              </label>
-              <input
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                placeholder="10-digit phone number"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Email Address
-              </label>
-              <input
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                type="email"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                placeholder="customer@example.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                State <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="state"
-                value={form.state}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
-                required
-              >
-                <option value="">Select a state</option>
-                {INDIAN_STATES.map((state) => (
-                  <option key={state} value={state}>
-                    {state}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Business Type
-                </label>
-                <select
-                  name="businessType"
-                  value={form.businessType}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
-                >
-                  <option value="B2C">B2C</option>
-                  <option value="B2B">B2B</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Party Type
-                </label>
-                <select
-                  name="partyType"
-                  value={form.partyType}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
-                >
-                  <option value="CUSTOMER">Customer</option>
-                  <option value="VENDOR">Vendor</option>
-                  <option value="BOTH">Both</option>
-                </select>
-              </div>
-            </div>
-
-            {isB2B && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  GSTIN <span className="text-red-500">*</span>
-                </label>
-                <input
-                  name="gstNumber"
-                  value={form.gstNumber}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                  placeholder="15-digit GSTIN"
-                  required
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-3 pt-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex-1 px-4 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white rounded-lg font-semibold transition"
-            >
-              {loading ? "Creating..." : "Create Customer"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
   const isEdit = !!jobCard;
@@ -961,12 +701,11 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
       </div>
 
       {showAddCustomer && (
-        <AddCustomerDialog
-          initialPhone={searchQuery}
-          onCancel={() => setShowAddCustomer(false)}
-          onCreated={(customer) => {
+        <CustomerModal
+          onClose={() => {
             setShowAddCustomer(false);
-            handleSelectCustomer(customer);
+            // The search useEffect will automatically trigger when searchQuery changes
+            // This will refresh results after customer creation
           }}
         />
       )}

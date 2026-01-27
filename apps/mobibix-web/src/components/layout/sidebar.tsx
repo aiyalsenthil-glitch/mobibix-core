@@ -9,8 +9,11 @@ const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: "📊" },
   { label: "Sales", href: "/sales", icon: "💰" },
   { label: "Job Cards", href: "/jobcards", icon: "🔧" },
+  { label: "Products", href: "/products", icon: "🏷️" },
   { label: "Inventory", href: "/inventory", icon: "📦" },
   { label: "Customers", href: "/customers", icon: "👥" },
+  { label: "Suppliers", href: "/suppliers", icon: "🚚" },
+  { label: "Purchases", href: "/purchases", icon: "📥" },
   { label: "Reports", href: "/reports", icon: "📈" },
   { label: "Shops", href: "/shops", icon: "🏪" },
   { label: "Settings", href: "/settings", icon: "⚙️" },
@@ -43,39 +46,48 @@ export function Sidebar() {
     <>
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-screen ${sidebarWidth} flex flex-col transition-all duration-300 ${
+        className={`fixed left-0 top-0 h-screen ${sidebarWidth} flex flex-col transition-all duration-300 shadow-lg ${
           theme === "dark"
             ? "bg-gray-950 border-gray-800"
-            : "bg-white border-gray-200"
+            : "bg-gradient-to-b from-white via-teal-50/30 to-white border-teal-100"
         } border-r z-40`}
       >
         {/* Logo/Brand */}
         <div
           className={`${sidebarPadding} border-b transition-all duration-300 ${
-            theme === "dark" ? "border-gray-800" : "border-gray-200"
+            theme === "dark"
+              ? "border-gray-800"
+              : "border-teal-100 bg-gradient-to-r from-teal-50/50 to-transparent"
           }`}
         >
           {!isCollapsed && (
             <>
-              <h1
-                className={`text-xl font-bold ${
-                  theme === "dark" ? "text-white" : "text-gray-900"
-                }`}
-              >
-                ShopFlow
-              </h1>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-md">
+                  M
+                </div>
+                <h1
+                  className={`text-xl font-bold bg-gradient-to-r ${
+                    theme === "dark"
+                      ? "text-white"
+                      : "from-teal-600 to-teal-700 bg-clip-text text-transparent"
+                  }`}
+                >
+                  MobiBix
+                </h1>
+              </div>
               <p
-                className={`text-xs mt-1 ${
-                  theme === "dark" ? "text-stone-400" : "text-gray-500"
+                className={`text-[10px] mt-1.5 leading-tight ${
+                  theme === "dark" ? "text-stone-400" : "text-teal-600/70 font-medium"
                 }`}
               >
-                Business Management
+                Digital Retail Platform
               </p>
             </>
           )}
           {isCollapsed && (
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-bold">
-              S
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-lg">
+              M
             </div>
           )}
         </div>
@@ -88,14 +100,14 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 group relative ${
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${
                   isActive
                     ? theme === "dark"
-                      ? "bg-teal-500/20 text-teal-300 border border-teal-500/30"
-                      : "bg-teal-100 text-teal-700 border border-teal-300"
+                      ? "bg-teal-500/20 text-teal-300 border border-teal-500/30 shadow-md"
+                      : "bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/30 border border-teal-400 font-semibold"
                     : theme === "dark"
                       ? "text-gray-400 hover:bg-gray-800 hover:text-white"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      : "text-gray-700 hover:bg-teal-50 hover:text-teal-700 hover:shadow-sm font-medium"
                 } ${isCollapsed ? "justify-center" : ""}`}
                 title={isCollapsed ? item.label : ""}
               >
@@ -118,15 +130,15 @@ export function Sidebar() {
         {/* Toggle Button */}
         <div
           className={`p-2 border-t transition-all duration-300 ${
-            theme === "dark" ? "border-gray-800" : "border-gray-200"
+            theme === "dark" ? "border-gray-800" : "border-teal-100"
           }`}
         >
           <button
             onClick={toggleCollapse}
-            className={`w-full flex items-center justify-center gap-2 px-3 py-3 rounded-lg transition-all duration-200 ${
+            className={`w-full flex items-center justify-center gap-2 px-3 py-3 rounded-xl transition-all duration-200 ${
               theme === "dark"
                 ? "bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white"
-                : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900"
+                : "bg-teal-50 hover:bg-teal-100 text-teal-700 hover:text-teal-800 font-medium shadow-sm hover:shadow-md"
             }`}
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
@@ -149,10 +161,12 @@ export function Sidebar() {
             className={`p-4 border-t transition-all duration-300 ${
               theme === "dark"
                 ? "border-gray-800 text-gray-500"
-                : "border-gray-200 text-gray-500"
+                : "border-teal-100 text-teal-600/60"
             }`}
           >
-            <p className="text-xs">v1.0.0</p>
+            <p className={`text-xs font-medium ${
+              theme === "dark" ? "" : "text-teal-700/70"
+            }`}>v1.0.0</p>
           </div>
         )}
       </aside>

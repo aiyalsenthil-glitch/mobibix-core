@@ -1,0 +1,48 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Next.js
+.next/
+out/
+build/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Testing
+coverage/
+*.test.tsx
+*.test.ts
+*.spec.tsx
+*.spec.ts
+
+# Documentation
+*.md
+!README.md
+
+# Misc
+.prettierrc
+.eslintrc.js
+eslint.config.mjs
+tsconfig.json
+next.config.ts
+postcss.config.mjs
+tailwind.config.ts

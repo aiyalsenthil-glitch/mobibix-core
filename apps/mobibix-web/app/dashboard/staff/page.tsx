@@ -16,7 +16,7 @@ export default function StaffPage() {
     {
       id: "1",
       name: "John Smith",
-      email: "john@shopflow.com",
+      email: "john@mobibix.com",
       role: "Technician",
       status: "active",
       joinDate: "2024-01-15",
@@ -24,7 +24,7 @@ export default function StaffPage() {
     {
       id: "2",
       name: "Sarah Johnson",
-      email: "sarah@shopflow.com",
+      email: "sarah@mobibix.com",
       role: "Manager",
       status: "active",
       joinDate: "2024-02-10",

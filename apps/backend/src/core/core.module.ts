@@ -10,6 +10,13 @@ import { PrismaModule } from './prisma/prisma.module';
 import { StaffModule } from './staff/staff.module';
 import { AdminModule } from './admin/admin.module';
 import { CustomersModule } from './customers/customers.module';
+import { ShopModule } from './shops/shop.module';
+import { SalesModule } from './sales/sales.module';
+import { PurchaseModule } from './purchase/purchase.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { ProductsModule } from './products/products.module';
+import { StockModule } from './stock/stock.module';
+import { HsnModule } from './hsn/hsn.module';
 
 @Module({
   imports: [
@@ -23,6 +30,13 @@ import { CustomersModule } from './customers/customers.module';
     StaffModule,
     AdminModule,
     CustomersModule,
+    ShopModule,
+    SalesModule,
+    PurchaseModule,
+    InventoryModule,
+    ProductsModule,
+    StockModule,
+    HsnModule,
   ],
   exports: [
     AuthModule,
@@ -32,6 +46,7 @@ import { CustomersModule } from './customers/customers.module';
     BillingModule,
     AuditModule,
     StaffModule,
+    HsnModule,
   ],
 })
 export class CoreModule {}

@@ -45,7 +45,12 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
         <div className="flex items-center justify-between mb-8 pt-2 px-2">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-teal-500 rounded-full"></div>
-            <span className="text-lg font-bold">ShopFlow</span>
+            <div className="flex flex-col">
+              <span className="text-lg font-bold">MobiBix</span>
+              <span className="text-[10px] text-muted-foreground leading-none">
+                Digital Retail Platform
+              </span>
+            </div>
           </div>
           <div className="flex-shrink-0">
             <ThemeSwitcher />

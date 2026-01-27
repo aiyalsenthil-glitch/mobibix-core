@@ -89,6 +89,14 @@ export function ShopSettingsModal({ shop, onClose }: ShopSettingsModalProps) {
       };
 
       await updateShopSettings(shop.id, payload);
+
+      // Notify other components about shop update
+      window.dispatchEvent(new CustomEvent("shopUpdated"));
+
+      // For cross-tab communication
+      localStorage.setItem("shop_updated", Date.now().toString());
+      localStorage.removeItem("shop_updated");
+
       onClose();
     } catch (err: any) {
       setError(err.message || "Failed to save settings");

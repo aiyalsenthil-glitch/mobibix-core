@@ -4,6 +4,7 @@ dotenv.config({ path: 'apps/backend/.env' });
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
+import { HSN_DATA } from './hsn-data';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -74,6 +75,26 @@ async function main() {
   });
 
   console.log('✅ Plans seeded');
+
+  // HSN DATA
+  console.log('🌱 Seeding HSN Data...');
+  for (const hsn of HSN_DATA) {
+    await prisma.hSNCode.upsert({
+      where: { code: hsn.code },
+      update: {
+        description: hsn.description,
+        taxRate: hsn.taxRate,
+        isActive: true,
+      },
+      create: {
+        code: hsn.code,
+        description: hsn.description,
+        taxRate: hsn.taxRate,
+        isActive: true,
+      },
+    });
+  }
+  console.log(`✅ Seeded ${HSN_DATA.length} HSN codes`);
 }
 
 main()

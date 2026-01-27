@@ -61,7 +61,7 @@ export default function HomePage() {
         }
         .light-mode .bg-black { background: white !important; }
         .light-mode .text-white { color: #0f766e !important; }
-        .light-mode .bg-blue-500 { background: #14b8a6 !important; }
+        .light-mode .bg-teal-500 { background: #14b8a6 !important; }
         .light-mode .border-white\/5 { border-color: rgba(20, 184, 166, 0.2) !important; }
         .light-mode .text-stone-400 { color: #0d9488 !important; }
       `}</style>
@@ -140,7 +140,7 @@ export default function HomePage() {
           <main className="relative h-screen w-full overflow-hidden flex flex-col justify-center items-center border-b border-white/5">
             <div className="absolute inset-0 z-0">
               <div className="absolute inset-0 bg-gradient-to-b from-black via-neutral-950 to-black"></div>
-              <div className="absolute top-[15%] -left-[10%] w-[600px] h-[600px] bg-blue-600/15 rounded-full blur-[140px] pointer-events-none animate-pulse"></div>
+              <div className="absolute top-[15%] -left-[10%] w-[600px] h-[600px] bg-teal-600/15 rounded-full blur-[140px] pointer-events-none animate-pulse"></div>
               <div
                 className="absolute bottom-[10%] -right-[10%] w-[500px] h-[500px] bg-purple-500/15 rounded-full blur-[140px] pointer-events-none animate-pulse"
                 style={{ animationDelay: "1.5s" }}
@@ -300,7 +300,7 @@ export default function HomePage() {
           }}
         >
           <section className="h-screen py-24 px-6 md:px-12 bg-black relative overflow-hidden flex flex-col justify-center border-b border-white/5">
-            <div className="absolute top-[40%] right-[10%] w-96 h-96 bg-indigo-900/10 rounded-full blur-[128px] pointer-events-none animate-pulse"></div>
+            <div className="absolute top-[40%] right-[10%] w-96 h-96 bg-teal-900/10 rounded-full blur-[128px] pointer-events-none animate-pulse"></div>
 
             <div className="max-w-7xl mx-auto w-full">
               <div className="mb-16 text-center">
@@ -665,7 +665,7 @@ export default function HomePage() {
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse"></div>
                 <span className="text-sm font-medium uppercase tracking-[0.25em] text-white">
-                  ShopFlow
+                  MobiBix
                 </span>
               </div>
 
@@ -716,7 +716,7 @@ function StatItem({
   label: string;
 }) {
   return (
-    <div className="border-l border-white/10 pl-6 hover:border-blue-500/40 transition-colors duration-500">
+    <div className="border-l border-white/10 pl-6 hover:border-teal-500/40 transition-colors duration-500">
       <p className="text-4xl md:text-5xl font-light text-white mb-2">
         {value}
         <span className="text-xl text-stone-500 font-normal align-top ml-1">

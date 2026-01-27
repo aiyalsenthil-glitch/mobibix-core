@@ -30,7 +30,7 @@ function ProductsContent() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem("authToken");
+        const token = localStorage.getItem("accessToken");
         const filterParam = activeTab === "today" ? "today" : "month";
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api"}/mobileshop/products?filter=${filterParam}`,

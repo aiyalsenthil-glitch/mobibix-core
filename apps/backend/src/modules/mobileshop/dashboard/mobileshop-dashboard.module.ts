@@ -4,7 +4,7 @@ import { MobileShopDashboardService } from './mobileshop-dashboard.service';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { StaffDashboardController } from './staff-dashboard.controller';
 import { StaffDashboardService } from './staff-dashboard.service';
-import { StockKpiService } from '../stock/stock-kpi.service';
+import { StockKpiService } from '../../../core/stock/stock-kpi.service';
 
 @Module({
   controllers: [MobileShopDashboardController, StaffDashboardController],

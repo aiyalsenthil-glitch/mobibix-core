@@ -4,7 +4,7 @@ import { Geist } from "next/font/google";
 import { Providers } from "./providers";
 
 export const metadata = {
-  title: "MobiBix – Run Your Mobile Shop Smarter",
+  title: "MobiBix – Digital Retail Platform",
   description: "Mobile shop ERP & repair management platform",
 };
 export const playfair = Playfair_Display({

@@ -1,0 +1,65 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+.pnpm-debug.log
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Secrets
+secrets/
+*.key
+*.pem
+*.p12
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Testing
+coverage/
+.nyc_output/
+*.test.ts
+*.spec.ts
+test/
+
+# Documentation
+*.md
+!README.md
+
+# Logs
+logs/
+*.log
+
+# Prisma
+prisma/migrations/
+!prisma/schema.prisma
+!prisma/seed.ts
+
+# Misc
+.prettierrc
+.eslintrc.js
+eslint.config.mjs
+tsconfig.json
+tsconfig.build.json
+nest-cli.json

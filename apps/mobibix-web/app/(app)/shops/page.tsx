@@ -168,13 +168,6 @@ export default function ShopsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleEditShop(shop)}
-                          className="p-2 hover:bg-white/10 rounded-lg transition"
-                          title="Edit"
-                        >
-                          ✏️
-                        </button>
-                        <button
                           onClick={() => handleOpenSettings(shop)}
                           className="p-2 hover:bg-white/10 rounded-lg transition"
                           title="Settings"

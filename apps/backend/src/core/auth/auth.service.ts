@@ -49,23 +49,22 @@ export class AuthService {
       }
 
       // ─────────────────────────────
-      // 2️⃣ Find or create user
+      // 2️⃣ Find or create user (atomic upsert prevents race condition)
       // ─────────────────────────────
-      let user = await this.prisma.user.findUnique({
+      const user = await this.prisma.user.upsert({
         where: { REMOVED_AUTH_PROVIDERUid: decoded.uid },
+        update: {
+          email: decoded.email ?? null,
+          fullName: decoded.name ?? null,
+        },
+        create: {
+          REMOVED_AUTH_PROVIDERUid: decoded.uid,
+          email: decoded.email ?? null,
+          fullName: decoded.name ?? null,
+          role: UserRole.USER,
+          tenantId: null,
+        },
       });
-
-      if (!user) {
-        user = await this.prisma.user.create({
-          data: {
-            REMOVED_AUTH_PROVIDERUid: decoded.uid,
-            email: decoded.email ?? null,
-            fullName: decoded.name ?? null,
-            role: UserRole.USER,
-            tenantId: null,
-          },
-        });
-      }
 
       // ─────────────────────────────
       // 3️⃣ Staff invite auto-accept
@@ -195,6 +194,15 @@ export class AuthService {
         },
       };
     } catch (err) {
+      // Log the actual error for debugging
+      console.error('❌ Auth Service Error:', {
+        message: err?.message,
+        code: err?.code,
+        name: err?.name,
+        stack: err?.stack,
+        fullError: err,
+      });
+
       // Firebase / auth errors → 401
       if (
         err instanceof UnauthorizedException ||
@@ -203,8 +211,22 @@ export class AuthService {
         throw new UnauthorizedException('Firebase authentication failed');
       }
 
+      // Prisma errors
+      if (err?.code?.startsWith('P')) {
+        console.error('Prisma Error Details:', {
+          code: err.code,
+          clientVersion: err.clientVersion,
+          meta: err.meta,
+        });
+        throw new InternalServerErrorException(
+          `Database error: ${err.code} - ${err.message}`,
+        );
+      }
+
       // Everything else → controlled 500
-      throw new InternalServerErrorException('Authentication service failed');
+      throw new InternalServerErrorException(
+        `Authentication service failed: ${err?.message || 'Unknown error'}`,
+      );
     }
   }
 }

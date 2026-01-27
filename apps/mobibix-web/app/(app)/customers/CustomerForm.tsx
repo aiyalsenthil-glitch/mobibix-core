@@ -9,6 +9,7 @@ import {
   type BusinessType,
   type PartyType,
 } from "@/services/customers.api";
+import { useTheme } from "@/context/ThemeContext";
 
 interface CustomerFormProps {
   customer?: Customer | null;
@@ -61,6 +62,7 @@ function validateGSTIN(gstin: string): boolean {
 }
 
 export function CustomerForm({ customer, onClose }: CustomerFormProps) {
+  const { theme } = useTheme();
   const isEditing = !!customer;
   const [formData, setFormData] = useState({
     name: customer?.name || "",
@@ -203,15 +205,29 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-stone-900 rounded-lg border border-white/10 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className={`rounded-lg border w-full max-w-2xl max-h-[90vh] overflow-y-auto ${
+        theme === "dark"
+          ? "bg-stone-900 border-white/10"
+          : "bg-white border-gray-200"
+      }`}>
         {/* Header */}
-        <div className="sticky top-0 bg-stone-900 border-b border-white/10 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-white">
+        <div className={`sticky top-0 border-b px-6 py-4 flex items-center justify-between ${
+          theme === "dark"
+            ? "bg-stone-900 border-white/10"
+            : "bg-white border-gray-200"
+        }`}>
+          <h2 className={`text-xl font-semibold ${
+            theme === "dark" ? "text-white" : "text-gray-900"
+          }`}>
             {isEditing ? `Edit Customer` : "Add New Customer"}
           </h2>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-white text-2xl leading-none"
+            className={`text-2xl leading-none ${
+              theme === "dark"
+                ? "text-stone-400 hover:text-white"
+                : "text-gray-500 hover:text-gray-900"
+            }`}
           >
             ✕
           </button>
@@ -220,14 +236,22 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-lg text-sm">
+            <div className={`px-4 py-3 rounded-lg text-sm ${
+              theme === "dark"
+                ? "bg-red-500/20 border border-red-500/50 text-red-300"
+                : "bg-red-50 border border-red-200 text-red-700"
+            }`}>
               {error}
             </div>
           )}
 
           {/* Phone Existing Customer Info */}
           {!isEditing && phoneExistingCustomer && (
-            <div className="bg-teal-500/10 border border-teal-500/30 text-teal-300 px-4 py-3 rounded-lg text-sm">
+            <div className={`px-4 py-3 rounded-lg text-sm ${
+              theme === "dark"
+                ? "bg-teal-500/10 border border-teal-500/30 text-teal-300"
+                : "bg-teal-50 border border-teal-200 text-teal-700"
+            }`}>
               <div className="font-semibold mb-1">Customer exists!</div>
               <div className="text-xs">
                 Phone {phoneExistingCustomer.phone} is already registered to{" "}
@@ -243,7 +267,9 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
           <div className="grid grid-cols-2 gap-4">
             {/* Customer Name */}
             <div className="col-span-2">
-              <label className="block text-sm text-stone-300 mb-2">
+              <label className={`block text-sm mb-2 ${
+                theme === "dark" ? "text-stone-300" : "text-gray-700"
+              }`}>
                 Customer Name <span className="text-red-400">*</span>
               </label>
               <input
@@ -252,14 +278,20 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="Enter customer name"
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:border-teal-500"
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-teal-500 ${
+                  theme === "dark"
+                    ? "bg-white/10 border-white/20 text-white placeholder-stone-400"
+                    : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                }`}
                 required
               />
             </div>
 
             {/* Phone Number */}
             <div>
-              <label className="block text-sm text-stone-300 mb-2">
+              <label className={`block text-sm mb-2 ${
+                theme === "dark" ? "text-stone-300" : "text-gray-700"
+              }`}>
                 Phone Number <span className="text-red-400">*</span>
               </label>
               <input
@@ -269,13 +301,17 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
                 onChange={handleChange}
                 placeholder="Enter 10-digit phone"
                 disabled={isEditing}
-                className={`w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:border-teal-500 ${
-                  isEditing ? "opacity-60 cursor-not-allowed" : ""
-                }`}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-teal-500 ${
+                  theme === "dark"
+                    ? "bg-white/10 border-white/20 text-white placeholder-stone-400"
+                    : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                } ${isEditing ? "opacity-60 cursor-not-allowed" : ""}`}
                 required
               />
               {isEditing && (
-                <p className="text-xs text-stone-400 mt-1">
+                <p className={`text-xs mt-1 ${
+                  theme === "dark" ? "text-stone-400" : "text-gray-500"
+                }`}>
                   Phone number cannot be changed after creation
                 </p>
               )}
@@ -283,7 +319,9 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
 
             {/* Email */}
             <div>
-              <label className="block text-sm text-stone-300 mb-2">
+              <label className={`block text-sm mb-2 ${
+                theme === "dark" ? "text-stone-300" : "text-gray-700"
+              }`}>
                 Email (Optional)
               </label>
               <input
@@ -292,27 +330,37 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="customer@example.com"
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:border-teal-500"
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-teal-500 ${
+                  theme === "dark"
+                    ? "bg-white/10 border-white/20 text-white placeholder-stone-400"
+                    : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                }`}
               />
             </div>
 
             {/* State */}
             <div className="col-span-2">
-              <label className="block text-sm text-stone-300 mb-2">
+              <label className={`block text-sm mb-2 ${
+                theme === "dark" ? "text-stone-300" : "text-gray-700"
+              }`}>
                 State <span className="text-red-400">*</span>
               </label>
               <select
                 name="state"
                 value={formData.state}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-teal-500"
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-teal-500 ${
+                  theme === "dark"
+                    ? "bg-white/10 border-white/20 text-white"
+                    : "bg-white border-gray-300 text-gray-900"
+                }`}
                 required
               >
-                <option value="" className="bg-stone-900">
+                <option value="" className={theme === "dark" ? "bg-stone-900" : "bg-white"}>
                   -- Select State --
                 </option>
                 {INDIAN_STATES.map((state) => (
-                  <option key={state} value={state} className="bg-stone-900">
+                  <option key={state} value={state} className={theme === "dark" ? "bg-stone-900" : "bg-white"}>
                     {state}
                   </option>
                 ))}
@@ -321,20 +369,26 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
 
             {/* Business Type */}
             <div>
-              <label className="block text-sm text-stone-300 mb-2">
+              <label className={`block text-sm mb-2 ${
+                theme === "dark" ? "text-stone-300" : "text-gray-700"
+              }`}>
                 Business Type <span className="text-red-400">*</span>
               </label>
               <select
                 name="businessType"
                 value={formData.businessType}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-teal-500"
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-teal-500 ${
+                  theme === "dark"
+                    ? "bg-white/10 border-white/20 text-white"
+                    : "bg-white border-gray-300 text-gray-900"
+                }`}
                 required
               >
-                <option value="B2C" className="bg-stone-900">
+                <option value="B2C" className={theme === "dark" ? "bg-stone-900" : "bg-white"}>
                   B2C (Business to Consumer)
                 </option>
-                <option value="B2B" className="bg-stone-900">
+                <option value="B2B" className={theme === "dark" ? "bg-stone-900" : "bg-white"}>
                   B2B (Business to Business)
                 </option>
               </select>
@@ -342,23 +396,29 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
 
             {/* Party Type */}
             <div>
-              <label className="block text-sm text-stone-300 mb-2">
+              <label className={`block text-sm mb-2 ${
+                theme === "dark" ? "text-stone-300" : "text-gray-700"
+              }`}>
                 Party Type <span className="text-red-400">*</span>
               </label>
               <select
                 name="partyType"
                 value={formData.partyType}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-teal-500"
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-teal-500 ${
+                  theme === "dark"
+                    ? "bg-white/10 border-white/20 text-white"
+                    : "bg-white border-gray-300 text-gray-900"
+                }`}
                 required
               >
-                <option value="CUSTOMER" className="bg-stone-900">
+                <option value="CUSTOMER" className={theme === "dark" ? "bg-stone-900" : "bg-white"}>
                   Customer
                 </option>
-                <option value="VENDOR" className="bg-stone-900">
+                <option value="VENDOR" className={theme === "dark" ? "bg-stone-900" : "bg-white"}>
                   Vendor
                 </option>
-                <option value="BOTH" className="bg-stone-900">
+                <option value="BOTH" className={theme === "dark" ? "bg-stone-900" : "bg-white"}>
                   Both
                 </option>
               </select>
@@ -367,9 +427,13 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
             {/* GSTIN (conditional based on businessType) */}
             {isB2B && (
               <div className="col-span-2">
-                <label className="block text-sm text-stone-300 mb-2">
+                <label className={`block text-sm mb-2 ${
+                  theme === "dark" ? "text-stone-300" : "text-gray-700"
+                }`}>
                   GSTIN <span className="text-red-400">*</span>
-                  <span className="text-xs text-stone-400 ml-2">
+                  <span className={`text-xs ml-2 ${
+                    theme === "dark" ? "text-stone-400" : "text-gray-500"
+                  }`}>
                     (Required for B2B customers)
                   </span>
                 </label>
@@ -380,22 +444,36 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
                   onChange={handleChange}
                   placeholder="22AAAAA0000A1Z5 (15 characters)"
                   maxLength={15}
-                  className={`w-full px-4 py-2 bg-white/10 border rounded-lg text-white placeholder-stone-400 focus:outline-none ${
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none ${
+                    theme === "dark"
+                      ? "bg-white/10 text-white placeholder-stone-400"
+                      : "bg-white text-gray-900 placeholder-gray-500"
+                  } ${
                     gstinError
                       ? "border-red-500 focus:border-red-500"
-                      : "border-white/20 focus:border-teal-500"
+                      : theme === "dark"
+                        ? "border-white/20 focus:border-teal-500"
+                        : "border-gray-300 focus:border-teal-500"
                   }`}
                   required={isB2B}
                 />
                 {gstinError && (
-                  <p className="text-xs text-red-400 mt-1">{gstinError}</p>
+                  <p className={`text-xs mt-1 ${
+                    theme === "dark" ? "text-red-400" : "text-red-600"
+                  }`}>
+                    {gstinError}
+                  </p>
                 )}
                 {!gstinError && formData.gstNumber && (
-                  <p className="text-xs text-green-400 mt-1">
+                  <p className={`text-xs mt-1 ${
+                    theme === "dark" ? "text-green-400" : "text-green-600"
+                  }`}>
                     ✓ Valid GSTIN format
                   </p>
                 )}
-                <p className="text-xs text-stone-400 mt-1">
+                <p className={`text-xs mt-1 ${
+                  theme === "dark" ? "text-stone-400" : "text-gray-500"
+                }`}>
                   Format: 2 digits (state code) + 10 chars (PAN) + 1 char
                   (entity) + 1 char (default Z) + 1 checksum digit
                 </p>
@@ -403,9 +481,19 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
             )}
 
             {!isB2B && (
-              <div className="col-span-2 bg-stone-800/50 border border-stone-700 rounded-lg px-4 py-3">
-                <p className="text-sm text-stone-400">
-                  <span className="font-semibold text-stone-300">Note:</span>{" "}
+              <div className={`col-span-2 border rounded-lg px-4 py-3 ${
+                theme === "dark"
+                  ? "bg-stone-800/50 border-stone-700"
+                  : "bg-gray-50 border-gray-200"
+              }`}>
+                <p className={`text-sm ${
+                  theme === "dark" ? "text-stone-400" : "text-gray-600"
+                }`}>
+                  <span className={`font-semibold ${
+                    theme === "dark" ? "text-stone-300" : "text-gray-700"
+                  }`}>
+                    Note:
+                  </span>{" "}
                   GSTIN is not required for B2C customers. Switch to B2B if you
                   need to add GSTIN.
                 </p>
@@ -416,10 +504,16 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
           {/* Loyalty Points (Read-Only if editing) */}
           {isEditing && customer && (
             <div>
-              <label className="block text-sm text-stone-300 mb-2">
+              <label className={`block text-sm mb-2 ${
+                theme === "dark" ? "text-stone-300" : "text-gray-700"
+              }`}>
                 Loyalty Points (Read-Only)
               </label>
-              <div className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-stone-300">
+              <div className={`w-full px-4 py-2 border rounded-lg ${
+                theme === "dark"
+                  ? "bg-white/5 border-white/10 text-stone-300"
+                  : "bg-gray-50 border-gray-200 text-gray-700"
+              }`}>
                 {customer.loyaltyPoints} points
               </div>
             </div>
@@ -430,7 +524,11 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+              className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
+                theme === "dark"
+                  ? "bg-white/10 hover:bg-white/20 text-white"
+                  : "bg-gray-200 hover:bg-gray-300 text-gray-900"
+              }`}
               disabled={isSaving}
             >
               Cancel

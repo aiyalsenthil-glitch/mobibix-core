@@ -59,6 +59,13 @@ export function ShopFormModal({ shop, onClose }: ShopFormModalProps) {
             : undefined,
         };
         await updateShop(shop.id, updatePayload);
+
+        // Notify other components about shop update
+        window.dispatchEvent(new CustomEvent("shopUpdated"));
+
+        // For cross-tab communication
+        localStorage.setItem("shop_updated", Date.now().toString());
+        localStorage.removeItem("shop_updated");
       } else {
         const createPayload: CreateShopDto = {
           name: formData.name,

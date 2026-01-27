@@ -17,7 +17,7 @@ const STATUS_COLORS: Record<InvoiceStatus, string> = {
 const PAYMENT_BADGES: Record<PaymentMode, string> = {
   CASH: "bg-gray-500/15 text-gray-200",
   UPI: "bg-purple-500/15 text-purple-300",
-  CARD: "bg-blue-500/15 text-blue-300",
+  CARD: "bg-teal-500/15 text-teal-300",
   BANK: "bg-amber-500/15 text-amber-300",
 };
 
