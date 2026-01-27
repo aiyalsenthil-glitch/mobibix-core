@@ -48,7 +48,6 @@ export class ShopProductsService {
           name,
           salePrice: dto.salePrice,
           costPrice: dto.costPrice,
-          stockOnHand: 0,
           type: 'GOODS',
         },
       });
@@ -72,7 +71,6 @@ export class ShopProductsService {
           name,
           salePrice: dto.salePrice,
           costPrice: dto.costPrice,
-          stockOnHand: 0,
           type: 'GOODS',
         },
       });

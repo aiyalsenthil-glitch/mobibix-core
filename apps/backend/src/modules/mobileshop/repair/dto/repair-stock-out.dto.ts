@@ -7,6 +7,11 @@ export class RepairStockItemDto {
   @IsInt()
   @Min(1)
   quantity: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  costPerUnit?: number; // Cost of part for COGS calculation
 }
 
 export class RepairStockOutDto {

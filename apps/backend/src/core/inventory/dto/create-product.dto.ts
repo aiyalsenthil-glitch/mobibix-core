@@ -6,6 +6,7 @@ import {
   IsArray,
   ArrayNotEmpty,
   IsNumber,
+  IsBoolean,
 } from 'class-validator';
 
 export enum ProductType {
@@ -33,8 +34,8 @@ export class CreateProductDto {
   category?: string;
 
   @IsOptional()
-  @IsString()
-  serialNumber?: string;
+  @IsBoolean()
+  isSerialized?: boolean; // For GOODS: true = track IMEI per unit, false = quantity-based
 
   @IsOptional()
   @IsNumber()
@@ -47,7 +48,7 @@ export class CreateProductDto {
   @IsOptional()
   @IsArray()
   @ArrayNotEmpty()
-  imeis?: string[]; // Only for MOBILE
+  imeis?: string[]; // Only for GOODS with isSerialized=true
 
   @IsOptional()
   @IsString()

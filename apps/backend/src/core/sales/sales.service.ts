@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { ProductType } from '@prisma/client';
+import { ProductType, IMEIStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { StockService } from '../stock/stock.service';
 import { SalesInvoiceDto } from './dto/sales-invoice.dto';
 import {
   generateSalesInvoiceNumber,
@@ -9,7 +10,10 @@ import {
 
 @Injectable()
 export class SalesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private stockService: StockService,
+  ) {}
 
   /**
    * Get next invoice number for the shop and financial year
@@ -130,28 +134,41 @@ export class SalesService {
           shopId: dto.shopId,
           isActive: true,
         },
-        select: { id: true, type: true },
+        select: { id: true, type: true, isSerialized: true },
       });
 
       if (products.length !== productIds.length) {
         throw new BadRequestException('Invalid product in items');
       }
 
-      // Build product type map
+      // Build product maps
       const productTypeMap = new Map(products.map((p) => [p.id, p.type]));
+      const productSerializedMap = new Map(
+        products.map((p) => [p.id, p.isSerialized]),
+      );
 
-      // Validate IMEI for GOODS products and collect IMEIs
+      // Validate IMEI for serialized products and collect IMEIs
       const allImeis: string[] = [];
       const imeisByProduct = new Map<string, string[]>();
 
       for (const item of dto.items) {
         const productType = productTypeMap.get(item.shopProductId);
-        if (productType === ProductType.GOODS && item.imeis?.length) {
-          if (!item.imeis?.length) {
-            throw new BadRequestException(
-              `IMEIs required for goods product ${item.shopProductId}`,
-            );
-          }
+        const isSerialized = productSerializedMap.get(item.shopProductId);
+
+        // ✅ FIX: Enforce isSerialized flag validation
+        if (isSerialized && !item.imeis?.length) {
+          throw new BadRequestException(
+            `Serialized product ${item.shopProductId} requires IMEI list`,
+          );
+        }
+
+        if (!isSerialized && item.imeis?.length) {
+          throw new BadRequestException(
+            `Non-serialized product ${item.shopProductId} cannot have IMEIs`,
+          );
+        }
+
+        if (isSerialized && item.imeis?.length) {
           if (item.quantity !== item.imeis.length) {
             throw new BadRequestException(
               `Quantity (${item.quantity}) must match IMEI count (${item.imeis.length})`,
@@ -162,21 +179,21 @@ export class SalesService {
         }
       }
 
-      // Validate IMEI availability (must exist and not be sold)
+      // Validate IMEI availability (must exist and be IN_STOCK status)
       if (allImeis.length > 0) {
         const imeiRecords = await tx.iMEI.findMany({
           where: {
             imei: { in: allImeis },
             tenantId,
           },
-          select: { imei: true, shopProductId: true, invoiceId: true },
+          select: { imei: true, shopProductId: true, status: true },
         });
 
         if (imeiRecords.length !== allImeis.length) {
           throw new BadRequestException('One or more IMEIs not found');
         }
 
-        // Validate IMEIs belong to correct products and are not sold
+        // Validate IMEIs belong to correct products and are IN_STOCK
         for (const record of imeiRecords) {
           const expectedProductId = Array.from(imeisByProduct.entries()).find(
             ([_, imeis]) => imeis.includes(record.imei),
@@ -186,9 +203,9 @@ export class SalesService {
               `IMEI ${record.imei} does not belong to product ${expectedProductId}`,
             );
           }
-          if (record.invoiceId) {
+          if (record.status !== 'IN_STOCK') {
             throw new BadRequestException(
-              `IMEI ${record.imei} already sold on invoice`,
+              `IMEI ${record.imei} is not available (status: ${record.status})`,
             );
           }
         }
@@ -318,24 +335,45 @@ export class SalesService {
         });
       }
 
-      // STOCK OUT (negative allowed)
-      const stockOutEntries = dto.items.map((i) => ({
-        tenantId,
-        shopId: dto.shopId,
-        shopProductId: i.shopProductId,
-        type: 'OUT' as const,
-        quantity: i.quantity,
-        referenceType: 'SALE' as const,
-        referenceId: invoice.id,
-      }));
+      // ✅ FIX: Use StockService.recordStockOut with validation (prevents negative stock)
+      // Get invoice items with IDs for referenceId
+      const createdInvoice = await tx.invoice.findUnique({
+        where: { id: invoice.id },
+        include: { items: true },
+      });
 
-      await tx.stockLedger.createMany({ data: stockOutEntries });
+      if (!createdInvoice) {
+        throw new BadRequestException('Failed to create invoice');
+      }
 
-      // Link IMEIs to invoice (marks them as sold via reference)
+      // Create stock OUT entries with validation
+      for (let i = 0; i < dto.items.length; i++) {
+        const item = dto.items[i];
+        const invoiceItem = createdInvoice.items[i];
+        const isSerialized = productSerializedMap.get(item.shopProductId);
+
+        // Use StockService for validation
+        await this.stockService.recordStockOut(
+          tenantId,
+          dto.shopId,
+          item.shopProductId,
+          item.quantity,
+          'SALE',
+          invoiceItem.id, // ✅ Use InvoiceItem.id for better audit trail
+          undefined, // costPerUnit not tracked on sale
+          isSerialized ? item.imeis : undefined,
+        );
+      }
+
+      // Link IMEIs to invoice and update status to SOLD
       if (allImeis.length > 0) {
         await tx.iMEI.updateMany({
           where: { imei: { in: allImeis } },
-          data: { invoiceId: invoice.id },
+          data: {
+            invoiceId: invoice.id,
+            status: 'SOLD',
+            soldAt: new Date(),
+          },
         });
       }
 
@@ -421,24 +459,27 @@ export class SalesService {
 
       if (!shop) throw new BadRequestException('Invalid shop');
 
-      // 3️⃣ Reverse old stock (IN)
-      const oldStockInEntries = oldInvoice.items.map((item) => ({
-        tenantId,
-        shopId: oldInvoice.shopId,
-        shopProductId: item.shopProductId,
-        type: 'IN' as const,
-        quantity: item.quantity,
-        referenceType: 'SALE' as const,
-        referenceId: oldInvoice.id,
-        note: 'Invoice updated - reverse old',
-      }));
-
-      await tx.stockLedger.createMany({ data: oldStockInEntries });
+      // 3️⃣ Reverse old stock (IN) using StockService with InvoiceItem.id
+      for (const item of oldInvoice.items) {
+        await this.stockService.recordStockIn(
+          tenantId,
+          oldInvoice.shopId,
+          item.shopProductId,
+          item.quantity,
+          'SALE',
+          item.id,
+        );
+      }
 
       // 3️⃣.5️⃣ Revert old IMEI links (mark as available again)
+      // ✅ FIX: Reset status to IN_STOCK and clear soldAt
       await tx.iMEI.updateMany({
         where: { invoiceId: oldInvoice.id },
-        data: { invoiceId: null },
+        data: {
+          invoiceId: null,
+          status: IMEIStatus.IN_STOCK,
+          soldAt: null,
+        },
       });
 
       // 4️⃣ Reverse old financial entry (OUT)
@@ -455,7 +496,7 @@ export class SalesService {
         },
       });
 
-      // 5️⃣ Fetch new products for validation + type checking
+      // 5️⃣ Fetch new products for validation + type checking (include isSerialized)
       const productIds = dto.items.map((i) => i.shopProductId);
       const products = await tx.shopProduct.findMany({
         where: {
@@ -464,28 +505,36 @@ export class SalesService {
           shopId: dto.shopId,
           isActive: true,
         },
-        select: { id: true, type: true },
+        select: { id: true, type: true, isSerialized: true },
       });
 
       if (products.length !== productIds.length) {
         throw new BadRequestException('Invalid product in items');
       }
 
-      // Build product type map
+      // Build product maps
       const productTypeMap = new Map(products.map((p) => [p.id, p.type]));
+      const productSerializedMap = new Map(
+        products.map((p) => [p.id, p.isSerialized]),
+      );
 
-      // Validate IMEI for MOBILE products and collect IMEIs
+      // Validate IMEI for serialized products and collect IMEIs
       const newAllImeis: string[] = [];
       const newImeisByProduct = new Map<string, string[]>();
 
       for (const item of dto.items) {
-        const productType = productTypeMap.get(item.shopProductId);
-        if (productType === ProductType.GOODS && item.imeis?.length) {
-          if (!item.imeis?.length) {
-            throw new BadRequestException(
-              `IMEIs required for goods product ${item.shopProductId}`,
-            );
-          }
+        const isSerialized = productSerializedMap.get(item.shopProductId);
+        if (isSerialized && !item.imeis?.length) {
+          throw new BadRequestException(
+            `Serialized product ${item.shopProductId} requires IMEI list`,
+          );
+        }
+        if (!isSerialized && item.imeis?.length) {
+          throw new BadRequestException(
+            `Non-serialized product ${item.shopProductId} cannot have IMEIs`,
+          );
+        }
+        if (isSerialized && item.imeis?.length) {
           if (item.quantity !== item.imeis.length) {
             throw new BadRequestException(
               `Quantity (${item.quantity}) must match IMEI count (${item.imeis.length})`,
@@ -630,25 +679,32 @@ export class SalesService {
         });
       }
 
-      // 🔟 Create new stock entries (OUT)
-      const newStockOutEntries = dto.items.map((i) => ({
-        tenantId,
-        shopId: dto.shopId,
-        shopProductId: i.shopProductId,
-        type: 'OUT' as const,
-        quantity: i.quantity,
-        referenceType: 'SALE' as const,
-        referenceId: updatedInvoice.id,
-        note: 'Invoice updated - new stock',
-      }));
+      // 🔟 Create new stock entries (OUT) using StockService with InvoiceItem.id
+      for (let i = 0; i < dto.items.length; i++) {
+        const item = dto.items[i];
+        const invoiceItem = updatedInvoice.items[i];
+        const isSerialized = productSerializedMap.get(item.shopProductId);
+        await this.stockService.recordStockOut(
+          tenantId,
+          dto.shopId,
+          item.shopProductId,
+          item.quantity,
+          'SALE',
+          invoiceItem.id,
+          undefined,
+          isSerialized ? item.imeis : undefined,
+        );
+      }
 
-      await tx.stockLedger.createMany({ data: newStockOutEntries });
-
-      // 🔟.5️⃣ Link new IMEIs to updated invoice
+      // 🔟.5️⃣ Link new IMEIs to updated invoice and mark SOLD
       if (newAllImeis.length > 0) {
         await tx.iMEI.updateMany({
           where: { imei: { in: newAllImeis } },
-          data: { invoiceId: updatedInvoice.id },
+          data: {
+            invoiceId: updatedInvoice.id,
+            status: IMEIStatus.SOLD,
+            soldAt: new Date(),
+          },
         });
       }
 
@@ -686,26 +742,27 @@ export class SalesService {
       });
 
       // 2️⃣.5️⃣ Revert IMEI links (mark as available again)
+      // ✅ FIX: Reset status to IN_STOCK and clear soldAt
       await tx.iMEI.updateMany({
         where: { invoiceId: invoice.id },
-        data: { invoiceId: null },
+        data: {
+          invoiceId: null,
+          status: IMEIStatus.IN_STOCK,
+          soldAt: null,
+        },
       });
 
-      // 3️⃣ Reverse stock (IN)
-      const stockInEntries = invoice.items.map((item) => ({
-        tenantId,
-        shopId: invoice.shopId,
-        shopProductId: item.shopProductId,
-        type: 'IN' as const,
-        quantity: item.quantity,
-        referenceType: 'SALE' as const,
-        referenceId: invoice.id,
-        note: 'Invoice cancelled',
-      }));
-
-      await tx.stockLedger.createMany({
-        data: stockInEntries,
-      });
+      // 3️⃣ Reverse stock (IN) using StockService with InvoiceItem.id
+      for (const item of invoice.items) {
+        await this.stockService.recordStockIn(
+          tenantId,
+          invoice.shopId,
+          item.shopProductId,
+          item.quantity,
+          'SALE',
+          item.id,
+        );
+      }
 
       // 4️⃣ Reverse financial entry (OUT)
       await tx.financialEntry.create({

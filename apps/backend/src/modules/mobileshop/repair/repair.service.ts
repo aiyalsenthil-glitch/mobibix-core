@@ -100,7 +100,39 @@ export class RepairService {
         }
       }
 
-      // STOCK OUT entries (negative allowed)
+      // Validate stock availability before creating OUT entries
+      for (const item of dto.items) {
+        const product = products.find((p) => p.id === item.shopProductId);
+        if (!product) continue;
+
+        // Calculate current stock from StockLedger
+        const stockEntries = await tx.stockLedger.findMany({
+          where: { shopProductId: item.shopProductId, tenantId },
+          select: { type: true, quantity: true },
+        });
+
+        const currentStock = stockEntries.reduce((sum, e) => {
+          return e.type === 'IN' ? sum + e.quantity : sum - e.quantity;
+        }, 0);
+
+        if (currentStock < item.quantity) {
+          throw new BadRequestException(
+            `Insufficient stock for ${product.name}. Available: ${currentStock}, Required: ${item.quantity}`,
+          );
+        }
+      }
+
+      // Create RepairPartUsed entries first
+      const partsUsedEntries = dto.items.map((i) => ({
+        jobCardId: dto.jobCardId,
+        shopProductId: i.shopProductId,
+        quantity: i.quantity,
+        costPerUnit: i.costPerUnit,
+      }));
+
+      await tx.repairPartUsed.createMany({ data: partsUsedEntries });
+
+      // Create corresponding StockLedger OUT entries
       const entries = dto.items.map((i) => ({
         tenantId,
         shopId: dto.shopId,
@@ -109,19 +141,11 @@ export class RepairService {
         quantity: i.quantity,
         referenceType: 'REPAIR' as const,
         referenceId: dto.jobCardId,
+        costPerUnit: i.costPerUnit,
         note: dto.note ?? null,
       }));
 
       await tx.stockLedger.createMany({ data: entries });
-
-      // FIX 4: Track parts used per repair (RepairPartUsed table)
-      const partsUsedEntries = dto.items.map((i) => ({
-        jobCardId: dto.jobCardId,
-        shopProductId: i.shopProductId,
-        quantity: i.quantity,
-      }));
-
-      await tx.repairPartUsed.createMany({ data: partsUsedEntries });
 
       return { success: true, entries: entries.length };
     });
@@ -444,6 +468,62 @@ export class RepairService {
         billingMode: dto.billingMode,
         status: 'DELIVERED',
       };
+    });
+  }
+
+  /**
+   * Cancel repair job and reverse stock ledger entries
+   * Creates IN entries to reverse all OUT entries linked to this job
+   */
+  async cancelRepair(tenantId: string, shopId: string, jobCardId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // Validate job card exists
+      const job = await tx.jobCard.findFirst({
+        where: { id: jobCardId, tenantId, shopId },
+        select: { id: true, status: true },
+      });
+
+      if (!job) {
+        throw new BadRequestException('Job card not found');
+      }
+
+      // Prevent cancelling already delivered jobs
+      if (job.status === 'DELIVERED' || job.status === 'CANCELLED') {
+        throw new BadRequestException(
+          `Cannot cancel job in ${job.status} status`,
+        );
+      }
+
+      // Find all parts used for this repair
+      const partsUsed = await tx.repairPartUsed.findMany({
+        where: { jobCardId },
+        select: { shopProductId: true, quantity: true, costPerUnit: true },
+      });
+
+      if (partsUsed.length > 0) {
+        // Create reversal IN entries to restore stock
+        const reversalEntries = partsUsed.map((part) => ({
+          tenantId,
+          shopId,
+          shopProductId: part.shopProductId,
+          type: 'IN' as const,
+          quantity: part.quantity,
+          referenceType: 'REPAIR' as const,
+          referenceId: jobCardId,
+          costPerUnit: part.costPerUnit,
+          note: `Stock reversal: Job ${jobCardId} cancelled`,
+        }));
+
+        await tx.stockLedger.createMany({ data: reversalEntries });
+      }
+
+      // Update job status to CANCELLED
+      await tx.jobCard.update({
+        where: { id: jobCardId },
+        data: { status: 'CANCELLED', updatedAt: new Date() },
+      });
+
+      return { success: true, partsReversed: partsUsed.length };
     });
   }
 }

@@ -21,10 +21,15 @@ export class StockInDto {
   @IsOptional()
   @IsArray()
   @ArrayNotEmpty()
-  imeis?: string[]; // For MOBILE
+  imeis?: string[]; // For serialized products
 
   @IsOptional()
   @IsInt()
   @Min(1)
-  quantity?: number; // For ACCESSORY/SPARE
+  quantity?: number; // For bulk products
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  costPerUnit?: number; // For COGS tracking
 }

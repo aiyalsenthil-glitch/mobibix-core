@@ -14,19 +14,21 @@ HP-S-202526-0001
 
 ## Financial Year Examples
 
-| Date Range | FY Code |
-|-----------|---------|
-| Apr 1, 2025 - Mar 31, 2026 | 202526 |
-| Apr 1, 2026 - Mar 31, 2027 | 202627 |
-| Apr 1, 2027 - Mar 31, 2028 | 202728 |
+| Date Range                 | FY Code |
+| -------------------------- | ------- |
+| Apr 1, 2025 - Mar 31, 2026 | 202526  |
+| Apr 1, 2026 - Mar 31, 2027 | 202627  |
+| Apr 1, 2027 - Mar 31, 2028 | 202728  |
 
-**How to Calculate:** 
+**How to Calculate:**
+
 - If month is January, February, or March → FY is (year-1) to (year)
 - If month is April or later → FY is (year) to (year+1)
 
 ## Real Examples
 
 ### Sales Invoices (Type S)
+
 ```
 HP-S-202526-0001  ← First sales invoice for HP shop in FY 202526
 HP-S-202526-0002  ← Second sales invoice
@@ -35,6 +37,7 @@ HP-S-202627-0001  ← First invoice on April 1, 2026 (sequence reset!)
 ```
 
 ### Purchase Invoices (Type P)
+
 ```
 HP-P-202526-0001  ← First purchase for HP (separate from sales!)
 HP-P-202526-0002  ← Second purchase
@@ -42,6 +45,7 @@ AT-P-202526-0001  ← Different shop, different sequence
 ```
 
 ### Job Cards (Type J)
+
 ```
 HP-J-202526-0001  ← First job card for HP
 HP-J-202526-0002  ← Second job card
@@ -51,11 +55,11 @@ HP-J-202526-0002  ← Second job card
 
 **April 1, at midnight** - Every new financial year
 
-| Date | FY | Last Invoice Created | First Invoice After Reset |
-|------|----|--------------------|-------------------------|
-| Mar 31, 2026 | 202526 | HP-S-202526-9999 | (can't create more) |
-| Apr 1, 2026 | 202627 | - | HP-S-202627-0001 ← **RESET!** |
-| Apr 2, 2026 | 202627 | - | HP-S-202627-0002 |
+| Date         | FY     | Last Invoice Created | First Invoice After Reset     |
+| ------------ | ------ | -------------------- | ----------------------------- |
+| Mar 31, 2026 | 202526 | HP-S-202526-9999     | (can't create more)           |
+| Apr 1, 2026  | 202627 | -                    | HP-S-202627-0001 ← **RESET!** |
+| Apr 2, 2026  | 202627 | -                    | HP-S-202627-0002              |
 
 ## Key Points
 
@@ -72,14 +76,16 @@ HP-J-202526-0002  ← Second job card
 ## Database Schema
 
 **Invoices Table:**
+
 - `invoiceNumber` - The full number (e.g., "HP-S-202526-0001")
 - `shopId` - Which shop created it
 - `createdAt` - When it was created
 
 **Example Query** (shows how system finds next sequence):
+
 ```sql
-SELECT invoiceNumber FROM invoices 
-WHERE shopId = 'hp-shop-id' 
+SELECT invoiceNumber FROM invoices
+WHERE shopId = 'hp-shop-id'
   AND invoiceNumber LIKE '%-S-202526-%'
 ORDER BY createdAt DESC;
 
@@ -90,15 +96,19 @@ ORDER BY createdAt DESC;
 ## Troubleshooting
 
 **Q: Invoice shows "AT-P-260127-0011" instead of "HP-S-202526-0001"**
+
 - A: Old code was hardcoded in frontend. This has been fixed. Clear cache and reload.
 
 **Q: Two users created invoices at same time, got same number?**
+
 - A: System has race condition protection. If this happens, report to team with exact time.
 
 **Q: Sequence didn't reset on April 1?**
+
 - A: Check that backend is running the latest code. Sequence resets automatically through FY calculation.
 
 **Q: Can we use more than 9999 invoices per year?**
+
 - A: Currently limited to 9999 (four-digit sequence). Contact team to increase format if needed.
 
 ---

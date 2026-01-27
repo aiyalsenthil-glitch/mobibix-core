@@ -415,6 +415,7 @@ model Shop {
   products     ShopProduct[]
   stockEntries StockLedger[]
   invoices     Invoice[]
+  transferredIMEIs IMEI[]         @relation("TransferredIMEIs") // IMEIs transferred TO this shop
 
   tenant           Tenant           @relation(fields: [tenantId], references: [id])
   financialEntries FinancialEntry[]
@@ -584,15 +585,19 @@ model ShopProduct {
   updatedAt       DateTime    @updatedAt
   type            ProductType // GOODS, SPARE, SERVICE
   category        String? // Free text category (e.g. Charger, Cover)
-  serialNumber    String?     @unique // For GOODS, globally unique if present
+
+  // ✅ NEW: isSerialized flag to distinguish tracked units from bulk items
+  // TRUE (serialized) = track IMEI per unit (mobiles, laptops)
+  // FALSE (bulk) = track quantity via StockLedger (accessories, spares)
+  isSerialized    Boolean     @default(false)
 
   // Tax & HSN (Local override or standalone)
   hsnCode String?
   gstRate Float?  @default(0)
 
   // Stock & Inventory
-  stockOnHand   Int     @default(0)
-  reservedStock Int     @default(0)
+  // 🔴 REMOVED: stockOnHand (was causing confusion - StockLedger is the ONLY source of truth)
+  // For current stock: Calculate from StockLedger (bulk) or count IMEI with status=IN_STOCK (serialized)
   reorderLevel  Int?
   reorderQty    Int?
   barcode       String?
@@ -616,19 +621,33 @@ model ShopProduct {
 }
 
 model IMEI {
-  id            String      @id @default(cuid())
+  id            String       @id @default(cuid())
   tenantId      String
   shopProductId String
-  imei          String      @unique
-  invoiceId     String? // Linked invoice when sold; null = available
-  createdAt     DateTime    @default(now())
-  product       ShopProduct @relation(fields: [shopProductId], references: [id])
-  tenant        Tenant      @relation(fields: [tenantId], references: [id])
-  invoice       Invoice?    @relation(fields: [invoiceId], references: [id])
+  imei          String       // ✅ FIXED: Unique per tenant (not globally)
+  status        IMEIStatus   @default(IN_STOCK) // Unit lifecycle status
+  invoiceId     String?      // Linked invoice when SOLD
+  transferredToShopId String? // Destination shop when TRANSFERRED
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  // Audit trail for unit lifecycle
+  soldAt        DateTime? // When was this unit sold
+  returnedAt    DateTime? // When was this unit returned
+  damageNotes   String?   // Why is unit damaged (DAMAGED status)
+  lostReason    String?   // Why is unit lost (LOST status - irreversible)
+  
+  product       ShopProduct  @relation(fields: [shopProductId], references: [id])
+  tenant        Tenant       @relation(fields: [tenantId], references: [id])
+  invoice       Invoice?     @relation(fields: [invoiceId], references: [id])
+  transferredToShop Shop?    @relation("TransferredIMEIs", fields: [transferredToShopId], references: [id])
 
+  @@unique([tenantId, imei]) // ✅ CRITICAL: Tenant-scoped uniqueness for multi-tenant SaaS
   @@index([tenantId])
   @@index([shopProductId])
   @@index([invoiceId])
+  @@index([status])
+  @@index([transferredToShopId])
 }
 
 model StockLedger {
@@ -636,10 +655,11 @@ model StockLedger {
   tenantId      String
   shopId        String
   shopProductId String
-  type          StockEntryType
-  quantity      Int
-  referenceType StockRefType?
-  referenceId   String?
+  type          StockEntryType // IN (purchase, transfer) or OUT (sale, repair, adjustment)
+  quantity      Int            // Must be positive; validate before OUT to prevent negatives
+  referenceType StockRefType?  // PURCHASE, SALE, REPAIR, ADJUSTMENT, TRANSFER
+  referenceId   String?        // PurchaseItem.id, InvoiceItem.id, RepairPartUsed.id, etc.
+  costPerUnit   Int?           // ✅ NEW: Cost per unit for COGS calculation
   note          String?
   createdAt     DateTime       @default(now())
 
@@ -650,6 +670,7 @@ model StockLedger {
   @@index([tenantId, shopId, createdAt])
   @@index([shopProductId, createdAt])
   @@index([tenantId, shopId, type])
+  @@index([referenceType, referenceId]) // ✅ NEW: Trace movements by reference
 }
 
 model Invoice {
@@ -718,13 +739,22 @@ model RepairPartUsed {
   jobCardId     String
   shopProductId String
   quantity      Int
+  costPerUnit   Int? // ✅ Snapshot from StockLedger.costPerUnit (denormalized for reporting)
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
+  // ⚠️ CRITICAL: Stock Impact Rules
+  // 1. When created: MUST create StockLedger OUT entry with referenceType=REPAIR
+  // 2. When job cancelled: MUST create StockLedger IN entry to reverse the OUT
+  // 3. costPerUnit: Copy from corresponding StockLedger OUT entry (source of truth)
+  // 4. Never calculate from product.costPrice (use StockLedger.costPerUnit)
+  // 5. LOST status: Treated as irreversible OUT (no reversal allowed)
   jobCard JobCard     @relation(fields: [jobCardId], references: [id])
   product ShopProduct @relation(fields: [shopProductId], references: [id])
 
   @@unique([jobCardId, shopProductId])
   @@index([jobCardId])
+  @@index([shopProductId])
 }
 
 model FinancialEntry {
@@ -1258,4 +1288,15 @@ enum POStatus {
   PARTIALLY_RECEIVED
   RECEIVED
   CANCELLED
+}
+
+// ✅ NEW: IMEI Status Enum
+// Tracks lifecycle of serialized product units (mobiles, laptops, etc.)
+enum IMEIStatus {
+  IN_STOCK      // Available for sale
+  SOLD          // Sold to customer (linked to invoice)
+  RETURNED      // Returned from customer (refund/exchange)
+  DAMAGED       // Damaged/non-functional, can't sell
+  TRANSFERRED   // Transferred to another shop
+  LOST          // Lost/stolen/missing
 }
