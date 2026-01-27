@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   listJobCards,
   updateJobCardStatus,
@@ -45,6 +46,7 @@ const STATUS_COLORS: Record<JobStatus, string> = {
 };
 
 export default function JobCardsPage() {
+  const router = useRouter();
   const { theme } = useTheme();
   const {
     shops,
@@ -96,8 +98,7 @@ export default function JobCardsPage() {
   };
 
   const handleAddNew = () => {
-    setSelectedJobCard(null);
-    setIsModalOpen(true);
+    router.push("/jobcards/create");
   };
 
   const handleEdit = (jobCard: JobCard) => {
@@ -225,7 +226,7 @@ export default function JobCardsPage() {
               <tbody
                 className={`divide-y ${theme === "dark" ? "divide-white/10" : "divide-gray-300"}`}
               >
-                {jobCards.map((job) => (
+                {(jobCards || []).map((job) => (
                   <tr
                     key={job.id}
                     className="hover:bg-gray-50 dark:hover:bg-white/5 transition"

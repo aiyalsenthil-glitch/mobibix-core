@@ -38,7 +38,12 @@ const PAYMENT_BADGES: Record<PaymentMode, string> = {
 export default function PurchasesPage() {
   const { theme } = useTheme();
   const router = useRouter();
-  const { shops, selectedShopId: contextSelectedShopId, selectShop, isLoadingShops } = useShop();
+  const {
+    shops,
+    selectedShopId: contextSelectedShopId,
+    selectShop,
+    isLoadingShops,
+  } = useShop();
   const [selectedShopId, setSelectedShopId] = useState("");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -101,11 +106,6 @@ export default function PurchasesPage() {
   useEffect(() => {
     setSelectedShopId(contextSelectedShopId);
   }, [contextSelectedShopId]);
-      }
-    };
-
-    loadData();
-  }, []);
 
   const loadPurchases = async () => {
     if (!selectedShopId) {

@@ -1,4 +1,5 @@
 import { Injectable, ConflictException } from '@nestjs/common';
+import { ProductType as PrismaProductType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StockService, type StockBalance } from '../stock/stock.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -18,12 +19,21 @@ export class InventoryService {
       if (exists) throw new ConflictException('Serial number already exists');
     }
 
+    const normalizedType: PrismaProductType = (() => {
+      const t = dto.type?.toString().toUpperCase();
+      if (t === 'ACCESSORY') return PrismaProductType.GOODS;
+      if (t === 'GOODS' || t === 'SPARE' || t === 'SERVICE') {
+        return t as PrismaProductType;
+      }
+      return PrismaProductType.GOODS;
+    })();
+
     return this.prisma.shopProduct.create({
       data: {
         tenantId,
         shopId: dto.shopId,
         name: dto.name,
-        type: dto.type,
+        type: normalizedType,
         category: dto.category,
         serialNumber: dto.serialNumber,
         salePrice: dto.salePrice,
@@ -36,6 +46,15 @@ export class InventoryService {
   }
 
   async updateProduct(tenantId: string, id: string, dto: CreateProductDto) {
+    const normalizedType: PrismaProductType = (() => {
+      const t = dto.type?.toString().toUpperCase();
+      if (t === 'ACCESSORY') return PrismaProductType.GOODS;
+      if (t === 'GOODS' || t === 'SPARE' || t === 'SERVICE') {
+        return t as PrismaProductType;
+      }
+      return PrismaProductType.GOODS;
+    })();
+
     return this.prisma.shopProduct.update({
       where: {
         id,
@@ -43,7 +62,7 @@ export class InventoryService {
       },
       data: {
         name: dto.name,
-        type: dto.type,
+        type: normalizedType,
         category: dto.category,
         serialNumber: dto.serialNumber,
         salePrice: dto.salePrice,

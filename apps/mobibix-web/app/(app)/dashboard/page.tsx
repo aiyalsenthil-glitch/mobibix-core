@@ -43,66 +43,49 @@ function StatCard({
   value,
   icon,
   subtext,
-  bgColor,
+  accentColor,
   onClick,
 }: {
   label: string;
   value: string | number;
   icon: string;
   subtext?: string;
-  bgColor: string;
+  accentColor: "teal" | "amber" | "emerald" | "cyan" | "yellow" | "orange";
   onClick?: () => void;
 }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+
+  // Map accent colors to tailwind classes for icon background and text
+  const colorMap = {
+    teal: { bg: "bg-teal-50 dark:bg-teal-900/20", text: "text-teal-600 dark:text-teal-400" },
+    amber: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-600 dark:text-amber-400" },
+    emerald: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-600 dark:text-emerald-400" },
+    cyan: { bg: "bg-cyan-50 dark:bg-cyan-900/20", text: "text-cyan-600 dark:text-cyan-400" },
+    yellow: { bg: "bg-yellow-50 dark:bg-yellow-900/20", text: "text-yellow-600 dark:text-yellow-400" },
+    orange: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-600 dark:text-orange-400" },
+  };
+
+  const colors = colorMap[accentColor];
+
   return (
     <div
       onClick={onClick}
-      className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${onClick ? "cursor-pointer" : "cursor-default"} ${bgColor} ${
-        !isDark ? "border-2 border-white/50 shadow-lg" : ""
+      className={`group relative overflow-hidden rounded-xl bg-card border border-border p-5 transition-all duration-200 hover:shadow-md ${
+        onClick ? "cursor-pointer hover:border-primary/50" : "cursor-default"
       }`}
     >
-      {/* Content */}
-      <div className="relative space-y-3">
-        {/* Icon */}
+      <div className="flex items-start justify-between">
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-muted-foreground">{label}</p>
+          <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
+          {subtext && <p className="text-xs text-muted-foreground">{subtext}</p>}
+        </div>
         <div
-          className={`flex items-center justify-center w-12 h-12 rounded-xl ${
-            isDark
-              ? "bg-white/80 dark:bg-gray-800 text-white shadow-md"
-              : "bg-white/90 text-teal-600 shadow-lg"
-          } text-2xl group-hover:scale-110 transition-transform duration-300`}
+          className={`flex h-10 w-10 items-center justify-center rounded-lg ${colors.bg} ${colors.text} text-xl transition-colors`}
         >
           {icon}
         </div>
-
-        {/* Label */}
-        <p
-          className={`text-sm font-bold tracking-wide ${
-            isDark ? "text-gray-300" : "text-teal-900"
-          }`}
-        >
-          {label}
-        </p>
-
-        {/* Value */}
-        <p
-          className={`text-3xl font-black leading-none ${
-            isDark ? "text-white" : "text-teal-700"
-          }`}
-        >
-          {value}
-        </p>
-
-        {/* Subtext */}
-        {subtext && (
-          <p
-            className={`text-xs font-medium ${
-              isDark ? "text-gray-400" : "text-teal-600/80"
-            }`}
-          >
-            {subtext}
-          </p>
-        )}
       </div>
     </div>
   );
@@ -112,33 +95,13 @@ function ChartSection({ title }: { title: string }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   return (
-    <div
-      className={`rounded-2xl border p-8 shadow-lg ${
-        isDark
-          ? "bg-gradient-to-br from-gray-900 to-gray-950 border-gray-800"
-          : "bg-gradient-to-br from-white via-teal-50/30 to-white border-teal-100 shadow-teal-500/5"
-      }`}
-    >
-      <h3
-        className={`text-lg font-bold mb-6 ${
-          isDark ? "text-white" : "text-teal-900"
-        }`}
-      >
-        {title}
-      </h3>
-      <div
-        className={`h-64 flex items-center justify-center rounded-xl ${
-          isDark
-            ? "bg-gray-800 text-gray-400"
-            : "bg-gradient-to-br from-teal-50/50 to-white text-teal-700 border border-teal-100"
-        }`}
-      >
-        <p className="text-center">
+    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <h3 className="text-base font-semibold text-foreground mb-6">{title}</h3>
+      <div className={`h-64 flex items-center justify-center rounded-lg border border-dashed border-border ${isDark ? "bg-muted/10" : "bg-muted/30"}`}>
+        <p className="text-center text-muted-foreground">
           Chart placeholder - Connect your data source
           <br />
-          <span
-            className={`${isDark ? "text-gray-500" : "text-gray-600"} text-xs`}
-          >
+          <span className="text-xs opacity-70">
             This section will display analytics
           </span>
         </p>
@@ -192,29 +155,27 @@ export default function DashboardPage() {
   const repairs = data.repairs || data.jobs;
 
   return (
-    <div className={`space-y-8 ${isDark ? "text-white" : "text-gray-900"}`}>
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col gap-2 mb-8">
-        <p className="text-lg font-semibold text-black dark:text-gray-400">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Overview</h1>
+        <p className="text-base text-muted-foreground">
           Welcome back! Here's your business overview.
         </p>
       </div>
 
       {/* Today's Sales Section */}
       <div>
-        <h2
-          className="text-2xl font-bold dark:text-white mb-4 flex items-center gap-2"
-          style={{ color: isDark ? undefined : "#000000" }}
-        >
-          <span>📊</span> Today's Sales
+        <h2 className="mb-4 text-lg font-semibold text-foreground flex items-center gap-2">
+           Today's Sales
         </h2>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total Sales"
             value={`$${(data.today?.salesAmount ?? 0).toLocaleString()}`}
             icon="💰"
             subtext="Today's revenue"
-            bgColor="bg-gradient-to-br from-teal-100 via-teal-50 to-teal-100 dark:from-pink-500/20 dark:to-pink-500/10 border border-teal-200 dark:border-pink-500/30"
+            accentColor="teal"
             onClick={() => router.push("/dashboard/sales-detail")}
           />
           <StatCard
@@ -222,7 +183,7 @@ export default function DashboardPage() {
             value={data.today?.jobsReceived ?? 0}
             icon="⭐"
             subtext="Sold today"
-            bgColor="bg-gradient-to-br from-amber-100 via-amber-50 to-amber-100 dark:from-amber-500/20 dark:to-amber-500/10 border border-amber-200 dark:border-amber-500/30"
+            accentColor="amber"
             onClick={() => router.push("/dashboard/products-detail")}
           />
           <StatCard
@@ -230,7 +191,7 @@ export default function DashboardPage() {
             value={data.month?.invoiceCount ?? 0}
             icon="📦"
             subtext="This month"
-            bgColor="bg-gradient-to-br from-emerald-100 via-emerald-50 to-emerald-100 dark:from-green-500/20 dark:to-green-500/10 border border-emerald-200 dark:border-green-500/30"
+            accentColor="emerald"
             onClick={() =>
               router.push("/dashboard/products-detail?period=month")
             }
@@ -240,7 +201,7 @@ export default function DashboardPage() {
             value={data.inventory?.totalProducts ?? 0}
             icon="📦"
             subtext="In inventory"
-            bgColor="bg-gradient-to-br from-cyan-100 via-cyan-50 to-cyan-100 dark:from-purple-500/20 dark:to-purple-500/10 border border-cyan-200 dark:border-purple-500/30"
+            accentColor="cyan"
             onClick={() => router.push("/dashboard/inventory-detail")}
           />
         </div>
@@ -248,40 +209,37 @@ export default function DashboardPage() {
 
       {/* Today's Repair Section */}
       <div>
-        <h2
-          className="text-2xl font-bold dark:text-white mb-4 flex items-center gap-2"
-          style={{ color: isDark ? undefined : "#000000" }}
-        >
-          <span>🔧</span> Today's Repairs
+        <h2 className="mb-4 text-lg font-semibold text-foreground flex items-center gap-2">
+           Today's Repairs
         </h2>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Received"
             value={repairs?.inProgress ?? 0}
             icon="📥"
             subtext="In progress"
-            bgColor="bg-gradient-to-br from-teal-100 via-teal-50 to-teal-100 dark:from-teal-500/20 dark:to-teal-500/10 border border-teal-200 dark:border-teal-500/30"
+            accentColor="teal"
           />
           <StatCard
             label="In Process"
             value={repairs?.waitingForParts ?? 0}
             icon="⚙️"
             subtext="Being worked on"
-            bgColor="bg-gradient-to-br from-yellow-100 via-yellow-50 to-yellow-100 dark:from-yellow-500/20 dark:to-yellow-500/10 border border-yellow-200 dark:border-yellow-500/30"
+            accentColor="yellow"
           />
           <StatCard
             label="Delivered"
             value={repairs?.deliveredToday ?? 0}
             icon="✅"
             subtext="Ready for pickup"
-            bgColor="bg-gradient-to-br from-teal-200 via-teal-100 to-teal-200 dark:from-teal-500/20 dark:to-teal-500/10 border border-teal-300 dark:border-teal-500/30"
+            accentColor="teal"
           />
           <StatCard
             label="Await Spares"
             value={repairs?.ready ?? 0}
             icon="⏳"
             subtext="Waiting for parts"
-            bgColor="bg-gradient-to-br from-orange-100 via-orange-50 to-orange-100 dark:from-red-500/20 dark:to-red-500/10 border border-orange-200 dark:border-red-500/30"
+            accentColor="orange"
           />
         </div>
       </div>
@@ -303,78 +261,43 @@ export default function DashboardPage() {
       {/* Additional Insights */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Quick Actions */}
-        <div
-          className={`rounded-2xl border p-8 shadow-lg ${
-            useTheme().theme === "dark"
-              ? "bg-gradient-to-br from-gray-900 to-gray-950 border-gray-800"
-              : "bg-gradient-to-br from-white via-teal-50/30 to-white border-teal-100 shadow-teal-500/5"
-          }`}
-        >
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-teal-500/30">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${isDark ? "bg-teal-900/30 text-teal-400" : "bg-teal-50 text-teal-600"}`}>
               ⚡
             </div>
-            <h3
-              className={`text-lg font-bold ${
-                useTheme().theme === "dark" ? "text-white" : "text-teal-900"
-              }`}
-            >
+            <h3 className="text-base font-semibold text-foreground">
               Quick Actions
             </h3>
           </div>
           <div className="space-y-3">
-            <button className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-teal-600 via-teal-500 to-teal-600 hover:from-teal-700 hover:via-teal-600 hover:to-teal-700 text-white font-bold transition-all duration-200 shadow-lg shadow-teal-500/30 hover:shadow-xl hover:scale-[1.02]">
+            <button 
+              onClick={() => router.push("/jobcards/create")}
+              className="w-full px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium transition-colors hover:bg-primary/90 shadow-sm"
+            >
               Create New Job Card
             </button>
-            <button
-              className={`w-full px-4 py-3 rounded-xl font-semibold transition-all duration-200 ${
-                useTheme().theme === "dark"
-                  ? "bg-gray-800 hover:bg-gray-700 text-white"
-                  : "bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 hover:border-teal-300 shadow-sm"
-              }`}
-            >
+            <button className="w-full px-4 py-2.5 rounded-lg border border-border bg-background hover:bg-muted text-foreground font-medium transition-colors">
               View Reports
             </button>
           </div>
         </div>
 
         {/* Recent Activity */}
-        <div
-          className={`rounded-2xl border p-8 shadow-lg ${
-            useTheme().theme === "dark"
-              ? "bg-gradient-to-br from-gray-900 to-gray-950 border-gray-800"
-              : "bg-gradient-to-br from-white via-teal-50/30 to-white border-teal-100 shadow-teal-500/5"
-          }`}
-        >
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-teal-500/30">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${isDark ? "bg-teal-900/30 text-teal-400" : "bg-teal-50 text-teal-600"}`}>
               📋
             </div>
-            <h3
-              className={`text-lg font-bold ${
-                useTheme().theme === "dark" ? "text-white" : "text-teal-900"
-              }`}
-            >
+            <h3 className="text-base font-semibold text-foreground">
               Recent Activity
             </h3>
           </div>
           <div className="space-y-3 text-center py-8">
-            <p
-              className={`${
-                useTheme().theme === "dark"
-                  ? "text-gray-400"
-                  : "text-teal-700/70"
-              }`}
-            >
+            <p className="text-sm text-muted-foreground">
               No recent activity yet
             </p>
-            <p
-              className={`text-xs ${
-                useTheme().theme === "dark"
-                  ? "text-gray-500"
-                  : "text-teal-600/60"
-              }`}
-            >
+            <p className="text-xs text-muted-foreground/60">
               Your recent actions will appear here
             </p>
           </div>

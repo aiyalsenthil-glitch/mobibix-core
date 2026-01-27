@@ -2,10 +2,97 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ProductType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SalesInvoiceDto } from './dto/sales-invoice.dto';
+import {
+  generateSalesInvoiceNumber,
+  getFinancialYear,
+} from '../../common/utils/invoice-number.util';
 
 @Injectable()
 export class SalesService {
   constructor(private prisma: PrismaService) {}
+
+  /**
+   * Get next invoice number for the shop and financial year
+   * IMPORTANT: Sequence resets to 0001 on each financial year (April 1)
+   * - Each FY (April-March) has its own independent sequence
+   * - When FY changes, search finds no invoices with new FY code
+   * - First invoice of new FY automatically gets 0001
+   * Handles race conditions with retry logic
+   */
+  private async getNextInvoiceNumber(
+    tx: any,
+    shopId: string,
+    invoicePrefix: string,
+  ): Promise<string> {
+    const today = new Date();
+    const fy = getFinancialYear(today);
+    // fy will be "202526" for Apr2025-Mar2026, "202627" for Apr2026-Mar2027, etc.
+
+    // Query all invoices for THIS FINANCIAL YEAR and shop
+    // When FY changes, this returns empty array, causing sequence to reset to 0001
+    const allInvoices = await tx.invoice.findMany({
+      where: {
+        shopId: shopId,
+        invoiceNumber: { contains: `-S-${fy}-` }, // Only finds invoices from current FY
+      },
+      select: { invoiceNumber: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Find the highest sequence number in current FY
+    // If no invoices exist for this FY yet, maxSeq stays 0 (fresh start)
+    let maxSeq = 0;
+    for (const inv of allInvoices) {
+      const parts = inv.invoiceNumber.split('-');
+      const seq = parseInt(parts[parts.length - 1], 10); // Extract 0001, 0002, etc.
+      if (seq > maxSeq) {
+        maxSeq = seq;
+      }
+    }
+
+    const nextSequence = maxSeq + 1; // First invoice = 1, second = 2, etc.
+
+    // Generate candidate invoice number with current FY
+    let invoiceNumber = generateSalesInvoiceNumber(
+      invoicePrefix,
+      nextSequence,
+      today,
+    );
+
+    // Retry with increment if unique constraint violation
+    let retries = 0;
+    const maxRetries = 5;
+
+    while (retries < maxRetries) {
+      try {
+        // Check if this invoice number already exists
+        const existing = await tx.invoice.findFirst({
+          where: {
+            shopId: shopId,
+            invoiceNumber: invoiceNumber,
+          },
+        });
+
+        if (!existing) {
+          return invoiceNumber;
+        }
+
+        // If exists, increment and retry
+        invoiceNumber = generateSalesInvoiceNumber(
+          invoicePrefix,
+          nextSequence + retries + 1,
+          today,
+        );
+        retries++;
+      } catch {
+        retries++;
+      }
+    }
+
+    throw new BadRequestException(
+      'Failed to generate unique invoice number. Please try again.',
+    );
+  }
 
   async createInvoice(tenantId: string, dto: SalesInvoiceDto) {
     if (!dto.items?.length) {
@@ -26,32 +113,12 @@ export class SalesService {
 
       if (!shop) throw new BadRequestException('Invalid shop');
 
-      // Generate formatted invoice number: {prefix}-{DDMMYY}-{sequence}
-      const today = new Date();
-      const dateStr =
-        String(today.getDate()).padStart(2, '0') +
-        String(today.getMonth() + 1).padStart(2, '0') +
-        String(today.getFullYear()).slice(-2);
-
-      // Find last invoice for today's date to get sequence number
-      const lastInvoiceToday = await tx.invoice.findFirst({
-        where: {
-          shopId: dto.shopId,
-          invoiceNumber: { startsWith: `${shop.invoicePrefix}-${dateStr}` },
-        },
-        orderBy: { createdAt: 'desc' },
-        select: { invoiceNumber: true },
-      });
-
-      // Extract sequence number from last invoice or start at 1
-      let sequenceNumber = 1;
-      if (lastInvoiceToday) {
-        const parts = lastInvoiceToday.invoiceNumber.split('-');
-        const lastSeq = parseInt(parts[parts.length - 1], 10);
-        sequenceNumber = lastSeq + 1;
-      }
-
-      const invoiceNumber = `${shop.invoicePrefix}-${dateStr}-${String(sequenceNumber).padStart(4, '0')}`;
+      // Generate invoice number with race condition handling
+      const invoiceNumber = await this.getNextInvoiceNumber(
+        tx,
+        dto.shopId,
+        shop.invoicePrefix,
+      );
       dto.invoiceNumber = invoiceNumber;
 
       // fetch products for validation + type checking
@@ -695,5 +762,57 @@ export class SalesService {
     }
 
     return invoice;
+  }
+
+  /**
+   * Public invoice verification (limited data, no auth)
+   */
+  async getPublicInvoiceVerification(invoiceId: string) {
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      select: {
+        invoiceNumber: true,
+        invoiceDate: true,
+        customerName: true,
+        totalAmount: true,
+        status: true,
+        shop: {
+          select: {
+            name: true,
+            phone: true,
+          },
+        },
+        items: {
+          select: {
+            quantity: true,
+            rate: true,
+            lineTotal: true,
+            product: {
+              select: { name: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!invoice) {
+      throw new BadRequestException('Invoice not found');
+    }
+
+    return {
+      invoiceNumber: invoice.invoiceNumber,
+      invoiceDate: invoice.invoiceDate,
+      customerName: invoice.customerName,
+      totalAmount: invoice.totalAmount,
+      status: invoice.status,
+      shopName: invoice.shop.name,
+      shopPhone: invoice.shop.phone,
+      items: invoice.items.map((item) => ({
+        description: item.product.name,
+        quantity: item.quantity,
+        rate: item.rate,
+        total: item.lineTotal,
+      })),
+    };
   }
 }

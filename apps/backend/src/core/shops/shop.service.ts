@@ -20,6 +20,12 @@ export class ShopService {
       throw new ForbiddenException('Only owner can create shops');
     }
 
+    // If GST number provided, validate and auto-enable GST
+    const gstNumber = dto.gstNumber?.trim();
+    if (gstNumber && !isValidIndianGSTIN(gstNumber)) {
+      throw new ForbiddenException('Invalid GSTIN format');
+    }
+
     return this.prisma.shop.create({
       data: {
         tenantId,
@@ -30,7 +36,8 @@ export class ShopService {
         state: dto.state,
         pincode: dto.pincode,
         invoicePrefix: dto.invoicePrefix,
-        gstNumber: dto.gstNumber,
+        gstNumber,
+        gstEnabled: !!gstNumber,
         website: dto.website,
         logoUrl: dto.logoUrl,
         invoiceFooter: dto.invoiceFooter,
@@ -66,6 +73,11 @@ export class ShopService {
       throw new ForbiddenException('Shop not found');
     }
 
+    const gstNumber = dto.gstNumber?.trim();
+    if (gstNumber && !isValidIndianGSTIN(gstNumber)) {
+      throw new ForbiddenException('Invalid GSTIN format');
+    }
+
     return this.prisma.shop.update({
       where: { id: shopId },
       data: {
@@ -75,7 +87,9 @@ export class ShopService {
         city: dto.city,
         state: dto.state,
         pincode: dto.pincode,
-        gstNumber: dto.gstNumber,
+        gstNumber,
+        // Auto-enable GST if a GST number is provided; otherwise leave unchanged
+        gstEnabled: gstNumber ? true : undefined,
         website: dto.website,
         logoUrl: dto.logoUrl,
         invoiceFooter: dto.invoiceFooter,

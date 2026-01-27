@@ -3,6 +3,10 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { ProductType } from '@prisma/client';
 import { RepairStockOutDto } from './dto/repair-stock-out.dto';
 import { RepairBillDto, BillingMode } from './dto/repair-bill.dto';
+import {
+  generateSalesInvoiceNumber,
+  getFinancialYear,
+} from '../../../common/utils/invoice-number.util';
 
 @Injectable()
 export class RepairService {
@@ -219,18 +223,47 @@ export class RepairService {
         serviceProductId = serviceProduct.id;
       }
 
-      // Generate next invoice number
-      const lastInvoice = await tx.invoice.findFirst({
-        where: { shopId: dto.shopId },
-        orderBy: { createdAt: 'desc' },
+      // Generate next invoice number with financial year format
+      // IMPORTANT: Sequence resets to 0001 on each financial year (April 1)
+      const today = new Date();
+      const shopForInvoice = await tx.shop.findFirst({
+        where: { id: dto.shopId },
+        select: { invoicePrefix: true },
+      });
+
+      if (!shopForInvoice) {
+        throw new BadRequestException('Shop not found');
+      }
+
+      const fy = getFinancialYear(today);
+      // fy will be "202526" for Apr2025-Mar2026, "202627" for Apr2026-Mar2027, etc.
+
+      // Find all repair invoices for THIS FINANCIAL YEAR
+      // When FY changes, this returns empty array, causing sequence to reset to 0001
+      const allInvoices = await tx.invoice.findMany({
+        where: {
+          shopId: dto.shopId,
+          invoiceNumber: { contains: `-S-${fy}-` }, // Only finds invoices from current FY
+        },
         select: { invoiceNumber: true },
       });
 
-      const nextNumber = lastInvoice
-        ? Number(lastInvoice.invoiceNumber) + 1
-        : 1;
+      // Find highest sequence in current FY
+      // If no invoices exist for this FY yet, maxSeq stays 0 (fresh start)
+      let maxSeq = 0;
+      for (const inv of allInvoices) {
+        const parts = inv.invoiceNumber.split('-');
+        const seq = parseInt(parts[parts.length - 1], 10); // Extract 0001, 0002, etc.
+        if (seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
 
-      const invoiceNumber = nextNumber.toString().padStart(5, '0');
+      const invoiceNumber = generateSalesInvoiceNumber(
+        shopForInvoice.invoicePrefix,
+        maxSeq + 1, // First invoice = 1, second = 2, etc.
+        today,
+      );
 
       // Validate and fetch parts if provided
       const partIds = dto.parts?.map((p) => p.shopProductId) || [];
