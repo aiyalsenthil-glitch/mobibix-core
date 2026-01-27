@@ -19,7 +19,7 @@ export class FirebaseAdminService {
         // Fall back to reading from file (for development)
         const credPath =
           process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-          '/app/secrets/REMOVED_AUTH_PROVIDER-admin.json';
+          path.join(__dirname, '../../..', 'secrets/REMOVED_AUTH_PROVIDER-admin.json');
 
         if (!fs.existsSync(credPath)) {
           throw new Error(`Firebase credentials not found at ${credPath}`);

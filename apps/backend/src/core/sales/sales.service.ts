@@ -696,4 +696,60 @@ export class SalesService {
 
     return invoice;
   }
+
+  /**
+   * Get public invoice verification (limited data for public route)
+   * @param invoiceId - Invoice ID
+   * @returns Public invoice data (no sensitive info)
+   */
+  async getPublicInvoiceVerification(invoiceId: string) {
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      select: {
+        invoiceNumber: true,
+        invoiceDate: true,
+        customerName: true,
+        totalAmount: true,
+        status: true,
+        shop: {
+          select: {
+            name: true,
+            phone: true,
+          },
+        },
+        items: {
+          select: {
+            quantity: true,
+            rate: true,
+            lineTotal: true,
+            product: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!invoice) {
+      throw new BadRequestException('Invoice not found');
+    }
+
+    return {
+      invoiceNumber: invoice.invoiceNumber,
+      invoiceDate: invoice.invoiceDate,
+      customerName: invoice.customerName,
+      totalAmount: invoice.totalAmount,
+      status: invoice.status,
+      shopName: invoice.shop.name,
+      shopPhone: invoice.shop.phone,
+      items: invoice.items.map((item) => ({
+        description: item.product.name,
+        quantity: item.quantity,
+        rate: item.rate,
+        total: item.lineTotal,
+      })),
+    };
+  }
 }
