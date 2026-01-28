@@ -414,18 +414,45 @@ export class SalesService {
       orderBy: {
         createdAt: 'desc',
       },
-      select: {
-        id: true,
-        invoiceNumber: true,
-        customerName: true,
-        totalAmount: true,
-        paymentMode: true,
-        status: true,
-        invoiceDate: true,
+      include: {
+        receipts: {
+          where: { status: 'ACTIVE' },
+          select: { amount: true },
+        },
       },
     });
 
-    return { invoices, empty: false };
+    // Enrich with calculated fields: paidAmount, balanceAmount, paymentStatus
+    const enrichedInvoices = invoices.map((invoice) => {
+      const paidAmount = invoice.receipts.reduce(
+        (sum, receipt) => sum + receipt.amount,
+        0,
+      );
+      const balanceAmount = invoice.totalAmount - paidAmount;
+
+      // Derive payment status
+      let paymentStatus = 'UNPAID';
+      if (balanceAmount <= 0) {
+        paymentStatus = 'PAID';
+      } else if (paidAmount > 0) {
+        paymentStatus = 'PARTIALLY_PAID';
+      }
+
+      return {
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        customerName: invoice.customerName,
+        totalAmount: invoice.totalAmount,
+        paymentMode: invoice.paymentMode,
+        status: invoice.status,
+        invoiceDate: invoice.invoiceDate,
+        paidAmount,
+        balanceAmount,
+        paymentStatus,
+      };
+    });
+
+    return { invoices: enrichedInvoices, empty: false };
   }
   async updateInvoice(
     tenantId: string,
@@ -787,28 +814,17 @@ export class SalesService {
         id: invoiceId,
         tenantId,
       },
-      select: {
-        id: true,
-        invoiceNumber: true,
-        status: true,
-        invoiceDate: true,
-        customerName: true,
-        customerPhone: true,
-
-        subTotal: true,
-        gstAmount: true,
-        totalAmount: true,
-        paymentMode: true,
-
-        items: {
+      include: {
+        receipts: {
+          where: { status: 'ACTIVE' },
+          orderBy: { createdAt: 'desc' },
           select: {
-            shopProductId: true,
-            quantity: true,
-            rate: true,
-            hsnCode: true,
-            gstRate: true,
-            gstAmount: true,
-            lineTotal: true,
+            id: true,
+            amount: true,
+            paymentMethod: true,
+            transactionRef: true,
+            createdAt: true,
+            printNumber: true,
           },
         },
       },
@@ -818,7 +834,53 @@ export class SalesService {
       throw new BadRequestException('Invoice not found');
     }
 
-    return invoice;
+    // Calculate payment summary
+    const paidAmount = invoice.receipts.reduce(
+      (sum, receipt) => sum + receipt.amount,
+      0,
+    );
+    const balanceAmount = invoice.totalAmount - paidAmount;
+
+    // Derive payment status
+    let paymentStatus = 'UNPAID';
+    if (balanceAmount <= 0) {
+      paymentStatus = 'PAID';
+    } else if (paidAmount > 0) {
+      paymentStatus = 'PARTIALLY_PAID';
+    }
+
+    return {
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      status: invoice.status,
+      invoiceDate: invoice.invoiceDate,
+      customerName: invoice.customerName,
+      customerPhone: invoice.customerPhone,
+      customerGstin: invoice.customerGstin,
+      customerState: invoice.customerState,
+
+      subTotal: invoice.subTotal,
+      gstAmount: invoice.gstAmount,
+      totalAmount: invoice.totalAmount,
+      paymentMode: invoice.paymentMode,
+
+      // ✅ NEW: Payment summary
+      paidAmount,
+      balanceAmount,
+      paymentStatus,
+
+      // ✅ NEW: Payment history
+      payments: invoice.receipts.map((receipt) => ({
+        id: receipt.id,
+        amount: receipt.amount,
+        method: receipt.paymentMethod,
+        transactionRef: receipt.transactionRef,
+        createdAt: receipt.createdAt,
+        receiptNumber: receipt.printNumber,
+      })),
+
+      items: [], // Items will be fetched separately if needed
+    };
   }
 
   /**
@@ -870,6 +932,112 @@ export class SalesService {
         rate: item.rate,
         total: item.lineTotal,
       })),
+    };
+  }
+
+  /**
+   * Get sales summary for a shop within a date range
+   * Returns aggregated sales, payments, and pending amounts
+   * Used for dashboard reports and financial summaries
+   */
+  async getSalesSummary(
+    tenantId: string,
+    shopId: string,
+    startDate?: Date,
+    endDate?: Date,
+  ) {
+    // Validate shop belongs to tenant
+    const shop = await this.prisma.shop.findFirst({
+      where: { id: shopId, tenantId },
+      select: { id: true },
+    });
+
+    if (!shop) {
+      throw new BadRequestException('Invalid shop');
+    }
+
+    // Default to current month if no date range provided
+    const now = new Date();
+    const defaultStart =
+      startDate || new Date(now.getFullYear(), now.getMonth(), 1);
+    const defaultEnd =
+      endDate || new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    // ✅ Aggregate invoices
+    const invoiceStats = await this.prisma.invoice.aggregate({
+      where: {
+        tenantId,
+        shopId,
+        invoiceDate: {
+          gte: defaultStart,
+          lte: defaultEnd,
+        },
+        status: { not: 'CANCELLED' },
+      },
+      _sum: {
+        totalAmount: true,
+      },
+      _count: true,
+    });
+
+    // ✅ Aggregate receipts by payment method
+    const paymentStats = await this.prisma.receipt.findMany({
+      where: {
+        tenantId,
+        shopId,
+        createdAt: {
+          gte: defaultStart,
+          lte: defaultEnd,
+        },
+        status: 'ACTIVE',
+        linkedInvoiceId: {
+          not: null, // Only count invoice payments
+        },
+      },
+      select: {
+        amount: true,
+        paymentMethod: true,
+      },
+    });
+
+    // Calculate totals by payment method
+    const byMethod = paymentStats.reduce(
+      (acc, receipt) => {
+        if (!acc[receipt.paymentMethod]) {
+          acc[receipt.paymentMethod] = 0;
+        }
+        acc[receipt.paymentMethod] += receipt.amount;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    const totalSales = invoiceStats._sum.totalAmount || 0;
+    const cashReceived = byMethod['CASH'] || 0;
+    const upiReceived = byMethod['UPI'] || 0;
+    const cardReceived = byMethod['CARD'] || 0;
+    const bankReceived = byMethod['BANK'] || 0;
+    const totalReceived =
+      cashReceived + upiReceived + cardReceived + bankReceived;
+    const pendingAmount = totalSales - totalReceived;
+
+    return {
+      period: {
+        startDate: defaultStart,
+        endDate: defaultEnd,
+      },
+      summary: {
+        totalSales,
+        totalInvoices: invoiceStats._count,
+        totalReceived,
+        pendingAmount,
+      },
+      breakdown: {
+        cashReceived,
+        upiReceived,
+        cardReceived,
+        bankReceived,
+      },
     };
   }
 }

@@ -91,4 +91,20 @@ export class SalesController {
     const tenantId = req.user?.tenantId;
     return this.paymentService.listPayments(tenantId, invoiceId);
   }
+
+  @Get('summary')
+  async getSalesSummary(
+    @Req() req: any,
+    @Query('shopId') shopId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const tenantId = req.user?.tenantId;
+    if (!shopId) {
+      throw new BadRequestException('shopId is required');
+    }
+    const start = startDate ? new Date(startDate) : undefined;
+    const end = endDate ? new Date(endDate) : undefined;
+    return this.service.getSalesSummary(tenantId, shopId, start, end);
+  }
 }

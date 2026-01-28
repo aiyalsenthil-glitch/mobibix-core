@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { listProducts, type ShopProduct } from "@/services/products.api";
 import { stockIn } from "@/services/inventory.api";
+import { getStockBalances } from "@/services/stock.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { NoShopsAlert } from "../components/NoShopsAlert";
@@ -40,8 +41,26 @@ export default function InventoryPage() {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await listProducts(selectedShopId);
-        setProducts(data);
+        // Fetch products and stock balances, then merge on productId
+        const [productList, balances] = await Promise.all([
+          listProducts(selectedShopId),
+          getStockBalances(selectedShopId),
+        ]);
+
+        const balanceMap = new Map(balances.map((b) => [b.productId, b]));
+
+        const merged: ShopProduct[] = productList.map((p) => {
+          const b = balanceMap.get(p.id);
+          const stockQty = b?.stockQty ?? p.stockQty ?? 0;
+          const isNegative = b?.isNegative ?? stockQty < 0;
+          return {
+            ...p,
+            stockQty,
+            isNegative,
+          };
+        });
+
+        setProducts(merged);
       } catch (err: any) {
         console.error("Error loading products:", err);
         setError(err.message || "Failed to load products");
@@ -73,9 +92,24 @@ export default function InventoryPage() {
         costPrice: parseFloat(costPrice) || 0,
       });
 
-      // Reload products to get updated stock
-      const data = await listProducts(selectedShopId);
-      setProducts(data);
+      // Reload products + stock balances to get updated stock
+      const [productList, balances] = await Promise.all([
+        listProducts(selectedShopId),
+        getStockBalances(selectedShopId),
+      ]);
+
+      const balanceMap = new Map(balances.map((b) => [b.productId, b]));
+      const merged: ShopProduct[] = productList.map((p) => {
+        const b = balanceMap.get(p.id);
+        const stockQty = b?.stockQty ?? p.stockQty ?? 0;
+        const isNegative = b?.isNegative ?? stockQty < 0;
+        return {
+          ...p,
+          stockQty,
+          isNegative,
+        };
+      });
+      setProducts(merged);
 
       // Reset form
       setSelectedProduct(null);
@@ -338,7 +372,28 @@ export default function InventoryPage() {
                     <td
                       className={`px-6 py-4 ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}
                     >
-                      {product.stockQty || 0}
+                      <span
+                        className={
+                          product.isNegative
+                            ? theme === "dark"
+                              ? "text-red-300"
+                              : "text-red-600"
+                            : undefined
+                        }
+                      >
+                        {product.stockQty || 0}
+                      </span>
+                      {product.isNegative && (
+                        <span
+                          className={`ml-2 inline-block text-xs px-2 py-0.5 rounded ${
+                            theme === "dark"
+                              ? "bg-red-500/20 text-red-200"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          Negative
+                        </span>
+                      )}
                     </td>
                     <td
                       className={`px-6 py-4 font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}

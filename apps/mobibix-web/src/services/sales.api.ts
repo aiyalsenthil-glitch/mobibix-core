@@ -5,6 +5,7 @@ const API_BASE_URL =
 
 export type PaymentMode = "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT";
 export type InvoiceStatus = "PAID" | "CREDIT" | "CANCELLED";
+export type PaymentStatus = "PAID" | "PARTIALLY_PAID" | "UNPAID" | "CANCELLED";
 
 export interface SalesInvoice {
   id: string;
@@ -19,6 +20,9 @@ export interface SalesInvoice {
   subTotal?: number;
   gstAmount?: number;
   items?: InvoiceItemDetail[];
+  paidAmount?: number;
+  balanceAmount?: number;
+  paymentStatus?: PaymentStatus;
   createdAt: string | Date;
   updatedAt: string | Date;
 }
@@ -39,6 +43,7 @@ export interface InvoiceItem {
   rate: number;
   gstRate: number; // GST rate percentage (0, 5, 18, 28, or custom)
   gstAmount: number; // Calculated GST amount
+  imeis?: string[]; // Serialized IMEIs when applicable
 }
 
 export interface CreateInvoiceDto {

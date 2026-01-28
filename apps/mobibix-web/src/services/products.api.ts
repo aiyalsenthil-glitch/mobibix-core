@@ -11,6 +11,8 @@ export interface ShopProduct {
   shopId?: string;
   name: string;
   type?: ProductType | string;
+  // Optional serialization flag (frontend-only; may be provided by backend later)
+  isSerialized?: boolean;
   sku?: string;
   barcode?: string;
   category?: string;
@@ -18,6 +20,8 @@ export interface ShopProduct {
   salePrice: number;
   stock?: number;
   stockQty?: number;
+  // Derived from stock balances merge; indicates negative stock state
+  isNegative?: boolean;
   hsnCode?: string;
   gstRate?: number;
   minStock?: number;

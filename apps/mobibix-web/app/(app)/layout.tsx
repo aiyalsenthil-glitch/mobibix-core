@@ -46,17 +46,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const marginLeft = mounted && isCollapsed ? "ml-20" : "ml-60";
 
   return (
-    <div
-      className={`min-h-screen ${
-        isDark ? "bg-background text-foreground" : "bg-background text-foreground"
-      } transition-colors duration-300`}
-    >
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 transition-colors duration-300">
       <Sidebar />
       <Topbar isCollapsed={mounted && isCollapsed} />
       <main
-        className={`${marginLeft} pt-20 px-8 py-8 transition-all duration-300 ${
-          isDark ? "bg-background" : "bg-transparent"
-        } min-h-screen`}
+        className={`${marginLeft} pt-20 px-8 py-8 transition-all duration-300 bg-white dark:bg-slate-950 min-h-screen`}
       >
         {children}
       </main>

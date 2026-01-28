@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { getInvoice, type SalesInvoice } from "@/services/sales.api";
+import { numberToIndianWords } from "@/utils/numberToWords";
 import { QRCodeSVG } from "qrcode.react";
 
 export default function PrintInvoicePage() {
@@ -36,7 +37,7 @@ export default function PrintInvoicePage() {
   }, [params?.invoiceId]);
 
   useEffect(() => {
-    if (invoice?.shop) {
+    if (invoice) {
       // Trigger browser print when invoice is loaded
       setTimeout(() => {
         try {
@@ -67,24 +68,20 @@ export default function PrintInvoicePage() {
     );
   }
 
-  if (!invoice || !invoice.shop) {
+  if (!invoice) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white text-black">
-        Invoice not found const shop = invoice.shop;
+        Invoice not found
       </div>
     );
   }
 
-  // Default terms if shop doesn't have custom terms
+  // Default terms
   const defaultTerms = [
     "All disputes subject to local jurisdiction.",
     "Warranty void if label is tampered with.",
     "Goods once sold will not be taken back.",
   ];
-
-  const displayTerms = shop.termsAndConditions
-    ? shop.termsAndConditions.split("\n")
-    : defaultTerms;
 
   return (
     <div className="min-h-screen bg-white text-black p-8">
@@ -93,24 +90,13 @@ export default function PrintInvoicePage() {
         <div className="px-6 py-4 border-b border-black">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h1 className="text-3xl font-bold">{shop.name}</h1>
-              <p className="text-sm mt-1">
-                {shop.addressLine1}
-                {shop.addressLine2 && `, ${shop.addressLine2}`}
-              </p>
-              <p className="text-sm">
-                {shop.city}, {shop.state}
-              </p>
-              <p className="text-sm">Phone: {shop.phone}</p>
-              {shop.gstNumber && (
-                <p className="text-sm font-semibold">GSTIN: {shop.gstNumber}</p>
-              )}
+              <h1 className="text-2xl font-bold">Shop Name</h1>
+              <p className="text-sm mt-1">Address Line 1, Address Line 2</p>
+              <p className="text-sm">City, State</p>
+              <p className="text-sm">Phone: +91-XXXXX-XXXXX</p>
             </div>
             <div className="text-right">
               <h2 className="text-2xl font-bold">Tax Invoice</h2>
-              {shop.gstNumber && (
-                <p className="text-sm mt-1">GSTIN: {shop.gstNumber}</p>
-              )}
             </div>
           </div>
         </div>
@@ -120,12 +106,8 @@ export default function PrintInvoicePage() {
           <div>
             <p className="text-sm font-bold">BILLED TO:</p>
             <p className="font-semibold">{invoice.customerName}</p>
-            {invoice.customerPhone && <p>{invoice.customerPhone}</p>}
-            {invoice.customerState && (
-              <p className="text-sm">{invoice.customerState}</p>
-            )}
-            {invoice.customerGstin && (
-              <p className="text-sm">GSTIN: {invoice.customerGstin}</p>
+            {invoice.customerPhone && (
+              <p className="text-sm">{invoice.customerPhone}</p>
             )}
           </div>
           <div className="text-right">
@@ -149,20 +131,18 @@ export default function PrintInvoicePage() {
           <thead>
             <tr className="bg-gray-100 border-b border-black">
               <th className="text-left px-4 py-2 text-sm">S/No</th>
-              <th className="text-left px-4 py-2 text-sm">Item Description</th>
+              <th className="text-left px-4 py-2 text-sm">Description</th>
               <th className="text-center px-4 py-2 text-sm">HSN/SAC</th>
               <th className="text-center px-4 py-2 text-sm">Qty</th>
               <th className="text-right px-4 py-2 text-sm">Rate</th>
-              <th className="text-right px-4 py-2 text-sm">Taxable Value</th>
+              <th className="text-right px-4 py-2 text-sm">Amount</th>
             </tr>
           </thead>
           <tbody>
             {invoice.items?.map((item, idx) => (
               <tr key={idx} className="border-b">
                 <td className="px-4 py-2 text-sm">{idx + 1}</td>
-                <td className="px-4 py-2 text-sm">
-                  {item.product?.name || item.shopProductId}
-                </td>
+                <td className="px-4 py-2 text-sm">Item {idx + 1}</td>
                 <td className="px-4 py-2 text-sm text-center">
                   {item.hsnCode || "-"}
                 </td>
@@ -170,10 +150,10 @@ export default function PrintInvoicePage() {
                   {item.quantity}
                 </td>
                 <td className="px-4 py-2 text-sm text-right">
-                  {item.rate.toFixed(2)}
+                  ₹{item.rate.toFixed(2)}
                 </td>
                 <td className="px-4 py-2 text-sm text-right">
-                  {item.lineTotal?.toFixed(2)}
+                  ₹{(item.lineTotal || 0).toFixed(2)}
                 </td>
               </tr>
             ))}
@@ -185,11 +165,7 @@ export default function PrintInvoicePage() {
           <div className="w-1/2">
             <p className="text-sm font-bold mb-2">Amount in Words:</p>
             <p className="text-sm italic">
-              {/* TODO: Add number to words conversion */}
-              {new Intl.NumberFormat("en-IN", {
-                style: "currency",
-                currency: "INR",
-              }).format(invoice.totalAmount)}
+              {numberToIndianWords(invoice.totalAmount)}
             </p>
           </div>
           <div className="w-1/2">
@@ -198,32 +174,41 @@ export default function PrintInvoicePage() {
                 <span>Subtotal:</span>
                 <span>₹{(invoice.subTotal || 0).toFixed(2)}</span>
               </div>
-              {invoice.cgst !== undefined && invoice.cgst > 0 && (
+              {invoice.gstAmount !== undefined && invoice.gstAmount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span>CGST:</span>
-                  <span>₹{invoice.cgst.toFixed(2)}</span>
+                  <span>GST:</span>
+                  <span>₹{invoice.gstAmount.toFixed(2)}</span>
                 </div>
               )}
-              {invoice.sgst !== undefined && invoice.sgst > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span>SGST:</span>
-                  <span>₹{invoice.sgst.toFixed(2)}</span>
-                </div>
-              )}
-              {invoice.igst !== undefined && invoice.igst > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span>IGST:</span>
-                  <span>₹{invoice.igst.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-sm">
-                <span>Total Tax:</span>
-                <span>₹{(invoice.gstAmount || 0).toFixed(2)}</span>
-              </div>
               <div className="flex justify-between font-bold text-lg border-t border-black pt-2">
                 <span>Grand Total:</span>
                 <span>₹{invoice.totalAmount.toFixed(2)}</span>
               </div>
+              {/* Payment Information */}
+              {invoice.paymentMode && (
+                <>
+                  <div className="flex justify-between text-sm pt-2 border-t border-black">
+                    <span>Payment Mode:</span>
+                    <span className="font-semibold">
+                      {invoice.paymentMode === "CASH"
+                        ? "CASH"
+                        : invoice.paymentMode === "UPI"
+                          ? "UPI"
+                          : invoice.paymentMode === "CARD"
+                            ? "CARD"
+                            : invoice.paymentMode === "BANK"
+                              ? "BANK TRANSFER"
+                              : "CREDIT"}
+                    </span>
+                  </div>
+                  {invoice.paymentMode === "CREDIT" && (
+                    <div className="flex justify-between text-sm font-bold pt-1">
+                      <span>Balance Due:</span>
+                      <span>₹{invoice.totalAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -233,7 +218,7 @@ export default function PrintInvoicePage() {
           <div className="w-2/3">
             <p className="text-sm font-bold mb-2">Terms & Conditions</p>
             <ol className="text-xs space-y-1">
-              {displayTerms.map((term, idx) => (
+              {defaultTerms.map((term: string, idx: number) => (
                 <li key={idx}>
                   {idx + 1}. {term}
                 </li>
@@ -244,14 +229,26 @@ export default function PrintInvoicePage() {
             {verifyUrl && (
               <>
                 <QRCodeSVG value={verifyUrl} size={128} />
-                <p className="text-xs mt-2 text-center">Scan to verify</p>
+                <p className="text-xs mt-2 text-center font-semibold">
+                  Scan QR to verify
+                </p>
               </>
             )}
             <div className="mt-6 text-center">
-              <p className="text-sm font-bold">For {shop.name}</p>
+              <p className="text-sm font-bold">Shop Name</p>
               <p className="text-xs mt-8">(Authorized Signatory)</p>
             </div>
           </div>
+        </div>
+
+        {/* Trust Signals Footer */}
+        <div className="px-6 py-3 border-t border-black text-center">
+          <p className="text-xs text-gray-700">
+            This is a computer-generated invoice
+          </p>
+          <p className="text-xs text-gray-600 mt-1">
+            Scan QR code above to verify invoice authenticity
+          </p>
         </div>
       </div>
 

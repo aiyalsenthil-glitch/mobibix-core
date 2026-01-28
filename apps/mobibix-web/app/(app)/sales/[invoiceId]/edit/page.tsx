@@ -9,6 +9,12 @@ import {
   type PaymentMode,
 } from "@/services/sales.api";
 import { getAccessToken, decodeAccessToken } from "@/services/auth.api";
+import {
+  listProducts,
+  type ShopProduct,
+  ProductType,
+} from "@/services/products.api";
+import { getStockBalances } from "@/services/stock.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 
@@ -35,6 +41,8 @@ export default function EditInvoicePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [products, setProducts] = useState<ShopProduct[]>([]);
+  const [imeiHighlight, setImeiHighlight] = useState(false);
 
   // Editable fields
   const [customerName, setCustomerName] = useState("");
@@ -58,6 +66,26 @@ export default function EditInvoicePage() {
         setCustomerState(data.customerState || "");
         setCustomerGstin(data.customerGstin || "");
         setInvoiceDate(new Date(data.invoiceDate).toISOString().split("T")[0]);
+
+        // Load products with stock balances for stock-aware display
+        if (data.shopId) {
+          try {
+            const [productList, balances] = await Promise.all([
+              listProducts(data.shopId),
+              getStockBalances(data.shopId),
+            ]);
+            const balanceMap = new Map(balances.map((b) => [b.productId, b]));
+            const merged: ShopProduct[] = productList.map((p) => {
+              const b = balanceMap.get(p.id);
+              const stockQty = b?.stockQty ?? p.stockQty ?? 0;
+              const isNegative = b?.isNegative ?? stockQty < 0;
+              return { ...p, stockQty, isNegative };
+            });
+            setProducts(merged);
+          } catch (stockErr) {
+            console.error("Failed to load stock data:", stockErr);
+          }
+        }
 
         // Initialize payment methods
         if (data.paymentMethods && data.paymentMethods.length > 0) {
@@ -138,6 +166,7 @@ export default function EditInvoicePage() {
 
     setSaving(true);
     setError(null);
+    setImeiHighlight(false);
 
     try {
       const payload = {
@@ -163,7 +192,17 @@ export default function EditInvoicePage() {
       await updateInvoice(invoiceId, payload as any);
       router.push(`/sales?shopId=${shopId}`);
     } catch (err: any) {
-      setError(err.message || "Failed to save invoice");
+      const msg = (err?.message || "Failed to save invoice") as string;
+      if (msg.includes("Insufficient stock")) {
+        setError("Insufficient stock. Please add purchase or reduce quantity.");
+      } else if (msg.includes("Serialized products require IMEI")) {
+        setError("Serialized products require IMEI.");
+        setImeiHighlight(true);
+      } else if (msg.includes("IMEI is not available")) {
+        setError("One or more IMEIs are already sold or unavailable.");
+      } else {
+        setError(msg);
+      }
     } finally {
       setSaving(false);
     }

@@ -3,7 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { searchCustomers, type Customer } from "@/services/customers.api";
-import { listProducts, type ShopProduct } from "@/services/products.api";
+import {
+  listProducts,
+  type ShopProduct,
+  ProductType,
+} from "@/services/products.api";
+import { getStockBalances } from "@/services/stock.api";
 import { createInvoice } from "@/services/sales.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
@@ -20,6 +25,7 @@ interface ProductItem {
   gstRate: number;
   gstAmount: number;
   total: number;
+  imeis: string[];
 }
 
 export default function CreateInvoicePage() {
@@ -80,6 +86,7 @@ export default function CreateInvoicePage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imeiHighlight, setImeiHighlight] = useState(false);
 
   // Load products when shop is selected
   useEffect(() => {
@@ -119,8 +126,18 @@ export default function CreateInvoicePage() {
 
   const loadProducts = async (shopId: string) => {
     try {
-      const data = await listProducts(shopId);
-      setProducts(data);
+      const [productList, balances] = await Promise.all([
+        listProducts(shopId),
+        getStockBalances(shopId),
+      ]);
+      const balanceMap = new Map(balances.map((b) => [b.productId, b]));
+      const merged: ShopProduct[] = productList.map((p) => {
+        const b = balanceMap.get(p.id);
+        const stockQty = b?.stockQty ?? p.stockQty ?? 0;
+        const isNegative = b?.isNegative ?? stockQty < 0;
+        return { ...p, stockQty, isNegative };
+      });
+      setProducts(merged);
     } catch (err: any) {
       console.error("Failed to load products:", err);
     }
@@ -294,6 +311,7 @@ export default function CreateInvoicePage() {
         gstRate: selectedShop?.gstEnabled ? 18 : 0,
         gstAmount: 0,
         total: 0,
+        imeis: [],
       },
     ]);
   };
@@ -314,6 +332,8 @@ export default function CreateInvoicePage() {
             if (product) {
               updated.productName = product.name;
               updated.rate = product.salePrice;
+              // Reset IMEIs when product changes
+              (updated as any).imeis = [];
             }
           }
 
@@ -338,6 +358,16 @@ export default function CreateInvoicePage() {
               );
               updated.total = baseAmount + updated.gstAmount;
             }
+          }
+
+          // If IMEI text updated, sync imeis array
+          if (field === "imeisText") {
+            const text: string = value || "";
+            const imeis = text
+              .split(/\r?\n|,/)
+              .map((s) => s.trim())
+              .filter(Boolean);
+            (updated as any).imeis = imeis;
           }
 
           return updated;
@@ -371,6 +401,15 @@ export default function CreateInvoicePage() {
   const grandTotal = subtotal + totalTax;
   const displayPayments = [{ mode: paymentMode, amount: grandTotal }];
 
+  // Check IMEI issues for serialized products
+  const hasImeiIssues = items.some((i) => {
+    const p = products.find((pp) => pp.id === i.shopProductId);
+    if (!p || !p.isSerialized) return false;
+    const isMissing = !i.imeis || i.imeis.length === 0;
+    const isMismatch = i.imeis && i.imeis.length !== i.quantity;
+    return isMissing || isMismatch;
+  });
+
   const handleSubmit = async () => {
     if (!selectedShop) {
       setError("Please select a shop");
@@ -389,8 +428,34 @@ export default function CreateInvoicePage() {
       return;
     }
 
+    // Serialized validation: IMEIs required and must match quantity
+    const serializedMissing = items.some((i) => {
+      const p = products.find((pp) => pp.id === i.shopProductId);
+      return p?.isSerialized && (!i.imeis || i.imeis.length === 0);
+    });
+    if (serializedMissing) {
+      setError(
+        "Missing IMEIs: Please enter IMEI numbers for all serialized products",
+      );
+      setImeiHighlight(true);
+      return;
+    }
+
+    const serializedCountMismatch = items.some((i) => {
+      const p = products.find((pp) => pp.id === i.shopProductId);
+      return p?.isSerialized && i.imeis && i.imeis.length !== i.quantity;
+    });
+    if (serializedCountMismatch) {
+      setError(
+        "IMEI count mismatch: Each product quantity must have matching IMEIs",
+      );
+      setImeiHighlight(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    setImeiHighlight(false);
 
     try {
       const payload = {
@@ -408,13 +473,27 @@ export default function CreateInvoicePage() {
           rate: item.rate,
           gstRate: item.gstRate,
           gstAmount: item.gstAmount,
+          imeis: item.imeis && item.imeis.length > 0 ? item.imeis : undefined,
         })),
       };
 
       await createInvoice(payload);
       router.push(`/sales?shopId=${selectedShopId}`);
     } catch (err: any) {
-      setError(err.message || "Failed to create invoice");
+      const msg = (err?.message || "Failed to create invoice") as string;
+      if (msg.includes("Insufficient stock")) {
+        setError("Insufficient stock. Please add purchase or reduce quantity.");
+      } else if (msg.includes("Serialized products require IMEI")) {
+        setError(
+          "Serialized products require IMEI. Please enter IMEI numbers.",
+        );
+        setImeiHighlight(true);
+      } else if (msg.includes("IMEI is not available")) {
+        setError("One or more IMEIs are already sold or unavailable.");
+        setImeiHighlight(true);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -705,9 +784,11 @@ export default function CreateInvoicePage() {
                                   {p.name}
                                 </div>
                                 <div className="flex justify-between items-center mt-1">
-                                  <div className="text-xs text-gray-500">
-                                    Stock: {p.stock}
-                                  </div>
+                                  {p.type !== ProductType.SERVICE && (
+                                    <div className="text-xs text-gray-500">
+                                      Stock: {p.stockQty ?? 0}
+                                    </div>
+                                  )}
                                   <div className="text-xs font-bold text-gray-700 dark:text-gray-300">
                                     ₹{p.salePrice}
                                   </div>
@@ -758,6 +839,29 @@ export default function CreateInvoicePage() {
                       }
                       className="w-full bg-gray-50 dark:bg-gray-800 rounded px-2 py-1.5 text-sm text-center outline-none focus:ring-1 focus:ring-teal-500"
                     />
+                    {/* Negative stock warning for non-serialized, non-service */}
+                    {(() => {
+                      const p = products.find(
+                        (pp) => pp.id === item.shopProductId,
+                      );
+                      const shouldWarn =
+                        !!p &&
+                        p.type !== ProductType.SERVICE &&
+                        !p.isSerialized &&
+                        typeof p.stockQty === "number" &&
+                        item.quantity > (p.stockQty || 0);
+                      return shouldWarn ? (
+                        <div className="mt-2 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 px-3 py-2 rounded border border-yellow-200 dark:border-yellow-800 text-xs">
+                          <div className="font-semibold mb-1">
+                            ⚠️ Stock will go negative for this item.
+                          </div>
+                          <div>
+                            You can continue billing, but please add purchase
+                            later to correct inventory.
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
                   </td>
                   <td className="px-4 py-4">
                     <input
@@ -773,6 +877,46 @@ export default function CreateInvoicePage() {
                       }
                       className="w-full bg-transparent border-b border-transparent focus:border-gray-300 outline-none py-1.5 text-sm"
                     />
+                    {/* Serialized IMEI input under product cell when applicable */}
+                    {(() => {
+                      const p = products.find(
+                        (pp) => pp.id === item.shopProductId,
+                      );
+                      if (!p || !p.isSerialized) return null;
+                      const mismatch =
+                        item.imeis.length > 0 &&
+                        item.imeis.length !== item.quantity;
+                      return (
+                        <div className="mt-3">
+                          <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                            IMEIs (one per line)
+                          </label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded px-2 py-1.5">
+                            📌 Enter exactly one IMEI per quantity (
+                            {item.quantity} needed)
+                          </p>
+                          <textarea
+                            value={item.imeis.join("\n")}
+                            onChange={(e) =>
+                              updateItem(item.id, "imeisText", e.target.value)
+                            }
+                            className={
+                              "w-full min-h-[90px] rounded border px-3 py-2 text-sm outline-none " +
+                              (mismatch || imeiHighlight
+                                ? "border-red-300 bg-red-50 dark:bg-red-900/20 ring-1 ring-red-300"
+                                : "border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50")
+                            }
+                            placeholder="Enter IMEIs, one per line"
+                          />
+                          {mismatch && (
+                            <div className="mt-1 text-xs text-red-600 dark:text-red-300 font-medium">
+                              ⚠️ IMEI count ({item.imeis.length}) must equal
+                              quantity ({item.quantity})
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   {selectedShop?.gstEnabled && (
                     <td className="px-4 py-4">
@@ -891,6 +1035,39 @@ export default function CreateInvoicePage() {
                 ₹{grandTotal.toFixed(2)}
               </span>
             </div>
+
+            {/* Payment Type Display */}
+            <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex justify-between text-sm">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                  Payment Type:
+                </span>
+                <span className="font-bold text-gray-900 dark:text-white">
+                  {paymentMode === "CASH"
+                    ? "CASH"
+                    : paymentMode === "UPI"
+                      ? "UPI"
+                      : paymentMode === "CARD"
+                        ? "CARD"
+                        : paymentMode === "BANK"
+                          ? "BANK TRANSFER"
+                          : "CREDIT"}
+                </span>
+              </div>
+              {paymentMode === "CREDIT" && (
+                <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                    💡 This invoice will be marked as unpaid. Collect payment
+                    later.
+                  </p>
+                  <div className="mt-2 pt-2 border-t border-amber-200 dark:border-amber-700">
+                    <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                      Balance Due: ₹{grandTotal.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="mt-8 grid grid-cols-2 gap-4">
@@ -900,13 +1077,20 @@ export default function CreateInvoicePage() {
             >
               Cancel
             </button>
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold shadow-lg shadow-teal-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Generating..." : "Generate Invoice"}
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleSubmit}
+                disabled={loading || hasImeiIssues}
+                className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold shadow-lg shadow-teal-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? "Generating..." : "Generate Invoice"}
+              </button>
+              {hasImeiIssues && (
+                <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded px-2 py-1.5">
+                  ⚠️ Fix IMEI issues before submitting
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -49,6 +49,7 @@ model Tenant {
   jobCards         JobCard[]
   shopProducts     ShopProduct[]
   stockEntries     StockLedger[]
+  stockCorrections StockCorrection[]
   invoices         Invoice[]
   financialEntries FinancialEntry[]
   ledgerCustomers  LedgerCustomer[]
@@ -414,6 +415,7 @@ model Shop {
   jobCards     JobCard[]
   products     ShopProduct[]
   stockEntries StockLedger[]
+  stockCorrections StockCorrection[]
   invoices     Invoice[]
   transferredIMEIs IMEI[]         @relation("TransferredIMEIs") // IMEIs transferred TO this shop
 
@@ -605,6 +607,7 @@ model ShopProduct {
 
   imeis         IMEI[] // For MOBILE only
   stockEntries  StockLedger[]
+  stockCorrections StockCorrection[]
   invoiceItems  InvoiceItem[]
   partsUsed     RepairPartUsed[]
   purchaseItems PurchaseItem[]
@@ -671,6 +674,26 @@ model StockLedger {
   @@index([shopProductId, createdAt])
   @@index([tenantId, shopId, type])
   @@index([referenceType, referenceId]) // ✅ NEW: Trace movements by reference
+}
+
+model StockCorrection {
+  id            String   @id @default(cuid())
+  tenantId      String
+  shopId        String
+  shopProductId String
+  quantity      Int
+  reason        String
+  note          String?
+  createdBy     String?
+  createdAt     DateTime @default(now())
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id])
+  shop    Shop        @relation(fields: [shopId], references: [id])
+  product ShopProduct @relation(fields: [shopProductId], references: [id])
+
+  @@index([tenantId, shopId])
+  @@index([shopProductId])
+  @@index([createdAt])
 }
 
 model Invoice {
