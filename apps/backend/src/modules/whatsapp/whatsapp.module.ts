@@ -5,20 +5,32 @@ import { WhatsAppSender } from './whatsapp.sender';
 import { WhatsAppCron } from './whatsapp.cron';
 import { WhatsAppLogger } from './whatsapp.logger';
 import { WhatsAppWebhookController } from './whatsapp.webhook.controller';
-import { WhatsAppRemindersService } from './whatsapp-reminders.service';
-import { WhatsAppRemindersCron } from './whatsapp-reminders.cron';
+import { WhatsAppSettingsController } from './whatsapp-settings.controller';
+import { WhatsAppController } from './whatsapp.controller';
+import { WhatsAppPhoneNumbersController } from './phone-numbers/whatsapp-phone-numbers.controller';
+import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
+import { WhatsAppVariableResolver } from './variable-resolver.service';
 
 @Module({
-  controllers: [WhatsAppWebhookController],
+  controllers: [
+    WhatsAppWebhookController,
+    WhatsAppSettingsController,
+    WhatsAppController,
+    WhatsAppPhoneNumbersController,
+  ],
   imports: [ScheduleModule.forRoot()],
   providers: [
     PrismaService,
     WhatsAppSender,
     WhatsAppCron,
     WhatsAppLogger,
-    WhatsAppRemindersService,
-    WhatsAppRemindersCron,
+    WhatsAppPhoneNumbersService,
+    WhatsAppVariableResolver,
   ],
-  exports: [WhatsAppSender, WhatsAppRemindersService],
+  exports: [
+    WhatsAppSender,
+    WhatsAppPhoneNumbersService,
+    WhatsAppVariableResolver,
+  ],
 })
 export class WhatsAppModule {}

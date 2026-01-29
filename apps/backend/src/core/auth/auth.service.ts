@@ -61,7 +61,7 @@ export class AuthService {
           REMOVED_AUTH_PROVIDERUid: decoded.uid,
           email: decoded.email ?? null,
           fullName: decoded.name ?? null,
-          role: UserRole.USER,
+          role: UserRole.USER, // First login defaults to USER, can be upgraded to ADMIN/OWNER by admins
           tenantId: null,
         },
       });
@@ -149,7 +149,7 @@ export class AuthService {
         const token = this.jwtService.sign({
           sub: user.id,
           tenantId: null,
-          role: UserRole.USER,
+          role: user.role.toLowerCase(), // Convert to lowercase for frontend
         });
 
         return {
@@ -158,7 +158,7 @@ export class AuthService {
             id: user.id,
             email: user.email,
             fullName: user.fullName,
-            role: UserRole.USER,
+            role: user.role.toLowerCase() as any, // Convert to lowercase for frontend
             tenantId: null,
           },
           tenant: null,
@@ -182,7 +182,7 @@ export class AuthService {
       const token = this.jwtService.sign({
         sub: user.id,
         tenantId: resolvedUserTenant.tenantId,
-        role: resolvedUserTenant.role,
+        role: resolvedUserTenant.role.toLowerCase(), // Convert to lowercase for frontend
       });
 
       return {
@@ -190,7 +190,7 @@ export class AuthService {
         user: {
           id: user.id,
           tenantId: activeUserTenant?.tenantId ?? null,
-          role: activeUserTenant?.role ?? UserRole.USER,
+          role: (activeUserTenant?.role ?? UserRole.USER).toLowerCase() as any,
           name: user.fullName,
           email: user.email,
         },

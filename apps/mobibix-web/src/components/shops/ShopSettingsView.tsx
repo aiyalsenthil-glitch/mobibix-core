@@ -16,7 +16,7 @@ interface ShopSettingsViewProps {
 
 export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"GENERAL" | "PRINT">("GENERAL");
+  const [activeTab, setActiveTab] = useState<"GENERAL" | "PRINT" | "BANK">("GENERAL");
   const [isLoading, setIsLoading] = useState(true);
   
   const [shop, setShop] = useState<Shop | null>(null);
@@ -37,6 +37,12 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
     invoiceFooter: "",
     logoUrl: "",
     terms: "",
+    
+    // Bank Details
+    bankName: "",
+    accountNumber: "",
+    ifscCode: "",
+    branchName: "",
   });
 
   useEffect(() => {
@@ -59,6 +65,12 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
             invoiceFooter: settings.invoiceFooter || "",
             logoUrl: settings.logoUrl || "",
             terms: settings.terms?.join("\n") || "",
+
+            // Bank Details
+            bankName: settings.bankName || "",
+            accountNumber: settings.accountNumber || "",
+            ifscCode: settings.ifscCode || "",
+            branchName: settings.branchName || "",
         });
       } catch (err: any) {
         setError(err.message || "Failed to load settings");
@@ -92,6 +104,12 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
         terms: formData.terms
           ? formData.terms.split("\n").filter((t) => t.trim())
           : undefined,
+
+        // Bank Details
+        bankName: formData.bankName || undefined,
+        accountNumber: formData.accountNumber || undefined,
+        ifscCode: formData.ifscCode || undefined,
+        branchName: formData.branchName || undefined,
       };
 
       await updateShopSettings(shopId, payload);
@@ -155,6 +173,16 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
                 General Information
             </button>
             <button
+                onClick={() => setActiveTab("BANK")}
+                className={`py-3 px-6 text-sm font-medium border-b-2 transition ${
+                    activeTab === "BANK" 
+                    ? "border-teal-500 text-teal-400" 
+                    : "border-transparent text-gray-400 hover:text-white"
+                }`}
+            >
+                Bank Details
+            </button>
+            <button
                 onClick={() => setActiveTab("PRINT")}
                 className={`py-3 px-6 text-sm font-medium border-b-2 transition ${
                     activeTab === "PRINT" 
@@ -170,6 +198,45 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
         {activeTab === "PRINT" ? (
             <div className="animate-fade-in">
                 <ShopPrintSettings shop={shop} onUpdate={() => window.dispatchEvent(new CustomEvent("shopUpdated"))} />
+            </div>
+        ) : activeTab === "BANK" ? (
+            <div className="bg-stone-900/50 border border-white/5 rounded-xl p-8 animate-fade-in">
+                 <form onSubmit={handleSubmit} className="space-y-8">
+                    {/* Section: Bank Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="md:col-span-1">
+                            <h3 className="text-lg font-semibold text-white mb-2">Banking Information</h3>
+                            <p className="text-sm text-stone-400">Enter your bank details to be displayed on invoices.</p>
+                        </div>
+                        <div className="md:col-span-2 space-y-4">
+                             <div>
+                                <label className="block text-sm text-stone-400 mb-1">Bank Name</label>
+                                <input type="text" name="bankName" value={formData.bankName} onChange={handleChange} placeholder="e.g. HDFC Bank" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
+                             </div>
+                             <div>
+                                <label className="block text-sm text-stone-400 mb-1">Account Number</label>
+                                <input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleChange} placeholder="e.g. 1234567890" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
+                             </div>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm text-stone-400 mb-1">IFSC Code</label>
+                                    <input type="text" name="ifscCode" value={formData.ifscCode} onChange={handleChange} placeholder="e.g. HDFC0001234" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-stone-400 mb-1">Branch Name</label>
+                                    <input type="text" name="branchName" value={formData.branchName} onChange={handleChange} placeholder="e.g. Koramangala" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+
+                    <div className="pt-6 flex justify-end gap-4">
+                        <button type="button" onClick={() => router.back()} className="px-6 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition">Cancel</button>
+                        <button type="submit" disabled={isSubmitting} className="px-8 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition shadow-lg shadow-teal-500/20">
+                            {isSubmitting ? "Saving Changes..." : "Save Bank Details"}
+                        </button>
+                    </div>
+                 </form>
             </div>
         ) : (
         <div className="bg-stone-900/50 border border-white/5 rounded-xl p-8 animate-fade-in">

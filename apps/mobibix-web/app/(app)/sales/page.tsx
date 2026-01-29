@@ -14,6 +14,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
 import { NoShopsAlert } from "../components/NoShopsAlert";
+import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
   PAID: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
@@ -105,6 +106,11 @@ export default function SalesPage() {
         : error
     : null;
 
+
+  const [collectingInvoice, setCollectingInvoice] = useState<SalesInvoice | null>(
+    null,
+  );
+
   const handleCreateInvoice = () => {
     if (!selectedShopId) {
       alert("Please select a shop first");
@@ -153,6 +159,10 @@ export default function SalesPage() {
     } catch (err: any) {
       alert(err.message || "Failed to cancel invoice");
     }
+  };
+
+  const handleCollectPayment = (invoice: SalesInvoice) => {
+    setCollectingInvoice(invoice);
   };
 
   const formatDate = (date: string | Date) => {
@@ -405,7 +415,18 @@ export default function SalesPage() {
                         {formatDate(inv.invoiceDate)}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                           {/* Collect Payment Button */}
+                           {inv.balanceAmount && inv.balanceAmount > 0 ? (
+                            <button
+                              onClick={() => handleCollectPayment(inv)}
+                              title="Collect Payment"
+                              className="px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-500/20 dark:text-green-300 dark:hover:bg-green-500/30 transition shadow-sm border border-green-200 dark:border-green-500/30"
+                            >
+                              Collect ₹
+                            </button>
+                           ) : null}
+
                           <button
                             onClick={() =>
                               handlePrint(inv.id, inv.invoiceNumber)
@@ -473,6 +494,20 @@ export default function SalesPage() {
             </table>
           </div>
         </div>
+      )}
+      
+      {/* Collect Payment Modal */}
+      {collectingInvoice && (
+        <CollectPaymentModal
+          invoiceId={collectingInvoice.id}
+          balanceAmount={collectingInvoice.balanceAmount || 0}
+          customerName={collectingInvoice.customerName || "Customer"}
+          isOpen={!!collectingInvoice}
+          onClose={() => setCollectingInvoice(null)}
+          onSuccess={() => {
+            reload();
+          }}
+        />
       )}
     </div>
   );

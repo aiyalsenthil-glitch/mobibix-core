@@ -1,4 +1,4 @@
-import { ComingSoonPage } from "../components";
+import { ComingSoonPage } from "../../dashboard/components";
 
 export default function ReportsPage() {
   return (

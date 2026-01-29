@@ -3,10 +3,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { getInvoice } from "@/services/sales.api";
+import { getReceipt } from "@/services/receipts.api"; // New
+import { getVoucher } from "@/services/vouchers.api"; // New
 import { getShop } from "@/services/shops.api";
 import { listProducts } from "@/services/products.api";
 import { getJobCard } from "@/services/jobcard.api";
 import { mapInvoiceToPrintData } from "@/lib/print/adapters/invoice.adapter";
+import { mapReceiptToPrintData } from "@/lib/print/adapters/receipt.adapter"; // New
+import { mapVoucherToPrintData } from "@/lib/print/adapters/voucher.adapter"; // New
 import { mapJobCardToPrintData } from "@/lib/print/adapters/jobcard.adapter";
 import { resolveTemplate, registerTemplate } from "@/lib/print/registry";
 import { InvoiceClassic } from "@/components/print/templates/InvoiceClassic";
@@ -19,6 +23,8 @@ import { JobCardThermal } from "@/components/print/templates/JobCardThermal";
 import { JobCardClassic } from "@/components/print/templates/JobCardClassic";
 import { JobCardSimple } from "@/components/print/templates/JobCardSimple";
 import { JobCardDetailed } from "@/components/print/templates/JobCardDetailed";
+import { ReceiptPrint } from "@/components/print/templates/ReceiptPrint"; // New
+import { VoucherPrint } from "@/components/print/templates/VoucherPrint"; // New
 import type { PrintDocumentData, DocumentType } from "@/lib/print/types";
 
 import { Suspense } from "react";
@@ -34,6 +40,8 @@ registerTemplate("JOBCARD", "THERMAL", JobCardThermal);
 registerTemplate("JOBCARD", "CLASSIC", JobCardClassic);
 registerTemplate("JOBCARD", "SIMPLE", JobCardSimple);
 registerTemplate("JOBCARD", "DETAILED", JobCardDetailed);
+registerTemplate("RECEIPT", "CLASSIC", ReceiptPrint); // New
+registerTemplate("VOUCHER", "CLASSIC", VoucherPrint); // New
 
 function GenericPrintContent() {
   const params = useParams<{ type: string; id: string }>();
@@ -108,6 +116,20 @@ function GenericPrintContent() {
 
           const printData = mapJobCardToPrintData({ jobCard, shop });
           setData(printData);
+        } else if (docType === "RECEIPT") {
+          const receipt = await getReceipt(docId);
+          if (!receipt) throw new Error("Receipt not found");
+
+          const shop = await getShop(receipt.shopId);
+          setData(mapReceiptToPrintData({ receipt, shop }));
+          defaultVariant = "CLASSIC";
+        } else if (docType === "VOUCHER") {
+          const voucher = await getVoucher(docId);
+          if (!voucher) throw new Error("Voucher not found");
+
+          const shop = await getShop(voucher.shopId);
+          setData(mapVoucherToPrintData({ voucher, shop }));
+          defaultVariant = "CLASSIC";
         } else {
           throw new Error("Unknown document type");
         }

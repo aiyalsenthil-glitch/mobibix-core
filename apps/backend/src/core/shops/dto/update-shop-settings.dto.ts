@@ -85,4 +85,21 @@ export class UpdateShopSettingsDto {
   @IsOptional()
   @IsString()
   tagline?: string;
+
+  // Bank Details
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  accountNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  ifscCode?: string;
+
+  @IsOptional()
+  @IsString()
+  branchName?: string;
 }

@@ -118,12 +118,7 @@ export function ShopFormModal({ shop, onClose }: ShopFormModalProps) {
         };
         await updateShop(shop.id, updatePayload);
 
-        // Notify other components about shop update
-        window.dispatchEvent(new CustomEvent("shopUpdated"));
 
-        // For cross-tab communication
-        localStorage.setItem("shop_updated", Date.now().toString());
-        localStorage.removeItem("shop_updated");
       } else {
         const createPayload: CreateShopDto = {
           name: formData.name,
@@ -141,6 +136,13 @@ export function ShopFormModal({ shop, onClose }: ShopFormModalProps) {
         await createShop(createPayload);
       }
 
+      // Notify other components about shop update/creation
+      window.dispatchEvent(new CustomEvent("shopUpdated"));
+
+      // For cross-tab communication
+      localStorage.setItem("shop_updated", Date.now().toString());
+      localStorage.removeItem("shop_updated");
+
       onClose();
     } catch (err: any) {
       setError(err.message || "Failed to save shop");
@@ -150,7 +152,9 @@ export function ShopFormModal({ shop, onClose }: ShopFormModalProps) {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));

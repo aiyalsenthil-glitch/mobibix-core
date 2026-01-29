@@ -123,6 +123,13 @@ export class ShopService {
         invoiceFooter: true,
         terms: true,
         logoUrl: true,
+        tagline: true,
+        headerConfig: true,
+        
+        bankName: true,
+        accountNumber: true,
+        ifscCode: true,
+        branchName: true,
       },
     });
 
@@ -186,6 +193,11 @@ export class ShopService {
         jobCardTemplate: dto.jobCardTemplate,
         headerConfig: dto.headerConfig,
         tagline: dto.tagline,
+        
+        bankName: dto.bankName,
+        accountNumber: dto.accountNumber,
+        ifscCode: dto.ifscCode,
+        branchName: dto.branchName,
       },
     });
   }

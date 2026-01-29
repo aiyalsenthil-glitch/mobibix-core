@@ -4,6 +4,13 @@ enum ProductType {
   SERVICE
 }
 
+enum WhatsAppPhoneNumberPurpose {
+  REMINDER
+  BILLING
+  MARKETING
+  DEFAULT
+}
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -63,12 +70,12 @@ model Tenant {
   paymentVouchers  PaymentVoucher[]
   quotations       Quotation[]
   purchaseOrders   PurchaseOrder[]
-  
+
   // CRM Relations
-  customerFollowUps      CustomerFollowUp[]
-  customerReminders      CustomerReminder[]
-  loyaltyTransactions    LoyaltyTransaction[]
-  customerAlerts         CustomerAlert[]
+  customerFollowUps   CustomerFollowUp[]
+  customerReminders   CustomerReminder[]
+  loyaltyTransactions LoyaltyTransaction[]
+  customerAlerts      CustomerAlert[]
 }
 
 model UserTenant {
@@ -101,7 +108,7 @@ model User {
   tenant           Tenant?      @relation(fields: [tenantId], references: [id])
   userTenants      UserTenant[]
   shopStaffs       ShopStaff[]
-  
+
   // CRM: Follow-ups assigned to this user
   assignedFollowUps CustomerFollowUp[]
 }
@@ -162,12 +169,12 @@ model Customer {
   tenant   Tenant    @relation(fields: [tenantId], references: [id])
   invoices Invoice[]
   jobCards JobCard[]
-  
+
   // CRM Relations
-  followUps      CustomerFollowUp[]
-  reminders      CustomerReminder[]
+  followUps           CustomerFollowUp[]
+  reminders           CustomerReminder[]
   loyaltyTransactions LoyaltyTransaction[]
-  alerts         CustomerAlert[]
+  alerts              CustomerAlert[]
 
   @@unique([tenantId, phone])
   @@index([tenantId])
@@ -177,26 +184,26 @@ model Customer {
 
 // Track manual CRM actions: calls, WhatsApp, visits, etc.
 model CustomerFollowUp {
-  id               String   @id @default(cuid())
-  tenantId         String
-  customerId       String
-  shopId           String?
-  
-  type             FollowUpType
-  purpose          FollowUpPurpose
-  note             String?
-  followUpAt       DateTime
-  status           FollowUpStatus @default(PENDING)
-  
-  assignedToUserId String?
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id         String  @id @default(cuid())
+  tenantId   String
+  customerId String
+  shopId     String?
 
-  tenant           Tenant   @relation(fields: [tenantId], references: [id])
-  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  shop             Shop?    @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  assignedToUser   User?    @relation(fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  type       FollowUpType
+  purpose    FollowUpPurpose
+  note       String?
+  followUpAt DateTime
+  status     FollowUpStatus  @default(PENDING)
+
+  assignedToUserId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  shop           Shop?    @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  assignedToUser User?    @relation(fields: [assignedToUserId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([customerId])
@@ -208,25 +215,25 @@ model CustomerFollowUp {
 
 // Automated reminders: schedule WhatsApp or in-app notifications
 model CustomerReminder {
-  id               String   @id @default(cuid())
-  tenantId         String
-  customerId       String
-  
-  triggerType      ReminderTriggerType
-  triggerValue     String                // Date string (YYYY-MM-DD) or number of days as string
-  channel          ReminderChannel
-  templateKey      String                // Template identifier for rendering
-  
-  status           ReminderStatus @default(SCHEDULED)
-  scheduledAt      DateTime?
-  sentAt           DateTime?
-  failureReason    String?               // Optional: reason if status = FAILED
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id         String @id @default(cuid())
+  tenantId   String
+  customerId String
 
-  tenant           Tenant   @relation(fields: [tenantId], references: [id])
-  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  triggerType  ReminderTriggerType
+  triggerValue String // Date string (YYYY-MM-DD) or number of days as string
+  channel      ReminderChannel
+  templateKey  String // Template identifier for rendering
+
+  status        ReminderStatus @default(SCHEDULED)
+  scheduledAt   DateTime?
+  sentAt        DateTime?
+  failureReason String? // Optional: reason if status = FAILED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([customerId])
@@ -236,19 +243,19 @@ model CustomerReminder {
 
 // Track loyalty points earned/redeemed
 model LoyaltyTransaction {
-  id               String   @id @default(cuid())
-  tenantId         String
-  customerId       String
-  
-  points           Int                   // Positive (earned) or negative (redeemed)
-  source           LoyaltySource
-  referenceId      String?               // Link to Invoice, Manual action, etc.
-  note             String?
-  
-  createdAt        DateTime @default(now())
+  id         String @id @default(cuid())
+  tenantId   String
+  customerId String
 
-  tenant           Tenant   @relation(fields: [tenantId], references: [id])
-  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  points      Int // Positive (earned) or negative (redeemed)
+  source      LoyaltySource
+  referenceId String? // Link to Invoice, Manual action, etc.
+  note        String?
+
+  createdAt DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([customerId])
@@ -257,20 +264,20 @@ model LoyaltyTransaction {
 
 // Internal alerts for staff on customer actions/statuses
 model CustomerAlert {
-  id               String   @id @default(cuid())
-  tenantId         String
-  customerId       String
-  
-  severity         AlertSeverity
-  message          String
-  source           AlertSource
-  resolved         Boolean @default(false)
-  resolvedAt       DateTime?
-  
-  createdAt        DateTime @default(now())
+  id         String @id @default(cuid())
+  tenantId   String
+  customerId String
 
-  tenant           Tenant   @relation(fields: [tenantId], references: [id])
-  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  severity   AlertSeverity
+  message    String
+  source     AlertSource
+  resolved   Boolean       @default(false)
+  resolvedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([customerId])
@@ -452,22 +459,85 @@ model GymMembership {
 }
 
 model WhatsAppSetting {
-  id        String   @id @default(uuid())
-  tenantId  String   @unique
-  enabled   Boolean  @default(false)
-  createdAt DateTime @default(now())
-  provider  String?
+  id                     String   @id @default(uuid())
+  tenantId               String   @unique
+  enabled                Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  provider               String?
+  defaultLanguage        String   @default("en")
+  dailyLimit             Int?
+  testPhone              String?
+  marketingOptInRequired Boolean  @default(true)
+}
+
+model WhatsAppPhoneNumber {
+  id            String                      @id @default(uuid())
+  tenantId      String
+  phoneNumber   String // E.164 format e.g., +919876543210
+  phoneNumberId String // Meta Phone Number ID (used in API calls)
+  wabaId        String // WhatsApp Business Account ID
+  purpose       WhatsAppPhoneNumberPurpose  @default(DEFAULT)
+  qualityRating String? // Meta quality rating (read-only)
+  isDefault     Boolean                     @default(false)
+  isActive      Boolean                     @default(true)
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
+
+  @@unique([tenantId, phoneNumberId])
+  @@index([tenantId, isActive])
+  @@index([tenantId, purpose])
 }
 
 model WhatsAppLog {
-  id       String   @id @default(uuid())
-  tenantId String
-  memberId String?
-  phone    String
-  type     String
-  status   String
-  error    String?
-  sentAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  tenantId   String
+  memberId   String?
+  phone      String
+  type       String   // WELCOME, PAYMENT_DUE, EXPIRY, etc.
+  status     String   // PENDING, SENT, DELIVERED, READ, FAILED
+  error      String?  // Error message if status = FAILED
+  messageId  String?  // Meta message ID returned from API (for webhook tracking)
+  metadata   Json?    // Additional metadata (template vars, etc.)
+  sentAt     DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+  deliveredAt DateTime?
+  readAt     DateTime?
+
+  @@index([tenantId, sentAt])
+  @@index([tenantId, status])
+  @@index([messageId]) // For webhook lookups
+}
+
+model WhatsAppTemplate {
+  id               String   @id @default(uuid())
+  moduleType       String // GYM, MOBILESHOP - module-level templates shared across tenants
+  templateKey      String // WELCOME, PAYMENT_DUE, EXPIRY, REMINDER (immutable - identifies purpose)
+  metaTemplateName String // "new_member_welcome_v3", "payment_reminder_v2", etc. (Meta WhatsApp template name, can vary per version)
+  category         String // UTILITY or MARKETING
+  feature          String // WELCOME, PAYMENT_DUE, EXPIRY, REMINDER
+  language         String   @default("en") // en, ta, hi
+  status           String   @default("ACTIVE") // ACTIVE or DISABLED
+  isDefault        Boolean  @default(false) // Which version is the default for this templateKey
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([moduleType, metaTemplateName]) // metaTemplateName must be unique across Meta (can't have duplicate names)
+  @@index([moduleType])
+  @@index([moduleType, templateKey]) // Allow querying all versions of a template key
+}
+
+model WhatsAppAutomation {
+  id          String              @id @default(uuid())
+  moduleType  String // GYM, MOBILESHOP - module-level automations
+  triggerType ReminderTriggerType // DATE, AFTER_INVOICE, AFTER_JOB
+  templateKey String // Reference to WhatsAppTemplate.templateKey (same moduleType)
+  offsetDays  Int // Days before/after trigger date
+  enabled     Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([moduleType, triggerType])
+  @@index([moduleType])
 }
 
 model WebhookEvent {
@@ -511,7 +581,7 @@ model GymAttendance {
 }
 
 model Shop {
-  id            String   @id @default(cuid())
+  id            String  @id @default(cuid())
   tenantId      String
   name          String
   phone         String
@@ -521,43 +591,43 @@ model Shop {
   state         String
   pincode       String
   gstNumber     String?
-  gstEnabled    Boolean  @default(false)
+  gstEnabled    Boolean @default(false)
   invoicePrefix String
   logoUrl       String?
   website       String?
   invoiceFooter String?
-  
-  // Print Configuration
-  invoicePrinterType String?  @default("NORMAL")
-  invoiceTemplate    String?  @default("CLASSIC")
-  jobCardPrinterType String?  @default("THERMAL")
-  jobCardTemplate    String?  @default("THERMAL")
-  
-  // Custom Header
-  headerConfig       Json?
-  tagline            String?
 
-  terms         String[] @default([])
-  
+  // Print Configuration
+  invoicePrinterType String? @default("NORMAL")
+  invoiceTemplate    String? @default("CLASSIC")
+  jobCardPrinterType String? @default("NORMAL")
+  jobCardTemplate    String? @default("SIMPLE")
+
+  // Custom Header
+  headerConfig Json?
+  tagline      String?
+
+  terms String[] @default([])
+
   // Bank Details
   bankName      String?
   accountNumber String?
   ifscCode      String?
   branchName    String?
-  
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
 
-  staff        ShopStaff[]
-  jobCards     JobCard[]
-  products     ShopProduct[]
-  stockEntries StockLedger[]
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  staff            ShopStaff[]
+  jobCards         JobCard[]
+  products         ShopProduct[]
+  stockEntries     StockLedger[]
   stockCorrections StockCorrection[]
-  invoices     Invoice[]
-  transferredIMEIs IMEI[]         @relation("TransferredIMEIs") // IMEIs transferred TO this shop
+  invoices         Invoice[]
+  transferredIMEIs IMEI[]            @relation("TransferredIMEIs") // IMEIs transferred TO this shop
 
-  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  tenant           Tenant                @relation(fields: [tenantId], references: [id])
   financialEntries FinancialEntry[]
   purchases        Purchase[]
   receipts         Receipt[]
@@ -565,9 +635,11 @@ model Shop {
   quotations       Quotation[]
   purchaseOrders   PurchaseOrder[]
   documentSettings ShopDocumentSetting[] // ✅ NEW: Per-document numbering config
-  
+
   // CRM: Follow-ups linked to this shop
-  followUps        CustomerFollowUp[]
+  followUps CustomerFollowUp[]
+
+  receiptPrintCounter Int @default(0) // Atomic counter for receipt numbers
 
   @@unique([tenantId, invoicePrefix])
   @@index([tenantId])
@@ -581,12 +653,12 @@ model ShopDocumentSetting {
   documentType DocumentType
 
   // Format configuration
-  prefix       String       // e.g., "HP" (shop identifier)
-  separator    String       @default("-") // Separator between parts (-, /, _, etc.)
-  documentCode String       // e.g., "S" (Sales), "P" (Purchase), "J" (Job Card)
-  yearFormat   YearFormat   @default(FY) // How to display year
-  numberLength Int          @default(4) // Padding (0001, 00001, etc.)
-  resetPolicy  ResetPolicy  @default(YEARLY) // When to reset counter
+  prefix       String // e.g., "HP" (shop identifier)
+  separator    String      @default("-") // Separator between parts (-, /, _, etc.)
+  documentCode String // e.g., "S" (Sales), "P" (Purchase), "J" (Job Card)
+  yearFormat   YearFormat  @default(FY) // How to display year
+  numberLength Int         @default(4) // Padding (0001, 00001, etc.)
+  resetPolicy  ResetPolicy @default(YEARLY) // When to reset counter
 
   // Current state (for atomic increments)
   currentNumber Int     @default(0) // Last used sequence number
@@ -727,7 +799,7 @@ model ShopProduct {
   id              String      @id @default(cuid())
   tenantId        String
   shopId          String
-  globalProductId String?     // Can be null for custom shop-specific products
+  globalProductId String? // Can be null for custom shop-specific products
   name            String
   salePrice       Int?
   costPrice       Int?
@@ -735,7 +807,7 @@ model ShopProduct {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   type            ProductType // GOODS, SPARE, SERVICE
-  category        String?     // Free text category (e.g. Charger, Cover)
+  category        String? // Free text category (e.g. Charger, Cover)
 
   // ✅ NEW: isSerialized flag to distinguish tracked units from bulk items
   // TRUE (serialized) = track IMEI per unit (mobiles, laptops)
@@ -772,26 +844,26 @@ model ShopProduct {
 }
 
 model IMEI {
-  id            String       @id @default(cuid())
-  tenantId      String
-  shopProductId String
-  imei          String       // ✅ FIXED: Unique per tenant (not globally)
-  status        IMEIStatus   @default(IN_STOCK) // Unit lifecycle status
-  invoiceId     String?      // Linked invoice when SOLD
+  id                  String     @id @default(cuid())
+  tenantId            String
+  shopProductId       String
+  imei                String // ✅ FIXED: Unique per tenant (not globally)
+  status              IMEIStatus @default(IN_STOCK) // Unit lifecycle status
+  invoiceId           String? // Linked invoice when SOLD
   transferredToShopId String? // Destination shop when TRANSFERRED
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
   // Audit trail for unit lifecycle
-  soldAt        DateTime? // When was this unit sold
-  returnedAt    DateTime? // When was this unit returned
-  damageNotes   String?   // Why is unit damaged (DAMAGED status)
-  lostReason    String?   // Why is unit lost (LOST status - irreversible)
-  
-  product       ShopProduct  @relation(fields: [shopProductId], references: [id])
-  tenant        Tenant       @relation(fields: [tenantId], references: [id])
-  invoice       Invoice?     @relation(fields: [invoiceId], references: [id])
-  transferredToShop Shop?    @relation("TransferredIMEIs", fields: [transferredToShopId], references: [id])
+  soldAt      DateTime? // When was this unit sold
+  returnedAt  DateTime? // When was this unit returned
+  damageNotes String? // Why is unit damaged (DAMAGED status)
+  lostReason  String? // Why is unit lost (LOST status - irreversible)
+
+  product           ShopProduct @relation(fields: [shopProductId], references: [id])
+  tenant            Tenant      @relation(fields: [tenantId], references: [id])
+  invoice           Invoice?    @relation(fields: [invoiceId], references: [id])
+  transferredToShop Shop?       @relation("TransferredIMEIs", fields: [transferredToShopId], references: [id])
 
   @@unique([tenantId, imei]) // ✅ CRITICAL: Tenant-scoped uniqueness for multi-tenant SaaS
   @@index([tenantId])
@@ -807,10 +879,10 @@ model StockLedger {
   shopId        String
   shopProductId String
   type          StockEntryType // IN (purchase, transfer) or OUT (sale, repair, adjustment)
-  quantity      Int            // Must be positive; validate before OUT to prevent negatives
-  referenceType StockRefType?  // PURCHASE, SALE, REPAIR, ADJUSTMENT, TRANSFER
-  referenceId   String?        // PurchaseItem.id, InvoiceItem.id, RepairPartUsed.id, etc.
-  costPerUnit   Int?           // ✅ NEW: Cost per unit for COGS calculation
+  quantity      Int // Must be positive; validate before OUT to prevent negatives
+  referenceType StockRefType? // PURCHASE, SALE, REPAIR, ADJUSTMENT, TRANSFER
+  referenceId   String? // PurchaseItem.id, InvoiceItem.id, RepairPartUsed.id, etc.
+  costPerUnit   Int? // ✅ NEW: Cost per unit for COGS calculation
   note          String?
   createdAt     DateTime       @default(now())
 
@@ -1464,12 +1536,12 @@ enum POStatus {
 // ✅ NEW: IMEI Status Enum
 // Tracks lifecycle of serialized product units (mobiles, laptops, etc.)
 enum IMEIStatus {
-  IN_STOCK      // Available for sale
-  SOLD          // Sold to customer (linked to invoice)
-  RETURNED      // Returned from customer (refund/exchange)
-  DAMAGED       // Damaged/non-functional, can't sell
-  TRANSFERRED   // Transferred to another shop
-  LOST          // Lost/stolen/missing
+  IN_STOCK // Available for sale
+  SOLD // Sold to customer (linked to invoice)
+  RETURNED // Returned from customer (refund/exchange)
+  DAMAGED // Damaged/non-functional, can't sell
+  TRANSFERRED // Transferred to another shop
+  LOST // Lost/stolen/missing
 }
 
 // ============= DOCUMENT NUMBERING SYSTEM =============
@@ -1482,96 +1554,97 @@ enum DocumentType {
   RECEIPT
   QUOTATION
   PURCHASE_ORDER
+  PAYMENT_VOUCHER
 }
 
 // Financial year format options
 enum YearFormat {
-  FY           // 2526 (Financial Year: April 2025 - March 2026)
-  YYYY         // 20252026 (Full 4-digit years)
-  YY           // 26 (Ending year only, 2-digit)
-  NONE         // No year in number
+  FY // 2526 (Financial Year: April 2025 - March 2026)
+  YYYY // 20252026 (Full 4-digit years)
+  YY // 26 (Ending year only, 2-digit)
+  NONE // No year in number
 }
 
 // When to reset the sequence number
 enum ResetPolicy {
-  NEVER        // Never reset (continuous numbering)
-  YEARLY       // Reset on financial year change
-  MONTHLY      // Reset every month
+  NEVER // Never reset (continuous numbering)
+  YEARLY // Reset on financial year change
+  MONTHLY // Reset every month
 }
 
 // ============= CRM ENUMS =============
 
 // Type of follow-up action
 enum FollowUpType {
-  CALL           // Phone call
-  WHATSAPP       // WhatsApp message
-  VISIT          // In-person visit
-  EMAIL          // Email
-  SMS            // SMS message
+  CALL // Phone call
+  WHATSAPP // WhatsApp message
+  VISIT // In-person visit
+  EMAIL // Email
+  SMS // SMS message
 }
 
 // Purpose of the follow-up
 enum FollowUpPurpose {
-  SALE           // Prospecting/sales
-  SERVICE        // Service/repair related
-  PAYMENT        // Payment collection
-  FEEDBACK       // Customer feedback/survey
-  RETENTION      // Loyalty/retention
-  OTHER          // General follow-up
+  SALE // Prospecting/sales
+  SERVICE // Service/repair related
+  PAYMENT // Payment collection
+  FEEDBACK // Customer feedback/survey
+  RETENTION // Loyalty/retention
+  OTHER // General follow-up
 }
 
 // Status of the follow-up
 enum FollowUpStatus {
-  PENDING        // Not yet done
-  DONE           // Completed
-  CANCELLED      // Cancelled/no action needed
+  PENDING // Not yet done
+  DONE // Completed
+  CANCELLED // Cancelled/no action needed
 }
 
 // When to trigger the reminder
 enum ReminderTriggerType {
-  DATE           // Fixed date (e.g., "2026-02-14")
-  AFTER_INVOICE  // N days after invoice date
-  AFTER_JOB      // N days after job card completion
+  DATE // Fixed date (e.g., "2026-02-14")
+  AFTER_INVOICE // N days after invoice date
+  AFTER_JOB // N days after job card completion
 }
 
 // Channel for sending reminder
 enum ReminderChannel {
-  WHATSAPP       // Send via WhatsApp
-  IN_APP         // In-app notification
-  EMAIL          // Email notification
-  SMS            // SMS notification
+  WHATSAPP // Send via WhatsApp
+  IN_APP // In-app notification
+  EMAIL // Email notification
+  SMS // SMS notification
 }
 
 // Status of the reminder
 enum ReminderStatus {
-  SCHEDULED      // Waiting to be sent
-  SENT           // Successfully sent
-  FAILED         // Failed to send
-  SKIPPED        // Manually skipped
+  SCHEDULED // Waiting to be sent
+  SENT // Successfully sent
+  FAILED // Failed to send
+  SKIPPED // Manually skipped
 }
 
 // Source of loyalty points
 enum LoyaltySource {
-  INVOICE        // Points from purchase
-  MANUAL         // Admin added manually
-  PROMOTION      // Promotional campaign
-  REFERRAL       // Referral bonus
-  REDEMPTION     // Points redeemed (negative)
+  INVOICE // Points from purchase
+  MANUAL // Admin added manually
+  PROMOTION // Promotional campaign
+  REFERRAL // Referral bonus
+  REDEMPTION // Points redeemed (negative)
 }
 
 // Severity level of alert
 enum AlertSeverity {
-  INFO           // Informational
-  WARNING        // Warning (action recommended)
-  CRITICAL       // Critical (needs immediate attention)
+  INFO // Informational
+  WARNING // Warning (action recommended)
+  CRITICAL // Critical (needs immediate attention)
 }
 
 // Source/reason for the alert
 enum AlertSource {
-  OVERDUE        // Payment overdue
-  HIGH_VALUE     // High-value customer activity
-  REPEAT_REPAIR  // Customer with repeat repairs (may indicate issue)
-  CHURN_RISK     // Customer not active recently
-  INACTIVE       // Customer marked inactive
-  CUSTOM         // Custom alert from staff
+  OVERDUE // Payment overdue
+  HIGH_VALUE // High-value customer activity
+  REPEAT_REPAIR // Customer with repeat repairs (may indicate issue)
+  CHURN_RISK // Customer not active recently
+  INACTIVE // Customer marked inactive
+  CUSTOM // Custom alert from staff
 }

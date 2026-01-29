@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SalesService } from './sales.service';
 import { PaymentService } from './payment.service';
 import { SalesInvoiceDto } from './dto/sales-invoice.dto';
+import { CollectPaymentDto } from './dto/collect-payment.dto';
 
 @Controller('mobileshop/sales')
 @UseGuards(JwtAuthGuard)
@@ -74,19 +75,20 @@ export class SalesController {
   async recordPayment(
     @Req() req: any,
     @Param('invoiceId') invoiceId: string,
-    @Body()
-    dto: {
-      amount: number;
-      paymentMethod: 'CASH' | 'CARD' | 'UPI' | 'BANK';
-      transactionRef?: string;
-      narration?: string;
-    },
+    @Body() dto: { amount: number; paymentMethod: 'CASH' | 'CARD' | 'UPI' | 'BANK'; transactionRef?: string; narration?: string },
   ) {
     const tenantId = req.user?.tenantId;
-    return this.paymentService.recordPayment(tenantId, {
-      invoiceId,
-      ...dto,
-    });
+    return this.paymentService.recordPayment(tenantId, { invoiceId, ...dto });
+  }
+
+  @Post('invoice/:invoiceId/collect-payment')
+  async collectPayment(
+    @Req() req: any,
+    @Param('invoiceId') invoiceId: string,
+    @Body() dto: CollectPaymentDto,
+  ) {
+    const tenantId = req.user?.tenantId;
+    return this.service.collectPayment(tenantId, invoiceId, dto);
   }
 
   @Get('invoice/:invoiceId/payments')

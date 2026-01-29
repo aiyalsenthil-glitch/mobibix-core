@@ -92,3 +92,5 @@ export function generateJobCardNumber(
   const seqStr = String(sequence).padStart(4, '0');
   return `${prefix}-J-${fy}-${seqStr}`;
 }
+
+

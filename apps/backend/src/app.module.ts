@@ -21,6 +21,9 @@ import { GlobalSuppliersModule } from './core/global-suppliers/global-suppliers.
 import { GlobalProductsModule } from './core/global-products/global-products.module';
 import { ShopProductsModule } from './core/shop-products/shop-products.module';
 import { CustomerTimelineModule } from './core/timeline/customer-timeline.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -53,7 +56,9 @@ import { CustomerTimelineModule } from './core/timeline/customer-timeline.module
       max: 1000,
     }),
   ],
+  controllers: [AppController],
   providers: [
+    AppService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

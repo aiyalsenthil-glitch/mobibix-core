@@ -5,14 +5,19 @@ import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { ReceiptEntity } from './entities/receipt.entity';
 import { v4 as uuidv4 } from 'uuid';
 
+import { DocumentNumberService } from '../../../common/services/document-number.service';
+import { DocumentType } from '@prisma/client';
+
 @Injectable()
 export class ReceiptsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly documentNumberService: DocumentNumberService,
+  ) {}
   private readonly logger = new Logger('ReceiptsService');
 
   /**
    * Create a receipt for money received
-   * CRITICAL: Only PAID amounts create receipts (NO CREDIT)
    */
   async createReceipt(
     tenantId: string,
@@ -67,15 +72,22 @@ export class ReceiptsService {
 
     // ✅ TRANSACTION: Create receipt atomically
     try {
+      // Use DocumentNumberService for sequential ID
+      const nextReceiptId = await this.documentNumberService.generateDocumentNumber(
+        shopId,
+        DocumentType.RECEIPT,
+        new Date(),
+      );
+
       const receipt = await this.prisma.receipt.create({
         data: {
           id: uuidv4(),
           tenantId,
           shopId,
-          receiptId: this.generateReceiptId(),
-          printNumber: (await this.getNextPrintNumber(shopId)).toString(),
+          receiptId: nextReceiptId,
+          printNumber: '0', // Deprecated/Unused for now, keeping schema valid
           receiptType: createReceiptDto.receiptType,
-          amount: createReceiptDto.amount,
+          amount: this.toPaisa(createReceiptDto.amount),
           paymentMethod: createReceiptDto.paymentMethod,
           transactionRef: createReceiptDto.transactionRef,
           customerId: null, // TODO: Link to Customer model when available
@@ -89,11 +101,17 @@ export class ReceiptsService {
         },
       });
 
+      // Convert back to Rupees for response
+      const response = {
+        ...receipt,
+        amount: this.fromPaisa(receipt.amount),
+      };
+
       this.logger.log(
-        `Receipt created: ${receipt.receiptId} for ${receipt.customerName} (${createReceiptDto.paymentMethod}) ₹${receipt.amount}`,
+        `Receipt created: ${receipt.receiptId} for ${receipt.customerName} (${createReceiptDto.paymentMethod}) ₹${response.amount}`,
       );
 
-      return receipt;
+      return response;
     } catch (error) {
       this.logger.error(
         `Failed to create receipt for tenant=${tenantId}, shop=${shopId}`,
@@ -157,34 +175,32 @@ export class ReceiptsService {
     ]);
 
     return {
-      data: receipts,
+      data: receipts.map((r) => ({ ...r, amount: this.fromPaisa(r.amount) })),
       total,
     };
   }
 
   /**
-   * Get single receipt by ID
+   * Get single receipt by ID (UUID) or Receipt ID (RCP-...)
    */
   async getReceipt(
     tenantId: string,
     shopId: string,
-    receiptId: string,
+    idOrReceiptId: string,
   ): Promise<ReceiptEntity> {
-    const receipt = await this.prisma.receipt.findUnique({
-      where: { id: receiptId },
+    const receipt = await this.prisma.receipt.findFirst({
+      where: {
+        OR: [{ id: idOrReceiptId }, { receiptId: idOrReceiptId }],
+        tenantId,
+        shopId,
+      },
     });
 
     if (!receipt) {
       throw new BadRequestException('Receipt not found');
     }
 
-    if (receipt.tenantId !== tenantId || receipt.shopId !== shopId) {
-      throw new BadRequestException(
-        'Receipt does not belong to this tenant/shop',
-      );
-    }
-
-    return receipt;
+    return { ...receipt, amount: this.fromPaisa(receipt.amount) };
   }
 
   /**
@@ -227,7 +243,7 @@ export class ReceiptsService {
       this.logger.log(
         `Receipt cancelled: ${receipt.receiptId} - Reason: ${reason}`,
       );
-      return cancelled;
+      return { ...cancelled, amount: this.fromPaisa(cancelled.amount) };
     } catch (error) {
       this.logger.error(
         `Failed to cancel receipt ${receiptId}`,
@@ -274,12 +290,26 @@ export class ReceiptsService {
 
     return {
       totalReceipts: receipts.length,
-      totalAmount: receipts.reduce((sum, r) => sum + r.amount, 0),
-      byPaymentMode,
+      totalAmount: this.fromPaisa(receipts.reduce((sum, r) => sum + r.amount, 0)),
+      byPaymentMode: Object.fromEntries(
+        Object.entries(byPaymentMode).map(([mode, data]) => [
+          mode,
+          { ...data, amount: this.fromPaisa(data.amount) },
+        ]),
+      ),
     };
   }
 
   // ===== PRIVATE HELPERS =====
+
+  private toPaisa(amount: number): number {
+    return Math.round(amount * 100);
+  }
+
+  private fromPaisa(amount: number): number {
+    return amount / 100;
+  }
+
 
   private generateReceiptId(): string {
     const timestamp = Date.now();

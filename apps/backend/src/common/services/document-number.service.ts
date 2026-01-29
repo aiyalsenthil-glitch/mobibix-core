@@ -316,6 +316,16 @@ export class DocumentNumberService {
           numberLength: 4,
           resetPolicy: ResetPolicy.YEARLY,
         },
+        {
+          shopId,
+          documentType: DocumentType.PAYMENT_VOUCHER,
+          prefix: shopPrefix,
+          separator: '-',
+          documentCode: 'V',
+          yearFormat: YearFormat.FY,
+          numberLength: 4,
+          resetPolicy: ResetPolicy.YEARLY,
+        },
       ];
 
       // Use createMany to insert all settings at once

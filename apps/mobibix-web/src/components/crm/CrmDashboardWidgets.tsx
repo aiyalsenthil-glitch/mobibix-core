@@ -83,28 +83,28 @@ export function CrmDashboardWidgets({
         {/* Total Customers */}
         <MetricCard
           title="Total Customers"
-          value={metrics.customers.total}
-          subtitle={`${metrics.customers.new30Days} new (30 days)`}
+          value={metrics.customers?.total || 0}
+          subtitle={`${metrics.customers?.new30Days || 0} new (30 days)`}
           icon="👥"
         />
 
         {/* Follow-ups Due */}
         <MetricCard
           title="Follow-ups Due"
-          value={metrics.followUps.dueToday}
+          value={metrics.followUps?.dueToday || 0}
           subtitle={
-            metrics.followUps.overdue > 0
-              ? `⚠️ ${metrics.followUps.overdue} overdue`
-              : `${metrics.followUps.pending} pending`
+            (metrics.followUps?.overdue || 0) > 0
+              ? `⚠️ ${metrics.followUps?.overdue} overdue`
+              : `${metrics.followUps?.pending || 0} pending`
           }
           icon="📋"
-          alert={metrics.followUps.overdue > 0}
+          alert={(metrics.followUps?.overdue || 0) > 0}
         />
 
         {/* Outstanding Amount */}
         <MetricCard
           title="Outstanding Amount"
-          value={`₹${metrics.financials.outstandingAmount.toLocaleString()}`}
+          value={`₹${(metrics.financials?.outstandingAmount || 0).toLocaleString()}`}
           subtitle="Credit invoices"
           icon="💰"
         />
@@ -112,16 +112,16 @@ export function CrmDashboardWidgets({
         {/* Loyalty Points */}
         <MetricCard
           title="Loyalty Points"
-          value={metrics.loyalty.totalPointsIssued}
-          subtitle={`${metrics.loyalty.customersWithPoints} customers`}
+          value={metrics.loyalty?.totalPointsIssued || 0}
+          subtitle={`${metrics.loyalty?.customersWithPoints || 0} customers`}
           icon="⭐"
         />
 
         {/* WhatsApp Success */}
         <MetricCard
           title="WhatsApp Success"
-          value={`${metrics.whatsapp.deliveryRate.toFixed(1)}%`}
-          subtitle={`${metrics.whatsapp.messagesDelivered}/${metrics.whatsapp.messagesSent} delivered`}
+          value={`${(metrics.whatsapp?.deliveryRate || 0).toFixed(1)}%`}
+          subtitle={`${metrics.whatsapp?.messagesDelivered || 0}/${metrics.whatsapp?.messagesSent || 0} delivered`}
           icon="💬"
         />
 
@@ -132,7 +132,7 @@ export function CrmDashboardWidgets({
             <h3 className="font-semibold">Top Customers</h3>
           </div>
           <div className="space-y-2">
-            {metrics.financials.topCustomers.slice(0, 3).map((customer) => (
+            {(metrics.financials?.topCustomers || []).slice(0, 3).map((customer) => (
               <div
                 key={customer.customerId}
                 className="flex justify-between items-center text-sm"
@@ -145,7 +145,7 @@ export function CrmDashboardWidgets({
                 </span>
               </div>
             ))}
-            {metrics.financials.topCustomers.length === 0 && (
+            {!(metrics.financials?.topCustomers?.length) && (
               <p className="text-sm text-gray-500">No data yet</p>
             )}
           </div>

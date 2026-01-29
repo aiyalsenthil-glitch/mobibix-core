@@ -172,7 +172,11 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total Sales"
-            value={`$${(data.today?.salesAmount ?? 0).toLocaleString()}`}
+            value={new Intl.NumberFormat('en-IN', {
+              style: 'currency',
+              currency: 'INR',
+              maximumFractionDigits: 0,
+            }).format(data.today?.salesAmount ?? 0)}
             icon="💰"
             subtext="Today's revenue"
             accentColor="teal"

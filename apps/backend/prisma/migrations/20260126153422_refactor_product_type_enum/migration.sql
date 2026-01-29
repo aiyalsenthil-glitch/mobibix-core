@@ -7,7 +7,14 @@
 -- AlterEnum
 BEGIN;
 CREATE TYPE "ProductType_new" AS ENUM ('GOODS', 'SPARE', 'SERVICE');
-ALTER TABLE "ShopProduct" ALTER COLUMN "type" TYPE "ProductType_new" USING ("type"::text::"ProductType_new");
+ALTER TABLE "ShopProduct" ALTER COLUMN "type" DROP DEFAULT;
+ALTER TABLE "ShopProduct" ALTER COLUMN "type" TYPE "ProductType_new" USING (
+  CASE
+    WHEN "type"::text IN ('MOBILE', 'ACCESSORY') THEN 'GOODS'
+    WHEN "type"::text IN ('GOODS', 'SPARE', 'SERVICE') THEN "type"::text
+    ELSE 'GOODS'
+  END::"ProductType_new"
+);
 ALTER TYPE "ProductType" RENAME TO "ProductType_old";
 ALTER TYPE "ProductType_new" RENAME TO "ProductType";
 DROP TYPE "public"."ProductType_old";

@@ -1,4 +1,4 @@
-export type DocumentType = "INVOICE" | "JOBCARD";
+export type DocumentType = "INVOICE" | "JOBCARD" | "RECEIPT" | "VOUCHER";
 export type TemplateVariant = "CLASSIC" | "THERMAL" | "MODERN" | "SIMPLE" | "DETAILED";
 
 // Header Customization Config

@@ -4,10 +4,15 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { CreateVoucherDto } from './dto/create-voucher.dto';
 import { VoucherEntity } from './entities/voucher.entity';
 import { v4 as uuidv4 } from 'uuid';
+import { DocumentNumberService } from '../../../common/services/document-number.service';
+import { DocumentType } from '@prisma/client';
 
 @Injectable()
 export class VouchersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly documentNumberService: DocumentNumberService,
+  ) {}
   private readonly logger = new Logger('VouchersService');
 
   /**
@@ -62,15 +67,22 @@ export class VouchersService {
 
     // ✅ TRANSACTION: Create voucher atomically
     try {
+      // Use DocumentNumberService for sequential ID
+      const nextVoucherId = await this.documentNumberService.generateDocumentNumber(
+        shopId,
+        DocumentType.PAYMENT_VOUCHER,
+        new Date(),
+      );
+
       const voucher = await this.prisma.paymentVoucher.create({
         data: {
           id: uuidv4(),
           tenantId,
           shopId,
-          voucherId: this.generateVoucherId(),
+          voucherId: nextVoucherId,
           voucherType: createVoucherDto.voucherType,
           date: new Date(),
-          amount: createVoucherDto.amount,
+          amount: this.toPaisa(createVoucherDto.amount),
           paymentMethod: createVoucherDto.paymentMethod,
           transactionRef: createVoucherDto.transactionRef,
           narration: createVoucherDto.narration,
@@ -82,11 +94,17 @@ export class VouchersService {
         },
       });
 
+      // Convert back to Rupees for response
+      const response = {
+        ...voucher,
+        amount: this.fromPaisa(voucher.amount),
+      };
+
       this.logger.log(
-        `Voucher created: ${voucher.voucherId} (${createVoucherDto.voucherType}) (${createVoucherDto.paymentMethod}) ₹${voucher.amount}`,
+        `Voucher created: ${voucher.voucherId} (${createVoucherDto.voucherType}) (${createVoucherDto.paymentMethod}) ₹${response.amount}`,
       );
 
-      return voucher;
+      return response;
     } catch (error) {
       this.logger.error(
         `Failed to create voucher for tenant=${tenantId}, shop=${shopId}`,
@@ -166,23 +184,21 @@ export class VouchersService {
   async getVoucher(
     tenantId: string,
     shopId: string,
-    voucherId: string,
+    idOrVoucherId: string,
   ): Promise<VoucherEntity> {
-    const voucher = await this.prisma.paymentVoucher.findUnique({
-      where: { id: voucherId },
+    const voucher = await this.prisma.paymentVoucher.findFirst({
+      where: {
+        OR: [{ id: idOrVoucherId }, { voucherId: idOrVoucherId }],
+        tenantId,
+        shopId,
+      },
     });
 
     if (!voucher) {
       throw new BadRequestException('Voucher not found');
     }
 
-    if (voucher.tenantId !== tenantId || voucher.shopId !== shopId) {
-      throw new BadRequestException(
-        'Voucher does not belong to this tenant/shop',
-      );
-    }
-
-    return voucher;
+    return { ...voucher, amount: this.fromPaisa(voucher.amount) };
   }
 
   /**
@@ -225,7 +241,7 @@ export class VouchersService {
       this.logger.log(
         `Voucher cancelled: ${voucher.voucherId} - Reason: ${reason}`,
       );
-      return cancelled;
+      return { ...cancelled, amount: this.fromPaisa(cancelled.amount) };
     } catch (error) {
       this.logger.error(
         `Failed to cancel voucher ${voucherId}`,
@@ -280,15 +296,36 @@ export class VouchersService {
       byPaymentMode[v.paymentMethod].amount += v.amount;
     });
 
+
+
     return {
       totalVouchers: vouchers.length,
-      totalAmount: vouchers.reduce((sum, v) => sum + v.amount, 0),
-      byVoucherType,
-      byPaymentMode,
+      totalAmount: this.fromPaisa(vouchers.reduce((sum, v) => sum + v.amount, 0)),
+      byVoucherType: Object.fromEntries(
+        Object.entries(byVoucherType).map(([type, data]) => [
+          type,
+          { ...data, amount: this.fromPaisa(data.amount) },
+        ]),
+      ),
+      byPaymentMode: Object.fromEntries(
+        Object.entries(byPaymentMode).map(([mode, data]) => [
+          mode,
+          { ...data, amount: this.fromPaisa(data.amount) },
+        ]),
+      ),
     };
   }
 
   // ===== PRIVATE HELPERS =====
+
+  private toPaisa(amount: number): number {
+    return Math.round(amount * 100);
+  }
+
+  private fromPaisa(amount: number): number {
+    return amount / 100;
+  }
+
 
   private generateVoucherId(): string {
     const timestamp = Date.now();

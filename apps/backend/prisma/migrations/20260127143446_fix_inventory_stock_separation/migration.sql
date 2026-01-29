@@ -9,45 +9,67 @@
   - Added the required column `updatedAt` to the `RepairPartUsed` table without a default value. This is not possible if the table is not empty.
 
 */
--- CreateEnum
-CREATE TYPE "IMEIStatus" AS ENUM ('IN_STOCK', 'SOLD', 'RETURNED', 'DAMAGED', 'TRANSFERRED', 'LOST');
+-- CreateEnum (guarded)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'IMEIStatus') THEN
+    CREATE TYPE "IMEIStatus" AS ENUM ('IN_STOCK', 'SOLD', 'RETURNED', 'DAMAGED', 'TRANSFERRED', 'LOST');
+  END IF;
+END $$;
 
 -- DropIndex
-DROP INDEX "ShopProduct_serialNumber_key";
+DROP INDEX IF EXISTS "ShopProduct_serialNumber_key";
+
+-- AlterTable (IMEI)
+ALTER TABLE "IMEI" ADD COLUMN IF NOT EXISTS "damageNotes" TEXT;
+ALTER TABLE "IMEI" ADD COLUMN IF NOT EXISTS "returnedAt" TIMESTAMP(3);
+ALTER TABLE "IMEI" ADD COLUMN IF NOT EXISTS "soldAt" TIMESTAMP(3);
+ALTER TABLE "IMEI" ADD COLUMN IF NOT EXISTS "status" "IMEIStatus" NOT NULL DEFAULT 'IN_STOCK';
+ALTER TABLE "IMEI" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
-ALTER TABLE "IMEI" ADD COLUMN     "damageNotes" TEXT,
-ADD COLUMN     "returnedAt" TIMESTAMP(3),
-ADD COLUMN     "soldAt" TIMESTAMP(3),
-ADD COLUMN     "status" "IMEIStatus" NOT NULL DEFAULT 'IN_STOCK',
-ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL;
+ALTER TABLE "JobCard" DROP COLUMN IF EXISTS "financialYear";
+
+-- AlterTable (RepairPartUsed)
+ALTER TABLE "RepairPartUsed" ADD COLUMN IF NOT EXISTS "costPerUnit" INTEGER;
+ALTER TABLE "RepairPartUsed" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
-ALTER TABLE "JobCard" DROP COLUMN "financialYear";
+ALTER TABLE "Shop" DROP COLUMN IF EXISTS "termsAndConditions";
 
 -- AlterTable
-ALTER TABLE "RepairPartUsed" ADD COLUMN     "costPerUnit" INTEGER,
-ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL;
+ALTER TABLE "ShopProduct" DROP COLUMN IF EXISTS "reservedStock",
+DROP COLUMN IF EXISTS "serialNumber",
+ADD COLUMN IF NOT EXISTS "isSerialized" BOOLEAN NOT NULL DEFAULT false;
 
 -- AlterTable
-ALTER TABLE "Shop" DROP COLUMN "termsAndConditions";
+ALTER TABLE "StockLedger" ADD COLUMN IF NOT EXISTS "costPerUnit" INTEGER;
 
--- AlterTable
-ALTER TABLE "ShopProduct" DROP COLUMN "reservedStock",
-DROP COLUMN "serialNumber",
-ADD COLUMN     "isSerialized" BOOLEAN NOT NULL DEFAULT false;
-
--- AlterTable
-ALTER TABLE "StockLedger" ADD COLUMN     "costPerUnit" INTEGER;
+-- Align defaults with schema (no default for updatedAt)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'IMEI' AND column_name = 'updatedAt'
+  ) THEN
+    ALTER TABLE "IMEI" ALTER COLUMN "updatedAt" DROP DEFAULT;
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'RepairPartUsed' AND column_name = 'updatedAt'
+  ) THEN
+    ALTER TABLE "RepairPartUsed" ALTER COLUMN "updatedAt" DROP DEFAULT;
+  END IF;
+END $$;
 
 -- CreateIndex
-CREATE INDEX "IMEI_status_idx" ON "IMEI"("status");
+CREATE INDEX IF NOT EXISTS "IMEI_status_idx" ON "IMEI"("status");
 
 -- CreateIndex
-CREATE INDEX "IMEI_imei_idx" ON "IMEI"("imei");
+CREATE INDEX IF NOT EXISTS "IMEI_imei_idx" ON "IMEI"("imei");
 
 -- CreateIndex
-CREATE INDEX "RepairPartUsed_shopProductId_idx" ON "RepairPartUsed"("shopProductId");
+CREATE INDEX IF NOT EXISTS "RepairPartUsed_shopProductId_idx" ON "RepairPartUsed"("shopProductId");
 
 -- CreateIndex
-CREATE INDEX "StockLedger_referenceType_referenceId_idx" ON "StockLedger"("referenceType", "referenceId");
+CREATE INDEX IF NOT EXISTS "StockLedger_referenceType_referenceId_idx" ON "StockLedger"("referenceType", "referenceId");

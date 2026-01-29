@@ -19,9 +19,11 @@ import { StockModule } from './stock/stock.module';
 import { HsnModule } from './hsn/hsn.module';
 import { FollowUpsModule } from './follow-ups/follow-ups.module';
 import { CrmDashboardModule } from './crm-dashboard/crm-dashboard.module';
+import { CommonModule } from '../common/common.module';
 
 @Module({
   imports: [
+    CommonModule,
     PrismaModule,
     AuthModule,
     TenantModule,

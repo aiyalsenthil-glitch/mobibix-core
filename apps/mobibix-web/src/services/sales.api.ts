@@ -30,6 +30,14 @@ export interface SalesInvoice {
   customerGstin?: string;
   createdAt: string | Date;
   updatedAt: string | Date;
+  payments?: {
+    id: string;
+    amount: number;
+    method: PaymentMode;
+    transactionRef?: string;
+    createdAt: string | Date;
+    receiptNumber: string;
+  }[];
 }
 
 export interface InvoiceItemDetail {
@@ -214,6 +222,42 @@ export async function listPayments(invoiceId: string) {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || "Failed to fetch payments");
+  }
+
+  return response.json();
+}
+
+/**
+ * DTO for collecting payment via new API
+ */
+export interface CollectPaymentDto {
+  paymentMethods: {
+    mode: PaymentMode;
+    amount: number;
+    transactionRef?: string;
+  }[];
+  transactionRef?: string;
+  narration?: string;
+}
+
+/**
+ * Collect payment using the new robust API
+ */
+export async function collectPayment(
+  invoiceId: string,
+  data: CollectPaymentDto,
+) {
+  const response = await authenticatedFetch(
+    `/mobileshop/sales/invoice/${invoiceId}/collect-payment`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to collect payment");
   }
 
   return response.json();

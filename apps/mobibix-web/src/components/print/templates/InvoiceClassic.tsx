@@ -6,7 +6,7 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
   const { header, meta, customer, items, totals, footer, qrCode, config } = data;
   
   return (
-    <div className="w-[210mm] min-h-[297mm] mx-auto bg-white p-6 text-black">
+    <div className="w-[210mm] min-h-[297mm] print:min-h-0 print:w-full mx-auto bg-white p-6 text-black">
       {/* Dynamic Header */}
       <InvoiceHeader data={data} />
 
@@ -57,7 +57,7 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
       </div>
 
       {/* Items Table */}
-      <div className="mb-8 min-h-[300px]">
+      <div className="mb-8 min-h-[300px] print:min-h-0">
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b-2 border-slate-800">

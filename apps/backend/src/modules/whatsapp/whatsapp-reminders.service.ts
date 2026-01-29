@@ -299,12 +299,16 @@ export class WhatsAppRemindersService {
     error?: string,
   ): Promise<void> {
     try {
+      // Map reminder statuses to WhatsAppLog statuses
+      const logStatus: 'SENT' | 'FAILED' =
+        status === 'SUCCESS' ? 'SENT' : 'FAILED';
+
       await this.whatsAppLogger.log({
         tenantId,
         memberId: customerId, // Customer ID
         phone,
         type: 'REMINDER',
-        status,
+        status: logStatus,
         error: error || null,
       });
     } catch (err) {
