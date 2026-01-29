@@ -2,6 +2,7 @@ export enum WhatsAppFeature {
   WELCOME = 'WELCOME',
   EXPIRY = 'EXPIRY',
   PAYMENT_DUE = 'PAYMENT_DUE',
+  REMINDER = 'REMINDER',
 }
 export const WHATSAPP_PLAN_RULES = {
   BASIC: {
@@ -11,12 +12,12 @@ export const WHATSAPP_PLAN_RULES = {
   },
   PLUS: {
     enabled: true,
-    features: [WhatsAppFeature.PAYMENT_DUE],
+    features: [WhatsAppFeature.PAYMENT_DUE, WhatsAppFeature.REMINDER],
     maxMembers: 50,
   },
   PRO: {
     enabled: true,
-    features: [WhatsAppFeature.PAYMENT_DUE],
+    features: [WhatsAppFeature.PAYMENT_DUE, WhatsAppFeature.REMINDER],
     maxMembers: 600,
   },
   ULTIMATE: {
@@ -25,6 +26,7 @@ export const WHATSAPP_PLAN_RULES = {
       WhatsAppFeature.WELCOME,
       WhatsAppFeature.EXPIRY,
       WhatsAppFeature.PAYMENT_DUE,
+      WhatsAppFeature.REMINDER,
     ],
     maxMembers: 500,
   },

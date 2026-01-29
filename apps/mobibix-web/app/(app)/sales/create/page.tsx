@@ -252,12 +252,12 @@ export default function CreateInvoicePage() {
             // Price includes GST, extract base
             const divisor = 1 + gstRate / 100;
             const base = baseAmount / divisor;
-            gstAmount = Math.round(baseAmount - base);
+            gstAmount = Math.round((baseAmount - base) * 100) / 100;
             total = baseAmount;
           } else {
-            // Price excludes GST, add it
-            gstAmount = Math.round((baseAmount * gstRate) / 100);
-            total = baseAmount + gstAmount;
+            // Price excludes GST, add it - keep 2 decimal precision
+            gstAmount = Math.round(((baseAmount * gstRate) / 100) * 100) / 100;
+            total = Math.round((baseAmount + gstAmount) * 100) / 100;
           }
 
           return {
@@ -349,14 +349,14 @@ export default function CreateInvoicePage() {
               // Price includes GST, extract base
               const divisor = 1 + updated.gstRate / 100;
               const base = baseAmount / divisor;
-              updated.gstAmount = Math.round(baseAmount - base);
+              updated.gstAmount = Math.round((baseAmount - base) * 100) / 100;
               updated.total = baseAmount;
             } else {
-              // Price excludes GST, add it
-              updated.gstAmount = Math.round(
-                (baseAmount * updated.gstRate) / 100,
-              );
-              updated.total = baseAmount + updated.gstAmount;
+              // Price excludes GST, add it - keep 2 decimal precision
+              updated.gstAmount =
+                Math.round(((baseAmount * updated.gstRate) / 100) * 100) / 100;
+              updated.total =
+                Math.round((baseAmount + updated.gstAmount) * 100) / 100;
             }
           }
 
@@ -706,7 +706,7 @@ export default function CreateInvoicePage() {
           </label>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-gray-100 dark:border-gray-800 mb-6">
+        <div className="overflow-visible rounded-lg border border-gray-100 dark:border-gray-800 mb-6">
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50/50 dark:bg-gray-800/50 text-left">
@@ -825,7 +825,7 @@ export default function CreateInvoicePage() {
                       className="w-full bg-transparent text-sm text-gray-600 outline-none"
                     />
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-4 py-4 relative">
                     <input
                       type="number"
                       min="1"
@@ -851,13 +851,13 @@ export default function CreateInvoicePage() {
                         typeof p.stockQty === "number" &&
                         item.quantity > (p.stockQty || 0);
                       return shouldWarn ? (
-                        <div className="mt-2 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 px-3 py-2 rounded border border-yellow-200 dark:border-yellow-800 text-xs">
-                          <div className="font-semibold mb-1">
-                            ⚠️ Stock will go negative for this item.
-                          </div>
-                          <div>
-                            You can continue billing, but please add purchase
-                            later to correct inventory.
+                        <div className="absolute right-2 top-2 group">
+                          <span className="text-lg cursor-help">⚠️</span>
+                          <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-yellow-50 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 text-xs rounded shadow-lg border border-yellow-200 dark:border-yellow-700 hidden group-hover:block z-50">
+                            <strong>Warning: Negative Stock</strong>
+                            <br />
+                            Stock will drop below zero. You can correct
+                            inventory later.
                           </div>
                         </div>
                       ) : null;

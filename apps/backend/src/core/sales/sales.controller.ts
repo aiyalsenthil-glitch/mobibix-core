@@ -64,6 +64,9 @@ export class SalesController {
   @Get('invoice/:invoiceId')
   async getInvoice(@Req() req: any, @Param('invoiceId') invoiceId: string) {
     const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Invalid tenant');
+    }
     return this.service.getInvoiceDetails(tenantId, invoiceId);
   }
 

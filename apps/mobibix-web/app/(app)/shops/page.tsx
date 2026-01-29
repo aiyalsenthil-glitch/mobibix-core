@@ -3,60 +3,58 @@
 import { useEffect, useState } from "react";
 import { listShops, type Shop } from "@/services/shops.api";
 import { ShopFormModal } from "./ShopFormModal";
-import { ShopSettingsModal } from "./ShopSettingsModal";
+import { useRouter } from "next/navigation";
 
-export default function ShopsPage() {
-  const [shops, setShops] = useState<Shop[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  export default function ShopsPage() {
+    const router = useRouter(); // Hook
+    const [shops, setShops] = useState<Shop[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+    // REMOVED: isSettingsModalOpen state
+    const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
 
-  const loadShops = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await listShops();
-      setShops(data);
-    } catch (err: any) {
-      console.error("Error loading shops:", err);
-      setError(err.message || "Failed to load shops");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const loadShops = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await listShops();
+        setShops(data);
+      } catch (err: any) {
+        console.error("Error loading shops:", err);
+        setError(err.message || "Failed to load shops");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  useEffect(() => {
-    loadShops();
-  }, []);
+    useEffect(() => {
+        loadShops();
+    }, []);
 
-  const handleCreateShop = () => {
-    setSelectedShop(null);
-    setIsFormModalOpen(true);
-  };
+    const handleCreateShop = () => {
+        setSelectedShop(null);
+        setIsFormModalOpen(true);
+    };
+    
+    const handleEditShop = (shop: Shop) => {
+        setSelectedShop(shop);
+        setIsFormModalOpen(true);
+    };
 
-  const handleEditShop = (shop: Shop) => {
-    setSelectedShop(shop);
-    setIsFormModalOpen(true);
-  };
+    const handleOpenSettings = (shop: Shop) => {
+      // Navigate to new Settings Page
+      router.push(`/shops/${shop.id}/settings`);
+    };
 
-  const handleOpenSettings = (shop: Shop) => {
-    setSelectedShop(shop);
-    setIsSettingsModalOpen(true);
-  };
+    const handleFormModalClose = () => {
+      setIsFormModalOpen(false);
+      setSelectedShop(null);
+      loadShops();
+    };
 
-  const handleFormModalClose = () => {
-    setIsFormModalOpen(false);
-    setSelectedShop(null);
-    loadShops();
-  };
+    // REMOVED: handleSettingsModalClose
 
-  const handleSettingsModalClose = () => {
-    setIsSettingsModalOpen(false);
-    setSelectedShop(null);
-    loadShops();
-  };
 
   const handleDeleteShop = async (shopId: string) => {
     if (
@@ -191,16 +189,13 @@ export default function ShopsPage() {
         </div>
       )}
 
+
+
       {isFormModalOpen && (
         <ShopFormModal shop={selectedShop} onClose={handleFormModalClose} />
       )}
-
-      {isSettingsModalOpen && selectedShop && (
-        <ShopSettingsModal
-          shop={selectedShop}
-          onClose={handleSettingsModalClose}
-        />
-      )}
+      
+      {/* Settings Modal Removed - Navigates to page now */}
 
       {/* Floating Add Shop button to ensure visibility */}
       <button

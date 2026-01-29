@@ -6,7 +6,7 @@
 **Files Created**: 1  
 **Lines Added**: ~150  
 **Breaking Changes**: 0  
-**API Changes**: 0  
+**API Changes**: 0
 
 ---
 
@@ -17,6 +17,7 @@
 **Location**: Around line 909 (IMEI textarea for serialized products)
 
 **Added**:
+
 ```tsx
 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded px-2 py-1.5">
   📌 Enter exactly one IMEI per quantity ({item.quantity} needed)
@@ -24,17 +25,20 @@
 ```
 
 **Enhanced Textarea**:
+
 - Added `ring-1 ring-red-300` when mismatch detected
 - Changed background to red when IMEI count ≠ quantity
 
 **Enhanced Error Message**:
+
 ```tsx
-{mismatch && (
-  <div className="mt-1 text-xs text-red-600 dark:text-red-300 font-medium">
-    ⚠️ IMEI count ({item.imeis.length}) must equal
-    quantity ({item.quantity})
-  </div>
-)}
+{
+  mismatch && (
+    <div className="mt-1 text-xs text-red-600 dark:text-red-300 font-medium">
+      ⚠️ IMEI count ({item.imeis.length}) must equal quantity ({item.quantity})
+    </div>
+  );
+}
 ```
 
 ---
@@ -44,6 +48,7 @@
 **Location**: Lines ~407-414 (after tax calculations)
 
 **Added**:
+
 ```typescript
 // Check IMEI issues for serialized products
 const hasImeiIssues = items.some((i) => {
@@ -64,6 +69,7 @@ const hasImeiIssues = items.some((i) => {
 **Location**: Lines ~429-446 (handleSubmit function)
 
 **Changed From**:
+
 ```tsx
 if (serializedMissing) {
   setError("imei must");
@@ -76,6 +82,7 @@ if (serializedCountMismatch) {
 ```
 
 **Changed To**:
+
 ```tsx
 if (serializedMissing) {
   setError(
@@ -93,7 +100,8 @@ if (serializedCountMismatch) {
 }
 ```
 
-**Benefits**: 
+**Benefits**:
+
 - Clear, actionable error messages
 - Sets highlight flag for visual feedback
 - Guides user on what to fix
@@ -105,6 +113,7 @@ if (serializedCountMismatch) {
 **Location**: Lines ~442-446 (catch block of handleSubmit)
 
 **Added IMEI-specific error handling**:
+
 ```tsx
 } else if (msg.includes("Serialized products require IMEI")) {
   setError(
@@ -126,8 +135,11 @@ if (serializedCountMismatch) {
 **Location**: Lines ~1050-1070 (right summary box, after Grand Total)
 
 **Added**:
+
 ```tsx
-{/* Payment Type Display */}
+{
+  /* Payment Type Display */
+}
 <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
   <div className="flex justify-between text-sm">
     <span className="font-medium text-gray-700 dark:text-gray-300">
@@ -148,8 +160,7 @@ if (serializedCountMismatch) {
   {paymentMode === "CREDIT" && (
     <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
       <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-        💡 This invoice will be marked as unpaid. Collect payment
-        later.
+        💡 This invoice will be marked as unpaid. Collect payment later.
       </p>
       <div className="mt-2 pt-2 border-t border-amber-200 dark:border-amber-700">
         <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
@@ -158,10 +169,11 @@ if (serializedCountMismatch) {
       </div>
     </div>
   )}
-</div>
+</div>;
 ```
 
 **Features**:
+
 - Shows payment type clearly
 - CREDIT mode shows amber alert with balance due
 - Dark mode support
@@ -174,6 +186,7 @@ if (serializedCountMismatch) {
 **Location**: Lines ~1081-1100 (button section, changed from 2-column grid to flex)
 
 **Changed From**:
+
 ```tsx
 <div className="mt-8 grid grid-cols-2 gap-4">
   <button onClick={() => router.back()} ...>Cancel</button>
@@ -184,6 +197,7 @@ if (serializedCountMismatch) {
 ```
 
 **Changed To**:
+
 ```tsx
 <div className="mt-8 grid grid-cols-2 gap-4">
   <button onClick={() => router.back()} ...>Cancel</button>
@@ -205,6 +219,7 @@ if (serializedCountMismatch) {
 ```
 
 **Features**:
+
 - Button disables when `hasImeiIssues` is true
 - Inline warning message guides users
 - Red styling matches error theme
@@ -219,6 +234,7 @@ if (serializedCountMismatch) {
 **Location**: Line 5 (imports section)
 
 **Added**:
+
 ```tsx
 import { numberToIndianWords } from "@/utils/numberToWords";
 ```
@@ -230,6 +246,7 @@ import { numberToIndianWords } from "@/utils/numberToWords";
 **Location**: Line ~188 (Totals section, left side)
 
 **Changed From**:
+
 ```tsx
 <p className="text-sm italic">
   {/* TODO: Add number to words conversion */}
@@ -241,13 +258,13 @@ import { numberToIndianWords } from "@/utils/numberToWords";
 ```
 
 **Changed To**:
+
 ```tsx
-<p className="text-sm italic">
-  {numberToIndianWords(invoice.totalAmount)}
-</p>
+<p className="text-sm italic">{numberToIndianWords(invoice.totalAmount)}</p>
 ```
 
 **Example Output**:
+
 ```
 ₹1,234.56 → "Rupees One Thousand Two Hundred Thirty Four and Fifty Six Paise Only"
 ```
@@ -259,35 +276,41 @@ import { numberToIndianWords } from "@/utils/numberToWords";
 **Location**: Lines ~210-224 (Totals section, right side, after Grand Total)
 
 **Added**:
+
 ```tsx
-{/* Payment Information */}
-{invoice.paymentMode && (
-  <>
-    <div className="flex justify-between text-sm pt-2 border-t border-black">
-      <span>Payment Mode:</span>
-      <span className="font-semibold">
-        {invoice.paymentMode === "CASH"
-          ? "CASH"
-          : invoice.paymentMode === "UPI"
-            ? "UPI"
-            : invoice.paymentMode === "CARD"
-              ? "CARD"
-              : invoice.paymentMode === "BANK"
-                ? "BANK TRANSFER"
-                : "CREDIT"}
-      </span>
-    </div>
-    {invoice.paymentMode === "CREDIT" && (
-      <div className="flex justify-between text-sm font-bold pt-1">
-        <span>Balance Due:</span>
-        <span>₹{invoice.totalAmount.toFixed(2)}</span>
+{
+  /* Payment Information */
+}
+{
+  invoice.paymentMode && (
+    <>
+      <div className="flex justify-between text-sm pt-2 border-t border-black">
+        <span>Payment Mode:</span>
+        <span className="font-semibold">
+          {invoice.paymentMode === "CASH"
+            ? "CASH"
+            : invoice.paymentMode === "UPI"
+              ? "UPI"
+              : invoice.paymentMode === "CARD"
+                ? "CARD"
+                : invoice.paymentMode === "BANK"
+                  ? "BANK TRANSFER"
+                  : "CREDIT"}
+        </span>
       </div>
-    )}
-  </>
-)}
+      {invoice.paymentMode === "CREDIT" && (
+        <div className="flex justify-between text-sm font-bold pt-1">
+          <span>Balance Due:</span>
+          <span>₹{invoice.totalAmount.toFixed(2)}</span>
+        </div>
+      )}
+    </>
+  );
+}
 ```
 
 **Features**:
+
 - Displays payment mode clearly
 - Shows balance due for CREDIT mode only
 - Printer-friendly (black and white)
@@ -300,15 +323,15 @@ import { numberToIndianWords } from "@/utils/numberToWords";
 **Location**: Line ~271 (QR code section footer)
 
 **Changed From**:
+
 ```tsx
 <p className="text-xs mt-2 text-center">Scan to verify</p>
 ```
 
 **Changed To**:
+
 ```tsx
-<p className="text-xs mt-2 text-center font-semibold">
-  Scan QR to verify
-</p>
+<p className="text-xs mt-2 text-center font-semibold">Scan QR to verify</p>
 ```
 
 **Purpose**: More prominent call-to-action for verification
@@ -320,19 +343,21 @@ import { numberToIndianWords } from "@/utils/numberToWords";
 **Location**: Lines ~276-282 (new section after QR/Terms)
 
 **Added**:
+
 ```tsx
-{/* Trust Signals Footer */}
+{
+  /* Trust Signals Footer */
+}
 <div className="px-6 py-3 border-t border-black text-center">
-  <p className="text-xs text-gray-700">
-    This is a computer-generated invoice
-  </p>
+  <p className="text-xs text-gray-700">This is a computer-generated invoice</p>
   <p className="text-xs text-gray-600 mt-1">
     Scan QR code above to verify invoice authenticity
   </p>
-</div>
+</div>;
 ```
 
 **Features**:
+
 - Explains computer-generated nature
 - Directs to verification method
 - Printer-friendly styling
@@ -374,6 +399,7 @@ export function numberToIndianWords(amount: number): string {
 ```
 
 **Test Cases**:
+
 ```
 0           → "Rupees Zero Only"
 10          → "Rupees Ten Only"
@@ -391,27 +417,32 @@ export function numberToIndianWords(amount: number): string {
 ## Key Design Principles
 
 ### 1. Conditional Rendering Only
+
 - No changes to data models
 - No API payload modifications
 - All UX is display/validation layer
 - Easy to revert if needed
 
 ### 2. Dark Mode Support
+
 - Every color has `dark:` variant
 - No hardcoded colors (uses Tailwind)
 - Accessible contrast ratios maintained
 
 ### 3. User Guidance
+
 - Helper text for unclear operations
 - Visual feedback (colors, borders, disabled states)
 - Clear error messages explaining what to fix
 
 ### 4. Backward Compatibility
+
 - Optional fields checked with `?:` and `?.`
 - Graceful degradation for missing data
 - Works with old and new invoices
 
 ### 5. Print Optimization
+
 - Black and white only
 - No unnecessary colors
 - Consistent font sizing
@@ -422,26 +453,30 @@ export function numberToIndianWords(amount: number): string {
 ## Validation & Testing
 
 ### Type Safety
+
 ✅ TypeScript compilation clean  
 ✅ No `any` types used  
-✅ Proper error handling  
+✅ Proper error handling
 
 ### Functional Testing
+
 ✅ IMEI validation works  
 ✅ Payment mode alerts display  
 ✅ Amount in words converts correctly  
-✅ Print layout renders properly  
+✅ Print layout renders properly
 
 ### User Experience
+
 ✅ Dark mode works  
 ✅ Mobile responsive  
 ✅ Keyboard navigation  
-✅ Screen reader compatible  
+✅ Screen reader compatible
 
 ### Compatibility
+
 ✅ Works with existing invoices  
 ✅ No breaking changes  
-✅ Graceful degradation  
+✅ Graceful degradation
 
 ---
 
@@ -462,21 +497,21 @@ If needed, these changes can be easily reverted:
 
 **Time to rollback**: < 5 minutes  
 **Data loss**: None  
-**User impact**: Only UI changes reverted  
+**User impact**: Only UI changes reverted
 
 ---
 
 ## Performance Impact
 
-| Metric | Impact |
-|--------|--------|
+| Metric      | Impact                        |
+| ----------- | ----------------------------- |
 | Bundle size | +2 KB (numberToWords utility) |
-| JavaScript | Minimal (simple conditionals) |
-| CSS | No additional styles |
-| Render time | No measurable change |
-| Print time | No change (CSS only) |
-| API calls | No additional calls |
-| Database | No changes |
+| JavaScript  | Minimal (simple conditionals) |
+| CSS         | No additional styles          |
+| Render time | No measurable change          |
+| Print time  | No change (CSS only)          |
+| API calls   | No additional calls           |
+| Database    | No changes                    |
 
 ---
 

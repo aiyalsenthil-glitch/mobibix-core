@@ -5,11 +5,20 @@ import { WhatsAppSender } from './whatsapp.sender';
 import { WhatsAppCron } from './whatsapp.cron';
 import { WhatsAppLogger } from './whatsapp.logger';
 import { WhatsAppWebhookController } from './whatsapp.webhook.controller';
+import { WhatsAppRemindersService } from './whatsapp-reminders.service';
+import { WhatsAppRemindersCron } from './whatsapp-reminders.cron';
 
 @Module({
   controllers: [WhatsAppWebhookController],
   imports: [ScheduleModule.forRoot()],
-  providers: [PrismaService, WhatsAppSender, WhatsAppCron, WhatsAppLogger],
-  exports: [WhatsAppSender], // ✅ ADD THIS LINE
+  providers: [
+    PrismaService,
+    WhatsAppSender,
+    WhatsAppCron,
+    WhatsAppLogger,
+    WhatsAppRemindersService,
+    WhatsAppRemindersCron,
+  ],
+  exports: [WhatsAppSender, WhatsAppRemindersService],
 })
 export class WhatsAppModule {}

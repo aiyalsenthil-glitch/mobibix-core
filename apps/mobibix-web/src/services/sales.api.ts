@@ -19,10 +19,15 @@ export interface SalesInvoice {
   customerPhone?: string;
   subTotal?: number;
   gstAmount?: number;
+  cgst?: number;
+  sgst?: number;
+  igst?: number;
   items?: InvoiceItemDetail[];
   paidAmount?: number;
   balanceAmount?: number;
   paymentStatus?: PaymentStatus;
+  customerState?: string;
+  customerGstin?: string;
   createdAt: string | Date;
   updatedAt: string | Date;
 }
@@ -35,6 +40,7 @@ export interface InvoiceItemDetail {
   gstRate?: number;
   gstAmount?: number;
   lineTotal?: number;
+  taxableValue?: number; // Accurate taxable value (with 2 decimal precision)
 }
 
 export interface InvoiceItem {
@@ -55,6 +61,7 @@ export interface CreateInvoiceDto {
   customerGstin?: string;
   paymentMode: PaymentMode;
   items: InvoiceItem[];
+  pricesIncludeTax?: boolean;
 }
 
 /**

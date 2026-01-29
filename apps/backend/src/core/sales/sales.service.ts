@@ -7,6 +7,10 @@ import {
   generateSalesInvoiceNumber,
   getFinancialYear,
 } from '../../common/utils/invoice-number.util';
+import {
+  calculateInvoiceTotals,
+  InvoiceLineInput,
+} from './invoice-calculator.util';
 
 @Injectable()
 export class SalesService {
@@ -115,7 +119,18 @@ export class SalesService {
         },
       });
 
+      const tenant = await tx.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          country: true,
+        },
+      });
+
       if (!shop) throw new BadRequestException('Invalid shop');
+
+      const isIndianTenant =
+        (tenant?.country || 'India').toLowerCase() === 'india';
+      const isIndianGSTInvoice = isIndianTenant && shop.gstEnabled;
 
       // Generate invoice number with race condition handling
       const invoiceNumber = await this.getNextInvoiceNumber(
@@ -134,7 +149,13 @@ export class SalesService {
           shopId: dto.shopId,
           isActive: true,
         },
-        select: { id: true, type: true, isSerialized: true },
+        select: {
+          id: true,
+          type: true,
+          isSerialized: true,
+          hsnCode: true,
+          gstRate: true,
+        },
       });
 
       if (products.length !== productIds.length) {
@@ -145,6 +166,12 @@ export class SalesService {
       const productTypeMap = new Map(products.map((p) => [p.id, p.type]));
       const productSerializedMap = new Map(
         products.map((p) => [p.id, p.isSerialized]),
+      );
+      const productHsnMap = new Map(
+        products.map((p) => [p.id, p.hsnCode || null]),
+      );
+      const productGstRateMap = new Map(
+        products.map((p) => [p.id, p.gstRate ?? 0]),
       );
 
       // Validate IMEI for serialized products and collect IMEIs
@@ -211,11 +238,8 @@ export class SalesService {
         }
       }
 
-      // 🔒 VALIDATE GST (frontend-calculated)
-      let subTotal = 0;
-      let gstAmount = 0;
-
-      const invoiceItemsData = dto.items.map((i) => {
+      // 🔒 GST & taxable value calculation (supports inclusive/exclusive pricing)
+      const lineInputs: InvoiceLineInput[] = dto.items.map((i) => {
         // Enforce: if shop.gstEnabled = false, GST must be 0
         if (!shop.gstEnabled && i.gstRate > 0) {
           throw new BadRequestException(
@@ -223,67 +247,45 @@ export class SalesService {
           );
         }
 
-        // Validate GST rate range (already validated by DTO, but defensive)
         if (i.gstRate < 0 || i.gstRate > 100) {
           throw new BadRequestException(
-            `Invalid GST rate: ${i.gstRate}. Must be 0-100%.`,
+            `Invalid GST rate: ${i.gstRate}. Must be between 0 and 100%.`,
           );
         }
 
-        // Validate GST amount is reasonable (defensive check)
-        const lineSubtotal = i.rate * i.quantity;
-        let expectedGst: number;
-
-        if (dto.pricesIncludeTax) {
-          // Price includes GST, extract GST from total
-          const divisor = 1 + i.gstRate / 100;
-          const base = lineSubtotal / divisor;
-          expectedGst = Math.round(lineSubtotal - base);
-        } else {
-          // Price excludes GST, calculate GST on subtotal
-          expectedGst = Math.round((lineSubtotal * i.gstRate) / 100);
-        }
-
-        if (Math.abs(i.gstAmount - expectedGst) > 1) {
-          // Allow 1 rupee tolerance for rounding
-          throw new BadRequestException(
-            `GST amount mismatch for product ${i.shopProductId}. Expected ~${expectedGst}, got ${i.gstAmount}.`,
-          );
-        }
-
-        subTotal += lineSubtotal;
-        gstAmount += i.gstAmount;
+        const productHsn = productHsnMap.get(i.shopProductId) || null;
 
         return {
           shopProductId: i.shopProductId,
           quantity: i.quantity,
           rate: i.rate,
-          hsnCode: '', // Optional: can populate from product if needed
           gstRate: i.gstRate,
-          gstAmount: i.gstAmount,
-          lineTotal: lineSubtotal + i.gstAmount,
+          hsnCode: productHsn || undefined,
         };
       });
 
-      // Calculate CGST/SGST/IGST based on shop and customer state
-      let cgst = 0;
-      let sgst = 0;
-      let igst = 0;
+      const calc = calculateInvoiceTotals(lineInputs, {
+        isIndianGSTInvoice,
+        pricesIncludeTax: !!dto.pricesIncludeTax,
+        shopState: shop.state,
+        customerState: dto.customerState,
+        customerGstin: dto.customerGstin,
+      });
 
-      if (dto.customerState && shop.state) {
-        if (shop.state === dto.customerState) {
-          // Intra-state: CGST + SGST
-          cgst = Math.round(gstAmount / 2);
-          sgst = Math.round(gstAmount / 2);
-        } else {
-          // Inter-state: IGST
-          igst = gstAmount;
-        }
-      } else {
-        // Default to intra-state if customer state not provided
-        cgst = Math.round(gstAmount / 2);
-        sgst = Math.round(gstAmount / 2);
-      }
+      // Store GST values and subtotal with decimal precision (as paisa: rupees * 100)
+      // Only round final total
+      const toPaisa = (value: number) => Math.round(value * 100);
+      const toInt = (value: number) => Math.round(value);
+
+      const invoiceItemsData = calc.lines.map((line) => ({
+        shopProductId: line.shopProductId,
+        quantity: line.quantity,
+        rate: toInt(line.rate),
+        hsnCode: line.hsnCode,
+        gstRate: line.gstRate,
+        gstAmount: toPaisa(line.gstAmount), // Preserve decimals
+        lineTotal: toInt(line.lineTotal),
+      }));
 
       const invoice = await tx.invoice.create({
         data: {
@@ -295,12 +297,12 @@ export class SalesService {
           customerPhone: dto.customerPhone,
           customerState: dto.customerState,
           customerGstin: dto.customerGstin,
-          subTotal,
-          gstAmount,
-          cgst,
-          sgst,
-          igst,
-          totalAmount: subTotal + gstAmount,
+          subTotal: toPaisa(calc.subTotal), // Store with decimal precision
+          gstAmount: toPaisa(calc.gstAmount), // Store with decimal precision (exclusive mode needs this)
+          cgst: toPaisa(calc.cgst), // Store with decimal precision
+          sgst: toPaisa(calc.sgst), // Store with decimal precision
+          igst: toPaisa(calc.igst), // Store with decimal precision
+          totalAmount: toInt(calc.subTotal + calc.gstAmount), // Round only the final total
           // Use first payment method or fall back to paymentMode for backward compatibility
           paymentMode:
             dto.paymentMethods?.[0]?.mode || dto.paymentMode || 'CASH',
@@ -327,7 +329,7 @@ export class SalesService {
             tenantId,
             shopId: dto.shopId,
             type: 'IN',
-            amount: subTotal + gstAmount,
+            amount: toInt(calc.subTotal + calc.gstAmount),
             mode: dto.paymentMode || 'CASH',
             referenceType: 'INVOICE',
             referenceId: invoice.id,
@@ -809,6 +811,9 @@ export class SalesService {
     });
   }
   async getInvoiceDetails(tenantId: string, invoiceId: string) {
+    if (!tenantId) {
+      throw new BadRequestException('Invalid tenant');
+    }
     const invoice = await this.prisma.invoice.findFirst({
       where: {
         id: invoiceId,
@@ -825,6 +830,17 @@ export class SalesService {
             transactionRef: true,
             createdAt: true,
             printNumber: true,
+          },
+        },
+        items: {
+          select: {
+            shopProductId: true,
+            quantity: true,
+            rate: true,
+            hsnCode: true,
+            gstRate: true,
+            gstAmount: true,
+            lineTotal: true,
           },
         },
       },
@@ -849,8 +865,12 @@ export class SalesService {
       paymentStatus = 'PARTIALLY_PAID';
     }
 
+    // Convert paisa back to rupees for values stored with decimal precision
+    const fromPaisa = (paisa: number) => paisa / 100;
+
     return {
       id: invoice.id,
+      shopId: invoice.shopId,
       invoiceNumber: invoice.invoiceNumber,
       status: invoice.status,
       invoiceDate: invoice.invoiceDate,
@@ -859,14 +879,17 @@ export class SalesService {
       customerGstin: invoice.customerGstin,
       customerState: invoice.customerState,
 
-      subTotal: invoice.subTotal,
-      gstAmount: invoice.gstAmount,
+      subTotal: fromPaisa(invoice.subTotal), // Convert from paisa
+      gstAmount: fromPaisa(invoice.gstAmount), // Convert from paisa
+      cgst: invoice.cgst ? fromPaisa(invoice.cgst) : undefined,
+      sgst: invoice.sgst ? fromPaisa(invoice.sgst) : undefined,
+      igst: invoice.igst ? fromPaisa(invoice.igst) : undefined,
       totalAmount: invoice.totalAmount,
       paymentMode: invoice.paymentMode,
 
       // ✅ NEW: Payment summary
-      paidAmount,
-      balanceAmount,
+      paidAmount: paidAmount,
+      balanceAmount: balanceAmount,
       paymentStatus,
 
       // ✅ NEW: Payment history
@@ -879,7 +902,23 @@ export class SalesService {
         receiptNumber: receipt.printNumber,
       })),
 
-      items: [], // Items will be fetched separately if needed
+      items: invoice.items.map((item) => {
+        // Calculate accurate taxableValue
+        const lineTotal = item.lineTotal || 0;
+        const gstAmount = fromPaisa(item.gstAmount || 0);
+        const taxableValue = Math.round((lineTotal - gstAmount) * 100) / 100;
+
+        return {
+          shopProductId: item.shopProductId,
+          quantity: item.quantity,
+          rate: item.rate,
+          hsnCode: item.hsnCode || undefined,
+          gstRate: item.gstRate || undefined,
+          gstAmount,
+          lineTotal,
+          taxableValue,
+        };
+      }),
     };
   }
 

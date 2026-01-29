@@ -1,0 +1,117 @@
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../core/auth/decorators/current-user.decorator';
+import { ReceiptsService } from './receipts.service';
+import { CreateReceiptDto } from './dto/create-receipt.dto';
+import { ReceiptEntity } from './entities/receipt.entity';
+import { PaymentMode, ReceiptStatus } from '@prisma/client';
+
+@Controller('receipts')
+@UseGuards(JwtAuthGuard)
+export class ReceiptsController {
+  constructor(private readonly receiptsService: ReceiptsService) {}
+
+  /**
+   * Create a receipt for money received
+   * POST /receipts
+   * Body: CreateReceiptDto
+   */
+  @Post()
+  async create(
+    @Body() createReceiptDto: CreateReceiptDto,
+    @CurrentUser() user: any,
+  ): Promise<ReceiptEntity> {
+    return this.receiptsService.createReceipt(
+      user.tenantId,
+      user.shopId,
+      createReceiptDto,
+      user.sub,
+    );
+  }
+
+  /**
+   * Get all receipts for authenticated shop
+   * GET /receipts?startDate=...&endDate=...&paymentMethod=...&skip=...&take=...
+   */
+  @Get()
+  async findAll(
+    @CurrentUser() user: any,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('paymentMethod') paymentMethod?: PaymentMode,
+    @Query('status') status?: ReceiptStatus,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ): Promise<{ data: ReceiptEntity[]; total: number }> {
+    return this.receiptsService.getReceipts(user.tenantId, user.shopId, {
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      paymentMethod,
+      status,
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
+  }
+
+  /**
+   * Get single receipt by ID
+   * GET /receipts/:id
+   */
+  @Get(':id')
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ): Promise<ReceiptEntity> {
+    return this.receiptsService.getReceipt(user.tenantId, user.shopId, id);
+  }
+
+  /**
+   * Cancel a receipt (soft delete)
+   * POST /receipts/:id/cancel
+   * Body: { reason: string }
+   */
+  @Post(':id/cancel')
+  async cancel(
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+    @CurrentUser() user: any,
+  ): Promise<ReceiptEntity> {
+    return this.receiptsService.cancelReceipt(
+      user.tenantId,
+      user.shopId,
+      id,
+      reason,
+    );
+  }
+
+  /**
+   * Get receipt summary by date range
+   * GET /receipts/summary?startDate=...&endDate=...
+   */
+  @Get('summary')
+  async getSummary(
+    @CurrentUser() user: any,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ): Promise<any> {
+    const start = startDate
+      ? new Date(startDate)
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Last 30 days
+    const end = endDate ? new Date(endDate) : new Date();
+
+    return this.receiptsService.getReceiptSummary(
+      user.tenantId,
+      user.shopId,
+      start,
+      end,
+    );
+  }
+}

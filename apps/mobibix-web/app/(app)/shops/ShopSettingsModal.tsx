@@ -7,6 +7,7 @@ import {
   type Shop,
   type UpdateShopSettingsDto,
 } from "@/services/shops.api";
+import { ShopPrintSettings } from "@/components/shops/ShopPrintSettings";
 
 interface ShopSettingsModalProps {
   shop: Shop;
@@ -14,7 +15,9 @@ interface ShopSettingsModalProps {
 }
 
 export function ShopSettingsModal({ shop, onClose }: ShopSettingsModalProps) {
+  const [activeTab, setActiveTab] = useState<"GENERAL" | "PRINT">("GENERAL");
   const [isLoading, setIsLoading] = useState(true);
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -117,13 +120,7 @@ export function ShopSettingsModal({ shop, onClose }: ShopSettingsModalProps) {
   };
 
   if (isLoading) {
-    return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <div className="bg-stone-900 border border-white/10 rounded-lg p-6">
-          <p className="text-white">Loading settings...</p>
-        </div>
-      </div>
-    );
+      // ... (keep loading state)
   }
 
   return (
@@ -142,8 +139,38 @@ export function ShopSettingsModal({ shop, onClose }: ShopSettingsModalProps) {
           </button>
         </div>
 
-        {/* Form */}
+        {/* Tabs */}
+        <div className="flex border-b border-white/10 px-6">
+            <button
+                onClick={() => setActiveTab("GENERAL")}
+                className={`py-3 px-4 text-sm font-medium border-b-2 transition ${
+                    activeTab === "GENERAL" 
+                    ? "border-teal-500 text-teal-400" 
+                    : "border-transparent text-gray-400 hover:text-white"
+                }`}
+            >
+                General
+            </button>
+            <button
+                onClick={() => setActiveTab("PRINT")}
+                className={`py-3 px-4 text-sm font-medium border-b-2 transition ${
+                    activeTab === "PRINT" 
+                    ? "border-teal-500 text-teal-400" 
+                    : "border-transparent text-gray-400 hover:text-white"
+                }`}
+            >
+                Print Configuration
+            </button>
+        </div>
+
+        {/* Content */}
+        {activeTab === "PRINT" ? (
+            <div className="p-6">
+                <ShopPrintSettings shop={shop} onUpdate={() => window.dispatchEvent(new CustomEvent("shopUpdated"))} />
+            </div>
+        ) : (
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+
           {error && (
             <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-lg">
               {error}
@@ -377,6 +404,7 @@ export function ShopSettingsModal({ shop, onClose }: ShopSettingsModalProps) {
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

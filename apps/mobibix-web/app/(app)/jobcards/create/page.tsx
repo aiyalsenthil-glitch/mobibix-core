@@ -565,7 +565,7 @@ export default function CreateJobCardPage() {
                     Est. Delivery Date
                   </label>
                   <input
-                    type="datetime-local"
+                    type="date"
                     name="estimatedDelivery"
                     value={formData.estimatedDelivery}
                     onChange={handleChange}

@@ -9,6 +9,7 @@ export async function stockIn(
     shopProductId: string;
     quantity: number;
     costPrice: number;
+    type?: string;
   },
 ): Promise<void> {
   const response = await authenticatedFetch("/mobileshop/inventory/stock-in", {
@@ -17,10 +18,10 @@ export async function stockIn(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      shopId,
-      shopProductId: data.shopProductId,
+      productId: data.shopProductId,
+      type: data.type || "GOODS",
       quantity: data.quantity,
-      costPrice: data.costPrice,
+      costPerUnit: data.costPrice,
     }),
   });
 

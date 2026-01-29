@@ -63,7 +63,12 @@ model Tenant {
   paymentVouchers  PaymentVoucher[]
   quotations       Quotation[]
   purchaseOrders   PurchaseOrder[]
-  tenantProducts   TenantProduct[]
+  
+  // CRM Relations
+  customerFollowUps      CustomerFollowUp[]
+  customerReminders      CustomerReminder[]
+  loyaltyTransactions    LoyaltyTransaction[]
+  customerAlerts         CustomerAlert[]
 }
 
 model UserTenant {
@@ -96,6 +101,9 @@ model User {
   tenant           Tenant?      @relation(fields: [tenantId], references: [id])
   userTenants      UserTenant[]
   shopStaffs       ShopStaff[]
+  
+  // CRM: Follow-ups assigned to this user
+  assignedFollowUps CustomerFollowUp[]
 }
 
 model Member {
@@ -154,9 +162,121 @@ model Customer {
   tenant   Tenant    @relation(fields: [tenantId], references: [id])
   invoices Invoice[]
   jobCards JobCard[]
+  
+  // CRM Relations
+  followUps      CustomerFollowUp[]
+  reminders      CustomerReminder[]
+  loyaltyTransactions LoyaltyTransaction[]
+  alerts         CustomerAlert[]
 
   @@unique([tenantId, phone])
   @@index([tenantId])
+}
+
+// ============= CRM MODELS =============
+
+// Track manual CRM actions: calls, WhatsApp, visits, etc.
+model CustomerFollowUp {
+  id               String   @id @default(cuid())
+  tenantId         String
+  customerId       String
+  shopId           String?
+  
+  type             FollowUpType
+  purpose          FollowUpPurpose
+  note             String?
+  followUpAt       DateTime
+  status           FollowUpStatus @default(PENDING)
+  
+  assignedToUserId String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  shop             Shop?    @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  assignedToUser   User?    @relation(fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([shopId])
+  @@index([assignedToUserId])
+  @@index([followUpAt])
+  @@index([status])
+}
+
+// Automated reminders: schedule WhatsApp or in-app notifications
+model CustomerReminder {
+  id               String   @id @default(cuid())
+  tenantId         String
+  customerId       String
+  
+  triggerType      ReminderTriggerType
+  triggerValue     String                // Date string (YYYY-MM-DD) or number of days as string
+  channel          ReminderChannel
+  templateKey      String                // Template identifier for rendering
+  
+  status           ReminderStatus @default(SCHEDULED)
+  scheduledAt      DateTime?
+  sentAt           DateTime?
+  failureReason    String?               // Optional: reason if status = FAILED
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+// Track loyalty points earned/redeemed
+model LoyaltyTransaction {
+  id               String   @id @default(cuid())
+  tenantId         String
+  customerId       String
+  
+  points           Int                   // Positive (earned) or negative (redeemed)
+  source           LoyaltySource
+  referenceId      String?               // Link to Invoice, Manual action, etc.
+  note             String?
+  
+  createdAt        DateTime @default(now())
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+// Internal alerts for staff on customer actions/statuses
+model CustomerAlert {
+  id               String   @id @default(cuid())
+  tenantId         String
+  customerId       String
+  
+  severity         AlertSeverity
+  message          String
+  source           AlertSource
+  resolved         Boolean @default(false)
+  resolvedAt       DateTime?
+  
+  createdAt        DateTime @default(now())
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([severity])
+  @@index([resolved])
+  @@index([createdAt])
 }
 
 model LedgerCustomer {
@@ -406,7 +526,25 @@ model Shop {
   logoUrl       String?
   website       String?
   invoiceFooter String?
+  
+  // Print Configuration
+  invoicePrinterType String?  @default("NORMAL")
+  invoiceTemplate    String?  @default("CLASSIC")
+  jobCardPrinterType String?  @default("THERMAL")
+  jobCardTemplate    String?  @default("THERMAL")
+  
+  // Custom Header
+  headerConfig       Json?
+  tagline            String?
+
   terms         String[] @default([])
+  
+  // Bank Details
+  bankName      String?
+  accountNumber String?
+  ifscCode      String?
+  branchName    String?
+  
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -426,9 +564,44 @@ model Shop {
   paymentVouchers  PaymentVoucher[]
   quotations       Quotation[]
   purchaseOrders   PurchaseOrder[]
+  documentSettings ShopDocumentSetting[] // ✅ NEW: Per-document numbering config
+  
+  // CRM: Follow-ups linked to this shop
+  followUps        CustomerFollowUp[]
 
   @@unique([tenantId, invoicePrefix])
   @@index([tenantId])
+}
+
+// ✅ NEW: Per-shop, per-document-type numbering configuration
+// Replaces hardcoded invoice numbering with fully customizable system
+model ShopDocumentSetting {
+  id           String       @id @default(cuid())
+  shopId       String
+  documentType DocumentType
+
+  // Format configuration
+  prefix       String       // e.g., "HP" (shop identifier)
+  separator    String       @default("-") // Separator between parts (-, /, _, etc.)
+  documentCode String       // e.g., "S" (Sales), "P" (Purchase), "J" (Job Card)
+  yearFormat   YearFormat   @default(FY) // How to display year
+  numberLength Int          @default(4) // Padding (0001, 00001, etc.)
+  resetPolicy  ResetPolicy  @default(YEARLY) // When to reset counter
+
+  // Current state (for atomic increments)
+  currentNumber Int     @default(0) // Last used sequence number
+  currentYear   String? // Last used year (for auto-reset detection)
+
+  // Metadata
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, documentType]) // One config per shop per document type
+  @@index([shopId])
+  @@index([documentType])
 }
 
 model ShopStaff {
@@ -516,15 +689,14 @@ model JobCard {
 }
 
 model HSNCode {
-  id             String          @id @default(cuid())
-  code           String          @unique
-  description    String?
-  taxRate        Float
-  isActive       Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  hsnProducts    GlobalProduct[]
-  tenantProducts TenantProduct[]
+  id          String          @id @default(cuid())
+  code        String          @unique
+  description String?
+  taxRate     Float
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  hsnProducts GlobalProduct[]
 }
 
 model ProductCategory {
@@ -532,7 +704,6 @@ model ProductCategory {
   name             String          @unique
   createdAt        DateTime        @default(now())
   categoryProducts GlobalProduct[]
-  tenantProducts   TenantProduct[]
 }
 
 model GlobalProduct {
@@ -552,33 +723,11 @@ model GlobalProduct {
   @@index([hsnId])
 }
 
-// Tenant-level product master (owner-defined, shared across shops)
-model TenantProduct {
-  id         String   @id @default(cuid())
-  tenantId   String
-  name       String
-  categoryId String
-  hsnId      String
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-
-  tenant       Tenant          @relation(fields: [tenantId], references: [id])
-  category     ProductCategory @relation(fields: [categoryId], references: [id])
-  hsn          HSNCode         @relation(fields: [hsnId], references: [id])
-  shopProducts ShopProduct[]
-
-  @@unique([tenantId, name, categoryId])
-  @@index([tenantId])
-  @@index([categoryId])
-  @@index([hsnId])
-}
-
 model ShopProduct {
   id              String      @id @default(cuid())
   tenantId        String
   shopId          String
-  globalProductId String?
-  tenantProductId String?
+  globalProductId String?     // Can be null for custom shop-specific products
   name            String
   salePrice       Int?
   costPrice       Int?
@@ -586,12 +735,12 @@ model ShopProduct {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   type            ProductType // GOODS, SPARE, SERVICE
-  category        String? // Free text category (e.g. Charger, Cover)
+  category        String?     // Free text category (e.g. Charger, Cover)
 
   // ✅ NEW: isSerialized flag to distinguish tracked units from bulk items
   // TRUE (serialized) = track IMEI per unit (mobiles, laptops)
   // FALSE (bulk) = track quantity via StockLedger (accessories, spares)
-  isSerialized    Boolean     @default(false)
+  isSerialized Boolean @default(false)
 
   // Tax & HSN (Local override or standalone)
   hsnCode String?
@@ -600,27 +749,26 @@ model ShopProduct {
   // Stock & Inventory
   // 🔴 REMOVED: stockOnHand (was causing confusion - StockLedger is the ONLY source of truth)
   // For current stock: Calculate from StockLedger (bulk) or count IMEI with status=IN_STOCK (serialized)
-  reorderLevel  Int?
-  reorderQty    Int?
-  barcode       String?
-  location      String? // Physical shelf location
+  reorderLevel Int?
+  reorderQty   Int?
+  barcode      String?
+  location     String? // Physical shelf location
 
-  imeis         IMEI[] // For MOBILE only
-  stockEntries  StockLedger[]
+  imeis            IMEI[] // For MOBILE only
+  stockEntries     StockLedger[]
   stockCorrections StockCorrection[]
-  invoiceItems  InvoiceItem[]
-  partsUsed     RepairPartUsed[]
-  purchaseItems PurchaseItem[]
+  invoiceItems     InvoiceItem[]
+  partsUsed        RepairPartUsed[]
+  purchaseItems    PurchaseItem[]
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id])
-  shop          Shop           @relation(fields: [shopId], references: [id])
-  global        GlobalProduct? @relation(fields: [globalProductId], references: [id])
-  tenantProduct TenantProduct? @relation(fields: [tenantProductId], references: [id])
+  tenant Tenant         @relation(fields: [tenantId], references: [id])
+  shop   Shop           @relation(fields: [shopId], references: [id])
+  global GlobalProduct? @relation(fields: [globalProductId], references: [id])
 
   @@unique([shopId, name])
   @@index([tenantId])
   @@index([shopId])
-  @@index([tenantProductId])
+  @@index([globalProductId])
 }
 
 model IMEI {
@@ -1322,4 +1470,108 @@ enum IMEIStatus {
   DAMAGED       // Damaged/non-functional, can't sell
   TRANSFERRED   // Transferred to another shop
   LOST          // Lost/stolen/missing
+}
+
+// ============= DOCUMENT NUMBERING SYSTEM =============
+
+// Document types that support automatic numbering
+enum DocumentType {
+  SALES_INVOICE
+  PURCHASE_INVOICE
+  JOB_CARD
+  RECEIPT
+  QUOTATION
+  PURCHASE_ORDER
+}
+
+// Financial year format options
+enum YearFormat {
+  FY           // 2526 (Financial Year: April 2025 - March 2026)
+  YYYY         // 20252026 (Full 4-digit years)
+  YY           // 26 (Ending year only, 2-digit)
+  NONE         // No year in number
+}
+
+// When to reset the sequence number
+enum ResetPolicy {
+  NEVER        // Never reset (continuous numbering)
+  YEARLY       // Reset on financial year change
+  MONTHLY      // Reset every month
+}
+
+// ============= CRM ENUMS =============
+
+// Type of follow-up action
+enum FollowUpType {
+  CALL           // Phone call
+  WHATSAPP       // WhatsApp message
+  VISIT          // In-person visit
+  EMAIL          // Email
+  SMS            // SMS message
+}
+
+// Purpose of the follow-up
+enum FollowUpPurpose {
+  SALE           // Prospecting/sales
+  SERVICE        // Service/repair related
+  PAYMENT        // Payment collection
+  FEEDBACK       // Customer feedback/survey
+  RETENTION      // Loyalty/retention
+  OTHER          // General follow-up
+}
+
+// Status of the follow-up
+enum FollowUpStatus {
+  PENDING        // Not yet done
+  DONE           // Completed
+  CANCELLED      // Cancelled/no action needed
+}
+
+// When to trigger the reminder
+enum ReminderTriggerType {
+  DATE           // Fixed date (e.g., "2026-02-14")
+  AFTER_INVOICE  // N days after invoice date
+  AFTER_JOB      // N days after job card completion
+}
+
+// Channel for sending reminder
+enum ReminderChannel {
+  WHATSAPP       // Send via WhatsApp
+  IN_APP         // In-app notification
+  EMAIL          // Email notification
+  SMS            // SMS notification
+}
+
+// Status of the reminder
+enum ReminderStatus {
+  SCHEDULED      // Waiting to be sent
+  SENT           // Successfully sent
+  FAILED         // Failed to send
+  SKIPPED        // Manually skipped
+}
+
+// Source of loyalty points
+enum LoyaltySource {
+  INVOICE        // Points from purchase
+  MANUAL         // Admin added manually
+  PROMOTION      // Promotional campaign
+  REFERRAL       // Referral bonus
+  REDEMPTION     // Points redeemed (negative)
+}
+
+// Severity level of alert
+enum AlertSeverity {
+  INFO           // Informational
+  WARNING        // Warning (action recommended)
+  CRITICAL       // Critical (needs immediate attention)
+}
+
+// Source/reason for the alert
+enum AlertSource {
+  OVERDUE        // Payment overdue
+  HIGH_VALUE     // High-value customer activity
+  REPEAT_REPAIR  // Customer with repeat repairs (may indicate issue)
+  CHURN_RISK     // Customer not active recently
+  INACTIVE       // Customer marked inactive
+  CUSTOM         // Custom alert from staff
 }

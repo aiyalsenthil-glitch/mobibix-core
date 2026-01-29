@@ -27,12 +27,37 @@ const navItems: NavItem[] = [
       { label: "Stock Correction", href: "/inventory/stock-correction" },
     ],
   },
-  { label: "Customers", href: "/customers", icon: "👥" },
+  {
+    label: "Customers",
+    href: "/customers",
+    icon: "👥",
+    submenu: [
+      { label: "All Customers", href: "/dashboard/customers" },
+      { label: "CRM Dashboard", href: "/dashboard/crm" },
+      { label: "My Follow-ups", href: "/dashboard/crm/follow-ups" },
+      { label: "Customer Timeline", href: "/dashboard/crm/timeline" },
+    ],
+  },
   { label: "Suppliers", href: "/suppliers", icon: "🚚" },
   { label: "Purchases", href: "/purchases", icon: "📥" },
+  {
+    label: "Payments",
+    icon: "💳",
+    submenu: [
+      { label: "Receipts", href: "/receipts" },
+      { label: "Vouchers", href: "/vouchers" },
+    ],
+  },
   { label: "Reports", href: "/reports", icon: "📈" },
   { label: "Shops", href: "/shops", icon: "🏪" },
-  { label: "Settings", href: "/settings", icon: "⚙️" },
+  {
+    label: "Settings",
+    icon: "⚙️",
+    submenu: [
+      { label: "General", href: "/settings" },
+      { label: "Document Numbering", href: "/settings/numbering" },
+    ],
+  },
 ];
 
 export function Sidebar() {

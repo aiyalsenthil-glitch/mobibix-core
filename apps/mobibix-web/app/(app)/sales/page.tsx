@@ -58,7 +58,7 @@ export default function SalesPage() {
 
   // Use modern hook for async data loading with built-in race condition prevention
   const {
-    data: invoices = [],
+    data: invoicesData,
     isLoading,
     error,
     reload,
@@ -94,6 +94,8 @@ export default function SalesPage() {
     [] as SalesInvoice[], // Initial data
   );
 
+  const invoices = invoicesData || [];
+
   // Transform error messages for better UX
   const displayError = error
     ? error.includes("Invalid shop")
@@ -112,11 +114,11 @@ export default function SalesPage() {
   };
 
   const handlePrint = (invoiceId: string, invoiceNumber: string) => {
-    router.push(`/sales/${invoiceId}?action=print&shopId=${selectedShopId}`);
+    router.push(`/print/invoice/${invoiceId}?shopId=${selectedShopId}`);
   };
 
   const handleShare = (invoiceId: string, invoiceNumber: string) => {
-    const shareUrl = `${window.location.origin}/sales/${invoiceId}?shopId=${selectedShopId}`;
+    const shareUrl = `${window.location.origin}/print/invoice/${invoiceId}?shopId=${selectedShopId}`;
     const text = `Invoice ${invoiceNumber}`;
     if (navigator.share) {
       navigator.share({ title: text, url: shareUrl });
@@ -466,7 +468,7 @@ export default function SalesPage() {
                       </td>
                     </tr>
                   );
-                })}{" "}
+                })}
               </tbody>
             </table>
           </div>

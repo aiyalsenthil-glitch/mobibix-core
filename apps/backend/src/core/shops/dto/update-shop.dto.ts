@@ -49,4 +49,20 @@ export class UpdateShopDto {
   @IsArray()
   @IsString({ each: true })
   terms?: string[];
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  accountNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  ifscCode?: string;
+
+  @IsOptional()
+  @IsString()
+  branchName?: string;
 }

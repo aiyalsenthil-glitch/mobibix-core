@@ -17,6 +17,8 @@ import { InventoryModule } from './inventory/inventory.module';
 import { ProductsModule } from './products/products.module';
 import { StockModule } from './stock/stock.module';
 import { HsnModule } from './hsn/hsn.module';
+import { FollowUpsModule } from './follow-ups/follow-ups.module';
+import { CrmDashboardModule } from './crm-dashboard/crm-dashboard.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { HsnModule } from './hsn/hsn.module';
     ProductsModule,
     StockModule,
     HsnModule,
+    FollowUpsModule,
+    CrmDashboardModule,
   ],
   exports: [
     AuthModule,

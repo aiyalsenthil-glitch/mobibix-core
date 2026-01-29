@@ -26,7 +26,7 @@ import {
   type AuthRole,
 } from "@/services/auth.api";
 import { getRoleRedirect, getPostLoginRedirect } from "@/lib/auth-routes";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 export interface AuthUser {
   id: string;
@@ -58,6 +58,7 @@ interface AuthProviderProps {
 
 export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const [REMOVED_AUTH_PROVIDERUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -151,9 +152,16 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   // Redirect if authUser already resolved (e.g., page reload with valid token)
   useEffect(() => {
     if (!authUser) return;
-    const path = getRoleRedirect(authUser);
-    router.replace(path);
-  }, [authUser, router]);
+    
+    // Don't redirect if we are already on a dashboard or print page
+    if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/print")) return;
+
+    // Only redirect from public/auth pages
+    if (pathname === "/" || pathname?.startsWith("/signin") || pathname?.startsWith("/signup")) {
+        const path = getRoleRedirect(authUser);
+        router.replace(path);
+    }
+  }, [authUser, router, pathname]);
 
   const logout = useCallback(async () => {
     try {

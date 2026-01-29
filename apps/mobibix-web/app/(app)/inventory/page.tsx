@@ -29,6 +29,7 @@ export default function InventoryPage() {
   const [quantity, setQuantity] = useState("");
   const [costPrice, setCostPrice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Load products when shop selection changes
   useEffect(() => {
@@ -90,6 +91,7 @@ export default function InventoryPage() {
         shopProductId: selectedProduct.id,
         quantity: parseInt(quantity),
         costPrice: parseFloat(costPrice) || 0,
+        type: selectedProduct.type,
       });
 
       // Reload products + stock balances to get updated stock
@@ -115,7 +117,9 @@ export default function InventoryPage() {
       setSelectedProduct(null);
       setQuantity("");
       setCostPrice("");
-      alert("Stock added successfully!");
+      setSearchQuery("");
+      setSuccessMessage("Stock added successfully!");
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       setError(err.message || "Failed to add stock");
     } finally {
@@ -197,9 +201,16 @@ export default function InventoryPage() {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search product..."
+                  placeholder={
+                    selectedProduct ? selectedProduct.name : "Search product..."
+                  }
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    if (e.target.value) {
+                      setSelectedProduct(null);
+                    }
+                  }}
                   className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
                     theme === "dark"
                       ? "bg-gray-800 border-white/20 text-white"
@@ -216,7 +227,7 @@ export default function InventoryPage() {
                         type="button"
                         onClick={() => {
                           setSelectedProduct(product);
-                          setSearchQuery(product.name);
+                          setSearchQuery("");
                         }}
                         className={`w-full text-left px-4 py-2 hover:bg-teal-50 dark:hover:bg-teal-900/20 border-b last:border-0 ${
                           theme === "dark"
@@ -293,6 +304,12 @@ export default function InventoryPage() {
             {error && (
               <div className="bg-rose-50 border border-rose-200 text-rose-700 dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-200 px-4 py-3 rounded-lg">
                 {error}
+              </div>
+            )}
+
+            {successMessage && (
+              <div className="bg-green-50 border border-green-200 text-green-700 dark:bg-green-500/20 dark:border-green-500/50 dark:text-green-200 px-4 py-3 rounded-lg">
+                {successMessage}
               </div>
             )}
 

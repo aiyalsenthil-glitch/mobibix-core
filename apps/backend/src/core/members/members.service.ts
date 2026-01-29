@@ -217,12 +217,20 @@ export class MembersService {
         const planName = subscription.plan.name;
 
         if (planName === 'ULTIMATE') {
+          // 🔹 Get tenant name for template
+          const tenant = await this.prisma.tenant.findUnique({
+            where: { id: tenantId },
+            select: { name: true },
+          });
+
           const result = await this.whatsAppSender.sendTemplateMessage(
             tenantId,
             WhatsAppFeature.WELCOME,
             member.phone,
             WhatsAppTemplates.WELCOME,
             [
+              member.fullName,
+              tenant?.name || 'Gym',
               formatDateDDMMYYYY(member.membershipStartAt),
               formatDateDDMMYYYY(member.membershipEndAt),
             ],

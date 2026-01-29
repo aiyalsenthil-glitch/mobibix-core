@@ -19,10 +19,30 @@ export interface Shop {
   invoicePrefix?: string;
   invoiceFooter?: string;
   logoUrl?: string;
+  tagline?: string;
   terms?: string[];
   isActive: boolean;
   createdAt: Date | string;
   updatedAt: Date | string;
+
+  // Print Settings
+  invoicePrinterType?: "NORMAL" | "THERMAL";
+  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL";
+  jobCardPrinterType?: "THERMAL";
+  jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL";
+  
+  // Custom Header
+  headerConfig?: {
+    layout: 'CLASSIC' | 'CENTERED' | 'SPLIT' | 'MINIMAL';
+    showLogo: boolean;
+    showTagline: boolean;
+    accentColor?: string;
+  };
+  // Bank Details
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  branchName?: string;
 }
 
 export interface CreateShopDto {
@@ -37,6 +57,10 @@ export interface CreateShopDto {
   website?: string;
   logoUrl?: string;
   invoiceFooter?: string;
+  
+  // Default Print Settings
+  invoicePrinterType?: "NORMAL" | "THERMAL";
+  invoiceTemplate?: "CLASSIC" | "MODERN" | "THERMAL";
 }
 
 export interface UpdateShopDto {
@@ -68,6 +92,25 @@ export interface UpdateShopSettingsDto {
   invoiceFooter?: string;
   terms?: string[];
   logoUrl?: string;
+  tagline?: string;
+
+  // Print Settings Updates
+  invoicePrinterType?: "NORMAL" | "THERMAL";
+  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL";
+  jobCardPrinterType?: "THERMAL";
+  jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL";
+  
+  headerConfig?: {
+    layout: 'CLASSIC' | 'CENTERED' | 'SPLIT' | 'MINIMAL';
+    showLogo: boolean;
+    showTagline: boolean;
+    accentColor?: string;
+  };
+  // Bank Details
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  branchName?: string;
 }
 
 /**

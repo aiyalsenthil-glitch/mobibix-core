@@ -3,18 +3,21 @@
 ## What Was Done
 
 ### ✅ Create Invoice Page
+
 - Payment mode awareness (CREDIT alerts)
 - IMEI guidance with visual feedback
 - Submission guard to prevent incomplete invoices
 - Summary shows payment type and balance due
 
 ### ✅ Printable Invoice Page
+
 - Real amount-in-words conversion
 - Payment information display
 - Footer trust signals
 - Print-optimized layout
 
 ### ✅ New Utility
+
 - `src/utils/numberToWords.ts` - INR number to words conversion
 
 ---
@@ -22,46 +25,59 @@
 ## Key Features
 
 ### 1. Payment Mode Awareness
+
 When user selects **Credit (Pay Later)**:
+
 - Shows amber alert: "This invoice will be marked as unpaid"
 - Displays "Balance Due" matching invoice total
 - Operators can't miss that it's a credit transaction
 
 ### 2. IMEI Guidance
+
 For serialized products:
+
 - Blue helper text: "Enter exactly one IMEI per quantity (N needed)"
 - Input box turns **red** if IMEI count ≠ quantity
 - Error message shows exact mismatch: "IMEI count (X) must equal quantity (Y)"
 - Submit button disabled until fixed
 
 ### 3. Submission Guard
+
 - Button automatically disables when IMEI issues exist
 - Inline warning: "Fix IMEI issues before submitting"
 - Prevents backend errors with frontend validation
 
 ### 4. Summary Clarity
+
 New fields in summary box:
+
 ```
 Payment Type: [CASH/UPI/CARD/BANK TRANSFER/CREDIT]
 [If CREDIT] Balance Due: ₹[amount]
 ```
 
 ### 5. Amount in Words
+
 Real conversion for INR standard format:
+
 ```
 ₹1,234     → Rupees One Thousand Two Hundred Thirty Four Only
 ₹12,34,567 → Rupees Twelve Lakh Thirty Four Thousand Five Hundred Sixty Seven Only
 ```
 
 ### 6. Payment Info on Print
+
 Shows clearly:
+
 ```
 Payment Mode: [Type]
 [If CREDIT] Balance Due: ₹[amount]
 ```
 
 ### 7. Trust Signals
+
 Invoice footer now states:
+
 ```
 This is a computer-generated invoice
 Scan QR code above to verify invoice authenticity
@@ -131,6 +147,7 @@ Print dialog opens ✓
 ## Testing Checklist
 
 ### Create Invoice
+
 - [ ] Select CREDIT mode → see alert ✓
 - [ ] Change to CASH → alert disappears ✓
 - [ ] Add serialized product → see IMEI helper ✓
@@ -140,6 +157,7 @@ Print dialog opens ✓
 - [ ] CREDIT mode shows balance due ✓
 
 ### Print Invoice
+
 - [ ] Open existing invoice print view ✓
 - [ ] Check amount in words appears ✓
 - [ ] Verify payment mode displays ✓
@@ -149,6 +167,7 @@ Print dialog opens ✓
 - [ ] Print to PDF and verify appearance ✓
 
 ### Dark Mode
+
 - [ ] Create page alerts in dark mode ✓
 - [ ] Colors are readable (not black on black) ✓
 - [ ] Print page works in both modes ✓
@@ -162,13 +181,14 @@ Print dialog opens ✓
 ✅ Database changes: None  
 ✅ Authentication: Unchanged  
 ✅ Routing: Unchanged  
-✅ Backward compatible with old invoices  
+✅ Backward compatible with old invoices
 
 ---
 
 ## What Operators Will See
 
 ### During Invoice Creation
+
 ```
 📌 When selecting CREDIT:
 ┌─────────────────────────────────┐
@@ -183,6 +203,7 @@ Payment Type: CREDIT
 ```
 
 ### During IMEI Entry (Serialized Product)
+
 ```
 📌 Enter exactly one IMEI per quantity (5 needed)
 
@@ -195,6 +216,7 @@ Payment Type: CREDIT
 ```
 
 ### On Printed Invoice
+
 ```
 Amount in Words:
 Rupees Fifty Thousand Only
@@ -219,6 +241,7 @@ Scan QR code above to verify invoice authenticity
 ### To Modify Colors
 
 **Create Page - Payment Alert** (line ~1060):
+
 ```tsx
 // Change this:
 bg-amber-50 dark:bg-amber-900/20
@@ -227,6 +250,7 @@ bg-blue-50 dark:bg-blue-900/20
 ```
 
 **Create Page - IMEI Helper** (line ~909):
+
 ```tsx
 // Change this:
 bg-blue-50 dark:bg-blue-900/20
@@ -236,14 +260,16 @@ bg-blue-50 dark:bg-blue-900/20
 ### To Modify Messages
 
 **Payment Mode Alert** (line ~1062):
+
 ```tsx
-"This invoice will be marked as unpaid. Collect payment later."
+"This invoice will be marked as unpaid. Collect payment later.";
 // Change to your message
 ```
 
 **IMEI Helper** (line ~909):
+
 ```tsx
-"Enter exactly one IMEI per quantity"
+"Enter exactly one IMEI per quantity";
 // Customize instruction text
 ```
 
@@ -265,7 +291,7 @@ bg-blue-50 dark:bg-blue-900/20
 ✅ WCAG AA contrast ratios  
 ✅ Keyboard accessible buttons  
 ✅ Screen reader compatible  
-✅ Semantic HTML used throughout  
+✅ Semantic HTML used throughout
 
 ---
 
@@ -288,6 +314,7 @@ bg-blue-50 dark:bg-blue-900/20
 ### How to report issues
 
 Include:
+
 - What were you doing?
 - What did you expect?
 - What actually happened?
@@ -308,14 +335,14 @@ Include:
 
 ## Quick Reference
 
-| Feature | Location | Trigger |
-|---------|----------|---------|
-| Payment alert | Create page summary | Select CREDIT mode |
-| IMEI helper | Under rate column | Serialized product |
-| IMEI validation | Submit button | IMEI mismatch |
-| Amount in words | Print page totals | Load invoice |
-| Payment info | Print page totals | Any invoice |
-| Trust signals | Print page footer | All invoices |
+| Feature         | Location            | Trigger            |
+| --------------- | ------------------- | ------------------ |
+| Payment alert   | Create page summary | Select CREDIT mode |
+| IMEI helper     | Under rate column   | Serialized product |
+| IMEI validation | Submit button       | IMEI mismatch      |
+| Amount in words | Print page totals   | Load invoice       |
+| Payment info    | Print page totals   | Any invoice        |
+| Trust signals   | Print page footer   | All invoices       |
 
 ---
 
