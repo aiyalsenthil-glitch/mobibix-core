@@ -1,2 +1,0 @@
--- Baseline migration
--- Production schema already exists, no changes applied

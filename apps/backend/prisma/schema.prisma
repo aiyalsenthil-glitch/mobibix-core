@@ -91,6 +91,7 @@ model User {
   welcomeEmailSent  Boolean            @default(false)
   auditLogs         AuditLog[]
   assignedFollowUps CustomerFollowUp[]
+  platformAuditLogs PlatformAuditLog[]
   shopStaffs        ShopStaff[]
   tenant            Tenant?            @relation(fields: [tenantId], references: [id])
   userTenants       UserTenant[]
@@ -119,6 +120,7 @@ model Member {
   isActive            Boolean             @default(true)
   photoUrl            String?
   welcomeMessageSent  Boolean             @default(false)
+  hasCoaching         Boolean             @default(false)
   attendances         GymAttendance[]
   gymMemberships      GymMembership[]
   tenant              Tenant              @relation(fields: [tenantId], references: [id])
@@ -135,8 +137,11 @@ model Customer {
   name                String
   phone               String
   email               String?
-  businessType        BusinessType?
-  partyType           PartyType
+  state               String
+  gstNumber           String?
+  businessType        BusinessType         @default(B2C)
+  partyType           PartyType            @default(CUSTOMER)
+  loyaltyPoints       Int                  @default(0)
   isActive            Boolean              @default(true)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -146,9 +151,9 @@ model Customer {
   reminders           CustomerReminder[]
   invoices            Invoice[]
   jobCards            JobCard[]
-  ledgers             LedgerAccount[]
   loyaltyTransactions LoyaltyTransaction[]
 
+  @@unique([tenantId, phone])
   @@index([tenantId])
 }
 
@@ -239,33 +244,35 @@ model CustomerAlert {
 }
 
 model LedgerCustomer {
-  id           String        @id @default(cuid())
-  tenantId     String
-  name         String
-  phone        String
-  email        String?
-  businessType BusinessType?
-  partyType    PartyType
-  balance      Int           @default(0)
-  status       LedgerStatus  @default(ACTIVE)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime
-  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  id        String          @id @default(cuid())
+  tenantId  String
+  name      String
+  phone     String
+  address   String?
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  ledgers   LedgerAccount[]
+  tenant    Tenant          @relation(fields: [tenantId], references: [id])
 
+  @@unique([tenantId, phone])
   @@index([tenantId])
 }
 
 model LedgerAccount {
-  id          String             @id @default(cuid())
-  tenantId    String
-  customerId  String
-  balance     Int                @default(0)
-  status      LedgerStatus       @default(ACTIVE)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime
-  customer    Customer           @relation(fields: [customerId], references: [id])
-  tenant      Tenant             @relation(fields: [tenantId], references: [id])
-  collections LedgerCollection[]
+  id                String                @id @default(cuid())
+  tenantId          String
+  customerId        String
+  principalAmount   Int
+  expectedTotal     Int
+  installmentType   LedgerInstallmentType
+  installmentAmount Int
+  totalPeriods      Int
+  startDate         DateTime
+  status            LedgerStatus          @default(ACTIVE)
+  createdAt         DateTime              @default(now())
+  customer          LedgerCustomer        @relation(fields: [customerId], references: [id])
+  tenant            Tenant                @relation(fields: [tenantId], references: [id])
+  collections       LedgerCollection[]
 
   @@index([tenantId])
   @@index([customerId])
@@ -273,12 +280,17 @@ model LedgerAccount {
 
 model LedgerCollection {
   id        String        @id @default(cuid())
+  tenantId  String
   ledgerId  String
+  periodNo  Int
+  dueDate   DateTime
   amount    Int
-  note      String?
+  paid      Boolean       @default(false)
+  paidAt    DateTime?
   createdAt DateTime      @default(now())
   ledger    LedgerAccount @relation(fields: [ledgerId], references: [id])
 
+  @@index([tenantId])
   @@index([ledgerId])
 }
 
@@ -316,18 +328,32 @@ model MemberPayment {
 
 model Plan {
   id            String               @id @default(uuid())
+  code          String?              @unique
   name          String               @unique
   level         Int
   price         Int
   currency      String               @default("INR")
   durationDays  Int
   memberLimit   Int                  @default(0)
+  maxMembers    Int?
   features      Json?
   isActive      Boolean              @default(true)
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   billingCycle  BillingCycle         @default(MONTHLY)
+  planFeatures  PlanFeature[]
   subscriptions TenantSubscription[]
+}
+
+model PlanFeature {
+  id      String          @id @default(uuid())
+  planId  String
+  feature WhatsAppFeature
+  enabled Boolean         @default(true)
+  plan    Plan            @relation(fields: [planId], references: [id])
+
+  @@unique([planId, feature])
+  @@index([planId])
 }
 
 model TenantSubscription {
@@ -378,6 +404,19 @@ model AuditLog {
   user      User     @relation(fields: [userId], references: [id])
 }
 
+model PlatformAuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  entity    String
+  entityId  String?
+  meta      Json?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
 model GymMembership {
   id        String           @id @default(cuid())
   tenantId  String
@@ -399,10 +438,10 @@ model WhatsAppSetting {
   enabled                Boolean  @default(false)
   createdAt              DateTime @default(now())
   provider               String?
-  dailyLimit             Int?
   defaultLanguage        String   @default("en")
-  marketingOptInRequired Boolean  @default(true)
+  dailyLimit             Int?
   testPhone              String?
+  marketingOptInRequired Boolean  @default(true)
 }
 
 model WhatsAppPhoneNumber {
@@ -431,12 +470,12 @@ model WhatsAppLog {
   type        String
   status      String
   error       String?
-  sentAt      DateTime  @default(now())
-  deliveredAt DateTime?
   messageId   String?
   metadata    Json?
-  readAt      DateTime?
+  sentAt      DateTime  @default(now())
   updatedAt   DateTime  @default(now()) @updatedAt
+  deliveredAt DateTime?
+  readAt      DateTime?
 
   @@index([tenantId, sentAt])
   @@index([tenantId, status])
@@ -445,17 +484,17 @@ model WhatsAppLog {
 
 model WhatsAppTemplate {
   id               String   @id @default(uuid())
+  moduleType       String
   templateKey      String
   metaTemplateName String
   category         String
   feature          String
   language         String   @default("en")
   status           String   @default("ACTIVE")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  moduleType       String
   isDefault        Boolean  @default(false)
   variables        Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@unique([moduleType, metaTemplateName])
   @@index([moduleType])
@@ -463,18 +502,21 @@ model WhatsAppTemplate {
 }
 
 model WhatsAppAutomation {
-  id          String              @id @default(uuid())
-  triggerType ReminderTriggerType
-  templateKey String
-  offsetDays  Int
-  enabled     Boolean             @default(true)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  moduleType  String
+  id            String     @id @default(uuid())
+  moduleType    ModuleType
+  eventType     String
+  templateKey   String
+  offsetDays    Int
+  enabled       Boolean    @default(true)
+  conditions    Json?
+  description   String?
+  requiresOptIn Boolean    @default(false)
+  createdBy     String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
-  @@unique([moduleType, triggerType])
+  @@unique([moduleType, eventType])
   @@index([moduleType])
-  @@index([moduleType, triggerType])
 }
 
 model WebhookEvent {
@@ -528,25 +570,25 @@ model Shop {
   state               String
   pincode             String
   gstNumber           String?
+  gstEnabled          Boolean               @default(false)
   invoicePrefix       String
   logoUrl             String?
   website             String?
   invoiceFooter       String?
-  terms               String[]              @default([])
-  gstEnabled          Boolean               @default(true)
-  isActive            Boolean               @default(true)
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  headerConfig        Json?
   invoicePrinterType  String?               @default("NORMAL")
   invoiceTemplate     String?               @default("CLASSIC")
   jobCardPrinterType  String?               @default("NORMAL")
   jobCardTemplate     String?               @default("SIMPLE")
+  headerConfig        Json?
   tagline             String?
-  accountNumber       String?
+  terms               String[]              @default([])
   bankName            String?
-  branchName          String?
+  accountNumber       String?
   ifscCode            String?
+  branchName          String?
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
   receiptPrintCounter Int                   @default(0)
   followUps           CustomerFollowUp[]
   financialEntries    FinancialEntry[]
@@ -612,28 +654,38 @@ model JobCard {
   id                   String           @id @default(cuid())
   tenantId             String
   shopId               String
+  customerId           String?
   jobNumber            String
   publicToken          String           @unique
-  customerId           String?
   customerName         String
   customerPhone        String
+  customerAltPhone     String?
+  deviceType           String
   deviceBrand          String
   deviceModel          String
-  imei                 String?
-  problem              String
-  status               JobStatus        @default(RECEIVED)
+  deviceSerial         String?
+  devicePassword       String?
+  customerComplaint    String
+  physicalCondition    String?
   estimatedCost        Int?
+  diagnosticCharge     Int?             @default(0)
+  advancePaid          Int              @default(0)
   finalCost            Int?
-  notes                String?
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-  advanceCashAmount    Int?
+  billType             String           @default("WITHOUT_GST")
+  estimatedDelivery    DateTime?
   advancePaymentMethod String?
+  advanceCashAmount    Int?
   advanceUpiAmount     Int?
+  warrantyDuration     Int?             @default(0)
   consentAcknowledge   Boolean          @default(false)
   consentDataLoss      Boolean          @default(false)
   consentDiagnosticFee Boolean          @default(false)
-  warrantyDuration     Int?             @default(0)
+  createdByUserId      String
+  createdByName        String
+  status               JobStatus        @default(RECEIVED)
+  notes                String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
   customer             Customer?        @relation(fields: [customerId], references: [id])
   shop                 Shop             @relation(fields: [shopId], references: [id])
   tenant               Tenant           @relation(fields: [tenantId], references: [id])
@@ -648,10 +700,10 @@ model JobCard {
 model HSNCode {
   id          String          @id @default(cuid())
   code        String          @unique
-  taxRate     Float
-  createdAt   DateTime        @default(now())
   description String?
+  taxRate     Float
   isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   hsnProducts GlobalProduct[]
 }
@@ -685,20 +737,20 @@ model ShopProduct {
   shopId           String
   globalProductId  String?
   name             String
-  type             ProductType
   salePrice        Int?
   costPrice        Int?
   isActive         Boolean           @default(true)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-  barcode          String?
-  location         String?
-  reorderLevel     Int?
-  reorderQty       Int?
-  gstRate          Float?            @default(0)
-  hsnCode          String?
+  type             ProductType
   category         String?
   isSerialized     Boolean           @default(false)
+  hsnCode          String?
+  gstRate          Float?            @default(0)
+  reorderLevel     Int?
+  reorderQty       Int?
+  barcode          String?
+  location         String?
   imeis            IMEI[]
   invoiceItems     InvoiceItem[]
   purchaseItems    PurchaseItem[]
@@ -716,23 +768,23 @@ model ShopProduct {
 }
 
 model IMEI {
-  id                  String       @id @default(cuid())
+  id                  String      @id @default(cuid())
   tenantId            String
+  shopProductId       String
   imei                String
+  status              IMEIStatus  @default(IN_STOCK)
   invoiceId           String?
-  shopProductId       String?
-  createdAt           DateTime     @default(now())
-  damageNotes         String?
-  returnedAt          DateTime?
-  soldAt              DateTime?
-  status              IMEIStatus   @default(IN_STOCK)
-  updatedAt           DateTime     @updatedAt
-  lostReason          String?
   transferredToShopId String?
-  invoice             Invoice?     @relation(fields: [invoiceId], references: [id])
-  product             ShopProduct? @relation(fields: [shopProductId], references: [id])
-  tenant              Tenant       @relation(fields: [tenantId], references: [id])
-  transferredToShop   Shop?        @relation("TransferredIMEIs", fields: [transferredToShopId], references: [id])
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  soldAt              DateTime?
+  returnedAt          DateTime?
+  damageNotes         String?
+  lostReason          String?
+  invoice             Invoice?    @relation(fields: [invoiceId], references: [id])
+  product             ShopProduct @relation(fields: [shopProductId], references: [id])
+  tenant              Tenant      @relation(fields: [tenantId], references: [id])
+  transferredToShop   Shop?       @relation("TransferredIMEIs", fields: [transferredToShopId], references: [id])
 
   @@unique([tenantId, imei])
   @@index([tenantId])
@@ -751,15 +803,16 @@ model StockLedger {
   quantity      Int
   referenceType StockRefType?
   referenceId   String?
+  costPerUnit   Int?
   note          String?
   createdAt     DateTime       @default(now())
-  costPerUnit   Int?
   shop          Shop           @relation(fields: [shopId], references: [id])
   product       ShopProduct    @relation(fields: [shopProductId], references: [id])
   tenant        Tenant         @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId, shopId, createdAt])
   @@index([shopProductId, createdAt])
+  @@index([tenantId, shopId, type])
   @@index([referenceType, referenceId])
 }
 
@@ -789,24 +842,24 @@ model Invoice {
   customerId    String?
   invoiceNumber String
   invoiceDate   DateTime      @default(now())
+  financialYear String?
   customerName  String
   customerPhone String?
-  subTotal      Int
-  gstAmount     Int
-  totalAmount   Int
-  paymentMode   PaymentMode
-  status        InvoiceStatus @default(PAID)
-  createdAt     DateTime      @default(now())
-  cardAmount    Int?
-  cashAmount    Int?
-  cgst          Int?
-  createdBy     String?
   customerGstin String?
   customerState String?
-  financialYear String?
-  igst          Int?
+  subTotal      Int
+  gstAmount     Int
+  cgst          Int?
   sgst          Int?
+  igst          Int?
+  totalAmount   Int
+  paymentMode   PaymentMode
+  cashAmount    Int?
   upiAmount     Int?
+  cardAmount    Int?
+  status        InvoiceStatus @default(PAID)
+  createdAt     DateTime      @default(now())
+  createdBy     String?
   imeis         IMEI[]
   customer      Customer?     @relation(fields: [customerId], references: [id])
   shop          Shop          @relation(fields: [shopId], references: [id])
@@ -814,7 +867,6 @@ model Invoice {
   items         InvoiceItem[]
   receipts      Receipt[]
 
-  @@unique([shopId, invoiceNumber])
   @@index([tenantId])
   @@index([shopId])
   @@index([customerId])
@@ -834,7 +886,6 @@ model InvoiceItem {
   product       ShopProduct @relation(fields: [shopProductId], references: [id])
 
   @@index([invoiceId])
-  @@index([shopProductId])
 }
 
 model RepairPartUsed {
@@ -843,10 +894,12 @@ model RepairPartUsed {
   shopProductId String
   quantity      Int
   costPerUnit   Int?
+  createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   jobCard       JobCard     @relation(fields: [jobCardId], references: [id])
   product       ShopProduct @relation(fields: [shopProductId], references: [id])
 
+  @@unique([jobCardId, shopProductId])
   @@index([jobCardId])
   @@index([shopProductId])
 }
@@ -1176,6 +1229,13 @@ enum WhatsAppPhoneNumberPurpose {
   DEFAULT
 }
 
+enum WhatsAppFeature {
+  WELCOME
+  EXPIRY
+  PAYMENT_DUE
+  REMINDER
+}
+
 enum FinanceType {
   IN
   OUT
@@ -1201,8 +1261,8 @@ enum JobStatus {
 
 enum InvoiceStatus {
   PAID
-  CANCELLED
   CREDIT
+  CANCELLED
 }
 
 enum PaymentMode {
@@ -1231,6 +1291,7 @@ enum BillingCycle {
 }
 
 enum UserRole {
+  SUPER_ADMIN
   ADMIN
   OWNER
   STAFF
@@ -1282,27 +1343,26 @@ enum MembershipStatus {
 }
 
 enum LedgerInstallmentType {
-  FIXED
-  FLEXIBLE
+  DAILY
+  WEEKLY
+  MONTHLY
 }
 
 enum LedgerStatus {
   ACTIVE
+  COMPLETED
   CLOSED
-  SUSPENDED
 }
 
 enum PartyType {
   CUSTOMER
   VENDOR
-  EMPLOYEE
+  BOTH
 }
 
 enum BusinessType {
-  SOLE_PROPRIETOR
-  PARTNERSHIP
-  PRIVATE_LIMITED
-  PUBLIC_LIMITED
+  B2C
+  B2B
 }
 
 enum PurchaseStatus {
@@ -1408,6 +1468,11 @@ enum FollowUpStatus {
   CANCELLED
 }
 
+enum ModuleType {
+  GYM
+  MOBILE_SHOP
+}
+
 enum ReminderTriggerType {
   DATE
   AFTER_INVOICE
@@ -1449,4 +1514,22 @@ enum AlertSource {
   CHURN_RISK
   INACTIVE
   CUSTOM
+}
+
+model WhatsAppPhoneNumberModule {
+  id            String                     @id @default(uuid())
+  moduleType    String
+  phoneNumber   String
+  phoneNumberId String
+  wabaId        String
+  purpose       WhatsAppPhoneNumberPurpose @default(DEFAULT)
+  qualityRating String?
+  isDefault     Boolean                    @default(false)
+  isActive      Boolean                    @default(true)
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+
+  @@unique([moduleType, phoneNumberId])
+  @@index([moduleType, isActive])
+  @@index([moduleType, purpose])
 }
