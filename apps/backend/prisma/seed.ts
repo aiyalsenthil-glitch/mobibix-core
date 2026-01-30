@@ -567,6 +567,53 @@ async function main() {
   console.log(`   Created: ${modulePhoneResult.created}`);
   console.log(`   Skipped: ${modulePhoneResult.skipped}`);
 
+  // ────────────────────────────────────────────────
+  // Seed module defaults into tenant-scoped rows (idempotent)
+  // ────────────────────────────────────────────────
+  async function seedModuleDefaultsToTenants(): Promise<{ created: number; skipped: number }> {
+    const modules = await prisma.whatsAppPhoneNumberModule.findMany({ where: { isActive: true } });
+    if (!modules.length) return { created: 0, skipped: 0 };
+
+    const tenantsList = await prisma.tenant.findMany({ select: { id: true, code: true } });
+    let created = 0;
+    let skipped = 0;
+
+    for (const t of tenantsList) {
+      const existing = await prisma.whatsAppPhoneNumber.findFirst({ where: { tenantId: t.id } });
+      if (existing) {
+        skipped++;
+        continue;
+      }
+
+      const data = modules.map((m) => ({
+        tenantId: t.id,
+        phoneNumber: m.phoneNumber,
+        phoneNumberId: m.phoneNumberId,
+        wabaId: m.wabaId,
+        purpose: m.purpose,
+        qualityRating: m.qualityRating,
+        isDefault: m.isDefault,
+        isActive: m.isActive,
+      }));
+
+      try {
+        const res = await prisma.whatsAppPhoneNumber.createMany({ data, skipDuplicates: true });
+        created += res.count ?? data.length;
+        console.log(`Seeded ${res.count ?? data.length} numbers for tenant ${t.code} (${t.id})`);
+      } catch (err) {
+        console.error(`Failed to seed tenant ${t.code} (${t.id}):`, (err as Error).message || err);
+      }
+    }
+
+    return { created, skipped };
+  }
+
+  console.log('\n🌱 Copying module defaults into tenants (if missing)...');
+  const tenantSeedResult = await seedModuleDefaultsToTenants();
+  console.log(`✅ Tenant phone numbers seeded from module defaults`);
+  console.log(`   Created: ${tenantSeedResult.created}`);
+  console.log(`   Tenants skipped (already had numbers): ${tenantSeedResult.skipped}`);
+
   if (
     phoneResult.created > 0 &&
     (process.env.WHATSAPP_PHONE_NUMBER_ID === 'YOUR_PHONE_NUMBER_ID' ||

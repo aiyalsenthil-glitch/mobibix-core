@@ -51,10 +51,45 @@ export class WhatsAppPhoneNumbersService {
    * List all phone numbers for a tenant
    */
   async listPhoneNumbers(tenantId: string) {
-    return this.prisma.whatsAppPhoneNumber.findMany({
+    // First, fetch tenant-scoped phone numbers
+    const tenantPhones = await this.prisma.whatsAppPhoneNumber.findMany({
       where: { tenantId },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     });
+
+    if (tenantPhones && tenantPhones.length > 0) {
+      return tenantPhones;
+    }
+
+    // If none exist, fall back to module-scoped defaults based on tenant type
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { tenantType: true },
+    });
+
+    const moduleType = tenant?.tenantType ?? 'GYM';
+
+    const modulePhones = await this.prisma.whatsAppPhoneNumberModule.findMany({
+      where: { moduleType, isActive: true },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    // Map module-scoped records to the tenant-scoped shape so frontend can render them
+    const mapped = modulePhones.map((m) => ({
+      id: m.id,
+      tenantId: tenantId,
+      phoneNumber: m.phoneNumber,
+      phoneNumberId: m.phoneNumberId,
+      wabaId: m.wabaId,
+      purpose: m.purpose,
+      qualityRating: m.qualityRating ?? null,
+      isDefault: m.isDefault,
+      isActive: m.isActive,
+      createdAt: m.createdAt,
+      updatedAt: m.updatedAt,
+    }));
+
+    return mapped;
   }
 
   /**
