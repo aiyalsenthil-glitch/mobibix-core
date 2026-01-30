@@ -12,6 +12,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { ModuleType } from '@prisma/client';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { WhatsAppSender } from './whatsapp.sender';
 
@@ -165,11 +166,15 @@ export class WhatsAppController {
    */
   @Get('automations/:moduleType')
   async getAutomations(@Param('moduleType') moduleType: string) {
+    // Map legacy/mobile UI value to correct enum
+    let prismaModuleType: ModuleType;
+    if (moduleType === 'MOBILESHOP') prismaModuleType = ModuleType.MOBILE_SHOP;
+    else if (moduleType === 'GYM') prismaModuleType = ModuleType.GYM;
+    else throw new BadRequestException('Invalid moduleType');
     const automations = await this.prisma.whatsAppAutomation.findMany({
-      where: { moduleType },
+      where: { moduleType: prismaModuleType },
       orderBy: { createdAt: 'desc' },
     });
-
     return automations;
   }
 
@@ -213,8 +218,8 @@ export class WhatsAppController {
 
     const existing = await this.prisma.whatsAppAutomation.findFirst({
       where: {
-        moduleType,
-        triggerType: triggerType as any,
+        moduleType: moduleType as any,
+        eventType: triggerType,
         templateKey,
         offsetDays: Number(offsetDays),
       },
@@ -228,8 +233,8 @@ export class WhatsAppController {
 
     return this.prisma.whatsAppAutomation.create({
       data: {
-        moduleType,
-        triggerType: triggerType as any,
+        moduleType: moduleType as any,
+        eventType: triggerType,
         templateKey,
         offsetDays: Number(offsetDays),
         enabled: enabled !== undefined ? enabled : true,
@@ -257,7 +262,7 @@ export class WhatsAppController {
     return this.prisma.whatsAppAutomation.update({
       where: { id: automationId },
       data: {
-        triggerType: dto.triggerType || automation.triggerType,
+        eventType: dto.triggerType || automation.eventType,
         templateKey: dto.templateKey || automation.templateKey,
         offsetDays: dto.offsetDays ?? automation.offsetDays,
         enabled: dto.enabled !== undefined ? dto.enabled : automation.enabled,

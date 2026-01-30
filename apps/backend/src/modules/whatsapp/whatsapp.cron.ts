@@ -1,25 +1,36 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../core/prisma/prisma.service';
-import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
-import { PlanRulesService } from '../../core/billing/plan-rules.service';
+import { EntityResolverService } from './entity-resolver.service';
+import { AutomationSafetyService } from './automation-safety.service';
+import { ModuleType } from '@prisma/client';
 
 /**
- * WhatsApp Automation Cron Job
+ * ────────────────────────────────────────────────
+ * SAFE WHATSAPP AUTOMATION CRON
+ * ────────────────────────────────────────────────
  *
  * RESPONSIBILITY: Create CustomerReminder entries based on WhatsAppAutomation rules
  *
+ * ARCHITECTURE:
+ * - EVENT-DRIVEN: Uses EntityResolver to find specific entities per event
+ * - SAFETY-FIRST: Uses AutomationSafetyService to enforce all rules
+ * - MULTI-TENANT: Processes all tenants with enabled WhatsApp
+ * - DEDUPLICATION: Prevents duplicate reminders
+ *
  * DOES:
- * - Read enabled WhatsAppAutomation records
- * - Identify eligible members/customers
- * - Create SCHEDULED CustomerReminder entries
- * - Enforce plan restrictions
- * - Prevent duplicate reminders
+ * ✅ Read enabled WhatsAppAutomation records
+ * ✅ Resolve eligible entities via EntityResolver
+ * ✅ Enforce template, feature, and opt-in safety
+ * ✅ Create SCHEDULED CustomerReminder entries
+ * ✅ Prevent duplicate reminders (day-level dedup)
  *
  * DOES NOT:
- * - Send WhatsApp messages (handled by WhatsAppRemindersService)
- * - Use hardcoded template names
- * - Use legacy flags (paymentReminderSent, etc.)
+ * ❌ Send WhatsApp messages (handled by WhatsAppRemindersService)
+ * ❌ Use hardcoded template names
+ * ❌ Use legacy flags (paymentReminderSent, etc.)
+ * ❌ Allow marketing/auth templates
+ * ❌ Process coaching events without opt-in
  */
 @Injectable()
 export class WhatsAppCron {
@@ -27,16 +38,24 @@ export class WhatsAppCron {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly planRulesService: PlanRulesService,
+    private readonly entityResolver: EntityResolverService,
+    private readonly safetyService: AutomationSafetyService,
   ) {}
 
   /**
    * ⏰ Create Reminder Entries from Automation Rules
    * Runs every day at 6 AM IST
+   *
+   * WORKFLOW:
+   * 1. Fetch all enabled automations
+   * 2. For each automation, process all tenants with WhatsApp enabled
+   * 3. Resolve entities via EntityResolver (event-driven)
+   * 4. Run safety checks (template, feature, opt-in)
+   * 5. Create deduplicated CustomerReminder entries
    */
   @Cron('0 6 * * *')
   async createRemindersFromAutomations() {
-    this.logger.debug('Starting automation reminder creation...');
+    this.logger.debug('🚀 Starting safe automation reminder creation...');
 
     try {
       // 1️⃣ Fetch all enabled automations
@@ -49,28 +68,37 @@ export class WhatsAppCron {
         return;
       }
 
-      let created = 0;
-      let skipped = 0;
+      this.logger.log(`Found ${automations.length} enabled automations`);
+
+      let totalCreated = 0;
+      let totalSkipped = 0;
 
       // 2️⃣ Process each automation
       for (const automation of automations) {
         const result = await this.processAutomation(automation);
-        created += result.created;
-        skipped += result.skipped;
+        totalCreated += result.created;
+        totalSkipped += result.skipped;
       }
 
       this.logger.log(
-        `Automation processing complete: ${created} reminders created, ${skipped} skipped`,
+        `✅ Automation processing complete: ${totalCreated} reminders created, ${totalSkipped} skipped`,
       );
     } catch (err) {
       this.logger.error(
-        `Failed to process automations: ${err instanceof Error ? err.message : String(err)}`,
+        `❌ Failed to process automations: ${err instanceof Error ? err.message : String(err)}`,
+        err instanceof Error ? err.stack : undefined,
       );
     }
   }
 
   /**
-   * Process a single automation rule
+   * ────────────────────────────────────────────────
+   * PROCESS SINGLE AUTOMATION
+   * ────────────────────────────────────────────────
+   * For each tenant with WhatsApp enabled:
+   * 1. Resolve eligible entities (event-driven)
+   * 2. Run safety checks
+   * 3. Create deduplicated reminders
    */
   private async processAutomation(automation: any): Promise<{
     created: number;
@@ -80,45 +108,56 @@ export class WhatsAppCron {
     let skipped = 0;
 
     try {
+      this.logger.debug(
+        `Processing automation ${automation.id} (${automation.moduleType}.${automation.eventType})`,
+      );
+
       // 1️⃣ Get all tenants with enabled WhatsApp
       const settings = await this.prisma.whatsAppSetting.findMany({
         where: { enabled: true },
       });
 
       for (const setting of settings) {
-        const rules = await this.planRulesService.getPlanRulesForTenant(
-          setting.tenantId,
-        );
-
-        if (!rules?.enabled) {
-          skipped++;
-          continue;
-        }
-
-        const feature = this.mapTemplateKeyToFeature(automation.templateKey);
-        if (!feature || !rules.features.includes(feature)) {
-          skipped++;
-          continue;
-        }
-
-        // 3️⃣ Find eligible entities based on trigger type
-        const results = await this.findEligibleEntities(
-          setting.tenantId,
-          automation,
-        );
-
-        for (const entity of results) {
-          const reminderCreated = await this.createReminderIfNotExists(
+        try {
+          // 2️⃣ Resolve entities for this event (event-driven)
+          const entities = await this.entityResolver.resolveEntities(
+            automation.moduleType as ModuleType,
+            automation.eventType,
             setting.tenantId,
-            entity.customerId,
-            automation,
+            automation.offsetDays,
+            automation.conditions,
           );
 
-          if (reminderCreated) {
-            created++;
-          } else {
-            skipped++;
+          if (!entities.length) {
+            this.logger.debug(
+              `No entities found for automation ${automation.id} in tenant ${setting.tenantId}`,
+            );
+            continue;
           }
+
+          this.logger.debug(
+            `Found ${entities.length} entities for automation ${automation.id} in tenant ${setting.tenantId}`,
+          );
+
+          // 3️⃣ Run safety checks and create reminders
+          for (const entity of entities) {
+            const success = await this.createSafeReminder(
+              setting.tenantId,
+              entity.customerId,
+              automation,
+            );
+
+            if (success) {
+              created++;
+            } else {
+              skipped++;
+            }
+          }
+        } catch (tenantErr) {
+          this.logger.error(
+            `Failed to process automation ${automation.id} for tenant ${setting.tenantId}: ${tenantErr instanceof Error ? tenantErr.message : String(tenantErr)}`,
+          );
+          skipped++;
         }
       }
     } catch (err) {
@@ -131,106 +170,149 @@ export class WhatsAppCron {
   }
 
   /**
-   * Find eligible entities for reminder creation
+   * ────────────────────────────────────────────────
+   * CREATE SAFE REMINDER
+   * ────────────────────────────────────────────────
+   * Enforce ALL safety checks before creating reminder:
+   * 1. Template safety (UTILITY only)
+   * 2. Feature safety (plan supports feature)
+   * 3. Opt-in safety (coaching requires consent)
+   * 4. Deduplication (no duplicate reminders)
    */
-  private async findEligibleEntities(
-    tenantId: string,
-    automation: any,
-  ): Promise<{ customerId: string }[]> {
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + automation.offsetDays);
-    targetDate.setHours(0, 0, 0, 0);
-
-    const endDate = new Date(targetDate);
-    endDate.setHours(23, 59, 59, 999);
-
-    // Handle different trigger types
-    switch (automation.triggerType) {
-      case 'DATE': {
-        const dateField = this.resolveGymDateField(automation.templateKey);
-
-        if (!dateField) {
-          return [];
-        }
-
-        return this.prisma.member
-          .findMany({
-            where: {
-              tenantId,
-              [dateField]: {
-                gte: targetDate,
-                lte: endDate,
-              },
-              isActive: true,
-            },
-            select: { id: true },
-          })
-          .then((members) => members.map((m) => ({ customerId: m.id })));
-      }
-
-      case 'AFTER_INVOICE':
-        // Reminders after invoice creation
-        const invoices = await this.prisma.invoice.findMany({
-          where: {
-            tenantId,
-            createdAt: {
-              gte: targetDate,
-              lte: endDate,
-            },
-            customerId: { not: null },
-          },
-          select: { customerId: true },
-        });
-        return invoices
-          .filter((inv) => inv.customerId)
-          .map((inv) => ({ customerId: inv.customerId! }));
-
-      case 'AFTER_JOB':
-        // Reminders after job card completion
-        const jobs = await this.prisma.jobCard.findMany({
-          where: {
-            tenantId,
-            updatedAt: {
-              gte: targetDate,
-              lte: endDate,
-            },
-            status: 'DELIVERED',
-            customerId: { not: null },
-          },
-          select: { customerId: true },
-        });
-        return jobs
-          .filter((job) => job.customerId)
-          .map((job) => ({ customerId: job.customerId! }));
-
-      default:
-        return [];
-    }
-  }
-
-  /**
-   * Create reminder if not already exists (deduplication)
-   */
-  private async createReminderIfNotExists(
+  private async createSafeReminder(
     tenantId: string,
     customerId: string,
     automation: any,
   ): Promise<boolean> {
-    const scheduledDate = new Date();
-    scheduledDate.setDate(scheduledDate.getDate() + automation.offsetDays);
-    scheduledDate.setHours(9, 0, 0, 0); // Schedule for 9 AM
+    try {
+      // ─────────────────────────────────────────────
+      // A. TEMPLATE SAFETY CHECK
+      // ─────────────────────────────────────────────
+      const templateCheck = await this.safetyService.validateTemplateSafety(
+        tenantId,
+        automation.templateKey,
+      );
+
+      if (!templateCheck.safe) {
+        this.logger.warn(
+          `Template safety check failed for automation ${automation.id}: ${templateCheck.reason}`,
+        );
+        return false;
+      }
+
+      // ─────────────────────────────────────────────
+      // B. FEATURE SAFETY CHECK
+      // ─────────────────────────────────────────────
+      const feature = this.safetyService.mapTemplateKeyToFeature(
+        automation.templateKey,
+      );
+
+      if (!feature) {
+        this.logger.warn(
+          `Unknown template key ${automation.templateKey} for automation ${automation.id}`,
+        );
+        return false;
+      }
+
+      const featureCheck = await this.safetyService.validateFeatureSafety(
+        tenantId,
+        feature,
+      );
+
+      if (!featureCheck.allowed) {
+        this.logger.debug(
+          `Feature safety check failed for automation ${automation.id}: ${featureCheck.reason}`,
+        );
+        return false;
+      }
+
+      // ─────────────────────────────────────────────
+      // C. OPT-IN SAFETY CHECK
+      // ─────────────────────────────────────────────
+      if (automation.requiresOptIn) {
+        const optInCheck = await this.safetyService.validateOptInSafety(
+          automation.moduleType as ModuleType,
+          automation.eventType,
+          customerId,
+        );
+
+        if (!optInCheck.allowed) {
+          this.logger.debug(
+            `Opt-in check failed for customer ${customerId}: ${optInCheck.reason}`,
+          );
+          return false;
+        }
+      }
+
+      // ─────────────────────────────────────────────
+      // D. DEDUPLICATION CHECK
+      // ─────────────────────────────────────────────
+      const alreadyExists = await this.checkDuplicateReminder(
+        tenantId,
+        customerId,
+        automation,
+      );
+
+      if (alreadyExists) {
+        this.logger.debug(
+          `Reminder already exists for customer ${customerId}, automation ${automation.id}`,
+        );
+        return false;
+      }
+
+      // ─────────────────────────────────────────────
+      // E. CREATE REMINDER
+      // ─────────────────────────────────────────────
+      const scheduledDate = this.calculateScheduledDate(automation.offsetDays);
+
+      await this.prisma.customerReminder.create({
+        data: {
+          tenantId,
+          customerId,
+          triggerType: 'DATE', // All automations are date-based now
+          triggerValue: String(automation.offsetDays),
+          channel: 'WHATSAPP',
+          templateKey: automation.templateKey,
+          status: 'SCHEDULED',
+          scheduledAt: scheduledDate,
+        },
+      });
+
+      this.logger.debug(
+        `✅ Created safe reminder for customer ${customerId}, template ${automation.templateKey}`,
+      );
+
+      return true;
+    } catch (err) {
+      this.logger.error(
+        `Failed to create safe reminder: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * ────────────────────────────────────────────────
+   * HELPER: CHECK DUPLICATE REMINDER
+   * ────────────────────────────────────────────────
+   * Prevents duplicate reminders on the same day
+   */
+  private async checkDuplicateReminder(
+    tenantId: string,
+    customerId: string,
+    automation: any,
+  ): Promise<boolean> {
+    const scheduledDate = this.calculateScheduledDate(automation.offsetDays);
 
     const dayStart = new Date(scheduledDate);
     dayStart.setHours(0, 0, 0, 0);
     const dayEnd = new Date(scheduledDate);
     dayEnd.setHours(23, 59, 59, 999);
 
-    // 4️⃣ DEDUPLICATION: Check if reminder already exists
     const existing = await this.prisma.customerReminder.findFirst({
       where: {
         tenantId,
         customerId,
-        triggerType: automation.triggerType,
         templateKey: automation.templateKey,
         scheduledAt: {
           gte: dayStart,
@@ -240,49 +322,19 @@ export class WhatsAppCron {
       },
     });
 
-    if (existing) {
-      return false; // Skip duplicate
-    }
-
-    // 5️⃣ Create new reminder
-    await this.prisma.customerReminder.create({
-      data: {
-        tenantId,
-        customerId,
-        triggerType: automation.triggerType,
-        triggerValue: String(automation.offsetDays),
-        channel: 'WHATSAPP',
-        templateKey: automation.templateKey,
-        status: 'SCHEDULED',
-        scheduledAt: scheduledDate,
-      },
-    });
-
-    return true;
+    return !!existing;
   }
 
   /**
-   * Resolve which member date field to use for DATE triggers
+   * ────────────────────────────────────────────────
+   * HELPER: CALCULATE SCHEDULED DATE
+   * ────────────────────────────────────────────────
+   * Returns date + offsetDays at 9 AM
    */
-  private resolveGymDateField(
-    templateKey: string,
-  ): 'paymentDueDate' | 'membershipEndAt' | null {
-    if (templateKey === 'PAYMENT_DUE') return 'paymentDueDate';
-    if (templateKey === 'EXPIRY') return 'membershipEndAt';
-    if (templateKey === 'REMINDER') return 'membershipEndAt';
-    return null;
-  }
-
-  /**
-   * Map template key to WhatsApp feature
-   */
-  private mapTemplateKeyToFeature(templateKey: string): WhatsAppFeature | null {
-    const mapping: Record<string, WhatsAppFeature> = {
-      WELCOME: WhatsAppFeature.WELCOME,
-      PAYMENT_DUE: WhatsAppFeature.PAYMENT_DUE,
-      EXPIRY: WhatsAppFeature.EXPIRY,
-      REMINDER: WhatsAppFeature.REMINDER,
-    };
-    return mapping[templateKey] || null;
+  private calculateScheduledDate(offsetDays: number): Date {
+    const scheduledDate = new Date();
+    scheduledDate.setDate(scheduledDate.getDate() + offsetDays);
+    scheduledDate.setHours(9, 0, 0, 0); // Schedule for 9 AM
+    return scheduledDate;
   }
 }
