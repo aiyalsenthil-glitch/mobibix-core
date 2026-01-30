@@ -238,6 +238,48 @@ async function seedPhoneNumbers(): Promise<{
   return { created, skipped, total: tenants.length };
 }
 
+async function seedModulePhoneNumbers(): Promise<{
+  created: number;
+  skipped: number;
+}> {
+  const DEFAULT_PHONE_NUMBER =
+    process.env.WHATSAPP_PHONE_NUMBER || '+1234567890';
+  const DEFAULT_PHONE_NUMBER_ID =
+    process.env.WHATSAPP_PHONE_NUMBER_ID || 'YOUR_PHONE_NUMBER_ID';
+  const DEFAULT_WABA_ID = process.env.WHATSAPP_WABA_ID || 'YOUR_WABA_ID';
+
+  const moduleTypes = ['GYM', 'MOBILE_SHOP'];
+  let created = 0;
+  let skipped = 0;
+
+  for (const moduleType of moduleTypes) {
+    const existing = await prisma.whatsAppPhoneNumberModule.findFirst({
+      where: { moduleType, phoneNumberId: DEFAULT_PHONE_NUMBER_ID },
+    });
+
+    if (existing) {
+      skipped++;
+      continue;
+    }
+
+    await prisma.whatsAppPhoneNumberModule.create({
+      data: {
+        moduleType,
+        phoneNumber: DEFAULT_PHONE_NUMBER,
+        phoneNumberId: DEFAULT_PHONE_NUMBER_ID,
+        wabaId: DEFAULT_WABA_ID,
+        purpose: 'DEFAULT',
+        isDefault: true,
+        isActive: true,
+      },
+    });
+
+    created++;
+  }
+
+  return { created, skipped };
+}
+
 async function main() {
   // ────────────────────────────────────────────────
   // SEED REQUIRED GLOBAL GYM WHATSAPP TEMPLATES
@@ -517,6 +559,13 @@ async function main() {
   console.log(`   Created: ${phoneResult.created}`);
   console.log(`   Skipped: ${phoneResult.skipped}`);
   console.log(`   Total tenants: ${phoneResult.total}`);
+
+  // MODULE-LEVEL PHONE NUMBERS
+  console.log('\n🌱 Seeding module-scoped WhatsApp phone numbers...');
+  const modulePhoneResult = await seedModulePhoneNumbers();
+  console.log(`✅ Module phone numbers configured`);
+  console.log(`   Created: ${modulePhoneResult.created}`);
+  console.log(`   Skipped: ${modulePhoneResult.skipped}`);
 
   if (
     phoneResult.created > 0 &&
