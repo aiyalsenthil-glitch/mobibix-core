@@ -128,59 +128,6 @@ export class SalesService {
     }
 
     const invoiceId = await this.prisma.$transaction(async (tx) => {
-      // 1. Validate shop
-      const shop = await tx.shop.findFirst({
-        where: { id: dto.shopId, tenantId },
-        select: { id: true, gstEnabled: true, state: true, invoicePrefix: true },
-      });
-
-      const tenant = await tx.tenant.findUnique({
-        where: { id: tenantId },
-        select: { country: true },
-      });
-
-      if (!shop) throw new BadRequestException('Invalid shop');
-
-      const isIndianTenant = (tenant?.country || 'India').toLowerCase() === 'india';
-      const isIndianGSTInvoice = isIndianTenant && shop.gstEnabled;
-
-      // 2. Generate Invoice Number
-      const invoiceNumber = await this.getNextInvoiceNumber(tx, dto.shopId, shop.invoicePrefix);
-      dto.invoiceNumber = invoiceNumber;
-
-      // 3. Validate Products & IMEIs
-      const productIds = dto.items.map((i) => i.shopProductId);
-      const products = await tx.shopProduct.findMany({
-        where: { id: { in: productIds }, tenantId, shopId: dto.shopId, isActive: true },
-        select: { id: true, type: true, isSerialized: true, hsnCode: true, gstRate: true },
-      });
-
-      if (products.length !== productIds.length) {
-        throw new BadRequestException('Invalid product in items');
-      }
-
-      const productSerializedMap = new Map(products.map((p) => [p.id, p.isSerialized]));
-      const productHsnMap = new Map(products.map((p) => [p.id, p.hsnCode || null]));
-
-      const allImeis: string[] = [];
-      const imeisByProduct = new Map<string, string[]>();
-
-      for (const item of dto.items) {
-        const isSerialized = productSerializedMap.get(item.shopProductId);
-
-        if (isSerialized && !item.imeis?.length) {
-          throw new BadRequestException(`Serialized product ${item.shopProductId} requires IMEI list`);
-        }
-        if (!isSerialized && item.imeis?.length) {
-          throw new BadRequestException(`Non-serialized product ${item.shopProductId} cannot have IMEIs`);
-        }
-        if (isSerialized && item.imeis?.length) {
-          if (item.quantity !== item.imeis.length) {
-            throw new BadRequestException(`Quantity (${item.quantity}) must match IMEI count (${item.imeis.length})`);
-          }
-          allImeis.push(...item.imeis);
-          imeisByProduct.set(item.shopProductId, item.imeis);
-        }
       }
 
       // Check IMEI Availability (Safe check)
