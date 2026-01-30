@@ -1163,24 +1163,6 @@ model PurchaseOrderItem {
   @@index([poId])
 }
 
-model WhatsAppPhoneNumberModule {
-  id            String   @id @default(uuid())
-  moduleType    String
-  phoneNumber   String
-  phoneNumberId String
-  wabaId        String
-  purpose       String   @default("DEFAULT")
-  qualityRating String?
-  isDefault     Boolean  @default(false)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now()) @updatedAt
-
-  @@unique([moduleType, phoneNumberId])
-  @@index([moduleType, isActive])
-  @@index([moduleType, purpose])
-}
-
 enum ProductType {
   GOODS
   SPARE
