@@ -10,6 +10,7 @@ import { WhatsAppController } from './whatsapp.controller';
 import { WhatsAppPhoneNumbersController } from './phone-numbers/whatsapp-phone-numbers.controller';
 import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
 import { WhatsAppVariableResolver } from './variable-resolver.service';
+import { BillingModule } from '../../core/billing/billing.module';
 
 @Module({
   controllers: [
@@ -18,7 +19,7 @@ import { WhatsAppVariableResolver } from './variable-resolver.service';
     WhatsAppController,
     WhatsAppPhoneNumbersController,
   ],
-  imports: [ScheduleModule.forRoot()],
+  imports: [ScheduleModule.forRoot(), BillingModule],
   providers: [
     PrismaService,
     WhatsAppSender,

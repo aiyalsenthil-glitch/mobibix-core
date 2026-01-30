@@ -1,38 +1,53 @@
--- CreateEnum
-CREATE TYPE "FinanceType" AS ENUM ('IN', 'OUT');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'FinanceType') THEN
+        CREATE TYPE "FinanceType" AS ENUM ('IN', 'OUT');
+    END IF;
 
--- CreateEnum
-CREATE TYPE "FinanceRefType" AS ENUM ('INVOICE', 'JOB', 'PURCHASE', 'ADJUSTMENT');
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'FinanceRefType') THEN
+        CREATE TYPE "FinanceRefType" AS ENUM ('INVOICE', 'JOB', 'PURCHASE', 'ADJUSTMENT');
+    END IF;
 
--- CreateEnum
-CREATE TYPE "JobStatus" AS ENUM ('RECEIVED', 'DIAGNOSING', 'WAITING_FOR_PARTS', 'IN_PROGRESS', 'READY', 'DELIVERED', 'CANCELLED');
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'JobStatus') THEN
+        CREATE TYPE "JobStatus" AS ENUM ('RECEIVED', 'DIAGNOSING', 'WAITING_FOR_PARTS', 'IN_PROGRESS', 'READY', 'DELIVERED', 'CANCELLED');
+    END IF;
 
--- CreateEnum
-CREATE TYPE "InvoiceStatus" AS ENUM ('PAID', 'CANCELLED');
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'InvoiceStatus') THEN
+        CREATE TYPE "InvoiceStatus" AS ENUM ('PAID', 'CANCELLED');
+    END IF;
 
--- CreateEnum
-CREATE TYPE "PaymentMode" AS ENUM ('CASH', 'CARD', 'UPI', 'BANK');
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'PaymentMode') THEN
+        CREATE TYPE "PaymentMode" AS ENUM ('CASH', 'CARD', 'UPI', 'BANK');
+    END IF;
 
--- CreateEnum
-CREATE TYPE "StockEntryType" AS ENUM ('IN', 'OUT');
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'StockEntryType') THEN
+        CREATE TYPE "StockEntryType" AS ENUM ('IN', 'OUT');
+    END IF;
 
--- CreateEnum
-CREATE TYPE "StockRefType" AS ENUM ('PURCHASE', 'SALE', 'REPAIR', 'ADJUSTMENT');
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'StockRefType') THEN
+        CREATE TYPE "StockRefType" AS ENUM ('PURCHASE', 'SALE', 'REPAIR', 'ADJUSTMENT');
+    END IF;
 
--- CreateEnum
-CREATE TYPE "ProductType" AS ENUM ('MOBILE', 'ACCESSORY', 'SPARE', 'SERVICE');
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ProductType') THEN
+        CREATE TYPE "ProductType" AS ENUM ('MOBILE', 'ACCESSORY', 'SPARE', 'SERVICE');
+    END IF;
 
--- CreateEnum
-CREATE TYPE "BusinessType" AS ENUM ('SOLE_PROPRIETOR', 'PARTNERSHIP', 'PRIVATE_LIMITED', 'PUBLIC_LIMITED');
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'BusinessType') THEN
+        CREATE TYPE "BusinessType" AS ENUM ('SOLE_PROPRIETOR', 'PARTNERSHIP', 'PRIVATE_LIMITED', 'PUBLIC_LIMITED');
+    END IF;
 
--- CreateEnum
-CREATE TYPE "PartyType" AS ENUM ('CUSTOMER', 'VENDOR', 'EMPLOYEE');
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'PartyType') THEN
+        CREATE TYPE "PartyType" AS ENUM ('CUSTOMER', 'VENDOR', 'EMPLOYEE');
+    END IF;
 
--- CreateEnum
-CREATE TYPE "LedgerStatus" AS ENUM ('ACTIVE', 'CLOSED', 'SUSPENDED');
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'LedgerStatus') THEN
+        CREATE TYPE "LedgerStatus" AS ENUM ('ACTIVE', 'CLOSED', 'SUSPENDED');
+    END IF;
 
--- CreateEnum
-CREATE TYPE "LedgerInstallmentType" AS ENUM ('FIXED', 'FLEXIBLE');
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'LedgerInstallmentType') THEN
+        CREATE TYPE "LedgerInstallmentType" AS ENUM ('FIXED', 'FLEXIBLE');
+    END IF;
+END $$;
 
 -- CreateTable
 CREATE TABLE "Shop" (

@@ -20,6 +20,7 @@ import { HsnModule } from './hsn/hsn.module';
 import { FollowUpsModule } from './follow-ups/follow-ups.module';
 import { CrmDashboardModule } from './crm-dashboard/crm-dashboard.module';
 import { CommonModule } from '../common/common.module';
+import { PlatformModule } from './platform/platform.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { CommonModule } from '../common/common.module';
     HsnModule,
     FollowUpsModule,
     CrmDashboardModule,
+    PlatformModule,
   ],
   exports: [
     AuthModule,

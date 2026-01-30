@@ -157,23 +157,30 @@ async function seedWhatsAppForModule(moduleType: string): Promise<{
   ];
 
   for (const automation of automations) {
-    await prisma.whatsAppAutomation.upsert({
+    const existing = await prisma.whatsAppAutomation.findFirst({
       where: {
-        moduleType_triggerType: {
-          moduleType: moduleType,
-          triggerType: automation.triggerType,
-        },
-      },
-      update: {
+        moduleType: moduleType,
+        triggerType: automation.triggerType,
         templateKey: automation.templateKey,
         offsetDays: automation.offsetDays,
-        enabled: automation.enabled,
-      },
-      create: {
-        moduleType: moduleType,
-        ...automation,
       },
     });
+
+    if (existing) {
+      await prisma.whatsAppAutomation.update({
+        where: { id: existing.id },
+        data: {
+          enabled: automation.enabled,
+        },
+      });
+    } else {
+      await prisma.whatsAppAutomation.create({
+        data: {
+          moduleType: moduleType,
+          ...automation,
+        },
+      });
+    }
     automationsCount++;
   }
 
@@ -234,6 +241,7 @@ async function main() {
     where: { name: 'TRIAL' },
     update: {},
     create: {
+      code: 'TRIAL',
       name: 'TRIAL',
       level: 0,
       price: 0,
@@ -246,6 +254,7 @@ async function main() {
     where: { name: 'BASIC' },
     update: {},
     create: {
+      code: 'BASIC',
       name: 'BASIC',
       level: 1,
       price: 999,
@@ -257,6 +266,7 @@ async function main() {
     where: { name: 'PLUS' },
     update: {},
     create: {
+      code: 'PLUS',
       name: 'PLUS',
       level: 2,
       price: 149,
@@ -269,6 +279,7 @@ async function main() {
     where: { name: 'PRO' },
     update: {},
     create: {
+      code: 'PRO',
       name: 'PRO',
       level: 3,
       price: 1999,
@@ -281,6 +292,7 @@ async function main() {
     where: { name: 'ULTIMATE' },
     update: {},
     create: {
+      code: 'ULTIMATE',
       name: 'ULTIMATE',
       level: 4,
       price: 4999,

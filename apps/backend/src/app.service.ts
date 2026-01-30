@@ -85,6 +85,14 @@ export class AppService {
           equals: tenantType,
           mode: 'insensitive',
         },
+        subscription: {
+          some: {
+            status: { in: ['ACTIVE', 'TRIAL'] },
+            plan: {
+              name: 'ULTIMATE',
+            },
+          },
+        },
       },
       select: {
         id: true,

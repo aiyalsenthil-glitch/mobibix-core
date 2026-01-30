@@ -6,6 +6,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { SubscriptionExpiryCron } from './subscriptions/subscription-expiry.cron';
 import { MailModule } from '../../common/email/mail.module';
 import { EmailService } from '../../common/email/email.service';
+import { PlanRulesService } from './plan-rules.service';
 
 @Module({
   imports: [
@@ -14,12 +15,13 @@ import { EmailService } from '../../common/email/email.service';
     PaymentsModule, // ✅ CORRECT
     MailModule,
   ],
-  providers: [SubscriptionGuard, SubscriptionExpiryCron],
+  providers: [SubscriptionGuard, SubscriptionExpiryCron, PlanRulesService],
   exports: [
     PlansModule,
     SubscriptionsModule,
     SubscriptionGuard,
     PaymentsModule, // optional
+    PlanRulesService,
   ],
 })
 export class BillingModule {}

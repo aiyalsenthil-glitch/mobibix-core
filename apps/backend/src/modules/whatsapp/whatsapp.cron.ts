@@ -1,110 +1,288 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../core/prisma/prisma.service';
-import { WhatsAppSender } from './whatsapp.sender';
-import { WhatsAppTemplates } from './whatsapp.templates';
-import { WhatsAppLogger } from './whatsapp.logger';
 import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
+import { PlanRulesService } from '../../core/billing/plan-rules.service';
 
+/**
+ * WhatsApp Automation Cron Job
+ *
+ * RESPONSIBILITY: Create CustomerReminder entries based on WhatsAppAutomation rules
+ *
+ * DOES:
+ * - Read enabled WhatsAppAutomation records
+ * - Identify eligible members/customers
+ * - Create SCHEDULED CustomerReminder entries
+ * - Enforce plan restrictions
+ * - Prevent duplicate reminders
+ *
+ * DOES NOT:
+ * - Send WhatsApp messages (handled by WhatsAppRemindersService)
+ * - Use hardcoded template names
+ * - Use legacy flags (paymentReminderSent, etc.)
+ */
 @Injectable()
 export class WhatsAppCron {
+  private readonly logger = new Logger(WhatsAppCron.name);
+
   constructor(
     private readonly prisma: PrismaService,
-    private readonly sender: WhatsAppSender,
-    private readonly logger: WhatsAppLogger,
+    private readonly planRulesService: PlanRulesService,
   ) {}
 
   /**
-   * ⏰ Payment Due Reminder
+   * ⏰ Create Reminder Entries from Automation Rules
    * Runs every day at 6 AM IST
-   * Rule:
-   * - Only PAYMENT DUE
-   * - 1 day before due date
-   * - Max 50 members per tenant
-   * - 1 reminder per member (no repeat)
    */
   @Cron('0 6 * * *')
-  async sendPaymentDueReminders() {
-    // 1️⃣ Find all tenants where WhatsApp is enabled
-    const settings = await this.prisma.whatsAppSetting.findMany({
-      where: { enabled: true },
-    });
+  async createRemindersFromAutomations() {
+    this.logger.debug('Starting automation reminder creation...');
 
-    if (!settings.length) return;
-
-    // 2️⃣ Calculate tomorrow (start & end)
-    const tomorrowStart = new Date();
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-    tomorrowStart.setHours(0, 0, 0, 0);
-
-    const tomorrowEnd = new Date(tomorrowStart);
-    tomorrowEnd.setHours(23, 59, 59, 999);
-
-    // 3️⃣ Loop tenants
-    for (const setting of settings) {
-      // 4️⃣ Count members ONCE per tenant
-      const memberCount = await this.prisma.member.count({
-        where: { tenantId: setting.tenantId },
+    try {
+      // 1️⃣ Fetch all enabled automations
+      const automations = await this.prisma.whatsAppAutomation.findMany({
+        where: { enabled: true },
       });
 
-      // ❌ Skip tenant if member limit exceeded
-      if (memberCount > 50) {
-        continue;
+      if (!automations.length) {
+        this.logger.debug('No enabled automations found');
+        return;
       }
 
-      // 5️⃣ Find members whose payment is due tomorrow
-      const members = await this.prisma.member.findMany({
-        where: {
-          tenantId: setting.tenantId,
-          paymentDueDate: {
-            gte: tomorrowStart,
-            lte: tomorrowEnd,
-          },
-          paymentReminderSent: false,
-        },
+      let created = 0;
+      let skipped = 0;
+
+      // 2️⃣ Process each automation
+      for (const automation of automations) {
+        const result = await this.processAutomation(automation);
+        created += result.created;
+        skipped += result.skipped;
+      }
+
+      this.logger.log(
+        `Automation processing complete: ${created} reminders created, ${skipped} skipped`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to process automations: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  /**
+   * Process a single automation rule
+   */
+  private async processAutomation(automation: any): Promise<{
+    created: number;
+    skipped: number;
+  }> {
+    let created = 0;
+    let skipped = 0;
+
+    try {
+      // 1️⃣ Get all tenants with enabled WhatsApp
+      const settings = await this.prisma.whatsAppSetting.findMany({
+        where: { enabled: true },
       });
 
-      // 6️⃣ Loop members
-      for (const member of members) {
-        try {
-          // 7️⃣ Send WhatsApp (UTILITY)
-          const result = await this.sender.sendTemplateMessage(
+      for (const setting of settings) {
+        const rules = await this.planRulesService.getPlanRulesForTenant(
+          setting.tenantId,
+        );
+
+        if (!rules?.enabled) {
+          skipped++;
+          continue;
+        }
+
+        const feature = this.mapTemplateKeyToFeature(automation.templateKey);
+        if (!feature || !rules.features.includes(feature)) {
+          skipped++;
+          continue;
+        }
+
+        // 3️⃣ Find eligible entities based on trigger type
+        const results = await this.findEligibleEntities(
+          setting.tenantId,
+          automation,
+        );
+
+        for (const entity of results) {
+          const reminderCreated = await this.createReminderIfNotExists(
             setting.tenantId,
-            WhatsAppFeature.PAYMENT_DUE,
-            member.phone,
-            WhatsAppTemplates.PAYMENT_DUE,
-            [String(member.feeAmount), member.paymentDueDate.toDateString()],
+            entity.customerId,
+            automation,
           );
 
-          // 8️⃣ If success → mark reminder sent
-          if (result.success) {
-            await this.prisma.member.update({
-              where: { id: member.id },
-              data: { paymentReminderSent: true },
-            });
+          if (reminderCreated) {
+            created++;
+          } else {
+            skipped++;
           }
-
-          // 9️⃣ Log result
-          await this.logger.log({
-            tenantId: setting.tenantId,
-            memberId: member.id,
-            phone: member.phone,
-            type: 'PAYMENT_DUE',
-            status: result.success ? 'SENT' : 'FAILED',
-            error: result.success ? undefined : JSON.stringify(result.error),
-          });
-        } catch (err) {
-          // 🔴 Hard failure (unexpected)
-          await this.logger.log({
-            tenantId: setting.tenantId,
-            memberId: member.id,
-            phone: member.phone,
-            type: 'PAYMENT_DUE',
-            status: 'FAILED',
-            error: err.message,
-          });
         }
       }
+    } catch (err) {
+      this.logger.error(
+        `Failed to process automation ${automation.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
+
+    return { created, skipped };
+  }
+
+  /**
+   * Find eligible entities for reminder creation
+   */
+  private async findEligibleEntities(
+    tenantId: string,
+    automation: any,
+  ): Promise<{ customerId: string }[]> {
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + automation.offsetDays);
+    targetDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(targetDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    // Handle different trigger types
+    switch (automation.triggerType) {
+      case 'DATE': {
+        const dateField = this.resolveGymDateField(automation.templateKey);
+
+        if (!dateField) {
+          return [];
+        }
+
+        return this.prisma.member
+          .findMany({
+            where: {
+              tenantId,
+              [dateField]: {
+                gte: targetDate,
+                lte: endDate,
+              },
+              isActive: true,
+            },
+            select: { id: true },
+          })
+          .then((members) => members.map((m) => ({ customerId: m.id })));
+      }
+
+      case 'AFTER_INVOICE':
+        // Reminders after invoice creation
+        const invoices = await this.prisma.invoice.findMany({
+          where: {
+            tenantId,
+            createdAt: {
+              gte: targetDate,
+              lte: endDate,
+            },
+            customerId: { not: null },
+          },
+          select: { customerId: true },
+        });
+        return invoices
+          .filter((inv) => inv.customerId)
+          .map((inv) => ({ customerId: inv.customerId! }));
+
+      case 'AFTER_JOB':
+        // Reminders after job card completion
+        const jobs = await this.prisma.jobCard.findMany({
+          where: {
+            tenantId,
+            updatedAt: {
+              gte: targetDate,
+              lte: endDate,
+            },
+            status: 'DELIVERED',
+            customerId: { not: null },
+          },
+          select: { customerId: true },
+        });
+        return jobs
+          .filter((job) => job.customerId)
+          .map((job) => ({ customerId: job.customerId! }));
+
+      default:
+        return [];
+    }
+  }
+
+  /**
+   * Create reminder if not already exists (deduplication)
+   */
+  private async createReminderIfNotExists(
+    tenantId: string,
+    customerId: string,
+    automation: any,
+  ): Promise<boolean> {
+    const scheduledDate = new Date();
+    scheduledDate.setDate(scheduledDate.getDate() + automation.offsetDays);
+    scheduledDate.setHours(9, 0, 0, 0); // Schedule for 9 AM
+
+    const dayStart = new Date(scheduledDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(scheduledDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    // 4️⃣ DEDUPLICATION: Check if reminder already exists
+    const existing = await this.prisma.customerReminder.findFirst({
+      where: {
+        tenantId,
+        customerId,
+        triggerType: automation.triggerType,
+        templateKey: automation.templateKey,
+        scheduledAt: {
+          gte: dayStart,
+          lte: dayEnd,
+        },
+        status: { in: ['SCHEDULED', 'SENT'] },
+      },
+    });
+
+    if (existing) {
+      return false; // Skip duplicate
+    }
+
+    // 5️⃣ Create new reminder
+    await this.prisma.customerReminder.create({
+      data: {
+        tenantId,
+        customerId,
+        triggerType: automation.triggerType,
+        triggerValue: String(automation.offsetDays),
+        channel: 'WHATSAPP',
+        templateKey: automation.templateKey,
+        status: 'SCHEDULED',
+        scheduledAt: scheduledDate,
+      },
+    });
+
+    return true;
+  }
+
+  /**
+   * Resolve which member date field to use for DATE triggers
+   */
+  private resolveGymDateField(
+    templateKey: string,
+  ): 'paymentDueDate' | 'membershipEndAt' | null {
+    if (templateKey === 'PAYMENT_DUE') return 'paymentDueDate';
+    if (templateKey === 'EXPIRY') return 'membershipEndAt';
+    if (templateKey === 'REMINDER') return 'membershipEndAt';
+    return null;
+  }
+
+  /**
+   * Map template key to WhatsApp feature
+   */
+  private mapTemplateKeyToFeature(templateKey: string): WhatsAppFeature | null {
+    const mapping: Record<string, WhatsAppFeature> = {
+      WELCOME: WhatsAppFeature.WELCOME,
+      PAYMENT_DUE: WhatsAppFeature.PAYMENT_DUE,
+      EXPIRY: WhatsAppFeature.EXPIRY,
+      REMINDER: WhatsAppFeature.REMINDER,
+    };
+    return mapping[templateKey] || null;
   }
 }

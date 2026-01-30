@@ -1,14 +1,12 @@
 import axios from 'axios';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
-import {
-  WHATSAPP_PLAN_RULES,
-  WhatsAppFeature,
-} from '../../core/billing/whatsapp-rules';
-import { toWhatsAppPhone } from '../../common/utils/phone.util';
+import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
+import { toWhatsAppPhone, normalizePhone } from '../../common/utils/phone.util';
 import { WhatsAppLogger } from './whatsapp.logger';
 import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
 import { WhatsAppPhoneNumberPurpose } from '@prisma/client';
+import { PlanRulesService } from '../../core/billing/plan-rules.service';
 
 @Injectable()
 export class WhatsAppSender {
@@ -21,6 +19,7 @@ export class WhatsAppSender {
     private readonly prisma: PrismaService,
     private readonly logger: WhatsAppLogger,
     private readonly phoneNumbersService: WhatsAppPhoneNumbersService,
+    private readonly planRulesService: PlanRulesService,
   ) {}
 
   /**
@@ -50,6 +49,24 @@ export class WhatsAppSender {
     error?: any;
     skipped?: boolean;
   }> {
+    // ✅ NORMALIZE PHONE: Convert any format to 10 digits, then to 91XXXXXXXXXX
+    const normalizedPhone = normalizePhone(phone);
+    let whatsappFormattedPhone: string;
+
+    try {
+      whatsappFormattedPhone = toWhatsAppPhone(normalizedPhone);
+    } catch (error: any) {
+      await this.logger.log({
+        tenantId,
+        memberId: null,
+        phone,
+        type: feature,
+        status: 'FAILED',
+        error: `Invalid phone format: ${error?.message || 'Unknown error'}`,
+      });
+      return { success: false, error: error?.message };
+    }
+
     // ─────────────────────────────
     // 1️⃣ Check WhatsApp Settings (enabled check)
     // ─────────────────────────────
@@ -106,46 +123,26 @@ export class WhatsAppSender {
     }
 
     // ─────────────────────────────
-    // 3️⃣ Load ACTIVE/TRIAL subscription
+    // 3️⃣ Plan rules (DB-driven)
     // ─────────────────────────────
-    const subscription = await this.prisma.tenantSubscription.findFirst({
-      where: {
-        tenantId,
-        status: { in: ['ACTIVE', 'TRIAL'] },
-      },
-      orderBy: { startDate: 'desc' },
-      include: { plan: true },
-    });
+    const rules = await this.planRulesService.getPlanRulesForTenant(tenantId);
 
-    if (!subscription?.plan) {
+    if (!rules?.enabled) {
       return { success: false, skipped: true };
     }
 
-    const planName = subscription.plan.name as keyof typeof WHATSAPP_PLAN_RULES;
-    const rule = WHATSAPP_PLAN_RULES[planName];
-
-    // ─────────────────────────────
-    // 4️⃣ Plan-level block
-    // ─────────────────────────────
-    if (!rule?.enabled) {
+    if (!rules.features.includes(feature)) {
       return { success: false, skipped: true };
     }
 
     // ─────────────────────────────
-    // 5️⃣ Feature-level block
-    // ─────────────────────────────
-    if (!(rule.features as WhatsAppFeature[]).includes(feature)) {
-      return { success: false, skipped: true };
-    }
-
-    // ─────────────────────────────
-    // 6️⃣ Member limit check
+    // 4️⃣ Member limit check
     // ─────────────────────────────
     const memberCount = await this.prisma.member.count({
       where: { tenantId },
     });
 
-    if (rule.maxMembers > 0 && memberCount > rule.maxMembers) {
+    if (rules.maxMembers > 0 && memberCount > rules.maxMembers) {
       return { success: false, skipped: true };
     }
 
@@ -159,7 +156,7 @@ export class WhatsAppSender {
         url,
         {
           messaging_product: 'whatsapp',
-          to: toWhatsAppPhone(phone),
+          to: whatsappFormattedPhone,
           type: 'template',
           template: {
             name: templateName,

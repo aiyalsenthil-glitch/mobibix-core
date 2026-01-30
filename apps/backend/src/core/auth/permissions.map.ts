@@ -2,6 +2,13 @@ import { Permission } from './permissions.enum';
 import { UserRole } from '@prisma/client';
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  SUPER_ADMIN: [
+    Permission.MEMBER_VIEW,
+    Permission.MEMBER_EDIT,
+    Permission.ATTENDANCE_VIEW,
+    Permission.ATTENDANCE_MARK,
+    Permission.TENANT_MANAGE,
+  ],
   OWNER: [
     Permission.MEMBER_VIEW,
     Permission.MEMBER_EDIT,

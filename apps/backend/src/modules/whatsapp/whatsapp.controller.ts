@@ -74,7 +74,7 @@ export class WhatsAppController {
       orderBy: { updatedAt: 'desc' },
     });
 
-    return templates;
+    return templates || [];
   }
 
   /**
@@ -92,6 +92,7 @@ export class WhatsAppController {
       feature: string;
       language?: string;
       status?: string;
+      variables?: string[];
     },
   ) {
     return this.prisma.whatsAppTemplate.create({
@@ -103,6 +104,7 @@ export class WhatsAppController {
         feature: dto.feature,
         language: dto.language || 'en',
         status: dto.status || 'ACTIVE',
+        variables: dto.variables ?? undefined,
       },
     });
   }
@@ -127,12 +129,13 @@ export class WhatsAppController {
     return this.prisma.whatsAppTemplate.update({
       where: { id: templateId },
       data: {
-        templateKey: dto.templateKey || template.templateKey,
-        metaTemplateName: dto.metaTemplateName || template.metaTemplateName,
-        category: dto.category || template.category,
-        feature: dto.feature || template.feature,
-        language: dto.language || template.language,
-        status: dto.status || template.status,
+        templateKey: dto.templateKey ?? template.templateKey,
+        metaTemplateName: dto.metaTemplateName ?? template.metaTemplateName,
+        category: dto.category ?? template.category,
+        feature: dto.feature ?? template.feature,
+        language: dto.language ?? template.language,
+        status: dto.status ?? template.status,
+        variables: dto.variables ?? template.variables ?? undefined,
       },
     });
   }
@@ -168,6 +171,70 @@ export class WhatsAppController {
     });
 
     return automations;
+  }
+
+  /**
+   * POST /whatsapp/automations
+   * Create a WhatsApp automation
+   */
+  @Post('automations')
+  async createAutomation(
+    @Body()
+    dto: {
+      moduleType: string;
+      triggerType: string;
+      templateKey: string;
+      offsetDays: number;
+      enabled?: boolean;
+    },
+  ) {
+    const { moduleType, triggerType, templateKey, offsetDays, enabled } = dto;
+
+    if (!moduleType || !triggerType || !templateKey) {
+      throw new BadRequestException(
+        'moduleType, triggerType, templateKey required',
+      );
+    }
+
+    if (offsetDays === undefined || Number.isNaN(Number(offsetDays))) {
+      throw new BadRequestException('offsetDays must be a number');
+    }
+
+    const allowedModules = ['GYM', 'MOBILESHOP'];
+    const allowedTriggers = ['DATE', 'AFTER_INVOICE', 'AFTER_JOB'];
+
+    if (!allowedModules.includes(moduleType)) {
+      throw new BadRequestException('Invalid moduleType');
+    }
+
+    if (!allowedTriggers.includes(triggerType)) {
+      throw new BadRequestException('Invalid triggerType');
+    }
+
+    const existing = await this.prisma.whatsAppAutomation.findFirst({
+      where: {
+        moduleType,
+        triggerType: triggerType as any,
+        templateKey,
+        offsetDays: Number(offsetDays),
+      },
+    });
+
+    if (existing) {
+      throw new BadRequestException(
+        'Automation already exists for this trigger/template/offset',
+      );
+    }
+
+    return this.prisma.whatsAppAutomation.create({
+      data: {
+        moduleType,
+        triggerType: triggerType as any,
+        templateKey,
+        offsetDays: Number(offsetDays),
+        enabled: enabled !== undefined ? enabled : true,
+      },
+    });
   }
 
   /**
@@ -217,6 +284,14 @@ export class WhatsAppController {
 
     if (!dto.phone || !dto.templateId) {
       throw new BadRequestException('Missing phone or templateId');
+    }
+
+    // Validate phone format (accept: +919876543210 or 919876543210)
+    const cleanPhone = dto.phone.replace(/\s/g, '');
+    if (!/^(\+91|91)?[0-9]{10,15}$/.test(cleanPhone)) {
+      throw new BadRequestException(
+        'Invalid phone format. Use +91XXXXXXXXXX or 91XXXXXXXXXX (10 digit number required)',
+      );
     }
 
     const template = await this.prisma.whatsAppTemplate.findUnique({

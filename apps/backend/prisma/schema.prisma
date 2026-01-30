@@ -11,6 +11,13 @@ enum WhatsAppPhoneNumberPurpose {
   DEFAULT
 }
 
+enum WhatsAppFeature {
+  WELCOME
+  EXPIRY
+  PAYMENT_DUE
+  REMINDER
+}
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -105,6 +112,7 @@ model User {
   phone            String?
   welcomeEmailSent Boolean      @default(false)
   auditLogs        AuditLog[]
+  platformAuditLogs PlatformAuditLog[]
   tenant           Tenant?      @relation(fields: [tenantId], references: [id])
   userTenants      UserTenant[]
   shopStaffs       ShopStaff[]
@@ -380,19 +388,34 @@ model MemberPayment {
 }
 
 model Plan {
-  id            String               @id @default(cuid())
+  id            String               @id @default(uuid())
+  code          String?              @unique
   name          String               @unique
   level         Int
   price         Int
   currency      String               @default("INR")
   durationDays  Int
   memberLimit   Int                  @default(0)
+  maxMembers    Int?
   features      Json?
   isActive      Boolean              @default(true)
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   billingCycle  BillingCycle         @default(MONTHLY)
   subscriptions TenantSubscription[]
+  planFeatures  PlanFeature[]
+}
+
+model PlanFeature {
+  id      String          @id @default(uuid())
+  planId  String
+  feature WhatsAppFeature
+  enabled Boolean         @default(true)
+
+  plan Plan @relation(fields: [planId], references: [id])
+
+  @@unique([planId, feature])
+  @@index([planId])
 }
 
 model TenantSubscription {
@@ -441,6 +464,19 @@ model AuditLog {
   createdAt DateTime @default(now())
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model PlatformAuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  entity    String
+  entityId  String?
+  meta      Json?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model GymMembership {
@@ -518,6 +554,7 @@ model WhatsAppTemplate {
   language         String   @default("en") // en, ta, hi
   status           String   @default("ACTIVE") // ACTIVE or DISABLED
   isDefault        Boolean  @default(false) // Which version is the default for this templateKey
+  variables        Json? // Array of variable keys used by this template version
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -536,8 +573,8 @@ model WhatsAppAutomation {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
-  @@unique([moduleType, triggerType])
   @@index([moduleType])
+  @@index([moduleType, triggerType])
 }
 
 model WebhookEvent {
@@ -1412,6 +1449,7 @@ enum BillingCycle {
 }
 
 enum UserRole {
+  SUPER_ADMIN
   ADMIN
   OWNER
   STAFF
