@@ -239,56 +239,56 @@ async function seedPhoneNumbers(): Promise<{
 }
 
 async function main() {
-    // ────────────────────────────────────────────────
-    // SEED REQUIRED GLOBAL GYM WHATSAPP TEMPLATES
-    // ────────────────────────────────────────────────
-    const requiredGymTemplates = [
-      {
-        templateKey: 'new_member_welcome_v3',
-        metaTemplateName: 'New Member Welcome',
-        moduleType: 'GYM',
-        category: 'UTILITY',
-        feature: 'WELCOME',
-        language: 'en',
-        status: 'ACTIVE',
-      },
-      {
-        templateKey: 'membership_expiry_reminder',
-        metaTemplateName: 'Membership Expiry Reminder',
-        moduleType: 'GYM',
-        category: 'UTILITY',
-        feature: 'EXPIRY',
-        language: 'en',
-        status: 'ACTIVE',
-      },
-      {
-        templateKey: 'payment_due_notice_util_v1',
-        metaTemplateName: 'Payment Due Notice',
-        moduleType: 'GYM',
-        category: 'UTILITY',
-        feature: 'PAYMENT_DUE',
-        language: 'en',
-        status: 'ACTIVE',
-      },
-    ];
-    for (const tpl of requiredGymTemplates) {
-      await prisma.whatsAppTemplate.upsert({
-        where: {
-          moduleType_metaTemplateName: {
-            moduleType: tpl.moduleType,
-            metaTemplateName: tpl.metaTemplateName,
-          },
+  // ────────────────────────────────────────────────
+  // SEED REQUIRED GLOBAL GYM WHATSAPP TEMPLATES
+  // ────────────────────────────────────────────────
+  const requiredGymTemplates = [
+    {
+      templateKey: 'new_member_welcome_v3',
+      metaTemplateName: 'New Member Welcome',
+      moduleType: 'GYM',
+      category: 'UTILITY',
+      feature: 'WELCOME',
+      language: 'en',
+      status: 'ACTIVE',
+    },
+    {
+      templateKey: 'membership_expiry_reminder',
+      metaTemplateName: 'Membership Expiry Reminder',
+      moduleType: 'GYM',
+      category: 'UTILITY',
+      feature: 'EXPIRY',
+      language: 'en',
+      status: 'ACTIVE',
+    },
+    {
+      templateKey: 'payment_due_notice_util_v1',
+      metaTemplateName: 'Payment Due Notice',
+      moduleType: 'GYM',
+      category: 'UTILITY',
+      feature: 'PAYMENT_DUE',
+      language: 'en',
+      status: 'ACTIVE',
+    },
+  ];
+  for (const tpl of requiredGymTemplates) {
+    await prisma.whatsAppTemplate.upsert({
+      where: {
+        moduleType_metaTemplateName: {
+          moduleType: tpl.moduleType,
+          metaTemplateName: tpl.metaTemplateName,
         },
-        update: {
-          templateKey: tpl.templateKey,
-          category: tpl.category,
-          feature: tpl.feature,
-          language: tpl.language,
-          status: tpl.status,
-        },
-        create: tpl,
-      });
-    }
+      },
+      update: {
+        templateKey: tpl.templateKey,
+        category: tpl.category,
+        feature: tpl.feature,
+        language: tpl.language,
+        status: tpl.status,
+      },
+      create: tpl,
+    });
+  }
   // TRIAL
   await prisma.plan.upsert({
     where: { name: 'TRIAL' },
@@ -375,7 +375,6 @@ async function main() {
   }
   console.log(`✅ Seeded ${HSN_DATA.length} HSN codes`);
 
-
   // WHATSAPP INITIALIZATION
   console.log('\n🌱 Seeding WhatsApp configuration...');
   let tenants = await prisma.tenant.findMany({
@@ -418,7 +417,7 @@ async function main() {
     },
     select: { templateKey: true },
   });
-  const foundSet = new Set(foundTemplates.map(t => t.templateKey));
+  const foundSet = new Set(foundTemplates.map((t) => t.templateKey));
 
   // 1️⃣ NEW MEMBER WELCOME
   if (foundSet.has(WhatsAppTemplates.WELCOME)) {
@@ -494,9 +493,7 @@ async function main() {
       update: {
         templateKey: WhatsAppTemplates.PAYMENT_DUE,
         offsetDays: 1,
-        conditions: [
-          { field: 'pendingAmount', operator: '>', value: 0 },
-        ],
+        conditions: [{ field: 'pendingAmount', operator: '>', value: 0 }],
         enabled: true,
       },
       create: {
@@ -504,9 +501,7 @@ async function main() {
         eventType: 'MEMBERSHIP_EXPIRED',
         templateKey: WhatsAppTemplates.PAYMENT_DUE,
         offsetDays: 1,
-        conditions: [
-          { field: 'pendingAmount', operator: '>', value: 0 },
-        ],
+        conditions: [{ field: 'pendingAmount', operator: '>', value: 0 }],
         enabled: true,
       },
     });
@@ -514,7 +509,6 @@ async function main() {
   } else {
     console.log('❌ Skipped: PAYMENT DUE NOTICE (template missing)');
   }
-
 
   // PHONE NUMBERS INITIALIZATION
   console.log('\n🌱 Seeding WhatsApp phone numbers...');
