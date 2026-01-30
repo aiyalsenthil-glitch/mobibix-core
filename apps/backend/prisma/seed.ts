@@ -337,25 +337,49 @@ async function main() {
     { code: 'BASIC', name: 'BASIC', level: 1, price: 999, durationDays: 30 },
     { code: 'PLUS', name: 'PLUS', level: 2, price: 149, durationDays: 30 },
     { code: 'PRO', name: 'PRO', level: 3, price: 1999, durationDays: 365 },
-    { code: 'ULTIMATE', name: 'ULTIMATE', level: 4, price: 4999, durationDays: 365 },
+    {
+      code: 'ULTIMATE',
+      name: 'ULTIMATE',
+      level: 4,
+      price: 4999,
+      durationDays: 365,
+    },
   ];
 
   // Use direct SQL via `pool` to avoid Prisma client model/column mismatches in prod
   const { randomUUID } = await import('crypto');
   for (const p of plans) {
-    const check = await pool.query('SELECT 1 FROM "Plan" WHERE "name" = $1 LIMIT 1', [p.name]);
+    const check = await pool.query(
+      'SELECT 1 FROM "Plan" WHERE "name" = $1 LIMIT 1',
+      [p.name],
+    );
     if (check.rowCount === 0) {
       const id = randomUUID();
       const now = new Date().toISOString();
       const currency = (p as any).currency || 'INR';
       const memberLimit = (p as any).memberLimit ?? 0;
-      const features = (p as any).features ? JSON.stringify((p as any).features) : null;
+      const features = (p as any).features
+        ? JSON.stringify((p as any).features)
+        : null;
       const isActive = (p as any).isActive ?? true;
       const billingCycle = (p as any).billingCycle || 'MONTHLY';
 
       await pool.query(
         `INSERT INTO "Plan" ("id","name","level","price","currency","durationDays","memberLimit","features","isActive","createdAt","updatedAt","billingCycle") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-        [id, p.name, p.level, p.price, currency, p.durationDays, memberLimit, features, isActive, now, now, billingCycle],
+        [
+          id,
+          p.name,
+          p.level,
+          p.price,
+          currency,
+          p.durationDays,
+          memberLimit,
+          features,
+          isActive,
+          now,
+          now,
+          billingCycle,
+        ],
       );
     }
   }

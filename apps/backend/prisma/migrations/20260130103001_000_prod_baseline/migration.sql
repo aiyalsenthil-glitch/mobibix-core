@@ -1,0 +1,2 @@
+-- Production baseline
+-- Schema already exists in production
