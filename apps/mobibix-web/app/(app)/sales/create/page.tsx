@@ -3,7 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { searchCustomers, type Customer } from "@/services/customers.api";
-import { listProducts, type ShopProduct } from "@/services/products.api";
+import {
+  listProducts,
+  type ShopProduct,
+  ProductType,
+} from "@/services/products.api";
+import { getStockBalances } from "@/services/stock.api";
 import { createInvoice } from "@/services/sales.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
@@ -20,6 +25,7 @@ interface ProductItem {
   gstRate: number;
   gstAmount: number;
   total: number;
+  imeis: string[];
 }
 
 export default function CreateInvoicePage() {
@@ -58,10 +64,10 @@ export default function CreateInvoicePage() {
     new Date().toISOString().split("T")[0],
   );
 
-  // Mixed payment support
-  const [paymentMethods, setPaymentMethods] = useState<
-    Array<{ mode: "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT"; amount: number }>
-  >([{ mode: "CASH", amount: 0 }]);
+  // Payment handling
+  const [paymentMode, setPaymentMode] = useState<
+    "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT"
+  >("CASH");
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
 
   // Product search states (per item)
@@ -80,6 +86,7 @@ export default function CreateInvoicePage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imeiHighlight, setImeiHighlight] = useState(false);
 
   // Load products when shop is selected
   useEffect(() => {
@@ -119,8 +126,18 @@ export default function CreateInvoicePage() {
 
   const loadProducts = async (shopId: string) => {
     try {
-      const data = await listProducts(shopId);
-      setProducts(data);
+      const [productList, balances] = await Promise.all([
+        listProducts(shopId),
+        getStockBalances(shopId),
+      ]);
+      const balanceMap = new Map(balances.map((b) => [b.productId, b]));
+      const merged: ShopProduct[] = productList.map((p) => {
+        const b = balanceMap.get(p.id);
+        const stockQty = b?.stockQty ?? p.stockQty ?? 0;
+        const isNegative = b?.isNegative ?? stockQty < 0;
+        return { ...p, stockQty, isNegative };
+      });
+      setProducts(merged);
     } catch (err: any) {
       console.error("Failed to load products:", err);
     }
@@ -235,12 +252,12 @@ export default function CreateInvoicePage() {
             // Price includes GST, extract base
             const divisor = 1 + gstRate / 100;
             const base = baseAmount / divisor;
-            gstAmount = Math.round(baseAmount - base);
+            gstAmount = Math.round((baseAmount - base) * 100) / 100;
             total = baseAmount;
           } else {
-            // Price excludes GST, add it
-            gstAmount = Math.round((baseAmount * gstRate) / 100);
-            total = baseAmount + gstAmount;
+            // Price excludes GST, add it - keep 2 decimal precision
+            gstAmount = Math.round(((baseAmount * gstRate) / 100) * 100) / 100;
+            total = Math.round((baseAmount + gstAmount) * 100) / 100;
           }
 
           return {
@@ -294,6 +311,7 @@ export default function CreateInvoicePage() {
         gstRate: selectedShop?.gstEnabled ? 18 : 0,
         gstAmount: 0,
         total: 0,
+        imeis: [],
       },
     ]);
   };
@@ -314,6 +332,8 @@ export default function CreateInvoicePage() {
             if (product) {
               updated.productName = product.name;
               updated.rate = product.salePrice;
+              // Reset IMEIs when product changes
+              (updated as any).imeis = [];
             }
           }
 
@@ -329,15 +349,25 @@ export default function CreateInvoicePage() {
               // Price includes GST, extract base
               const divisor = 1 + updated.gstRate / 100;
               const base = baseAmount / divisor;
-              updated.gstAmount = Math.round(baseAmount - base);
+              updated.gstAmount = Math.round((baseAmount - base) * 100) / 100;
               updated.total = baseAmount;
             } else {
-              // Price excludes GST, add it
-              updated.gstAmount = Math.round(
-                (baseAmount * updated.gstRate) / 100,
-              );
-              updated.total = baseAmount + updated.gstAmount;
+              // Price excludes GST, add it - keep 2 decimal precision
+              updated.gstAmount =
+                Math.round(((baseAmount * updated.gstRate) / 100) * 100) / 100;
+              updated.total =
+                Math.round((baseAmount + updated.gstAmount) * 100) / 100;
             }
+          }
+
+          // If IMEI text updated, sync imeis array
+          if (field === "imeisText") {
+            const text: string = value || "";
+            const imeis = text
+              .split(/\r?\n|,/)
+              .map((s) => s.trim())
+              .filter(Boolean);
+            (updated as any).imeis = imeis;
           }
 
           return updated;
@@ -369,6 +399,16 @@ export default function CreateInvoicePage() {
     : 0;
   const totalTax = cgst + sgst + igst;
   const grandTotal = subtotal + totalTax;
+  const displayPayments = [{ mode: paymentMode, amount: grandTotal }];
+
+  // Check IMEI issues for serialized products
+  const hasImeiIssues = items.some((i) => {
+    const p = products.find((pp) => pp.id === i.shopProductId);
+    if (!p || !p.isSerialized) return false;
+    const isMissing = !i.imeis || i.imeis.length === 0;
+    const isMismatch = i.imeis && i.imeis.length !== i.quantity;
+    return isMissing || isMismatch;
+  });
 
   const handleSubmit = async () => {
     if (!selectedShop) {
@@ -388,25 +428,34 @@ export default function CreateInvoicePage() {
       return;
     }
 
-    // Validate payment methods
-    const totalPaid = paymentMethods.reduce((sum, p) => sum + p.amount, 0);
-    const paymentMethodsWithAmount = paymentMethods.filter((p) => p.amount > 0);
-
-    if (paymentMethodsWithAmount.length === 0) {
-      setError("Please add at least one payment method with amount");
+    // Serialized validation: IMEIs required and must match quantity
+    const serializedMissing = items.some((i) => {
+      const p = products.find((pp) => pp.id === i.shopProductId);
+      return p?.isSerialized && (!i.imeis || i.imeis.length === 0);
+    });
+    if (serializedMissing) {
+      setError(
+        "Missing IMEIs: Please enter IMEI numbers for all serialized products",
+      );
+      setImeiHighlight(true);
       return;
     }
 
-    // Check if total paid matches grand total (with small tolerance for floating point)
-    if (Math.abs(totalPaid - grandTotal) > 0.01) {
+    const serializedCountMismatch = items.some((i) => {
+      const p = products.find((pp) => pp.id === i.shopProductId);
+      return p?.isSerialized && i.imeis && i.imeis.length !== i.quantity;
+    });
+    if (serializedCountMismatch) {
       setError(
-        `Total payment (₹${totalPaid.toFixed(2)}) must match invoice total (₹${grandTotal.toFixed(2)})`,
+        "IMEI count mismatch: Each product quantity must have matching IMEIs",
       );
+      setImeiHighlight(true);
       return;
     }
 
     setLoading(true);
     setError(null);
+    setImeiHighlight(false);
 
     try {
       const payload = {
@@ -416,7 +465,7 @@ export default function CreateInvoicePage() {
         customerPhone: selectedCustomer.phone,
         customerState: selectedCustomer.state,
         customerGstin: selectedCustomer.gstNumber,
-        paymentMethods: paymentMethodsWithAmount, // Only include methods with amount > 0
+        paymentMode,
         pricesIncludeTax,
         items: items.map((item) => ({
           shopProductId: item.shopProductId,
@@ -424,13 +473,27 @@ export default function CreateInvoicePage() {
           rate: item.rate,
           gstRate: item.gstRate,
           gstAmount: item.gstAmount,
+          imeis: item.imeis && item.imeis.length > 0 ? item.imeis : undefined,
         })),
       };
 
       await createInvoice(payload);
       router.push(`/sales?shopId=${selectedShopId}`);
     } catch (err: any) {
-      setError(err.message || "Failed to create invoice");
+      const msg = (err?.message || "Failed to create invoice") as string;
+      if (msg.includes("Insufficient stock")) {
+        setError("Insufficient stock. Please add purchase or reduce quantity.");
+      } else if (msg.includes("Serialized products require IMEI")) {
+        setError(
+          "Serialized products require IMEI. Please enter IMEI numbers.",
+        );
+        setImeiHighlight(true);
+      } else if (msg.includes("IMEI is not available")) {
+        setError("One or more IMEIs are already sold or unavailable.");
+        setImeiHighlight(true);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -438,402 +501,372 @@ export default function CreateInvoicePage() {
 
   if (isLoadingShops) {
     return (
-      <div className="max-w-6xl mx-auto text-center py-12">
-        <p
-          className={`${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
-        >
-          Loading shop details...
-        </p>
+      <div className="max-w-7xl mx-auto text-center py-20">
+        <div className="animate-spin text-teal-600 text-3xl mb-4">⟳</div>
+        <p className="text-gray-500">Loading shop details...</p>
       </div>
     );
   }
 
   if (!selectedShop) {
     return (
-      <div className="max-w-6xl mx-auto text-center py-12">
-        <p
-          className={`${theme === "dark" ? "text-red-400" : "text-red-600"} mb-4`}
-        >
+      <div className="max-w-7xl mx-auto text-center py-20 flex flex-col items-center">
+        <p className="text-red-500 mb-6 bg-red-50 px-6 py-4 rounded-xl border border-red-100">
           No shop selected or shop not found.
         </p>
         <button
           onClick={() => router.push("/sales")}
-          className="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold transition"
+          className="px-8 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold transition"
         >
-          Go to Sales
+          Go Back to Sales
         </button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h1
-          className={`text-3xl font-bold mb-2 ${theme === "dark" ? "text-white" : "text-black"}`}
-        >
+    <div className="max-w-[1400px] mx-auto py-8 px-6">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
           Create New Sales Invoice
         </h1>
-        <p
-          className={`${theme === "dark" ? "text-gray-400" : "text-zinc-600"}`}
-        >
+        <p className="text-gray-500 dark:text-gray-400">
           Fill in the details below to generate a new GST invoice.
         </p>
       </div>
 
       {shopError && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-700 dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-200 px-4 py-3 rounded-lg mb-4">
-          {shopError}
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
+          <span>⚠️</span> {shopError}
         </div>
       )}
 
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-700 dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-200 px-4 py-3 rounded-lg mb-4">
-          {error}
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
+          <span>⚠️</span> {error}
         </div>
       )}
 
       {/* Customer & Invoice Details */}
-      <div
-        className={`border rounded-lg p-6 mb-6 shadow-sm ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"}`}
-      >
-        <div className="flex items-start justify-between mb-4">
-          <h2
-            className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}
-          >
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-8 mb-8 shadow-sm">
+        <div className="flex items-start justify-between mb-8 border-b border-gray-100 dark:border-gray-800 pb-6">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
             Customer & Invoice Details
           </h2>
-          <div className="text-right">
-            <div
-              className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-zinc-600"}`}
-            >
-              Invoice #:
-            </div>
-            <div
-              className={`text-lg font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}
-            >
-              AT-P-{new Date().getFullYear().toString().slice(2)}
-              {(new Date().getMonth() + 1).toString().padStart(2, "0")}
-              {new Date().getDate().toString().padStart(2, "0")}-0011
-            </div>
-          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           {/* Customer Selection */}
-          <div className="relative">
-            <label
-              className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-            >
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Customer
             </label>
-            {selectedCustomer ? (
-              <div className="border border-gray-300 dark:border-white/20 rounded-lg p-4 bg-gray-50 dark:bg-white/5">
-                <div className="flex items-start justify-between">
+            <div className="relative">
+              {selectedCustomer ? (
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50/50 dark:bg-gray-800/50 flex items-start justify-between group">
                   <div>
-                    <div
-                      className={`font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}
-                    >
-                      {selectedCustomer.name} ({selectedCustomer.phone})
+                    <div className="font-bold text-gray-900 dark:text-white">
+                      {selectedCustomer.name}
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      GSTIN: {selectedCustomer.gstNumber || "N/A"} | Address:{" "}
-                      {selectedCustomer.gstNumber ? "N/A" : "N/A"} | State:{" "}
-                      {selectedCustomer.state}
+                    <div className="text-sm text-gray-500 mt-1">
+                      {selectedCustomer.phone}
                     </div>
+                    {(selectedCustomer.gstNumber || selectedCustomer.state) && (
+                      <div className="text-xs text-gray-400 mt-2 flex gap-3">
+                        {selectedCustomer.gstNumber && (
+                          <span>GST: {selectedCustomer.gstNumber}</span>
+                        )}
+                        {selectedCustomer.state && (
+                          <span>State: {selectedCustomer.state}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={clearCustomer}
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    className="text-gray-400 hover:text-red-500 transition px-2 py-1"
                   >
                     ✕
                   </button>
                 </div>
-              </div>
-            ) : (
-              <>
-                <input
-                  type="text"
-                  value={customerSearch}
-                  onChange={(e) => handleCustomerSearch(e.target.value)}
-                  onFocus={() =>
-                    customerResults.length > 0 && setShowCustomerDropdown(true)
-                  }
-                  placeholder="Search by name or phone (min 3 chars)..."
-                  className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent ${
-                    theme === "dark"
-                      ? "bg-white/10 border-white/20 text-white"
-                      : "bg-white border-gray-300 text-black placeholder-gray-500"
-                  }`}
-                />
-                {showCustomerDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-stone-900 border border-gray-200 dark:border-white/20 rounded-lg shadow-lg max-h-60 overflow-auto">
-                    {customerResults.length > 0 ? (
-                      <>
-                        {customerResults.map((customer) => (
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={customerSearch}
+                    onChange={(e) => handleCustomerSearch(e.target.value)}
+                    onFocus={() =>
+                      customerResults.length > 0 &&
+                      setShowCustomerDropdown(true)
+                    }
+                    placeholder="Select customer..."
+                    className="w-full px-4 py-3 bg-gray-50/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white dark:focus:bg-gray-800 transition shadow-sm"
+                  />
+
+                  {showCustomerDropdown && (
+                    <div className="absolute z-20 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl max-h-80 overflow-auto">
+                      {customerResults.length > 0 ? (
+                        <>
+                          {customerResults.map((customer) => (
+                            <button
+                              key={customer.id}
+                              onClick={() => selectCustomer(customer)}
+                              className="w-full px-5 py-3 text-left hover:bg-teal-50 dark:hover:bg-teal-900/20 border-b border-gray-50 dark:border-gray-700 last:border-0 transition"
+                            >
+                              <div className="font-medium text-gray-900 dark:text-white">
+                                {customer.name}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {customer.phone}
+                              </div>
+                            </button>
+                          ))}
                           <button
-                            key={customer.id}
-                            onClick={() => selectCustomer(customer)}
-                            className="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-white/10 border-b border-gray-100 dark:border-white/10 last:border-0"
+                            onClick={() => {
+                              setShowCustomerDropdown(false);
+                              setIsCustomerModalOpen(true);
+                            }}
+                            className="w-full px-5 py-3 text-center text-teal-600 font-semibold hover:bg-teal-50 dark:hover:bg-teal-900/20 transition border-t border-gray-100 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800"
                           >
-                            <div className="font-medium text-gray-900 dark:text-white">
-                              {customer.name}
-                            </div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400">
-                              {customer.phone} • {customer.state}
-                            </div>
+                            + Add New Customer
                           </button>
-                        ))}
-                        <button
-                          onClick={() => {
-                            setShowCustomerDropdown(false);
-                            setIsCustomerModalOpen(true);
-                          }}
-                          className="w-full px-4 py-3 text-center text-teal-600 dark:text-teal-400 hover:bg-gray-50 dark:hover:bg-white/5 font-medium border-t border-gray-200 dark:border-white/20"
-                        >
-                          ⊕ Create New Customer
-                        </button>
-                      </>
-                    ) : (
-                      <div className="px-4 py-6 text-center">
-                        <p className="text-gray-600 dark:text-gray-400 mb-3">
-                          No customers found
-                        </p>
-                        <button
-                          onClick={() => {
-                            setShowCustomerDropdown(false);
-                            setIsCustomerModalOpen(true);
-                          }}
-                          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition"
-                        >
-                          ⊕ Create New Customer
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {customerSearch.length > 0 &&
-                  customerSearch.length < 3 &&
-                  !showCustomerDropdown && (
-                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
-                      Type 3+ characters to search.
+                        </>
+                      ) : (
+                        <div className="px-5 py-8 text-center">
+                          <p className="text-gray-500 mb-4">
+                            No customers found
+                          </p>
+                          <button
+                            onClick={() => {
+                              setShowCustomerDropdown(false);
+                              setIsCustomerModalOpen(true);
+                            }}
+                            className="px-4 py-2 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg font-semibold transition"
+                          >
+                            Create New Customer
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
 
           {/* Invoice Date */}
           <div>
-            <label
-              className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-            >
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Invoice Date
             </label>
-            <input
-              type="date"
-              value={invoiceDate}
-              onChange={(e) => setInvoiceDate(e.target.value)}
-              className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                theme === "dark"
-                  ? "bg-white/5 border-white/20 text-white"
-                  : "bg-white border-gray-300 text-black"
-              }`}
-            />
+            <div className="relative">
+              <input
+                type="date"
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white dark:focus:bg-gray-800 transition shadow-sm"
+              />
+            </div>
           </div>
         </div>
 
         {/* Inter-State Notice */}
         {isInterState && (
-          <div className="mt-4 bg-teal-50 dark:bg-teal-500/10 border border-teal-200 dark:border-teal-500/30 rounded-lg p-4">
-            <div className="flex items-start">
-              <span className="text-teal-600 dark:text-teal-400 mr-2">ℹ️</span>
-              <div>
-                <div className="font-semibold text-teal-900 dark:text-teal-300">
-                  Inter-State Sale
-                </div>
-                <div className="text-sm text-teal-700 dark:text-teal-400 mt-1">
-                  IGST will be applied as customer state is different from shop
-                  state.
-                </div>
-              </div>
-            </div>
+          <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 px-4 py-3 rounded-lg text-sm border border-blue-100 dark:border-blue-800 flex items-center gap-2">
+            <span>ℹ️</span>
+            <strong>Inter-State Sale:</strong> IGST will be applied as customer
+            state is different from shop state.
           </div>
         )}
       </div>
 
       {/* Product Items */}
-      <div
-        className={`border rounded-lg p-6 mb-6 shadow-sm ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"}`}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2
-            className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}
-          >
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-8 mb-8 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
             Product Items
           </h2>
-          <label className="flex items-center space-x-2 text-sm">
-            <input
-              type="checkbox"
-              checked={pricesIncludeTax}
-              onChange={(e) => setPricesIncludeTax(e.target.checked)}
-              className="w-4 h-4 text-teal-600 rounded focus:ring-2 focus:ring-teal-500"
-            />
-            <span className="text-teal-600 dark:text-teal-400 font-medium">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div
+              className={`w-5 h-5 rounded border flex items-center justify-center transition ${pricesIncludeTax ? "bg-blue-600 border-blue-600" : "bg-white border-gray-300"}`}
+            >
+              <input
+                type="checkbox"
+                checked={pricesIncludeTax}
+                onChange={(e) => setPricesIncludeTax(e.target.checked)}
+                className="hidden"
+              />
+              {pricesIncludeTax && (
+                <span className="text-white text-xs">✓</span>
+              )}
+            </div>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Prices are Tax Inclusive
             </span>
           </label>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-visible rounded-lg border border-gray-100 dark:border-gray-800 mb-6">
           <table className="w-full">
-            <thead
-              className={`border-b ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-gray-100 border-gray-300"}`}
-            >
-              <tr>
-                <th
-                  className={`text-left px-3 py-3 text-sm font-semibold w-8 ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-                >
+            <thead>
+              <tr className="bg-gray-50/50 dark:bg-gray-800/50 text-left">
+                <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase w-12 text-center">
                   #
                 </th>
-                <th
-                  className={`text-left px-3 py-3 text-sm font-semibold ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-                >
+                <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase">
                   Product / Description
                 </th>
-                <th
-                  className={`text-left px-3 py-3 text-sm font-semibold w-32 ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-                >
+                <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase w-32">
                   HSN/SAC
                 </th>
-                <th
-                  className={`text-left px-3 py-3 text-sm font-semibold w-24 ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-                >
-                  Qty.
+                <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase w-24">
+                  Qty
                 </th>
-                <th
-                  className={`text-left px-3 py-3 text-sm font-semibold w-32 ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-                >
+                <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase w-32">
                   Price
                 </th>
                 {selectedShop?.gstEnabled && (
-                  <th
-                    className={`text-left px-3 py-3 text-sm font-semibold w-24 ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-                  >
+                  <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase w-24">
                     GST %
                   </th>
                 )}
-                <th
-                  className={`text-left px-3 py-3 text-sm font-semibold w-32 ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-                >
+                <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase w-40 text-right">
                   Total
                 </th>
-                <th className="w-12"></th>
+                <th className="px-4 py-4 w-12"></th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {items.map((item, index) => (
                 <tr
                   key={item.id}
-                  className="border-b border-gray-200 dark:border-white/10"
+                  className="group hover:bg-gray-50/30 dark:hover:bg-gray-800/30 transition"
                 >
-                  <td className="px-3 py-3 text-sm text-gray-900 dark:text-white">
+                  <td className="px-4 py-4 text-sm text-gray-400 text-center">
                     {index + 1}
                   </td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-1">
-                      <input
-                        ref={(el) => {
-                          productInputRefs.current[item.id] = el;
-                        }}
-                        type="text"
-                        placeholder="Search..."
-                        value={productSearches[item.id] || ""}
-                        onChange={(e) =>
-                          handleProductSearch(item.id, e.target.value)
-                        }
-                        onFocus={() => {
-                          const searchTerm = productSearches[item.id] || "";
-                          if (searchTerm.length > 0) {
-                            setProductDropdowns((prev) => ({
-                              ...prev,
-                              [item.id]: true,
-                            }));
-                            setTimeout(
-                              () => updateDropdownPosition(item.id),
-                              0,
-                            );
-                          }
-                        }}
-                        className={`flex-1 px-2 py-1.5 border rounded text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                          theme === "dark"
-                            ? "bg-white/10 border-white/20 text-white placeholder-gray-400"
-                            : "bg-white border-gray-300 text-black placeholder-gray-500"
-                        }`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // Close dropdown when opening modal
+                  <td className="px-4 py-4 relative">
+                    <input
+                      ref={(el) => {
+                        productInputRefs.current[item.id] = el;
+                      }}
+                      type="text"
+                      placeholder="Search product..."
+                      value={productSearches[item.id] || ""}
+                      onChange={(e) =>
+                        handleProductSearch(item.id, e.target.value)
+                      }
+                      onFocus={() => {
+                        const searchTerm = productSearches[item.id] || "";
+                        if (searchTerm.length > 0) {
                           setProductDropdowns((prev) => ({
                             ...prev,
-                            [item.id]: false,
+                            [item.id]: true,
                           }));
-                          setProductDropdownPositions((prev) => {
-                            const updated = { ...prev };
-                            delete updated[item.id];
-                            return updated;
-                          });
-                          setIsProductModalOpen(true);
-                        }}
-                        title="Create new product"
-                        className={`shrink-0 px-1.5 py-1.5 rounded transition text-sm ${
-                          theme === "dark"
-                            ? "text-teal-400 hover:bg-teal-500/20"
-                            : "text-teal-600 hover:bg-teal-50"
-                        }`}
-                      >
-                        🌐
-                      </button>
-                    </div>
+                          setTimeout(() => updateDropdownPosition(item.id), 0);
+                        }
+                      }}
+                      className="w-full bg-transparent border-b border-transparent focus:border-teal-500 outline-none py-1.5 text-gray-900 dark:text-white placeholder-gray-400 transition"
+                    />
+
+                    {/* Simplified Inline Dropdown since position calculation is complex and we want it simple */}
+                    {productDropdowns[item.id] && (
+                      <div className="absolute left-0 top-full mt-1 w-72 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl flex flex-col overflow-hidden ring-1 ring-black/5">
+                        <div className="max-h-48 overflow-y-auto">
+                          {getFilteredProducts(item.id).length > 0 ? (
+                            getFilteredProducts(item.id).map((p) => (
+                              <button
+                                key={p.id}
+                                onClick={() => selectProduct(item.id, p)}
+                                className="w-full text-left px-4 py-3 hover:bg-teal-50 dark:hover:bg-teal-900/20 border-b border-gray-50 dark:border-gray-700 last:border-0 transition group"
+                              >
+                                <div className="font-medium text-gray-900 dark:text-white text-sm group-hover:text-teal-700 dark:group-hover:text-teal-300">
+                                  {p.name}
+                                </div>
+                                <div className="flex justify-between items-center mt-1">
+                                  {p.type !== ProductType.SERVICE && (
+                                    <div className="text-xs text-gray-500">
+                                      Stock: {p.stockQty ?? 0}
+                                    </div>
+                                  )}
+                                  <div className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                    ₹{p.salePrice}
+                                  </div>
+                                </div>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-4 py-8 text-center text-sm text-gray-500">
+                              <p>
+                                No products found matching "
+                                {productSearches[item.id]}"
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // Prevent blur
+                            setIsProductModalOpen(true);
+                          }}
+                          className="w-full text-center px-4 py-3 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 text-sm font-bold border-t border-teal-100 dark:border-teal-800 hover:bg-teal-100 dark:hover:bg-teal-900/40 transition"
+                        >
+                          + Create New Product
+                        </button>
+                      </div>
+                    )}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-4">
                     <input
-                      type="text"
                       value={item.hsnSac}
                       onChange={(e) =>
                         updateItem(item.id, "hsnSac", e.target.value)
                       }
-                      className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                        theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white"
-                          : "bg-white border-gray-300 text-black"
-                      }`}
-                      placeholder="8504"
+                      className="w-full bg-transparent text-sm text-gray-600 outline-none"
                     />
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-4 relative">
                     <input
                       type="number"
+                      min="1"
                       value={item.quantity}
                       onChange={(e) =>
                         updateItem(
                           item.id,
                           "quantity",
-                          parseInt(e.target.value) || 0,
+                          parseFloat(e.target.value) || 0,
                         )
                       }
-                      min="1"
-                      className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                        theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white"
-                          : "bg-white border-gray-300 text-black"
-                      }`}
+                      className="w-full bg-gray-50 dark:bg-gray-800 rounded px-2 py-1.5 text-sm text-center outline-none focus:ring-1 focus:ring-teal-500"
                     />
+                    {/* Negative stock warning for non-serialized, non-service */}
+                    {(() => {
+                      const p = products.find(
+                        (pp) => pp.id === item.shopProductId,
+                      );
+                      const shouldWarn =
+                        !!p &&
+                        p.type !== ProductType.SERVICE &&
+                        !p.isSerialized &&
+                        typeof p.stockQty === "number" &&
+                        item.quantity > (p.stockQty || 0);
+                      return shouldWarn ? (
+                        <div className="absolute right-2 top-2 group">
+                          <span className="text-lg cursor-help">⚠️</span>
+                          <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-yellow-50 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 text-xs rounded shadow-lg border border-yellow-200 dark:border-yellow-700 hidden group-hover:block z-50">
+                            <strong>Warning: Negative Stock</strong>
+                            <br />
+                            Stock will drop below zero. You can correct
+                            inventory later.
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-4">
                     <input
                       type="number"
+                      min="0"
                       value={item.rate}
                       onChange={(e) =>
                         updateItem(
@@ -842,430 +875,235 @@ export default function CreateInvoicePage() {
                           parseFloat(e.target.value) || 0,
                         )
                       }
-                      min="0"
-                      className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                        theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white"
-                          : "bg-white border-gray-300 text-black"
-                      }`}
+                      className="w-full bg-transparent border-b border-transparent focus:border-gray-300 outline-none py-1.5 text-sm"
                     />
+                    {/* Serialized IMEI input under product cell when applicable */}
+                    {(() => {
+                      const p = products.find(
+                        (pp) => pp.id === item.shopProductId,
+                      );
+                      if (!p || !p.isSerialized) return null;
+                      const mismatch =
+                        item.imeis.length > 0 &&
+                        item.imeis.length !== item.quantity;
+                      return (
+                        <div className="mt-3">
+                          <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                            IMEIs (one per line)
+                          </label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded px-2 py-1.5">
+                            📌 Enter exactly one IMEI per quantity (
+                            {item.quantity} needed)
+                          </p>
+                          <textarea
+                            value={item.imeis.join("\n")}
+                            onChange={(e) =>
+                              updateItem(item.id, "imeisText", e.target.value)
+                            }
+                            className={
+                              "w-full min-h-[90px] rounded border px-3 py-2 text-sm outline-none " +
+                              (mismatch || imeiHighlight
+                                ? "border-red-300 bg-red-50 dark:bg-red-900/20 ring-1 ring-red-300"
+                                : "border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50")
+                            }
+                            placeholder="Enter IMEIs, one per line"
+                          />
+                          {mismatch && (
+                            <div className="mt-1 text-xs text-red-600 dark:text-red-300 font-medium">
+                              ⚠️ IMEI count ({item.imeis.length}) must equal
+                              quantity ({item.quantity})
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   {selectedShop?.gstEnabled && (
-                    <td className="px-3 py-3">
-                      <input
-                        type="number"
+                    <td className="px-4 py-4">
+                      <select
                         value={item.gstRate}
                         onChange={(e) =>
                           updateItem(
                             item.id,
                             "gstRate",
-                            parseFloat(e.target.value) || 0,
+                            parseFloat(e.target.value),
                           )
                         }
-                        min="0"
-                        max="100"
-                        className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                          theme === "dark"
-                            ? "bg-white/10 border-white/20 text-white"
-                            : "bg-white border-gray-300 text-black"
-                        }`}
-                      />
+                        className="w-full bg-transparent text-sm outline-none cursor-pointer"
+                      >
+                        <option value="0">0%</option>
+                        <option value="5">5%</option>
+                        <option value="12">12%</option>
+                        <option value="18">18%</option>
+                        <option value="28">28%</option>
+                      </select>
                     </td>
                   )}
-                  <td
-                    className={`px-3 py-3 text-sm font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}
-                  >
+                  <td className="px-4 py-4 text-right font-medium text-gray-900 dark:text-white">
                     ₹{item.total.toFixed(2)}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-4 text-center">
                     <button
                       onClick={() => removeItem(item.id)}
-                      className="text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
-                      title="Delete item"
+                      className="text-gray-300 hover:text-red-500 transition"
                     >
-                      🗑️
+                      ✕
                     </button>
                   </td>
                 </tr>
               ))}
+              {items.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="py-12 text-center text-gray-400 text-sm bg-gray-50/30 dark:bg-gray-800/20 rounded-lg border border-dashed border-gray-200 dark:border-gray-700 m-4"
+                  >
+                    No items added yet. Search products above or click 'Add
+                    Item'.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
         <button
           onClick={addItem}
-          className="mt-4 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg font-medium transition flex items-center"
+          className="px-5 py-2.5 bg-gray-100/80 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-semibold transition border border-gray-200 dark:border-gray-700"
         >
-          <span className="mr-2">+</span>
-          Add Item
+          + Add Item
         </button>
       </div>
 
-      {/* Payment & Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Payment Methods */}
-        <div
-          className={`border rounded-lg p-6 shadow-sm ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"}`}
-        >
-          <label
-            className={`block text-sm font-medium mb-4 ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-          >
-            Payment Methods (Mixed Payments Allowed)
-          </label>
-          <div className="space-y-3">
-            {paymentMethods.map((payment, index) => (
-              <div key={index} className="flex gap-3 items-end">
-                <div className="flex-1">
-                  <label
-                    className={`block text-xs font-medium mb-1 ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}
-                  >
-                    Method
-                  </label>
-                  <select
-                    value={payment.mode}
-                    onChange={(e) => {
-                      const updated = [...paymentMethods];
-                      updated[index].mode = e.target
-                        .value as typeof payment.mode;
-                      setPaymentMethods(updated);
-                    }}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm ${
-                      theme === "dark"
-                        ? "bg-white/10 border-white/20 text-white"
-                        : "bg-white border-gray-300 text-black"
-                    }`}
-                  >
-                    <option value="CASH">Cash</option>
-                    <option value="UPI">UPI</option>
-                    <option value="CARD">Card</option>
-                    <option value="BANK">Bank Transfer</option>
-                    <option value="CREDIT">Credit</option>
-                  </select>
-                </div>
-                <div className="flex-1">
-                  <label
-                    className={`block text-xs font-medium mb-1 ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}
-                  >
-                    Amount
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={payment.amount === 0 ? "" : payment.amount}
-                    onChange={(e) => {
-                      const updated = [...paymentMethods];
-                      updated[index].amount = parseFloat(e.target.value) || 0;
-                      setPaymentMethods(updated);
-                    }}
-                    placeholder="0.00"
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm ${
-                      theme === "dark"
-                        ? "bg-white/10 border-white/20 text-white"
-                        : "bg-white border-gray-300 text-black"
-                    }`}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (paymentMethods.length > 1) {
-                      setPaymentMethods(
-                        paymentMethods.filter((_, i) => i !== index),
-                      );
-                    }
-                  }}
-                  disabled={paymentMethods.length === 1}
-                  className="px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
+      {/* Summary & Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+        <div className="space-y-6">
+          {/* Payment Method */}
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+              Payment Method
+            </h3>
+            <div className="flex flex-col gap-4">
+              <select
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg outline-none focus:ring-2 focus:ring-teal-500 transition"
+                value={paymentMode}
+                onChange={(e) => setPaymentMode(e.target.value as any)}
+              >
+                <option value="CASH">Cash</option>
+                <option value="UPI">UPI / Online</option>
+                <option value="CARD">Card</option>
+                <option value="BANK">Bank Transfer</option>
+                <option value="CREDIT">Credit (Pay Later)</option>
+              </select>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setPaymentMethods([
-                ...paymentMethods,
-                { mode: "CASH", amount: 0 },
-              ]);
-            }}
-            className="mt-3 w-full px-4 py-2 text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-500/10 rounded-lg font-medium transition text-sm"
-          >
-            + Add Payment Method
-          </button>
-
-          {/* Payment validation indicator */}
-          {(() => {
-            const totalPaid = paymentMethods.reduce(
-              (sum, p) => sum + p.amount,
-              0,
-            );
-            const isBalanced = Math.abs(totalPaid - grandTotal) < 0.01;
-            const paymentMethodsWithAmount = paymentMethods.filter(
-              (p) => p.amount > 0,
-            );
-
-            return (
-              <>
-                {paymentMethodsWithAmount.length > 0 && (
-                  <div
-                    className={`mt-4 pt-3 border-t ${
-                      theme === "dark" ? "border-white/10" : "border-gray-200"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-center gap-2 text-sm font-medium ${
-                        isBalanced
-                          ? "text-green-600 dark:text-green-400"
-                          : "text-amber-600 dark:text-amber-400"
-                      }`}
-                    >
-                      {isBalanced ? (
-                        <>
-                          <span>✓</span>
-                          <span>Payment Balanced</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>!</span>
-                          <span>
-                            Difference: ₹{(grandTotal - totalPaid).toFixed(2)}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </>
-            );
-          })()}
         </div>
 
-        {/* Summary */}
-        <div
-          className={`border rounded-lg p-6 shadow-sm ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"}`}
-        >
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-8 shadow-sm">
           <div className="space-y-3">
-            <div
-              className={`flex justify-between ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-            >
-              <span>Subtotal</span>
-              <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
+            <div className="flex justify-between text-gray-500">
+              <span className="font-medium">Subtotal</span>
+              <span>₹{subtotal.toFixed(2)}</span>
             </div>
             {selectedShop?.gstEnabled && (
               <>
-                {isInterState ? (
-                  <div
-                    className={`flex justify-between ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-                  >
-                    <span>IGST</span>
-                    <span className="font-semibold">₹{igst.toFixed(2)}</span>
+                <div className="flex justify-between text-gray-500">
+                  <span className="font-medium">CGST</span>
+                  <span>₹{cgst.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-gray-500">
+                  <span className="font-medium">SGST</span>
+                  <span>₹{sgst.toFixed(2)}</span>
+                </div>
+                {igst > 0 && (
+                  <div className="flex justify-between text-gray-500">
+                    <span className="font-medium">IGST</span>
+                    <span>₹{igst.toFixed(2)}</span>
                   </div>
-                ) : (
-                  <>
-                    <div
-                      className={`flex justify-between ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-                    >
-                      <span>CGST</span>
-                      <span className="font-semibold">₹{cgst.toFixed(2)}</span>
-                    </div>
-                    <div
-                      className={`flex justify-between ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-                    >
-                      <span>SGST</span>
-                      <span className="font-semibold">₹{sgst.toFixed(2)}</span>
-                    </div>
-                  </>
                 )}
-                <div
-                  className={`flex justify-between ${theme === "dark" ? "text-gray-300" : "text-black"}`}
-                >
-                  <span>Total Tax:</span>
-                  <span className="font-semibold">₹{totalTax.toFixed(2)}</span>
+                <div className="flex justify-between text-gray-900 dark:text-white pt-2 border-t border-gray-100 dark:border-gray-800">
+                  <span className="font-medium">Total Tax</span>
+                  <span>₹{totalTax.toFixed(2)}</span>
                 </div>
               </>
             )}
-            <div
-              className={`border-t pt-3 flex justify-between text-lg font-bold ${theme === "dark" ? "border-white/20 text-white" : "border-gray-200 text-black"}`}
-            >
-              <span>Grand Total:</span>
-              <span>₹{grandTotal.toFixed(2)}</span>
+            <div className="flex justify-between items-end pt-4 border-t border-gray-100 dark:border-gray-800 mt-2">
+              <span className="text-lg font-bold text-gray-900 dark:text-white">
+                Grand Total:
+              </span>
+              <span className="text-3xl font-bold text-teal-600">
+                ₹{grandTotal.toFixed(2)}
+              </span>
             </div>
 
-            {/* Payment Summary */}
-            <div
-              className={`border-t pt-3 ${theme === "dark" ? "border-white/20" : "border-gray-200"}`}
-            >
-              <div className="text-sm font-medium mb-2 text-gray-600 dark:text-gray-400">
-                Payment Summary:
-              </div>
-              {paymentMethods
-                .filter((p) => p.amount > 0)
-                .map((payment, idx) => (
-                  <div key={idx} className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600 dark:text-gray-400">
-                      {payment.mode}:
-                    </span>
-                    <span>₹{payment.amount.toFixed(2)}</span>
-                  </div>
-                ))}
-              <div
-                className={`flex justify-between text-sm font-semibold mt-2 pt-2 ${theme === "dark" ? "border-white/20 border-t" : "border-gray-200 border-t"}`}
-              >
-                <span>Total Paid:</span>
-                <span>
-                  ₹
-                  {paymentMethods
-                    .reduce((sum, p) => sum + p.amount, 0)
-                    .toFixed(2)}
+            {/* Payment Type Display */}
+            <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex justify-between text-sm">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                  Payment Type:
+                </span>
+                <span className="font-bold text-gray-900 dark:text-white">
+                  {paymentMode === "CASH"
+                    ? "CASH"
+                    : paymentMode === "UPI"
+                      ? "UPI"
+                      : paymentMode === "CARD"
+                        ? "CARD"
+                        : paymentMode === "BANK"
+                          ? "BANK TRANSFER"
+                          : "CREDIT"}
                 </span>
               </div>
-              {paymentMethods.reduce((sum, p) => sum + p.amount, 0) <
-                grandTotal && (
-                <div
-                  className={`flex justify-between text-sm font-semibold mt-1 ${paymentMethods.reduce((sum, p) => sum + p.amount, 0) < grandTotal ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}
-                >
-                  <span>Remaining:</span>
-                  <span>
-                    ₹
-                    {(
-                      grandTotal -
-                      paymentMethods.reduce((sum, p) => sum + p.amount, 0)
-                    ).toFixed(2)}
-                  </span>
+              {paymentMode === "CREDIT" && (
+                <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                    💡 This invoice will be marked as unpaid. Collect payment
+                    later.
+                  </p>
+                  <div className="mt-2 pt-2 border-t border-amber-200 dark:border-amber-700">
+                    <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                      Balance Due: ₹{grandTotal.toFixed(2)}
+                    </p>
+                  </div>
                 </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-8 grid grid-cols-2 gap-4">
+            <button
+              onClick={() => router.back()}
+              className="px-6 py-3 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+            >
+              Cancel
+            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleSubmit}
+                disabled={loading || hasImeiIssues}
+                className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold shadow-lg shadow-teal-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? "Generating..." : "Generate Invoice"}
+              </button>
+              {hasImeiIssues && (
+                <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded px-2 py-1.5">
+                  ⚠️ Fix IMEI issues before submitting
+                </p>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-4 mt-6">
-        <button
-          onClick={() => router.back()}
-          className="px-6 py-2.5 border border-gray-300 dark:border-white/20 text-gray-700 dark:text-gray-300 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-white/5 transition"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={loading || !selectedCustomer || items.length === 0}
-          className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-lg font-semibold transition shadow-sm disabled:cursor-not-allowed"
-        >
-          {loading ? "Generating..." : "Generate Invoice"}
-        </button>
-      </div>
-
-      {/* Customer Modal */}
       {isCustomerModalOpen && (
         <CustomerModal onClose={handleCustomerModalClose} />
       )}
 
-      {/* Product Modal */}
-      {isProductModalOpen && selectedShopId && (
+      {isProductModalOpen && (
         <ProductModal
-          shopId={selectedShopId}
+          shopId={selectedShopId!}
           onClose={handleProductModalClose}
           onProductCreated={handleProductCreated}
-        />
-      )}
-
-      {/* Product Dropdowns - Rendered outside table using portals */}
-      {Object.entries(productDropdowns).map(([itemId, isOpen]) => {
-        if (!isOpen) return null;
-        const position = productDropdownPositions[itemId];
-        if (!position) return null;
-
-        return (
-          <div
-            key={itemId}
-            className={`fixed border rounded shadow-lg max-h-60 overflow-y-auto z-[10000] ${
-              theme === "dark"
-                ? "bg-gray-800 border-white/20"
-                : "bg-white border-gray-300"
-            }`}
-            style={{
-              top: `${position.top}px`,
-              left: `${position.left}px`,
-              width: `${position.width}px`,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {getFilteredProducts(itemId).length > 0 ? (
-              getFilteredProducts(itemId).map((product) => {
-                const currentItem = items.find((i) => i.id === itemId);
-                return (
-                  <button
-                    key={product.id}
-                    type="button"
-                    onClick={() => selectProduct(itemId, product)}
-                    className={`w-full text-left px-3 py-2 hover:bg-teal-50 dark:hover:bg-teal-500/20 transition border-b border-gray-100 dark:border-white/10 text-xs ${
-                      currentItem?.shopProductId === product.id
-                        ? "bg-teal-100 dark:bg-teal-500/30"
-                        : ""
-                    }`}
-                  >
-                    <div
-                      className={`truncate ${
-                        theme === "dark" ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      {product.name}
-                    </div>
-                    <div
-                      className={`text-xs truncate ${
-                        theme === "dark" ? "text-gray-400" : "text-gray-500"
-                      }`}
-                    >
-                      HSN: {product.hsnCode || "N/A"} | Stock:{" "}
-                      {product.stockQty || 0}
-                    </div>
-                  </button>
-                );
-              })
-            ) : (
-              <div
-                className={`px-3 py-2 text-center text-xs ${
-                  theme === "dark" ? "text-gray-400" : "text-gray-600"
-                }`}
-              >
-                <div>No products found</div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Close dropdown when opening modal
-                    setProductDropdowns((prev) => ({
-                      ...prev,
-                      [itemId]: false,
-                    }));
-                    setProductDropdownPositions((prev) => {
-                      const updated = { ...prev };
-                      delete updated[itemId];
-                      return updated;
-                    });
-                    setIsProductModalOpen(true);
-                  }}
-                  className="text-teal-600 dark:text-teal-400 hover:underline mt-1 text-xs"
-                >
-                  + Create
-                </button>
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {/* Click outside handler to close dropdowns */}
-      {Object.values(productDropdowns).some((isOpen) => isOpen) && (
-        <div
-          className="fixed inset-0 z-[9999]"
-          onClick={() => {
-            setProductDropdowns({});
-            setProductDropdownPositions({});
-          }}
         />
       )}
     </div>

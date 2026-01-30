@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   listJobCards,
   updateJobCardStatus,
@@ -45,6 +46,7 @@ const STATUS_COLORS: Record<JobStatus, string> = {
 };
 
 export default function JobCardsPage() {
+  const router = useRouter();
   const { theme } = useTheme();
   const {
     shops,
@@ -96,8 +98,7 @@ export default function JobCardsPage() {
   };
 
   const handleAddNew = () => {
-    setSelectedJobCard(null);
-    setIsModalOpen(true);
+    router.push("/jobcards/create");
   };
 
   const handleEdit = (jobCard: JobCard) => {
@@ -183,7 +184,7 @@ export default function JobCardsPage() {
         <div className="text-center py-12 text-black dark:text-stone-400 font-medium">
           Loading job cards...
         </div>
-      ) : jobCards.length === 0 ? (
+      ) : !jobCards || jobCards.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-black dark:text-stone-400 font-medium mb-4">
             No job cards found
@@ -225,7 +226,7 @@ export default function JobCardsPage() {
               <tbody
                 className={`divide-y ${theme === "dark" ? "divide-white/10" : "divide-gray-300"}`}
               >
-                {jobCards.map((job) => (
+                {(jobCards || []).map((job) => (
                   <tr
                     key={job.id}
                     className="hover:bg-gray-50 dark:hover:bg-white/5 transition"
@@ -295,7 +296,7 @@ export default function JobCardsPage() {
                           🔗
                         </a>
                         <a
-                          href={`/jobcards/print/${job.id}?shopId=${selectedShopId}`}
+                          href={`/print/jobcard/${job.id}?shopId=${selectedShopId}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition"

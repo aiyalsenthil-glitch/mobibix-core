@@ -61,4 +61,45 @@ export class UpdateShopSettingsDto {
   @IsOptional()
   @IsString()
   logoUrl?: string;
+
+  // Print Configuration
+  @IsOptional()
+  @IsString()
+  invoicePrinterType?: "NORMAL" | "THERMAL";
+
+  @IsOptional()
+  @IsString()
+  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL";
+
+  @IsOptional()
+  @IsString()
+  jobCardPrinterType?: "THERMAL";
+
+  @IsOptional()
+  @IsString()
+  jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL";
+
+  @IsOptional()
+  headerConfig?: any; // Using any for Json, could be specific DTO
+
+  @IsOptional()
+  @IsString()
+  tagline?: string;
+
+  // Bank Details
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  accountNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  ifscCode?: string;
+
+  @IsOptional()
+  @IsString()
+  branchName?: string;
 }

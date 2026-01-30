@@ -1,8 +1,13 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { YearFormat, ResetPolicy } from '@prisma/client';
 import { CreateShopDto } from './dto/create-shop.dto';
 import { UpdateShopDto } from './dto/update-shop.dto';
 import { UpdateShopSettingsDto } from './dto/update-shop-settings.dto';
+import {
+  UpdateDocumentSettingDto,
+  DocumentType,
+} from './dto/update-document-setting.dto';
 import { isValidIndianGSTIN } from '../../common/validators/gstin.validator';
 @Injectable()
 export class ShopService {
@@ -20,6 +25,12 @@ export class ShopService {
       throw new ForbiddenException('Only owner can create shops');
     }
 
+    // If GST number provided, validate and auto-enable GST
+    const gstNumber = dto.gstNumber?.trim();
+    if (gstNumber && !isValidIndianGSTIN(gstNumber)) {
+      throw new ForbiddenException('Invalid GSTIN format');
+    }
+
     return this.prisma.shop.create({
       data: {
         tenantId,
@@ -30,7 +41,8 @@ export class ShopService {
         state: dto.state,
         pincode: dto.pincode,
         invoicePrefix: dto.invoicePrefix,
-        gstNumber: dto.gstNumber,
+        gstNumber,
+        gstEnabled: !!gstNumber,
         website: dto.website,
         logoUrl: dto.logoUrl,
         invoiceFooter: dto.invoiceFooter,
@@ -66,6 +78,11 @@ export class ShopService {
       throw new ForbiddenException('Shop not found');
     }
 
+    const gstNumber = dto.gstNumber?.trim();
+    if (gstNumber && !isValidIndianGSTIN(gstNumber)) {
+      throw new ForbiddenException('Invalid GSTIN format');
+    }
+
     return this.prisma.shop.update({
       where: { id: shopId },
       data: {
@@ -75,7 +92,9 @@ export class ShopService {
         city: dto.city,
         state: dto.state,
         pincode: dto.pincode,
-        gstNumber: dto.gstNumber,
+        gstNumber,
+        // Auto-enable GST if a GST number is provided; otherwise leave unchanged
+        gstEnabled: gstNumber ? true : undefined,
         website: dto.website,
         logoUrl: dto.logoUrl,
         invoiceFooter: dto.invoiceFooter,
@@ -104,6 +123,13 @@ export class ShopService {
         invoiceFooter: true,
         terms: true,
         logoUrl: true,
+        tagline: true,
+        headerConfig: true,
+        
+        bankName: true,
+        accountNumber: true,
+        ifscCode: true,
+        branchName: true,
       },
     });
 
@@ -160,6 +186,207 @@ export class ShopService {
         invoiceFooter: dto.invoiceFooter,
         terms: dto.terms,
         logoUrl: dto.logoUrl,
+
+        invoicePrinterType: dto.invoicePrinterType,
+        invoiceTemplate: dto.invoiceTemplate,
+        jobCardPrinterType: dto.jobCardPrinterType,
+        jobCardTemplate: dto.jobCardTemplate,
+        headerConfig: dto.headerConfig,
+        tagline: dto.tagline,
+        
+        bankName: dto.bankName,
+        accountNumber: dto.accountNumber,
+        ifscCode: dto.ifscCode,
+        branchName: dto.branchName,
+      },
+    });
+  }
+
+  /**
+   * Get all document numbering settings for a shop
+   * Returns existing settings or creates defaults for missing document types
+   */
+  async getDocumentSettings(tenantId: string, shopId: string) {
+    // Verify shop belongs to tenant
+    const shop = await this.prisma.shop.findFirst({
+      where: { id: shopId, tenantId },
+    });
+
+    if (!shop) {
+      throw new ForbiddenException('Shop not found');
+    }
+
+    // Fetch all existing settings
+    let settings = await this.prisma.shopDocumentSetting.findMany({
+      where: { shopId },
+      orderBy: { documentType: 'asc' },
+    });
+
+    // If no settings exist, create defaults for all document types
+    if (settings.length === 0) {
+      const defaultSettings = [
+        {
+          shopId,
+          documentType: DocumentType.SALES_INVOICE,
+          prefix: shop.invoicePrefix || 'HP',
+          separator: '-',
+          documentCode: 'SI',
+          yearFormat: YearFormat.FY,
+          numberLength: 4,
+          resetPolicy: ResetPolicy.YEARLY,
+        },
+        {
+          shopId,
+          documentType: DocumentType.PURCHASE_INVOICE,
+          prefix: shop.invoicePrefix || 'HP',
+          separator: '-',
+          documentCode: 'PI',
+          yearFormat: YearFormat.FY,
+          numberLength: 4,
+          resetPolicy: ResetPolicy.YEARLY,
+        },
+        {
+          shopId,
+          documentType: DocumentType.JOB_CARD,
+          prefix: shop.invoicePrefix || 'HP',
+          separator: '-',
+          documentCode: 'JC',
+          yearFormat: YearFormat.FY,
+          numberLength: 4,
+          resetPolicy: ResetPolicy.YEARLY,
+        },
+        {
+          shopId,
+          documentType: DocumentType.RECEIPT,
+          prefix: shop.invoicePrefix || 'HP',
+          separator: '-',
+          documentCode: 'R',
+          yearFormat: YearFormat.FY,
+          numberLength: 4,
+          resetPolicy: ResetPolicy.YEARLY,
+        },
+        {
+          shopId,
+          documentType: DocumentType.QUOTATION,
+          prefix: shop.invoicePrefix || 'HP',
+          separator: '-',
+          documentCode: 'Q',
+          yearFormat: YearFormat.FY,
+          numberLength: 4,
+          resetPolicy: ResetPolicy.YEARLY,
+        },
+        {
+          shopId,
+          documentType: DocumentType.PURCHASE_ORDER,
+          prefix: shop.invoicePrefix || 'HP',
+          separator: '-',
+          documentCode: 'PO',
+          yearFormat: YearFormat.FY,
+          numberLength: 4,
+          resetPolicy: ResetPolicy.YEARLY,
+        },
+      ];
+
+      await this.prisma.shopDocumentSetting.createMany({
+        data: defaultSettings,
+      });
+
+      settings = await this.prisma.shopDocumentSetting.findMany({
+        where: { shopId },
+        orderBy: { documentType: 'asc' },
+      });
+    }
+
+    return settings;
+  }
+
+  /**
+   * Update a specific document type setting for a shop
+   * Validates that locked fields (prefix, documentCode) are not changed if documents exist
+   */
+  async updateDocumentSetting(
+    tenantId: string,
+    role: string,
+    shopId: string,
+    documentType: DocumentType,
+    dto: UpdateDocumentSettingDto,
+  ) {
+    if (role !== 'OWNER' && role !== 'STAFF') {
+      throw new ForbiddenException(
+        'Only owner or staff can update document settings',
+      );
+    }
+
+    // Verify shop belongs to tenant
+    const shop = await this.prisma.shop.findFirst({
+      where: { id: shopId, tenantId },
+    });
+
+    if (!shop) {
+      throw new ForbiddenException('Shop not found');
+    }
+
+    // Find or create the setting
+    const existing = await this.prisma.shopDocumentSetting.findUnique({
+      where: {
+        shopId_documentType: {
+          shopId,
+          documentType,
+        },
+      },
+    });
+
+    // If documents exist (currentNumber > 0), prevent changing prefix/documentCode
+    if (existing && existing.currentNumber > 0) {
+      if (dto.prefix && dto.prefix !== existing.prefix) {
+        throw new ForbiddenException(
+          'Cannot change prefix after documents have been generated',
+        );
+      }
+      if (dto.documentCode && dto.documentCode !== existing.documentCode) {
+        throw new ForbiddenException(
+          'Cannot change document code after documents have been generated',
+        );
+      }
+    }
+
+    // Upsert the setting
+    return this.prisma.shopDocumentSetting.upsert({
+      where: {
+        shopId_documentType: {
+          shopId,
+          documentType,
+        },
+      },
+      update: {
+        prefix: dto.prefix,
+        separator: dto.separator,
+        documentCode: dto.documentCode,
+        yearFormat: dto.yearFormat,
+        numberLength: dto.numberLength,
+        resetPolicy: dto.resetPolicy,
+      },
+      create: {
+        shopId,
+        documentType,
+        prefix: dto.prefix ?? shop.invoicePrefix ?? 'HP',
+        separator: dto.separator ?? '-',
+        documentCode:
+          dto.documentCode ??
+          (documentType === DocumentType.SALES_INVOICE
+            ? 'SI'
+            : documentType === DocumentType.PURCHASE_INVOICE
+              ? 'PI'
+              : documentType === DocumentType.JOB_CARD
+                ? 'JC'
+                : documentType === DocumentType.RECEIPT
+                  ? 'R'
+                  : documentType === DocumentType.QUOTATION
+                    ? 'Q'
+                    : 'PO'),
+        yearFormat: dto.yearFormat ?? 'FY',
+        numberLength: dto.numberLength ?? 4,
+        resetPolicy: dto.resetPolicy ?? 'YEARLY',
       },
     });
   }

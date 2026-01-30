@@ -7,17 +7,27 @@ import {
   type SalesInvoice,
   type InvoiceStatus,
   type PaymentMode,
+  type PaymentStatus,
 } from "@/services/sales.api";
 import { getAccessToken, decodeAccessToken } from "@/services/auth.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
 import { NoShopsAlert } from "../components/NoShopsAlert";
+import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
   PAID: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
   CREDIT: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
   CANCELLED: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
+};
+
+const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
+  PAID: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
+  PARTIALLY_PAID:
+    "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+  UNPAID: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
+  CANCELLED: "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-400",
 };
 
 const PAYMENT_BADGES: Record<PaymentMode, string> = {
@@ -49,7 +59,7 @@ export default function SalesPage() {
 
   // Use modern hook for async data loading with built-in race condition prevention
   const {
-    data: invoices = [],
+    data: invoicesData,
     isLoading,
     error,
     reload,
@@ -85,6 +95,8 @@ export default function SalesPage() {
     [] as SalesInvoice[], // Initial data
   );
 
+  const invoices = invoicesData || [];
+
   // Transform error messages for better UX
   const displayError = error
     ? error.includes("Invalid shop")
@@ -93,6 +105,11 @@ export default function SalesPage() {
         ? "Your session has expired. Please log in again."
         : error
     : null;
+
+
+  const [collectingInvoice, setCollectingInvoice] = useState<SalesInvoice | null>(
+    null,
+  );
 
   const handleCreateInvoice = () => {
     if (!selectedShopId) {
@@ -103,11 +120,11 @@ export default function SalesPage() {
   };
 
   const handlePrint = (invoiceId: string, invoiceNumber: string) => {
-    router.push(`/sales/${invoiceId}?action=print&shopId=${selectedShopId}`);
+    router.push(`/print/invoice/${invoiceId}?shopId=${selectedShopId}`);
   };
 
   const handleShare = (invoiceId: string, invoiceNumber: string) => {
-    const shareUrl = `${window.location.origin}/sales/${invoiceId}?shopId=${selectedShopId}`;
+    const shareUrl = `${window.location.origin}/print/invoice/${invoiceId}?shopId=${selectedShopId}`;
     const text = `Invoice ${invoiceNumber}`;
     if (navigator.share) {
       navigator.share({ title: text, url: shareUrl });
@@ -142,6 +159,10 @@ export default function SalesPage() {
     } catch (err: any) {
       alert(err.message || "Failed to cancel invoice");
     }
+  };
+
+  const handleCollectPayment = (invoice: SalesInvoice) => {
+    setCollectingInvoice(invoice);
   };
 
   const formatDate = (date: string | Date) => {
@@ -304,113 +325,189 @@ export default function SalesPage() {
               <tbody
                 className={`divide-y ${theme === "dark" ? "divide-white/10" : "divide-gray-200"}`}
               >
-                {invoices.map((inv) => (
-                  <tr
-                    key={inv.id}
-                    className={`transition ${theme === "dark" ? "hover:bg-white/5" : "hover:bg-gray-50"}`}
-                  >
-                    <td
-                      className={`px-4 py-3 text-sm font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}
-                    >
-                      {inv.invoiceNumber}
-                    </td>
-                    <td
-                      className={`px-4 py-3 text-sm ${theme === "dark" ? "text-stone-300" : "text-black"}`}
-                    >
-                      {inv.customerName || "-"}
-                    </td>
-                    <td
-                      className={`px-4 py-3 text-sm font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}
-                    >
-                      ₹
-                      {inv.totalAmount.toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${PAYMENT_BADGES[inv.paymentMode]}`}
+                {invoices.map((inv) => {
+                  // Determine if row should have highlight (has balance > 0)
+                  const hasBalance = inv.balanceAmount && inv.balanceAmount > 0;
+                  const rowBgClass = hasBalance
+                    ? theme === "dark"
+                      ? "bg-amber-500/5 hover:bg-amber-500/10"
+                      : "bg-amber-50 hover:bg-amber-100/50"
+                    : theme === "dark"
+                      ? "hover:bg-white/5"
+                      : "hover:bg-gray-50";
+
+                  return (
+                    <tr key={inv.id} className={`transition ${rowBgClass}`}>
+                      <td
+                        className={`px-4 py-3 text-sm font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}
                       >
-                        {inv.paymentMode}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[inv.status]}`}
+                        {inv.invoiceNumber}
+                      </td>
+                      <td
+                        className={`px-4 py-3 text-sm ${theme === "dark" ? "text-stone-300" : "text-black"}`}
                       >
-                        {inv.status}
-                      </span>
-                    </td>
-                    <td
-                      className={`px-4 py-3 text-sm ${theme === "dark" ? "text-stone-400" : "text-zinc-600"}`}
-                    >
-                      {formatDate(inv.invoiceDate)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handlePrint(inv.id, inv.invoiceNumber)}
-                          title="Print Invoice"
-                          className={`px-2 py-1 rounded text-sm transition ${
-                            theme === "dark"
-                              ? "text-blue-400 hover:bg-blue-500/20"
-                              : "text-blue-600 hover:bg-blue-50"
-                          }`}
-                        >
-                          🖨️
-                        </button>
-                        <button
-                          onClick={() => handleShare(inv.id, inv.invoiceNumber)}
-                          title="Share Invoice"
-                          className={`px-2 py-1 rounded text-sm transition ${
-                            theme === "dark"
-                              ? "text-green-400 hover:bg-green-500/20"
-                              : "text-green-600 hover:bg-green-50"
-                          }`}
-                        >
-                          📤
-                        </button>
-                        {isOwner &&
-                          (inv.status === "PAID" ||
-                            inv.status === "CREDIT") && (
-                            <button
-                              onClick={() => handleEdit(inv.id)}
-                              title="Edit Invoice"
-                              className={`px-2 py-1 rounded text-sm transition ${
-                                theme === "dark"
-                                  ? "text-amber-400 hover:bg-amber-500/20"
-                                  : "text-amber-600 hover:bg-amber-50"
+                        {inv.customerName || "-"}
+                      </td>
+                      <td
+                        className={`px-4 py-3 text-sm ${theme === "dark" ? "text-white" : "text-black"}`}
+                      >
+                        <div className="space-y-1">
+                          <div className="font-bold">
+                            ₹
+                            {inv.totalAmount.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </div>
+                          {inv.paidAmount !== undefined && (
+                            <div
+                              className={`text-xs ${theme === "dark" ? "text-stone-400" : "text-zinc-600"}`}
+                            >
+                              Paid: ₹
+                              {inv.paidAmount.toLocaleString("en-US", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </div>
+                          )}
+                          {inv.balanceAmount !== undefined && (
+                            <div
+                              className={`text-xs font-semibold ${
+                                inv.balanceAmount > 0
+                                  ? theme === "dark"
+                                    ? "text-red-400"
+                                    : "text-red-600"
+                                  : theme === "dark"
+                                    ? "text-green-400"
+                                    : "text-green-600"
                               }`}
                             >
-                              ✏️
-                            </button>
+                              Balance: ₹
+                              {inv.balanceAmount.toLocaleString("en-US", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </div>
                           )}
-                        {isOwner &&
-                          (inv.status === "PAID" ||
-                            inv.status === "CREDIT") && (
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${PAYMENT_BADGES[inv.paymentMode]}`}
+                        >
+                          {inv.paymentMode}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            inv.paymentStatus
+                              ? PAYMENT_STATUS_COLORS[inv.paymentStatus]
+                              : STATUS_COLORS[inv.status]
+                          }`}
+                        >
+                          {inv.paymentStatus || inv.status}
+                        </span>
+                      </td>
+                      <td
+                        className={`px-4 py-3 text-sm ${theme === "dark" ? "text-stone-400" : "text-zinc-600"}`}
+                      >
+                        {formatDate(inv.invoiceDate)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                           {/* Collect Payment Button */}
+                           {inv.balanceAmount && inv.balanceAmount > 0 ? (
                             <button
-                              onClick={() =>
-                                handleCancel(inv.id, inv.invoiceNumber)
-                              }
-                              title="Cancel Invoice"
-                              className={`px-2 py-1 rounded text-sm transition ${
-                                theme === "dark"
-                                  ? "text-red-400 hover:bg-red-500/20"
-                                  : "text-red-600 hover:bg-red-50"
-                              }`}
+                              onClick={() => handleCollectPayment(inv)}
+                              title="Collect Payment"
+                              className="px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-500/20 dark:text-green-300 dark:hover:bg-green-500/30 transition shadow-sm border border-green-200 dark:border-green-500/30"
                             >
-                              ❌
+                              Collect ₹
                             </button>
-                          )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                           ) : null}
+
+                          <button
+                            onClick={() =>
+                              handlePrint(inv.id, inv.invoiceNumber)
+                            }
+                            title="Print Invoice"
+                            className={`px-2 py-1 rounded text-sm transition ${
+                              theme === "dark"
+                                ? "text-blue-400 hover:bg-blue-500/20"
+                                : "text-blue-600 hover:bg-blue-50"
+                            }`}
+                          >
+                            🖨️
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleShare(inv.id, inv.invoiceNumber)
+                            }
+                            title="Share Invoice"
+                            className={`px-2 py-1 rounded text-sm transition ${
+                              theme === "dark"
+                                ? "text-green-400 hover:bg-green-500/20"
+                                : "text-green-600 hover:bg-green-50"
+                            }`}
+                          >
+                            📤
+                          </button>
+                          {isOwner &&
+                            (inv.status === "PAID" ||
+                              inv.status === "CREDIT") && (
+                              <button
+                                onClick={() => handleEdit(inv.id)}
+                                title="Edit Invoice"
+                                className={`px-2 py-1 rounded text-sm transition ${
+                                  theme === "dark"
+                                    ? "text-amber-400 hover:bg-amber-500/20"
+                                    : "text-amber-600 hover:bg-amber-50"
+                                }`}
+                              >
+                                ✏️
+                              </button>
+                            )}
+                          {isOwner &&
+                            (inv.status === "PAID" ||
+                              inv.status === "CREDIT") && (
+                              <button
+                                onClick={() =>
+                                  handleCancel(inv.id, inv.invoiceNumber)
+                                }
+                                title="Cancel Invoice"
+                                className={`px-2 py-1 rounded text-sm transition ${
+                                  theme === "dark"
+                                    ? "text-red-400 hover:bg-red-500/20"
+                                    : "text-red-600 hover:bg-red-50"
+                                }`}
+                              >
+                                ❌
+                              </button>
+                            )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
+      )}
+      
+      {/* Collect Payment Modal */}
+      {collectingInvoice && (
+        <CollectPaymentModal
+          invoiceId={collectingInvoice.id}
+          balanceAmount={collectingInvoice.balanceAmount || 0}
+          customerName={collectingInvoice.customerName || "Customer"}
+          isOpen={!!collectingInvoice}
+          onClose={() => setCollectingInvoice(null)}
+          onSuccess={() => {
+            reload();
+          }}
+        />
       )}
     </div>
   );

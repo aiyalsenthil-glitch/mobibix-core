@@ -1,0 +1,258 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
+import { getInvoice, type SalesInvoice } from "@/services/sales.api";
+import { useTheme } from "@/context/ThemeContext";
+import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
+
+export default function InvoiceDetailPage() {
+  const router = useRouter();
+  const params = useParams();
+  const invoiceId = params.invoiceId as string;
+  const { theme } = useTheme();
+  const [isCollectModalOpen, setIsCollectModalOpen] = useState(false);
+
+  const {
+    data: invoice,
+    isLoading,
+    error,
+    reload,
+  } = useDeferredAsyncData(
+    useCallback(async () => {
+      if (!invoiceId) return null;
+      return await getInvoice(invoiceId);
+    }, [invoiceId]),
+    [invoiceId],
+    null as SalesInvoice | null
+  );
+
+  const handleBack = () => {
+    router.back();
+  };
+
+  const formatDate = (date: string | Date | undefined) => {
+    if (!date) return "-";
+    return new Date(date).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatCurrency = (amount: number | undefined) => {
+    if (amount === undefined) return "₹0.00";
+    return amount.toLocaleString("en-IN", {
+      style: "currency",
+      currency: "INR",
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className={`p-8 text-center ${theme === "dark" ? "text-stone-400" : "text-gray-500"}`}>
+        Loading invoice details...
+      </div>
+    );
+  }
+
+  if (error || !invoice) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error || "Invoice not found"}
+        </div>
+        <button
+          onClick={handleBack}
+          className="mt-4 text-teal-600 hover:underline"
+        >
+          &larr; Back to Invoices
+        </button>
+      </div>
+    );
+  }
+
+  const hasBalance = (invoice.balanceAmount || 0) > 0;
+  const statusColor =
+    invoice.status === "PAID"
+      ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300"
+      : invoice.status === "CREDIT"
+      ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
+      : "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300";
+
+  return (
+    <div className="max-w-4xl mx-auto pb-12">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={handleBack}
+          className={`flex items-center gap-1 font-medium transition ${
+            theme === "dark" ? "text-stone-400 hover:text-white" : "text-gray-600 hover:text-black"
+          }`}
+        >
+          &larr; Back
+        </button>
+        <div className="flex gap-2">
+           {hasBalance && (
+            <button
+              onClick={() => setIsCollectModalOpen(true)}
+              className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-lg font-bold shadow-md transition"
+            >
+              Collect Payment
+            </button>
+           )}
+           <button
+             onClick={() => router.push(`/print/invoice/${invoice.id}`)}
+             className={`px-4 py-2 border rounded-lg font-medium transition ${
+               theme === "dark" 
+                 ? "border-white/20 hover:bg-white/10 text-white" 
+                 : "border-gray-300 hover:bg-gray-50 text-gray-700"
+             }`}
+           >
+             Print
+           </button>
+        </div>
+      </div>
+
+      {/* Main Card */}
+      <div className={`rounded-xl overflow-hidden shadow-sm border mb-6 ${
+        theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"
+      }`}>
+        {/* Top Header */}
+        <div className={`p-6 border-b flex justify-between items-start ${
+           theme === "dark" ? "border-white/10" : "border-gray-100"
+        }`}>
+          <div>
+            <h1 className={`text-2xl font-bold mb-1 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+              Invoice #{invoice.invoiceNumber}
+            </h1>
+            <div className={`text-sm ${theme === "dark" ? "text-stone-400" : "text-gray-500"}`}>
+              Created on {formatDate(invoice.createdAt)}
+            </div>
+          </div>
+          <span className={`px-3 py-1 rounded-full text-sm font-bold ${statusColor}`}>
+            {invoice.status}
+          </span>
+        </div>
+
+        {/* Details Grid */}
+        <div className={`grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x ${
+           theme === "dark" ? "divide-white/10" : "divide-gray-100"
+        }`}>
+          {/* Customer Info */}
+          <div className="p-6">
+            <h3 className={`text-xs uppercase font-bold tracking-wider mb-4 ${theme === "dark" ? "text-stone-500" : "text-gray-400"}`}>
+              Customer Details
+            </h3>
+            <div className={`font-medium text-lg mb-1 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+              {invoice.customerName}
+            </div>
+            {invoice.customerPhone && (
+              <div className={theme === "dark" ? "text-stone-300" : "text-gray-600"}>
+                {invoice.customerPhone}
+              </div>
+            )}
+          </div>
+
+          {/* Payment Summary */}
+          <div className="p-6 col-span-2">
+            <h3 className={`text-xs uppercase font-bold tracking-wider mb-4 ${theme === "dark" ? "text-stone-500" : "text-gray-400"}`}>
+              Payment Summary
+            </h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <div className={`text-sm mb-1 ${theme === "dark" ? "text-stone-400" : "text-gray-500"}`}>Total Amount</div>
+                <div className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                  {formatCurrency(invoice.totalAmount)}
+                </div>
+              </div>
+              <div>
+                <div className={`text-sm mb-1 ${theme === "dark" ? "text-stone-400" : "text-gray-500"}`}>Paid</div>
+                <div className="text-xl font-bold text-green-500">
+                  {formatCurrency(invoice.paidAmount || 0)}
+                </div>
+              </div>
+              <div>
+                <div className={`text-sm mb-1 ${theme === "dark" ? "text-stone-400" : "text-gray-500"}`}>Balance Due</div>
+                <div className={`text-xl font-bold ${hasBalance ? "text-red-500" : "text-stone-400"}`}>
+                  {formatCurrency(invoice.balanceAmount || 0)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment History */}
+      <h2 className={`text-lg font-bold mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+        Payment History
+      </h2>
+      
+      {invoice.payments && invoice.payments.length > 0 ? (
+        <div className={`rounded-xl overflow-hidden shadow-sm border ${
+          theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"
+        }`}>
+          <table className="w-full">
+            <thead className={`text-left text-xs uppercase font-bold ${
+              theme === "dark" ? "bg-white/5 text-stone-400" : "bg-gray-50 text-gray-500"
+            }`}>
+              <tr>
+                <th className="px-6 py-3">Receipt #</th>
+                <th className="px-6 py-3">Date</th>
+                <th className="px-6 py-3">Mode</th>
+                <th className="px-6 py-3">Ref</th>
+                <th className="px-6 py-3 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody className={`divide-y ${theme === "dark" ? "divide-white/5" : "divide-gray-100"}`}>
+              {invoice.payments.map((payment) => (
+                <tr key={payment.id}>
+                  <td className={`px-6 py-3 font-medium ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                    {payment.receiptNumber || "-"}
+                  </td>
+                  <td className={`px-6 py-3 ${theme === "dark" ? "text-stone-400" : "text-gray-600"}`}>
+                    {formatDate(payment.createdAt)}
+                  </td>
+                  <td className="px-6 py-3">
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${
+                      theme === "dark" ? "bg-white/10 text-white" : "bg-gray-100 text-gray-700"
+                    }`}>
+                      {payment.method}
+                    </span>
+                  </td>
+                  <td className={`px-6 py-3 text-sm ${theme === "dark" ? "text-stone-500" : "text-gray-500"}`}>
+                    {payment.transactionRef || "-"}
+                  </td>
+                  <td className={`px-6 py-3 text-right font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                    {formatCurrency(payment.amount)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className={`p-8 text-center rounded-xl border border-dashed ${
+           theme === "dark" ? "border-white/10 text-stone-500" : "border-gray-300 text-gray-500"
+        }`}>
+          No payment history available
+        </div>
+      )}
+
+      {/* Modal */}
+      {invoice && (
+        <CollectPaymentModal
+          invoiceId={invoice.id}
+          balanceAmount={invoice.balanceAmount || 0}
+          customerName={invoice.customerName || "Customer"}
+          isOpen={isCollectModalOpen}
+          onClose={() => setIsCollectModalOpen(false)}
+          onSuccess={() => {
+            reload();
+          }}
+        />
+      )}
+    </div>
+  );
+}

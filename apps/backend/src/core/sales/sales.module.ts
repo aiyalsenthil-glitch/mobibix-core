@@ -3,10 +3,11 @@ import { SalesController } from './sales.controller';
 import { SalesService } from './sales.service';
 import { PaymentService } from './payment.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { StockService } from '../stock/stock.service';
 
 @Module({
   controllers: [SalesController],
-  providers: [SalesService, PaymentService, PrismaService],
+  providers: [SalesService, PaymentService, PrismaService, StockService],
   exports: [SalesService, PaymentService],
 })
 export class SalesModule {}

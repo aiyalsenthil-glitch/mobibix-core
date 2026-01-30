@@ -20,6 +20,10 @@ export class PlansService {
     return billingCycle === BillingCycle.ANNUAL ? 365 : 30;
   }
 
+  private resolvePlanCode(name: string): string {
+    return name.trim().toUpperCase().replace(/\s+/g, '_');
+  }
+
   /**
    * Seed default plans (safe to run multiple times)
    */
@@ -68,6 +72,7 @@ export class PlansService {
         await this.prisma.plan.create({
           data: {
             ...plan,
+            code: this.resolvePlanCode(plan.name),
             durationDays: this.resolveDurationDays(
               plan.name,
               plan.billingCycle,
@@ -161,6 +166,7 @@ export class PlansService {
     return this.prisma.plan.create({
       data: {
         ...data,
+        code: this.resolvePlanCode(data.name),
         durationDays,
         isActive: true,
         features: {},
@@ -188,6 +194,7 @@ export class PlansService {
 
     return this.prisma.plan.create({
       data: {
+        code: this.resolvePlanCode('TRIAL'),
         name: 'TRIAL',
         price: 0,
         level: 0,

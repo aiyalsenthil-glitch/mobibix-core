@@ -97,8 +97,41 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshShops = async () => {
-    await fetchShops();
+    const data = await fetchShops();
+
+    // Keep a valid selection after refresh
+    if (data) {
+      const hasSelected =
+        selectedShopId && data.some((s) => s.id === selectedShopId);
+
+      if (!hasSelected && data.length > 0) {
+        const fallbackId = data[0].id;
+        setSelectedShopId(fallbackId);
+        localStorage.setItem(SELECTED_SHOP_KEY, fallbackId);
+      }
+    }
   };
+
+  // Listen for shop updates (same tab + cross-tab)
+  useEffect(() => {
+    const handleShopUpdated = () => {
+      refreshShops();
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "shop_updated") {
+        refreshShops();
+      }
+    };
+
+    window.addEventListener("shopUpdated", handleShopUpdated);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("shopUpdated", handleShopUpdated);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [refreshShops]);
 
   const selectedShop = shops.find((s) => s.id === selectedShopId) || null;
   const hasMultipleShops = shops.length > 1;

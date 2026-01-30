@@ -4,6 +4,10 @@ import * as crypto from 'crypto';
 import { CreateJobCardDto } from '../jobcard/dto/create-job-card.dto';
 import { JobStatus } from '@prisma/client';
 import { UpdateJobCardDto } from '../jobcard/dto/update-job-card.dto';
+import {
+  generateJobCardNumber,
+  getFinancialYear,
+} from '../../../common/utils/invoice-number.util';
 
 @Injectable()
 export class JobCardsService {
@@ -60,13 +64,40 @@ export class JobCardsService {
   }
 
   async nextJobNumber(shopId: string) {
-    const last = await this.prisma.jobCard.findFirst({
-      where: { shopId },
+    const shop = await this.prisma.shop.findFirst({
+      where: { id: shopId },
+      select: { invoicePrefix: true },
+    });
+
+    if (!shop) {
+      throw new BadRequestException('Shop not found');
+    }
+
+    const today = new Date();
+    const fy = getFinancialYear(today);
+    // fy will be "202526" for Apr2025-Mar2026, "202627" for Apr2026-Mar2027, etc.
+
+    // Find last job card for THIS FINANCIAL YEAR
+    // IMPORTANT: Sequence resets to 0001 on each financial year (April 1)
+    // When FY changes, this returns null, causing sequence to start at 1 (fresh start)
+    const lastJob = await this.prisma.jobCard.findFirst({
+      where: {
+        shopId,
+        jobNumber: { contains: `-J-${fy}-` }, // Only finds job cards from current FY
+      },
       orderBy: { createdAt: 'desc' },
       select: { jobNumber: true },
     });
-    const n = last ? Number(last.jobNumber.split('-')[1]) + 1 : 1;
-    return `JOB-${String(n).padStart(4, '0')}`;
+
+    let sequenceNumber = 1;
+    if (lastJob) {
+      const parts = lastJob.jobNumber.split('-');
+      const lastSeq = parseInt(parts[parts.length - 1], 10); // Extract 0001, 0002, etc.
+      sequenceNumber = lastSeq + 1; // Next sequence number
+    }
+    // If no job cards exist for this FY yet, sequenceNumber stays 1 (fresh start)
+
+    return generateJobCardNumber(shop.invoicePrefix, sequenceNumber, today);
   }
 
   async create(user, shopId: string, dto: CreateJobCardDto) {

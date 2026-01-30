@@ -30,8 +30,14 @@ export default function VerifyInvoicePage() {
     const loadInvoice = async () => {
       try {
         setLoading(true);
-        const API_BASE_URL =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
+        const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost_REPLACED:3000";
+        let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || `${origin}/api`;
+
+        // Robustness: If configured URL is localhost but we are accessing from network (e.g. phone), 
+        // force use of current origin to avoid connection refused.
+        if (typeof window !== "undefined" && API_BASE_URL.includes("localhost") && !window.location.hostname.includes("localhost")) {
+            API_BASE_URL = `${origin}/api`;
+        }
         const response = await fetch(
           `${API_BASE_URL}/public/sales/invoice/${params.invoiceId}/verify`,
         );

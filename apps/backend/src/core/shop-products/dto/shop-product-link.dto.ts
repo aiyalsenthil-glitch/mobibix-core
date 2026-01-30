@@ -1,8 +1,13 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+} from 'class-validator';
 
 export enum LinkSource {
   GLOBAL = 'GLOBAL',
-  TENANT = 'TENANT',
 }
 
 export class ShopProductLinkDto {
@@ -11,11 +16,11 @@ export class ShopProductLinkDto {
   shopId!: string;
 
   @IsEnum(LinkSource)
-  source!: LinkSource; // GLOBAL or TENANT
+  source!: LinkSource; // Only GLOBAL supported (TenantProduct removed)
 
   @IsString()
   @IsNotEmpty()
-  productId!: string; // globalProductId or tenantProductId
+  productId!: string; // globalProductId from GlobalProduct
 
   @IsNumber()
   @IsOptional()

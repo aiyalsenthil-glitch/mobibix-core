@@ -1,23 +1,41 @@
 import axios from 'axios';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
-import {
-  WHATSAPP_PLAN_RULES,
-  WhatsAppFeature,
-} from '../../core/billing/whatsapp-rules';
-import { toWhatsAppPhone } from '../../common/utils/phone.util';
+import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
+import { toWhatsAppPhone, normalizePhone } from '../../common/utils/phone.util';
 import { WhatsAppLogger } from './whatsapp.logger';
+import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
+import { WhatsAppPhoneNumberPurpose } from '@prisma/client';
+import { PlanRulesService } from '../../core/billing/plan-rules.service';
 
 @Injectable()
 export class WhatsAppSender {
-  private readonly phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  // ⚠️ REMOVED: No hardcoded phone number ID
+  // private readonly phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   private readonly token = process.env.WHATSAPP_ACCESS_TOKEN;
   private readonly apiVersion = process.env.WHATSAPP_API_VERSION || 'v22.0';
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: WhatsAppLogger,
+    private readonly phoneNumbersService: WhatsAppPhoneNumbersService,
+    private readonly planRulesService: PlanRulesService,
   ) {}
+
+  /**
+   * Map WhatsApp feature to phone number purpose
+   */
+  private mapFeatureToPurpose(
+    feature: WhatsAppFeature,
+  ): WhatsAppPhoneNumberPurpose {
+    const mapping: Record<WhatsAppFeature, WhatsAppPhoneNumberPurpose> = {
+      WELCOME: 'DEFAULT',
+      PAYMENT_DUE: 'BILLING',
+      EXPIRY: 'REMINDER',
+      REMINDER: 'REMINDER',
+    };
+    return mapping[feature] || 'DEFAULT';
+  }
 
   async sendTemplateMessage(
     tenantId: string,
@@ -25,37 +43,95 @@ export class WhatsAppSender {
     phone: string,
     templateName: string,
     parameters: string[],
-  ): Promise<{ success: boolean; error?: any; skipped?: boolean }> {
-    // ─────────────────────────────
-    // 1️⃣ Load ACTIVE/TRIAL subscription
-    // ─────────────────────────────
-    const subscription = await this.prisma.tenantSubscription.findFirst({
-      where: {
+  ): Promise<{
+    success: boolean;
+    messageId?: string;
+    error?: any;
+    skipped?: boolean;
+  }> {
+    // ✅ NORMALIZE PHONE: Convert any format to 10 digits, then to 91XXXXXXXXXX
+    const normalizedPhone = normalizePhone(phone);
+    let whatsappFormattedPhone: string;
+
+    try {
+      whatsappFormattedPhone = toWhatsAppPhone(normalizedPhone);
+    } catch (error: any) {
+      await this.logger.log({
         tenantId,
-        status: { in: ['ACTIVE', 'TRIAL'] },
-      },
-      orderBy: { startDate: 'desc' },
-      include: { plan: true },
+        memberId: null,
+        phone,
+        type: feature,
+        status: 'FAILED',
+        error: `Invalid phone format: ${error?.message || 'Unknown error'}`,
+      });
+      return { success: false, error: error?.message };
+    }
+
+    // ─────────────────────────────
+    // 1️⃣ Check WhatsApp Settings (enabled check)
+    // ─────────────────────────────
+    const setting = await this.prisma.whatsAppSetting.findUnique({
+      where: { tenantId },
     });
 
-    if (!subscription?.plan) {
+    if (!setting?.enabled) {
+      await this.logger.log({
+        tenantId,
+        memberId: null,
+        phone,
+        type: feature,
+        status: 'FAILED',
+        error: 'WhatsApp is disabled for this tenant',
+      });
       return { success: false, skipped: true };
     }
 
-    const planName = subscription.plan.name as keyof typeof WHATSAPP_PLAN_RULES;
-    const rule = WHATSAPP_PLAN_RULES[planName];
+    // ─────────────────────────────
+    // 2️⃣ Get Dynamic Phone Number from DB
+    // ─────────────────────────────
+    const purpose = this.mapFeatureToPurpose(feature);
+    let phoneNumberConfig;
 
-    // ─────────────────────────────
-    // 2️⃣ Plan-level block
-    // ─────────────────────────────
-    if (!rule?.enabled) {
+    try {
+      phoneNumberConfig =
+        await this.phoneNumbersService.getPhoneNumberForPurpose(
+          tenantId,
+          purpose,
+        );
+    } catch (error) {
+      await this.logger.log({
+        tenantId,
+        memberId: null,
+        phone,
+        type: feature,
+        status: 'FAILED',
+        error: `No active phone number found for purpose ${purpose}: ${error.message}`,
+      });
+      return { success: false, skipped: true };
+    }
+
+    if (!phoneNumberConfig.isActive) {
+      await this.logger.log({
+        tenantId,
+        memberId: null,
+        phone,
+        type: feature,
+        status: 'FAILED',
+        error: 'Phone number is inactive',
+      });
       return { success: false, skipped: true };
     }
 
     // ─────────────────────────────
-    // 3️⃣ Feature-level block
+    // 3️⃣ Plan rules (DB-driven)
     // ─────────────────────────────
-    if (!(rule.features as WhatsAppFeature[]).includes(feature)) {
+    const rules = await this.planRulesService.getPlanRulesForTenant(tenantId);
+
+    if (!rules?.enabled) {
+      return { success: false, skipped: true };
+    }
+
+    if (!rules.features.includes(feature)) {
       return { success: false, skipped: true };
     }
 
@@ -66,30 +142,21 @@ export class WhatsAppSender {
       where: { tenantId },
     });
 
-    if (rule.maxMembers > 0 && memberCount > rule.maxMembers) {
+    if (rules.maxMembers > 0 && memberCount > rules.maxMembers) {
       return { success: false, skipped: true };
     }
-    await this.prisma.whatsAppSetting.upsert({
-      where: { tenantId },
-      update: {},
-      create: {
-        tenantId,
-        enabled: true, // ✅ correct field
-        provider: 'META',
-      },
-    });
 
     // ─────────────────────────────
-    // 5️⃣ SEND WHATSAPP (Cloud API)
+    // 7️⃣ SEND WHATSAPP (Cloud API) - Using Dynamic Phone Number ID
     // ─────────────────────────────
-    const url = `https://graph.facebook.com/${this.apiVersion}/${this.phoneNumberId}/messages`;
+    const url = `https://graph.facebook.com/${this.apiVersion}/${phoneNumberConfig.phoneNumberId}/messages`;
 
     try {
-      await axios.post(
+      const response = await axios.post(
         url,
         {
           messaging_product: 'whatsapp',
-          to: toWhatsAppPhone(phone),
+          to: whatsappFormattedPhone,
           type: 'template',
           template: {
             name: templateName,
@@ -113,6 +180,8 @@ export class WhatsAppSender {
         },
       );
 
+      const messageId = response.data?.messages?.[0]?.id;
+
       // ✅ LOG SUCCESS
       await this.logger.log({
         tenantId,
@@ -120,9 +189,10 @@ export class WhatsAppSender {
         phone,
         type: feature,
         status: 'SENT',
+        messageId,
       });
 
-      return { success: true };
+      return { success: true, messageId };
     } catch (error) {
       const errMsg = error.response?.data
         ? JSON.stringify(error.response.data)

@@ -26,9 +26,9 @@ export function EditProductModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: product.name,
-    type: (product.type as ProductType) || ProductType.ACCESSORY,
+    type: (product.type as ProductType) || ProductType.GOODS,
     hsnSac: product.hsnCode || "",
-    salePrice: product.salePrice.toString(),
+    salePrice: product.salePrice?.toString() || "0",
     gstRate: product.gstRate?.toString() || "18",
   });
 
@@ -120,14 +120,14 @@ export function EditProductModal({
                 theme === "dark" ? "text-white" : "text-gray-900"
               }`}
             >
-              Edit Product
+              Edit Product Configuration
             </h2>
             <p
               className={`text-sm mt-1 ${
                 theme === "dark" ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              Update product information.
+              Update shop-specific pricing and settings for this product.
             </p>
           </div>
           <button
@@ -161,169 +161,169 @@ export function EditProductModal({
                 onChange={handleChange}
                 required
                 className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                theme === "dark"
-                  ? "bg-gray-800 border-white/20 text-white"
-                  : "bg-white border-gray-300 text-gray-900"
-              }`}
-            />
-          </div>
-
-          {/* Product Type */}
-          <div className="md:col-span-2">
-            <label
-              className={`block text-sm font-medium mb-2 ${
-                theme === "dark" ? "text-gray-300" : "text-gray-700"
-              }`}
-            >
-              Product Type <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="type"
-              value={formData.type}
-              onChange={handleChange}
-              required
-              className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                theme === "dark"
-                  ? "bg-gray-800 border-white/20 text-white"
-                  : "bg-white border-gray-300 text-gray-900"
-              }`}
-            >
-              <option value={ProductType.MOBILE}>Mobile</option>
-              <option value={ProductType.ACCESSORY}>Accessory</option>
-              <option value={ProductType.SPARE}>Spare Part</option>
-            </select>
-          </div>
-
-          {/* HSN/SAC Code */}
-          <div className="relative">
-            <label
-              className={`block text-sm font-medium mb-2 ${
-                theme === "dark" ? "text-gray-300" : "text-gray-700"
-              }`}
-            >
-              HSN/SAC Code
-            </label>
-            <input
-              type="text"
-              name="hsnSac"
-              value={formData.hsnSac}
-              onChange={(e) => handleHsnSearch(e.target.value)}
-              onFocus={() =>
-                formData.hsnSac.length >= 2 && setShowHsnDropdown(true)
-              }
-              onBlur={() => setTimeout(() => setShowHsnDropdown(false), 200)}
-              placeholder="Search HSN/SAC..."
-              className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                theme === "dark"
-                  ? "bg-gray-800 border-white/20 text-white"
-                  : "bg-white border-gray-300 text-gray-900"
-              }`}
-            />
-            {showHsnDropdown && hsnResults.length > 0 && (
-              <div
-                className={`absolute z-10 w-full mt-1 border rounded-lg shadow-lg max-h-60 overflow-auto ${
                   theme === "dark"
-                    ? "bg-gray-800 border-gray-700"
-                    : "bg-white border-gray-200"
+                    ? "bg-gray-800 border-white/20 text-white"
+                    : "bg-white border-gray-300 text-gray-900"
+                }`}
+              />
+            </div>
+
+            {/* Product Type */}
+            <div className="md:col-span-2">
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-gray-300" : "text-gray-700"
                 }`}
               >
-                {hsnResults.map((hsn) => (
-                  <button
-                    key={hsn.id}
-                    type="button"
-                    onClick={() => selectHsn(hsn)}
-                    className={`w-full text-left px-4 py-2 hover:bg-teal-50 dark:hover:bg-teal-900/20 border-b last:border-0 ${
-                      theme === "dark"
-                        ? "border-gray-700 text-white"
-                        : "border-gray-100 text-gray-900"
-                    }`}
-                  >
-                    <div className="font-medium">{hsn.code}</div>
-                    <div
-                      className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                Product Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="type"
+                value={formData.type}
+                onChange={handleChange}
+                required
+                className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                  theme === "dark"
+                    ? "bg-gray-800 border-white/20 text-white"
+                    : "bg-white border-gray-300 text-gray-900"
+                }`}
+              >
+                <option value={ProductType.GOODS}>Goods</option>
+                <option value={ProductType.SPARE}>Spare Part</option>
+                <option value={ProductType.SERVICE}>Service</option>
+              </select>
+            </div>
+
+            {/* HSN/SAC Code */}
+            <div className="relative">
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                HSN/SAC Code
+              </label>
+              <input
+                type="text"
+                name="hsnSac"
+                value={formData.hsnSac}
+                onChange={(e) => handleHsnSearch(e.target.value)}
+                onFocus={() =>
+                  formData.hsnSac.length >= 2 && setShowHsnDropdown(true)
+                }
+                onBlur={() => setTimeout(() => setShowHsnDropdown(false), 200)}
+                placeholder="Search HSN/SAC..."
+                className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                  theme === "dark"
+                    ? "bg-gray-800 border-white/20 text-white"
+                    : "bg-white border-gray-300 text-gray-900"
+                }`}
+              />
+              {showHsnDropdown && hsnResults.length > 0 && (
+                <div
+                  className={`absolute z-10 w-full mt-1 border rounded-lg shadow-lg max-h-60 overflow-auto ${
+                    theme === "dark"
+                      ? "bg-gray-800 border-gray-700"
+                      : "bg-white border-gray-200"
+                  }`}
+                >
+                  {hsnResults.map((hsn) => (
+                    <button
+                      key={hsn.id}
+                      type="button"
+                      onClick={() => selectHsn(hsn)}
+                      className={`w-full text-left px-4 py-2 hover:bg-teal-50 dark:hover:bg-teal-900/20 border-b last:border-0 ${
+                        theme === "dark"
+                          ? "border-gray-700 text-white"
+                          : "border-gray-100 text-gray-900"
+                      }`}
                     >
-                      {hsn.description} • GST: {hsn.taxRate}%
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+                      <div className="font-medium">{hsn.code}</div>
+                      <div
+                        className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
+                      >
+                        {hsn.description} • GST: {hsn.taxRate}%
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* GST Rate */}
+            <div>
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                GST Rate (%)
+              </label>
+              <select
+                name="gstRate"
+                value={formData.gstRate}
+                onChange={handleChange}
+                className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                  theme === "dark"
+                    ? "bg-gray-800 border-white/20 text-white"
+                    : "bg-white border-gray-300 text-gray-900"
+                }`}
+              >
+                <option value="0">0%</option>
+                <option value="5">5%</option>
+                <option value="12">12%</option>
+                <option value="18">18%</option>
+                <option value="28">28%</option>
+              </select>
+            </div>
+
+            {/* Sale Price */}
+            <div className="md:col-span-2">
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                Sale Price (₹) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="salePrice"
+                value={formData.salePrice}
+                onChange={handleChange}
+                required
+                min="0"
+                step="0.01"
+                className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                  theme === "dark"
+                    ? "bg-gray-800 border-white/20 text-white"
+                    : "bg-white border-gray-300 text-gray-900"
+                }`}
+              />
+            </div>
           </div>
 
-          {/* GST Rate */}
-          <div>
-            <label
-              className={`block text-sm font-medium mb-2 ${
-                theme === "dark" ? "text-gray-300" : "text-gray-700"
-              }`}
-            >
-              GST Rate (%)
-            </label>
-            <select
-              name="gstRate"
-              value={formData.gstRate}
-              onChange={handleChange}
-              className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+          {/* Action Buttons */}
+          <div className="flex gap-3 mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className={`flex-1 px-6 py-3 rounded-lg font-semibold transition ${
                 theme === "dark"
-                  ? "bg-gray-800 border-white/20 text-white"
-                  : "bg-white border-gray-300 text-gray-900"
+                  ? "bg-gray-700 hover:bg-gray-600 text-white"
+                  : "bg-gray-200 hover:bg-gray-300 text-gray-900"
               }`}
             >
-              <option value="0">0%</option>
-              <option value="5">5%</option>
-              <option value="12">12%</option>
-              <option value="18">18%</option>
-              <option value="28">28%</option>
-            </select>
-          </div>
-
-          {/* Sale Price */}
-          <div className="md:col-span-2">
-            <label
-              className={`block text-sm font-medium mb-2 ${
-                theme === "dark" ? "text-gray-300" : "text-gray-700"
-              }`}
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 px-6 py-3 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition"
             >
-              Sale Price (₹) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              name="salePrice"
-              value={formData.salePrice}
-              onChange={handleChange}
-              required
-              min="0"
-              step="0.01"
-              className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                theme === "dark"
-                  ? "bg-gray-800 border-white/20 text-white"
-                  : "bg-white border-gray-300 text-gray-900"
-              }`}
-            />
+              {isSubmitting ? "Updating..." : "Update Product"}
+            </button>
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3 mt-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition ${
-              theme === "dark"
-                ? "bg-gray-700 hover:bg-gray-600 text-white"
-                : "bg-gray-200 hover:bg-gray-300 text-gray-900"
-            }`}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex-1 px-6 py-3 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition"
-          >
-            {isSubmitting ? "Updating..." : "Update Product"}
-          </button>
-        </div>
         </form>
       </div>
     </div>

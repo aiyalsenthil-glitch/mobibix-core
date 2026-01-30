@@ -134,12 +134,12 @@ export class MobileShopDashboardService {
     // =========================
     return {
       today: {
-        salesAmount: salesToday._sum.totalAmount ?? 0,
+        salesAmount: (salesToday._sum.totalAmount ?? 0) / 100,
         jobsReceived: jobsReceivedToday,
       },
 
       month: {
-        salesAmount: monthSales._sum.totalAmount ?? 0,
+        salesAmount: (monthSales._sum.totalAmount ?? 0) / 100,
         invoiceCount: monthSales._count.id,
       },
 

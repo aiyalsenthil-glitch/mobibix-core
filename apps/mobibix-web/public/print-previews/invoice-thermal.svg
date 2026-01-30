@@ -1,0 +1,37 @@
+<svg width="120" height="240" viewBox="0 0 80 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Paper Background -->
+  <rect width="80" height="200" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+  
+  <!-- Header -->
+  <rect x="20" y="10" width="40" height="10" rx="1" fill="#334155"/>
+  <rect x="25" y="22" width="30" height="2" rx="0.5" fill="#94a3b8"/>
+  <rect x="25" y="26" width="30" height="2" rx="0.5" fill="#94a3b8"/>
+
+  <!-- Separator -->
+  <line x1="10" y1="35" x2="70" y2="35" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="2 2"/>
+
+  <!-- Meta -->
+  <rect x="10" y="40" width="30" height="3" fill="#cbd5e1"/>
+  <rect x="50" y="40" width="20" height="3" fill="#cbd5e1"/>
+
+  <!-- Separator -->
+  <line x1="10" y1="50" x2="70" y2="50" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="2 2"/>
+
+  <!-- Items -->
+  <rect x="10" y="55" width="35" height="4" fill="#475569"/> <rect x="55" y="55" width="15" height="4" fill="#475569"/>
+  <rect x="10" y="62" width="35" height="4" fill="#475569"/> <rect x="55" y="62" width="15" height="4" fill="#475569"/>
+  <rect x="10" y="69" width="35" height="4" fill="#475569"/> <rect x="55" y="69" width="15" height="4" fill="#475569"/>
+
+  <!-- Separator -->
+  <line x1="10" y1="80" x2="70" y2="80" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="2 2"/>
+
+  <!-- Totals -->
+  <rect x="10" y="85" width="20" height="3" fill="#94a3b8"/> <rect x="50" y="85" width="20" height="3" fill="#64748b"/>
+  <rect x="10" y="90" width="25" height="3" fill="#94a3b8"/> <rect x="50" y="90" width="20" height="3" fill="#64748b"/>
+  <rect x="10" y="98" width="30" height="4" fill="#334155"/> <rect x="50" y="98" width="20" height="4" fill="#334155"/>
+
+  <!-- QR and Footer -->
+  <rect x="25" y="115" width="30" height="30" fill="#e2e8f0"/>
+  <rect x="20" y="150" width="40" height="3" rx="1" fill="#94a3b8"/>
+  <rect x="25" y="155" width="30" height="3" rx="1" fill="#cbd5e1"/>
+</svg>

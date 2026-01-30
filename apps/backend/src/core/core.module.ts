@@ -17,9 +17,14 @@ import { InventoryModule } from './inventory/inventory.module';
 import { ProductsModule } from './products/products.module';
 import { StockModule } from './stock/stock.module';
 import { HsnModule } from './hsn/hsn.module';
+import { FollowUpsModule } from './follow-ups/follow-ups.module';
+import { CrmDashboardModule } from './crm-dashboard/crm-dashboard.module';
+import { CommonModule } from '../common/common.module';
+import { PlatformModule } from './platform/platform.module';
 
 @Module({
   imports: [
+    CommonModule,
     PrismaModule,
     AuthModule,
     TenantModule,
@@ -37,6 +42,9 @@ import { HsnModule } from './hsn/hsn.module';
     ProductsModule,
     StockModule,
     HsnModule,
+    FollowUpsModule,
+    CrmDashboardModule,
+    PlatformModule,
   ],
   exports: [
     AuthModule,

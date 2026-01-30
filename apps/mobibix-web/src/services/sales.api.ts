@@ -5,6 +5,7 @@ const API_BASE_URL =
 
 export type PaymentMode = "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT";
 export type InvoiceStatus = "PAID" | "CREDIT" | "CANCELLED";
+export type PaymentStatus = "PAID" | "PARTIALLY_PAID" | "UNPAID" | "CANCELLED";
 
 export interface SalesInvoice {
   id: string;
@@ -18,9 +19,25 @@ export interface SalesInvoice {
   customerPhone?: string;
   subTotal?: number;
   gstAmount?: number;
+  cgst?: number;
+  sgst?: number;
+  igst?: number;
   items?: InvoiceItemDetail[];
+  paidAmount?: number;
+  balanceAmount?: number;
+  paymentStatus?: PaymentStatus;
+  customerState?: string;
+  customerGstin?: string;
   createdAt: string | Date;
   updatedAt: string | Date;
+  payments?: {
+    id: string;
+    amount: number;
+    method: PaymentMode;
+    transactionRef?: string;
+    createdAt: string | Date;
+    receiptNumber: string;
+  }[];
 }
 
 export interface InvoiceItemDetail {
@@ -31,6 +48,7 @@ export interface InvoiceItemDetail {
   gstRate?: number;
   gstAmount?: number;
   lineTotal?: number;
+  taxableValue?: number; // Accurate taxable value (with 2 decimal precision)
 }
 
 export interface InvoiceItem {
@@ -39,6 +57,7 @@ export interface InvoiceItem {
   rate: number;
   gstRate: number; // GST rate percentage (0, 5, 18, 28, or custom)
   gstAmount: number; // Calculated GST amount
+  imeis?: string[]; // Serialized IMEIs when applicable
 }
 
 export interface CreateInvoiceDto {
@@ -50,6 +69,7 @@ export interface CreateInvoiceDto {
   customerGstin?: string;
   paymentMode: PaymentMode;
   items: InvoiceItem[];
+  pricesIncludeTax?: boolean;
 }
 
 /**
@@ -202,6 +222,42 @@ export async function listPayments(invoiceId: string) {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || "Failed to fetch payments");
+  }
+
+  return response.json();
+}
+
+/**
+ * DTO for collecting payment via new API
+ */
+export interface CollectPaymentDto {
+  paymentMethods: {
+    mode: PaymentMode;
+    amount: number;
+    transactionRef?: string;
+  }[];
+  transactionRef?: string;
+  narration?: string;
+}
+
+/**
+ * Collect payment using the new robust API
+ */
+export async function collectPayment(
+  invoiceId: string,
+  data: CollectPaymentDto,
+) {
+  const response = await authenticatedFetch(
+    `/mobileshop/sales/invoice/${invoiceId}/collect-payment`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to collect payment");
   }
 
   return response.json();

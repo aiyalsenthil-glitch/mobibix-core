@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SalesService } from './sales.service';
 import { PaymentService } from './payment.service';
 import { SalesInvoiceDto } from './dto/sales-invoice.dto';
+import { CollectPaymentDto } from './dto/collect-payment.dto';
 
 @Controller('mobileshop/sales')
 @UseGuards(JwtAuthGuard)
@@ -64,6 +65,9 @@ export class SalesController {
   @Get('invoice/:invoiceId')
   async getInvoice(@Req() req: any, @Param('invoiceId') invoiceId: string) {
     const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Invalid tenant');
+    }
     return this.service.getInvoiceDetails(tenantId, invoiceId);
   }
 
@@ -71,24 +75,41 @@ export class SalesController {
   async recordPayment(
     @Req() req: any,
     @Param('invoiceId') invoiceId: string,
-    @Body()
-    dto: {
-      amount: number;
-      paymentMethod: 'CASH' | 'CARD' | 'UPI' | 'BANK';
-      transactionRef?: string;
-      narration?: string;
-    },
+    @Body() dto: { amount: number; paymentMethod: 'CASH' | 'CARD' | 'UPI' | 'BANK'; transactionRef?: string; narration?: string },
   ) {
     const tenantId = req.user?.tenantId;
-    return this.paymentService.recordPayment(tenantId, {
-      invoiceId,
-      ...dto,
-    });
+    return this.paymentService.recordPayment(tenantId, { invoiceId, ...dto });
+  }
+
+  @Post('invoice/:invoiceId/collect-payment')
+  async collectPayment(
+    @Req() req: any,
+    @Param('invoiceId') invoiceId: string,
+    @Body() dto: CollectPaymentDto,
+  ) {
+    const tenantId = req.user?.tenantId;
+    return this.service.collectPayment(tenantId, invoiceId, dto);
   }
 
   @Get('invoice/:invoiceId/payments')
   async listPayments(@Req() req: any, @Param('invoiceId') invoiceId: string) {
     const tenantId = req.user?.tenantId;
     return this.paymentService.listPayments(tenantId, invoiceId);
+  }
+
+  @Get('summary')
+  async getSalesSummary(
+    @Req() req: any,
+    @Query('shopId') shopId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const tenantId = req.user?.tenantId;
+    if (!shopId) {
+      throw new BadRequestException('shopId is required');
+    }
+    const start = startDate ? new Date(startDate) : undefined;
+    const end = endDate ? new Date(endDate) : undefined;
+    return this.service.getSalesSummary(tenantId, shopId, start, end);
   }
 }

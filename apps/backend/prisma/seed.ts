@@ -14,12 +14,287 @@ const adapter = new PrismaPg(pool);
 
 const prisma = new PrismaClient({ adapter });
 
+async function seedWhatsAppSettingsForTenant(tenantId: string): Promise<{
+  settingsCreated: boolean;
+}> {
+  let settingsCreated = false;
+
+  const existingSetting = await prisma.whatsAppSetting.findUnique({
+    where: { tenantId },
+  });
+
+  if (!existingSetting) {
+    await prisma.whatsAppSetting.create({
+      data: {
+        tenantId,
+        enabled: false,
+        provider: 'META',
+        defaultLanguage: 'en',
+        dailyLimit: 100,
+        testPhone: null,
+        marketingOptInRequired: true,
+      },
+    });
+    settingsCreated = true;
+  }
+
+  return { settingsCreated };
+}
+
+async function seedWhatsAppForModule(moduleType: string): Promise<{
+  templatesCount: number;
+  automationsCount: number;
+}> {
+  let templatesCount = 0;
+  let automationsCount = 0;
+
+  const templates =
+    moduleType === 'GYM'
+      ? [
+          {
+            templateKey: 'WELCOME',
+            metaTemplateName: 'gym_welcome_v1',
+            category: 'UTILITY',
+            feature: 'WELCOME',
+            language: 'en',
+            status: 'ACTIVE',
+          },
+          {
+            templateKey: 'PAYMENT_DUE',
+            metaTemplateName: 'gym_payment_due_v1',
+            category: 'UTILITY',
+            feature: 'PAYMENT_DUE',
+            language: 'en',
+            status: 'ACTIVE',
+          },
+          {
+            templateKey: 'EXPIRY',
+            metaTemplateName: 'gym_expiry_reminder_v1',
+            category: 'UTILITY',
+            feature: 'EXPIRY',
+            language: 'en',
+            status: 'ACTIVE',
+          },
+        ]
+      : moduleType === 'MOBILE_SHOP'
+        ? [
+            {
+              templateKey: 'INVOICE_THANK_YOU',
+              metaTemplateName: 'sales_invoice_thank_you_v1',
+              category: 'UTILITY',
+              feature: 'WELCOME',
+              language: 'en',
+              status: 'ACTIVE',
+            },
+            {
+              templateKey: 'PAYMENT_REMINDER',
+              metaTemplateName: 'sales_payment_reminder_v1',
+              category: 'UTILITY',
+              feature: 'PAYMENT_DUE',
+              language: 'en',
+              status: 'ACTIVE',
+            },
+            {
+              templateKey: 'JOB_READY',
+              metaTemplateName: 'repair_job_ready_v1',
+              category: 'UTILITY',
+              feature: 'REMINDER',
+              language: 'en',
+              status: 'ACTIVE',
+            },
+            {
+              templateKey: 'JOB_UPDATE',
+              metaTemplateName: 'repair_job_update_v1',
+              category: 'UTILITY',
+              feature: 'REMINDER',
+              language: 'en',
+              status: 'ACTIVE',
+            },
+          ]
+        : [];
+
+  for (const template of templates) {
+    await prisma.whatsAppTemplate.upsert({
+      where: {
+        moduleType_metaTemplateName: {
+          moduleType: moduleType,
+          metaTemplateName: template.metaTemplateName,
+        },
+      },
+      update: {
+        category: template.category,
+        feature: template.feature,
+        language: template.language,
+        status: template.status,
+      },
+      create: {
+        moduleType: moduleType,
+        ...template,
+      },
+    });
+    templatesCount++;
+  }
+
+  const automations = [
+    {
+      triggerType: 'DATE' as const,
+      templateKey: 'EXPIRY',
+      offsetDays: -3,
+      enabled: true,
+    },
+    {
+      triggerType: 'AFTER_INVOICE' as const,
+      templateKey: 'PAYMENT_DUE',
+      offsetDays: 2,
+      enabled: true,
+    },
+    {
+      triggerType: 'AFTER_JOB' as const,
+      templateKey: 'WELCOME',
+      offsetDays: 0,
+      enabled: true,
+    },
+  ];
+
+  for (const automation of automations) {
+    const existing = await prisma.whatsAppAutomation.findFirst({
+      where: {
+        moduleType: moduleType as any,
+        eventType: automation.triggerType,
+        templateKey: automation.templateKey,
+        offsetDays: automation.offsetDays,
+      },
+    });
+
+    if (existing) {
+      await prisma.whatsAppAutomation.update({
+        where: { id: existing.id },
+        data: {
+          enabled: automation.enabled,
+        },
+      });
+    } else {
+      await prisma.whatsAppAutomation.create({
+        data: {
+          moduleType: moduleType as any,
+          eventType: automation.triggerType,
+          templateKey: automation.templateKey,
+          offsetDays: automation.offsetDays,
+          enabled: automation.enabled,
+        },
+      });
+    }
+    automationsCount++;
+  }
+
+  return { templatesCount, automationsCount };
+}
+
+async function seedPhoneNumbers(): Promise<{
+  created: number;
+  skipped: number;
+  total: number;
+}> {
+  const DEFAULT_PHONE_NUMBER =
+    process.env.WHATSAPP_PHONE_NUMBER || '+1234567890';
+  const DEFAULT_PHONE_NUMBER_ID =
+    process.env.WHATSAPP_PHONE_NUMBER_ID || 'YOUR_PHONE_NUMBER_ID';
+  const DEFAULT_WABA_ID = process.env.WHATSAPP_WABA_ID || 'YOUR_WABA_ID';
+
+  const tenants = await prisma.tenant.findMany({
+    select: { id: true, name: true },
+  });
+
+  let created = 0;
+  let skipped = 0;
+
+  for (const tenant of tenants) {
+    // Check if tenant already has a default phone number
+    const existingPhone = await prisma.whatsAppPhoneNumber.findFirst({
+      where: { tenantId: tenant.id },
+    });
+
+    if (existingPhone) {
+      skipped++;
+      continue;
+    }
+
+    // Create default phone number
+    await prisma.whatsAppPhoneNumber.create({
+      data: {
+        tenantId: tenant.id,
+        phoneNumber: DEFAULT_PHONE_NUMBER,
+        phoneNumberId: DEFAULT_PHONE_NUMBER_ID,
+        wabaId: DEFAULT_WABA_ID,
+        purpose: 'DEFAULT',
+        isDefault: true,
+        isActive: true,
+      },
+    });
+
+    created++;
+  }
+
+  return { created, skipped, total: tenants.length };
+}
+
 async function main() {
+    // ────────────────────────────────────────────────
+    // SEED REQUIRED GLOBAL GYM WHATSAPP TEMPLATES
+    // ────────────────────────────────────────────────
+    const requiredGymTemplates = [
+      {
+        templateKey: 'new_member_welcome_v3',
+        metaTemplateName: 'New Member Welcome',
+        moduleType: 'GYM',
+        category: 'UTILITY',
+        feature: 'WELCOME',
+        language: 'en',
+        status: 'ACTIVE',
+      },
+      {
+        templateKey: 'membership_expiry_reminder',
+        metaTemplateName: 'Membership Expiry Reminder',
+        moduleType: 'GYM',
+        category: 'UTILITY',
+        feature: 'EXPIRY',
+        language: 'en',
+        status: 'ACTIVE',
+      },
+      {
+        templateKey: 'payment_due_notice_util_v1',
+        metaTemplateName: 'Payment Due Notice',
+        moduleType: 'GYM',
+        category: 'UTILITY',
+        feature: 'PAYMENT_DUE',
+        language: 'en',
+        status: 'ACTIVE',
+      },
+    ];
+    for (const tpl of requiredGymTemplates) {
+      await prisma.whatsAppTemplate.upsert({
+        where: {
+          moduleType_metaTemplateName: {
+            moduleType: tpl.moduleType,
+            metaTemplateName: tpl.metaTemplateName,
+          },
+        },
+        update: {
+          templateKey: tpl.templateKey,
+          category: tpl.category,
+          feature: tpl.feature,
+          language: tpl.language,
+          status: tpl.status,
+        },
+        create: tpl,
+      });
+    }
   // TRIAL
   await prisma.plan.upsert({
     where: { name: 'TRIAL' },
     update: {},
     create: {
+      code: 'TRIAL',
       name: 'TRIAL',
       level: 0,
       price: 0,
@@ -32,6 +307,7 @@ async function main() {
     where: { name: 'BASIC' },
     update: {},
     create: {
+      code: 'BASIC',
       name: 'BASIC',
       level: 1,
       price: 999,
@@ -43,6 +319,7 @@ async function main() {
     where: { name: 'PLUS' },
     update: {},
     create: {
+      code: 'PLUS',
       name: 'PLUS',
       level: 2,
       price: 149,
@@ -55,6 +332,7 @@ async function main() {
     where: { name: 'PRO' },
     update: {},
     create: {
+      code: 'PRO',
       name: 'PRO',
       level: 3,
       price: 1999,
@@ -67,6 +345,7 @@ async function main() {
     where: { name: 'ULTIMATE' },
     update: {},
     create: {
+      code: 'ULTIMATE',
       name: 'ULTIMATE',
       level: 4,
       price: 4999,
@@ -95,6 +374,169 @@ async function main() {
     });
   }
   console.log(`✅ Seeded ${HSN_DATA.length} HSN codes`);
+
+
+  // WHATSAPP INITIALIZATION
+  console.log('\n🌱 Seeding WhatsApp configuration...');
+  let tenants = await prisma.tenant.findMany({
+    select: { id: true, name: true },
+  });
+
+  let totalSettings = 0;
+  let totalTemplates = 0;
+  let totalAutomations = 0;
+
+  if (tenants.length > 0) {
+    for (const tenant of tenants) {
+      const result = await seedWhatsAppSettingsForTenant(tenant.id);
+      if (result.settingsCreated) totalSettings++;
+    }
+  }
+
+  const moduleTypes = ['GYM', 'MOBILE_SHOP'];
+  for (const moduleType of moduleTypes) {
+    const result = await seedWhatsAppForModule(moduleType);
+    totalTemplates += result.templatesCount;
+    totalAutomations += result.automationsCount;
+  }
+
+  // ────────────────────────────────────────────────
+  // GLOBAL GYM AUTOMATIONS (Platform-level, no tenantId)
+  // ────────────────────────────────────────────────
+  console.log('\n🌱 Seeding GLOBAL WhatsApp automations for Gym SaaS...');
+  const WhatsAppTemplates = {
+    WELCOME: 'new_member_welcome_v3',
+    EXPIRY: 'membership_expiry_reminder',
+    PAYMENT_DUE: 'payment_due_notice_util_v1',
+  };
+  const templateKeys = Object.values(WhatsAppTemplates);
+  const foundTemplates = await prisma.whatsAppTemplate.findMany({
+    where: {
+      templateKey: { in: templateKeys },
+      moduleType: 'GYM',
+      status: 'ACTIVE',
+    },
+    select: { templateKey: true },
+  });
+  const foundSet = new Set(foundTemplates.map(t => t.templateKey));
+
+  // 1️⃣ NEW MEMBER WELCOME
+  if (foundSet.has(WhatsAppTemplates.WELCOME)) {
+    await prisma.whatsAppAutomation.upsert({
+      where: {
+        moduleType_eventType: {
+          moduleType: 'GYM',
+          eventType: 'MEMBER_CREATED',
+        },
+      },
+      update: {
+        templateKey: WhatsAppTemplates.WELCOME,
+        offsetDays: 0,
+        conditions: { set: null },
+        enabled: true,
+      },
+      create: {
+        moduleType: 'GYM',
+        eventType: 'MEMBER_CREATED',
+        templateKey: WhatsAppTemplates.WELCOME,
+        offsetDays: 0,
+        conditions: { set: null },
+        enabled: true,
+      },
+    });
+    console.log('✅ Seeded: NEW MEMBER WELCOME');
+  } else {
+    console.log('❌ Skipped: NEW MEMBER WELCOME (template missing)');
+  }
+
+  // 2️⃣ MEMBERSHIP EXPIRY REMINDER (BEFORE)
+  if (foundSet.has(WhatsAppTemplates.EXPIRY)) {
+    await prisma.whatsAppAutomation.upsert({
+      where: {
+        moduleType_eventType: {
+          moduleType: 'GYM',
+          eventType: 'MEMBERSHIP_EXPIRY',
+        },
+      },
+      update: {
+        templateKey: WhatsAppTemplates.EXPIRY,
+        offsetDays: -3,
+        conditions: [
+          { field: 'expiryDate', operator: 'DAYS_BEFORE', value: 3 },
+        ],
+        enabled: true,
+      },
+      create: {
+        moduleType: 'GYM',
+        eventType: 'MEMBERSHIP_EXPIRY',
+        templateKey: WhatsAppTemplates.EXPIRY,
+        offsetDays: -3,
+        conditions: [
+          { field: 'expiryDate', operator: 'DAYS_BEFORE', value: 3 },
+        ],
+        enabled: true,
+      },
+    });
+    console.log('✅ Seeded: MEMBERSHIP EXPIRY REMINDER (BEFORE)');
+  } else {
+    console.log('❌ Skipped: MEMBERSHIP EXPIRY REMINDER (template missing)');
+  }
+
+  // 3️⃣ PAYMENT DUE NOTICE (AFTER EXPIRY)
+  if (foundSet.has(WhatsAppTemplates.PAYMENT_DUE)) {
+    await prisma.whatsAppAutomation.upsert({
+      where: {
+        moduleType_eventType: {
+          moduleType: 'GYM',
+          eventType: 'MEMBERSHIP_EXPIRED',
+        },
+      },
+      update: {
+        templateKey: WhatsAppTemplates.PAYMENT_DUE,
+        offsetDays: 1,
+        conditions: [
+          { field: 'pendingAmount', operator: '>', value: 0 },
+        ],
+        enabled: true,
+      },
+      create: {
+        moduleType: 'GYM',
+        eventType: 'MEMBERSHIP_EXPIRED',
+        templateKey: WhatsAppTemplates.PAYMENT_DUE,
+        offsetDays: 1,
+        conditions: [
+          { field: 'pendingAmount', operator: '>', value: 0 },
+        ],
+        enabled: true,
+      },
+    });
+    console.log('✅ Seeded: PAYMENT DUE NOTICE (AFTER EXPIRY)');
+  } else {
+    console.log('❌ Skipped: PAYMENT DUE NOTICE (template missing)');
+  }
+
+
+  // PHONE NUMBERS INITIALIZATION
+  console.log('\n🌱 Seeding WhatsApp phone numbers...');
+  const phoneResult = await seedPhoneNumbers();
+  console.log(`✅ Phone numbers configured`);
+  console.log(`   Created: ${phoneResult.created}`);
+  console.log(`   Skipped: ${phoneResult.skipped}`);
+  console.log(`   Total tenants: ${phoneResult.total}`);
+
+  if (
+    phoneResult.created > 0 &&
+    (process.env.WHATSAPP_PHONE_NUMBER_ID === 'YOUR_PHONE_NUMBER_ID' ||
+      process.env.WHATSAPP_WABA_ID === 'YOUR_WABA_ID')
+  ) {
+    console.log(
+      `\n⚠️  WARNING: Using placeholder credentials for phone numbers!`,
+    );
+    console.log(`   Update in database via Phone Numbers UI or set env vars:`);
+    console.log(`   - WHATSAPP_PHONE_NUMBER_ID`);
+    console.log(`   - WHATSAPP_WABA_ID`);
+    console.log(`   - WHATSAPP_PHONE_NUMBER\n`);
+  }
 }
 
 main()

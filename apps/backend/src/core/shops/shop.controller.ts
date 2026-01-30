@@ -8,12 +8,17 @@ import {
   ForbiddenException,
   Param,
   Patch,
+  Put,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ShopService } from './shop.service';
 import { CreateShopDto } from './dto/create-shop.dto';
 import { UpdateShopDto } from './dto/update-shop.dto';
 import { UpdateShopSettingsDto } from './dto/update-shop-settings.dto';
+import {
+  UpdateDocumentSettingDto,
+  DocumentType,
+} from './dto/update-document-setting.dto';
 
 @Controller('mobileshop/shops')
 @UseGuards(JwtAuthGuard)
@@ -73,6 +78,39 @@ export class ShopController {
       req.user.tenantId,
       req.user.role,
       shopId,
+      dto,
+    );
+  }
+
+  /**
+   * GET /mobileshop/shops/:shopId/document-settings
+   * Returns all document numbering settings for a shop
+   */
+  @Get(':shopId/document-settings')
+  getDocumentSettings(@Req() req: any, @Param('shopId') shopId: string) {
+    if (!req.user.tenantId) {
+      throw new ForbiddenException('Tenant context missing');
+    }
+
+    return this.shopService.getDocumentSettings(req.user.tenantId, shopId);
+  }
+
+  /**
+   * PUT /mobileshop/shops/:shopId/document-settings/:documentType
+   * Updates document numbering configuration for a specific document type
+   */
+  @Put(':shopId/document-settings/:documentType')
+  updateDocumentSetting(
+    @Req() req: any,
+    @Param('shopId') shopId: string,
+    @Param('documentType') documentType: DocumentType,
+    @Body() dto: UpdateDocumentSettingDto,
+  ) {
+    return this.shopService.updateDocumentSetting(
+      req.user.tenantId,
+      req.user.role,
+      shopId,
+      documentType,
       dto,
     );
   }

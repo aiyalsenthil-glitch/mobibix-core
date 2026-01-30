@@ -19,8 +19,11 @@ import { SuppliersModule } from './core/suppliers/suppliers.module';
 import { PurchasesModule } from './core/purchases/purchases.module';
 import { GlobalSuppliersModule } from './core/global-suppliers/global-suppliers.module';
 import { GlobalProductsModule } from './core/global-products/global-products.module';
-import { TenantProductsModule } from './core/tenant-products/tenant-products.module';
 import { ShopProductsModule } from './core/shop-products/shop-products.module';
+import { CustomerTimelineModule } from './core/timeline/customer-timeline.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -34,6 +37,7 @@ import { ShopProductsModule } from './core/shop-products/shop-products.module';
     CoreModule,
     AuthModule,
     WhatsAppModule,
+    CustomerTimelineModule,
     // 🧩 Business modules
     GymModule,
     GymAppModule,
@@ -41,7 +45,6 @@ import { ShopProductsModule } from './core/shop-products/shop-products.module';
     PurchasesModule,
     GlobalSuppliersModule,
     GlobalProductsModule,
-    TenantProductsModule,
     ShopProductsModule,
     // 🩺 Platform infra
     HealthModule,
@@ -53,7 +56,9 @@ import { ShopProductsModule } from './core/shop-products/shop-products.module';
       max: 1000,
     }),
   ],
+  controllers: [AppController],
   providers: [
+    AppService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

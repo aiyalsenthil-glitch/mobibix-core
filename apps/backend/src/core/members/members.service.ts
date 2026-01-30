@@ -19,6 +19,7 @@ import { WhatsAppSender } from '../../modules/whatsapp/whatsapp.sender';
 import { WhatsAppTemplates } from '../../modules/whatsapp/whatsapp.templates';
 import { WhatsAppFeature } from '../billing/whatsapp-rules';
 import { TenantService } from '../tenant/tenant.service';
+import { PlanRulesService } from '../billing/plan-rules.service';
 
 // ─────────────────────────────
 // ✅ Membership duration resolver
@@ -112,6 +113,7 @@ export class MembersService {
     private readonly auditService: AuditService,
     private readonly whatsAppSender: WhatsAppSender, // ✅ ADD
     private readonly tenantService: TenantService,
+    private readonly planRulesService: PlanRulesService,
   ) {}
 
   async createMember(tenantId: string, dto: CreateMemberDto) {
@@ -209,31 +211,43 @@ export class MembersService {
     }
 
     // ─────────────────────────────
-    // ✅ Welcome WhatsApp (ULTIMATE)
+    // ✅ Welcome WhatsApp (Plan Rules)
     // ─────────────────────────────
     try {
       if (member.isActive && !member.welcomeMessageSent) {
-        // 🔹 Get tenant plan
-        const planName = subscription.plan.name;
+        const isAllowed = await this.planRulesService.isFeatureEnabledForTenant(
+          tenantId,
+          WhatsAppFeature.WELCOME,
+        );
 
-        if (planName === 'ULTIMATE') {
-          const result = await this.whatsAppSender.sendTemplateMessage(
-            tenantId,
-            WhatsAppFeature.WELCOME,
-            member.phone,
-            WhatsAppTemplates.WELCOME,
-            [
-              formatDateDDMMYYYY(member.membershipStartAt),
-              formatDateDDMMYYYY(member.membershipEndAt),
-            ],
-          );
+        if (!isAllowed) {
+          return member;
+        }
 
-          if (result.success) {
-            await this.prisma.member.update({
-              where: { id: member.id },
-              data: { welcomeMessageSent: true },
-            });
-          }
+        // 🔹 Get tenant name for template
+        const tenant = await this.prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { name: true },
+        });
+
+        const result = await this.whatsAppSender.sendTemplateMessage(
+          tenantId,
+          WhatsAppFeature.WELCOME,
+          member.phone,
+          WhatsAppTemplates.WELCOME,
+          [
+            member.fullName,
+            tenant?.name || 'Gym',
+            formatDateDDMMYYYY(member.membershipStartAt),
+            formatDateDDMMYYYY(member.membershipEndAt),
+          ],
+        );
+
+        if (result.success) {
+          await this.prisma.member.update({
+            where: { id: member.id },
+            data: { welcomeMessageSent: true },
+          });
         }
       }
     } catch (err) {

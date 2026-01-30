@@ -13,7 +13,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const isDark = mounted && theme === "dark";
 
   useEffect(() => {
     const ok = authGuard(router);
@@ -46,17 +46,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const marginLeft = mounted && isCollapsed ? "ml-20" : "ml-60";
 
   return (
-    <div
-      className={`min-h-screen ${
-        isDark ? "bg-gray-950 text-white" : "bg-gradient-to-br from-teal-50/30 via-white to-teal-50/20 text-black"
-      } transition-colors duration-300`}
-    >
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 transition-colors duration-300">
       <Sidebar />
       <Topbar isCollapsed={mounted && isCollapsed} />
       <main
-        className={`${marginLeft} pt-20 px-8 py-8 transition-all duration-300 ${
-          isDark ? "bg-gray-950" : "bg-transparent"
-        } min-h-screen`}
+        className={`${marginLeft} pt-20 px-8 py-8 transition-all duration-300 bg-white dark:bg-slate-950 min-h-screen`}
       >
         {children}
       </main>

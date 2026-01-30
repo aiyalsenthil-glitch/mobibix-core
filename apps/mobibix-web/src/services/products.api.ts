@@ -6,21 +6,49 @@ export enum ProductType {
   SERVICE = "SERVICE",
 }
 
+/**
+ * ShopProduct = Shop-level product configuration
+ * Links to GlobalProduct (shared catalog) or can be a custom product
+ * Contains shop-specific pricing, tax, and inventory tracking settings
+ */
 export interface ShopProduct {
   id: string;
-  shopId?: string;
-  name: string;
+  shopId: string;
+  tenantId?: string;
+
+  // Shop-level configuration
+  name: string; // Cached from GlobalProduct or entered directly for custom products
+  category?: string; // Free-text category or inherited
   type?: ProductType | string;
-  sku?: string;
-  barcode?: string;
-  category?: string;
-  brand?: string;
-  salePrice: number;
-  stock?: number;
-  stockQty?: number;
+  salePrice: number; // Shop-specific selling price
+  costPrice?: number; // Shop-specific cost price
+  isActive: boolean; // Can this shop sell this product?
+
+  // Tax & Compliance (Shop-level override or inherited)
   hsnCode?: string;
   gstRate?: number;
+
+  // Inventory configuration
+  isSerialized?: boolean; // Track by IMEI (true) or bulk quantity (false)
+  reorderLevel?: number;
+  reorderQty?: number;
+  barcode?: string;
+  location?: string; // Physical location in shop
+
+  // Legacy fields (for backward compatibility)
+  sku?: string;
+  brand?: string;
   minStock?: number;
+
+  // Stock data (should NOT be used on Products page - Inventory page only)
+  stock?: number;
+  stockQty?: number;
+  isNegative?: boolean;
+
+  // Relations
+  globalProductId?: string | null; // Reference to GlobalProduct (null = custom product)
+
+  // Timestamps
   createdAt?: string | Date;
   updatedAt?: string | Date;
 }

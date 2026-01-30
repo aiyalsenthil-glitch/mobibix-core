@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { listProducts, type ShopProduct } from "@/services/products.api";
 import { stockIn } from "@/services/inventory.api";
+import { getStockBalances } from "@/services/stock.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { NoShopsAlert } from "../components/NoShopsAlert";
@@ -28,6 +29,7 @@ export default function InventoryPage() {
   const [quantity, setQuantity] = useState("");
   const [costPrice, setCostPrice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Load products when shop selection changes
   useEffect(() => {
@@ -40,8 +42,26 @@ export default function InventoryPage() {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await listProducts(selectedShopId);
-        setProducts(data);
+        // Fetch products and stock balances, then merge on productId
+        const [productList, balances] = await Promise.all([
+          listProducts(selectedShopId),
+          getStockBalances(selectedShopId),
+        ]);
+
+        const balanceMap = new Map(balances.map((b) => [b.productId, b]));
+
+        const merged: ShopProduct[] = productList.map((p) => {
+          const b = balanceMap.get(p.id);
+          const stockQty = b?.stockQty ?? p.stockQty ?? 0;
+          const isNegative = b?.isNegative ?? stockQty < 0;
+          return {
+            ...p,
+            stockQty,
+            isNegative,
+          };
+        });
+
+        setProducts(merged);
       } catch (err: any) {
         console.error("Error loading products:", err);
         setError(err.message || "Failed to load products");
@@ -71,17 +91,35 @@ export default function InventoryPage() {
         shopProductId: selectedProduct.id,
         quantity: parseInt(quantity),
         costPrice: parseFloat(costPrice) || 0,
+        type: selectedProduct.type,
       });
 
-      // Reload products to get updated stock
-      const data = await listProducts(selectedShopId);
-      setProducts(data);
+      // Reload products + stock balances to get updated stock
+      const [productList, balances] = await Promise.all([
+        listProducts(selectedShopId),
+        getStockBalances(selectedShopId),
+      ]);
+
+      const balanceMap = new Map(balances.map((b) => [b.productId, b]));
+      const merged: ShopProduct[] = productList.map((p) => {
+        const b = balanceMap.get(p.id);
+        const stockQty = b?.stockQty ?? p.stockQty ?? 0;
+        const isNegative = b?.isNegative ?? stockQty < 0;
+        return {
+          ...p,
+          stockQty,
+          isNegative,
+        };
+      });
+      setProducts(merged);
 
       // Reset form
       setSelectedProduct(null);
       setQuantity("");
       setCostPrice("");
-      alert("Stock added successfully!");
+      setSearchQuery("");
+      setSuccessMessage("Stock added successfully!");
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       setError(err.message || "Failed to add stock");
     } finally {
@@ -163,9 +201,16 @@ export default function InventoryPage() {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search product..."
+                  placeholder={
+                    selectedProduct ? selectedProduct.name : "Search product..."
+                  }
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    if (e.target.value) {
+                      setSelectedProduct(null);
+                    }
+                  }}
                   className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
                     theme === "dark"
                       ? "bg-gray-800 border-white/20 text-white"
@@ -182,7 +227,7 @@ export default function InventoryPage() {
                         type="button"
                         onClick={() => {
                           setSelectedProduct(product);
-                          setSearchQuery(product.name);
+                          setSearchQuery("");
                         }}
                         className={`w-full text-left px-4 py-2 hover:bg-teal-50 dark:hover:bg-teal-900/20 border-b last:border-0 ${
                           theme === "dark"
@@ -262,6 +307,12 @@ export default function InventoryPage() {
               </div>
             )}
 
+            {successMessage && (
+              <div className="bg-green-50 border border-green-200 text-green-700 dark:bg-green-500/20 dark:border-green-500/50 dark:text-green-200 px-4 py-3 rounded-lg">
+                {successMessage}
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isSubmitting || !selectedProduct}
@@ -338,7 +389,28 @@ export default function InventoryPage() {
                     <td
                       className={`px-6 py-4 ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}
                     >
-                      {product.stockQty || 0}
+                      <span
+                        className={
+                          product.isNegative
+                            ? theme === "dark"
+                              ? "text-red-300"
+                              : "text-red-600"
+                            : undefined
+                        }
+                      >
+                        {product.stockQty || 0}
+                      </span>
+                      {product.isNegative && (
+                        <span
+                          className={`ml-2 inline-block text-xs px-2 py-0.5 rounded ${
+                            theme === "dark"
+                              ? "bg-red-500/20 text-red-200"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          Negative
+                        </span>
+                      )}
                     </td>
                     <td
                       className={`px-6 py-4 font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
