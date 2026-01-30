@@ -331,69 +331,34 @@ async function main() {
       create: tpl,
     });
   }
-  // TRIAL
-  await prisma.plan.upsert({
-    where: { name: 'TRIAL' },
-    update: {},
-    create: {
-      code: 'TRIAL',
-      name: 'TRIAL',
-      level: 0,
-      price: 0,
-      durationDays: 14,
-    },
-  });
+  // Plans (idempotent without relying on DB unique constraints)
+  const plans = [
+    { code: 'TRIAL', name: 'TRIAL', level: 0, price: 0, durationDays: 14 },
+    { code: 'BASIC', name: 'BASIC', level: 1, price: 999, durationDays: 30 },
+    { code: 'PLUS', name: 'PLUS', level: 2, price: 149, durationDays: 30 },
+    { code: 'PRO', name: 'PRO', level: 3, price: 1999, durationDays: 365 },
+    { code: 'ULTIMATE', name: 'ULTIMATE', level: 4, price: 4999, durationDays: 365 },
+  ];
 
-  // BASIC
-  await prisma.plan.upsert({
-    where: { name: 'BASIC' },
-    update: {},
-    create: {
-      code: 'BASIC',
-      name: 'BASIC',
-      level: 1,
-      price: 999,
-      durationDays: 30,
-    },
-  });
-  // PLUS
-  await prisma.plan.upsert({
-    where: { name: 'PLUS' },
-    update: {},
-    create: {
-      code: 'PLUS',
-      name: 'PLUS',
-      level: 2,
-      price: 149,
-      durationDays: 30,
-    },
-  });
+  // Use direct SQL via `pool` to avoid Prisma client model/column mismatches in prod
+  const { randomUUID } = await import('crypto');
+  for (const p of plans) {
+    const check = await pool.query('SELECT 1 FROM "Plan" WHERE "name" = $1 LIMIT 1', [p.name]);
+    if (check.rowCount === 0) {
+      const id = randomUUID();
+      const now = new Date().toISOString();
+      const currency = (p as any).currency || 'INR';
+      const memberLimit = (p as any).memberLimit ?? 0;
+      const features = (p as any).features ? JSON.stringify((p as any).features) : null;
+      const isActive = (p as any).isActive ?? true;
+      const billingCycle = (p as any).billingCycle || 'MONTHLY';
 
-  // PRO
-  await prisma.plan.upsert({
-    where: { name: 'PRO' },
-    update: {},
-    create: {
-      code: 'PRO',
-      name: 'PRO',
-      level: 3,
-      price: 1999,
-      durationDays: 365,
-    },
-  });
-
-  //ULTIMATE
-  await prisma.plan.upsert({
-    where: { name: 'ULTIMATE' },
-    update: {},
-    create: {
-      code: 'ULTIMATE',
-      name: 'ULTIMATE',
-      level: 4,
-      price: 4999,
-      durationDays: 365,
-    },
-  });
+      await pool.query(
+        `INSERT INTO "Plan" ("id","name","level","price","currency","durationDays","memberLimit","features","isActive","createdAt","updatedAt","billingCycle") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        [id, p.name, p.level, p.price, currency, p.durationDays, memberLimit, features, isActive, now, now, billingCycle],
+      );
+    }
+  }
 
   console.log('✅ Plans seeded');
 
@@ -570,16 +535,25 @@ async function main() {
   // ────────────────────────────────────────────────
   // Seed module defaults into tenant-scoped rows (idempotent)
   // ────────────────────────────────────────────────
-  async function seedModuleDefaultsToTenants(): Promise<{ created: number; skipped: number }> {
-    const modules = await prisma.whatsAppPhoneNumberModule.findMany({ where: { isActive: true } });
+  async function seedModuleDefaultsToTenants(): Promise<{
+    created: number;
+    skipped: number;
+  }> {
+    const modules = await prisma.whatsAppPhoneNumberModule.findMany({
+      where: { isActive: true },
+    });
     if (!modules.length) return { created: 0, skipped: 0 };
 
-    const tenantsList = await prisma.tenant.findMany({ select: { id: true, code: true } });
+    const tenantsList = await prisma.tenant.findMany({
+      select: { id: true, code: true },
+    });
     let created = 0;
     let skipped = 0;
 
     for (const t of tenantsList) {
-      const existing = await prisma.whatsAppPhoneNumber.findFirst({ where: { tenantId: t.id } });
+      const existing = await prisma.whatsAppPhoneNumber.findFirst({
+        where: { tenantId: t.id },
+      });
       if (existing) {
         skipped++;
         continue;
@@ -597,11 +571,19 @@ async function main() {
       }));
 
       try {
-        const res = await prisma.whatsAppPhoneNumber.createMany({ data, skipDuplicates: true });
+        const res = await prisma.whatsAppPhoneNumber.createMany({
+          data,
+          skipDuplicates: true,
+        });
         created += res.count ?? data.length;
-        console.log(`Seeded ${res.count ?? data.length} numbers for tenant ${t.code} (${t.id})`);
+        console.log(
+          `Seeded ${res.count ?? data.length} numbers for tenant ${t.code} (${t.id})`,
+        );
       } catch (err) {
-        console.error(`Failed to seed tenant ${t.code} (${t.id}):`, (err as Error).message || err);
+        console.error(
+          `Failed to seed tenant ${t.code} (${t.id}):`,
+          (err as Error).message || err,
+        );
       }
     }
 
@@ -612,7 +594,9 @@ async function main() {
   const tenantSeedResult = await seedModuleDefaultsToTenants();
   console.log(`✅ Tenant phone numbers seeded from module defaults`);
   console.log(`   Created: ${tenantSeedResult.created}`);
-  console.log(`   Tenants skipped (already had numbers): ${tenantSeedResult.skipped}`);
+  console.log(
+    `   Tenants skipped (already had numbers): ${tenantSeedResult.skipped}`,
+  );
 
   if (
     phoneResult.created > 0 &&
