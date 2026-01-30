@@ -1515,3 +1515,21 @@ enum AlertSource {
   INACTIVE
   CUSTOM
 }
+
+model WhatsAppPhoneNumberModule {
+  id            String                     @id @default(uuid())
+  moduleType    String
+  phoneNumber   String
+  phoneNumberId String
+  wabaId        String
+  purpose       WhatsAppPhoneNumberPurpose @default(DEFAULT)
+  qualityRating String?
+  isDefault     Boolean                    @default(false)
+  isActive      Boolean                    @default(true)
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+
+  @@unique([moduleType, phoneNumberId])
+  @@index([moduleType, isActive])
+  @@index([moduleType, purpose])
+}

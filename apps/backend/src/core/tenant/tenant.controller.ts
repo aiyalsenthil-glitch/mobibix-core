@@ -74,8 +74,9 @@ export class TenantController {
   @UseGuards(JwtAuthGuard)
   @Get('admin/search')
   async searchTenants(@Req() req: any, @Query('q') q: string) {
-    // 🔒 Admin-only check
-    if (req.user.role !== 'ADMIN') {
+    // 🔒 Admin-only check (case-insensitive)
+    const role = (req.user?.role || '') as string;
+    if (role.toUpperCase() !== 'ADMIN') {
       throw new ForbiddenException('Admin access only');
     }
 

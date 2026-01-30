@@ -238,120 +238,151 @@ async function seedPhoneNumbers(): Promise<{
   return { created, skipped, total: tenants.length };
 }
 
-async function main() {
-    // ────────────────────────────────────────────────
-    // SEED REQUIRED GLOBAL GYM WHATSAPP TEMPLATES
-    // ────────────────────────────────────────────────
-    const requiredGymTemplates = [
-      {
-        templateKey: 'new_member_welcome_v3',
-        metaTemplateName: 'New Member Welcome',
-        moduleType: 'GYM',
-        category: 'UTILITY',
-        feature: 'WELCOME',
-        language: 'en',
-        status: 'ACTIVE',
-      },
-      {
-        templateKey: 'membership_expiry_reminder',
-        metaTemplateName: 'Membership Expiry Reminder',
-        moduleType: 'GYM',
-        category: 'UTILITY',
-        feature: 'EXPIRY',
-        language: 'en',
-        status: 'ACTIVE',
-      },
-      {
-        templateKey: 'payment_due_notice_util_v1',
-        metaTemplateName: 'Payment Due Notice',
-        moduleType: 'GYM',
-        category: 'UTILITY',
-        feature: 'PAYMENT_DUE',
-        language: 'en',
-        status: 'ACTIVE',
-      },
-    ];
-    for (const tpl of requiredGymTemplates) {
-      await prisma.whatsAppTemplate.upsert({
-        where: {
-          moduleType_metaTemplateName: {
-            moduleType: tpl.moduleType,
-            metaTemplateName: tpl.metaTemplateName,
-          },
-        },
-        update: {
-          templateKey: tpl.templateKey,
-          category: tpl.category,
-          feature: tpl.feature,
-          language: tpl.language,
-          status: tpl.status,
-        },
-        create: tpl,
-      });
+async function seedModulePhoneNumbers(): Promise<{
+  created: number;
+  skipped: number;
+}> {
+  const DEFAULT_PHONE_NUMBER =
+    process.env.WHATSAPP_PHONE_NUMBER || '+1234567890';
+  const DEFAULT_PHONE_NUMBER_ID =
+    process.env.WHATSAPP_PHONE_NUMBER_ID || 'YOUR_PHONE_NUMBER_ID';
+  const DEFAULT_WABA_ID = process.env.WHATSAPP_WABA_ID || 'YOUR_WABA_ID';
+
+  const moduleTypes = ['GYM', 'MOBILE_SHOP'];
+  let created = 0;
+  let skipped = 0;
+
+  for (const moduleType of moduleTypes) {
+    const existing = await prisma.whatsAppPhoneNumberModule.findFirst({
+      where: { moduleType, phoneNumberId: DEFAULT_PHONE_NUMBER_ID },
+    });
+
+    if (existing) {
+      skipped++;
+      continue;
     }
-  // TRIAL
-  await prisma.plan.upsert({
-    where: { name: 'TRIAL' },
-    update: {},
-    create: {
-      code: 'TRIAL',
-      name: 'TRIAL',
-      level: 0,
-      price: 0,
-      durationDays: 14,
-    },
-  });
 
-  // BASIC
-  await prisma.plan.upsert({
-    where: { name: 'BASIC' },
-    update: {},
-    create: {
-      code: 'BASIC',
-      name: 'BASIC',
-      level: 1,
-      price: 999,
-      durationDays: 30,
-    },
-  });
-  // PLUS
-  await prisma.plan.upsert({
-    where: { name: 'PLUS' },
-    update: {},
-    create: {
-      code: 'PLUS',
-      name: 'PLUS',
-      level: 2,
-      price: 149,
-      durationDays: 30,
-    },
-  });
+    await prisma.whatsAppPhoneNumberModule.create({
+      data: {
+        moduleType,
+        phoneNumber: DEFAULT_PHONE_NUMBER,
+        phoneNumberId: DEFAULT_PHONE_NUMBER_ID,
+        wabaId: DEFAULT_WABA_ID,
+        purpose: 'DEFAULT',
+        isDefault: true,
+        isActive: true,
+      },
+    });
 
-  // PRO
-  await prisma.plan.upsert({
-    where: { name: 'PRO' },
-    update: {},
-    create: {
-      code: 'PRO',
-      name: 'PRO',
-      level: 3,
-      price: 1999,
-      durationDays: 365,
-    },
-  });
+    created++;
+  }
 
-  //ULTIMATE
-  await prisma.plan.upsert({
-    where: { name: 'ULTIMATE' },
-    update: {},
-    create: {
+  return { created, skipped };
+}
+
+async function main() {
+  // ────────────────────────────────────────────────
+  // SEED REQUIRED GLOBAL GYM WHATSAPP TEMPLATES
+  // ────────────────────────────────────────────────
+  const requiredGymTemplates = [
+    {
+      templateKey: 'new_member_welcome_v3',
+      metaTemplateName: 'New Member Welcome',
+      moduleType: 'GYM',
+      category: 'UTILITY',
+      feature: 'WELCOME',
+      language: 'en',
+      status: 'ACTIVE',
+    },
+    {
+      templateKey: 'membership_expiry_reminder',
+      metaTemplateName: 'Membership Expiry Reminder',
+      moduleType: 'GYM',
+      category: 'UTILITY',
+      feature: 'EXPIRY',
+      language: 'en',
+      status: 'ACTIVE',
+    },
+    {
+      templateKey: 'payment_due_notice_util_v1',
+      metaTemplateName: 'Payment Due Notice',
+      moduleType: 'GYM',
+      category: 'UTILITY',
+      feature: 'PAYMENT_DUE',
+      language: 'en',
+      status: 'ACTIVE',
+    },
+  ];
+  for (const tpl of requiredGymTemplates) {
+    await prisma.whatsAppTemplate.upsert({
+      where: {
+        moduleType_metaTemplateName: {
+          moduleType: tpl.moduleType,
+          metaTemplateName: tpl.metaTemplateName,
+        },
+      },
+      update: {
+        templateKey: tpl.templateKey,
+        category: tpl.category,
+        feature: tpl.feature,
+        language: tpl.language,
+        status: tpl.status,
+      },
+      create: tpl,
+    });
+  }
+  // Plans (idempotent without relying on DB unique constraints)
+  const plans = [
+    { code: 'TRIAL', name: 'TRIAL', level: 0, price: 0, durationDays: 14 },
+    { code: 'BASIC', name: 'BASIC', level: 1, price: 999, durationDays: 30 },
+    { code: 'PLUS', name: 'PLUS', level: 2, price: 149, durationDays: 30 },
+    { code: 'PRO', name: 'PRO', level: 3, price: 1999, durationDays: 365 },
+    {
       code: 'ULTIMATE',
       name: 'ULTIMATE',
       level: 4,
       price: 4999,
       durationDays: 365,
     },
-  });
+  ];
+
+  // Use direct SQL via `pool` to avoid Prisma client model/column mismatches in prod
+  const { randomUUID } = await import('crypto');
+  for (const p of plans) {
+    const check = await pool.query(
+      'SELECT 1 FROM "Plan" WHERE "name" = $1 LIMIT 1',
+      [p.name],
+    );
+    if (check.rowCount === 0) {
+      const id = randomUUID();
+      const now = new Date().toISOString();
+      const currency = (p as any).currency || 'INR';
+      const memberLimit = (p as any).memberLimit ?? 0;
+      const features = (p as any).features
+        ? JSON.stringify((p as any).features)
+        : null;
+      const isActive = (p as any).isActive ?? true;
+      const billingCycle = (p as any).billingCycle || 'MONTHLY';
+
+      await pool.query(
+        `INSERT INTO "Plan" ("id","name","level","price","currency","durationDays","memberLimit","features","isActive","createdAt","updatedAt","billingCycle") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        [
+          id,
+          p.name,
+          p.level,
+          p.price,
+          currency,
+          p.durationDays,
+          memberLimit,
+          features,
+          isActive,
+          now,
+          now,
+          billingCycle,
+        ],
+      );
+    }
+  }
 
   console.log('✅ Plans seeded');
 
@@ -374,7 +405,6 @@ async function main() {
     });
   }
   console.log(`✅ Seeded ${HSN_DATA.length} HSN codes`);
-
 
   // WHATSAPP INITIALIZATION
   console.log('\n🌱 Seeding WhatsApp configuration...');
@@ -418,7 +448,7 @@ async function main() {
     },
     select: { templateKey: true },
   });
-  const foundSet = new Set(foundTemplates.map(t => t.templateKey));
+  const foundSet = new Set(foundTemplates.map((t) => t.templateKey));
 
   // 1️⃣ NEW MEMBER WELCOME
   if (foundSet.has(WhatsAppTemplates.WELCOME)) {
@@ -494,9 +524,7 @@ async function main() {
       update: {
         templateKey: WhatsAppTemplates.PAYMENT_DUE,
         offsetDays: 1,
-        conditions: [
-          { field: 'pendingAmount', operator: '>', value: 0 },
-        ],
+        conditions: [{ field: 'pendingAmount', operator: '>', value: 0 }],
         enabled: true,
       },
       create: {
@@ -504,9 +532,7 @@ async function main() {
         eventType: 'MEMBERSHIP_EXPIRED',
         templateKey: WhatsAppTemplates.PAYMENT_DUE,
         offsetDays: 1,
-        conditions: [
-          { field: 'pendingAmount', operator: '>', value: 0 },
-        ],
+        conditions: [{ field: 'pendingAmount', operator: '>', value: 0 }],
         enabled: true,
       },
     });
@@ -515,7 +541,6 @@ async function main() {
     console.log('❌ Skipped: PAYMENT DUE NOTICE (template missing)');
   }
 
-
   // PHONE NUMBERS INITIALIZATION
   console.log('\n🌱 Seeding WhatsApp phone numbers...');
   const phoneResult = await seedPhoneNumbers();
@@ -523,6 +548,79 @@ async function main() {
   console.log(`   Created: ${phoneResult.created}`);
   console.log(`   Skipped: ${phoneResult.skipped}`);
   console.log(`   Total tenants: ${phoneResult.total}`);
+
+  // MODULE-LEVEL PHONE NUMBERS
+  console.log('\n🌱 Seeding module-scoped WhatsApp phone numbers...');
+  const modulePhoneResult = await seedModulePhoneNumbers();
+  console.log(`✅ Module phone numbers configured`);
+  console.log(`   Created: ${modulePhoneResult.created}`);
+  console.log(`   Skipped: ${modulePhoneResult.skipped}`);
+
+  // ────────────────────────────────────────────────
+  // Seed module defaults into tenant-scoped rows (idempotent)
+  // ────────────────────────────────────────────────
+  async function seedModuleDefaultsToTenants(): Promise<{
+    created: number;
+    skipped: number;
+  }> {
+    const modules = await prisma.whatsAppPhoneNumberModule.findMany({
+      where: { isActive: true },
+    });
+    if (!modules.length) return { created: 0, skipped: 0 };
+
+    const tenantsList = await prisma.tenant.findMany({
+      select: { id: true, code: true },
+    });
+    let created = 0;
+    let skipped = 0;
+
+    for (const t of tenantsList) {
+      const existing = await prisma.whatsAppPhoneNumber.findFirst({
+        where: { tenantId: t.id },
+      });
+      if (existing) {
+        skipped++;
+        continue;
+      }
+
+      const data = modules.map((m) => ({
+        tenantId: t.id,
+        phoneNumber: m.phoneNumber,
+        phoneNumberId: m.phoneNumberId,
+        wabaId: m.wabaId,
+        purpose: m.purpose,
+        qualityRating: m.qualityRating,
+        isDefault: m.isDefault,
+        isActive: m.isActive,
+      }));
+
+      try {
+        const res = await prisma.whatsAppPhoneNumber.createMany({
+          data,
+          skipDuplicates: true,
+        });
+        created += res.count ?? data.length;
+        console.log(
+          `Seeded ${res.count ?? data.length} numbers for tenant ${t.code} (${t.id})`,
+        );
+      } catch (err) {
+        console.error(
+          `Failed to seed tenant ${t.code} (${t.id}):`,
+          (err as Error).message || err,
+        );
+      }
+    }
+
+    return { created, skipped };
+  }
+
+  console.log('\n🌱 Copying module defaults into tenants (if missing)...');
+  const tenantSeedResult = await seedModuleDefaultsToTenants();
+  console.log(`✅ Tenant phone numbers seeded from module defaults`);
+  console.log(`   Created: ${tenantSeedResult.created}`);
+  console.log(
+    `   Tenants skipped (already had numbers): ${tenantSeedResult.skipped}`,
+  );
 
   if (
     phoneResult.created > 0 &&
