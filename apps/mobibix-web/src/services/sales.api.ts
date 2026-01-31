@@ -183,33 +183,7 @@ export async function cancelInvoice(invoiceId: string): Promise<SalesInvoice> {
   return response.json();
 }
 
-/**
- * Record a payment against a credit invoice
- */
-export async function recordPayment(
-  invoiceId: string,
-  data: {
-    amount: number;
-    paymentMethod: PaymentMode;
-    transactionRef?: string;
-    narration?: string;
-  },
-) {
-  const response = await authenticatedFetch(
-    `/mobileshop/sales/invoice/${invoiceId}/payment`,
-    {
-      method: "POST",
-      body: JSON.stringify(data),
-    },
-  );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to record payment");
-  }
-
-  return response.json();
-}
+// Legacy payment API removed – use collectPayment only
 
 /**
  * Get all payments recorded against an invoice

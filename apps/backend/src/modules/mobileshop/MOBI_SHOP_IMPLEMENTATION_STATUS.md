@@ -23,11 +23,12 @@ This document summarizes the core improvements made to the MobileShop module (St
   - **Schema:** Aligned `Receipt` and `PaymentVoucher` usage for consistent "In vs Out" tracking.
 
 ### Step 3: Profitability & Cost Tracking
-**Goal:** Accurate calculation of profit margins using "Moving Average Cost" (MAC).
+**Goal:** Accurate calculation of profit margins using "Last Purchase Price" (LPP).
 - **Changes:**
   - **Cost Per Unit:** Now stored on every `StockLedger` entry.
-  - **MAC Logic:** `StockService` (or relevant logic) now calculates the weighted average cost when stock is added.
-  - **Profit Reporting:** Sales logic now captures the *cost* at the time of sale to determine true profit, rather than relying on current purchase price.
+  - **LPP Logic:** Purchases automatically update the master `shopProduct.costPrice` with the latest incoming price.
+  - **Profit Reporting:** Sales logic captures the specific cost at the time of sale.
+  - **Why not MAC?:** Moving Average Cost requires extremely strict historical data. We are starting with LPP for stability and will migrate to MAC once inventory is stable.
 
 ### Step 4: CRM Event Integration
 **Goal:** Decouple core operations from CRM actions (Notifications/WhatsApp) using Domain Events.

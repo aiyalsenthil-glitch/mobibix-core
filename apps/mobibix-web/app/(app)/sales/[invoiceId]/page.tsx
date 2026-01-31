@@ -6,6 +6,7 @@ import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
 import { getInvoice, type SalesInvoice } from "@/services/sales.api";
 import { useTheme } from "@/context/ThemeContext";
 import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
+import { CancelInvoiceModal } from "@/components/sales/CancelInvoiceModal";
 
 export default function InvoiceDetailPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function InvoiceDetailPage() {
   const invoiceId = params.invoiceId as string;
   const { theme } = useTheme();
   const [isCollectModalOpen, setIsCollectModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
   const {
     data: invoice,
@@ -94,7 +96,15 @@ export default function InvoiceDetailPage() {
           &larr; Back
         </button>
         <div className="flex gap-2">
-           {hasBalance && (
+           {invoice.status !== "PAID" && invoice.status !== "CANCELLED" && (
+             <button
+               onClick={() => setIsCancelModalOpen(true)}
+               className="px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg font-medium transition dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-900/20"
+             >
+               Cancel Invoice
+             </button>
+           )}
+           {hasBalance && invoice.status !== "CANCELLED" && (
             <button
               onClick={() => setIsCollectModalOpen(true)}
               className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-lg font-bold shadow-md transition"
@@ -242,16 +252,27 @@ export default function InvoiceDetailPage() {
 
       {/* Modal */}
       {invoice && (
-        <CollectPaymentModal
-          invoiceId={invoice.id}
-          balanceAmount={invoice.balanceAmount || 0}
-          customerName={invoice.customerName || "Customer"}
-          isOpen={isCollectModalOpen}
-          onClose={() => setIsCollectModalOpen(false)}
-          onSuccess={() => {
-            reload();
-          }}
-        />
+        <>
+          <CollectPaymentModal
+            invoiceId={invoice.id}
+            balanceAmount={invoice.balanceAmount || 0}
+            customerName={invoice.customerName || "Customer"}
+            isOpen={isCollectModalOpen}
+            onClose={() => setIsCollectModalOpen(false)}
+            onSuccess={() => {
+              reload();
+            }}
+          />
+          <CancelInvoiceModal
+            invoiceId={invoice.id}
+            invoiceNumber={invoice.invoiceNumber}
+            isOpen={isCancelModalOpen}
+            onClose={() => setIsCancelModalOpen(false)}
+            onSuccess={() => {
+              reload();
+            }}
+          />
+        </>
       )}
     </div>
   );

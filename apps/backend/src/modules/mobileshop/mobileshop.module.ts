@@ -5,6 +5,7 @@ import { RepairModule } from './repair/repair.module';
 import { ReceiptsModule } from './receipts/receipts.module';
 import { VouchersModule } from './vouchers/vouchers.module';
 import { CrmIntegrationModule } from './crm-integration.module';
+import { MobileShopReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CrmIntegrationModule } from './crm-integration.module';
     ReceiptsModule,
     VouchersModule,
     CrmIntegrationModule,
+    MobileShopReportsModule,
   ],
 })
 export class MobileShopModule {}

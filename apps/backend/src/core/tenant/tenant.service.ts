@@ -161,6 +161,29 @@ export class TenantService {
     });
   }
 
+  async getCurrentTenantPublic(tenantId: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        code: true,
+        tenantType: true,
+        name: true,
+      },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
+
+    return {
+      tenantId: tenant.id,
+      tenantCode: tenant.code,
+      tenantType: tenant.tenantType,
+      tenantName: tenant.name,
+    };
+  }
+
   async getPublicTenantByCode(code: string) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { code },

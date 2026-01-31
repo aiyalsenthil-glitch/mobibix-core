@@ -154,7 +154,7 @@ export class SalesService {
           shopId: dto.shopId,
           isActive: true,
         },
-        select: { id: true, isSerialized: true, hsnCode: true },
+        select: { id: true, isSerialized: true, hsnCode: true, costPrice: true },
       });
       if (products.length !== productIds.length)
         throw new BadRequestException('Invalid product');
@@ -163,6 +163,9 @@ export class SalesService {
       );
       const productHsnMap = new Map(
         products.map((p) => [p.id, p.hsnCode || null]),
+      );
+      const productCostMap = new Map(
+        products.map((p) => [p.id, p.costPrice || 0]),
       );
 
       // 3. IMEI logic
@@ -395,8 +398,9 @@ export class SalesService {
           item.quantity,
           'SALE',
           invoiceItem.id,
-          undefined,
+          productCostMap.get(item.shopProductId), // Pass captured cost (LPP)
           isSerialized ? item.imeis : undefined,
+          tx, // Enforce transaction atomicity
         );
       }
 
