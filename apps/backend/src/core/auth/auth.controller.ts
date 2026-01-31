@@ -26,7 +26,8 @@ export class AuthController {
       throw new UnauthorizedException('Missing idToken');
     }
 
-    return this.authService.loginWithFirebase(body.idToken);
+    // Pass tenantCode to AuthService to ensure correct tenant context
+    return this.authService.loginWithFirebase(body.idToken, body.tenantCode);
   }
   @Public()
   @Post('google/exchange')

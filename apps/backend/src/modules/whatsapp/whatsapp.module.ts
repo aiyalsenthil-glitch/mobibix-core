@@ -7,6 +7,7 @@ import { SafeWhatsAppCron } from './safe-whatsapp.cron';
 import { WhatsAppLogger } from './whatsapp.logger';
 import { WhatsAppWebhookController } from './whatsapp.webhook.controller';
 import { WhatsAppSettingsController } from './whatsapp-settings.controller';
+import { WhatsAppTenantsController } from './whatsapp-tenants.controller';
 import { WhatsAppController } from './whatsapp.controller';
 import { WhatsAppPhoneNumbersController } from './phone-numbers/whatsapp-phone-numbers.controller';
 import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
@@ -24,6 +25,7 @@ import { EntityResolverService } from './entity-resolver.service';
     WhatsAppController,
     WhatsAppPhoneNumbersController,
     AutomationController,
+    WhatsAppTenantsController, // ✅ Added
   ],
   imports: [ScheduleModule.forRoot(), BillingModule],
   providers: [

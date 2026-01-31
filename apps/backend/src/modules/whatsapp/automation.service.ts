@@ -11,7 +11,9 @@ import {
   UpdateAutomationDto,
   ValidateAutomationDto,
 } from './dto/automation.dto';
-import { ModuleType } from '@prisma/client';
+import { ModuleType, ReminderTriggerType } from '@prisma/client';
+
+// ... (existing code)
 
 /**
  * ────────────────────────────────────────────────
@@ -58,6 +60,24 @@ export class AutomationService {
    */
   getValidEventsForModule(moduleType: ModuleType): string[] {
     return this.eventRegistry[moduleType] || [];
+  }
+
+  /**
+   * Helper: Map generic event type to Schema Enum
+   */
+  private mapEventToReminderTrigger(eventType: string): ReminderTriggerType {
+    switch (eventType) {
+      case 'MEMBER_CREATED':
+      case 'MEMBERSHIP_EXPIRY':
+      case 'MEMBERSHIP_EXPIRED':
+        return 'DATE';
+      case 'AFTER_JOB':
+        return 'AFTER_JOB';
+      case 'AFTER_INVOICE':
+        return 'AFTER_INVOICE';
+      default:
+        return 'DATE'; // Fallback
+    }
   }
 
   /**
@@ -289,4 +309,82 @@ export class AutomationService {
       }, {}),
     };
   }
+
+
+
+  /**
+   * ────────────────────────────────────────────────
+   * ⚡ EVENT HANDLING (CORE ENGINE)
+   * ────────────────────────────────────────────────
+   */
+  async handleEvent(event: {
+    moduleType: 'GYM' | 'MOBILE_SHOP';
+    eventType: string;
+    tenantId: string;
+    entityId: string;
+    payload?: any;
+  }) {
+    const { moduleType, eventType, tenantId, entityId } = event;
+
+    this.logger.log(
+      `Handling event: ${moduleType}.${eventType} for ${tenantId}:${entityId}`,
+    );
+
+    // 1️⃣ Find matching automations
+    const automations = await this.prisma.whatsAppAutomation.findMany({
+      where: {
+        moduleType: moduleType as any,
+        eventType,
+        enabled: true,
+      },
+    });
+
+    if (automations.length === 0) {
+      this.logger.debug(`No automations found for ${eventType}`);
+      return; // Nothing to do
+    }
+
+    // 2️⃣ Resolve Customer ID based on Entity
+    // (For MEMBER_CREATED, entityId is memberId)
+    let customerId: string | undefined;
+
+    if (moduleType === 'GYM' && eventType === 'MEMBER_CREATED') {
+      const member = await this.prisma.member.findUnique({
+        where: { id: entityId },
+      });
+      // Force cast to access customerId (recently added)
+      customerId = (member as any)?.customerId || undefined;
+    }
+
+    // fallback or other modules...
+    if (!customerId) {
+      this.logger.warn(`Could not resolve customer for event ${eventType}`);
+      return;
+    }
+
+    // 3️⃣ Create Reminders for each automation
+    for (const automation of automations) {
+      // Calculate scheduled date with offset
+      const scheduledAt = new Date();
+      scheduledAt.setDate(scheduledAt.getDate() + (automation.offsetDays || 0));
+
+      await this.prisma.customerReminder.create({
+        data: {
+          tenantId,
+          customerId,
+          triggerType: this.mapEventToReminderTrigger(automation.eventType), // ✅ Mapped Enum
+          triggerValue: entityId,
+          channel: 'WHATSAPP',
+          templateKey: automation.templateKey,
+          status: 'SCHEDULED',
+          scheduledAt, // ✅ Calculated with offset
+        },
+      });
+
+      this.logger.log(
+        `✅ Triggered automation ${automation.templateKey} for customer ${customerId} (Scheduled: ${scheduledAt.toISOString()})`,
+      );
+    }
+  }
+
 }

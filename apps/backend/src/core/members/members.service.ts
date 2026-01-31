@@ -105,15 +105,18 @@ function durationCodeToDays(code: 'D30' | 'D60' | 'D90' | 'M6' | 'Y1'): number {
   }
 }
 
+import { AutomationService } from '../../modules/whatsapp/automation.service';
+
 @Injectable()
 export class MembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly auditService: AuditService,
-    private readonly whatsAppSender: WhatsAppSender, // ✅ ADD
+    private readonly whatsAppSender: WhatsAppSender, 
     private readonly tenantService: TenantService,
     private readonly planRulesService: PlanRulesService,
+    private readonly automationService: AutomationService, // ✅ Injected
   ) {}
 
   async createMember(tenantId: string, dto: CreateMemberDto) {
@@ -150,6 +153,29 @@ export class MembersService {
 
     if (existing) {
       throw new BadRequestException('MOBILE_ALREADY_EXISTS');
+    }
+
+    // ─────────────────────────────
+    // 🔗 Ensure Customer Exists (Bridge for Automation)
+    // ─────────────────────────────
+    let customer = await this.prisma.customer.findUnique({
+      where: {
+        tenantId_phone: {
+          tenantId,
+          phone: normalizedPhone,
+        },
+      },
+    });
+
+    if (!customer) {
+      customer = await this.prisma.customer.create({
+        data: {
+          tenantId,
+          name: dto.fullName,
+          phone: normalizedPhone,
+          state: 'Unknown', // Required field, default to Unknown
+        },
+      });
     }
 
     const fee = dto.feeAmount;
@@ -192,6 +218,7 @@ export class MembersService {
         heightCm: dto.heightCm ?? 0,
         weightKg: dto.weightKg ?? 0,
         fitnessGoal: dto.fitnessGoal,
+        customerId: customer.id, // ✅ Linked Customer
       },
     });
     // ─────────────────────────────
@@ -211,49 +238,24 @@ export class MembersService {
     }
 
     // ─────────────────────────────
-    // ✅ Welcome WhatsApp (Plan Rules)
+    // ✅ Trigger WhatsApp Automation (Event-Driven)
     // ─────────────────────────────
     try {
-      if (member.isActive && !member.welcomeMessageSent) {
-        const isAllowed = await this.planRulesService.isFeatureEnabledForTenant(
-          tenantId,
-          WhatsAppFeature.WELCOME,
-        );
-
-        if (!isAllowed) {
-          return member;
-        }
-
-        // 🔹 Get tenant name for template
-        const tenant = await this.prisma.tenant.findUnique({
-          where: { id: tenantId },
-          select: { name: true },
+      if (member.isActive) {
+        console.log(`[MembersService] Triggering MEMBER_CREATED automation for member ${member.id}`); // Temp log
+        
+        await this.automationService.handleEvent({
+          moduleType: 'GYM',
+          eventType: 'MEMBER_CREATED',
+          tenantId: member.tenantId,
+          entityId: member.id,
         });
-
-        const result = await this.whatsAppSender.sendTemplateMessage(
-          tenantId,
-          WhatsAppFeature.WELCOME,
-          member.phone,
-          WhatsAppTemplates.WELCOME,
-          [
-            member.fullName,
-            tenant?.name || 'Gym',
-            formatDateDDMMYYYY(member.membershipStartAt),
-            formatDateDDMMYYYY(member.membershipEndAt),
-          ],
-        );
-
-        if (result.success) {
-          await this.prisma.member.update({
-            where: { id: member.id },
-            data: { welcomeMessageSent: true },
-          });
-        }
       }
     } catch (err) {
-      // ❌ Never fail member creation due to WhatsApp
-      console.error('Welcome WhatsApp failed', err.message);
+      console.error('Failed to trigger WhatsApp automation:', err.message);
+      // Do not fail member creation
     }
+
     return member;
   }
 

@@ -106,6 +106,7 @@ export class AuthService {
       // ─────────────────────────────
 
       let activeUserTenant: {
+        id: string;
         tenantId: string;
         role: UserRole;
         tenant: {
@@ -149,7 +150,8 @@ export class AuthService {
         const token = this.jwtService.sign({
           sub: user.id,
           tenantId: null,
-          role: user.role.toLowerCase(), // Convert to lowercase for frontend
+          userTenantId: null,
+          role: user.role, // EXACT USER ROLE
         });
 
         return {
@@ -158,7 +160,7 @@ export class AuthService {
             id: user.id,
             email: user.email,
             fullName: user.fullName,
-            role: user.role.toLowerCase() as any, // Convert to lowercase for frontend
+            role: user.role as any,
             tenantId: null,
           },
           tenant: null,
@@ -182,7 +184,8 @@ export class AuthService {
       const token = this.jwtService.sign({
         sub: user.id,
         tenantId: resolvedUserTenant.tenantId,
-        role: resolvedUserTenant.role.toLowerCase(), // Convert to lowercase for frontend
+        userTenantId: resolvedUserTenant.id,
+        role: resolvedUserTenant.role, // EXACT USER ROLE
       });
 
       return {
@@ -190,7 +193,7 @@ export class AuthService {
         user: {
           id: user.id,
           tenantId: activeUserTenant?.tenantId ?? null,
-          role: (activeUserTenant?.role ?? UserRole.USER).toLowerCase() as any,
+          role: activeUserTenant?.role ?? UserRole.USER,
           name: user.fullName,
           email: user.email,
         },

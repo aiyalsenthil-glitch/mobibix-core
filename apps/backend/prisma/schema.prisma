@@ -124,6 +124,8 @@ model Member {
   attendances         GymAttendance[]
   gymMemberships      GymMembership[]
   tenant              Tenant              @relation(fields: [tenantId], references: [id])
+  customer            Customer?           @relation(fields: [customerId], references: [id])
+  customerId          String?
   payments            MemberPayment[]
 
   @@unique([id, tenantId])
@@ -152,6 +154,7 @@ model Customer {
   invoices            Invoice[]
   jobCards            JobCard[]
   loyaltyTransactions LoyaltyTransaction[]
+  members             Member[]
 
   @@unique([tenantId, phone])
   @@index([tenantId])

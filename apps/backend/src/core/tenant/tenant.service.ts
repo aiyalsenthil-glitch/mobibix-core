@@ -108,7 +108,7 @@ export class TenantService {
       tenant.id,
       trialPlan.id,
     );
-    await this.prisma.userTenant.create({
+    const userTenant = await this.prisma.userTenant.create({
       data: {
         userId,
         tenantId: tenant.id,
@@ -116,7 +116,7 @@ export class TenantService {
       },
     });
 
-    return tenant;
+    return { tenant, userTenant };
   }
 
   async searchTenants(query: string) {
@@ -361,11 +361,13 @@ export class TenantService {
   issueJwt(payload: {
     userId: string;
     tenantId: string | null;
+    userTenantId: string | null;
     role: UserRole;
   }) {
     return this.jwtService.sign({
       sub: payload.userId,
       tenantId: payload.tenantId,
+      userTenantId: payload.userTenantId,
       role: payload.role,
     });
   }

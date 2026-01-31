@@ -38,11 +38,15 @@ export class TenantController {
   async createTenant(@Req() req: any, @Body() dto: CreateTenantDto) {
     const userId = req.user.sub;
 
-    const tenant = await this.tenantService.createTenant(userId, dto);
+    const { tenant, userTenant } = await this.tenantService.createTenant(
+      userId,
+      dto,
+    );
 
     const token = this.tenantService.issueJwt({
       userId,
       tenantId: tenant.id,
+      userTenantId: userTenant.id,
       role: UserRole.OWNER,
     });
 
@@ -80,7 +84,12 @@ export class TenantController {
       throw new ForbiddenException('Admin access only');
     }
 
-    if (!q || q.trim().length < 2) {
+    if (!q || q.trim().length === 0) {
+      // If no query, return recent tenants (for admin listing)
+      return this.tenantService.searchTenants('');
+    }
+
+    if (q.trim().length < 2) {
       return [];
     }
 
