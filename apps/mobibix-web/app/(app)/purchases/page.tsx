@@ -35,6 +35,8 @@ const PAYMENT_BADGES: Record<PaymentMode, string> = {
   BANK: "bg-amber-500/15 text-amber-300",
 };
 
+import { CancelPurchaseModal } from "@/components/purchases/CancelPurchaseModal";
+
 export default function PurchasesPage() {
   const { theme } = useTheme();
   const router = useRouter();
@@ -51,6 +53,8 @@ export default function PurchasesPage() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedPurchaseForCancel, setSelectedPurchaseForCancel] = useState<Purchase | null>(null);
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(
     null,
   );
@@ -222,6 +226,9 @@ export default function PurchasesPage() {
     }
   };
 
+  /* 
+   * Replaced by CancelPurchaseModal
+   * 
   const handleCancel = async (purchaseId: string) => {
     if (!confirm("Are you sure you want to cancel this purchase?")) return;
 
@@ -231,6 +238,12 @@ export default function PurchasesPage() {
     } catch (err: any) {
       alert(err.message || "Failed to cancel purchase");
     }
+  }; 
+  */
+ 
+  const openCancelModal = (purchase: Purchase) => {
+    setSelectedPurchaseForCancel(purchase);
+    setShowCancelModal(true);
   };
 
   const resetForm = () => {
@@ -1126,9 +1139,9 @@ export default function PurchasesPage() {
                         Record Payment
                       </button>
                     )}
-                  {purchase.paidAmount === 0 && (
+                  {purchase.status !== "PAID" && purchase.status !== "CANCELLED" && (
                     <button
-                      onClick={() => handleCancel(purchase.id)}
+                      onClick={() => openCancelModal(purchase)}
                       className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded text-sm transition-colors"
                     >
                       Cancel
@@ -1138,6 +1151,21 @@ export default function PurchasesPage() {
               </div>
             ))}
           </div>
+        )}
+
+        {selectedPurchaseForCancel && (
+          <CancelPurchaseModal
+            purchaseId={selectedPurchaseForCancel.id}
+            invoiceNumber={selectedPurchaseForCancel.invoiceNumber}
+            isOpen={showCancelModal}
+            onClose={() => {
+              setShowCancelModal(false);
+              setSelectedPurchaseForCancel(null);
+            }}
+            onSuccess={() => {
+              loadPurchases();
+            }}
+          />
         )}
       </div>
     </div>
