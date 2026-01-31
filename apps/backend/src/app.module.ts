@@ -24,8 +24,11 @@ import { CustomerTimelineModule } from './core/timeline/customer-timeline.module
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
+import { EventEmitterModule } from '@nestjs/event-emitter';
+
 @Module({
   imports: [
+    EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     // 🌍 Global env config
     ConfigModule.forRoot({

@@ -3,6 +3,8 @@ import { HttpModule } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { CrmIntegrationService } from './services/crm-integration.service';
 import { MobileShopCrmController } from './crm-integration.controller';
+import { CrmEventListener } from './services/crm-event.listener';
+import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 
 /**
  * MobileShop Integration Module
@@ -37,9 +39,10 @@ import { MobileShopCrmController } from './crm-integration.controller';
       }),
       inject: [ConfigService],
     }),
+    WhatsAppModule,
   ],
   controllers: [MobileShopCrmController],
-  providers: [CrmIntegrationService],
+  providers: [CrmIntegrationService, CrmEventListener],
   exports: [CrmIntegrationService],
 })
 export class CrmIntegrationModule {}

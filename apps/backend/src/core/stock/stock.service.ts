@@ -137,12 +137,19 @@ export class StockService {
     shopId: string,
     productId: string,
     quantity: number,
-    referenceType: 'PURCHASE' | 'SALE' | 'REPAIR' | 'ADJUSTMENT',
+    referenceType:
+      | 'PURCHASE'
+      | 'SALE'
+      | 'REPAIR'
+      | 'ADJUSTMENT'
+      | 'SALE_RETURN',
     referenceId: string | null,
     costPerUnit?: number,
     imeis?: string[],
+    tx?: any,
   ) {
-    const product = await this.prisma.shopProduct.findFirst({
+    const prisma = tx || this.prisma;
+    const product = await prisma.shopProduct.findFirst({
       where: { id: productId, tenantId, isActive: true },
       select: { id: true, type: true, isSerialized: true, name: true },
     });
@@ -172,7 +179,7 @@ export class StockService {
       // IMEI status updates (e.g., to IN_STOCK) are handled by calling services
     }
 
-    return this.prisma.stockLedger.create({
+    return prisma.stockLedger.create({
       data: {
         tenantId,
         shopId,

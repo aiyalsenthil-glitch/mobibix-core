@@ -8,10 +8,15 @@ import {
   generateJobCardNumber,
   getFinancialYear,
 } from '../../../common/utils/invoice-number.util';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { JobStatusChangedEvent } from '../../../core/events/crm.events';
 
 @Injectable()
 export class JobCardsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventEmitter: EventEmitter2,
+  ) {}
 
   async assertAccess(user: any, shopId: string) {
     // OWNER → any shop under tenant
@@ -291,10 +296,28 @@ export class JobCardsService {
       throw new BadRequestException('Job is locked');
     }
 
-    return this.prisma.jobCard.update({
+    const updatedJob = await this.prisma.jobCard.update({
       where: { id },
       data: { status },
     });
+
+    // ⚡ EVENT (JobStatusChanged)
+    if (updatedJob) {
+      this.eventEmitter.emit(
+        'job.status.changed',
+        new JobStatusChangedEvent(
+          user.tenantId,
+          shopId,
+          id,
+          updatedJob.customerId,
+          status,
+          updatedJob.customerPhone,
+          updatedJob.deviceModel,
+        ),
+      );
+    }
+
+    return updatedJob;
   }
 
   async publicStatus(publicToken: string) {

@@ -166,16 +166,24 @@ export class TenantService {
       where: { code },
       select: {
         id: true,
+        code: true,
+        tenantType: true,
         name: true,
         kioskToken: true,
       },
     });
 
-    if (!tenant || !tenant.kioskToken) {
+    if (!tenant || tenant.tenantType !== 'GYM' || !tenant.kioskToken) {
       throw new NotFoundException('Gym not available');
     }
 
-    return tenant;
+    return {
+      tenantId: tenant.id,
+      tenantCode: tenant.code,
+      tenantType: 'GYM',
+      tenantName: tenant.name,
+      kioskToken: tenant.kioskToken,
+    };
   }
 
   async generateKioskToken(tenantId: string) {

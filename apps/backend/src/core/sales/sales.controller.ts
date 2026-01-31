@@ -78,7 +78,19 @@ export class SalesController {
     @Body() dto: { amount: number; paymentMethod: 'CASH' | 'CARD' | 'UPI' | 'BANK'; transactionRef?: string; narration?: string },
   ) {
     const tenantId = req.user?.tenantId;
-    return this.paymentService.recordPayment(tenantId, { invoiceId, ...dto });
+    // 🛡️ FINANCIAL SAFETY LOCK
+    // Redirect legacy calls to the safe collectPayment method which handles Paisa conversion correctly.
+    const collectDto: CollectPaymentDto = {
+      paymentMethods: [
+        {
+          mode: dto.paymentMethod,
+          amount: dto.amount, // Passed as Rupees (same as expected by collectPayment)
+        },
+      ],
+      transactionRef: dto.transactionRef,
+      narration: dto.narration,
+    };
+    return this.service.collectPayment(tenantId, invoiceId, collectDto);
   }
 
   @Post('invoice/:invoiceId/collect-payment')

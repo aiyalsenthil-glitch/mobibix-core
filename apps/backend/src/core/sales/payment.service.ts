@@ -13,6 +13,10 @@ export interface CreateReceiptDto {
 export class PaymentService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * @deprecated UNSAFE: Does not convert Rupees to Paisa. Use SalesService.collectPayment instead.
+   * Kept only for legacy type compatibility. Do not use in new code.
+   */
   async recordPayment(tenantId: string, dto: CreateReceiptDto) {
     return this.prisma.$transaction(async (tx) => {
       // 1. Fetch invoice
