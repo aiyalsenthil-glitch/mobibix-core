@@ -5,6 +5,8 @@ import { WhatsAppLogger } from './whatsapp.logger';
 import { toWhatsAppPhone } from '../../common/utils/phone.util';
 import { ReminderChannel, ReminderStatus } from '@prisma/client';
 import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
+import { WhatsAppVariableResolver, VariableResolutionContext } from './variable-resolver.service';
+import { WhatsAppModule } from './variable-registry';
 
 interface ReminderTemplateParams {
   [key: string]: string | number;
@@ -24,6 +26,7 @@ export class WhatsAppRemindersService {
     private readonly prisma: PrismaService,
     private readonly whatsAppSender: WhatsAppSender,
     private readonly whatsAppLogger: WhatsAppLogger,
+    private readonly variableResolver: WhatsAppVariableResolver,
   ) {}
 
   /**
@@ -135,14 +138,36 @@ export class WhatsAppRemindersService {
   private async processSingleReminder(reminder: any): Promise<void> {
     const { id: reminderId, tenantId, customer, templateKey } = reminder;
 
+    // 0️⃣ Atomic Lock: Try to mark as SENT immediately to prevent race conditions
+    // This ensures only ONE process can pick up this reminder.
+    // If it fails (count === 0), it means another process already handled it.
+    const { count } = await this.prisma.customerReminder.updateMany({
+      where: {
+        id: reminderId,
+        status: ReminderStatus.SCHEDULED,
+      },
+      data: {
+        status: ReminderStatus.SENT, // Optimistically mark as SENT (Processing)
+        sentAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    if (count === 0) {
+      this.logger.warn(
+        `[WhatsAppReminders] Atomic Lock Failed for ${reminderId}. Already processed.`,
+      );
+      return;
+    }
+
     try {
       // 1️⃣ Check tenant WhatsApp is enabled
       const whatsAppSetting = await this.prisma.whatsAppSetting.findUnique({
         where: { tenantId },
       });
 
-      if (!whatsAppSetting?.enabled) {
-        // Silently skip - tenant has disabled WhatsApp
+      // Permissive Default: Only skip if explicitly set to false
+      if (whatsAppSetting && whatsAppSetting.enabled === false) {
         await this.updateReminderStatus(
           reminderId,
           ReminderStatus.SKIPPED,
@@ -187,11 +212,60 @@ export class WhatsAppRemindersService {
         return;
       }
 
-      // 4️⃣ Build template parameters
-      const parameters = this.buildTemplateParameters(reminder, customer);
+      // 4️⃣ Build template parameters using Variable Resolver
+      let parameters: string[] = [];
+      
+      // Fetch template definition to get variable keys
+      // Try finding by templateKey (standard) OR metaTemplateName (legacy/direct reference)
+      // Get the LATEST active template for this key
+      const template = await this.prisma.whatsAppTemplate.findFirst({
+        where: {
+          status: 'ACTIVE',
+          OR: [
+            { templateKey: templateKey },
+            { metaTemplateName: templateKey },
+          ],
+        },
+        orderBy: { updatedAt: 'desc' },
+      });
+
+      console.log(`[WhatsAppReminders] Processing reminder for ${customer.phone}, Template: ${templateKey}`);
+      
+      if (template?.variables && Array.isArray(template.variables) && template.variables.length > 0) {
+        // Resolve variables dynamically
+        const variableKeys = template.variables as string[];
+        
+        // Find Member for context (Link Customer -> Member via phone)
+        const member = await this.prisma.member.findFirst({
+          where: { tenantId, phone: customer.phone },
+        });
+
+        const context: VariableResolutionContext = {
+          module: WhatsAppModule.GYM,
+          tenantId,
+          memberId: member?.id, // May be null if only a lead
+        };
+
+        const resolvedMap = await this.variableResolver.resolveVariables(
+          variableKeys,
+          context,
+        );
+
+        // Map back to array in order
+        parameters = variableKeys.map((key) => {
+          const res = resolvedMap.get(key);
+          return res?.formatted || ''; 
+        });
+        
+        console.log(`[WhatsAppReminders] Resolved Parameters: ${JSON.stringify(parameters)}`);
+      } else {
+         // Fallback for manually seeded templates or missing definitions
+         // Use the old hardcoded logic as fail-safe
+         parameters = this.buildTemplateParameters(reminder, customer);
+         console.log(`[WhatsAppReminders] Fallback Parameters: ${JSON.stringify(parameters)}`);
+      }
 
       // 5️⃣ Send message via WhatsAppSender
-      // Note: WhatsAppSender handles subscription/plan checks internally
       const result = await this.whatsAppSender.sendTemplateMessage(
         tenantId,
         WhatsAppFeature.REMINDER,
@@ -202,9 +276,7 @@ export class WhatsAppRemindersService {
 
       // 6️⃣ Handle result and update status
       if (result.skipped) {
-        // Plan-level or feature-level block
         const reason = result.reason || 'Blocked by subscription plan or feature limit';
-        
         await this.updateReminderStatus(
           reminderId,
           ReminderStatus.SKIPPED,
@@ -221,9 +293,11 @@ export class WhatsAppRemindersService {
       }
 
       if (result.success) {
-        await this.updateReminderStatus(reminderId, ReminderStatus.SENT);
+        // ✅ Already marked as SENT by the Atomic Lock.
+        // Just log the success attempt.
         await this.logAttempt(tenantId, customer.id, whatsAppPhone, 'SUCCESS');
       } else {
+        // ❌ Revert status to FAILED
         await this.updateReminderStatus(
           reminderId,
           ReminderStatus.FAILED,
@@ -238,6 +312,7 @@ export class WhatsAppRemindersService {
         );
       }
     } catch (err) {
+      // ❌ Revert status to FAILED on crash
       const errorMsg = err instanceof Error ? err.message : String(err);
       await this.updateReminderStatus(
         reminderId,

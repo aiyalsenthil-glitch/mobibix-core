@@ -40,6 +40,7 @@ async function bootstrap() {
       ],
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
+      credentials: true,
     }),
   );
 

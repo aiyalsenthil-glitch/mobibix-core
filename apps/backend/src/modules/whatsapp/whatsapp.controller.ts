@@ -42,23 +42,23 @@ export class WhatsAppController {
     // Default to last 7 days if no dates provided
     const end = endDate ? new Date(endDate) : new Date();
     const start = startDate ? new Date(startDate) : new Date();
-    
+
     if (!startDate) {
       start.setDate(end.getDate() - 7);
     }
 
     // Ensure start is at beginning of day, end at end of day
-    // Ensure start is at beginning of day, end at end of day
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
-    console.log(`[getLogs] Fetching for tenant: ${tenantId}, Start: ${start.toISOString()}, End: ${end.toISOString()}`);
+    const isAll = tenantId.toLowerCase() === 'all';
+    const tenantFilter = isAll ? {} : { tenantId };
 
     const [whatsAppLogs, reminders, followUps, alerts] = await Promise.all([
       // 1. Standard WhatsApp Logs
       this.prisma.whatsAppLog.findMany({
         where: {
-          tenantId,
+          ...tenantFilter,
           sentAt: { gte: start, lte: end },
         },
         orderBy: { sentAt: 'desc' },
@@ -68,7 +68,7 @@ export class WhatsAppController {
       // 2. Customer Reminders
       this.prisma.customerReminder.findMany({
         where: {
-          tenantId,
+          ...tenantFilter,
           scheduledAt: { gte: start, lte: end },
         },
         include: { customer: { select: { phone: true, name: true } } },
@@ -79,7 +79,7 @@ export class WhatsAppController {
       // 3. Customer FollowUps
       this.prisma.customerFollowUp.findMany({
         where: {
-          tenantId,
+          ...tenantFilter,
           createdAt: { gte: start, lte: end },
         },
         include: { customer: { select: { phone: true, name: true } } },
@@ -90,7 +90,7 @@ export class WhatsAppController {
       // 4. Customer Alerts
       this.prisma.customerAlert.findMany({
         where: {
-          tenantId,
+          ...tenantFilter,
           createdAt: { gte: start, lte: end },
         },
         include: { customer: { select: { phone: true, name: true } } },
@@ -98,9 +98,6 @@ export class WhatsAppController {
         take: 100,
       }),
     ]);
-
-    console.log(`[getLogs] Found: Logs=${whatsAppLogs.length}, Reminders=${reminders.length}, FollowUps=${followUps.length}, Alerts=${alerts.length}`);
-
 
     // Map all to a unified structure compatible with UI expecting WhatsAppLog-like fields
     const unifiedLogs = [
@@ -489,7 +486,16 @@ export class WhatsAppController {
    * Helper: Validate tenant access
    */
   private validateAccess(req: any, tenantId: string) {
-    if (req.user?.role !== 'admin' && req.user?.tenantId !== tenantId) {
+    // Admin can access everything, including "all"
+    if (req.user?.role === 'admin' || req.user?.role === 'SUPER_ADMIN') {
+      return;
+    }
+    // Specific tenant access check
+    if (tenantId.toLowerCase() === 'all') {
+      throw new BadRequestException('Unauthorized to view all logs');
+    }
+
+    if (req.user?.tenantId !== tenantId) {
       throw new BadRequestException('Unauthorized');
     }
   }

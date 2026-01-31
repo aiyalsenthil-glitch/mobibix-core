@@ -29,7 +29,12 @@ export class PlanRulesService {
     }
 
     const plan = await this.prisma.plan.findFirst({
-      where: { code: normalized },
+      where: {
+        OR: [
+          { code: normalized },
+          { name: normalized }
+        ]
+      },
       include: { planFeatures: true },
     });
 
@@ -57,6 +62,7 @@ export class PlanRulesService {
   }
 
   async getPlanRulesForTenant(tenantId: string): Promise<PlanRules | null> {
+    // 1. Try fetching Active Subscription
     const subscription = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
@@ -66,12 +72,12 @@ export class PlanRulesService {
       include: { plan: true },
     });
 
-    if (!subscription?.plan) {
-      return null;
+    if (subscription?.plan) {
+      const code = subscription.plan.code || subscription.plan.name;
+      return this.getPlanRulesByCode(code);
     }
 
-    const code = subscription.plan.code || subscription.plan.name;
-    return this.getPlanRulesByCode(code);
+    return null;
   }
 
   async isFeatureEnabledForTenant(

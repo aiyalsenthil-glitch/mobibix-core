@@ -11,6 +11,8 @@ import { WhatsAppWebhookController } from './whatsapp.webhook.controller';
 import { WhatsAppSettingsController } from './whatsapp-settings.controller';
 import { WhatsAppTenantsController } from './whatsapp-tenants.controller';
 import { WhatsAppController } from './whatsapp.controller';
+import { WhatsAppDebugController } from './whatsapp-debug.controller';
+import { WhatsAppPlansController } from './whatsapp-plans.controller';
 import { WhatsAppPhoneNumbersController } from './phone-numbers/whatsapp-phone-numbers.controller';
 import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
 import { WhatsAppVariableResolver } from './variable-resolver.service';
@@ -27,7 +29,14 @@ import { EntityResolverService } from './entity-resolver.service';
     WhatsAppController,
     WhatsAppPhoneNumbersController,
     AutomationController,
-    WhatsAppTenantsController, // ✅ Added
+    WhatsAppWebhookController,
+    WhatsAppSettingsController,
+    WhatsAppController,
+    WhatsAppPhoneNumbersController,
+    AutomationController,
+    WhatsAppTenantsController,
+    WhatsAppDebugController, // ✅ Added
+    WhatsAppPlansController, // <-- Added for /whatsapp/plans
   ],
   imports: [ScheduleModule.forRoot(), BillingModule],
   providers: [
@@ -38,7 +47,7 @@ import { EntityResolverService } from './entity-resolver.service';
     WhatsAppLogger,
     WhatsAppPhoneNumbersService,
     WhatsAppVariableResolver, // ✅ Restored
-    AutomationService,        // ✅ Restored
+    AutomationService, // ✅ Restored
     AutomationSafetyService,
     EntityResolverService,
     WhatsAppRemindersService, // ✅ Added for DI

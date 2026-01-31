@@ -331,56 +331,113 @@ async function main() {
       create: tpl,
     });
   }
-  // Plans (idempotent without relying on DB unique constraints)
+  // Plans
   const plans = [
-    { code: 'TRIAL', name: 'TRIAL', level: 0, price: 0, durationDays: 14 },
-    { code: 'BASIC', name: 'BASIC', level: 1, price: 999, durationDays: 30 },
-    { code: 'PLUS', name: 'PLUS', level: 2, price: 149, durationDays: 30 },
-    { code: 'PRO', name: 'PRO', level: 3, price: 1999, durationDays: 365 },
+    {
+      code: 'TRIAL',
+      name: 'TRIAL',
+      level: 0,
+      price: 0,
+      durationDays: 14,
+      memberLimit: 0,
+      features: [], // No specific WhatsApp features
+    },
+    {
+      code: 'BASIC',
+      name: 'BASIC',
+      level: 1,
+      price: 999,
+      durationDays: 30,
+      memberLimit: 0, // Unlimited
+      features: [],
+    },
+    {
+      code: 'PLUS',
+      name: 'PLUS',
+      level: 2,
+      price: 149,
+      durationDays: 30,
+      memberLimit: 50,
+      features: ['PAYMENT_DUE', 'REMINDER'],
+    },
+    {
+      code: 'PRO',
+      name: 'PRO',
+      level: 3,
+      price: 1999,
+      durationDays: 365,
+      memberLimit: 600,
+      features: ['PAYMENT_DUE', 'REMINDER'],
+    },
     {
       code: 'ULTIMATE',
       name: 'ULTIMATE',
       level: 4,
       price: 4999,
       durationDays: 365,
+      memberLimit: 500,
+      features: ['WELCOME', 'EXPIRY', 'PAYMENT_DUE', 'REMINDER'],
     },
   ];
 
-  // Use direct SQL via `pool` to avoid Prisma client model/column mismatches in prod
-  const { randomUUID } = await import('crypto');
   for (const p of plans) {
-    const check = await pool.query(
-      'SELECT 1 FROM "Plan" WHERE "name" = $1 LIMIT 1',
-      [p.name],
-    );
-    if (check.rowCount === 0) {
-      const id = randomUUID();
-      const now = new Date().toISOString();
-      const currency = (p as any).currency || 'INR';
-      const memberLimit = (p as any).memberLimit ?? 0;
-      const features = (p as any).features
-        ? JSON.stringify((p as any).features)
-        : null;
-      const isActive = (p as any).isActive ?? true;
-      const billingCycle = (p as any).billingCycle || 'MONTHLY';
+    // 1. Upsert Plan
+    // We try to find by name to maintain existing logic
+    const existingPlan = await prisma.plan.findFirst({
+      where: { name: p.name },
+    });
 
-      await pool.query(
-        `INSERT INTO "Plan" ("id","name","level","price","currency","durationDays","memberLimit","features","isActive","createdAt","updatedAt","billingCycle") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-        [
-          id,
-          p.name,
-          p.level,
-          p.price,
-          currency,
-          p.durationDays,
-          memberLimit,
-          features,
-          isActive,
-          now,
-          now,
-          billingCycle,
-        ],
-      );
+    let planId = existingPlan?.id;
+
+    if (existingPlan) {
+      await prisma.plan.update({
+        where: { id: existingPlan.id },
+        data: {
+          level: p.level,
+          price: p.price,
+          durationDays: p.durationDays,
+          memberLimit: p.memberLimit,
+          billingCycle: 'MONTHLY',
+          // Legacy JSON column update if needed
+          features: p.features as any, 
+        },
+      });
+      console.log(`✅ Updated Plan: ${p.name}`);
+    } else {
+      const created = await prisma.plan.create({
+        data: {
+          code: p.code,
+          name: p.name,
+          level: p.level,
+          price: p.price,
+          currency: 'INR',
+          durationDays: p.durationDays,
+          memberLimit: p.memberLimit,
+          features: p.features as any,
+          isActive: true,
+          billingCycle: 'MONTHLY',
+        },
+      });
+      planId = created.id;
+      console.log(`✅ Created Plan: ${p.name}`);
+    }
+
+    if (planId) {
+      // 2. Sync Plan Features (The real table)
+      // Remove all existing features to ensure exact match
+      await prisma.planFeature.deleteMany({
+        where: { planId },
+      });
+
+      if (p.features.length > 0) {
+        await prisma.planFeature.createMany({
+          data: p.features.map((f) => ({
+            planId: planId!,
+            feature: f as any, // Cast to any to bypass enum strictness in seed
+          })),
+        });
+        console.log(`   - Synced ${p.features.length} features for ${p.name}`);
+      }
     }
   }
 
