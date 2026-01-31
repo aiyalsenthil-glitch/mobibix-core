@@ -43,7 +43,6 @@ export class CrmIntegrationService {
         }),
       );
 
-      this.logger.debug(`Dashboard metrics fetched (preset: ${preset})`);
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to fetch dashboard metrics: ${error.message}`);
@@ -67,7 +66,6 @@ export class CrmIntegrationService {
         this.http.get('/api/core/follow-ups/my', { headers }),
       );
 
-      this.logger.debug(`My follow-ups fetched: ${response.data.length} items`);
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to fetch follow-ups: ${error.message}`);
@@ -87,9 +85,6 @@ export class CrmIntegrationService {
         this.http.get('/api/core/follow-ups/all', { headers }),
       );
 
-      this.logger.debug(
-        `All follow-ups fetched: ${response.data.length} items`,
-      );
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to fetch all follow-ups: ${error.message}`);
@@ -214,9 +209,6 @@ export class CrmIntegrationService {
         }),
       );
 
-      this.logger.debug(
-        `Timeline for customer ${customerId} fetched: ${response.data.items.length} items`,
-      );
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to fetch customer timeline: ${error.message}`);
@@ -287,7 +279,6 @@ export class CrmIntegrationService {
         this.http.get('/api/modules/whatsapp/logs', { headers, params }),
       );
 
-      this.logger.debug(`WhatsApp logs fetched: ${response.data.length} items`);
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to fetch WhatsApp logs: ${error.message}`);

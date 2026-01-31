@@ -27,10 +27,6 @@ export class CrmDashboardService {
   ): Promise<CrmDashboardResponse> {
     const { startDate, endDate } = this.resolveDateRange(query);
 
-    this.logger.debug(
-      `Generating CRM dashboard for tenant ${tenantId} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
-    );
-
     // Fetch all KPIs in parallel for performance
     const [customers, followUps, financials, loyalty, whatsapp] =
       await Promise.all([

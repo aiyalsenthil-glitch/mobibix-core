@@ -5,7 +5,10 @@ import { WhatsAppLogger } from './whatsapp.logger';
 import { toWhatsAppPhone } from '../../common/utils/phone.util';
 import { ReminderChannel, ReminderStatus } from '@prisma/client';
 import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
-import { WhatsAppVariableResolver, VariableResolutionContext } from './variable-resolver.service';
+import {
+  WhatsAppVariableResolver,
+  VariableResolutionContext,
+} from './variable-resolver.service';
 import { WhatsAppModule } from './variable-registry';
 
 interface ReminderTemplateParams {
@@ -82,10 +85,6 @@ export class WhatsAppRemindersService {
         },
         take: 100, // Batch limit to avoid overwhelming DB
       });
-
-      this.logger.debug(
-        `Found ${pendingReminders.length} pending WhatsApp reminders`,
-      );
 
       if (pendingReminders.length === 0) {
         return {
@@ -214,27 +213,30 @@ export class WhatsAppRemindersService {
 
       // 4️⃣ Build template parameters using Variable Resolver
       let parameters: string[] = [];
-      
+
       // Fetch template definition to get variable keys
       // Try finding by templateKey (standard) OR metaTemplateName (legacy/direct reference)
       // Get the LATEST active template for this key
       const template = await this.prisma.whatsAppTemplate.findFirst({
         where: {
           status: 'ACTIVE',
-          OR: [
-            { templateKey: templateKey },
-            { metaTemplateName: templateKey },
-          ],
+          OR: [{ templateKey: templateKey }, { metaTemplateName: templateKey }],
         },
         orderBy: { updatedAt: 'desc' },
       });
 
-      console.log(`[WhatsAppReminders] Processing reminder for ${customer.phone}, Template: ${templateKey}`);
-      
-      if (template?.variables && Array.isArray(template.variables) && template.variables.length > 0) {
+      console.log(
+        `[WhatsAppReminders] Processing reminder for ${customer.phone}, Template: ${templateKey}`,
+      );
+
+      if (
+        template?.variables &&
+        Array.isArray(template.variables) &&
+        template.variables.length > 0
+      ) {
         // Resolve variables dynamically
         const variableKeys = template.variables as string[];
-        
+
         // Find Member for context (Link Customer -> Member via phone)
         const member = await this.prisma.member.findFirst({
           where: { tenantId, phone: customer.phone },
@@ -254,15 +256,19 @@ export class WhatsAppRemindersService {
         // Map back to array in order
         parameters = variableKeys.map((key) => {
           const res = resolvedMap.get(key);
-          return res?.formatted || ''; 
+          return res?.formatted || '';
         });
-        
-        console.log(`[WhatsAppReminders] Resolved Parameters: ${JSON.stringify(parameters)}`);
+
+        console.log(
+          `[WhatsAppReminders] Resolved Parameters: ${JSON.stringify(parameters)}`,
+        );
       } else {
-         // Fallback for manually seeded templates or missing definitions
-         // Use the old hardcoded logic as fail-safe
-         parameters = this.buildTemplateParameters(reminder, customer);
-         console.log(`[WhatsAppReminders] Fallback Parameters: ${JSON.stringify(parameters)}`);
+        // Fallback for manually seeded templates or missing definitions
+        // Use the old hardcoded logic as fail-safe
+        parameters = this.buildTemplateParameters(reminder, customer);
+        console.log(
+          `[WhatsAppReminders] Fallback Parameters: ${JSON.stringify(parameters)}`,
+        );
       }
 
       // 5️⃣ Send message via WhatsAppSender
@@ -276,7 +282,8 @@ export class WhatsAppRemindersService {
 
       // 6️⃣ Handle result and update status
       if (result.skipped) {
-        const reason = result.reason || 'Blocked by subscription plan or feature limit';
+        const reason =
+          result.reason || 'Blocked by subscription plan or feature limit';
         await this.updateReminderStatus(
           reminderId,
           ReminderStatus.SKIPPED,
