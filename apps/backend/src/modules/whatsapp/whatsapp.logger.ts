@@ -10,7 +10,7 @@ export class WhatsAppLogger {
     memberId: string | null;
     phone: string;
     type: string;
-    status: 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED';
+    status: 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'SKIPPED';
     error?: string | null;
     messageId?: string | null;
     metadata?: Record<string, any> | null;

@@ -4,6 +4,8 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 import { WhatsAppSender } from './whatsapp.sender';
 import { WhatsAppCron } from './whatsapp.cron';
 import { SafeWhatsAppCron } from './safe-whatsapp.cron';
+import { WhatsAppRemindersCron } from './whatsapp-reminders.cron'; // ✅ Added
+import { WhatsAppRemindersService } from './whatsapp-reminders.service'; // ✅ Added
 import { WhatsAppLogger } from './whatsapp.logger';
 import { WhatsAppWebhookController } from './whatsapp.webhook.controller';
 import { WhatsAppSettingsController } from './whatsapp-settings.controller';
@@ -35,10 +37,12 @@ import { EntityResolverService } from './entity-resolver.service';
     SafeWhatsAppCron,
     WhatsAppLogger,
     WhatsAppPhoneNumbersService,
-    WhatsAppVariableResolver,
-    AutomationService,
+    WhatsAppVariableResolver, // ✅ Restored
+    AutomationService,        // ✅ Restored
     AutomationSafetyService,
     EntityResolverService,
+    WhatsAppRemindersService, // ✅ Added for DI
+    WhatsAppRemindersCron, // ✅ Added for reminder sending
   ],
   exports: [
     WhatsAppSender,

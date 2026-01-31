@@ -45,10 +45,16 @@ export class WhatsAppSettingsController {
 
     if (!setting) {
       // Return default settings if not found
+      // Fallback to Tenant setting
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { whatsappEnabled: true },
+      });
+      
       return {
         id: '',
         tenantId,
-        enabled: false,
+        enabled: tenant?.whatsappEnabled ?? false,
         provider: 'META',
         defaultLanguage: 'en',
         dailyLimit: undefined,

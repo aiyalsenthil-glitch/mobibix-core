@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { getScheduledAtUTC } from '../../common/utils/date.util';
 import { AutomationSafetyService } from './automation-safety.service';
 import {
   CreateAutomationDto,
@@ -365,8 +366,13 @@ export class AutomationService {
     // 3️⃣ Create Reminders for each automation
     for (const automation of automations) {
       // Calculate scheduled date with offset
-      const scheduledAt = new Date();
-      scheduledAt.setDate(scheduledAt.getDate() + (automation.offsetDays || 0));
+      const scheduledAt = getScheduledAtUTC({
+        offsetDays: automation.offsetDays || 0,
+        localHour: 9, // Default to 9 AM
+        localMinute: 0,
+      });
+
+      this.logger.log(`[REMINDER] ScheduledAt UTC=${scheduledAt.toISOString()}`);
 
       await this.prisma.customerReminder.create({
         data: {

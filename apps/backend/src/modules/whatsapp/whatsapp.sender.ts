@@ -48,6 +48,7 @@ export class WhatsAppSender {
     messageId?: string;
     error?: any;
     skipped?: boolean;
+    reason?: string;
   }> {
     // ✅ NORMALIZE PHONE: Convert any format to 10 digits, then to 91XXXXXXXXXX
     const normalizedPhone = normalizePhone(phone);
@@ -74,17 +75,23 @@ export class WhatsAppSender {
       where: { tenantId },
     });
 
-    if (!setting?.enabled) {
+    // PERMISSIVE CHECK:
+    // Only block if setting explicitly exists and is set to false.
+    // If setting is missing, assume enabled (plan limits will govern access).
+    if (setting && setting.enabled === false) {
       await this.logger.log({
         tenantId,
         memberId: null,
         phone,
         type: feature,
         status: 'FAILED',
-        error: 'WhatsApp is disabled for this tenant',
+        error: 'WhatsApp is disabled in tenant settings',
       });
-      return { success: false, skipped: true };
+      return { success: false, skipped: true, reason: 'WhatsApp disabled in settings' };
     }
+    
+    // Previous "Tenant.whatsappEnabled" check is removed to prevent accidental blocking.
+    // Logic now relies on Plan Rules (checked below) as the primary gatekeeper.
 
     // ─────────────────────────────
     // 2️⃣ Get Dynamic Phone Number from DB
@@ -107,7 +114,7 @@ export class WhatsAppSender {
         status: 'FAILED',
         error: `No active phone number found for purpose ${purpose}: ${error.message}`,
       });
-      return { success: false, skipped: true };
+      return { success: false, skipped: true, reason: `No active phone number: ${error.message}` };
     }
 
     if (!phoneNumberConfig.isActive) {
@@ -119,7 +126,7 @@ export class WhatsAppSender {
         status: 'FAILED',
         error: 'Phone number is inactive',
       });
-      return { success: false, skipped: true };
+      return { success: false, skipped: true, reason: 'Phone number inactive' };
     }
 
     // ─────────────────────────────
@@ -128,11 +135,11 @@ export class WhatsAppSender {
     const rules = await this.planRulesService.getPlanRulesForTenant(tenantId);
 
     if (!rules?.enabled) {
-      return { success: false, skipped: true };
+      return { success: false, skipped: true, reason: 'Subscription plan disabled' };
     }
 
     if (!rules.features.includes(feature)) {
-      return { success: false, skipped: true };
+      return { success: false, skipped: true, reason: `Feature ${feature} not included in plan` };
     }
 
     // ─────────────────────────────
@@ -143,7 +150,7 @@ export class WhatsAppSender {
     });
 
     if (rules.maxMembers > 0 && memberCount > rules.maxMembers) {
-      return { success: false, skipped: true };
+      return { success: false, skipped: true, reason: 'Plan member limit exceeded' };
     }
 
     // ─────────────────────────────

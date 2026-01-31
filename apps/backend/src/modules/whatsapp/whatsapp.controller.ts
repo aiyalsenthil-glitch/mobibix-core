@@ -8,8 +8,10 @@ import {
   Body,
   Req,
   UseGuards,
+  ConflictException,
   BadRequestException,
   Inject,
+  Query,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { ModuleType } from '@prisma/client';
@@ -29,16 +31,136 @@ export class WhatsAppController {
    * Get WhatsApp logs for a tenant
    */
   @Get('logs/:tenantId')
-  async getLogs(@Param('tenantId') tenantId: string, @Req() req: any) {
+  async getLogs(
+    @Param('tenantId') tenantId: string,
+    @Req() req: any,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
     this.validateAccess(req, tenantId);
 
-    const logs = await this.prisma.whatsAppLog.findMany({
-      where: { tenantId },
-      orderBy: { sentAt: 'desc' },
-      take: 100,
-    });
+    // Default to last 7 days if no dates provided
+    const end = endDate ? new Date(endDate) : new Date();
+    const start = startDate ? new Date(startDate) : new Date();
+    
+    if (!startDate) {
+      start.setDate(end.getDate() - 7);
+    }
 
-    return logs;
+    // Ensure start is at beginning of day, end at end of day
+    // Ensure start is at beginning of day, end at end of day
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    console.log(`[getLogs] Fetching for tenant: ${tenantId}, Start: ${start.toISOString()}, End: ${end.toISOString()}`);
+
+    const [whatsAppLogs, reminders, followUps, alerts] = await Promise.all([
+      // 1. Standard WhatsApp Logs
+      this.prisma.whatsAppLog.findMany({
+        where: {
+          tenantId,
+          sentAt: { gte: start, lte: end },
+        },
+        orderBy: { sentAt: 'desc' },
+        take: 100,
+      }),
+
+      // 2. Customer Reminders
+      this.prisma.customerReminder.findMany({
+        where: {
+          tenantId,
+          scheduledAt: { gte: start, lte: end },
+        },
+        include: { customer: { select: { phone: true, name: true } } },
+        orderBy: { scheduledAt: 'desc' },
+        take: 100,
+      }),
+
+      // 3. Customer FollowUps
+      this.prisma.customerFollowUp.findMany({
+        where: {
+          tenantId,
+          createdAt: { gte: start, lte: end },
+        },
+        include: { customer: { select: { phone: true, name: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      }),
+
+      // 4. Customer Alerts
+      this.prisma.customerAlert.findMany({
+        where: {
+          tenantId,
+          createdAt: { gte: start, lte: end },
+        },
+        include: { customer: { select: { phone: true, name: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      }),
+    ]);
+
+    console.log(`[getLogs] Found: Logs=${whatsAppLogs.length}, Reminders=${reminders.length}, FollowUps=${followUps.length}, Alerts=${alerts.length}`);
+
+
+    // Map all to a unified structure compatible with UI expecting WhatsAppLog-like fields
+    const unifiedLogs = [
+      ...whatsAppLogs.map((log) => ({
+        ...log,
+        category: 'WHATSAPP_LOG', // Tag source
+        displayName: `WhatsApp: ${log.type}`,
+      })),
+      ...reminders.map((r) => ({
+        id: r.id,
+        tenantId: r.tenantId,
+        memberId: r.customerId, // Map customerId to memberId slot
+        phone: r.customer.phone,
+        type: r.triggerType, // e.g. PAYMENT_DUE
+        status: r.status,
+        error: r.failureReason,
+        messageId: null,
+        metadata: { templateKey: r.templateKey, customerName: r.customer.name },
+        sentAt: r.sentAt || r.scheduledAt || r.createdAt, // Use best available time
+        category: 'REMINDER',
+        displayName: `Reminder: ${r.triggerType}`,
+      })),
+      ...followUps.map((f) => ({
+        id: f.id,
+        tenantId: f.tenantId,
+        memberId: f.customerId,
+        phone: f.customer.phone,
+        type: f.type, // e.g. CALL/MEETING
+        status: f.status,
+        error: f.note, // Use note as "details/error" column
+        messageId: null,
+        metadata: { purpose: f.purpose, customerName: f.customer.name },
+        sentAt: f.createdAt,
+        category: 'FOLLOW_UP',
+        displayName: `FollowUp: ${f.type}`,
+      })),
+      ...alerts.map((a) => ({
+        id: a.id,
+        tenantId: a.tenantId,
+        memberId: a.customerId,
+        phone: a.customer.phone,
+        type: 'ALERT',
+        status: a.severity, // HIGH/LOW etc
+        error: a.message,
+        messageId: null,
+        metadata: { source: a.source, customerName: a.customer.name },
+        sentAt: a.createdAt,
+        category: 'ALERT',
+        displayName: `Alert: ${a.source}`,
+      })),
+    ];
+
+    // Sort combined list by date desc
+    return unifiedLogs
+      .sort((a, b) => {
+        const timeA = new Date(a.sentAt || 0).getTime();
+        const timeB = new Date(b.sentAt || 0).getTime();
+        return timeB - timeA;
+      })
+      .slice(0, 200); // Return top 200 combined
   }
 
   /**
@@ -127,18 +249,28 @@ export class WhatsAppController {
       throw new BadRequestException('Template not found');
     }
 
-    return this.prisma.whatsAppTemplate.update({
-      where: { id: templateId },
-      data: {
-        templateKey: dto.templateKey ?? template.templateKey,
-        metaTemplateName: dto.metaTemplateName ?? template.metaTemplateName,
-        category: dto.category ?? template.category,
-        feature: dto.feature ?? template.feature,
-        language: dto.language ?? template.language,
-        status: dto.status ?? template.status,
-        variables: dto.variables ?? template.variables ?? undefined,
-      },
-    });
+    try {
+      return await this.prisma.whatsAppTemplate.update({
+        where: { id: templateId },
+        data: {
+          templateKey: dto.templateKey ?? template.templateKey,
+          metaTemplateName: dto.metaTemplateName ?? template.metaTemplateName,
+          category: dto.category ?? template.category,
+          feature: dto.feature ?? template.feature,
+          language: dto.language ?? template.language,
+          status: dto.status ?? template.status,
+          variables: dto.variables ?? template.variables ?? undefined,
+        },
+      });
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        const fields = error.meta?.target || ['moduleType', 'metaTemplateName'];
+        throw new ConflictException(
+          `Unique constraint failed: A template with this ${fields} already exists for this module.`,
+        );
+      }
+      throw error;
+    }
   }
 
   /**

@@ -4,6 +4,7 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 import { EntityResolverService } from './entity-resolver.service';
 import { AutomationSafetyService } from './automation-safety.service';
 import { ModuleType } from '@prisma/client';
+import { getScheduledAtUTC } from '../../common/utils/date.util';
 
 /**
  * ────────────────────────────────────────────────
@@ -332,9 +333,10 @@ export class WhatsAppCron {
    * Returns date + offsetDays at 9 AM
    */
   private calculateScheduledDate(offsetDays: number): Date {
-    const scheduledDate = new Date();
-    scheduledDate.setDate(scheduledDate.getDate() + offsetDays);
-    scheduledDate.setHours(9, 0, 0, 0); // Schedule for 9 AM
-    return scheduledDate;
+    return getScheduledAtUTC({
+      offsetDays,
+      localHour: 9,
+      localMinute: 0,
+    });
   }
 }

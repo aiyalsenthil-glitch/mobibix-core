@@ -95,6 +95,10 @@ export class WhatsAppRemindersService {
       for (const reminder of pendingReminders) {
         remindersToProcess.push(reminder.id);
 
+        this.logger.log(
+          `[CRON] Processing reminder ${reminder.id}, scheduledAt=${reminder.scheduledAt?.toISOString()}, now=${new Date().toISOString()}`,
+        );
+
         try {
           await this.processSingleReminder(reminder);
         } catch (err) {
@@ -199,17 +203,19 @@ export class WhatsAppRemindersService {
       // 6️⃣ Handle result and update status
       if (result.skipped) {
         // Plan-level or feature-level block
+        const reason = result.reason || 'Blocked by subscription plan or feature limit';
+        
         await this.updateReminderStatus(
           reminderId,
           ReminderStatus.SKIPPED,
-          'Blocked by subscription plan or feature limit',
+          reason,
         );
         await this.logAttempt(
           tenantId,
           customer.id,
           whatsAppPhone,
           'SKIPPED',
-          'Blocked by subscription plan',
+          reason,
         );
         return;
       }
@@ -281,7 +287,9 @@ export class WhatsAppRemindersService {
         status,
         sentAt: status === ReminderStatus.SENT ? new Date() : undefined,
         failureReason:
-          status === ReminderStatus.FAILED ? failureReason : undefined,
+          status === ReminderStatus.FAILED || status === ReminderStatus.SKIPPED
+            ? failureReason
+            : undefined,
         updatedAt: new Date(),
       },
     });
@@ -300,8 +308,10 @@ export class WhatsAppRemindersService {
   ): Promise<void> {
     try {
       // Map reminder statuses to WhatsAppLog statuses
-      const logStatus: 'SENT' | 'FAILED' =
-        status === 'SUCCESS' ? 'SENT' : 'FAILED';
+      let logStatus: 'SENT' | 'FAILED' | 'SKIPPED';
+      if (status === 'SUCCESS') logStatus = 'SENT';
+      else if (status === 'SKIPPED') logStatus = 'SKIPPED';
+      else logStatus = 'FAILED';
 
       await this.whatsAppLogger.log({
         tenantId,

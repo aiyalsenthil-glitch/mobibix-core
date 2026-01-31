@@ -121,11 +121,11 @@ model Member {
   photoUrl            String?
   welcomeMessageSent  Boolean             @default(false)
   hasCoaching         Boolean             @default(false)
+  customerId          String?
   attendances         GymAttendance[]
   gymMemberships      GymMembership[]
-  tenant              Tenant              @relation(fields: [tenantId], references: [id])
   customer            Customer?           @relation(fields: [customerId], references: [id])
-  customerId          String?
+  tenant              Tenant              @relation(fields: [tenantId], references: [id])
   payments            MemberPayment[]
 
   @@unique([id, tenantId])
@@ -1219,6 +1219,24 @@ model PurchaseOrderItem {
   @@index([poId])
 }
 
+model WhatsAppPhoneNumberModule {
+  id            String                     @id @default(uuid())
+  moduleType    String
+  phoneNumber   String
+  phoneNumberId String
+  wabaId        String
+  purpose       WhatsAppPhoneNumberPurpose @default(DEFAULT)
+  qualityRating String?
+  isDefault     Boolean                    @default(false)
+  isActive      Boolean                    @default(true)
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+
+  @@unique([moduleType, phoneNumberId])
+  @@index([moduleType, isActive])
+  @@index([moduleType, purpose])
+}
+
 enum ProductType {
   GOODS
   SPARE
@@ -1517,22 +1535,4 @@ enum AlertSource {
   CHURN_RISK
   INACTIVE
   CUSTOM
-}
-
-model WhatsAppPhoneNumberModule {
-  id            String                     @id @default(uuid())
-  moduleType    String
-  phoneNumber   String
-  phoneNumberId String
-  wabaId        String
-  purpose       WhatsAppPhoneNumberPurpose @default(DEFAULT)
-  qualityRating String?
-  isDefault     Boolean                    @default(false)
-  isActive      Boolean                    @default(true)
-  createdAt     DateTime                   @default(now())
-  updatedAt     DateTime                   @updatedAt
-
-  @@unique([moduleType, phoneNumberId])
-  @@index([moduleType, isActive])
-  @@index([moduleType, purpose])
 }
