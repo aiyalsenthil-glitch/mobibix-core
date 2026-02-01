@@ -5,6 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ModuleType, UserRole } from '@prisma/client';
 
 @Injectable()
 export class TenantStatusGuard implements CanActivate {
@@ -18,10 +19,24 @@ export class TenantStatusGuard implements CanActivate {
     }
 
     const user = request.user;
+
+    // Allow SUPER_ADMIN and ADMIN to bypass subscription checks
+    if (user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN) {
+      return true;
+    }
+
     const tenantId: string | undefined = user?.tenantId;
 
     if (!tenantId) {
       return true;
+    }
+
+    // Extract module from request context (query, body, or default to MOBILE_SHOP)
+    let module = ModuleType.MOBILE_SHOP;
+    if (request.query?.module) {
+      module = request.query.module;
+    } else if (request.body?.module) {
+      module = request.body.module;
     }
 
     const now = new Date();
@@ -32,6 +47,7 @@ export class TenantStatusGuard implements CanActivate {
     const active = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
+        module,
         status: 'ACTIVE',
         endDate: { gt: now },
       },
@@ -47,6 +63,7 @@ export class TenantStatusGuard implements CanActivate {
     const trial = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
+        module,
         status: 'TRIAL',
         endDate: { gt: now },
       },
@@ -62,6 +79,7 @@ export class TenantStatusGuard implements CanActivate {
     const scheduled = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
+        module,
         status: 'SCHEDULED',
       },
     });

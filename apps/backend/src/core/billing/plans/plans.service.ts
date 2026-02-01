@@ -1,6 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { BillingCycle } from '@prisma/client';
+import { BillingCycle, ModuleType } from '@prisma/client';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 @Injectable()
 export class PlansService {
@@ -84,9 +88,15 @@ export class PlansService {
     }
   }
 
-  async getPlansWithUpgradeInfo(tenantId: string) {
+  async getPlansWithUpgradeInfo(
+    tenantId: string,
+    module: ModuleType = 'MOBILE_SHOP',
+  ) {
     const currentSub =
-      await this.subscriptionsService.getCurrentActiveSubscription(tenantId);
+      await this.subscriptionsService.getCurrentActiveSubscription(
+        tenantId,
+        module,
+      );
 
     const currentLevel = currentSub?.plan?.level ?? 0;
 
@@ -135,7 +145,7 @@ export class PlansService {
     });
 
     if (!existing) {
-      throw new Error('Plan not found');
+      throw new NotFoundException('Plan not found');
     }
 
     const billingCycle = data.billingCycle ?? existing.billingCycle;
@@ -145,7 +155,10 @@ export class PlansService {
     return this.prisma.plan.update({
       where: { id: planId },
       data: {
-        ...data,
+        price: data.price,
+        billingCycle: data.billingCycle,
+        memberLimit: data.memberLimit,
+        isActive: data.isActive,
         durationDays,
       },
     });
@@ -156,19 +169,49 @@ export class PlansService {
    */
   async createPlan(data: {
     name: string;
-    level: number;
     price: number;
-    billingCycle: BillingCycle;
-    memberLimit: number;
+    level?: number;
+    billingCycle?: BillingCycle;
+    memberLimit?: number;
+    isActive?: boolean;
   }) {
-    const durationDays = this.resolveDurationDays(data.name, data.billingCycle);
+    const normalizedName = data.name.trim();
+    const code = this.resolvePlanCode(normalizedName);
+
+    const existing = await this.prisma.plan.findFirst({
+      where: {
+        OR: [{ name: normalizedName }, { code }],
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        `Plan with name "${normalizedName}" already exists`,
+      );
+    }
+
+    const billingCycle = data.billingCycle ?? BillingCycle.MONTHLY;
+    const durationDays = this.resolveDurationDays(normalizedName, billingCycle);
+
+    let level = data.level;
+    if (level === undefined) {
+      const maxLevel = await this.prisma.plan.findFirst({
+        orderBy: { level: 'desc' },
+        select: { level: true },
+      });
+      level = (maxLevel?.level ?? -1) + 1;
+    }
 
     return this.prisma.plan.create({
       data: {
-        ...data,
-        code: this.resolvePlanCode(data.name),
+        name: normalizedName,
+        code,
+        level,
+        price: data.price,
+        billingCycle,
+        memberLimit: data.memberLimit ?? 0,
         durationDays,
-        isActive: true,
+        isActive: data.isActive ?? true,
         features: {},
       },
     });

@@ -55,7 +55,6 @@ const navItems: NavItem[] = [
     icon: "⚙️",
     submenu: [
       { label: "General", href: "/settings" },
-      { label: "Document Numbering", href: "/settings/numbering" },
     ],
   },
 ];

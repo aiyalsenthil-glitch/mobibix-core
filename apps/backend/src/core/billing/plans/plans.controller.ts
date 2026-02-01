@@ -1,6 +1,7 @@
-import { Controller, Get, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, UseGuards, Req, Query } from '@nestjs/common';
 import { PlansService } from './plans.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { ModuleType } from '@prisma/client';
 
 @Controller('plans')
 @UseGuards(JwtAuthGuard)
@@ -13,7 +14,10 @@ export class PlansController {
   }
   @UseGuards(JwtAuthGuard)
   @Get('available')
-  async getAvailablePlans(@Req() req: any) {
-    return this.plansService.getPlansWithUpgradeInfo(req.user.tenantId);
+  async getAvailablePlans(
+    @Req() req: any,
+    @Query('module') module: ModuleType = 'MOBILE_SHOP',
+  ) {
+    return this.plansService.getPlansWithUpgradeInfo(req.user.tenantId, module);
   }
 }

@@ -67,6 +67,7 @@ export class PaymentsVerifyController {
     await this.subscriptionsService.upgradeSubscription(
       req.user.tenantId,
       planId,
+      'MOBILE_SHOP',
     );
 
     await this.prisma.payment.update({

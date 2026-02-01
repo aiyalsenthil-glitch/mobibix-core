@@ -4,25 +4,32 @@ import {
   Req,
   UseGuards,
   UnauthorizedException,
+  Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { SubscriptionsService } from './subscriptions.service';
+import { ModuleType } from '@prisma/client';
 
 @UseGuards(JwtAuthGuard)
 @Controller('billing/subscription')
 export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
   @Get('current')
-  async getCurrent(@Req() req: any) {
+  async getCurrent(
+    @Req() req: any,
+    @Query('module') module: ModuleType = 'MOBILE_SHOP',
+  ) {
     if (!req.user || !req.user.tenantId) {
       throw new UnauthorizedException('Authentication required');
     }
 
     const sub = await this.subscriptionsService.getCurrentActiveSubscription(
       req.user.tenantId,
+      module,
     );
     const upcoming = await this.subscriptionsService.getUpcomingSubscription(
       req.user.tenantId,
+      module,
     );
 
     // No active subscription → trial

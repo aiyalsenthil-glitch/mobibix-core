@@ -27,40 +27,38 @@ export class WhatsAppSettingsController {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * GET /whatsapp/settings/:tenantId
-   * Get WhatsApp settings for a tenant
+   * GET /whatsapp/settings/:moduleType
+   * Get module-level WhatsApp settings
+   * moduleType: "GYM" or "MOBILE_SHOP"
    */
-  @Get(':tenantId')
-  async getSettings(@Param('tenantId') tenantId: string, @Req() req: any) {
-    // ✅ Allow admins to access any tenant
-    // ✅ Allow users to access their own tenant
+  @Get(':moduleType')
+  async getSettings(@Param('moduleType') moduleType: string, @Req() req: any) {
+    // ✅ Only admin users can access settings
     const user = req.user as any;
-    if (user?.role !== 'admin' && (user?.tenantId as string) !== tenantId) {
-      throw new BadRequestException('Unauthorized');
+    const userRole = user?.role as string;
+
+    // Role is uppercase from UserTenant (ADMIN, STAFF, etc.)
+    if (!userRole || userRole.toUpperCase() !== 'ADMIN') {
+      throw new BadRequestException('Unauthorized - Admin access required');
     }
 
+    // Use moduleType as the tenantId for module-level settings
     const setting = await this.prisma.whatsAppSetting.findUnique({
-      where: { tenantId },
+      where: { tenantId: moduleType },
     });
 
     if (!setting) {
       // Return default settings if not found
-      // Fallback to Tenant setting
-      const tenant = await this.prisma.tenant.findUnique({
-        where: { id: tenantId },
-        select: { whatsappEnabled: true },
-      });
-      
       return {
         id: '',
-        tenantId,
-        enabled: tenant?.whatsappEnabled ?? false,
+        tenantId: moduleType,
+        enabled: false,
         provider: 'META',
         defaultLanguage: 'en',
         dailyLimit: undefined,
         testPhone: undefined,
+        marketingOptInRequired: true,
         createdAt: new Date(),
-        updatedAt: new Date(),
       };
     }
 
@@ -68,24 +66,26 @@ export class WhatsAppSettingsController {
   }
 
   /**
-   * POST /whatsapp/settings/:tenantId
-   * Create WhatsApp settings for a tenant
+   * POST /whatsapp/settings/:moduleType
+   * Create module-level WhatsApp settings
    */
-  @Post(':tenantId')
+  @Post(':moduleType')
   async createSettings(
-    @Param('tenantId') tenantId: string,
+    @Param('moduleType') moduleType: string,
     @Body() dto: CreateWhatsAppSettingDto,
     @Req() req: any,
   ) {
-    // ✅ Only admins or tenant owners can create settings
+    // ✅ Only admins can create settings
     const user = req.user as any;
-    if (user?.role !== 'admin' && (user?.tenantId as string) !== tenantId) {
-      throw new BadRequestException('Unauthorized');
+    const userRole = user?.role as string;
+
+    if (!userRole || userRole.toUpperCase() !== 'ADMIN') {
+      throw new BadRequestException('Unauthorized - Admin access required');
     }
 
     const setting = await this.prisma.whatsAppSetting.create({
       data: {
-        tenantId,
+        tenantId: moduleType,
         enabled: dto.enabled,
         provider: dto.provider,
         defaultLanguage: dto.defaultLanguage || 'en',
@@ -98,31 +98,33 @@ export class WhatsAppSettingsController {
   }
 
   /**
-   * PATCH /whatsapp/settings/:tenantId
-   * Update WhatsApp settings
+   * PATCH /whatsapp/settings/:moduleType
+   * Update module-level WhatsApp settings
    */
-  @Patch(':tenantId')
+  @Patch(':moduleType')
   async updateSettings(
-    @Param('tenantId') tenantId: string,
+    @Param('moduleType') moduleType: string,
     @Body() dto: Partial<CreateWhatsAppSettingDto>,
     @Req() req: any,
   ) {
-    // ✅ Only admins or tenant owners can update settings
+    // ✅ Only admins can update settings
     const user = req.user as any;
-    if (user?.role !== 'admin' && (user?.tenantId as string) !== tenantId) {
-      throw new BadRequestException('Unauthorized');
+    const userRole = user?.role as string;
+
+    if (!userRole || userRole.toUpperCase() !== 'ADMIN') {
+      throw new BadRequestException('Unauthorized - Admin access required');
     }
 
     // Check if setting exists
     const existing = await this.prisma.whatsAppSetting.findUnique({
-      where: { tenantId },
+      where: { tenantId: moduleType },
     });
 
     if (!existing) {
       // Create if doesn't exist
       return this.prisma.whatsAppSetting.create({
         data: {
-          tenantId,
+          tenantId: moduleType,
           enabled: dto.enabled ?? false,
           provider: dto.provider ?? 'META',
           defaultLanguage: dto.defaultLanguage || 'en',
@@ -134,7 +136,7 @@ export class WhatsAppSettingsController {
 
     // Update existing
     return this.prisma.whatsAppSetting.update({
-      where: { tenantId },
+      where: { tenantId: moduleType },
       data: {
         enabled: dto.enabled ?? existing.enabled,
         provider: dto.provider ?? existing.provider,
@@ -148,19 +150,24 @@ export class WhatsAppSettingsController {
   }
 
   /**
-   * DELETE /whatsapp/settings/:tenantId
-   * Delete WhatsApp settings
+   * DELETE /whatsapp/settings/:moduleType
+   * Delete module-level WhatsApp settings
    */
-  @Delete(':tenantId')
-  async deleteSettings(@Param('tenantId') tenantId: string, @Req() req: any) {
-    // ✅ Only admins or tenant owners can delete settings
+  @Delete(':moduleType')
+  async deleteSettings(
+    @Param('moduleType') moduleType: string,
+    @Req() req: any,
+  ) {
+    // ✅ Only admins can delete settings
     const user = req.user as any;
-    if (user?.role !== 'admin' && (user?.tenantId as string) !== tenantId) {
-      throw new BadRequestException('Unauthorized');
+    const userRole = user?.role as string;
+
+    if (!userRole || userRole.toUpperCase() !== 'ADMIN') {
+      throw new BadRequestException('Unauthorized - Admin access required');
     }
 
     await this.prisma.whatsAppSetting.delete({
-      where: { tenantId },
+      where: { tenantId: moduleType },
     });
 
     return { success: true };

@@ -216,3 +216,94 @@ export async function updateShopSettings(
 
   return response.json();
 }
+
+/**
+ * Document Setting Types
+ */
+export enum DocumentType {
+  SALES_INVOICE = 'SALES_INVOICE',
+  PURCHASE_INVOICE = 'PURCHASE_INVOICE',
+  JOB_CARD = 'JOB_CARD',
+  RECEIPT = 'RECEIPT',
+  QUOTATION = 'QUOTATION',
+  PURCHASE_ORDER = 'PURCHASE_ORDER',
+}
+
+export enum YearFormat {
+  FY = 'FY',
+  YYYY = 'YYYY',
+  YY = 'YY',
+  NONE = 'NONE',
+}
+
+export enum ResetPolicy {
+  YEARLY = 'YEARLY',
+  MONTHLY = 'MONTHLY',
+  NEVER = 'NEVER',
+}
+
+export interface ShopDocumentSetting {
+  id: string;
+  shopId: string;
+  documentType: DocumentType;
+  prefix: string;
+  separator: string;
+  documentCode: string;
+  yearFormat: YearFormat;
+  numberLength: number;
+  resetPolicy: ResetPolicy;
+  currentNumber: number;
+  currentYear?: string;
+  lastGenerated?: string; // Virtual field if needed or constructed on client
+}
+
+export interface UpdateDocumentSettingDto {
+  prefix?: string;
+  separator?: string;
+  documentCode?: string;
+  yearFormat?: YearFormat;
+  numberLength?: number;
+  resetPolicy?: ResetPolicy;
+}
+
+/**
+ * Get all document settings for a shop
+ */
+export async function getShopDocumentSettings(
+  shopId: string,
+): Promise<ShopDocumentSetting[]> {
+  const response = await authenticatedFetch(
+    `/mobileshop/shops/${shopId}/document-settings`,
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to fetch document settings');
+  }
+
+  return response.json();
+}
+
+/**
+ * Update a specific document setting
+ */
+export async function updateShopDocumentSetting(
+  shopId: string,
+  documentType: DocumentType,
+  data: UpdateDocumentSettingDto,
+): Promise<ShopDocumentSetting> {
+  const response = await authenticatedFetch(
+    `/mobileshop/shops/${shopId}/document-settings/${documentType}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to update document setting');
+  }
+
+  return response.json();
+}

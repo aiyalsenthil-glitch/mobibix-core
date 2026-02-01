@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { searchCustomers, type Customer } from "@/services/customers.api";
+import { type Party } from "@/services/parties.api";
 import {
   listProducts,
   type ShopProduct,
@@ -14,6 +14,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { CustomerModal } from "../../customers/CustomerModal";
 import { ProductModal } from "../../products/ProductModal";
+import { PartySelector } from "@/components/common/PartySelector";
 
 interface ProductItem {
   id: string;
@@ -49,12 +50,9 @@ export default function CreateInvoicePage() {
     }
   }, [shopIdParam, selectedShopId, selectShop]);
 
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+  const [selectedCustomer, setSelectedCustomer] = useState<Party | null>(
     null,
   );
-  const [customerSearch, setCustomerSearch] = useState("");
-  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
 
   const [products, setProducts] = useState<ShopProduct[]>([]);
@@ -143,42 +141,18 @@ export default function CreateInvoicePage() {
     }
   };
 
-  // Customer search
-  const handleCustomerSearch = async (value: string) => {
-    setCustomerSearch(value);
-    if (value.length >= 3) {
-      try {
-        const results = await searchCustomers(value, 10);
-        setCustomerResults(results);
-        setShowCustomerDropdown(true); // Always show dropdown, even if empty
-      } catch (err: any) {
-        console.error("Customer search failed:", err);
-        setCustomerResults([]);
-        setShowCustomerDropdown(true); // Show dropdown even on error
-      }
-    } else {
-      setCustomerResults([]);
-      setShowCustomerDropdown(false);
-    }
-  };
-
-  const selectCustomer = (customer: Customer) => {
-    setSelectedCustomer(customer);
-    setCustomerSearch(`${customer.name} (${customer.phone})`);
-    setShowCustomerDropdown(false);
+  const selectCustomer = (party: Party) => {
+    setSelectedCustomer(party);
   };
 
   const clearCustomer = () => {
     setSelectedCustomer(null);
-    setCustomerSearch("");
   };
 
   const handleCustomerModalClose = () => {
     setIsCustomerModalOpen(false);
     // Refresh customer search after creation
-    if (customerSearch.length >= 3) {
-      handleCustomerSearch(customerSearch);
-    }
+    // Refresh customer search logic if needed
   };
 
   const handleProductModalClose = () => {
@@ -592,66 +566,20 @@ export default function CreateInvoicePage() {
                   </button>
                 </div>
               ) : (
-                <>
-                  <input
-                    type="text"
-                    value={customerSearch}
-                    onChange={(e) => handleCustomerSearch(e.target.value)}
-                    onFocus={() =>
-                      customerResults.length > 0 &&
-                      setShowCustomerDropdown(true)
-                    }
-                    placeholder="Select customer..."
-                    className="w-full px-4 py-3 bg-gray-50/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white dark:focus:bg-gray-800 transition shadow-sm"
+                <div className="flex gap-2">
+                  <PartySelector
+                    type="CUSTOMER"
+                    onSelect={selectCustomer}
+                    placeholder="Search customer by name or phone..."
+                    className="flex-1"
                   />
-
-                  {showCustomerDropdown && (
-                    <div className="absolute z-20 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl max-h-80 overflow-auto">
-                      {customerResults.length > 0 ? (
-                        <>
-                          {customerResults.map((customer) => (
-                            <button
-                              key={customer.id}
-                              onClick={() => selectCustomer(customer)}
-                              className="w-full px-5 py-3 text-left hover:bg-teal-50 dark:hover:bg-teal-900/20 border-b border-gray-50 dark:border-gray-700 last:border-0 transition"
-                            >
-                              <div className="font-medium text-gray-900 dark:text-white">
-                                {customer.name}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {customer.phone}
-                              </div>
-                            </button>
-                          ))}
-                          <button
-                            onClick={() => {
-                              setShowCustomerDropdown(false);
-                              setIsCustomerModalOpen(true);
-                            }}
-                            className="w-full px-5 py-3 text-center text-teal-600 font-semibold hover:bg-teal-50 dark:hover:bg-teal-900/20 transition border-t border-gray-100 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800"
-                          >
-                            + Add New Customer
-                          </button>
-                        </>
-                      ) : (
-                        <div className="px-5 py-8 text-center">
-                          <p className="text-gray-500 mb-4">
-                            No customers found
-                          </p>
-                          <button
-                            onClick={() => {
-                              setShowCustomerDropdown(false);
-                              setIsCustomerModalOpen(true);
-                            }}
-                            className="px-4 py-2 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg font-semibold transition"
-                          >
-                            Create New Customer
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
+                  <button
+                    onClick={() => setIsCustomerModalOpen(true)}
+                    className="px-4 py-2 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg font-semibold transition border border-teal-200"
+                  >
+                    + New
+                  </button>
+                </div>
               )}
             </div>
           </div>

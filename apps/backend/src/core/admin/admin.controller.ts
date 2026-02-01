@@ -8,6 +8,7 @@ import {
   UseGuards,
   BadRequestException,
   NotFoundException,
+  Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -16,7 +17,7 @@ import { TenantService } from '../tenant/tenant.service';
 import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
 import { PlansService } from '../billing/plans/plans.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -86,8 +87,11 @@ export class AdminController {
   // TENANT SUBSCRIPTION
   // ─────────────────────────────────────────────
   @Get('tenants/:tenantId/subscription')
-  async getTenantSubscription(@Param('tenantId') tenantId: string) {
-    return this.subscriptionsService.getSubscriptionByTenant(tenantId);
+  async getTenantSubscription(
+    @Param('tenantId') tenantId: string,
+    @Query('module') module: ModuleType = 'MOBILE_SHOP',
+  ) {
+    return this.subscriptionsService.getSubscriptionByTenant(tenantId, module);
   }
   // ─────────────────────────────────────────────
   // TENANT USAGE (ADMIN)
@@ -103,9 +107,13 @@ export class AdminController {
   @Patch('tenants/:tenantId/extend-trial')
   async extendTrial(
     @Param('tenantId') tenantId: string,
-    @Body() body: { extraDays: number },
+    @Body() body: { extraDays: number; module?: ModuleType },
   ) {
-    return this.subscriptionsService.extendTrial(tenantId, body.extraDays);
+    return this.subscriptionsService.extendTrial(
+      tenantId,
+      body.extraDays,
+      body.module || 'MOBILE_SHOP',
+    );
   }
   // ─────────────────────────────────────────────
   // Create PLAN (PLATFORM ADMIN)
@@ -141,13 +149,17 @@ export class AdminController {
   @Patch('tenants/:tenantId/plan')
   async changeTenantPlan(
     @Param('tenantId') tenantId: string,
-    @Body() body: { planName: string },
+    @Body() body: { planName: string; module?: string },
   ) {
     if (!body.planName) {
       throw new BadRequestException('planName is required');
     }
 
-    return this.subscriptionsService.changePlan(tenantId, body.planName);
+    return this.subscriptionsService.changePlan(
+      tenantId,
+      body.planName,
+      (body.module || 'MOBILE_SHOP') as any,
+    );
   }
 
   // ─────────────────────────────────────────────

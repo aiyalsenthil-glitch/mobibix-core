@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { ModuleType } from '@prisma/client';
 
 @Injectable()
 export class SubscriptionGuard implements CanActivate {
@@ -14,8 +15,19 @@ export class SubscriptionGuard implements CanActivate {
       return true;
     }
 
+    // Extract module from request context (default to MOBILE_SHOP)
+    let module = ModuleType.MOBILE_SHOP;
+    if (request.query?.module) {
+      module = request.query.module;
+    } else if (request.body?.module) {
+      module = request.body.module;
+    }
+
     const subscription =
-      await this.subscriptionsService.getSubscriptionByTenant(user.tenantId);
+      await this.subscriptionsService.getSubscriptionByTenant(
+        user.tenantId,
+        module,
+      );
 
     if (!subscription) {
       request.subscription = {

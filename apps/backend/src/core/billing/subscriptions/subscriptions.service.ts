@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { SubscriptionStatus } from '@prisma/client';
+import { SubscriptionStatus, ModuleType } from '@prisma/client';
 import { EmailService } from '../../../common/email/email.service';
 
 @Injectable()
@@ -14,7 +14,11 @@ export class SubscriptionsService {
     private readonly emailService: EmailService,
   ) {}
   //DONOT USE
-  async upgradeSubscription(tenantId: string, planId: string) {
+  async upgradeSubscription(
+    tenantId: string,
+    planId: string,
+    module: ModuleType = 'MOBILE_SHOP',
+  ) {
     const newPlan = await this.prisma.plan.findUnique({
       where: { id: planId },
     });
@@ -23,7 +27,10 @@ export class SubscriptionsService {
       throw new NotFoundException('Invalid plan');
     }
 
-    const currentSub = await this.getCurrentActiveSubscription(tenantId);
+    const currentSub = await this.getCurrentActiveSubscription(
+      tenantId,
+      module,
+    );
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
       include: {
@@ -39,7 +46,7 @@ export class SubscriptionsService {
     if (!currentSub) {
       // Trial exists but expired → UPGRADE existing row
       const existingSub = await this.prisma.tenantSubscription.findFirst({
-        where: { tenantId },
+        where: { tenantId, module },
         orderBy: { endDate: 'desc' },
         include: { plan: true },
       });
@@ -53,7 +60,7 @@ export class SubscriptionsService {
       endDate.setDate(endDate.getDate() + newPlan.durationDays);
 
       return this.prisma.tenantSubscription.updateMany({
-        where: { tenantId },
+        where: { tenantId, module },
         data: {
           planId: newPlan.id,
           status: SubscriptionStatus.ACTIVE,
@@ -131,8 +138,14 @@ export class SubscriptionsService {
     return updatedSub;
   }
 
-  async canAddMember(tenantId: string): Promise<boolean> {
-    const subscription = await this.getCurrentActiveSubscription(tenantId);
+  async canAddMember(
+    tenantId: string,
+    module: ModuleType = 'MOBILE_SHOP',
+  ): Promise<boolean> {
+    const subscription = await this.getCurrentActiveSubscription(
+      tenantId,
+      module,
+    );
     if (!subscription) return false;
 
     const plan = subscription.plan;
@@ -148,7 +161,11 @@ export class SubscriptionsService {
   }
 
   //USETHIS
-  async buyPlan(tenantId: string, planId: string) {
+  async buyPlan(
+    tenantId: string,
+    planId: string,
+    module: ModuleType = 'MOBILE_SHOP',
+  ) {
     const plan = await this.prisma.plan.findUnique({
       where: { id: planId },
     });
@@ -159,20 +176,22 @@ export class SubscriptionsService {
 
     const now = new Date();
 
-    // Get current ACTIVE or TRIAL subscription
+    // Get current ACTIVE or TRIAL subscription for this module
     const current = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
+        module,
         status: { in: ['ACTIVE', 'TRIAL'] },
         endDate: { gt: now },
       },
       orderBy: { endDate: 'desc' },
     });
 
-    // Get last scheduled subscription (if any)
+    // Get last scheduled subscription for this module (if any)
     const lastScheduled = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
+        module,
         status: 'SCHEDULED',
       },
       orderBy: { startDate: 'desc' },
@@ -206,16 +225,21 @@ export class SubscriptionsService {
       data: {
         tenantId,
         planId,
+        module,
         startDate,
         endDate,
         status,
       },
     });
   }
-  async getUpcomingSubscription(tenantId: string) {
+  async getUpcomingSubscription(
+    tenantId: string,
+    module: ModuleType = 'MOBILE_SHOP',
+  ) {
     return this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
+        module,
         status: 'SCHEDULED',
         startDate: { gt: new Date() },
       },
@@ -223,13 +247,17 @@ export class SubscriptionsService {
       include: { plan: true },
     });
   }
-  async getCurrentActiveSubscription(tenantId: string) {
+  async getCurrentActiveSubscription(
+    tenantId: string,
+    module: ModuleType = 'MOBILE_SHOP',
+  ) {
     const now = new Date();
 
     // 1️⃣ Promote scheduled → active if time reached
     const scheduled = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
+        module,
         status: 'SCHEDULED',
         startDate: { lte: now },
       },
@@ -247,6 +275,7 @@ export class SubscriptionsService {
     const active = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
+        module,
         status: 'ACTIVE',
         startDate: { lte: now },
         endDate: { gt: now },
@@ -261,6 +290,7 @@ export class SubscriptionsService {
     return this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
+        module,
         status: 'TRIAL',
         startDate: { lte: now },
         endDate: { gt: now },
@@ -270,7 +300,11 @@ export class SubscriptionsService {
     });
   }
 
-  async assignTrialSubscription(tenantId: string, planId: string) {
+  async assignTrialSubscription(
+    tenantId: string,
+    planId: string,
+    module: ModuleType = 'MOBILE_SHOP',
+  ) {
     const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + 14);
@@ -279,6 +313,7 @@ export class SubscriptionsService {
       data: {
         tenantId,
         planId,
+        module,
         status: SubscriptionStatus.TRIAL,
         startDate,
         endDate,
@@ -286,10 +321,14 @@ export class SubscriptionsService {
     });
   }
 
-  async getSubscriptionByTenant(tenantId: string) {
+  async getSubscriptionByTenant(
+    tenantId: string,
+    module: ModuleType = 'MOBILE_SHOP',
+  ) {
     return this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
+        module,
       },
       orderBy: {
         startDate: 'desc',
@@ -300,8 +339,12 @@ export class SubscriptionsService {
     });
   }
 
-  async extendTrial(tenantId: string, extraDays: number) {
-    const sub = await this.getSubscriptionByTenant(tenantId);
+  async extendTrial(
+    tenantId: string,
+    extraDays: number,
+    module: ModuleType = 'MOBILE_SHOP',
+  ) {
+    const sub = await this.getSubscriptionByTenant(tenantId, module);
     if (!sub) return null;
     console.log(
       '[Subscription] Trial extended',
@@ -322,7 +365,11 @@ export class SubscriptionsService {
       },
     });
   }
-  async changePlan(tenantId: string, planName: string) {
+  async changePlan(
+    tenantId: string,
+    planName: string,
+    module: ModuleType = 'MOBILE_SHOP',
+  ) {
     // 1️⃣ Find plan
     const plan = await this.prisma.plan.findFirst({
       where: {
@@ -341,7 +388,10 @@ export class SubscriptionsService {
     endDate.setDate(startDate.getDate() + plan.durationDays);
 
     // 3️⃣ Update subscription
-    const currentSub = await this.getCurrentActiveSubscription(tenantId);
+    const currentSub = await this.getCurrentActiveSubscription(
+      tenantId,
+      module,
+    );
     if (!currentSub) {
       throw new NotFoundException('Active subscription not found');
     }
@@ -357,10 +407,14 @@ export class SubscriptionsService {
     });
   }
 
-  async getActiveSubscriptionByTenant(tenantId: string) {
+  async getActiveSubscriptionByTenant(
+    tenantId: string,
+    module: ModuleType = 'MOBILE_SHOP',
+  ) {
     return this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
+        module,
         status: 'ACTIVE',
       },
       include: {
@@ -372,8 +426,12 @@ export class SubscriptionsService {
   async changeStatus(
     tenantId: string,
     status: 'ACTIVE' | 'EXPIRED' | 'CANCELLED',
+    module: ModuleType = 'MOBILE_SHOP',
   ) {
-    const currentSub = await this.getCurrentActiveSubscription(tenantId);
+    const currentSub = await this.getCurrentActiveSubscription(
+      tenantId,
+      module,
+    );
     if (!currentSub) {
       throw new NotFoundException('Active subscription not found');
     }

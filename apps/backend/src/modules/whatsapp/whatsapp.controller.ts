@@ -487,7 +487,12 @@ export class WhatsAppController {
    */
   private validateAccess(req: any, tenantId: string) {
     // Admin can access everything, including "all"
-    if (req.user?.role === 'admin' || req.user?.role === 'SUPER_ADMIN') {
+    const userRole = req.user?.role as string;
+    if (
+      userRole &&
+      (userRole.toUpperCase() === 'ADMIN' ||
+        userRole.toUpperCase() === 'SUPER_ADMIN')
+    ) {
       return;
     }
     // Specific tenant access check

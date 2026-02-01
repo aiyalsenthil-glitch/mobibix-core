@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
+import { ValidationPipe } from '@nestjs/common';
 import express from 'express';
 import cors from 'cors';
 import * as bodyParser from 'body-parser';
@@ -33,6 +34,14 @@ async function bootstrap() {
         'http://localhost_REPLACED:3000',
         'http://localhost_REPLACED:3001',
         'http://localhost_REPLACED:3002',
+        'http://localhost_REPLACED:3003',
+        'http://localhost_REPLACED:3004',
+        'http://localhost_REPLACED:3005',
+        'http://localhost_REPLACED:3006',
+        'http://localhost_REPLACED:3007',
+        'http://localhost_REPLACED:3008',
+        'http://localhost_REPLACED:3009',
+        'http://localhost_REPLACED:3010',
         'https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com',
         'https://mobibix.in',
         'https://www.mobibix.in',
@@ -74,6 +83,17 @@ async function bootstrap() {
    * 8️⃣ Global API prefix
    */
   app.setGlobalPrefix('api');
+
+  /**
+   * 8.5️⃣ Enable validation pipe
+   */
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
 
   /**
    * 9️⃣ Enable Nest CORS (safe)

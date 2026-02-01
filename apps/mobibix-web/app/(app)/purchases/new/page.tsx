@@ -9,15 +9,16 @@ import {
   type PurchaseItemDto,
   type PaymentMode,
 } from "@/services/purchases.api";
-import { listSuppliers, type Supplier } from "@/services/suppliers.api";
 import { authenticatedFetch } from "@/services/auth.api";
 import { useTheme } from "@/context/ThemeContext";
+import { PartySelector } from "@/components/common/PartySelector";
+import { type Party } from "@/services/parties.api";
 
 export default function NewPurchasePage() {
   const { theme } = useTheme();
   const router = useRouter();
   const [shops, setShops] = useState<Shop[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [selectedSupplier, setSelectedSupplier] = useState<Party | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,9 +50,8 @@ export default function NewPurchasePage() {
         setIsLoading(true);
         setError(null);
 
-        // Load shops and suppliers independently
+        // Load shops
         let shopsData: Shop[] = [];
-        let suppliersData: Supplier[] = [];
 
         try {
           shopsData = await listShops();
@@ -63,14 +63,7 @@ export default function NewPurchasePage() {
           setError("Failed to load shops");
         }
 
-        try {
-          suppliersData = await listSuppliers();
-        } catch (err: any) {
-          console.error("Failed to load suppliers:", err);
-        }
-
         setShops(shopsData);
-        setSuppliers(suppliersData);
       } finally {
         setIsLoading(false);
       }
@@ -293,30 +286,47 @@ export default function NewPurchasePage() {
                 >
                   Supplier
                 </label>
-                <select
-                  value={formData.globalSupplierId || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      globalSupplierId: e.target.value,
-                      supplierName:
-                        suppliers.find((s) => s.id === e.target.value)?.name ||
-                        "",
-                    })
-                  }
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    theme === "dark"
-                      ? "bg-gray-800 border-gray-700 text-white"
-                      : "bg-white border-gray-300 text-gray-900"
-                  }`}
-                >
-                  <option value="">Select or enter manually...</option>
-                  {suppliers.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  {selectedSupplier ? (
+                    <div className="flex items-center justify-between p-2 border rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {selectedSupplier.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {selectedSupplier.phone}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSupplier(null);
+                          setFormData((prev) => ({
+                            ...prev,
+                            globalSupplierId: "",
+                            supplierName: "",
+                          }));
+                        }}
+                        className="text-gray-400 hover:text-red-500 p-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <PartySelector
+                      type="VENDOR"
+                      onSelect={(party) => {
+                        setSelectedSupplier(party);
+                        setFormData((prev) => ({
+                          ...prev,
+                          globalSupplierId: party.id,
+                          supplierName: party.name,
+                        }));
+                      }}
+                      placeholder="Search existing supplier..."
+                    />
+                  )}
+                </div>
               </div>
 
               {/* Supplier Name (Manual Entry) */}

@@ -376,6 +376,7 @@ model TenantSubscription {
   id                   String             @id @default(cuid())
   tenantId             String
   planId               String
+  module               ModuleType         @default(MOBILE_SHOP)
   status               SubscriptionStatus
   startDate            DateTime
   endDate              DateTime
@@ -385,8 +386,10 @@ model TenantSubscription {
   plan                 Plan               @relation(fields: [planId], references: [id])
   tenant               Tenant             @relation(fields: [tenantId], references: [id])
 
+  @@unique([tenantId, module])
   @@index([tenantId])
   @@index([planId])
+  @@index([module])
 }
 
 model Payment {

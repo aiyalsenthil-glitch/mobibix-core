@@ -9,6 +9,7 @@ import {
   DocumentType,
 } from './dto/update-document-setting.dto';
 import { isValidIndianGSTIN } from '../../common/validators/gstin.validator';
+import { getFinancialYear } from '../../common/utils/invoice-number.util';
 @Injectable()
 export class ShopService {
   constructor(private readonly prisma: PrismaService) {}
@@ -336,17 +337,41 @@ export class ShopService {
       },
     });
 
-    // If documents exist (currentNumber > 0), prevent changing prefix/documentCode
+    // If documents exist, check if we can allow modification based on reset policy
     if (existing && existing.currentNumber > 0) {
-      if (dto.prefix && dto.prefix !== existing.prefix) {
-        throw new ForbiddenException(
-          'Cannot change prefix after documents have been generated',
-        );
+      let isLocked = false;
+      const today = new Date();
+
+      if (existing.resetPolicy === 'YEARLY') {
+        // Locked if invoices exist in current financial year
+        const currentFY = getFinancialYear(today);
+        if (existing.currentYear === currentFY) {
+          isLocked = true;
+        }
+      } else if (existing.resetPolicy === 'MONTHLY') {
+        // Locked if invoices exist in current month
+        const year = today.getFullYear();
+        const month = (today.getMonth() + 1).toString().padStart(2, '0');
+        const currentMonthKey = `${year}-${month}`;
+        if (existing.currentYear === currentMonthKey) {
+          isLocked = true;
+        }
+      } else {
+        // NEVER reset: always locked if any document exists
+        isLocked = true;
       }
-      if (dto.documentCode && dto.documentCode !== existing.documentCode) {
-        throw new ForbiddenException(
-          'Cannot change document code after documents have been generated',
-        );
+
+      if (isLocked) {
+        if (dto.prefix && dto.prefix !== existing.prefix) {
+          throw new ForbiddenException(
+            'Cannot change prefix: Documents have already been generated in the current financial period',
+          );
+        }
+        if (dto.documentCode && dto.documentCode !== existing.documentCode) {
+          throw new ForbiddenException(
+            'Cannot change document code: Documents have already been generated in the current financial period',
+          );
+        }
       }
     }
 

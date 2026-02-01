@@ -7,6 +7,7 @@ import {
   type Shop,
   type UpdateShopSettingsDto,
 } from "@/services/shops.api";
+import { ShopDocumentSettings } from "@/components/shops/ShopDocumentSettings";
 import { ShopPrintSettings } from "@/components/shops/ShopPrintSettings";
 import { useRouter } from "next/navigation";
 
@@ -16,7 +17,7 @@ interface ShopSettingsViewProps {
 
 export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"GENERAL" | "PRINT" | "BANK">("GENERAL");
+  const [activeTab, setActiveTab] = useState<"GENERAL" | "PRINT" | "BANK" | "DOCUMENT">("GENERAL");
   const [isLoading, setIsLoading] = useState(true);
   
   const [shop, setShop] = useState<Shop | null>(null);
@@ -161,10 +162,10 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-white/10 mb-8">
+        <div className="flex border-b border-white/10 mb-8 overflow-x-auto">
             <button
                 onClick={() => setActiveTab("GENERAL")}
-                className={`py-3 px-6 text-sm font-medium border-b-2 transition ${
+                className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
                     activeTab === "GENERAL" 
                     ? "border-teal-500 text-teal-400" 
                     : "border-transparent text-gray-400 hover:text-white"
@@ -174,7 +175,7 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
             </button>
             <button
                 onClick={() => setActiveTab("BANK")}
-                className={`py-3 px-6 text-sm font-medium border-b-2 transition ${
+                className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
                     activeTab === "BANK" 
                     ? "border-teal-500 text-teal-400" 
                     : "border-transparent text-gray-400 hover:text-white"
@@ -184,13 +185,23 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
             </button>
             <button
                 onClick={() => setActiveTab("PRINT")}
-                className={`py-3 px-6 text-sm font-medium border-b-2 transition ${
+                className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
                     activeTab === "PRINT" 
                     ? "border-teal-500 text-teal-400" 
                     : "border-transparent text-gray-400 hover:text-white"
                 }`}
             >
                 Print Configuration
+            </button>
+             <button
+                onClick={() => setActiveTab("DOCUMENT")}
+                className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+                    activeTab === "DOCUMENT" 
+                    ? "border-teal-500 text-teal-400" 
+                    : "border-transparent text-gray-400 hover:text-white"
+                }`}
+            >
+                Document Numbering
             </button>
         </div>
 
@@ -199,6 +210,8 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
             <div className="animate-fade-in">
                 <ShopPrintSettings shop={shop} onUpdate={() => window.dispatchEvent(new CustomEvent("shopUpdated"))} />
             </div>
+        ) : activeTab === "DOCUMENT" ? (
+            <ShopDocumentSettings shopId={shopId} />
         ) : activeTab === "BANK" ? (
             <div className="bg-stone-900/50 border border-white/5 rounded-xl p-8 animate-fade-in">
                  <form onSubmit={handleSubmit} className="space-y-8">

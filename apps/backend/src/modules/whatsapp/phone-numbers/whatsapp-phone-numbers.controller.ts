@@ -22,22 +22,25 @@ export class WhatsAppPhoneNumbersController {
   ) {}
 
   /**
-   * GET /whatsapp/phone-numbers/:tenantId
-   * List all phone numbers for a tenant
+   * GET /whatsapp/phone-numbers/:moduleType
+   * List all phone numbers for a module (module-level defaults)
    */
-  @Get(':tenantId')
-  async listPhoneNumbers(@Param('tenantId') tenantId: string, @Req() req: any) {
-    this.validateAccess(req, tenantId);
-    return this.phoneNumbersService.listPhoneNumbers(tenantId);
+  @Get(':moduleType')
+  async listPhoneNumbers(
+    @Param('moduleType') moduleType: string,
+    @Req() req: any,
+  ) {
+    this.validateAccess(req);
+    return this.phoneNumbersService.listPhoneNumbers(moduleType);
   }
 
   /**
-   * POST /whatsapp/phone-numbers/:tenantId
-   * Create a new phone number
+   * POST /whatsapp/phone-numbers/:moduleType
+   * Create a new phone number for a module
    */
-  @Post(':tenantId')
+  @Post(':moduleType')
   async createPhoneNumber(
-    @Param('tenantId') tenantId: string,
+    @Param('moduleType') moduleType: string,
     @Body()
     body: {
       phoneNumber: string;
@@ -48,10 +51,10 @@ export class WhatsAppPhoneNumbersController {
     },
     @Req() req: any,
   ) {
-    this.validateAccess(req, tenantId);
+    this.validateAccess(req);
 
     return this.phoneNumbersService.createPhoneNumber({
-      tenantId,
+      tenantId: moduleType,
       phoneNumber: body.phoneNumber,
       phoneNumberId: body.phoneNumberId,
       wabaId: body.wabaId,
@@ -91,12 +94,15 @@ export class WhatsAppPhoneNumbersController {
   }
 
   /**
-   * Validate user has access to tenant
+   * Validate user has admin access
    */
-  private validateAccess(req: any, tenantId: string) {
+  private validateAccess(req: any) {
     const user = req.user as any;
-    if (user?.role !== 'admin' && (user?.tenantId as string) !== tenantId) {
-      throw new BadRequestException('Unauthorized');
+    const userRole = user?.role as string;
+
+    // Role is uppercase from UserTenant (ADMIN, STAFF, etc.)
+    if (!userRole || userRole.toUpperCase() !== 'ADMIN') {
+      throw new BadRequestException('Unauthorized - Admin access required');
     }
   }
 }

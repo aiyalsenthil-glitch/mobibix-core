@@ -103,6 +103,7 @@ export class PaymentsWebhookController {
           await this.subscriptionsService.buyPlan(
             paymentRecord.tenantId,
             paymentRecord.planId,
+            'MOBILE_SHOP',
           );
         });
 

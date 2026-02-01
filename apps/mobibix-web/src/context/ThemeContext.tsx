@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { ThemeProvider as NextThemesProvider, useTheme as useNextTheme } from "next-themes";
 
 type Theme = "light" | "dark";
 
@@ -9,55 +10,34 @@ interface ThemeContextType {
   toggleTheme: () => void;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-
+// Wrapper component to provide next-themes
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
-  const [mounted, setMounted] = useState(false);
-
-  // Initialize theme from localStorage and system preferences
-  useEffect(() => {
-    const stored = localStorage.getItem("theme") as Theme | null;
-    if (stored) {
-      setTheme(stored);
-    } else {
-      // Default to light mode
-      setTheme("light");
-    }
-    setMounted(true);
-  }, []);
-
-  // Apply theme to HTML element
-  useEffect(() => {
-    if (!mounted) return;
-
-    const htmlElement = document.documentElement;
-    if (theme === "dark") {
-      htmlElement.classList.add("dark");
-    } else {
-      htmlElement.classList.remove("dark");
-    }
-
-    // Store preference
-    localStorage.setItem("theme", theme);
-  }, [theme, mounted]);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
-  };
-
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <NextThemesProvider 
+      attribute="class" 
+      defaultTheme="dark" 
+      enableSystem={true} 
+      disableTransitionOnChange
+      storageKey="theme"
+    >
       {children}
-    </ThemeContext.Provider>
+    </NextThemesProvider>
   );
 }
 
+// Custom hook that maintains backward compatibility with the existing interface
 export function useTheme() {
-  const context = useContext(ThemeContext);
-  // Provide a safe default for build/SSR
-  if (context === undefined) {
-    return { theme: "dark" as const, toggleTheme: () => {} };
-  }
-  return context;
+  const { theme, setTheme, resolvedTheme } = useNextTheme();
+  
+  // Safe toggle function
+  const toggleTheme = () => {
+    // If theme is 'system', we use resolvedTheme to determine valid toggle target
+    const current = theme === 'system' ? resolvedTheme : theme;
+    setTheme(current === "dark" ? "light" : "dark");
+  };
+
+  return { 
+    theme: (resolvedTheme || "light") as Theme, 
+    toggleTheme 
+  };
 }

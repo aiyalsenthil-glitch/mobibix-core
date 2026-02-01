@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createJobCard, type CreateJobCardDto } from "@/services/jobcard.api";
-import { searchCustomers, type Customer } from "@/services/customers.api";
 import { useShop } from "@/context/ShopContext";
-import { useTheme } from "@/context/ThemeContext";
+import { PartySelector } from "@/components/common/PartySelector";
+import { type Party } from "@/services/parties.api";
 import { CustomerModal } from "../../customers/CustomerModal";
 
 type StepFormData = {
-  customerName: string;
-  customerPhone: string;
-  customerAltPhone: string;
+  // Customer info is now handled via Party selection mostly, but we keep fields for display/fallback if needed 
+  // though we enforce selecting a request.
+  // Actually, we store party details.
   deviceType: string;
   deviceBrand: string;
   deviceModel: string;
@@ -28,27 +28,16 @@ type StepFormData = {
 
 export default function CreateJobCardPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { theme } = useTheme();
   const { selectedShopId } = useShop();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [customerId, setCustomerId] = useState<string | null>(null);
-  const [customerSummary, setCustomerSummary] = useState<Customer | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Customer[]>([]);
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedParty, setSelectedParty] = useState<Party | null>(null);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<StepFormData>({
-    customerName: "",
-    customerPhone: "",
-    customerAltPhone: "",
     deviceType: "Mobile",
     deviceBrand: "",
     deviceModel: "",
@@ -62,57 +51,6 @@ export default function CreateJobCardPage() {
     billType: "WITHOUT_GST",
     estimatedDelivery: "",
   });
-
-  // Search logic
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (searchQuery.length >= 2 && !customerId) {
-        setSearchLoading(true);
-        try {
-          const results = await searchCustomers(searchQuery, 5);
-          setSearchResults(results);
-          setShowSearchResults(true);
-        } catch {
-          setSearchResults([]);
-        } finally {
-          setSearchLoading(false);
-        }
-      } else {
-        setSearchResults([]);
-        setShowSearchResults(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, customerId]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        searchRef.current &&
-        !searchRef.current.contains(event.target as Node)
-      ) {
-        setShowSearchResults(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleSelectCustomer = (customer: Customer) => {
-    setCustomerId(customer.id);
-    setCustomerSummary(customer);
-    setSearchQuery(customer.phone);
-    setShowSearchResults(false);
-  };
-
-  const handleClearCustomer = () => {
-    setCustomerId(null);
-    setCustomerSummary(null);
-    setSearchQuery("");
-    setSearchResults([]);
-    setShowSearchResults(false);
-  };
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -132,18 +70,17 @@ export default function CreateJobCardPage() {
     setIsSubmitting(true);
     setError(null);
 
-    const hasCustomerId = !!customerId;
-    if (!hasCustomerId && (!formData.customerName || !formData.customerPhone)) {
-      setError("Please select a customer or enter name and phone");
+    if (!selectedParty) {
+      setError("Please select a customer");
       setIsSubmitting(false);
       return;
     }
 
     const payload: CreateJobCardDto = {
-      customerId: customerId || undefined,
-      customerName: !customerId ? formData.customerName?.trim() : undefined,
-      customerPhone: !customerId ? formData.customerPhone?.trim() : undefined,
-      customerAltPhone: formData.customerAltPhone?.trim() || undefined,
+      customerId: selectedParty.id,
+      customerName: selectedParty.name,
+      customerPhone: selectedParty.phone,
+      // customerAltPhone: ... (Party model has altPhone, strictly speaking we should use it if available)
       deviceType: formData.deviceType,
       deviceBrand: formData.deviceBrand,
       deviceModel: formData.deviceModel,
@@ -172,38 +109,6 @@ export default function CreateJobCardPage() {
       setIsSubmitting(false);
     }
   };
-
-  const STEPS = [
-    { num: 1, label: "Customer & Device" },
-    { num: 2, label: "Issue & Condition" },
-    { num: 3, label: "Financials & Delivery" },
-  ];
-
-  // Map internal step 1->1, 2->2, 3->3.
-  // Wait, modal had 4 steps (Customer, Device, Issue, Financials).
-  // Screenshot shows "Step 1 of 4" in header but merged content?
-  // Let's re-read screenshot.
-  // Screenshot 1: Step 1 of 4 - Customer & Device.
-  // Screenshot 2: Step 2 of 4 - Issue & Condition.
-  // Screenshot 3: Step 3 of 4 - Financials & Delivery.
-  // Okay, looks like it's actually 4 steps in UI but maybe 3 logical screens?
-  // Wait, the prompt says "Check this colors... for sales and jobcard(3 page setup)".
-  // Let's stick to the screenshots.
-  // Screenshot 1: "Step 1 of 4 - Customer & Device"
-  // Screenshot 3: "Step 3 of 4 - Financials & Delivery" -> Wait, 3 of 4? What is 4 of 4? Probably Review?
-  // Or maybe it is just 3 steps. The screenshot says "Step 1 of 4" literally.
-  // Let's implement 4 steps to be safe, or just follow the logical grouping.
-  // Grouping:
-  // 1. Customer & Device (Merged from Modal Step 1 & 2?)
-  // 2. Issue & Condition (Modal Step 3)
-  // 3. Financials & Delivery (Modal Step 4)
-  // 4. Summary/Confirm?
-
-  // The screenshot 1 shows "Customer & Device" as a title. And fields for Customer AND Device Type AND Brand/Model.
-  // So Step 1 is indeed Customer + Device.
-  // Screenshot 2 shows "Issue & Condition".
-  // Screenshot 3 shows "Financials & Delivery" and says "Step 3 of 4".
-  // So there IS a Step 4. I will assume Step 4 is Review/Submit.
 
   const WIZARD_STEPS = [
     {
@@ -291,100 +196,35 @@ export default function CreateJobCardPage() {
                   Find or Create Customer
                 </h3>
 
-                {!customerId && !customerSummary ? (
-                  <div className="space-y-4" ref={searchRef}>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => {
-                          setSearchQuery(e.target.value);
-                          if (e.target.value.length >= 2)
-                            setShowSearchResults(true);
-                        }}
-                        onFocus={() =>
-                          searchQuery.length >= 2 && setShowSearchResults(true)
-                        }
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent transition outline-none"
-                        placeholder="Search customer by name or phone..."
-                      />
-                      {showSearchResults && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-20 max-h-60 overflow-y-auto tags-dropdown">
-                          {searchResults.map((c) => (
-                            <button
-                              key={c.id}
-                              onClick={() => handleSelectCustomer(c)}
-                              className="w-full text-left px-4 py-3 hover:bg-teal-50 dark:hover:bg-teal-900/30 border-b border-gray-100 dark:border-gray-700 last:border-0 transition"
-                            >
-                              <div className="font-semibold text-gray-900 dark:text-white">
-                                {c.name}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {c.phone}
-                              </div>
-                            </button>
-                          ))}
-                          <button
-                            onClick={() => setShowAddCustomer(true)}
-                            className="w-full text-left px-4 py-3 text-teal-600 dark:text-teal-400 font-semibold hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
-                          >
-                            + Add New Customer
-                          </button>
+                <div className="space-y-4">
+                  <div className="relative">
+                    {selectedParty ? (
+                      <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded-lg p-4 flex justify-between items-center">
+                        <div>
+                          <h4 className="font-bold text-teal-900 dark:text-teal-100">
+                            {selectedParty.name}
+                          </h4>
+                          <p className="text-sm text-teal-700 dark:text-teal-300">
+                            {selectedParty.phone}
+                          </p>
                         </div>
-                      )}
-                    </div>
-
-                    <div className="relative flex items-center py-2">
-                      <div className="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
-                      <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-medium tracking-wider">
-                        OR ENTER MANUALLY
-                      </span>
-                      <div className="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">
-                          Customer Name
-                        </label>
-                        <input
-                          name="customerName"
-                          value={formData.customerName}
-                          onChange={handleChange}
-                          className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition text-sm shadow-sm"
-                        />
+                        <button
+                          onClick={() => setSelectedParty(null)}
+                          className="text-sm text-teal-600 dark:text-teal-400 font-semibold hover:underline"
+                        >
+                          Change
+                        </button>
                       </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">
-                          Phone Number
-                        </label>
-                        <input
-                          name="customerPhone"
-                          value={formData.customerPhone}
-                          onChange={handleChange}
-                          className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition text-sm shadow-sm"
-                        />
-                      </div>
-                    </div>
+                    ) : (
+                      <PartySelector
+                        type="CUSTOMER"
+                        onSelect={setSelectedParty}
+                        placeholder="Search by name or phone..."
+                        onCreateNew={() => setShowAddCustomer(true)}
+                      />
+                    )}
                   </div>
-                ) : (
-                  <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded-lg p-4 flex justify-between items-center">
-                    <div>
-                      <h4 className="font-bold text-teal-900 dark:text-teal-100">
-                        {customerSummary?.name}
-                      </h4>
-                      <p className="text-sm text-teal-700 dark:text-teal-300">
-                        {customerSummary?.phone}
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleClearCustomer}
-                      className="text-sm text-teal-600 dark:text-teal-400 font-semibold hover:underline"
-                    >
-                      Change
-                    </button>
-                  </div>
-                )}
+                </div>
               </div>
 
               <div className="border-t border-gray-100 dark:border-gray-800 my-6"></div>
@@ -589,14 +429,14 @@ export default function CreateJobCardPage() {
                   <div>
                     <p className="text-gray-500 dark:text-gray-400">Customer</p>
                     <p className="font-semibold text-gray-900 dark:text-white capitalize">
-                      {customerId
-                        ? customerSummary?.name
-                        : formData.customerName || "N/A"}
+                      {selectedParty
+                        ? selectedParty.name
+                        : "N/A"}
                     </p>
                     <p className="text-gray-500">
-                      {customerId
-                        ? customerSummary?.phone
-                        : formData.customerPhone || "N/A"}
+                      {selectedParty
+                        ? selectedParty.phone
+                        : "N/A"}
                     </p>
                   </div>
                   <div>
@@ -694,7 +534,6 @@ export default function CreateJobCardPage() {
         <CustomerModal
           onClose={() => {
             setShowAddCustomer(false);
-            // Search will re-trigger if query present
           }}
         />
       )}

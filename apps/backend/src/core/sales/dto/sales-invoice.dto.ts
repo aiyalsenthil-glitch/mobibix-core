@@ -50,6 +50,7 @@ export class SalesInvoiceDto {
   @IsString()
   shopId: string;
 
+  @IsOptional()
   @IsString()
   invoiceNumber: string;
 
