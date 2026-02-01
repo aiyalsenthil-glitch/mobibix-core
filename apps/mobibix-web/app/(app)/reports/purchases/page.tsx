@@ -3,20 +3,19 @@
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { SalesReportItem, getSalesReport } from "@/services/reports.api";
+import { PurchaseReportItem, getPurchaseReport } from "@/services/reports.api";
 import { useShop } from "@/context/ShopContext";
 import { PartySelector } from "@/components/common/PartySelector";
 
-export default function SalesReportPage() {
+export default function PurchaseReportPage() {
   const { theme } = useTheme();
   const router = useRouter();
   const { selectedShopId } = useShop();
 
-  const [data, setData] = useState<SalesReportItem[]>([]);
+  const [data, setData] = useState<PurchaseReportItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filter State
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedPartyId, setSelectedPartyId] = useState<string | null>(null);
@@ -25,7 +24,7 @@ export default function SalesReportPage() {
     try {
       setLoading(true);
       setError(null);
-      const report = await getSalesReport({
+      const report = await getPurchaseReport({
         shopId: selectedShopId || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
@@ -57,14 +56,14 @@ export default function SalesReportPage() {
                 theme === "dark" ? "text-white" : "text-gray-900"
               }`}
             >
-              Sales Report
+              Purchase Report
             </h1>
             <p
               className={`mt-1 text-sm ${
                 theme === "dark" ? "text-gray-400" : "text-gray-500"
               }`}
             >
-              Daily sales invoices and profit analysis
+              Supplier purchases (Bill & Stock Entries)
             </p>
           </div>
           <button
@@ -126,28 +125,26 @@ export default function SalesReportPage() {
             />
           </div>
           
-          <div className="w-64">
+           <div className="w-64">
             <label
               className={`block text-xs font-medium mb-1 ${
                 theme === "dark" ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              Customer
+              Supplier
             </label>
             <PartySelector
-              type="CUSTOMER"
+              type="VENDOR"
               onSelect={(party) => setSelectedPartyId(party?.id || null)}
-              placeholder="Filter by Customer"
+              placeholder="Filter by Supplier"
             />
           </div>
-          
+
           <button
             onClick={() => {
               setStartDate("");
               setEndDate("");
               setSelectedPartyId(null);
-              // Note: PartySelector internal state reset is not handled here, 
-              // but ID clearing triggers data refresh.
             }}
             className="px-4 py-2 text-sm text-teal-600 hover:underline font-medium"
           >
@@ -157,7 +154,7 @@ export default function SalesReportPage() {
 
         {/* Content */}
         {loading ? (
-             <div className="flex justify-center py-12">
+           <div className="flex justify-center py-12">
              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
            </div>
         ) : error ? (
@@ -166,7 +163,7 @@ export default function SalesReportPage() {
            </div>
         ) : data.length === 0 ? (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            No sales records found for this period.
+            No purchase records found for this period.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
@@ -174,26 +171,25 @@ export default function SalesReportPage() {
                 <thead className={`text-xs uppercase bg-gray-50 dark:bg-gray-800/50 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                   <tr>
                     <th className="px-6 py-3">Date</th>
-                    <th className="px-6 py-3">Invoice #</th>
-                    <th className="px-6 py-3">Customer</th>
+                    <th className="px-6 py-3">Purchase #</th>
+                    <th className="px-6 py-3">Supplier</th>
                     <th className="px-6 py-3 text-right">Total</th>
                     <th className="px-6 py-3 text-right">Paid</th>
                     <th className="px-6 py-3 text-right">Pending</th>
                     <th className="px-6 py-3 text-center">Status</th>
-                    <th className="px-6 py-3 text-right">Profit</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                   {data.map((item) => (
-                    <tr key={item.invoiceNo} className="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                    <tr key={item.purchaseNo} className="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                       <td className="px-6 py-4 whitespace-nowrap">
                         {new Date(item.date).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                        {item.invoiceNo}
+                        {item.purchaseNo}
                       </td>
                       <td className="px-6 py-4">
-                        {item.customer || "Walk-in"}
+                        {item.supplier || "Unknown Supplier"}
                       </td>
                       <td className="px-6 py-4 text-right font-medium">
                         ₹{item.totalAmount.toFixed(2)}
@@ -201,7 +197,7 @@ export default function SalesReportPage() {
                       <td className="px-6 py-4 text-right text-green-600">
                         ₹{item.paidAmount.toFixed(2)}
                       </td>
-                       <td className="px-6 py-4 text-right text-red-500">
+                      <td className="px-6 py-4 text-right text-red-500">
                         {item.pendingAmount > 0 ? `₹${item.pendingAmount.toFixed(2)}` : "-"}
                       </td>
                       <td className="px-6 py-4 text-center">
@@ -214,15 +210,6 @@ export default function SalesReportPage() {
                         }`}>
                             {item.pendingAmount <= 0 ? "PAID" : item.paidAmount > 0 ? "PARTIAL" : "UNPAID"}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-right font-medium">
-                        {item.profit !== null ? (
-                            <span className={item.profit >= 0 ? "text-green-600" : "text-red-500"}>
-                                ₹{item.profit.toFixed(2)}
-                            </span>
-                        ) : (
-                            <span className="text-gray-400">N/A</span>
-                        )}
                       </td>
                     </tr>
                   ))}

@@ -2,41 +2,155 @@
 
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "next/navigation";
-import { FileText, ShoppingBag, Box, TrendingUp } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  FileText,
+  ShoppingBag,
+  Box,
+  TrendingUp,
+  CreditCard,
+  DollarSign,
+  BarChart3,
+  PieChart as PieChartIcon,
+} from "lucide-react";
+import { useShop } from "@/context/ShopContext";
+import {
+  getSalesReport,
+  getTopSellingProducts,
+  getProfitSummary,
+  type SalesReportItem,
+  type TopProductItem,
+  type ProfitSummaryMetrics,
+} from "@/services/reports.api";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 
 export default function ReportsPage() {
   const { theme } = useTheme();
   const router = useRouter();
+  const { selectedShopId } = useShop();
 
+  // State
+  const [loading, setLoading] = useState(true);
+  const [salesData, setSalesData] = useState<SalesReportItem[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProductItem[]>([]);
+  const [profitMetrics, setProfitMetrics] = useState<ProfitSummaryMetrics | null>(null);
+  const [dateRange, setDateRange] = useState(30); // Default 30 days
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - dateRange);
+
+      const startStr = startDate.toISOString().split("T")[0];
+      const endStr = endDate.toISOString().split("T")[0];
+
+      const [sales, products, profit] = await Promise.all([
+        getSalesReport({
+          shopId: selectedShopId || undefined,
+          startDate: startStr,
+          endDate: endStr,
+        }),
+        getTopSellingProducts({
+          shopId: selectedShopId || undefined,
+          startDate: startStr,
+          endDate: endStr,
+        }),
+        getProfitSummary({
+          shopId: selectedShopId || undefined,
+          startDate: startStr,
+          endDate: endStr,
+        }),
+      ]);
+
+      setSalesData(sales);
+      setTopProducts(products);
+      setProfitMetrics(profit.metrics);
+    } catch (error) {
+      console.error("Failed to load dashboard:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [selectedShopId, dateRange]);
+
+  // Aggregation for Charts
+  // 1. Daily Sales Trend
+  const dailyTrend = salesData.reduce((acc, curr) => {
+    const date = new Date(curr.date).toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
+    const existing = acc.find(item => item.date === date);
+    if (existing) {
+      existing.sales += curr.totalAmount;
+      existing.profit += (curr.profit || 0);
+    } else {
+      acc.push({ date, sales: curr.totalAmount, profit: curr.profit || 0 });
+    }
+    return acc;
+  }, [] as { date: string; sales: number; profit: number }[]).reverse(); // API returns desc
+
+  // 2. Payment Modes
+  const paymentModes = salesData.reduce((acc, curr) => {
+    const mode = curr.paymentMode || "UNKNOWN";
+    const existing = acc.find(item => item.name === mode);
+    if (existing) {
+      existing.value += curr.totalAmount;
+    } else {
+      acc.push({ name: mode, value: curr.totalAmount });
+    }
+    return acc;
+  }, [] as { name: string; value: number }[]);
+
+  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+
+  // Navigation Cards
   const REPORT_CARDS = [
     {
       title: "Sales Report",
-      description: "View daily sales, invoices, and profit analysis.",
-      icon: <FileText className="w-6 h-6" />,
+      description: "Daily sales invoices & profit",
+      icon: <FileText className="w-5 h-5" />,
       href: "/reports/sales",
       color: "text-blue-600 dark:text-blue-400",
       bg: "bg-blue-50 dark:bg-blue-900/20",
     },
     {
       title: "Purchase Report",
-      description: "Track supplier purchases and stock entries.",
-      icon: <ShoppingBag className="w-6 h-6" />,
+      description: "Supplier purchases & stocks",
+      icon: <ShoppingBag className="w-5 h-5" />,
       href: "/reports/purchases",
       color: "text-purple-600 dark:text-purple-400",
       bg: "bg-purple-50 dark:bg-purple-900/20",
     },
     {
       title: "Inventory Report",
-      description: "Monitor stock levels, values, and low stock alerts.",
-      icon: <Box className="w-6 h-6" />,
+      description: "Stock levels & valuation",
+      icon: <Box className="w-5 h-5" />,
       href: "/reports/inventory",
       color: "text-orange-600 dark:text-orange-400",
       bg: "bg-orange-50 dark:bg-orange-900/20",
     },
     {
       title: "Profit Summary",
-      description: "Analyze revenue, costs, and profit margins.",
-      icon: <TrendingUp className="w-6 h-6" />,
+      description: "Revenue vs Cost Analysis",
+      icon: <TrendingUp className="w-5 h-5" />,
       href: "/reports/profit",
       color: "text-emerald-600 dark:text-emerald-400",
       bg: "bg-emerald-50 dark:bg-emerald-900/20",
@@ -44,67 +158,189 @@ export default function ReportsPage() {
   ];
 
   return (
-    <div
-      className={`min-h-screen ${
-        theme === "dark" ? "bg-gray-950" : "bg-gray-50"
-      }`}
-    >
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1
-            className={`text-2xl font-bold ${
-              theme === "dark" ? "text-white" : "text-gray-900"
-            }`}
-          >
-            Reports
-          </h1>
-          <p
-            className={`mt-1 ${
-              theme === "dark" ? "text-gray-400" : "text-gray-500"
-            }`}
-          >
-            Access detailed financial and inventory reports
-          </p>
+    <div className={`min-h-screen ${theme === "dark" ? "bg-gray-950" : "bg-gray-50"}`}>
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div>
+            <h1 className={`text-2xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+              Dashboard
+            </h1>
+            <p className={`mt-1 text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+              Overview of your business performance
+            </p>
+          </div>
+          <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
+            {[7, 30, 90].map((days) => (
+              <button
+                key={days}
+                onClick={() => setDateRange(days)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                  dateRange === days
+                    ? theme === "dark"
+                      ? "bg-gray-700 text-white shadow-sm"
+                      : "bg-gray-100 text-gray-900 shadow-sm"
+                    : theme === "dark"
+                    ? "text-gray-400 hover:text-white"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                Last {days} Days
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-          {REPORT_CARDS.map((card) => (
-            <div
-              key={card.href}
-              onClick={() => router.push(card.href)}
-              className={`p-6 rounded-xl border cursor-pointer transition-all hover:shadow-lg ${
-                theme === "dark"
-                  ? "bg-gray-900 border-gray-800 hover:border-gray-700"
-                  : "bg-white border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <div className="flex items-start gap-4">
-                <div
-                  className={`p-3 rounded-lg ${card.bg} ${card.color}`}
-                >
-                  {card.icon}
+        {loading ? (
+          <div className="flex justify-center py-20">
+             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500" />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            
+            {/* 1. Summary Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+               <SummaryCard 
+                 title="Total Revenue" 
+                 value={`₹${profitMetrics?.totalRevenue.toFixed(2)}`} 
+                 icon={<DollarSign className="w-4 h-4 text-emerald-500" />}
+                 theme={theme}
+               />
+               <SummaryCard 
+                 title="Gross Profit" 
+                 value={`₹${profitMetrics?.grossProfit.toFixed(2)}`} 
+                 icon={<TrendingUp className="w-4 h-4 text-blue-500" />}
+                 theme={theme}
+               />
+               <SummaryCard 
+                 title="Profit Margin" 
+                 value={`${profitMetrics?.margin.toFixed(1)}%`} 
+                 icon={<BarChart3 className="w-4 h-4 text-purple-500" />}
+                 theme={theme}
+               />
+               <SummaryCard 
+                 title="Transactions" 
+                 value={salesData.length.toString()} 
+                 icon={<FileText className="w-4 h-4 text-orange-500" />}
+                 theme={theme}
+               />
+            </div>
+
+            {/* 2. Main Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Sales Trend */}
+              <div className={`p-6 rounded-xl border ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"}`}>
+                <h3 className={`text-sm font-semibold mb-6 ${theme === "dark" ? "text-gray-200" : "text-gray-700"}`}>Sales Trend</h3>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={dailyTrend}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#374151" : "#e5e7eb"} />
+                      <XAxis dataKey="date" stroke={theme === "dark" ? "#9ca3af" : "#6b7280"} fontSize={12} />
+                      <YAxis stroke={theme === "dark" ? "#9ca3af" : "#6b7280"} fontSize={12} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: theme === "dark" ? "#1f2937" : "#fff", borderColor: theme === "dark" ? "#374151" : "#e5e7eb" }}
+                        itemStyle={{ color: theme === "dark" ? "#fff" : "#000" }} 
+                      />
+                      <Legend />
+                      <Line type="monotone" dataKey="sales" name="Sales" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="profit" name="Profit" stroke="#10b981" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
-                <div>
-                  <h3
-                    className={`text-lg font-semibold mb-1 ${
-                      theme === "dark" ? "text-white" : "text-gray-900"
-                    }`}
-                  >
-                    {card.title}
-                  </h3>
-                  <p
-                    className={`text-sm ${
-                      theme === "dark" ? "text-gray-400" : "text-gray-600"
-                    }`}
-                  >
-                    {card.description}
-                  </p>
+              </div>
+
+              {/* Payment Modes */}
+              <div className={`p-6 rounded-xl border ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"}`}>
+                <h3 className={`text-sm font-semibold mb-6 ${theme === "dark" ? "text-gray-200" : "text-gray-700"}`}>Payment Modes</h3>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={paymentModes}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {paymentModes.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+
+            {/* 3. Top Products & Navigation */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Top Products */}
+              <div className={`col-span-1 lg:col-span-2 p-6 rounded-xl border ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"}`}>
+                 <h3 className={`text-sm font-semibold mb-6 ${theme === "dark" ? "text-gray-200" : "text-gray-700"}`}>Top Selling Products</h3>
+                 <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topProducts} layout="vertical" margin={{ left: 40 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#374151" : "#e5e7eb"} horizontal={true} vertical={false} />
+                      <XAxis type="number" stroke={theme === "dark" ? "#9ca3af" : "#6b7280"} fontSize={12} />
+                      <YAxis dataKey="name" type="category" stroke={theme === "dark" ? "#9ca3af" : "#6b7280"} fontSize={11} width={150} />
+                      <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ backgroundColor: theme === "dark" ? "#1f2937" : "#fff" }} />
+                      <Bar dataKey="totalAmount" name="Revenue" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Quick Links */}
+              <div className="col-span-1 flex flex-col gap-4">
+                 <h3 className={`text-sm font-semibold ${theme === "dark" ? "text-gray-200" : "text-gray-700"}`}>Quick Access</h3>
+                 {REPORT_CARDS.map((card) => (
+                  <div
+                    key={card.href}
+                    onClick={() => router.push(card.href)}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                      theme === "dark"
+                        ? "bg-gray-900 border-gray-800"
+                        : "bg-white border-gray-200"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${card.bg} ${card.color}`}>
+                        {card.icon}
+                      </div>
+                      <div>
+                        <h4 className={`text-sm font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                          {card.title}
+                        </h4>
+                        <p className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+                         View detailed report
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function SummaryCard({ title, value, icon, theme }: { title: string; value: string; icon: React.ReactNode; theme: string }) {
+  return (
+    <div className={`p-5 rounded-xl border ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"}`}>
+      <div className="flex items-center justify-between mb-2">
+         <span className={`text-xs font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>{title}</span>
+         {icon}
+      </div>
+      <div className={`text-2xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>{value}</div>
     </div>
   );
 }

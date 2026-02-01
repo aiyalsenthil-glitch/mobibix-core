@@ -97,10 +97,12 @@ export class MobileShopReportsService {
     startDate?: Date,
     endDate?: Date,
     shopId?: string,
+    partyId?: string,
   ) {
     const where: any = {
       tenantId,
       ...(shopId && { shopId }),
+      ...(partyId && { customerId: partyId }),
       status: { not: InvoiceStatus.CANCELLED },
       ...(startDate && endDate && {
         invoiceDate: { gte: startDate, lte: endDate },
@@ -178,10 +180,12 @@ export class MobileShopReportsService {
     startDate?: Date,
     endDate?: Date,
     shopId?: string,
+    partyId?: string,
   ) {
     const where: any = {
       tenantId,
       ...(shopId && { shopId }),
+      ...(partyId && { globalSupplierId: partyId }),
       status: { not: PurchaseStatus.CANCELLED },
       ...(startDate && endDate && {
         invoiceDate: { gte: startDate, lte: endDate },
@@ -279,10 +283,12 @@ export class MobileShopReportsService {
     startDate?: Date,
     endDate?: Date,
     shopId?: string,
+    partyId?: string,
   ) {
     const whereInvoice: any = {
       tenantId,
       ...(shopId && { shopId }),
+      ...(partyId && { customerId: partyId }),
       status: { not: InvoiceStatus.CANCELLED },
       ...(startDate && endDate && {
         invoiceDate: { gte: startDate, lte: endDate },
@@ -323,6 +329,7 @@ export class MobileShopReportsService {
         AND sl."referenceType" = 'SALE'
         AND i."status" != 'CANCELLED'
         ${shopId ? `AND i."shopId" = ${shopId}` : ''}
+        ${partyId ? `AND i."customerId" = ${partyId}` : ''}
         ${startDate ? `AND i."invoiceDate" >= ${startDate}` : ''}
         ${endDate ? `AND i."invoiceDate" <= ${endDate}` : ''}
     `;
@@ -338,5 +345,56 @@ export class MobileShopReportsService {
         margin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0
       }
     };
+  }
+
+  /**
+   * 6️⃣ TOP SELLING PRODUCTS
+   * Logic: Group InvoiceItems by product, sum Qty and Amount.
+   */
+  async getTopSellingProducts(
+    tenantId: string,
+    startDate?: Date,
+    endDate?: Date,
+    shopId?: string,
+  ) {
+    const whereInvoice: any = {
+      tenantId,
+      ...(shopId && { shopId }),
+      status: { not: InvoiceStatus.CANCELLED },
+      ...(startDate && endDate && {
+        invoiceDate: { gte: startDate, lte: endDate },
+      }),
+    };
+
+    const topProducts = await this.prisma.invoiceItem.groupBy({
+      by: ['shopProductId'],
+      where: {
+        invoice: whereInvoice,
+      },
+      _sum: {
+        quantity: true,
+        lineTotal: true,
+      },
+      orderBy: {
+        _sum: { lineTotal: 'desc' },
+      },
+      take: 5,
+    });
+
+    // Populate Product Names
+    const productIds = topProducts.map((p) => p.shopProductId);
+    const products = await this.prisma.shopProduct.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, name: true },
+    });
+
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    return topProducts.map((p) => ({
+      productId: p.shopProductId,
+      name: productMap.get(p.shopProductId)?.name || 'Unknown',
+      totalQty: p._sum.quantity || 0,
+      totalAmount: p._sum.lineTotal || 0,
+    }));
   }
 }

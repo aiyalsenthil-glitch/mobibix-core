@@ -19,6 +19,7 @@ export class MobileShopReportsController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('shopId') shopId?: string,
+    @Query('partyId') partyId?: string,
   ) {
     const tenantId = req.user.tenantId;
     return this.reportsService.getSalesReport(
@@ -26,6 +27,7 @@ export class MobileShopReportsController {
       startDate ? new Date(startDate) : undefined,
       endDate ? new Date(endDate) : undefined,
       shopId,
+      partyId,
     );
   }
 
@@ -35,6 +37,7 @@ export class MobileShopReportsController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('shopId') shopId?: string,
+    @Query('partyId') partyId?: string,
   ) {
     const tenantId = req.user.tenantId;
     return this.reportsService.getPurchaseReport(
@@ -42,6 +45,7 @@ export class MobileShopReportsController {
       startDate ? new Date(startDate) : undefined,
       endDate ? new Date(endDate) : undefined,
       shopId,
+      partyId,
     );
   }
 
@@ -57,9 +61,27 @@ export class MobileShopReportsController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('shopId') shopId?: string,
+    @Query('partyId') partyId?: string,
   ) {
     const tenantId = req.user.tenantId;
     return this.reportsService.getProfitSummary(
+      tenantId,
+      startDate ? new Date(startDate) : undefined,
+      endDate ? new Date(endDate) : undefined,
+      shopId,
+      partyId,
+    );
+  }
+
+  @Get('top-products')
+  async getTopSellingProducts(
+    @Request() req,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('shopId') shopId?: string,
+  ) {
+    const tenantId = req.user.tenantId;
+    return this.reportsService.getTopSellingProducts(
       tenantId,
       startDate ? new Date(startDate) : undefined,
       endDate ? new Date(endDate) : undefined,

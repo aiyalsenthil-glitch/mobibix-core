@@ -3,20 +3,20 @@
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { SalesReportItem, getSalesReport } from "@/services/reports.api";
+import { ProfitSummaryMetrics, getProfitSummary } from "@/services/reports.api";
 import { useShop } from "@/context/ShopContext";
+import { TrendingUp, TrendingDown, DollarSign, Wallet } from "lucide-react";
 import { PartySelector } from "@/components/common/PartySelector";
 
-export default function SalesReportPage() {
+export default function ProfitReportPage() {
   const { theme } = useTheme();
   const router = useRouter();
   const { selectedShopId } = useShop();
 
-  const [data, setData] = useState<SalesReportItem[]>([]);
+  const [metrics, setMetrics] = useState<ProfitSummaryMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filter State
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedPartyId, setSelectedPartyId] = useState<string | null>(null);
@@ -25,15 +25,15 @@ export default function SalesReportPage() {
     try {
       setLoading(true);
       setError(null);
-      const report = await getSalesReport({
+      const data = await getProfitSummary({
         shopId: selectedShopId || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         partyId: selectedPartyId || undefined,
       });
-      setData(report);
+      setMetrics(data.metrics);
     } catch (err: any) {
-      setError(err.message || "Failed to load report");
+      setError(err.message || "Failed to load profit summary");
     } finally {
       setLoading(false);
     }
@@ -57,14 +57,14 @@ export default function SalesReportPage() {
                 theme === "dark" ? "text-white" : "text-gray-900"
               }`}
             >
-              Sales Report
+              Profit & Loss Summary
             </h1>
             <p
               className={`mt-1 text-sm ${
                 theme === "dark" ? "text-gray-400" : "text-gray-500"
               }`}
             >
-              Daily sales invoices and profit analysis
+              Financial performance overview (Revenue vs Costs)
             </p>
           </div>
           <button
@@ -126,7 +126,7 @@ export default function SalesReportPage() {
             />
           </div>
           
-          <div className="w-64">
+           <div className="w-64">
             <label
               className={`block text-xs font-medium mb-1 ${
                 theme === "dark" ? "text-gray-400" : "text-gray-600"
@@ -140,14 +140,12 @@ export default function SalesReportPage() {
               placeholder="Filter by Customer"
             />
           </div>
-          
+
           <button
             onClick={() => {
               setStartDate("");
               setEndDate("");
               setSelectedPartyId(null);
-              // Note: PartySelector internal state reset is not handled here, 
-              // but ID clearing triggers data refresh.
             }}
             className="px-4 py-2 text-sm text-teal-600 hover:underline font-medium"
           >
@@ -157,77 +155,83 @@ export default function SalesReportPage() {
 
         {/* Content */}
         {loading ? (
-             <div className="flex justify-center py-12">
+           <div className="flex justify-center py-12">
              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
            </div>
         ) : error ? (
            <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-center">
              {error}
            </div>
-        ) : data.length === 0 ? (
+        ) : !metrics ? (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            No sales records found for this period.
+            No data available.
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
-             <table className={`w-full text-sm text-left ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                <thead className={`text-xs uppercase bg-gray-50 dark:bg-gray-800/50 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                  <tr>
-                    <th className="px-6 py-3">Date</th>
-                    <th className="px-6 py-3">Invoice #</th>
-                    <th className="px-6 py-3">Customer</th>
-                    <th className="px-6 py-3 text-right">Total</th>
-                    <th className="px-6 py-3 text-right">Paid</th>
-                    <th className="px-6 py-3 text-right">Pending</th>
-                    <th className="px-6 py-3 text-center">Status</th>
-                    <th className="px-6 py-3 text-right">Profit</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                  {data.map((item) => (
-                    <tr key={item.invoiceNo} className="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {new Date(item.date).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                        {item.invoiceNo}
-                      </td>
-                      <td className="px-6 py-4">
-                        {item.customer || "Walk-in"}
-                      </td>
-                      <td className="px-6 py-4 text-right font-medium">
-                        ₹{item.totalAmount.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 text-right text-green-600">
-                        ₹{item.paidAmount.toFixed(2)}
-                      </td>
-                       <td className="px-6 py-4 text-right text-red-500">
-                        {item.pendingAmount > 0 ? `₹${item.pendingAmount.toFixed(2)}` : "-"}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            item.pendingAmount <= 0 
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                            : item.paidAmount > 0
-                                ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                        }`}>
-                            {item.pendingAmount <= 0 ? "PAID" : item.paidAmount > 0 ? "PARTIAL" : "UNPAID"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right font-medium">
-                        {item.profit !== null ? (
-                            <span className={item.profit >= 0 ? "text-green-600" : "text-red-500"}>
-                                ₹{item.profit.toFixed(2)}
-                            </span>
-                        ) : (
-                            <span className="text-gray-400">N/A</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-             </table>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            {/* Revenue Card */}
+            <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} shadow-sm`}>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-lg">
+                        <DollarSign className="w-6 h-6" />
+                    </div>
+                    <h3 className={`text-sm font-medium uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Total Revenue
+                    </h3>
+                </div>
+                <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    ₹{metrics.totalRevenue.toFixed(2)}
+                </p>
+            </div>
+
+            {/* Cost Card */}
+            <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} shadow-sm`}>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-purple-50 dark:bg-purple-900/20 text-purple-600 rounded-lg">
+                        <Wallet className="w-6 h-6" />
+                    </div>
+                    <h3 className={`text-sm font-medium uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Total Cost
+                    </h3>
+                </div>
+                <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    ₹{metrics.totalCost.toFixed(2)}
+                </p>
+            </div>
+
+            {/* Profit Card */}
+            <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} shadow-sm`}>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-lg">
+                        <TrendingUp className="w-6 h-6" />
+                    </div>
+                    <h3 className={`text-sm font-medium uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Gross Profit
+                    </h3>
+                </div>
+                <p className={`text-2xl font-bold ${metrics.grossProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    ₹{metrics.grossProfit.toFixed(2)}
+                </p>
+            </div>
+
+            {/* Margin Card */}
+            <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} shadow-sm`}>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-orange-50 dark:bg-orange-900/20 text-orange-600 rounded-lg">
+                        <TrendingDown className="w-6 h-6" />
+                    </div>
+                    <h3 className={`text-sm font-medium uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Profit Margin
+                    </h3>
+                </div>
+                <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {metrics.totalCost > 0 ? `${metrics.margin.toFixed(2)}%` : "N/A"}
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                    {metrics.totalCost <= 0 ? "Insufficient cost data" : "Based on valid costs"}
+                </p>
+            </div>
+
           </div>
         )}
       </div>
