@@ -10,6 +10,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { StaffModule } from './staff/staff.module';
 import { AdminModule } from './admin/admin.module';
 import { CustomersModule } from './customers/customers.module';
+import { PartiesModule } from './parties/parties.module';
 import { ShopModule } from './shops/shop.module';
 import { SalesModule } from './sales/sales.module';
 import { PurchaseModule } from './purchase/purchase.module';
@@ -35,6 +36,7 @@ import { PlatformModule } from './platform/platform.module';
     StaffModule,
     AdminModule,
     CustomersModule,
+    PartiesModule,
     ShopModule,
     SalesModule,
     PurchaseModule,

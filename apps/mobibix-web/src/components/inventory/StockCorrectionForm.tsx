@@ -20,17 +20,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  listProducts,
-  type ShopProduct,
-  ProductType,
-} from "@/services/products.api";
-import { getStockBalances } from "@/services/stock.api";
-import { correctStock } from "@/services/stock.api";
+import { listProducts, type ShopProduct, ProductType } from "@/services/products.api";
+import { getStockBalances, correctStock } from "@/services/stock.api";
+import { stockIn } from "@/services/inventory.api";
 
 interface StockCorrectionFormProps {
   shopId: string;
   preSelectedProductId?: string;
+  source?: "PRODUCT_CREATE" | "INVENTORY_PAGE";
   onSuccess?: () => void;
   onCancel?: () => void;
 }
@@ -46,6 +43,7 @@ const CORRECTION_REASONS = [
 export function StockCorrectionForm({
   shopId,
   preSelectedProductId,
+  source,
   onSuccess,
   onCancel,
 }: StockCorrectionFormProps) {
@@ -57,7 +55,10 @@ export function StockCorrectionForm({
     preSelectedProductId || "",
   );
   const [quantity, setQuantity] = useState("");
-  const [reason, setReason] = useState("");
+  const [imeisText, setImeisText] = useState("");
+  const [reason, setReason] = useState(
+    source === "PRODUCT_CREATE" ? "INITIAL_SETUP" : "",
+  );
   const [note, setNote] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,10 +79,12 @@ export function StockCorrectionForm({
         getStockBalances(shopId),
       ]);
 
-      // Filter out serialized and SERVICE products
-      const eligibleProducts = productsData.filter(
-        (p) => !p.isSerialized && p.type !== ProductType.SERVICE,
-      );
+      // Filter: INVENTORY_PAGE only allows non-serialized. PRODUCT_CREATE allows both.
+      const eligibleProducts = productsData.filter((p) => {
+        if (p.type === ProductType.SERVICE) return false;
+        if (source === "PRODUCT_CREATE") return true;
+        return !p.isSerialized;
+      });
       setProducts(eligibleProducts);
 
       // Index balances by product ID
@@ -104,14 +107,23 @@ export function StockCorrectionForm({
   const currentStock = stockBalances[selectedProductId]?.stockQty ?? 0;
   const isCurrentlyNegative =
     stockBalances[selectedProductId]?.isNegative ?? false;
-  const quantityValue = parseFloat(quantity) || 0;
+
+  // For serialized products, quantity is derived from IMEI lines
+  const imeis = imeisText
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const quantityValue = selectedProduct?.isSerialized
+    ? imeis.length
+    : parseFloat(quantity) || 0;
+
   const projectedStock = currentStock + quantityValue;
   const willRemainNegative = projectedStock < 0;
 
   const isFormValid =
     selectedProductId &&
-    quantity !== "" &&
-    quantityValue !== 0 &&
+    (selectedProduct?.isSerialized ? imeis.length > 0 : quantityValue !== 0) &&
     reason &&
     !isSubmitting;
 
@@ -122,13 +134,23 @@ export function StockCorrectionForm({
       setIsSubmitting(true);
       setError("");
 
-      await correctStock({
-        shopId,
-        shopProductId: selectedProductId,
-        quantity: quantityValue,
-        reason,
-        note: note.trim() || undefined,
-      });
+      if (source === "PRODUCT_CREATE") {
+        await stockIn(shopId, {
+          shopProductId: selectedProductId,
+          quantity: quantityValue,
+          costPrice: 0, // Initial setup assumes 0 cost unless we add cost field
+          imeis: selectedProduct.isSerialized ? imeis : undefined,
+          type: selectedProduct.isSerialized ? "GOODS" : undefined,
+        });
+      } else {
+        await correctStock({
+          shopId,
+          shopProductId: selectedProductId,
+          quantity: quantityValue,
+          reason,
+          note: note.trim() || undefined,
+        });
+      }
 
       // Success
       setShowConfirmModal(false);
@@ -163,6 +185,19 @@ export function StockCorrectionForm({
         {error && (
           <div className="rounded-md border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 p-3 text-sm text-red-900 dark:text-red-200">
             {error}
+          </div>
+        )}
+
+        {source === "PRODUCT_CREATE" && (
+          <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm text-amber-900 dark:text-amber-200">
+            <div className="font-bold flex items-center gap-2 mb-1">
+              <span>⚠️</span> ERP GUIDANCE
+            </div>
+            <p className="leading-relaxed">
+              Stock initialization <strong>bypasses</strong> purchase entry.
+              Use this ONLY for opening stock or manual migration. For normal
+              inventory intake, please use <strong>New Purchase</strong>.
+            </p>
           </div>
         )}
 
@@ -235,30 +270,55 @@ export function StockCorrectionForm({
           </div>
         )}
 
-        <div className="space-y-2">
-          <Label
-            htmlFor="quantity"
-            className="text-slate-700 dark:text-slate-300"
-          >
-            Quantity Adjustment{" "}
-            <span className="text-slate-500 dark:text-slate-400 text-xs">
-              (Positive = add, Negative = reduce)
-            </span>
-          </Label>
-          <Input
-            id="quantity"
-            type="number"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            placeholder="e.g. -5 or +10"
-            className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-50"
-          />
-          {quantity !== "" && quantityValue === 0 && (
-            <p className="text-xs text-red-600 dark:text-red-400">
-              Quantity cannot be zero
+        {selectedProduct?.isSerialized ? (
+          <div className="space-y-2">
+            <Label
+              htmlFor="imeis"
+              className="text-slate-700 dark:text-slate-300"
+            >
+              IMEIs / Serial Numbers{" "}
+              <span className="text-slate-500 dark:text-slate-400 text-xs">
+                (One per line)
+              </span>
+            </Label>
+            <Textarea
+              id="imeis"
+              value={imeisText}
+              onChange={(e) => setImeisText(e.target.value)}
+              placeholder="Enter one IMEI per line..."
+              rows={5}
+              className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-50 font-mono text-sm"
+            />
+            <p className="text-xs font-medium text-slate-500">
+              Total Count: {imeis.length} products
             </p>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label
+              htmlFor="quantity"
+              className="text-slate-700 dark:text-slate-300"
+            >
+              Quantity Adjustment{" "}
+              <span className="text-slate-500 dark:text-slate-400 text-xs">
+                (Positive = add, Negative = reduce)
+              </span>
+            </Label>
+            <Input
+              id="quantity"
+              type="number"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              placeholder="e.g. -5 or +10"
+              className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-50"
+            />
+            {quantity !== "" && quantityValue === 0 && (
+              <p className="text-xs text-red-600 dark:text-red-400">
+                Quantity cannot be zero
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label

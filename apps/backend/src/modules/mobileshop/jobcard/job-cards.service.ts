@@ -110,11 +110,12 @@ export class JobCardsService {
     let customer: { name: string; phone: string } | null = null;
 
     if (dto.customerId) {
-      customer = await this.prisma.customer.findFirst({
+      customer = await this.prisma.party.findFirst({
         where: {
           id: dto.customerId,
           tenantId: user.tenantId,
           isActive: true,
+          partyType: { in: ['CUSTOMER', 'BOTH'] },
         },
       });
 
@@ -200,11 +201,12 @@ export class JobCardsService {
     let customer: { name: string; phone: string } | null = null;
 
     if (dto.customerId) {
-      customer = await this.prisma.customer.findFirst({
+      customer = await this.prisma.party.findFirst({
         where: {
           id: dto.customerId,
           tenantId: user.tenantId,
           isActive: true,
+          partyType: { in: ['CUSTOMER', 'BOTH'] },
         },
       });
 

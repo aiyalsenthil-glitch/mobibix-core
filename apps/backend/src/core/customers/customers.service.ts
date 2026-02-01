@@ -21,7 +21,7 @@ export class CustomersService {
       }
     }
 
-    const existing = await this.prisma.customer.findFirst({
+    const existing = await this.prisma.party.findFirst({
       where: {
         tenantId,
         phone: dto.phone,
@@ -29,10 +29,17 @@ export class CustomersService {
     });
 
     if (existing) {
+      if (existing.partyType === 'VENDOR') {
+        // Upgrade to BOTH if it was only a vendor
+        return this.prisma.party.update({
+          where: { id: existing.id },
+          data: { partyType: 'BOTH' },
+        });
+      }
       return existing; // 🔑 idempotent create
     }
 
-    return this.prisma.customer.create({
+    return this.prisma.party.create({
       data: {
         tenantId,
         name: dto.name,
@@ -40,16 +47,17 @@ export class CustomersService {
         email: dto.email,
         state: dto.state,
         businessType: dto.businessType,
-        partyType: dto.partyType,
+        partyType: 'CUSTOMER',
         gstNumber: dto.gstNumber,
       },
     });
   }
 
   async listCustomers(tenantId: string) {
-    return this.prisma.customer.findMany({
+    return this.prisma.party.findMany({
       where: {
         tenantId,
+        partyType: { in: ['CUSTOMER', 'BOTH'] },
       },
       orderBy: {
         createdAt: 'desc',
@@ -58,10 +66,11 @@ export class CustomersService {
   }
 
   async getCustomer(tenantId: string, customerId: string) {
-    const customer = await this.prisma.customer.findFirst({
+    const customer = await this.prisma.party.findFirst({
       where: {
         id: customerId,
         tenantId,
+        partyType: { in: ['CUSTOMER', 'BOTH'] },
       },
     });
 
@@ -73,20 +82,22 @@ export class CustomersService {
   }
 
   async findByPhone(tenantId: string, phone: string) {
-    return this.prisma.customer.findFirst({
+    return this.prisma.party.findFirst({
       where: {
         tenantId,
         phone,
         isActive: true,
+        partyType: { in: ['CUSTOMER', 'BOTH'] },
       },
     });
   }
 
   async searchCustomers(tenantId: string, query: string, limit: number = 5) {
-    return this.prisma.customer.findMany({
+    return this.prisma.party.findMany({
       where: {
         tenantId,
         isActive: true,
+        partyType: { in: ['CUSTOMER', 'BOTH'] },
         OR: [
           { name: { contains: query, mode: 'insensitive' } },
           { phone: { contains: query, mode: 'insensitive' } },
@@ -103,11 +114,12 @@ export class CustomersService {
     customerId: string,
     dto: UpdateCustomerDto,
   ) {
-    const customer = await this.prisma.customer.findFirst({
+    const customer = await this.prisma.party.findFirst({
       where: {
         id: customerId,
         tenantId,
         isActive: true,
+        partyType: { in: ['CUSTOMER', 'BOTH'] },
       },
     });
 
@@ -128,24 +140,24 @@ export class CustomersService {
       }
     }
 
-    return this.prisma.customer.update({
+    return this.prisma.party.update({
       where: { id: customerId },
       data: {
         name: dto.name,
         email: dto.email,
         state: dto.state,
         businessType: dto.businessType,
-        partyType: dto.partyType,
         gstNumber: dto.gstNumber,
       },
     });
   }
   async deleteCustomer(tenantId: string, customerId: string) {
-    const customer = await this.prisma.customer.findFirst({
+    const customer = await this.prisma.party.findFirst({
       where: {
         id: customerId,
         tenantId,
         isActive: true,
+        partyType: { in: ['CUSTOMER', 'BOTH'] },
       },
     });
 
@@ -153,7 +165,7 @@ export class CustomersService {
       throw new BadRequestException('Customer not found');
     }
 
-    return this.prisma.customer.update({
+    return this.prisma.party.update({
       where: { id: customerId },
       data: {
         isActive: false,

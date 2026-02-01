@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { ProductType as PrismaProductType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StockService, type StockBalance } from '../stock/stock.service';
@@ -28,6 +28,21 @@ export class InventoryService {
     // SERVICE → no stock tracking (isSerialized = false)
     const isSerialized =
       normalizedType === PrismaProductType.GOODS && dto.isSerialized === true;
+
+    // Duplicate check
+    const existing = await this.prisma.shopProduct.findFirst({
+      where: {
+        shopId: dto.shopId,
+        name: { equals: dto.name, mode: 'insensitive' },
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        `Product with name "${dto.name}" already exists in this shop`,
+      );
+    }
 
     return this.prisma.shopProduct.create({
       data: {
@@ -59,6 +74,29 @@ export class InventoryService {
     // Calculate isSerialized based on type
     const isSerialized =
       normalizedType === PrismaProductType.GOODS && dto.isSerialized === true;
+
+    // Duplicate check if name changed
+    const existingProduct = await this.prisma.shopProduct.findUnique({
+      where: { id },
+      select: { name: true, shopId: true },
+    });
+
+    if (existingProduct && dto.name !== existingProduct.name) {
+      const duplicate = await this.prisma.shopProduct.findFirst({
+        where: {
+          shopId: existingProduct.shopId,
+          name: { equals: dto.name, mode: 'insensitive' },
+          id: { not: id },
+        },
+        select: { id: true },
+      });
+
+      if (duplicate) {
+        throw new ConflictException(
+          `Product with name "${dto.name}" already exists in this shop`,
+        );
+      }
+    }
 
     return this.prisma.shopProduct.update({
       where: {

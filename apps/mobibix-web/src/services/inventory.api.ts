@@ -10,6 +10,7 @@ export async function stockIn(
     quantity: number;
     costPrice: number;
     type?: string;
+    imeis?: string[];
   },
 ): Promise<void> {
   const response = await authenticatedFetch("/mobileshop/inventory/stock-in", {
@@ -22,6 +23,7 @@ export async function stockIn(
       type: data.type || "GOODS",
       quantity: data.quantity,
       costPerUnit: data.costPrice,
+      imeis: data.imeis,
     }),
   });
 

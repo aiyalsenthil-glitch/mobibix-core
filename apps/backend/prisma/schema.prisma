@@ -33,31 +33,30 @@ model Tenant {
   maxMembers          Int                    @default(50)
   whatsappEnabled     Boolean                @default(true)
   auditLogs           AuditLog[]
-  customers           Customer[]
-  customerAlerts      CustomerAlert[]
-  customerFollowUps   CustomerFollowUp[]
-  customerReminders   CustomerReminder[]
+  parties             Party[]                @relation("TenantParties")
+  customerAlerts      CustomerAlert[]        @relation("TenantCustomerAlerts")
+  customerFollowUps   CustomerFollowUp[]     @relation("TenantCustomerFollowUps")
+  customerReminders   CustomerReminder[]     @relation("TenantCustomerReminders")
   financialEntries    FinancialEntry[]
   imeis               IMEI[]
-  invoices            Invoice[]
-  jobCards            JobCard[]
+  invoices            Invoice[]              @relation("TenantInvoices")
+  jobCards            JobCard[]              @relation("TenantJobCards")
   ledgerAccounts      LedgerAccount[]
   ledgerCustomers     LedgerCustomer[]
+  supplierPayments    SupplierPayment[]      @relation("TenantSupplierPayments")
   loyaltyTransactions LoyaltyTransaction[]
-  members             Member[]
+  members             Member[]               @relation("TenantMembers")
   payments            Payment[]
-  paymentVouchers     PaymentVoucher[]
-  purchases           Purchase[]
-  purchaseOrders      PurchaseOrder[]
-  quotations          Quotation[]
-  receipts            Receipt[]
+  paymentVouchers     PaymentVoucher[]       @relation("TenantPaymentVouchers")
+  purchases           Purchase[]             @relation("TenantPurchases")
+  purchaseOrders      PurchaseOrder[]        @relation("TenantPurchaseOrders")
+  quotations          Quotation[]            @relation("TenantQuotations")
+  receipts            Receipt[]              @relation("TenantReceipts")
   shops               Shop[]
   shopProducts        ShopProduct[]
   shopStaffs          ShopStaff[]
   stockCorrections    StockCorrection[]
-  stockEntries        StockLedger[]
-  suppliers           Supplier[]
-  globalSuppliers     TenantGlobalSupplier[]
+  stockEntries        StockLedger[]          @relation("TenantStockEntries")
   subscription        TenantSubscription[]
   users               User[]
   userTenants         UserTenant[]
@@ -124,8 +123,8 @@ model Member {
   customerId          String?
   attendances         GymAttendance[]
   gymMemberships      GymMembership[]
-  customer            Customer?           @relation(fields: [customerId], references: [id])
-  tenant              Tenant              @relation(fields: [tenantId], references: [id])
+  customer            Party?           @relation(fields: [customerId], references: [id])
+  tenant              Tenant              @relation("TenantMembers", fields: [tenantId], references: [id])
   payments            MemberPayment[]
 
   @@unique([id, tenantId])
@@ -133,21 +132,28 @@ model Member {
   @@index([tenantId])
 }
 
-model Customer {
+model Party {
   id                  String               @id @default(cuid())
   tenantId            String
   name                String
   phone               String
   email               String?
-  state               String
+  state               String?
   gstNumber           String?
   businessType        BusinessType         @default(B2C)
   partyType           PartyType            @default(CUSTOMER)
   loyaltyPoints       Int                  @default(0)
   isActive            Boolean              @default(true)
+  altPhone            String?
+  address             String?
+  defaultPaymentTerms String?
+  defaultCreditLimit  Int?
+  defaultCurrency     String               @default("INR")
+  tags                String[]             @default([])
+  createdBy           String?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
-  tenant              Tenant               @relation(fields: [tenantId], references: [id])
+  tenant              Tenant               @relation("TenantParties", fields: [tenantId], references: [id])
   alerts              CustomerAlert[]
   followUps           CustomerFollowUp[]
   reminders           CustomerReminder[]
@@ -155,6 +161,12 @@ model Customer {
   jobCards            JobCard[]
   loyaltyTransactions LoyaltyTransaction[]
   members             Member[]
+  purchases           Purchase[]           @relation("PartyToPurchases")
+  supplierPayments    SupplierPayment[]
+  receipts            Receipt[]
+  quotations          Quotation[]
+  purchaseOrders      PurchaseOrder[]
+  paymentVouchers     PaymentVoucher[]
 
   @@unique([tenantId, phone])
   @@index([tenantId])
@@ -174,9 +186,9 @@ model CustomerFollowUp {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   assignedToUser   User?           @relation(fields: [assignedToUserId], references: [id])
-  customer         Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer         Party        @relation(fields: [customerId], references: [id], onDelete: Cascade)
   shop             Shop?           @relation(fields: [shopId], references: [id])
-  tenant           Tenant          @relation(fields: [tenantId], references: [id])
+  tenant           Tenant          @relation("TenantCustomerFollowUps", fields: [tenantId], references: [id])
 
   @@index([tenantId])
   @@index([customerId])
@@ -200,8 +212,8 @@ model CustomerReminder {
   failureReason String?
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
-  customer      Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  tenant        Tenant              @relation(fields: [tenantId], references: [id])
+  customer      Party            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tenant        Tenant              @relation("TenantCustomerReminders", fields: [tenantId], references: [id])
 
   @@index([tenantId])
   @@index([customerId])
@@ -218,8 +230,9 @@ model LoyaltyTransaction {
   referenceId String?
   note        String?
   createdAt   DateTime      @default(now())
-  customer    Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer    Party         @relation(fields: [customerId], references: [id], onDelete: Cascade)
   tenant      Tenant        @relation(fields: [tenantId], references: [id])
+
 
   @@index([tenantId])
   @@index([customerId])
@@ -236,8 +249,8 @@ model CustomerAlert {
   resolved   Boolean       @default(false)
   resolvedAt DateTime?
   createdAt  DateTime      @default(now())
-  customer   Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  tenant     Tenant        @relation(fields: [tenantId], references: [id])
+  customer   Party      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tenant     Tenant        @relation("TenantCustomerAlerts", fields: [tenantId], references: [id])
 
   @@index([tenantId])
   @@index([customerId])
@@ -608,7 +621,7 @@ model Shop {
   products            ShopProduct[]
   staff               ShopStaff[]
   stockCorrections    StockCorrection[]
-  stockEntries        StockLedger[]
+  stockEntries        StockLedger[] 
 
   @@unique([tenantId, invoicePrefix])
   @@index([tenantId])
@@ -689,9 +702,9 @@ model JobCard {
   notes                String?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
-  customer             Customer?        @relation(fields: [customerId], references: [id])
+  customer             Party?        @relation(fields: [customerId], references: [id])
   shop                 Shop             @relation(fields: [shopId], references: [id])
-  tenant               Tenant           @relation(fields: [tenantId], references: [id])
+  tenant               Tenant           @relation("TenantJobCards", fields: [tenantId], references: [id])
   partsUsed            RepairPartUsed[]
 
   @@unique([shopId, jobNumber])
@@ -811,7 +824,7 @@ model StockLedger {
   createdAt     DateTime       @default(now())
   shop          Shop           @relation(fields: [shopId], references: [id])
   product       ShopProduct    @relation(fields: [shopProductId], references: [id])
-  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  tenant        Tenant         @relation("TenantStockEntries", fields: [tenantId], references: [id])
 
   @@index([tenantId, shopId, createdAt])
   @@index([shopProductId, createdAt])
@@ -864,9 +877,9 @@ model Invoice {
   createdAt     DateTime      @default(now())
   createdBy     String?
   imeis         IMEI[]
-  customer      Customer?     @relation(fields: [customerId], references: [id])
+  customer      Party?     @relation(fields: [customerId], references: [id])
   shop          Shop          @relation(fields: [shopId], references: [id])
-  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  tenant        Tenant        @relation("TenantInvoices", fields: [tenantId], references: [id])
   items         InvoiceItem[]
   receipts      Receipt[]
 
@@ -925,98 +938,7 @@ model FinancialEntry {
   @@index([shopId])
 }
 
-model Supplier {
-  id                  String         @id @default(cuid())
-  tenantId            String
-  name                String
-  namelowercase       String
-  primaryPhone        String
-  altPhone            String?
-  email               String?
-  gstin               String?
-  address             String?
-  state               String?
-  defaultPaymentTerms String?
-  defaultCreditLimit  Int?
-  defaultCurrency     String         @default("INR")
-  tags                String[]       @default([])
-  isActive            Boolean        @default(true)
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  createdBy           String?
-  purchases           Purchase[]
-  shopSuppliers       ShopSupplier[]
-  tenant              Tenant         @relation(fields: [tenantId], references: [id])
 
-  @@unique([tenantId, namelowercase])
-  @@index([tenantId])
-}
-
-model ShopSupplier {
-  id                 String    @id @default(cuid())
-  tenantId           String
-  shopId             String
-  globalSupplierId   String?
-  name               String
-  namelowercase      String
-  phone              String?
-  email              String?
-  gstin              String?
-  outstandingAmount  Int       @default(0)
-  openPurchasesCount Int       @default(0)
-  localNotes         String?
-  isActive           Boolean   @default(true)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  createdBy          String?
-  supplier           Supplier? @relation(fields: [globalSupplierId], references: [id])
-
-  @@unique([shopId, namelowercase])
-  @@index([tenantId])
-  @@index([shopId])
-}
-
-model GlobalSupplier {
-  id                  String                 @id @default(cuid())
-  name                String
-  namelowercase       String                 @unique
-  primaryPhone        String?
-  altPhone            String?
-  email               String?
-  gstin               String?
-  address             String?
-  state               String?
-  country             String                 @default("India")
-  defaultPaymentTerms String?
-  defaultCreditLimit  Int?
-  defaultCurrency     String                 @default("INR")
-  tags                String[]               @default([])
-  isVerified          Boolean                @default(false)
-  isActive            Boolean                @default(true)
-  createdAt           DateTime               @default(now())
-  updatedAt           DateTime               @updatedAt
-  createdBy           String?
-  tenants             TenantGlobalSupplier[]
-
-  @@index([isActive])
-  @@index([namelowercase])
-}
-
-model TenantGlobalSupplier {
-  id               String         @id @default(cuid())
-  tenantId         String
-  globalSupplierId String
-  linkedAt         DateTime       @default(now())
-  localName        String?
-  localPhone       String?
-  localNotes       String?
-  globalSupplier   GlobalSupplier @relation(fields: [globalSupplierId], references: [id], onDelete: Cascade)
-  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, globalSupplierId])
-  @@index([tenantId])
-  @@index([globalSupplierId])
-}
 
 model Purchase {
   id               String            @id @default(cuid())
@@ -1042,9 +964,9 @@ model Purchase {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   createdBy        String?
-  supplier         Supplier?         @relation(fields: [globalSupplierId], references: [id])
-  shop             Shop              @relation(fields: [shopId], references: [id])
-  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  party            Party?         @relation("PartyToPurchases", fields: [globalSupplierId], references: [id])
+  shop             Shop           @relation(fields: [shopId], references: [id])
+  tenant           Tenant            @relation("TenantPurchases", fields: [tenantId], references: [id])
   items            PurchaseItem[]
   payments         SupplierPayment[]
 
@@ -1087,6 +1009,9 @@ model SupplierPayment {
   createdAt        DateTime    @default(now())
   createdBy        String?
   purchase         Purchase?   @relation(fields: [purchaseId], references: [id])
+  tenant           Tenant      @relation("TenantSupplierPayments", fields: [tenantId], references: [id])
+  party            Party?      @relation(fields: [globalSupplierId], references: [id])
+
 
   @@index([tenantId])
   @@index([shopId])
@@ -1112,9 +1037,10 @@ model Receipt {
   status          ReceiptStatus @default(ACTIVE)
   createdAt       DateTime      @default(now())
   createdBy       String?
+  party           Party?        @relation(fields: [customerId], references: [id])
   invoice         Invoice?      @relation(fields: [linkedInvoiceId], references: [id])
   shop            Shop          @relation(fields: [shopId], references: [id])
-  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  tenant          Tenant        @relation("TenantReceipts", fields: [tenantId], references: [id])
 
   @@index([tenantId])
   @@index([shopId])
@@ -1138,8 +1064,9 @@ model PaymentVoucher {
   status           VoucherStatus @default(ACTIVE)
   createdAt        DateTime      @default(now())
   createdBy        String?
+  party            Party?        @relation(fields: [globalSupplierId], references: [id])
   shop             Shop          @relation(fields: [shopId], references: [id])
-  tenant           Tenant        @relation(fields: [tenantId], references: [id])
+  tenant           Tenant        @relation("TenantPaymentVouchers", fields: [tenantId], references: [id])
 
   @@index([tenantId])
   @@index([shopId])
@@ -1161,8 +1088,9 @@ model Quotation {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   createdBy       String?
+  party           Party?          @relation(fields: [customerId], references: [id])
   shop            Shop            @relation(fields: [shopId], references: [id])
-  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  tenant          Tenant          @relation("TenantQuotations", fields: [tenantId], references: [id])
   items           QuotationItem[]
 
   @@unique([shopId, quotationNumber])
@@ -1189,6 +1117,7 @@ model PurchaseOrder {
   poNumber             String
   globalSupplierId     String?
   supplierName         String
+  party                Party?              @relation(fields: [globalSupplierId], references: [id])
   orderDate            DateTime            @default(now())
   expectedDelivery     DateTime?
   totalEstimatedAmount Int                 @default(0)
@@ -1198,7 +1127,7 @@ model PurchaseOrder {
   updatedAt            DateTime            @updatedAt
   createdBy            String?
   shop                 Shop                @relation(fields: [shopId], references: [id])
-  tenant               Tenant              @relation(fields: [tenantId], references: [id])
+  tenant               Tenant              @relation("TenantPurchaseOrders", fields: [tenantId], references: [id])
   items                PurchaseOrderItem[]
 
   @@unique([shopId, poNumber])
@@ -1218,6 +1147,8 @@ model PurchaseOrderItem {
 
   @@index([poId])
 }
+
+
 
 model WhatsAppPhoneNumberModule {
   id            String                     @id @default(uuid())

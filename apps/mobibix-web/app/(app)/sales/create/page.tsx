@@ -186,6 +186,7 @@ export default function CreateInvoicePage() {
     // Ensure all dropdowns are closed when modal closes
     setProductDropdowns({});
     setProductDropdownPositions({});
+    if (selectedShopId) loadProducts(selectedShopId);
   };
 
   const handleProductCreated = (product: ShopProduct) => {
@@ -195,6 +196,7 @@ export default function CreateInvoicePage() {
     setIsProductModalOpen(false);
     setProductDropdowns({});
     setProductDropdownPositions({});
+    if (selectedShopId) loadProducts(selectedShopId);
   };
 
   // Calculate dropdown position

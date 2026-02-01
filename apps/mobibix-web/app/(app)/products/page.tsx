@@ -10,6 +10,7 @@ import { ExportProductsModal } from "./ExportProductsModal";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { NoShopsAlert } from "../components/NoShopsAlert";
+import { ProductModal } from "./ProductModal";
 
 export default function ProductsPage() {
   const { theme } = useTheme();
@@ -33,6 +34,7 @@ export default function ProductsPage() {
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Load products when shop selection changes
   useEffect(() => {
@@ -74,6 +76,10 @@ export default function ProductsPage() {
     setProducts((prev) =>
       prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p)),
     );
+  };
+
+  const handleProductCreated = (newProduct: ShopProduct) => {
+    setProducts((prev) => [newProduct, ...prev]);
   };
 
   const reloadProducts = async () => {
@@ -178,6 +184,26 @@ export default function ProductsPage() {
                 Copy from Shop
               </button>
             )}
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition flex items-center gap-2"
+              title="Add a single new product"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
+              </svg>
+              Add Product
+            </button>
           </div>
         )}
       </div>
@@ -512,6 +538,15 @@ export default function ProductsPage() {
           shopId={selectedShopId}
           shopName={selectedShop.name}
           onClose={() => setShowExportModal(false)}
+        />
+      )}
+
+      {/* Create Product Modal */}
+      {showCreateModal && selectedShopId && (
+        <ProductModal
+          shopId={selectedShopId}
+          onClose={() => setShowCreateModal(false)}
+          onProductCreated={handleProductCreated}
         />
       )}
     </div>

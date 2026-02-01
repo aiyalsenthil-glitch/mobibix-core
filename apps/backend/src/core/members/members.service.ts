@@ -158,7 +158,7 @@ export class MembersService {
     // ─────────────────────────────
     // 🔗 Ensure Customer Exists (Bridge for Automation)
     // ─────────────────────────────
-    let customer = await this.prisma.customer.findUnique({
+    let customer = await this.prisma.party.findUnique({
       where: {
         tenantId_phone: {
           tenantId,
@@ -168,12 +168,13 @@ export class MembersService {
     });
 
     if (!customer) {
-      customer = await this.prisma.customer.create({
+      customer = await this.prisma.party.create({
         data: {
           tenantId,
           name: dto.fullName,
           phone: normalizedPhone,
           state: 'Unknown', // Required field, default to Unknown
+          partyType: 'CUSTOMER',
         },
       });
     }

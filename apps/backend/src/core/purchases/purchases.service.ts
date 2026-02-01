@@ -10,12 +10,14 @@ import { UpdatePurchaseDto, PurchaseStatus } from './dto/update-purchase.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { PurchaseResponseDto } from './dto/purchase.response.dto';
 import { StockService } from '../../core/stock/stock.service';
+import { PartiesService } from '../parties/parties.service';
 
 @Injectable()
 export class PurchasesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stockService: StockService,
+    private readonly partiesService: PartiesService,
   ) {}
 
   /**
@@ -26,6 +28,25 @@ export class PurchasesService {
     dto: CreatePurchaseDto,
   ): Promise<PurchaseResponseDto> {
     return this.prisma.$transaction(async (tx) => {
+      // 🛡️ Party Role Validation & Auto-Upgrade
+      if (dto.globalSupplierId) {
+        const party = await tx.party.findUnique({
+          where: { id: dto.globalSupplierId },
+        });
+
+        if (!party || party.tenantId !== tenantId) {
+          throw new NotFoundException('Party not found');
+        }
+
+        if (party.partyType === 'CUSTOMER') {
+          // Auto-upgrade to BOTH
+          await tx.party.update({
+            where: { id: party.id },
+            data: { partyType: 'BOTH' },
+          });
+        }
+      }
+
       // Check if invoice number already exists for this shop
       const existingPurchase = await tx.purchase.findFirst({
         where: {

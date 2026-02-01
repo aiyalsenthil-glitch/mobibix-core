@@ -23,13 +23,12 @@ export interface ShopProduct {
   salePrice: number; // Shop-specific selling price
   costPrice?: number; // Shop-specific cost price
   isActive: boolean; // Can this shop sell this product?
+  isSerialized: boolean; // Track by IMEI (true) or bulk quantity (false)
 
   // Tax & Compliance (Shop-level override or inherited)
   hsnCode?: string;
   gstRate?: number;
 
-  // Inventory configuration
-  isSerialized?: boolean; // Track by IMEI (true) or bulk quantity (false)
   reorderLevel?: number;
   reorderQty?: number;
   barcode?: string;
@@ -81,6 +80,7 @@ export async function createProduct(
     hsnSac?: string;
     salePrice: number;
     gstRate?: number;
+    isSerialized?: boolean;
   },
 ): Promise<ShopProduct> {
   const response = await authenticatedFetch("/mobileshop/inventory/product", {
@@ -96,6 +96,7 @@ export async function createProduct(
       salePrice: data.salePrice,
       hsnCode: data.hsnSac,
       gstRate: data.gstRate,
+      isSerialized: data.isSerialized,
     }),
   });
 

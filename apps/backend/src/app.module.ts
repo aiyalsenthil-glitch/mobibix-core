@@ -17,7 +17,6 @@ import { LedgerModule } from './modules/ledger/ledger.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { SuppliersModule } from './core/suppliers/suppliers.module';
 import { PurchasesModule } from './core/purchases/purchases.module';
-import { GlobalSuppliersModule } from './core/global-suppliers/global-suppliers.module';
 import { GlobalProductsModule } from './core/global-products/global-products.module';
 import { ShopProductsModule } from './core/shop-products/shop-products.module';
 import { CustomerTimelineModule } from './core/timeline/customer-timeline.module';
@@ -46,7 +45,6 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     GymAppModule,
     SuppliersModule,
     PurchasesModule,
-    GlobalSuppliersModule,
     GlobalProductsModule,
     ShopProductsModule,
     // 🩺 Platform infra

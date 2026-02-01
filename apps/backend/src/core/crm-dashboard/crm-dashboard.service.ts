@@ -65,13 +65,14 @@ export class CrmDashboardService {
     endDate: Date,
     shopId?: string,
   ): Promise<CustomerMetrics> {
-    const where = {
+    const where: any = {
       tenantId,
       ...(shopId && { shopId }),
+      partyType: { in: ['CUSTOMER', 'BOTH'] },
     };
 
     // 1️⃣ Total customers
-    const total = await this.prisma.customer.count({ where });
+    const total = await this.prisma.party.count({ where });
 
     // 2️⃣ Active customers (has invoice in last 90 days)
     const ninetyDaysAgo = new Date();
@@ -98,13 +99,13 @@ export class CrmDashboardService {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const [newLast7Days, newLast30Days] = await Promise.all([
-      this.prisma.customer.count({
+      this.prisma.party.count({
         where: {
           ...where,
           createdAt: { gte: sevenDaysAgo },
         },
       }),
-      this.prisma.customer.count({
+      this.prisma.party.count({
         where: {
           ...where,
           createdAt: { gte: thirtyDaysAgo },
@@ -282,7 +283,7 @@ export class CrmDashboardService {
       .map((s) => s.customerId)
       .filter((id): id is string => id !== null);
 
-    const customers = await this.prisma.customer.findMany({
+    const customers = await this.prisma.party.findMany({
       where: {
         id: { in: customerIds },
       },
@@ -292,7 +293,9 @@ export class CrmDashboardService {
       },
     });
 
-    const customerMap = new Map(customers.map((c) => [c.id, c.name]));
+    const customerMap = new Map<string, string>(
+      customers.map((c) => [c.id, c.name]),
+    );
 
     const highValueCustomers: HighValueCustomer[] = topSpenders
       .filter((s) => s.customerId !== null)
@@ -357,10 +360,11 @@ export class CrmDashboardService {
     const netPointsBalance = totalPointsIssued - totalPointsRedeemed;
 
     // Active customers with points (current balance > 0)
-    const activeCustomersWithPoints = await this.prisma.customer.count({
+    const activeCustomersWithPoints = await this.prisma.party.count({
       where: {
         tenantId,
-        loyaltyPoints: { gt: 0 }, // ✅ Correct field (on Customer model)
+        partyType: { in: ['CUSTOMER', 'BOTH'] },
+        loyaltyPoints: { gt: 0 },
       },
     });
 
