@@ -18,6 +18,12 @@ import { ModuleType } from '@prisma/client';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { WhatsAppSender } from './whatsapp.sender';
 
+import {
+  WhatsAppModule,
+  getVariablesByContext,
+  getVariablesByModule,
+} from './variable-registry';
+
 @Controller('whatsapp')
 @UseGuards(JwtAuthGuard)
 export class WhatsAppController {
@@ -25,6 +31,35 @@ export class WhatsAppController {
     private readonly prisma: PrismaService,
     @Inject(WhatsAppSender) private readonly sender: WhatsAppSender,
   ) {}
+
+  /**
+   * GET /whatsapp/variables/:module/:templateKey
+   * Get variables allowed for a specific template context
+   */
+  @Get('variables/:module/:templateKey')
+  async getTemplateVariables(
+    @Param('module') module: string,
+    @Param('templateKey') templateKey: string,
+    @Query('category') category?: string,
+  ) {
+    const whatsAppModule = module.toUpperCase() as WhatsAppModule;
+
+    // Use getVariablesByContext to get template-specific and global variables
+    let variables = getVariablesByContext(whatsAppModule, templateKey);
+
+    // Hard Requirement: Remove customMessage for UTILITY templates
+    if (category?.toUpperCase() === 'UTILITY') {
+      variables = variables.filter((v) => v.key !== 'customMessage');
+    }
+
+    return variables.map((v) => ({
+      key: v.key,
+      label: v.label,
+      required: v.required,
+      dataType: v.dataType,
+      module: v.module,
+    }));
+  }
 
   /**
    * GET /whatsapp/logs/:tenantId
@@ -203,6 +238,7 @@ export class WhatsAppController {
    */
   @Post('templates')
   async createTemplate(
+    @Req() req: any,
     @Body()
     dto: {
       moduleType: string;
@@ -215,6 +251,7 @@ export class WhatsAppController {
       variables?: string[];
     },
   ) {
+    this.validateAdminAccess(req);
     return this.prisma.whatsAppTemplate.create({
       data: {
         moduleType: dto.moduleType,
@@ -236,8 +273,10 @@ export class WhatsAppController {
   @Patch('templates/:templateId')
   async updateTemplate(
     @Param('templateId') templateId: string,
+    @Req() req: any,
     @Body() dto: any,
   ) {
+    this.validateAdminAccess(req);
     const template = await this.prisma.whatsAppTemplate.findUnique({
       where: { id: templateId },
     });
@@ -275,7 +314,8 @@ export class WhatsAppController {
    * Delete a WhatsApp template
    */
   @Delete('templates/:templateId')
-  async deleteTemplate(@Param('templateId') templateId: string) {
+  async deleteTemplate(@Param('templateId') templateId: string, @Req() req: any) {
+    this.validateAdminAccess(req);
     const template = await this.prisma.whatsAppTemplate.findUnique({
       where: { id: templateId },
     });
@@ -297,7 +337,8 @@ export class WhatsAppController {
   async getAutomations(@Param('moduleType') moduleType: string) {
     // Map legacy/mobile UI value to correct enum
     let prismaModuleType: ModuleType;
-    if (moduleType === 'MOBILESHOP') prismaModuleType = ModuleType.MOBILE_SHOP;
+    if (moduleType === 'MOBILESHOP' || moduleType === 'MOBILE_SHOP')
+      prismaModuleType = ModuleType.MOBILE_SHOP;
     else if (moduleType === 'GYM') prismaModuleType = ModuleType.GYM;
     else throw new BadRequestException('Invalid moduleType');
     const automations = await this.prisma.whatsAppAutomation.findMany({
@@ -313,6 +354,7 @@ export class WhatsAppController {
    */
   @Post('automations')
   async createAutomation(
+    @Req() req: any,
     @Body()
     dto: {
       moduleType: string;
@@ -322,6 +364,7 @@ export class WhatsAppController {
       enabled?: boolean;
     },
   ) {
+    this.validateAdminAccess(req);
     const { moduleType, triggerType, templateKey, offsetDays, enabled } = dto;
 
     if (!moduleType || !triggerType || !templateKey) {
@@ -334,8 +377,20 @@ export class WhatsAppController {
       throw new BadRequestException('offsetDays must be a number');
     }
 
-    const allowedModules = ['GYM', 'MOBILESHOP'];
-    const allowedTriggers = ['DATE', 'AFTER_INVOICE', 'AFTER_JOB'];
+    const allowedModules = ['GYM', 'MOBILESHOP', 'MOBILE_SHOP'];
+    const allowedTriggers = [
+      'DATE',
+      'AFTER_INVOICE',
+      'AFTER_JOB',
+      'JOB_CREATED',
+      'JOB_COMPLETED',
+      'INVOICE_CREATED',
+      'PAYMENT_PENDING',
+      'FOLLOW_UP_SCHEDULED',
+      'FOLLOW_UP_OVERDUE',
+      'FOLLOW_UP_COMPLETED',
+      'PAYMENT_DUE', // Added based on frontend options
+    ];
 
     if (!allowedModules.includes(moduleType)) {
       throw new BadRequestException('Invalid moduleType');
@@ -345,24 +400,35 @@ export class WhatsAppController {
       throw new BadRequestException('Invalid triggerType');
     }
 
+    const prismaModuleType =
+      moduleType === 'MOBILESHOP' || moduleType === 'MOBILE_SHOP'
+        ? 'MOBILE_SHOP'
+        : moduleType;
+
+    // Check for existing automation by UNIQUE Key (Module + Event)
     const existing = await this.prisma.whatsAppAutomation.findFirst({
       where: {
-        moduleType: moduleType as any,
+        moduleType: prismaModuleType as any,
         eventType: triggerType,
-        templateKey,
-        offsetDays: Number(offsetDays),
       },
     });
 
     if (existing) {
-      throw new BadRequestException(
-        'Automation already exists for this trigger/template/offset',
-      );
+      // Update existing automation
+      return this.prisma.whatsAppAutomation.update({
+        where: { id: existing.id },
+        data: {
+          templateKey,
+          offsetDays: Number(offsetDays),
+          enabled: enabled !== undefined ? enabled : true,
+        },
+      });
     }
 
+    // Create new automation
     return this.prisma.whatsAppAutomation.create({
       data: {
-        moduleType: moduleType as any,
+        moduleType: prismaModuleType as any,
         eventType: triggerType,
         templateKey,
         offsetDays: Number(offsetDays),
@@ -378,8 +444,10 @@ export class WhatsAppController {
   @Patch('automations/:automationId')
   async updateAutomation(
     @Param('automationId') automationId: string,
+    @Req() req: any,
     @Body() dto: any,
   ) {
+    this.validateAdminAccess(req);
     const automation = await this.prisma.whatsAppAutomation.findUnique({
       where: { id: automationId },
     });
@@ -502,6 +570,20 @@ export class WhatsAppController {
 
     if (req.user?.tenantId !== tenantId) {
       throw new BadRequestException('Unauthorized');
+    }
+  }
+
+  /**
+   * Helper: Validate admin-only access
+   */
+  private validateAdminAccess(req: any) {
+    const userRole = req.user?.role as string;
+    if (
+      !userRole ||
+      (userRole.toUpperCase() !== 'ADMIN' &&
+        userRole.toUpperCase() !== 'SUPER_ADMIN')
+    ) {
+      throw new BadRequestException('Unauthorized - Admin access required');
     }
   }
 }

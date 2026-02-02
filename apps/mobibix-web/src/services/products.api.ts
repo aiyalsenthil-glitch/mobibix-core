@@ -21,7 +21,8 @@ export interface ShopProduct {
   category?: string; // Free-text category or inherited
   type?: ProductType | string;
   salePrice: number; // Shop-specific selling price
-  costPrice?: number; // Shop-specific cost price
+  costPrice?: number; // Shop-specific cost price (legacy - Last Purchase Price)
+  avgCost?: number; // Weighted Average Cost (WAC) - calculated on every stock IN
   isActive: boolean; // Can this shop sell this product?
   isSerialized: boolean; // Track by IMEI (true) or bulk quantity (false)
 
@@ -112,14 +113,15 @@ export async function createProduct(
  * Update an existing product
  */
 export async function updateProduct(
-  productId: string,
   shopId: string,
+  productId: string,
   data: {
-    name: string;
-    type: ProductType;
+    name?: string;
+    type?: ProductType;
     category?: string;
     hsnSac?: string;
-    salePrice: number;
+    salePrice?: number;
+    costPrice?: number; // Add cost price support
     gstRate?: number;
   },
 ): Promise<ShopProduct> {
@@ -132,12 +134,13 @@ export async function updateProduct(
       },
       body: JSON.stringify({
         shopId,
-        name: data.name,
-        type: data.type,
-        category: data.category,
-        salePrice: data.salePrice,
-        hsnCode: data.hsnSac,
-        gstRate: data.gstRate,
+        ...(data.name && { name: data.name }),
+        ...(data.type && { type: data.type }),
+        ...(data.category !== undefined && { category: data.category }),
+        ...(data.salePrice && { salePrice: data.salePrice }),
+        ...(data.costPrice !== undefined && { costPrice: data.costPrice }),
+        ...(data.hsnSac && { hsnCode: data.hsnSac }),
+        ...(data.gstRate !== undefined && { gstRate: data.gstRate }),
       }),
     },
   );

@@ -4,12 +4,13 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
 
 export type PaymentMode = "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT";
-export type InvoiceStatus = "PAID" | "CREDIT" | "CANCELLED";
+export type InvoiceStatus = "DRAFT" | "FINAL" | "PAID" | "CREDIT" | "VOIDED";
 export type PaymentStatus = "PAID" | "PARTIALLY_PAID" | "UNPAID" | "CANCELLED";
 
 export interface SalesInvoice {
   id: string;
   shopId: string;
+  customerId?: string;
   invoiceNumber: string;
   totalAmount: number;
   paymentMode: PaymentMode;
@@ -75,10 +76,16 @@ export interface CreateInvoiceDto {
 /**
  * List all sales invoices for a shop (sorted by latest first on backend)
  */
-export async function listInvoices(shopId: string): Promise<SalesInvoice[]> {
+export async function listInvoices(
+  shopId: string,
+  fromJobCard?: boolean,
+): Promise<SalesInvoice[]> {
   try {
+    const query = new URLSearchParams({ shopId });
+    if (fromJobCard) query.append("fromJobCard", "true");
+
     const response = await authenticatedFetch(
-      `/mobileshop/sales/invoices?shopId=${shopId}`,
+      `/mobileshop/sales/invoices?${query.toString()}`,
     );
 
     if (!response.ok) {
@@ -86,23 +93,23 @@ export async function listInvoices(shopId: string): Promise<SalesInvoice[]> {
       try {
         const error = await response.json();
         errorMessage = error.message || errorMessage;
-        console.error("API Error:", {
-          status: response.status,
-          message: errorMessage,
-          shopId,
-        });
       } catch (e) {
-        console.error("Failed to parse error response:", e);
+        // ignore json parse error
       }
-      throw new Error(errorMessage);
+      console.error("API Error:", {
+        status: response.status,
+        message: errorMessage,
+        shopId,
+      });
+      // Return empty array instead of throwing to prevent UI crash
+      return [];
     }
 
     const data = await response.json();
-    // Backend returns { invoices: [...], empty: false }
     return data.invoices || [];
-  } catch (error: any) {
-    console.error("List invoices error:", error);
-    throw error;
+  } catch (error) {
+    console.error("Failed to list invoices:", error);
+    return [];
   }
 }
 

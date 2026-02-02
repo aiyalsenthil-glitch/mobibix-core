@@ -9,6 +9,9 @@ import {
 } from "@/services/customers.api";
 import { CustomerForm } from "./CustomerForm";
 import { useTheme } from "@/context/ThemeContext";
+import { CustomerTimelineDrawer } from "@/components/crm/CustomerTimelineDrawer";
+import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
+import { type FollowUpType } from "@/services/crm.api";
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -19,6 +22,16 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // CRM Modals State
+  const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(null);
+  const [timelineCustomerName, setTimelineCustomerName] = useState<string>("");
+  const [followUpData, setFollowUpData] = useState<{
+    customerId: string;
+    customerName: string;
+    defaultPurpose: string;
+    defaultType: FollowUpType;
+  } | null>(null);
 
   const loadCustomers = async () => {
     try {
@@ -237,6 +250,38 @@ export default function CustomersPage() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          onClick={() => {
+                            setTimelineCustomerId(customer.id);
+                            setTimelineCustomerName(customer.name);
+                          }}
+                          className={`p-1.5 text-xs rounded-lg transition-colors ${
+                            theme === "dark"
+                              ? "bg-white/5 hover:bg-white/10 text-stone-300"
+                              : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                          }`}
+                          title="View History"
+                        >
+                          🕒
+                        </button>
+                        <button
+                          onClick={() => {
+                            setFollowUpData({
+                              customerId: customer.id,
+                              customerName: customer.name,
+                              defaultPurpose: "Routine follow-up",
+                              defaultType: "PHONE_CALL",
+                            });
+                          }}
+                          className={`p-1.5 text-xs rounded-lg transition-colors ${
+                            theme === "dark"
+                              ? "bg-white/5 hover:bg-white/10 text-stone-300"
+                              : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                          }`}
+                          title="Add Follow-up"
+                        >
+                          📋
+                        </button>
+                        <button
                           onClick={() => handleEdit(customer)}
                           className={`px-3 py-1 text-xs rounded-lg transition-colors ${
                             theme === "dark"
@@ -268,6 +313,29 @@ export default function CustomersPage() {
         {/* Add/Edit Customer Modal */}
         {(isAddModalOpen || editingCustomer) && (
           <CustomerForm customer={editingCustomer} onClose={handleFormClose} />
+        )}
+
+        {/* CRM Modals */}
+        <CustomerTimelineDrawer
+          isOpen={!!timelineCustomerId}
+          customerId={timelineCustomerId || ""}
+          customerName={timelineCustomerName}
+          onClose={() => {
+            setTimelineCustomerId(null);
+            setTimelineCustomerName("");
+          }}
+        />
+
+        {followUpData && (
+          <AddFollowUpModal
+            isOpen={!!followUpData}
+            customerId={followUpData.customerId || ""}
+            customerName={followUpData.customerName || "Customer"}
+            defaultPurpose={followUpData.defaultPurpose}
+            defaultType={followUpData.defaultType}
+            onClose={() => setFollowUpData(null)}
+            onSuccess={() => {}}
+          />
         )}
       </div>
     </div>

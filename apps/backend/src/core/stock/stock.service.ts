@@ -139,12 +139,7 @@ export class StockService {
     shopId: string,
     productId: string,
     quantity: number,
-    referenceType:
-      | 'PURCHASE'
-      | 'SALE'
-      | 'REPAIR'
-      | 'ADJUSTMENT'
-      | 'SALE_RETURN',
+    referenceType: 'PURCHASE' | 'SALE' | 'REPAIR' | 'ADJUSTMENT' | 'ADJUSTMENT',
     referenceId: string | null,
     costPerUnit?: number,
     imeis?: string[],
@@ -181,6 +176,32 @@ export class StockService {
       // IMEI status updates (e.g., to IN_STOCK) are handled by calling services
     }
 
+    // 🛡️ FIX 2: COST DISCIPLINE FOR ADJUSTMENTS
+    // For stock corrections (ADJUSTMENT), cost must be provided or exist in ShopProduct
+    if (referenceType === 'ADJUSTMENT') {
+      let effectiveCost = costPerUnit;
+
+      // If cost not provided, try to get from ShopProduct.costPrice
+      if (!effectiveCost || effectiveCost <= 0) {
+        const shopProduct = await prisma.shopProduct.findUnique({
+          where: { id: productId },
+          select: { costPrice: true },
+        });
+        effectiveCost = shopProduct?.costPrice || null;
+      }
+
+      // If still no valid cost, reject the operation
+      if (!effectiveCost || effectiveCost <= 0) {
+        throw new BadRequestException(
+          `Stock correction requires a valid cost price for product "${product.name}". ` +
+            `Please ensure the product has a cost price from a prior purchase.`,
+        );
+      }
+
+      // Update costPerUnit to the validated cost for consistency
+      costPerUnit = effectiveCost;
+    }
+
     return prisma.stockLedger.create({
       data: {
         tenantId,
@@ -197,7 +218,13 @@ export class StockService {
   async stockInSingleProduct(tenantId: string, dto: StockInDto) {
     const product = await this.prisma.shopProduct.findFirst({
       where: { id: dto.productId, tenantId, isActive: true },
-      select: { id: true, shopId: true, type: true, isSerialized: true },
+      select: {
+        id: true,
+        shopId: true,
+        type: true,
+        isSerialized: true,
+        avgCost: true, // Get current avgCost for WAC calculation
+      },
     });
 
     if (!product) {
@@ -230,8 +257,31 @@ export class StockService {
       throw new BadRequestException('Serialized products require IMEI list');
     }
 
-    // Create stock ledger entry
+    // Create stock ledger entry with WAC calculation
     return this.prisma.$transaction(async (tx) => {
+      // Get current stock quantity
+      const entries = await tx.stockLedger.findMany({
+        where: { shopProductId: product.id, tenantId },
+        select: { type: true, quantity: true },
+      });
+
+      const currentQty = entries.reduce((sum, e) => {
+        return e.type === 'IN' ? sum + e.quantity : sum - e.quantity;
+      }, 0);
+
+      // Calculate new Weighted Average Cost (WAC)
+      const newCostPerUnit = dto.costPerUnit || 0;
+      const currentAvgCost = product.avgCost || 0;
+
+      // Formula: newAvgCost = ((oldQty × oldAvgCost) + (inQty × inCost)) / (oldQty + inQty)
+      const newAvgCost =
+        currentQty > 0
+          ? Math.round(
+              (currentQty * currentAvgCost + quantity * newCostPerUnit) /
+                (currentQty + quantity),
+            )
+          : newCostPerUnit; // First stock IN: avgCost = costPerUnit
+
       const ledgerEntry = {
         tenantId,
         shopId: product.shopId,
@@ -244,6 +294,12 @@ export class StockService {
       };
 
       await tx.stockLedger.create({ data: ledgerEntry });
+
+      // Update ShopProduct with new avgCost
+      await tx.shopProduct.update({
+        where: { id: product.id },
+        data: { avgCost: newAvgCost },
+      });
 
       // Handle IMEIs for serialized products
       if (product.isSerialized && dto.imeis?.length) {
@@ -258,7 +314,7 @@ export class StockService {
         });
       }
 
-      return { success: true };
+      return { success: true, avgCost: newAvgCost };
     });
   }
 

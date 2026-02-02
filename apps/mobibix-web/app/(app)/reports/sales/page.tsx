@@ -11,6 +11,7 @@ export default function SalesReportPage() {
   const { theme } = useTheme();
   const router = useRouter();
   const { selectedShopId } = useShop();
+  const isEnterprise = !selectedShopId;
 
   const [data, setData] = useState<SalesReportItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,13 +60,16 @@ export default function SalesReportPage() {
             >
               Sales Report
             </h1>
-            <p
-              className={`mt-1 text-sm ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}
-            >
-              Daily sales invoices and profit analysis
-            </p>
+            <div className="flex items-center gap-3 mt-1">
+               <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+                  Daily sales invoices and profit analysis
+               </p>
+               {isEnterprise && (
+                 <span className="px-2 py-0.5 text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 rounded uppercase tracking-wider">
+                   Enterprise View
+                 </span>
+               )}
+            </div>
           </div>
           <button
             onClick={() => router.back()}
@@ -174,6 +178,7 @@ export default function SalesReportPage() {
                 <thead className={`text-xs uppercase bg-gray-50 dark:bg-gray-800/50 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                   <tr>
                     <th className="px-6 py-3">Date</th>
+                    {isEnterprise && <th className="px-6 py-3 text-indigo-500">Shop</th>}
                     <th className="px-6 py-3">Invoice #</th>
                     <th className="px-6 py-3">Customer</th>
                     <th className="px-6 py-3 text-right">Total</th>
@@ -189,6 +194,11 @@ export default function SalesReportPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         {new Date(item.date).toLocaleDateString()}
                       </td>
+                      {isEnterprise && (
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-indigo-600 dark:text-indigo-400">
+                          {item.shopName}
+                        </td>
+                      )}
                       <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
                         {item.invoiceNo}
                       </td>

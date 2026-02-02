@@ -8,6 +8,7 @@ export class WhatsAppLogger {
   async log(data: {
     tenantId: string;
     memberId: string | null;
+    customerId?: string | null;
     phone: string;
     type: string;
     status: 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'SKIPPED';
@@ -15,10 +16,27 @@ export class WhatsAppLogger {
     messageId?: string | null;
     metadata?: Record<string, any> | null;
   }) {
+    let resolvedCustomerId = data.customerId;
+
+    // Resolve customerId if missing but phone is present
+    if (!resolvedCustomerId && data.phone) {
+      const party = await this.prisma.party.findFirst({
+        where: {
+          tenantId: data.tenantId,
+          phone: data.phone,
+        },
+        select: { id: true },
+      });
+      if (party) {
+        resolvedCustomerId = party.id;
+      }
+    }
+
     await this.prisma.whatsAppLog.create({
       data: {
         tenantId: data.tenantId,
         memberId: data.memberId,
+        customerId: resolvedCustomerId,
         phone: data.phone,
         type: data.type,
         status: data.status,

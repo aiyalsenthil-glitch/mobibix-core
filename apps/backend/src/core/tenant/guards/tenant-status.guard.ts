@@ -32,11 +32,20 @@ export class TenantStatusGuard implements CanActivate {
     }
 
     // Extract module from request context (query, body, or default to MOBILE_SHOP)
-    let module = ModuleType.MOBILE_SHOP;
+    let module: ModuleType | undefined;
     if (request.query?.module) {
       module = request.query.module;
     } else if (request.body?.module) {
       module = request.body.module;
+    }
+
+    if (!module) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { tenantType: true },
+      });
+      module =
+        tenant?.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
     }
 
     const now = new Date();

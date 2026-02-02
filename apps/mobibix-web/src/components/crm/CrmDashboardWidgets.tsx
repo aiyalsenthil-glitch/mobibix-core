@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getCrmDashboard, type CrmDashboardMetrics } from "@/services/crm.api";
+import { useAuth } from "@/hooks/useAuth";
 
 interface CrmDashboardWidgetsProps {
   shopId?: string;
@@ -12,6 +13,7 @@ export function CrmDashboardWidgets({
   shopId,
   preset = "LAST_30_DAYS",
 }: CrmDashboardWidgetsProps) {
+  const { authUser } = useAuth();
   const [metrics, setMetrics] = useState<CrmDashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,12 +104,14 @@ export function CrmDashboardWidgets({
         />
 
         {/* Outstanding Amount */}
-        <MetricCard
-          title="Outstanding Amount"
-          value={`₹${(metrics.financials?.outstandingAmount || 0).toLocaleString()}`}
-          subtitle="Credit invoices"
-          icon="💰"
-        />
+        {authUser?.role?.toLowerCase() !== "staff" && (
+          <MetricCard
+            title="Outstanding Amount"
+            value={`₹${(metrics.financials?.outstandingAmount || 0).toLocaleString()}`}
+            subtitle="Credit invoices"
+            icon="💰"
+          />
+        )}
 
         {/* Loyalty Points */}
         <MetricCard
@@ -126,30 +130,32 @@ export function CrmDashboardWidgets({
         />
 
         {/* Top Customers */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6 md:col-span-2 lg:col-span-1">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-2xl">🏆</span>
-            <h3 className="font-semibold">Top Customers</h3>
+        {authUser?.role?.toLowerCase() !== "staff" && (
+          <div className="bg-white/5 border border-white/10 rounded-xl p-6 md:col-span-2 lg:col-span-1">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">🏆</span>
+              <h3 className="font-semibold">Top Customers</h3>
+            </div>
+            <div className="space-y-2">
+              {(metrics.financials?.topCustomers || []).slice(0, 3).map((customer) => (
+                <div
+                  key={customer.customerId}
+                  className="flex justify-between items-center text-sm"
+                >
+                  <span className="text-gray-300 truncate">
+                    {customer.customerName}
+                  </span>
+                  <span className="text-teal-400 font-medium">
+                    ₹{customer.totalAmount.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+              {!(metrics.financials?.topCustomers?.length) && (
+                <p className="text-sm text-gray-500">No data yet</p>
+              )}
+            </div>
           </div>
-          <div className="space-y-2">
-            {(metrics.financials?.topCustomers || []).slice(0, 3).map((customer) => (
-              <div
-                key={customer.customerId}
-                className="flex justify-between items-center text-sm"
-              >
-                <span className="text-gray-300 truncate">
-                  {customer.customerName}
-                </span>
-                <span className="text-teal-400 font-medium">
-                  ₹{customer.totalAmount.toLocaleString()}
-                </span>
-              </div>
-            ))}
-            {!(metrics.financials?.topCustomers?.length) && (
-              <p className="text-sm text-gray-500">No data yet</p>
-            )}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

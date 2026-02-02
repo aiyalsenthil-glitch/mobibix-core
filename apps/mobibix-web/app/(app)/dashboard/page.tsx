@@ -4,7 +4,31 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/context/ThemeContext";
+import { useShop } from "@/context/ShopContext";
 import { getAccessToken } from "@/services/auth.api";
+import { 
+  getProfitSummary, 
+  getSalesReport,
+} from "@/services/reports.api";
+import { MetricCard } from "@/components/dashboard/MetricCard";
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
+  ResponsiveContainer, Legend, PieChart, Pie, Cell 
+} from "recharts";
+import { 
+  TrendingUp, 
+  DollarSign, 
+  Wallet, 
+  CreditCard, 
+  Box, 
+  AlertTriangle, 
+  Search,
+  Zap,
+  Clock,
+  CheckCircle2,
+  Settings,
+  ArrowRight
+} from "lucide-react";
 
 interface DashboardData {
   today?: {
@@ -26,284 +50,348 @@ interface DashboardData {
     ready: number;
     deliveredToday: number;
   };
-  jobs?: {
-    inProgress: number;
-    waitingForParts: number;
-    ready: number;
-    deliveredToday: number;
-  };
-  stockAlerts?: {
-    negativeStockCount: number;
-    zeroStockCount: number;
-  };
-}
-
-function StatCard({
-  label,
-  value,
-  icon,
-  subtext,
-  accentColor,
-  onClick,
-}: {
-  label: string;
-  value: string | number;
-  icon: string;
-  subtext?: string;
-  accentColor: "teal" | "amber" | "emerald" | "cyan" | "yellow" | "orange";
-  onClick?: () => void;
-}) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-
-  // Map accent colors to tailwind classes for icon background and text
-  const colorMap = {
-    teal: { bg: "bg-teal-50 dark:bg-teal-900/20", text: "text-teal-600 dark:text-teal-400" },
-    amber: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-600 dark:text-amber-400" },
-    emerald: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-600 dark:text-emerald-400" },
-    cyan: { bg: "bg-cyan-50 dark:bg-cyan-900/20", text: "text-cyan-600 dark:text-cyan-400" },
-    yellow: { bg: "bg-yellow-50 dark:bg-yellow-900/20", text: "text-yellow-600 dark:text-yellow-400" },
-    orange: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-600 dark:text-orange-400" },
-  };
-
-  const colors = colorMap[accentColor];
-
-  return (
-    <div
-      onClick={onClick}
-      className={`group relative overflow-hidden rounded-xl bg-card border border-border p-5 transition-all duration-200 hover:shadow-md ${
-        onClick ? "cursor-pointer hover:border-primary/50" : "cursor-default"
-      }`}
-    >
-      <div className="flex items-start justify-between">
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
-          {subtext && <p className="text-xs text-muted-foreground">{subtext}</p>}
-        </div>
-        <div
-          className={`flex h-10 w-10 items-center justify-center rounded-lg ${colors.bg} ${colors.text} text-xl transition-colors`}
-        >
-          {icon}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ChartSection({ title }: { title: string }) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-  return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-      <h3 className="text-base font-semibold text-foreground mb-6">{title}</h3>
-      <div className={`h-64 flex items-center justify-center rounded-lg border border-dashed border-border ${isDark ? "bg-muted/10" : "bg-muted/30"}`}>
-        <p className="text-center text-muted-foreground">
-          Chart placeholder - Connect your data source
-          <br />
-          <span className="text-xs opacity-70">
-            This section will display analytics
-          </span>
-        </p>
-      </div>
-    </div>
-  );
 }
 
 export default function DashboardPage() {
   const router = useRouter();
   const { authUser } = useAuth();
-  const [data, setData] = useState<DashboardData>({});
-  const [loading, setLoading] = useState(true);
   const { theme } = useTheme();
+  const { selectedShopId } = useShop();
   const isDark = theme === "dark";
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const token = getAccessToken();
-        if (!token) {
-          setLoading(false);
-          return;
-        }
-        const endpoint =
-          authUser?.role?.toLowerCase() === "owner" ? "owner" : "staff";
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api"}/mobileshop/dashboard/${endpoint}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-        if (response.ok) {
-          const dashboardData = await response.json();
-          setData(dashboardData);
-        }
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const [data, setData] = useState<DashboardData>({});
+  const [todayProfit, setTodayProfit] = useState<number>(0);
+  const [paymentStats, setPaymentStats] = useState<{name: string, value: number}[]>([]);
+  const [salesTrend, setSalesTrend] = useState<{date: string, sales: number}[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    if (authUser) {
-      fetchDashboard();
+  const userRole = authUser?.role?.toLowerCase();
+  const isOwner = userRole === "owner" || userRole === "admin" || userRole === "manager" || userRole === "member";
+  const isAllShops = !selectedShopId && isOwner;
+
+  const fetchDashboard = async () => {
+    if (!authUser) {
+      setLoading(false);
+      return;
     }
-  }, [authUser]);
 
-  const repairs = data.repairs || data.jobs;
+    // Staff MUST have a shop selected. Owners/Admins see "All Shops" if none selected.
+    if (!selectedShopId && !isOwner) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = getAccessToken();
+      const endpoint = (userRole === "owner" || userRole === "admin" || userRole === "manager") ? "owner" : "staff";
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const startStr = today.toISOString();
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+      const endStr = endOfDay.toISOString();
+
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+
+      const shopQuery = selectedShopId ? `&shopId=${selectedShopId}` : "";
+      const reportParams = selectedShopId ? { shopId: selectedShopId } : {};
+
+      // Parallelize EVERYTHING to prevent serial hangs
+      const [dashRes, profitRes, salesRes, trendRes] = await Promise.all([
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api"}/mobileshop/dashboard/${endpoint}?cache=skip${shopQuery}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => null),
+        (isOwner && userRole !== "member") ? getProfitSummary({
+          ...reportParams,
+          startDate: startStr,
+          endDate: endStr,
+        }).catch(() => ({ metrics: { grossProfit: 0 } })) : Promise.resolve({ metrics: { grossProfit: 0 } }),
+        getSalesReport({
+          ...reportParams,
+          startDate: startStr,
+          endDate: endStr,
+        }).catch(() => []),
+        getSalesReport({
+          ...reportParams,
+          startDate: weekAgo.toISOString(),
+          endDate: endStr,
+        }).catch(() => [])
+      ]);
+
+      if (dashRes?.ok) {
+        const dashData = await dashRes.json();
+        setData(dashData);
+      }
+
+      setTodayProfit(profitRes.metrics?.grossProfit ?? 0);
+
+      // Aggregate payment modes
+      const safeSales = Array.isArray(salesRes) ? salesRes : [];
+      const modes = safeSales.reduce((acc, curr) => {
+        const mode = curr.paymentMode || "UNKNOWN";
+        const methods = mode.includes(' + ') ? mode.split(' + ') : [mode];
+        methods.forEach(m => {
+          const name = m.trim();
+          const existing = acc.find(i => i.name === name);
+          const val = curr.totalAmount / methods.length;
+          if (existing) existing.value += val;
+          else acc.push({ name, value: val });
+        });
+        return acc;
+      }, [] as {name: string, value: number}[]);
+      setPaymentStats(modes);
+
+      // 7-day trend
+      const safeTrend = Array.isArray(trendRes) ? trendRes : [];
+      const trend = safeTrend.reduce((acc, curr) => {
+        const d = new Date(curr.date).toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
+        const existing = acc.find(item => item.date === d);
+        if (existing) existing.sales += curr.totalAmount;
+        else acc.push({ date: d, sales: curr.totalAmount });
+        return acc;
+      }, [] as {date: string, sales: number}[]).reverse();
+      setSalesTrend(trend);
+
+    } catch (error) {
+      console.error("Dashboard Fetch Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [selectedShopId, authUser]);
+
+  const COLORS = ["#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-10">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Overview</h1>
-        <p className="text-base text-muted-foreground">
-          Welcome back! Here's your business overview.
-        </p>
-      </div>
-
-      {/* Today's Sales Section */}
-      <div>
-        <h2 className="mb-4 text-lg font-semibold text-foreground flex items-center gap-2">
-           Today's Sales
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Total Sales"
-            value={new Intl.NumberFormat('en-IN', {
-              style: 'currency',
-              currency: 'INR',
-              maximumFractionDigits: 0,
-            }).format(data.today?.salesAmount ?? 0)}
-            icon="💰"
-            subtext="Today's revenue"
-            accentColor="teal"
-            onClick={() => router.push("/dashboard/sales-detail")}
-          />
-          <StatCard
-            label="Top Products"
-            value={data.today?.jobsReceived ?? 0}
-            icon="⭐"
-            subtext="Sold today"
-            accentColor="amber"
-            onClick={() => router.push("/dashboard/products-detail")}
-          />
-          <StatCard
-            label="Products Sold"
-            value={data.month?.invoiceCount ?? 0}
-            icon="📦"
-            subtext="This month"
-            accentColor="emerald"
-            onClick={() =>
-              router.push("/dashboard/products-detail?period=month")
-            }
-          />
-          <StatCard
-            label="Total Products"
-            value={data.inventory?.totalProducts ?? 0}
-            icon="📦"
-            subtext="In inventory"
-            accentColor="cyan"
-            onClick={() => router.push("/dashboard/inventory-detail")}
-          />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {isAllShops ? "Enterprise Overview" : "Dashboard Overview"}
+          </h1>
+          <p className="text-muted-foreground">
+            {isAllShops 
+              ? "Consolidated metrics across all shops." 
+              : "Monitor your business performance in real-time."}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+           <button 
+             onClick={() => router.push("/reports")}
+             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all shadow-sm"
+           >
+             Detailed Reports <ArrowRight className="w-4 h-4" />
+           </button>
         </div>
       </div>
 
-      {/* Today's Repair Section */}
-      <div>
-        <h2 className="mb-4 text-lg font-semibold text-foreground flex items-center gap-2">
-           Today's Repairs
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Received"
-            value={repairs?.inProgress ?? 0}
-            icon="📥"
-            subtext="In progress"
-            accentColor="teal"
+      {/* Row 1: Financial KPIs */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          label={isAllShops ? "Total Revenue" : "Today Revenue"}
+          value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(data.today?.salesAmount ?? 0)}
+          icon={<DollarSign />}
+          subtext={isAllShops ? "All shops today" : "Net sales today"}
+          accentColor="emerald"
+          isLoading={loading}
+          onClick={() => router.push("/reports/sales")}
+        />
+        {(isOwner && userRole !== "member") && (
+          <MetricCard
+            label={isAllShops ? "Total Profit" : "Today Profit"}
+            value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(todayProfit)}
+            icon={<TrendingUp />}
+            subtext={isAllShops ? "All shops combined" : "Revenue minus cost"}
+            accentColor="blue"
+            isLoading={loading}
+            onClick={() => router.push("/reports/profit")}
           />
-          <StatCard
-            label="In Process"
-            value={repairs?.waitingForParts ?? 0}
-            icon="⚙️"
-            subtext="Being worked on"
-            accentColor="yellow"
-          />
-          <StatCard
-            label="Delivered"
-            value={repairs?.deliveredToday ?? 0}
-            icon="✅"
-            subtext="Ready for pickup"
-            accentColor="teal"
-          />
-          <StatCard
-            label="Await Spares"
-            value={repairs?.ready ?? 0}
-            icon="⏳"
-            subtext="Waiting for parts"
-            accentColor="orange"
-          />
-        </div>
+        )}
+        <MetricCard
+          label="Cash Collection"
+          value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(paymentStats.find(p => p.name === 'CASH')?.value ?? 0)}
+          icon={<Wallet />}
+          subtext="Physical cash in hand"
+          accentColor="amber"
+          isLoading={loading}
+        />
+        <MetricCard
+          label="Digital Payments"
+          value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(paymentStats.filter(p => p.name !== 'CASH').reduce((s, p) => s + p.value, 0))}
+          icon={<CreditCard />}
+          subtext="UPI, Card, Bank"
+          accentColor="purple"
+          isLoading={loading}
+        />
       </div>
 
-      {/* Charts Section - Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ChartSection title="Total Revenue (Sales vs Service)" />
-        <ChartSection title="Weekly Performance" />
-      </div>
-
-      {/* Charts Section - Row 2 */}
+      {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <ChartSection title="Top Products This Week" />
+        <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-base font-semibold text-foreground">7-Day Sales Trend</h3>
+            <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded-full font-medium">
+              {isAllShops ? "Consolidated" : "Single Shop"}
+            </span>
+          </div>
+          <div className="h-64 w-full">
+            {loading ? (
+              <div className="w-full h-full bg-muted/20 animate-pulse rounded-lg" />
+            ) : salesTrend.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={salesTrend}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "#334155" : "#e2e8f0"} />
+                  <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v/1000}k`} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: isDark ? "#1e293b" : "#fff" }}
+                  />
+                  <Line type="monotone" dataKey="sales" name="Sales" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4, fill: "#0ea5e9" }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground opacity-50 text-sm">
+                    No sales data available for this range
+                </div>
+            )}
+          </div>
         </div>
-        <ChartSection title="Inventory Status" />
+
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <h3 className="text-base font-semibold text-foreground mb-6">Payment Distribution</h3>
+          <div className="h-64 w-full text-xs">
+            {loading ? (
+              <div className="w-1/2 h-1/2 mx-auto mt-10 rounded-full border-8 border-muted/20 border-t-muted/80 animate-spin" />
+            ) : paymentStats.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={paymentStats}
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {paymentStats.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
+                <p className="text-sm">No recent payments</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Additional Insights */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Quick Actions */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${isDark ? "bg-teal-900/30 text-teal-400" : "bg-teal-50 text-teal-600"}`}>
-              ⚡
+      {/* Row 2: Inventory & Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          label="Total Inventory"
+          value={data.inventory?.totalProducts ?? 0}
+          icon={<Box />}
+          subtext={isAllShops ? "Enterprise wide" : "Items in stock"}
+          accentColor="cyan"
+          isLoading={loading}
+          onClick={() => router.push("/inventory")}
+        />
+        <MetricCard
+          label="Low Stock"
+          value={data.inventory?.negativeStockCount ?? 0}
+          icon={<AlertTriangle />}
+          subtext="Critical alerts"
+          accentColor="orange"
+          isLoading={loading}
+          onClick={() => router.push("/inventory?filter=low-stock")}
+        />
+        <div className="md:col-span-2 rounded-xl border border-border bg-muted/30 p-5 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <Zap className="w-6 h-6" />
+                </div>
+                <div>
+                   <p className="font-semibold text-foreground">Need a hand?</p>
+                   <p className="text-xs text-muted-foreground">Quickly create a bill or check stock.</p>
+                </div>
             </div>
-            <h3 className="text-base font-semibold text-foreground">
-              Quick Actions
-            </h3>
-          </div>
-          <div className="space-y-3">
-            <button 
-              onClick={() => router.push("/jobcards/create")}
-              className="w-full px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium transition-colors hover:bg-primary/90 shadow-sm"
-            >
-              Create New Job Card
-            </button>
-            <button className="w-full px-4 py-2.5 rounded-lg border border-border bg-background hover:bg-muted text-foreground font-medium transition-colors">
-              View Reports
-            </button>
-          </div>
+            <div className="flex gap-2">
+                <button 
+                  onClick={() => router.push("/sales/create")}
+                   className="p-2 rounded-lg bg-background border border-border hover:bg-muted transition-colors" title="Quick Sale"
+                >
+                    <DollarSign className="w-5 h-5 text-emerald-500" />
+                </button>
+                <button 
+                  onClick={() => router.push("/inventory")}
+                  className="p-2 rounded-lg bg-background border border-border hover:bg-muted transition-colors" title="Check Stock"
+                >
+                    <Search className="w-5 h-5 text-blue-500" />
+                </button>
+            </div>
         </div>
+      </div>
 
-        {/* Recent Activity */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${isDark ? "bg-teal-900/30 text-teal-400" : "bg-teal-50 text-teal-600"}`}>
-              📋
-            </div>
-            <h3 className="text-base font-semibold text-foreground">
-              Recent Activity
-            </h3>
+      {/* Row 3: Repairs (Secondary) */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                Repair Pipeline {isAllShops && "(Combined)"}
+            </h2>
+            <button 
+              onClick={() => router.push("/jobcards")}
+              className="text-sm text-primary hover:underline font-medium"
+            >
+                View Repair List
+            </button>
+        </div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="p-4 rounded-xl border border-border bg-card flex items-center gap-4">
+             <div className="h-10 w-10 rounded-lg bg-teal-50 dark:bg-teal-900/20 text-teal-600 flex items-center justify-center">
+                <Clock className="w-5 h-5" />
+             </div>
+             <div>
+                <p className="text-2xl font-bold">{data.repairs?.inProgress ?? 0}</p>
+                <p className="text-xs text-muted-foreground">In Progress</p>
+             </div>
           </div>
-          <div className="space-y-3 text-center py-8">
-            <p className="text-sm text-muted-foreground">
-              No recent activity yet
-            </p>
-            <p className="text-xs text-muted-foreground/60">
-              Your recent actions will appear here
-            </p>
+          <div className="p-4 rounded-xl border border-border bg-card flex items-center gap-4">
+             <div className="h-10 w-10 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 flex items-center justify-center">
+                <Settings className="w-5 h-5" />
+             </div>
+             <div>
+                <p className="text-2xl font-bold">{data.repairs?.waitingForParts ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Await Parts</p>
+             </div>
+          </div>
+          <div className="p-4 rounded-xl border border-border bg-card flex items-center gap-4">
+             <div className="h-10 w-10 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5" />
+             </div>
+             <div>
+                <p className="text-2xl font-bold">{data.repairs?.ready ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Ready</p>
+             </div>
+          </div>
+          <div className="p-4 rounded-xl border border-border bg-card flex items-center gap-4">
+             <div className="h-10 w-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5" />
+             </div>
+             <div>
+                <p className="text-2xl font-bold">{data.repairs?.deliveredToday ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Delivered Today</p>
+             </div>
           </div>
         </div>
       </div>

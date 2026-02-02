@@ -167,6 +167,7 @@ model Party {
   quotations          Quotation[]
   purchaseOrders      PurchaseOrder[]
   paymentVouchers     PaymentVoucher[]
+  whatsAppLogs        WhatsAppLog[]
 
   @@unique([tenantId, phone])
   @@index([tenantId])
@@ -485,6 +486,7 @@ model WhatsAppLog {
   id          String    @id @default(uuid())
   tenantId    String
   memberId    String?
+  customerId  String?
   phone       String
   type        String
   status      String
@@ -495,6 +497,8 @@ model WhatsAppLog {
   updatedAt   DateTime  @default(now()) @updatedAt
   deliveredAt DateTime?
   readAt      DateTime?
+
+  customer Party? @relation(fields: [customerId], references: [id])
 
   @@index([tenantId, sentAt])
   @@index([tenantId, status])
@@ -702,6 +706,7 @@ model JobCard {
   createdByUserId      String
   createdByName        String
   status               JobStatus        @default(RECEIVED)
+  statusHistory        Json?            // Audit trail: [{ from, to, timestamp, userId, reason }]
   notes                String?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
@@ -709,6 +714,7 @@ model JobCard {
   shop                 Shop             @relation(fields: [shopId], references: [id])
   tenant               Tenant           @relation("TenantJobCards", fields: [tenantId], references: [id])
   partsUsed            RepairPartUsed[]
+  invoices             Invoice[]   @relation("JobCardInvoices")
 
   @@unique([shopId, jobNumber])
   @@index([tenantId])
@@ -757,7 +763,8 @@ model ShopProduct {
   globalProductId  String?
   name             String
   salePrice        Int?
-  costPrice        Int?
+  costPrice        Int?              // Last Purchase Price (legacy)
+  avgCost          Int?              // Weighted Average Cost (WAC) - calculated on every stock IN
   isActive         Boolean           @default(true)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
@@ -877,12 +884,16 @@ model Invoice {
   upiAmount     Int?
   cardAmount    Int?
   status        InvoiceStatus @default(PAID)
+  jobCardId     String?       // Link to JobCard for auto-generated invoices
+  voidReason    String?       // Reason for void (e.g., "Job cancelled")
+  voidedAt      DateTime?     // When invoice was voided
   createdAt     DateTime      @default(now())
   createdBy     String?
   imeis         IMEI[]
-  customer      Party?     @relation(fields: [customerId], references: [id])
+  customer      Party?        @relation(fields: [customerId], references: [id])
   shop          Shop          @relation(fields: [shopId], references: [id])
   tenant        Tenant        @relation("TenantInvoices", fields: [tenantId], references: [id])
+  jobCard       JobCard?      @relation("JobCardInvoices", fields: [jobCardId], references: [id])
   items         InvoiceItem[]
   receipts      Receipt[]
 
@@ -1185,6 +1196,19 @@ enum WhatsAppPhoneNumberPurpose {
 }
 
 enum WhatsAppFeature {
+  // Global Plan Features
+  MEMBERS_MANAGEMENT
+  ATTENDANCE_MANAGEMENT
+  STAFF_MANAGEMENT
+  QR_ATTENDANCE
+  REPORTS
+  MEMBER_PAYMENT_TRACKING
+  
+  // WhatsApp Specific
+  WHATSAPP_ALERTS_BASIC
+  WHATSAPP_ALERTS_ALL
+  
+  // Legacy / Specific
   WELCOME
   EXPIRY
   PAYMENT_DUE
@@ -1206,18 +1230,24 @@ enum FinanceRefType {
 
 enum JobStatus {
   RECEIVED
-  DIAGNOSING
-  WAITING_FOR_PARTS
-  IN_PROGRESS
-  READY
-  DELIVERED
-  CANCELLED
+  ASSIGNED          // Job assigned to technician
+  DIAGNOSING        // Under diagnosis
+  WAITING_APPROVAL  // Awaiting customer approval for estimate
+  APPROVED          // Customer approved, ready to proceed
+  WAITING_FOR_PARTS // Waiting for spare parts
+  IN_PROGRESS       // Repair in progress
+  READY             // Repair completed, ready for pickup
+  DELIVERED         // Job delivered to customer (terminal)
+  CANCELLED         // Job cancelled (terminal)
+  RETURNED          // Job returned without repair (terminal)
 }
 
 enum InvoiceStatus {
-  PAID
-  CREDIT
-  CANCELLED
+  DRAFT     // Editable invoice (auto-created when job READY)
+  FINAL     // Locked invoice, ready for payment
+  PAID      // Fully paid
+  CREDIT    // Credit sale
+  VOIDED    // Cancelled/voided invoice (was CANCELLED)
 }
 
 enum PaymentMode {
@@ -1432,6 +1462,7 @@ enum ReminderTriggerType {
   DATE
   AFTER_INVOICE
   AFTER_JOB
+  EVENT_BASED
 }
 
 enum ReminderChannel {

@@ -107,7 +107,7 @@ export class TenantService {
     await this.subscriptionsService.assignTrialSubscription(
       tenant.id,
       trialPlan.id,
-      'MOBILE_SHOP',
+      effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
     );
     const userTenant = await this.prisma.userTenant.create({
       data: {

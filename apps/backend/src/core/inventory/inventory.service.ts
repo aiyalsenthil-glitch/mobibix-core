@@ -12,6 +12,11 @@ export class InventoryService {
   ) {}
 
   async createProduct(tenantId: string, dto: CreateProductDto) {
+    // Name is required for creation
+    if (!dto.name || !dto.shopId) {
+      throw new Error('Name and shopId are required for creating a product');
+    }
+
     const normalizedType: PrismaProductType = (() => {
       const t = dto.type?.toString().toUpperCase();
       if (t === 'ACCESSORY') return PrismaProductType.GOODS;
@@ -62,29 +67,41 @@ export class InventoryService {
   }
 
   async updateProduct(tenantId: string, id: string, dto: CreateProductDto) {
-    const normalizedType: PrismaProductType = (() => {
-      const t = dto.type?.toString().toUpperCase();
-      if (t === 'ACCESSORY') return PrismaProductType.GOODS;
-      if (t === 'GOODS' || t === 'SPARE' || t === 'SERVICE') {
-        return t as PrismaProductType;
-      }
-      return PrismaProductType.GOODS;
-    })();
+    // Fetch existing product to merge updates
+    const existing = await this.prisma.shopProduct.findUnique({
+      where: { id },
+      select: {
+        name: true,
+        type: true,
+        shopId: true,
+        isSerialized: true,
+      },
+    });
 
-    // Calculate isSerialized based on type
+    if (!existing) {
+      throw new Error('Product not found');
+    }
+
+    const normalizedType: PrismaProductType | undefined = dto.type
+      ? (() => {
+          const t = dto.type?.toString().toUpperCase();
+          if (t === 'ACCESSORY') return PrismaProductType.GOODS;
+          if (t === 'GOODS' || t === 'SPARE' || t === 'SERVICE') {
+            return t as PrismaProductType;
+          }
+          return PrismaProductType.GOODS;
+        })()
+      : undefined;
+
+    // Calculate isSerialized based on type if type is being changed
     const isSerialized =
       normalizedType === PrismaProductType.GOODS && dto.isSerialized === true;
 
-    // Duplicate check if name changed
-    const existingProduct = await this.prisma.shopProduct.findUnique({
-      where: { id },
-      select: { name: true, shopId: true },
-    });
-
-    if (existingProduct && dto.name !== existingProduct.name) {
+    // Duplicate check if name is being changed
+    if (dto.name && dto.name !== existing.name) {
       const duplicate = await this.prisma.shopProduct.findFirst({
         where: {
-          shopId: existingProduct.shopId,
+          shopId: existing.shopId,
           name: { equals: dto.name, mode: 'insensitive' },
           id: { not: id },
         },
@@ -98,21 +115,23 @@ export class InventoryService {
       }
     }
 
+    // Build update data with only provided fields
+    const updateData: any = {};
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.type !== undefined) updateData.type = normalizedType;
+    if (dto.category !== undefined) updateData.category = dto.category;
+    if (dto.isSerialized !== undefined) updateData.isSerialized = isSerialized;
+    if (dto.salePrice !== undefined) updateData.salePrice = dto.salePrice;
+    if (dto.costPrice !== undefined) updateData.costPrice = dto.costPrice;
+    if (dto.hsnCode !== undefined) updateData.hsnCode = dto.hsnCode;
+    if (dto.gstRate !== undefined) updateData.gstRate = dto.gstRate;
+
     return this.prisma.shopProduct.update({
       where: {
         id,
         tenantId,
       },
-      data: {
-        name: dto.name,
-        type: normalizedType,
-        category: dto.category,
-        isSerialized,
-        salePrice: dto.salePrice,
-        costPrice: dto.costPrice,
-        hsnCode: dto.hsnCode,
-        gstRate: dto.gstRate,
-      },
+      data: updateData,
     });
   }
 

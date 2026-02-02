@@ -75,12 +75,29 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // Priority: localStorage > first shop (if only one)
       const storedShopId = localStorage.getItem(SELECTED_SHOP_KEY);
 
-      if (storedShopId && data.find((s) => s.id === storedShopId)) {
+      // Validate shopId format (CUID should be alphanumeric, ~25 chars)
+      const isValidShopId = storedShopId && 
+        /^[a-z0-9]{20,30}$/i.test(storedShopId) &&
+        data.find((s) => s.id === storedShopId);
+
+      if (isValidShopId) {
         setSelectedShopId(storedShopId);
-      } else if (data.length === 1) {
-        // Auto-select if only one shop
-        setSelectedShopId(data[0].id);
-        localStorage.setItem(SELECTED_SHOP_KEY, data[0].id);
+      } else {
+        // Invalid or missing shopId - auto-select first shop or clear
+        if (storedShopId) {
+          console.warn('[ShopContext] Invalid shopId in localStorage, clearing:', storedShopId);
+          localStorage.removeItem(SELECTED_SHOP_KEY);
+        }
+        
+        if (data.length === 1) {
+          // Auto-select if only one shop
+          setSelectedShopId(data[0].id);
+          localStorage.setItem(SELECTED_SHOP_KEY, data[0].id);
+        } else if (data.length > 1) {
+          // Multiple shops but no valid selection - select first
+          setSelectedShopId(data[0].id);
+          localStorage.setItem(SELECTED_SHOP_KEY, data[0].id);
+        }
       }
     }
 

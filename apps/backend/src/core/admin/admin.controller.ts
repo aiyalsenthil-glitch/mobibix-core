@@ -89,9 +89,20 @@ export class AdminController {
   @Get('tenants/:tenantId/subscription')
   async getTenantSubscription(
     @Param('tenantId') tenantId: string,
-    @Query('module') module: ModuleType = 'MOBILE_SHOP',
+    @Query('module') module?: ModuleType,
   ) {
-    return this.subscriptionsService.getSubscriptionByTenant(tenantId, module);
+    let resolvedModule = module;
+    if (!resolvedModule) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { tenantType: true },
+      });
+      resolvedModule = tenant?.tenantType === 'GYM' ? 'GYM' : 'MOBILE_SHOP';
+    }
+    return this.subscriptionsService.getSubscriptionByTenant(
+      tenantId,
+      resolvedModule,
+    );
   }
   // ─────────────────────────────────────────────
   // TENANT USAGE (ADMIN)
@@ -109,10 +120,19 @@ export class AdminController {
     @Param('tenantId') tenantId: string,
     @Body() body: { extraDays: number; module?: ModuleType },
   ) {
+    let resolvedModule = body.module;
+    if (!resolvedModule) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { tenantType: true },
+      });
+      resolvedModule = tenant?.tenantType === 'GYM' ? 'GYM' : 'MOBILE_SHOP';
+    }
+
     return this.subscriptionsService.extendTrial(
       tenantId,
       body.extraDays,
-      body.module || 'MOBILE_SHOP',
+      resolvedModule,
     );
   }
   // ─────────────────────────────────────────────
@@ -155,10 +175,20 @@ export class AdminController {
       throw new BadRequestException('planName is required');
     }
 
+    let resolvedModule = body.module as ModuleType;
+    if (!resolvedModule) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { tenantType: true },
+      });
+      resolvedModule =
+        tenant?.tenantType === 'GYM' ? 'GYM' : ('MOBILE_SHOP' as ModuleType);
+    }
+
     return this.subscriptionsService.changePlan(
       tenantId,
       body.planName,
-      (body.module || 'MOBILE_SHOP') as any,
+      resolvedModule,
     );
   }
 

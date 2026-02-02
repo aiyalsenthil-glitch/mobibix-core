@@ -2,6 +2,8 @@ import { Controller, Get, Param, UseGuards, BadRequestException } from '@nestjs/
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { PlanRulesService } from '../../core/billing/plan-rules.service';
+import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
+import { WhatsAppPhoneNumberPurpose } from '@prisma/client';
 
 interface CheckItem {
   name: string;
@@ -15,6 +17,7 @@ export class WhatsAppDebugController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly planRulesService: PlanRulesService,
+    private readonly phoneNumbersService: WhatsAppPhoneNumbersService,
   ) {}
 
   @Get('status/:tenantId')
@@ -47,6 +50,30 @@ export class WhatsAppDebugController {
     const checks: CheckItem[] = [];
     let isBlocked = false;
     let blockReason: string | null = null;
+    
+    // Check 0: Active Phone Number (Critical)
+    // We check for DEFAULT purpose as it's the fallback for everything.
+    let phoneNumber: any = null;
+    try {
+      phoneNumber = await this.phoneNumbersService.getPhoneNumberForPurpose(
+        tenantId,
+        WhatsAppPhoneNumberPurpose.DEFAULT,
+      );
+    } catch (ignored) {
+      // Service throws NotFoundException if no number exists
+    }
+
+    if (!phoneNumber) {
+      isBlocked = true;
+      blockReason = 'No Active WhatsApp Phone Number found for Tenant (Default)';
+      checks.push({ name: 'Active Phone Number', status: 'FAIL', value: 'NONE' });
+    } else {
+      checks.push({
+        name: 'Active Phone Number',
+        status: 'PASS',
+        value: `${phoneNumber.phoneNumber} (${phoneNumber.purpose}${phoneNumber.isDefault ? ' [Def]' : ''})`,
+      });
+    }
 
     // Check 1: Settings (Explicit Disable Only)
     // Permissive check: Block ONLY if explicitly false
@@ -113,23 +140,26 @@ export class WhatsAppDebugController {
     // 1. Fetch Tenant to find Module Type
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { id: true, businessType: true }, // businessType often maps to 'GYM' or 'MOBILESHOP' defaults
+      select: { id: true, tenantType: true },
     });
 
     if (!tenant) {
       throw new BadRequestException('Tenant not found');
     }
 
-    // Determine module type. Default to GYM if not explicit or if businessType matches known values
-    // Note: In some setups, businessType might be 'GYM' directly.
-    // If not found, we can try to find ANY active template to guess, or default to 'GYM'
-    let moduleType = 'GYM';
+    // Determine module type.
+    let moduleType = tenant.tenantType || 'GYM';
+
+    // Normalize legacy mobile shop type
+    if (moduleType === 'MOBILESHOP') {
+      moduleType = 'MOBILE_SHOP';
+    }
 
     // 2. Fetch Active Templates
     const templates = await this.prisma.whatsAppTemplate.findMany({
-      where: { 
-        moduleType, // TODO: Improve module detection if needed
-        status: 'ACTIVE' 
+      where: {
+        moduleType,
+        status: 'ACTIVE',
       },
       orderBy: { updatedAt: 'desc' },
     });

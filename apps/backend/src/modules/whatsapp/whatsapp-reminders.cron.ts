@@ -26,6 +26,7 @@ export class WhatsAppRemindersCron {
    */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async processReminders() {
+    this.logger.debug('Checking for scheduled WhatsApp reminders...');
     try {
       const result = await this.remindersService.processScheduledReminders();
 
@@ -34,6 +35,8 @@ export class WhatsAppRemindersCron {
           this.logger.log(
             `Processed ${result.reminderIds.length} WhatsApp reminders`,
           );
+        } else {
+          this.logger.debug('No pending reminders found');
         }
       } else {
         this.logger.error(`Reminder processing failed: ${result.error}`);

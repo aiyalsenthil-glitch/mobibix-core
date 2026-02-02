@@ -10,26 +10,47 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { SubscriptionsService } from './subscriptions.service';
 import { ModuleType } from '@prisma/client';
 
+import { PrismaService } from '../../prisma/prisma.service';
+
 @UseGuards(JwtAuthGuard)
 @Controller('billing/subscription')
 export class SubscriptionsController {
-  constructor(private readonly subscriptionsService: SubscriptionsService) {}
+  constructor(
+    private readonly subscriptionsService: SubscriptionsService,
+    private readonly prisma: PrismaService,
+  ) {}
   @Get('current')
   async getCurrent(
     @Req() req: any,
-    @Query('module') module: ModuleType = 'MOBILE_SHOP',
+    @Query('module') module?: ModuleType,
   ) {
     if (!req.user || !req.user.tenantId) {
       throw new UnauthorizedException('Authentication required');
     }
 
+    let resolvedModule = module;
+
+    // 🔍 If module not provided, resolve from Tenant Type
+    if (!resolvedModule) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: req.user.tenantId },
+        select: { tenantType: true },
+      });
+
+      if (tenant) {
+        resolvedModule = tenant.tenantType === 'GYM' ? 'GYM' : 'MOBILE_SHOP';
+      } else {
+        resolvedModule = 'MOBILE_SHOP'; // Fallback
+      }
+    }
+
     const sub = await this.subscriptionsService.getCurrentActiveSubscription(
       req.user.tenantId,
-      module,
+      resolvedModule,
     );
     const upcoming = await this.subscriptionsService.getUpcomingSubscription(
       req.user.tenantId,
-      module,
+      resolvedModule,
     );
 
     // No active subscription → trial

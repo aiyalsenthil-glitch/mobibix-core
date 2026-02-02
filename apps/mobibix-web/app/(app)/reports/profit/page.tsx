@@ -12,6 +12,7 @@ export default function ProfitReportPage() {
   const { theme } = useTheme();
   const router = useRouter();
   const { selectedShopId } = useShop();
+  const isEnterprise = !selectedShopId;
 
   const [metrics, setMetrics] = useState<ProfitSummaryMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,13 +60,16 @@ export default function ProfitReportPage() {
             >
               Profit & Loss Summary
             </h1>
-            <p
-              className={`mt-1 text-sm ${
-                theme === "dark" ? "text-gray-400" : "text-gray-500"
-              }`}
-            >
-              Financial performance overview (Revenue vs Costs)
-            </p>
+            <div className="flex items-center gap-3 mt-1">
+               <p className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+                  Financial performance overview (Revenue vs Costs)
+               </p>
+               {isEnterprise && (
+                 <span className="px-2 py-0.5 text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 rounded uppercase tracking-wider">
+                   Enterprise View
+                 </span>
+               )}
+            </div>
           </div>
           <button
             onClick={() => router.back()}

@@ -390,6 +390,7 @@ export default function ProductsPage() {
                     "Type",
                     "HSN/SAC",
                     "Sale Price",
+                    "Cost Status",
                     "GST Rate",
                     "Status",
                     "Actions",
@@ -441,6 +442,18 @@ export default function ProductsPage() {
                         className={`px-6 py-4 ${theme === "dark" ? "text-white" : "text-gray-900"} font-semibold`}
                       >
                         ₹{product.salePrice?.toFixed(2) || "0.00"}
+                      </td>
+                      {/* Cost Status Column */}
+                      <td className="px-6 py-4">
+                        {product.costPrice && product.costPrice > 0 ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-300">
+                            ✓ Set
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300">
+                            ⚠ Not Set
+                          </span>
+                        )}
                       </td>
                       <td
                         className={`px-6 py-4 ${theme === "dark" ? "text-stone-400" : "text-gray-700"}`}

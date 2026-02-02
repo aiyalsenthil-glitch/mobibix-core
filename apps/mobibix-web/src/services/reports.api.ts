@@ -9,6 +9,7 @@ export interface SalesReportItem {
   pendingAmount: number;
   paymentMode: string;
   profit: number | null;
+  shopName?: string;
 }
 
 export interface PurchaseReportItem {
@@ -19,6 +20,7 @@ export interface PurchaseReportItem {
   paidAmount: number;
   pendingAmount: number;
   stockReceived: boolean;
+  shopName?: string;
 }
 
 export interface InventoryReportItem {
@@ -67,14 +69,8 @@ export async function getSalesReport(
   if (!response.ok) throw new Error("Failed to fetch sales report");
   const data: SalesReportItem[] = await response.json();
   
-  // Convert Paise to Rupees
-  return data.map(item => ({
-    ...item,
-    totalAmount: item.totalAmount / 100,
-    paidAmount: item.paidAmount / 100,
-    pendingAmount: item.pendingAmount / 100,
-    profit: item.profit !== null ? item.profit / 100 : null,
-  }));
+  // Backend already returns values in Rupees
+  return data;
 }
 
 export async function getPurchaseReport(
@@ -87,13 +83,8 @@ export async function getPurchaseReport(
   if (!response.ok) throw new Error("Failed to fetch purchase report");
   const data: PurchaseReportItem[] = await response.json();
 
-  // Convert Paise to Rupees
-  return data.map(item => ({
-    ...item,
-    totalAmount: item.totalAmount / 100,
-    paidAmount: item.paidAmount / 100,
-    pendingAmount: item.pendingAmount / 100,
-  }));
+  // Backend already returns values in Rupees
+  return data;
 }
 
 export async function getInventoryReport(
@@ -124,17 +115,8 @@ export async function getProfitSummary(
   if (!response.ok) throw new Error("Failed to fetch profit summary");
   const data: { metrics: ProfitSummaryMetrics } = await response.json();
 
-  // Convert Paise to Rupees
-  return {
-    metrics: {
-      ...data.metrics,
-      totalRevenue: data.metrics.totalRevenue / 100,
-      totalCost: data.metrics.totalCost / 100,
-      grossProfit: data.metrics.grossProfit / 100,
-      // Margin is a percentage, so DO NOT divide by 100
-      margin: data.metrics.margin,
-    }
-  };
+  // Backend already returns values in Rupees (division by 100 handled there)
+  return data;
 }
 
 export interface TopProductItem {

@@ -90,7 +90,7 @@ export class PlansService {
 
   async getPlansWithUpgradeInfo(
     tenantId: string,
-    module: ModuleType = 'MOBILE_SHOP',
+    module: ModuleType,
   ) {
     const currentSub =
       await this.subscriptionsService.getCurrentActiveSubscription(

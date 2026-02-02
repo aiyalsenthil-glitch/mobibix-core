@@ -5,13 +5,16 @@ const API_BASE_URL =
 
 export type JobStatus =
   | "RECEIVED"
-  | "DIAGNOSED"
-  | "PARTS_ORDERED"
-  | "IN_REPAIR"
-  | "QUALITY_CHECK"
+  | "ASSIGNED"
+  | "DIAGNOSING"
+  | "WAITING_APPROVAL"
+  | "APPROVED"
+  | "WAITING_FOR_PARTS"
+  | "IN_PROGRESS"
   | "READY"
   | "DELIVERED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "RETURNED";
 
 export interface JobCard {
   id: string;

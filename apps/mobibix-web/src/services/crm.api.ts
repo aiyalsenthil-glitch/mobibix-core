@@ -129,14 +129,30 @@ export async function getCrmDashboard(
 }
 
 /**
- * Get follow-ups assigned to current user
- */
 export async function getMyFollowUps(): Promise<FollowUp[]> {
   const response = await authenticatedFetch(`/mobileshop/crm/follow-ups`);
 
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || "Failed to fetch follow-ups");
+  }
+
+  return response.json();
+}
+
+/**
+ * Get follow-up counts (pending + overdue) for the current user
+ */
+export async function getFollowUpCounts(): Promise<{
+  pending: number;
+  overdue: number;
+  total: number;
+}> {
+  const response = await authenticatedFetch(`/mobileshop/crm/follow-ups/counts`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch follow-up counts");
   }
 
   return response.json();
@@ -258,5 +274,11 @@ export async function getWhatsAppLogs(
     throw new Error(error.message || "Failed to fetch WhatsApp logs");
   }
 
+  return response.json();
+}
+// ... existing code ...
+
+export async function getMyFollowUps(): Promise<FollowUp[]> {
+  const response = await authenticatedFetch("/core/follow-ups/my");
   return response.json();
 }

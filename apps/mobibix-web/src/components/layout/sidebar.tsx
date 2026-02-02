@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
+import { getFollowUpCounts } from "@/services/crm.api";
 
 interface NavItem {
   label: string;
@@ -15,7 +16,15 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "📊" },
   { label: "Sales", href: "/sales", icon: "💰" },
-  { label: "Job Cards", href: "/jobcards", icon: "🔧" },
+  {
+    label: "Job Cards",
+    href: "/jobcards",
+    icon: "🔧",
+    submenu: [
+      { label: "All Job Cards", href: "/jobcards" },
+      { label: "Job Card Bills", href: "/jobcards/bills" },
+    ],
+  },
   { label: "Products", href: "/products", icon: "🏷️" },
   {
     label: "Inventory",
@@ -35,7 +44,6 @@ const navItems: NavItem[] = [
       { label: "All Customers", href: "/customers" },
       { label: "CRM Dashboard", href: "/crm" },
       { label: "My Follow-ups", href: "/crm/follow-ups" },
-      { label: "Customer Timeline", href: "/crm/timeline" },
     ],
   },
   { label: "Suppliers", href: "/suppliers", icon: "🚚" },
@@ -65,7 +73,25 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [expandedSubmenus, setExpandedSubmenus] = useState<string[]>([]);
+  const [counts, setCounts] = useState<{ total: number } | null>(null);
   const isDark = mounted && theme === "dark";
+
+  useEffect(() => {
+    if (mounted) {
+      loadCounts();
+      const interval = setInterval(loadCounts, 30000); // Poll every 30s
+      return () => clearInterval(interval);
+    }
+  }, [mounted]);
+
+  async function loadCounts() {
+    try {
+      const data = await getFollowUpCounts();
+      setCounts(data);
+    } catch (err) {
+      console.error("Failed to load follow-up counts", err);
+    }
+  }
 
   useEffect(() => {
     setMounted(true);
@@ -174,6 +200,11 @@ export function Sidebar() {
                         <span className="font-medium text-sm flex-1 text-left">
                           {item.label}
                         </span>
+                        {item.label === "Customers" && counts && counts.total > 0 && (
+                          <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow-sm whitespace-nowrap">
+                            {counts.total}
+                          </span>
+                        )}
                         <span className="text-xs">
                           {isExpanded ? "▼" : "▶"}
                         </span>

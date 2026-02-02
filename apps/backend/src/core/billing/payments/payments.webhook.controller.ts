@@ -99,11 +99,19 @@ export class PaymentsWebhookController {
 
         // 4️⃣ 🔥 ACTIVATE / QUEUE SUBSCRIPTION (THIS WAS MISSING)
         await this.prisma.$transaction(async (tx) => {
+          // Resolve module from tenant type
+          const tenant = await tx.tenant.findUnique({
+            where: { id: paymentRecord.tenantId },
+            select: { tenantType: true },
+          });
+
+          const module = tenant?.tenantType === 'GYM' ? 'GYM' : 'MOBILE_SHOP';
+
           // IMPORTANT: reuse backend business logic
           await this.subscriptionsService.buyPlan(
             paymentRecord.tenantId,
             paymentRecord.planId,
-            'MOBILE_SHOP',
+            module,
           );
         });
 

@@ -7,6 +7,9 @@ import { getInvoice, type SalesInvoice } from "@/services/sales.api";
 import { useTheme } from "@/context/ThemeContext";
 import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
 import { CancelInvoiceModal } from "@/components/sales/CancelInvoiceModal";
+import { CustomerTimelineDrawer } from "@/components/crm/CustomerTimelineDrawer";
+import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
+import { type FollowUpType } from "@/services/crm.api";
 
 export default function InvoiceDetailPage() {
   const router = useRouter();
@@ -15,6 +18,10 @@ export default function InvoiceDetailPage() {
   const { theme } = useTheme();
   const [isCollectModalOpen, setIsCollectModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+
+  // CRM Modals State
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
 
   const {
     data: invoice,
@@ -112,6 +119,28 @@ export default function InvoiceDetailPage() {
               Collect Payment
             </button>
            )}
+            <button
+              onClick={() => setIsTimelineOpen(true)}
+              className={`px-4 py-2 border rounded-lg font-medium transition ${
+                theme === "dark"
+                  ? "border-white/20 hover:bg-white/10 text-white"
+                  : "border-gray-300 hover:bg-gray-50 text-gray-700"
+              }`}
+              title="View Customer Interaction History"
+            >
+              🕒 History
+            </button>
+            <button
+              onClick={() => setIsFollowUpOpen(true)}
+              className={`px-4 py-2 border rounded-lg font-medium transition ${
+                theme === "dark"
+                  ? "border-white/20 hover:bg-white/10 text-white"
+                  : "border-gray-300 hover:bg-gray-50 text-gray-700"
+              }`}
+              title="Schedule a Follow-up Task"
+            >
+              📋 Follow-up
+            </button>
            <button
              onClick={() => router.push(`/print/invoice/${invoice.id}`)}
              className={`px-4 py-2 border rounded-lg font-medium transition ${
@@ -271,6 +300,23 @@ export default function InvoiceDetailPage() {
             onSuccess={() => {
               reload();
             }}
+          />
+
+          <CustomerTimelineDrawer
+            isOpen={isTimelineOpen}
+            customerId={invoice.customerId || ""}
+            customerName={invoice.customerName}
+            onClose={() => setIsTimelineOpen(false)}
+          />
+
+          <AddFollowUpModal
+            isOpen={isFollowUpOpen}
+            customerId={invoice.customerId || ""}
+            customerName={invoice.customerName}
+            defaultPurpose={`Follow up on invoice ${invoice.invoiceNumber}`}
+            defaultType="PHONE_CALL"
+            onClose={() => setIsFollowUpOpen(false)}
+            onSuccess={() => {}}
           />
         </>
       )}

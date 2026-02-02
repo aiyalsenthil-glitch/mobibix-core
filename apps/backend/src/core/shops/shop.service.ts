@@ -390,6 +390,8 @@ export class ShopService {
         yearFormat: dto.yearFormat,
         numberLength: dto.numberLength,
         resetPolicy: dto.resetPolicy,
+        currentNumber: dto.currentNumber,
+        currentYear: dto.currentYear,
       },
       create: {
         shopId,

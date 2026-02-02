@@ -9,7 +9,7 @@ import {
   ProductType,
 } from "@/services/products.api";
 import { getStockBalances } from "@/services/stock.api";
-import { createInvoice } from "@/services/sales.api";
+import { createInvoice, collectPayment } from "@/services/sales.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { CustomerModal } from "../../customers/CustomerModal";
@@ -27,6 +27,7 @@ interface ProductItem {
   gstAmount: number;
   total: number;
   imeis: string[];
+  costPrice: number | null; // Cost tracking for visibility
 }
 
 export default function CreateInvoicePage() {
@@ -50,9 +51,7 @@ export default function CreateInvoicePage() {
     }
   }, [shopIdParam, selectedShopId, selectShop]);
 
-  const [selectedCustomer, setSelectedCustomer] = useState<Party | null>(
-    null,
-  );
+  const [selectedCustomer, setSelectedCustomer] = useState<Party | null>(null);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
 
   const [products, setProducts] = useState<ShopProduct[]>([]);
@@ -64,8 +63,18 @@ export default function CreateInvoicePage() {
 
   // Payment handling
   const [paymentMode, setPaymentMode] = useState<
-    "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT"
+    "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT" | "MIXED"
   >("CASH");
+
+  // Split payment state (for MIXED mode)
+  const [splitPayments, setSplitPayments] = useState<
+    Array<{
+      id: string;
+      mode: "CASH" | "UPI" | "CARD" | "BANK";
+      amount: string;
+    }>
+  >([{ id: crypto.randomUUID(), mode: "CASH", amount: "" }]);
+
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
 
   // Product search states (per item)
@@ -92,6 +101,22 @@ export default function CreateInvoicePage() {
       loadProducts(selectedShopId);
     }
   }, [selectedShopId]);
+
+  // Prevent number inputs from changing on mouse wheel scroll
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" &&
+        (target as HTMLInputElement).type === "number"
+      ) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener("wheel", handleWheel, { passive: false });
+    return () => document.removeEventListener("wheel", handleWheel);
+  }, []);
 
   // Update dropdown positions on scroll/resize
   useEffect(() => {
@@ -245,6 +270,7 @@ export default function CreateInvoicePage() {
             gstRate,
             gstAmount,
             total,
+            costPrice: product.costPrice, // Capture cost for visibility
           };
         }
         return item;
@@ -288,6 +314,7 @@ export default function CreateInvoicePage() {
         gstAmount: 0,
         total: 0,
         imeis: [],
+        costPrice: null, // Initialize cost tracking
       },
     ]);
   };
@@ -434,6 +461,28 @@ export default function CreateInvoicePage() {
     setImeiHighlight(false);
 
     try {
+      // Validate split payments if MIXED mode
+      if (paymentMode === "MIXED") {
+        if (splitPayments.some((p) => !p.amount || parseFloat(p.amount) <= 0)) {
+          setError("Please enter valid amounts for all payment methods");
+          setLoading(false);
+          return;
+        }
+
+        const splitTotal = splitPayments.reduce(
+          (sum, p) => sum + parseFloat(p.amount),
+          0,
+        );
+        if (splitTotal > grandTotal + 1) {
+          setError(
+            `Split payment total (₹${splitTotal.toFixed(2)}) exceeds invoice total (₹${grandTotal.toFixed(2)})`,
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
+      // For MIXED mode, create invoice as CREDIT first
       const payload = {
         shopId: selectedShop.id,
         customerId: selectedCustomer.id,
@@ -441,7 +490,7 @@ export default function CreateInvoicePage() {
         customerPhone: selectedCustomer.phone,
         customerState: selectedCustomer.state,
         customerGstin: selectedCustomer.gstNumber,
-        paymentMode,
+        paymentMode: paymentMode === "MIXED" ? "CREDIT" : paymentMode,
         pricesIncludeTax,
         items: items.map((item) => ({
           shopProductId: item.shopProductId,
@@ -453,11 +502,36 @@ export default function CreateInvoicePage() {
         })),
       };
 
-      await createInvoice(payload);
+      const createdInvoice = await createInvoice(payload);
+
+      // If MIXED mode, immediately collect split payments
+      if (paymentMode === "MIXED") {
+        await collectPayment(createdInvoice.id, {
+          paymentMethods: splitPayments.map((p) => ({
+            mode: p.mode,
+            amount: parseFloat(p.amount),
+          })),
+          narration: "Split payment at invoice creation",
+        });
+      }
+
       router.push(`/sales?shopId=${selectedShopId}`);
     } catch (err: any) {
       const msg = (err?.message || "Failed to create invoice") as string;
-      if (msg.includes("Insufficient stock")) {
+
+      // Handle cost-related errors with product context
+      if (
+        msg.includes("Cannot sell product") &&
+        msg.includes("without a valid cost price")
+      ) {
+        // Extract product name from backend error if available
+        const match = msg.match(/Cannot sell product "([^"]+)"/);
+        const productName = match ? match[1] : "One or more products";
+        setError(
+          `${productName} cannot be sold because cost is missing. ` +
+            `Please add a purchase or set the cost manually before selling.`,
+        );
+      } else if (msg.includes("Insufficient stock")) {
         setError("Insufficient stock. Please add purchase or reduce quantity.");
       } else if (msg.includes("Serialized products require IMEI")) {
         setError(
@@ -468,6 +542,7 @@ export default function CreateInvoicePage() {
         setError("One or more IMEIs are already sold or unavailable.");
         setImeiHighlight(true);
       } else {
+        // Show backend message verbatim for other errors
         setError(msg);
       }
     } finally {
@@ -710,8 +785,20 @@ export default function CreateInvoicePage() {
                                 onClick={() => selectProduct(item.id, p)}
                                 className="w-full text-left px-4 py-3 hover:bg-teal-50 dark:hover:bg-teal-900/20 border-b border-gray-50 dark:border-gray-700 last:border-0 transition group"
                               >
-                                <div className="font-medium text-gray-900 dark:text-white text-sm group-hover:text-teal-700 dark:group-hover:text-teal-300">
-                                  {p.name}
+                                <div className="flex justify-between items-start gap-2">
+                                  <div className="font-medium text-gray-900 dark:text-white text-sm group-hover:text-teal-700 dark:group-hover:text-teal-300">
+                                    {p.name}
+                                  </div>
+                                  {/* Cost Status Badge */}
+                                  {p.costPrice && p.costPrice > 0 ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-300 whitespace-nowrap">
+                                      ✓ Ready
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300 whitespace-nowrap">
+                                      ⚠ Cost Missing
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="flex justify-between items-center mt-1">
                                   {p.type !== ProductType.SERVICE && (
@@ -745,6 +832,15 @@ export default function CreateInvoicePage() {
                         </button>
                       </div>
                     )}
+
+                    {/* Cost Missing Warning - Show if product selected but has no cost */}
+                    {item.shopProductId &&
+                      (!item.costPrice || item.costPrice <= 0) && (
+                        <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded text-xs text-red-700 dark:text-red-300 font-medium">
+                          ⚠️ This product cannot be sold until cost is set. Add
+                          a purchase or update cost manually.
+                        </div>
+                      )}
                   </td>
                   <td className="px-4 py-4">
                     <input
@@ -917,14 +1013,153 @@ export default function CreateInvoicePage() {
               <select
                 className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg outline-none focus:ring-2 focus:ring-teal-500 transition"
                 value={paymentMode}
-                onChange={(e) => setPaymentMode(e.target.value as any)}
+                onChange={(e) => {
+                  const newMode = e.target.value as any;
+                  setPaymentMode(newMode);
+                  // Reset split payments when switching to/from MIXED
+                  if (newMode === "MIXED") {
+                    setSplitPayments([
+                      { id: crypto.randomUUID(), mode: "CASH", amount: "" },
+                    ]);
+                  }
+                }}
               >
                 <option value="CASH">Cash</option>
                 <option value="UPI">UPI / Online</option>
                 <option value="CARD">Card</option>
                 <option value="BANK">Bank Transfer</option>
                 <option value="CREDIT">Credit (Pay Later)</option>
+                <option value="MIXED">Mixed Payment (Split)</option>
               </select>
+
+              {/* Split Payment UI - shown when MIXED is selected */}
+              {paymentMode === "MIXED" && (
+                <div className="mt-4 space-y-3">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                    Split payment across multiple methods:
+                  </p>
+
+                  {splitPayments.map((payment, index) => (
+                    <div key={payment.id} className="flex items-center gap-2">
+                      <select
+                        className="flex-1 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded outline-none focus:ring-2 focus:ring-teal-500"
+                        value={payment.mode}
+                        onChange={(e) => {
+                          const newPayments = [...splitPayments];
+                          newPayments[index].mode = e.target.value as any;
+                          setSplitPayments(newPayments);
+                        }}
+                      >
+                        <option value="CASH">Cash</option>
+                        <option value="UPI">UPI</option>
+                        <option value="CARD">Card</option>
+                        <option value="BANK">Bank</option>
+                      </select>
+
+                      <input
+                        type="number"
+                        placeholder="Amount"
+                        step="0.01"
+                        min="0"
+                        className="flex-1 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded outline-none focus:ring-2 focus:ring-teal-500"
+                        value={payment.amount}
+                        onChange={(e) => {
+                          const newPayments = [...splitPayments];
+                          newPayments[index].amount = e.target.value;
+                          setSplitPayments(newPayments);
+                        }}
+                      />
+
+                      {splitPayments.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newPayments = splitPayments.filter(
+                              (_, i) => i !== index,
+                            );
+                            setSplitPayments(newPayments);
+                          }}
+                          className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition"
+                          title="Remove"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSplitPayments([
+                        ...splitPayments,
+                        { id: crypto.randomUUID(), mode: "CASH", amount: "" },
+                      ]);
+                    }}
+                    className="w-full px-3 py-2 text-sm text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-700 rounded hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
+                  >
+                    + Add Payment Method
+                  </button>
+
+                  {/* Split Payment Summary */}
+                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded text-sm">
+                    <div className="flex justify-between font-medium text-blue-900 dark:text-blue-200">
+                      <span>Split Total:</span>
+                      <span>
+                        ₹
+                        {splitPayments
+                          .reduce(
+                            (sum, p) => sum + (parseFloat(p.amount) || 0),
+                            0,
+                          )
+                          .toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-blue-700 dark:text-blue-300 mt-1">
+                      <span>Invoice Total:</span>
+                      <span>₹{grandTotal.toFixed(2)}</span>
+                    </div>
+                    {(() => {
+                      const splitTotal = splitPayments.reduce(
+                        (sum, p) => sum + (parseFloat(p.amount) || 0),
+                        0,
+                      );
+                      const diff = Math.abs(grandTotal - splitTotal);
+                      return diff > 0.01 ? (
+                        <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-700 text-xs">
+                          {splitTotal < grandTotal ? (
+                            <span className="text-amber-700 dark:text-amber-300">
+                              ⚠️ Partial payment - Balance: ₹
+                              {(grandTotal - splitTotal).toFixed(2)}
+                            </span>
+                          ) : (
+                            <span className="text-red-700 dark:text-red-300">
+                              ❌ Split exceeds total by ₹
+                              {(splitTotal - grandTotal).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-700 text-xs text-green-700 dark:text-green-300">
+                          ✓ Split matches invoice total
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -981,9 +1216,32 @@ export default function CreateInvoicePage() {
                         ? "CARD"
                         : paymentMode === "BANK"
                           ? "BANK TRANSFER"
-                          : "CREDIT"}
+                          : paymentMode === "MIXED"
+                            ? "MIXED PAYMENT"
+                            : "CREDIT"}
                 </span>
               </div>
+
+              {/* MIXED Payment Summary */}
+              {paymentMode === "MIXED" && splitPayments.length > 0 && (
+                <div className="mt-3 p-3 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-700 rounded-lg">
+                  <p className="text-xs font-semibold text-teal-900 dark:text-teal-200 mb-2">
+                    Payment Split:
+                  </p>
+                  {splitPayments.map((p, idx) => (
+                    <div
+                      key={idx}
+                      className="flex justify-between text-xs text-teal-800 dark:text-teal-300"
+                    >
+                      <span>{p.mode}</span>
+                      <span className="font-mono">
+                        ₹{parseFloat(p.amount || "0").toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {paymentMode === "CREDIT" && (
                 <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
                   <p className="text-sm font-medium text-amber-900 dark:text-amber-200">

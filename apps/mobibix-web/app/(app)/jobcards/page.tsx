@@ -14,36 +14,73 @@ import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
 import { NoShopsAlert } from "../components/NoShopsAlert";
+import { CustomerTimelineDrawer } from "@/components/crm/CustomerTimelineDrawer";
+import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
+import { type FollowUpType } from "@/services/crm.api";
 
 const STATUS_OPTIONS: JobStatus[] = [
   "RECEIVED",
-  "DIAGNOSED",
-  "PARTS_ORDERED",
-  "IN_REPAIR",
-  "QUALITY_CHECK",
+  "ASSIGNED",
+  "DIAGNOSING",
+  "WAITING_APPROVAL",
+  "APPROVED",
+  "WAITING_FOR_PARTS",
+  "IN_PROGRESS",
   "READY",
   "DELIVERED",
   "CANCELLED",
+"RETURNED",
 ];
 
 const STATUS_COLORS: Record<JobStatus, string> = {
   RECEIVED:
     "bg-teal-200 text-teal-900 border-teal-400 dark:bg-teal-500/20 dark:text-teal-200 dark:border-teal-500/50",
-  DIAGNOSED:
+  ASSIGNED:
+    "bg-indigo-200 text-indigo-900 border-indigo-400 dark:bg-indigo-500/20 dark:text-indigo-200 dark:border-indigo-500/50",
+  DIAGNOSING:
     "bg-purple-200 text-purple-900 border-purple-400 dark:bg-purple-500/20 dark:text-purple-200 dark:border-purple-500/50",
-  PARTS_ORDERED:
+  WAITING_APPROVAL:
+    "bg-yellow-200 text-yellow-900 border-yellow-400 dark:bg-yellow-500/20 dark:text-yellow-200 dark:border-yellow-500/50",
+  APPROVED:
+    "bg-blue-200 text-blue-900 border-blue-400 dark:bg-blue-500/20 dark:text-blue-200 dark:border-blue-500/50",
+  WAITING_FOR_PARTS:
     "bg-amber-200 text-amber-900 border-amber-400 dark:bg-amber-500/20 dark:text-amber-200 dark:border-amber-500/50",
-  IN_REPAIR:
+  IN_PROGRESS:
     "bg-orange-200 text-orange-900 border-orange-400 dark:bg-orange-500/20 dark:text-orange-200 dark:border-orange-500/50",
-  QUALITY_CHECK:
-    "bg-sky-200 text-sky-900 border-sky-400 dark:bg-sky-500/20 dark:text-sky-200 dark:border-sky-500/50",
   READY:
     "bg-green-200 text-green-900 border-green-400 dark:bg-green-500/20 dark:text-green-200 dark:border-green-500/50",
   DELIVERED:
     "bg-gray-300 text-gray-900 border-gray-500 dark:bg-gray-500/20 dark:text-gray-300 dark:border-gray-500/50",
   CANCELLED:
     "bg-rose-200 text-rose-900 border-rose-400 dark:bg-rose-500/20 dark:text-rose-200 dark:border-rose-500/50",
+  RETURNED:
+    "bg-pink-200 text-pink-900 border-pink-400 dark:bg-pink-500/20 dark:text-pink-200 dark:border-pink-500/50",
 };
+
+/**
+ * Valid state transitions matrix (mirrors backend validation)
+ * Only these transitions are allowed per status
+ */
+const VALID_TRANSITIONS: Record<JobStatus, JobStatus[]> = {
+  RECEIVED: ["ASSIGNED", "DIAGNOSING", "CANCELLED"],
+  ASSIGNED: ["DIAGNOSING", "CANCELLED"],
+  DIAGNOSING: ["WAITING_APPROVAL", "WAITING_FOR_PARTS", "IN_PROGRESS", "CANCELLED"],
+  WAITING_APPROVAL: ["APPROVED", "CANCELLED"],
+  APPROVED: ["WAITING_FOR_PARTS", "IN_PROGRESS", "CANCELLED"],
+  WAITING_FOR_PARTS: ["IN_PROGRESS", "CANCELLED"],
+  IN_PROGRESS: ["READY", "WAITING_FOR_PARTS", "CANCELLED"],
+  READY: ["DELIVERED", "RETURNED", "IN_PROGRESS"],
+  DELIVERED: [], // Terminal state
+  CANCELLED: [], // Terminal state
+  RETURNED: [], // Terminal state
+};
+
+/**
+ * Get allowed status transitions for a given current status
+ */
+function getAllowedTransitions(currentStatus: JobStatus): JobStatus[] {
+  return VALID_TRANSITIONS[currentStatus] || [];
+}
 
 export default function JobCardsPage() {
   const router = useRouter();
@@ -59,6 +96,16 @@ export default function JobCardsPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
+
+  // CRM Modals State
+  const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(null);
+  const [timelineCustomerName, setTimelineCustomerName] = useState<string>("");
+  const [followUpData, setFollowUpData] = useState<{
+    customerId: string;
+    customerName: string;
+    defaultPurpose: string;
+    defaultType: FollowUpType;
+  } | null>(null);
 
   // Use modern hook for async data loading with built-in race condition prevention
   const {
@@ -76,9 +123,17 @@ export default function JobCardsPage() {
     [] as JobCard[], // Initial data
   );
 
-  const handleStatusChange = async (jobCardId: string, status: JobStatus) => {
+  const handleStatusChange = async (job: JobCard, status: JobStatus) => {
+    // 🚨 CRITICAL VALIDATION
+    if (status === 'READY') {
+      if (!job.finalCost && !job.estimatedCost) {
+        alert("Cannot mark job READY without cost.\n\nPlease edit the job card and add Final Cost or Estimated Cost first.");
+        return;
+      }
+    }
+
     try {
-      await updateJobCardStatus(selectedShopId, jobCardId, status);
+      await updateJobCardStatus(selectedShopId, job.id, status);
       // Reload job cards after status change
       reload();
     } catch (err: any) {
@@ -252,30 +307,44 @@ export default function JobCardsPage() {
                       {job.deviceBrand} {job.deviceModel}
                     </td>
                     <td className="px-4 py-3">
-                      <select
-                        value={job.status}
-                        onChange={(e) =>
-                          handleStatusChange(
-                            job.id,
-                            e.target.value as JobStatus,
-                          )
-                        }
-                        className={`px-3 py-1 rounded-lg text-xs font-semibold border ${STATUS_COLORS[job.status]} focus:outline-none cursor-pointer appearance-none`}
-                        disabled={
-                          job.status === "DELIVERED" ||
-                          job.status === "CANCELLED"
-                        }
-                      >
-                        {STATUS_OPTIONS.map((status) => (
-                          <option
-                            key={status}
-                            value={status}
-                            className="bg-white dark:bg-stone-900 text-black dark:text-white"
+                      {(() => {
+                        const allowedTransitions = getAllowedTransitions(job.status);
+                        const isTerminal = allowedTransitions.length === 0;
+                        
+                        return (
+                          <select
+                            value={job.status}
+                            onChange={(e) =>
+                              handleStatusChange(
+                                job,
+                                e.target.value as JobStatus,
+                              )
+                            }
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold border ${STATUS_COLORS[job.status]} focus:outline-none ${isTerminal ? 'cursor-not-allowed' : 'cursor-pointer'} appearance-none`}
+                            disabled={isTerminal}
+                            title={isTerminal ? 'Terminal state - no further changes allowed' : 'Change status'}
                           >
-                            {status.replace(/_/g, " ")}
-                          </option>
-                        ))}
-                      </select>
+                            {/* Current status always shown */}
+                            <option
+                              value={job.status}
+                              className="bg-white dark:bg-stone-900 text-black dark:text-white"
+                            >
+                              {job.status.replace(/_/g, " ")}
+                            </option>
+                            
+                            {/* Only show allowed transitions */}
+                            {allowedTransitions.map((status) => (
+                              <option
+                                key={status}
+                                value={status}
+                                className="bg-white dark:bg-stone-900 text-black dark:text-white"
+                              >
+                                → {status.replace(/_/g, " ")}
+                              </option>
+                            ))}
+                          </select>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 text-black dark:text-white">
@@ -285,6 +354,30 @@ export default function JobCardsPage() {
                           title="View/Edit"
                         >
                           👁️
+                        </button>
+                        <button
+                          onClick={() => {
+                            setTimelineCustomerId(job.customerId || "");
+                            setTimelineCustomerName(job.customerName || "Customer");
+                          }}
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition"
+                          title="View History"
+                        >
+                          🕒
+                        </button>
+                        <button
+                          onClick={() => {
+                            setFollowUpData({
+                              customerId: job.customerId || "",
+                              customerName: job.customerName || "Customer",
+                              defaultPurpose: `Follow up on job card #${job.jobNumber} (${job.deviceBrand} ${job.deviceModel})`,
+                              defaultType: "PHONE_CALL",
+                            });
+                          }}
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition"
+                          title="Add Follow-up"
+                        >
+                          📋
                         </button>
                         <a
                           href={`/track/${job.publicToken}`}
@@ -337,6 +430,31 @@ export default function JobCardsPage() {
           shopId={selectedShopId}
           jobCard={selectedJobCard}
           onClose={handleModalClose}
+        />
+      )}
+
+      {/* CRM Modals */}
+      <CustomerTimelineDrawer
+        isOpen={!!timelineCustomerId}
+        customerId={timelineCustomerId || ""}
+        customerName={timelineCustomerName}
+        onClose={() => {
+          setTimelineCustomerId(null);
+          setTimelineCustomerName("");
+        }}
+      />
+
+      {followUpData && (
+        <AddFollowUpModal
+          isOpen={!!followUpData}
+          customerId={followUpData.customerId}
+          customerName={followUpData.customerName}
+          defaultPurpose={followUpData.defaultPurpose}
+          defaultType={followUpData.defaultType}
+          onClose={() => setFollowUpData(null)}
+          onSuccess={() => {
+            // refresh something if needed
+          }}
         />
       )}
     </div>

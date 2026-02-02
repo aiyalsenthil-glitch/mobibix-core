@@ -4,11 +4,40 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
-import { WhatsAppPhoneNumberPurpose } from '@prisma/client';
+import { UserRole, WhatsAppPhoneNumberPurpose } from '@prisma/client';
 
 @Injectable()
 export class WhatsAppPhoneNumbersService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Mask phone number (e.g. +91 ******4321)
+   */
+  maskPhoneNumber(phone: string): string {
+    if (!phone) return '';
+    const clean = phone.replace(/\s+/g, '');
+    if (clean.length <= 6) return phone;
+    return `${clean.substring(0, 3)} ****** ${clean.substring(clean.length - 4)}`;
+  }
+
+  /**
+   * Sanitize phone number response based on user role
+   */
+  sanitizePhoneNumber(phone: any, role: UserRole) {
+    if (role === UserRole.SUPER_ADMIN || role === UserRole.ADMIN) {
+      return phone;
+    }
+
+    return {
+      id: phone.id,
+      maskedPhone: this.maskPhoneNumber(phone.phoneNumber),
+      purpose: phone.purpose,
+      isDefault: phone.isDefault,
+      isActive: phone.isActive,
+      isInherited: phone.isInherited || false,
+      source: phone.source,
+    };
+  }
 
   /**
    * Get active phone number for tenant by purpose
@@ -47,7 +76,8 @@ export class WhatsAppPhoneNumbersService {
         select: { tenantType: true },
       });
 
-      const moduleType = tenant?.tenantType ?? 'GYM';
+      let moduleType = tenant?.tenantType ?? 'GYM';
+      if (moduleType === 'MOBILESHOP') moduleType = 'MOBILE_SHOP';
 
       // Try module purpose-specific
       let modulePhone = await this.prisma.whatsAppPhoneNumberModule.findFirst({
@@ -63,8 +93,8 @@ export class WhatsAppPhoneNumbersService {
         modulePhone = await this.prisma.whatsAppPhoneNumberModule.findFirst({
           where: {
             moduleType,
-            isDefault: true,
             isActive: true,
+            OR: [{ isDefault: true }, { purpose: WhatsAppPhoneNumberPurpose.DEFAULT }],
           },
         });
       }
@@ -120,6 +150,7 @@ export class WhatsAppPhoneNumbersService {
         select: { tenantType: true },
       });
       moduleType = tenant?.tenantType ?? 'GYM';
+      if (moduleType === 'MOBILESHOP') moduleType = 'MOBILE_SHOP';
     }
 
     const modulePhones = await this.prisma.whatsAppPhoneNumberModule.findMany({

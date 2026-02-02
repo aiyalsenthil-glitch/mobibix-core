@@ -54,12 +54,23 @@ export class SalesController {
   }
 
   @Get('invoices')
-  async list(@Req() req: any, @Query('shopId') shopId: string) {
+  async list(
+    @Req() req: any,
+    @Query('shopId') shopId: string,
+    @Query('fromJobCard') fromJobCard?: string,
+  ) {
     const tenantId = req.user?.tenantId;
     if (!shopId) {
       throw new BadRequestException('shopId is required');
     }
-    return this.service.listInvoices(tenantId, shopId);
+    return this.service.listInvoices(
+      tenantId,
+      shopId,
+      1,
+      20,
+      undefined,
+      fromJobCard === 'true',
+    );
   }
 
   @Get('invoice/:invoiceId')

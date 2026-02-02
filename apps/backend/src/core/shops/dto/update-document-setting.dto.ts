@@ -54,6 +54,7 @@ export class UpdateDocumentSettingDto {
   @IsEnum(YearFormat)
   yearFormat?: YearFormat;
 
+
   @IsOptional()
   @IsInt()
   @Min(3)
@@ -63,4 +64,13 @@ export class UpdateDocumentSettingDto {
   @IsOptional()
   @IsEnum(ResetPolicy)
   resetPolicy?: ResetPolicy;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  currentNumber?: number;
+
+  @IsOptional()
+  @IsString()
+  currentYear?: string;
 }

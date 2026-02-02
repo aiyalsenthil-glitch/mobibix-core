@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFollowUp, type FollowUpType } from "@/services/crm.api";
 
 interface AddFollowUpModalProps {
@@ -9,6 +9,8 @@ interface AddFollowUpModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  defaultType?: FollowUpType;
+  defaultPurpose?: string;
 }
 
 export function AddFollowUpModal({
@@ -17,15 +19,28 @@ export function AddFollowUpModal({
   isOpen,
   onClose,
   onSuccess,
+  defaultType = "PHONE_CALL",
+  defaultPurpose = "",
 }: AddFollowUpModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    type: "PHONE_CALL" as FollowUpType,
-    purpose: "",
+    type: defaultType,
+    purpose: defaultPurpose,
     followUpAt: "",
   });
+
+  // Update form data when defaults change (e.g. when opening from a different job)
+  useEffect(() => {
+    if (isOpen) {
+      setFormData((prev) => ({
+        ...prev,
+        type: defaultType,
+        purpose: defaultPurpose,
+      }));
+    }
+  }, [isOpen, defaultType, defaultPurpose]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

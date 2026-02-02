@@ -15,11 +15,17 @@ import { useShop } from "@/context/ShopContext";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
 import { NoShopsAlert } from "../components/NoShopsAlert";
 import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
+import { CancelInvoiceModal } from "@/components/sales/CancelInvoiceModal";
+import { CustomerTimelineDrawer } from "@/components/crm/CustomerTimelineDrawer";
+import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
+import { type FollowUpType } from "@/services/crm.api";
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
+  DRAFT: "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-400",
+  FINAL: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
   PAID: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
-  CREDIT: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
-  CANCELLED: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
+  CREDIT: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400", // Changed from blue to amber for credit
+  VOIDED: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
 };
 
 const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
@@ -110,6 +116,17 @@ export default function SalesPage() {
   const [collectingInvoice, setCollectingInvoice] = useState<SalesInvoice | null>(
     null,
   );
+  const [cancellingInvoice, setCancellingInvoice] = useState<{ id: string; number: string } | null>(null);
+
+  // CRM Modals State
+  const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(null);
+  const [timelineCustomerName, setTimelineCustomerName] = useState<string>("");
+  const [followUpData, setFollowUpData] = useState<{
+    customerId: string;
+    customerName: string;
+    defaultPurpose: string;
+    defaultType: FollowUpType;
+  } | null>(null);
 
   const handleCreateInvoice = () => {
     if (!selectedShopId) {
@@ -143,22 +160,12 @@ export default function SalesPage() {
     router.push(`/sales/${invoiceId}/edit?shopId=${selectedShopId}`);
   };
 
-  const handleCancel = async (invoiceId: string, invoiceNumber: string) => {
+  const handleCancel = (invoiceId: string, invoiceNumber: string) => {
     if (!isOwner) {
       alert("Only owner can cancel invoices");
       return;
     }
-    if (!confirm(`Cancel invoice ${invoiceNumber}?`)) {
-      return;
-    }
-    try {
-      // Import and use cancelInvoice from API
-      const { cancelInvoice } = await import("@/services/sales.api");
-      await cancelInvoice(invoiceId);
-      reload();
-    } catch (err: any) {
-      alert(err.message || "Failed to cancel invoice");
-    }
+    setCancellingInvoice({ id: invoiceId, number: invoiceNumber });
   };
 
   const handleCollectPayment = (invoice: SalesInvoice) => {
@@ -401,12 +408,14 @@ export default function SalesPage() {
                       <td className="px-4 py-3">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            inv.paymentStatus
-                              ? PAYMENT_STATUS_COLORS[inv.paymentStatus]
-                              : STATUS_COLORS[inv.status]
+                            inv.status === 'VOIDED'
+                              ? STATUS_COLORS['VOIDED']
+                              : inv.paymentStatus
+                                ? PAYMENT_STATUS_COLORS[inv.paymentStatus]
+                                : STATUS_COLORS[inv.status]
                           }`}
                         >
-                          {inv.paymentStatus || inv.status}
+                          {inv.status === 'VOIDED' ? 'VOIDED' : (inv.paymentStatus || inv.status)}
                         </span>
                       </td>
                       <td
@@ -427,32 +436,116 @@ export default function SalesPage() {
                             </button>
                            ) : null}
 
+                          {/* View Button */}
                           <button
                             onClick={() =>
-                              handlePrint(inv.id, inv.invoiceNumber)
+                              router.push(
+                                `/sales/${inv.id}?shopId=${selectedShopId}`,
+                              )
                             }
-                            title="Print Invoice"
-                            className={`px-2 py-1 rounded text-sm transition ${
-                              theme === "dark"
-                                ? "text-blue-400 hover:bg-blue-500/20"
-                                : "text-blue-600 hover:bg-blue-50"
-                            }`}
+                            title="View Invoice"
+                            className={`p-2 rounded ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-zinc-200"} transition`}
                           >
-                            🖨️
+                            <svg
+                              className={`w-4 h-4 ${theme === "dark" ? "text-blue-400" : "text-blue-600"}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                              />
+                            </svg>
+                          </button>
+
+                          {/* CRM Actions */}
+                          <button
+                            onClick={() => {
+                              setTimelineCustomerId(inv.customerId || "");
+                              setTimelineCustomerName(inv.customerName || "Customer");
+                            }}
+                            title="View History"
+                            className={`p-2 rounded ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-zinc-200"} transition`}
+                          >
+                            🕒
                           </button>
                           <button
-                            onClick={() =>
-                              handleShare(inv.id, inv.invoiceNumber)
-                            }
-                            title="Share Invoice"
-                            className={`px-2 py-1 rounded text-sm transition ${
-                              theme === "dark"
-                                ? "text-green-400 hover:bg-green-500/20"
-                                : "text-green-600 hover:bg-green-50"
-                            }`}
+                            onClick={() => {
+                              setFollowUpData({
+                                customerId: inv.customerId || "",
+                                customerName: inv.customerName || "Customer",
+                                defaultPurpose: `Follow up on invoice ${inv.invoiceNumber}`,
+                                defaultType: "PHONE_CALL",
+                              });
+                            }}
+                            title="Add Follow-up"
+                            className={`p-2 rounded ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-zinc-200"} transition`}
                           >
-                            📤
+                            📋
                           </button>
+
+                          {/* Print Button - Hidden for voided invoices */}
+                          {inv.status !== 'VOIDED' && (
+                            <button
+                              onClick={() =>
+                                router.push(
+                                  `/sales/${inv.id}/invoice?shopId=${selectedShopId}`,
+                                )
+                              }
+                              title="Print Invoice"
+                              className={`p-2 rounded ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-zinc-200"} transition`}
+                            >
+                              <svg
+                                className={`w-4 h-4 ${theme === "dark" ? "text-stone-400" : "text-zinc-600"}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                                />
+                              </svg>
+                            </button>
+                          )}
+
+                          {/* Share Button - Hidden for voided invoices */}
+                          {inv.status !== 'VOIDED' && (
+                            <button
+                              onClick={() =>
+                                router.push(
+                                  `/sales/${inv.id}/share?shopId=${selectedShopId}`,
+                                )
+                              }
+                              title="Share Invoice"
+                              className={`p-2 rounded ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-zinc-200"} transition`}
+                            >
+                              <svg
+                                className={`w-4 h-4 ${theme === "dark" ? "text-stone-400" : "text-zinc-600"}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                                />
+                              </svg>
+                            </button>
+                          )}
                           {isOwner &&
                             (inv.status === "PAID" ||
                               inv.status === "CREDIT") && (
@@ -506,6 +599,45 @@ export default function SalesPage() {
           onClose={() => setCollectingInvoice(null)}
           onSuccess={() => {
             reload();
+          }}
+        />
+      )}
+
+      {/* Cancel Invoice Modal */}
+      {cancellingInvoice && (
+        <CancelInvoiceModal
+          invoiceId={cancellingInvoice.id}
+          invoiceNumber={cancellingInvoice.number}
+          isOpen={!!cancellingInvoice}
+          onClose={() => setCancellingInvoice(null)}
+          onSuccess={() => {
+            setCancellingInvoice(null);
+            reload();
+          }}
+        />
+      )}
+
+      {/* CRM Modals */}
+      <CustomerTimelineDrawer
+        isOpen={!!timelineCustomerId}
+        customerId={timelineCustomerId || ""}
+        customerName={timelineCustomerName}
+        onClose={() => {
+          setTimelineCustomerId(null);
+          setTimelineCustomerName("");
+        }}
+      />
+
+      {followUpData && (
+        <AddFollowUpModal
+          isOpen={!!followUpData}
+          customerId={followUpData.customerId || ""}
+          customerName={followUpData.customerName || "Customer"}
+          defaultPurpose={followUpData.defaultPurpose}
+          defaultType={followUpData.defaultType}
+          onClose={() => setFollowUpData(null)}
+          onSuccess={() => {
+            // refresh something if needed
           }}
         />
       )}

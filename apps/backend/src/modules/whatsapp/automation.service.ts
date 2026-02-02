@@ -37,10 +37,13 @@ export class AutomationService {
       'COACHING_FOLLOWUP',
     ],
     MOBILE_SHOP: [
-      'JOB_CREATED',
-      'JOB_COMPLETED',
+      'FOLLOW_UP_SCHEDULED',
+      'FOLLOW_UP_OVERDUE',
+      'FOLLOW_UP_COMPLETED',
       'INVOICE_CREATED',
       'PAYMENT_PENDING',
+      'JOB_COMPLETED',
+      'JOB_CREATED',
     ],
   };
 
@@ -71,13 +74,25 @@ export class AutomationService {
       case 'MEMBER_CREATED':
       case 'MEMBERSHIP_EXPIRY':
       case 'MEMBERSHIP_EXPIRED':
-        return 'DATE';
+        return ReminderTriggerType.DATE;
       case 'AFTER_JOB':
-        return 'AFTER_JOB';
+        return ReminderTriggerType.AFTER_JOB;
       case 'AFTER_INVOICE':
-        return 'AFTER_INVOICE';
+        return ReminderTriggerType.AFTER_INVOICE;
+      // MobileShop Events -> EVENT_BASED
+      case 'FOLLOW_UP_SCHEDULED':
+      case 'FOLLOW_UP_OVERDUE':
+      case 'FOLLOW_UP_COMPLETED':
+      case 'INVOICE_CREATED':
+      case 'INVOICE_PAID':
+      case 'PAYMENT_PENDING':
+      case 'JOB_CREATED':
+      case 'JOB_READY':
+      case 'JOB_COMPLETED':
+      case 'JOB_DELIVERED':
+        return ReminderTriggerType.EVENT_BASED;
       default:
-        return 'DATE'; // Fallback
+        return ReminderTriggerType.DATE; // Fallback
     }
   }
 
@@ -164,8 +179,11 @@ export class AutomationService {
    * Create new automation with validation
    */
   async create(dto: CreateAutomationDto, userId?: string) {
+    // Normalize eventType: replace spaces with underscores
+    const normalizedEventType = dto.eventType.replace(/\s+/g, '_').toUpperCase();
+    
     // Validate event type
-    this.validateEventType(dto.moduleType, dto.eventType);
+    this.validateEventType(dto.moduleType, normalizedEventType);
 
     // Validate conditions
     this.validateConditions(dto.conditions);
@@ -174,7 +192,7 @@ export class AutomationService {
     const automation = await this.prisma.whatsAppAutomation.create({
       data: {
         moduleType: dto.moduleType,
-        eventType: dto.eventType,
+        eventType: normalizedEventType, // Use normalized version
         templateKey: dto.templateKey,
         offsetDays: dto.offsetDays,
         enabled: dto.enabled ?? true,
@@ -186,7 +204,7 @@ export class AutomationService {
     });
 
     this.logger.log(
-      `Created automation ${automation.id} for ${dto.moduleType}.${dto.eventType}`,
+      `Created automation ${automation.id} for ${dto.moduleType}.${normalizedEventType}`,
     );
 
     return automation;
@@ -323,9 +341,11 @@ export class AutomationService {
     eventType: string;
     tenantId: string;
     entityId: string;
+    customerId?: string;
     payload?: any;
   }) {
     const { moduleType, eventType, tenantId, entityId } = event;
+    let { customerId } = event;
 
     this.logger.log(
       `Handling event: ${moduleType}.${eventType} for ${tenantId}:${entityId}`,
@@ -347,9 +367,7 @@ export class AutomationService {
 
     // 2️⃣ Resolve Customer ID based on Entity
     // (For MEMBER_CREATED, entityId is memberId)
-    let customerId: string | undefined;
-
-    if (moduleType === 'GYM' && eventType === 'MEMBER_CREATED') {
+    if (!customerId && moduleType === 'GYM' && eventType === 'MEMBER_CREATED') {
       const member = await this.prisma.member.findUnique({
         where: { id: entityId },
       });

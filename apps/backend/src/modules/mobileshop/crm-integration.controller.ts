@@ -55,6 +55,20 @@ export class MobileShopCrmController {
   }
 
   /**
+   * GET /mobileshop/crm/follow-ups/counts
+   * Get counts of pending and overdue follow-ups
+   * Proxy to CORE: GET /api/core/follow-ups/counts
+   */
+  @Get('follow-ups/counts')
+  async getFollowUpCounts(@Request() req) {
+    const headers = this.crmIntegration.buildAuthHeaders(
+      req.headers.authorization?.replace('Bearer ', '') || '',
+    );
+
+    return this.crmIntegration.getFollowUpCounts(headers);
+  }
+
+  /**
    * POST /mobileshop/crm/follow-ups
    * Create a follow-up from Job Card or Customer screen
    * Proxy to CORE: POST /api/core/follow-ups

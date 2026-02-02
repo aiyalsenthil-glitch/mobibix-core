@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AutomationService } from '../../modules/whatsapp/automation.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFollowUpDto } from './dto/create-follow-up.dto';
 import { FollowUpBucket, FollowUpQueryDto } from './dto/follow-up-query.dto';
@@ -18,7 +19,10 @@ import {
 
 @Injectable()
 export class FollowUpsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly automationService: AutomationService,
+  ) {}
 
   async createFollowUp(
     tenantId: string,
@@ -32,7 +36,7 @@ export class FollowUpsService {
       dto.assignedToUserId,
     );
 
-    return await this.prisma.customerFollowUp.create({
+    const followUp = await this.prisma.customerFollowUp.create({
       data: {
         tenantId,
         customerId: dto.customerId,
@@ -50,6 +54,23 @@ export class FollowUpsService {
         customer: { select: { id: true, name: true, phone: true } },
       },
     });
+
+    // ─────────────────────────────
+    // ✅ Trigger WhatsApp Automation
+    // ─────────────────────────────
+    try {
+      await this.automationService.handleEvent({
+        moduleType: 'MOBILE_SHOP',
+        eventType: 'FOLLOW_UP_SCHEDULED',
+        tenantId,
+        customerId: followUp.customerId,
+        entityId: followUp.id,
+      });
+    } catch (err) {
+      console.error('Failed to trigger WhatsApp automation:', (err as any).message);
+    }
+
+    return followUp;
   }
 
   async updateFollowUp(
@@ -79,7 +100,7 @@ export class FollowUpsService {
         ? null
         : undefined;
 
-    return this.prisma.customerFollowUp.update({
+    const updated = await this.prisma.customerFollowUp.update({
       where: { id: followUpId },
       data: {
         type: dto.type,
@@ -96,6 +117,25 @@ export class FollowUpsService {
         customer: { select: { id: true, name: true, phone: true } },
       },
     });
+
+    // ─────────────────────────────
+    // ✅ Trigger WhatsApp Automation
+    // ─────────────────────────────
+    if (dto.status === FollowUpStatus.DONE) {
+      try {
+        await this.automationService.handleEvent({
+          moduleType: 'MOBILE_SHOP',
+          eventType: 'FOLLOW_UP_COMPLETED',
+          tenantId,
+          customerId: followUp.customerId,
+          entityId: followUp.id,
+        });
+      } catch (err) {
+        console.error('Failed to trigger WhatsApp automation:', (err as any).message);
+      }
+    }
+
+    return updated;
   }
 
   async listMyFollowUps(
@@ -127,6 +167,30 @@ export class FollowUpsService {
     }
 
     return items;
+  }
+
+  async getMyFollowUpCounts(tenantId: string, userId: string) {
+    const now = new Date();
+    const [pending, overdue] = await Promise.all([
+      this.prisma.customerFollowUp.count({
+        where: {
+          tenantId,
+          assignedToUserId: userId,
+          status: FollowUpStatus.PENDING,
+          followUpAt: { gt: now },
+        },
+      }),
+      this.prisma.customerFollowUp.count({
+        where: {
+          tenantId,
+          assignedToUserId: userId,
+          status: FollowUpStatus.PENDING,
+          followUpAt: { lte: now },
+        },
+      }),
+    ]);
+
+    return { pending, overdue, total: pending + overdue };
   }
 
   async listAllFollowUps(
@@ -169,10 +233,29 @@ export class FollowUpsService {
     this.ensureCanManageFollowUp(role, userId, followUp.assignedToUserId);
     this.assertStatusTransition(followUp.status, status);
 
-    return this.prisma.customerFollowUp.update({
+    const updated = await this.prisma.customerFollowUp.update({
       where: { id: followUpId },
       data: { status },
     });
+
+    // ─────────────────────────────
+    // ✅ Trigger WhatsApp Automation
+    // ─────────────────────────────
+    if (status === FollowUpStatus.DONE) {
+      try {
+        await this.automationService.handleEvent({
+          moduleType: 'MOBILE_SHOP',
+          eventType: 'FOLLOW_UP_COMPLETED',
+          tenantId,
+          customerId: followUp.customerId,
+          entityId: followUp.id,
+        });
+      } catch (err) {
+        console.error('Failed to trigger WhatsApp automation:', (err as any).message);
+      }
+    }
+
+    return updated;
   }
 
   private buildFollowUpWhere(
@@ -288,6 +371,21 @@ export class FollowUpsService {
             message,
           },
         });
+      }
+
+      // ─────────────────────────────
+      // ✅ Trigger WhatsApp Automation
+      // ─────────────────────────────
+      try {
+        await this.automationService.handleEvent({
+          moduleType: 'MOBILE_SHOP',
+          eventType: 'FOLLOW_UP_OVERDUE',
+          tenantId,
+          customerId: item.customerId,
+          entityId: item.id,
+        });
+      } catch (err) {
+        console.error('Failed to trigger WhatsApp automation:', (err as any).message);
       }
     }
   }

@@ -17,7 +17,7 @@ export class SubscriptionsService {
   async upgradeSubscription(
     tenantId: string,
     planId: string,
-    module: ModuleType = 'MOBILE_SHOP',
+    module: ModuleType,
   ) {
     const newPlan = await this.prisma.plan.findUnique({
       where: { id: planId },
@@ -140,7 +140,7 @@ export class SubscriptionsService {
 
   async canAddMember(
     tenantId: string,
-    module: ModuleType = 'MOBILE_SHOP',
+    module: ModuleType,
   ): Promise<boolean> {
     const subscription = await this.getCurrentActiveSubscription(
       tenantId,
@@ -164,7 +164,7 @@ export class SubscriptionsService {
   async buyPlan(
     tenantId: string,
     planId: string,
-    module: ModuleType = 'MOBILE_SHOP',
+    module: ModuleType,
   ) {
     const plan = await this.prisma.plan.findUnique({
       where: { id: planId },
@@ -234,7 +234,7 @@ export class SubscriptionsService {
   }
   async getUpcomingSubscription(
     tenantId: string,
-    module: ModuleType = 'MOBILE_SHOP',
+    module: ModuleType,
   ) {
     return this.prisma.tenantSubscription.findFirst({
       where: {
@@ -249,7 +249,7 @@ export class SubscriptionsService {
   }
   async getCurrentActiveSubscription(
     tenantId: string,
-    module: ModuleType = 'MOBILE_SHOP',
+    module: ModuleType,
   ) {
     const now = new Date();
 
@@ -303,7 +303,7 @@ export class SubscriptionsService {
   async assignTrialSubscription(
     tenantId: string,
     planId: string,
-    module: ModuleType = 'MOBILE_SHOP',
+    module: ModuleType,
   ) {
     const startDate = new Date();
     const endDate = new Date();
@@ -323,7 +323,7 @@ export class SubscriptionsService {
 
   async getSubscriptionByTenant(
     tenantId: string,
-    module: ModuleType = 'MOBILE_SHOP',
+    module: ModuleType,
   ) {
     return this.prisma.tenantSubscription.findFirst({
       where: {
@@ -342,7 +342,7 @@ export class SubscriptionsService {
   async extendTrial(
     tenantId: string,
     extraDays: number,
-    module: ModuleType = 'MOBILE_SHOP',
+    module: ModuleType,
   ) {
     const sub = await this.getSubscriptionByTenant(tenantId, module);
     if (!sub) return null;
@@ -368,7 +368,7 @@ export class SubscriptionsService {
   async changePlan(
     tenantId: string,
     planName: string,
-    module: ModuleType = 'MOBILE_SHOP',
+    module: ModuleType,
   ) {
     // 1️⃣ Find plan
     const plan = await this.prisma.plan.findFirst({
@@ -409,7 +409,7 @@ export class SubscriptionsService {
 
   async getActiveSubscriptionByTenant(
     tenantId: string,
-    module: ModuleType = 'MOBILE_SHOP',
+    module: ModuleType,
   ) {
     return this.prisma.tenantSubscription.findFirst({
       where: {
@@ -426,7 +426,7 @@ export class SubscriptionsService {
   async changeStatus(
     tenantId: string,
     status: 'ACTIVE' | 'EXPIRED' | 'CANCELLED',
-    module: ModuleType = 'MOBILE_SHOP',
+    module: ModuleType,
   ) {
     const currentSub = await this.getCurrentActiveSubscription(
       tenantId,

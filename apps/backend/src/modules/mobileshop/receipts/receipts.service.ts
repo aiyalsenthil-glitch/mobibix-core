@@ -221,9 +221,11 @@ export class ReceiptsService {
       throw new BadRequestException('Receipt not found');
     }
 
-    if (receipt.tenantId !== tenantId || receipt.shopId !== shopId) {
+    // Only validate tenantId - allow cancelling receipts from any shop within the tenant
+    // This allows invoice cancellation to work even if receipt is from a different shop
+    if (receipt.tenantId !== tenantId) {
       throw new BadRequestException(
-        'Receipt does not belong to this tenant/shop',
+        'Receipt does not belong to this tenant',
       );
     }
 

@@ -51,29 +51,42 @@ export default function ReportsPage() {
   const [dateRange, setDateRange] = useState(30); // Default 30 days
 
   const fetchData = async () => {
+    // Don't fetch if no shop is selected yet
+    if (!selectedShopId) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       
+      console.log('[Reports] Fetching data for shopId:', selectedShopId);
+      
       const endDate = new Date();
+      endDate.setHours(23, 59, 59, 999); // End of day to include all transactions
+      
       const startDate = new Date();
       startDate.setDate(endDate.getDate() - dateRange);
+      startDate.setHours(0, 0, 0, 0); // Start of day
 
-      const startStr = startDate.toISOString().split("T")[0];
-      const endStr = endDate.toISOString().split("T")[0];
+      const startStr = startDate.toISOString();
+      const endStr = endDate.toISOString();
+
+      console.log('[Reports] Date range:', startStr, 'to', endStr);
 
       const [sales, products, profit] = await Promise.all([
         getSalesReport({
-          shopId: selectedShopId || undefined,
+          shopId: selectedShopId,
           startDate: startStr,
           endDate: endStr,
         }),
         getTopSellingProducts({
-          shopId: selectedShopId || undefined,
+          shopId: selectedShopId,
           startDate: startStr,
           endDate: endStr,
         }),
         getProfitSummary({
-          shopId: selectedShopId || undefined,
+          shopId: selectedShopId,
           startDate: startStr,
           endDate: endStr,
         }),
@@ -107,15 +120,26 @@ export default function ReportsPage() {
     return acc;
   }, [] as { date: string; sales: number; profit: number }[]).reverse(); // API returns desc
 
-  // 2. Payment Modes
+  // 2. Payment Modes - Split MIXED payments into individual methods
   const paymentModes = salesData.reduce((acc, curr) => {
     const mode = curr.paymentMode || "UNKNOWN";
-    const existing = acc.find(item => item.name === mode);
-    if (existing) {
-      existing.value += curr.totalAmount;
-    } else {
-      acc.push({ name: mode, value: curr.totalAmount });
-    }
+    
+    // Split payment mode if it contains ' + ' (e.g., "CASH + UPI" -> ["CASH", "UPI"])
+    const methods = mode.includes(' + ') ? mode.split(' + ') : [mode];
+    
+    methods.forEach(method => {
+      const trimmedMethod = method.trim();
+      const existing = acc.find(item => item.name === trimmedMethod);
+      // Divide amount equally among methods for MIXED payments
+      const shareAmount = curr.totalAmount / methods.length;
+      
+      if (existing) {
+        existing.value += shareAmount;
+      } else {
+        acc.push({ name: trimmedMethod, value: shareAmount });
+      }
+    });
+    
     return acc;
   }, [] as { name: string; value: number }[]);
 
@@ -202,19 +226,19 @@ export default function ReportsPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                <SummaryCard 
                  title="Total Revenue" 
-                 value={`₹${profitMetrics?.totalRevenue.toFixed(2)}`} 
+                 value={`₹${(profitMetrics?.totalRevenue ?? 0).toFixed(2)}`} 
                  icon={<DollarSign className="w-4 h-4 text-emerald-500" />}
                  theme={theme}
                />
                <SummaryCard 
                  title="Gross Profit" 
-                 value={`₹${profitMetrics?.grossProfit.toFixed(2)}`} 
+                 value={`₹${(profitMetrics?.grossProfit ?? 0).toFixed(2)}`} 
                  icon={<TrendingUp className="w-4 h-4 text-blue-500" />}
                  theme={theme}
                />
                <SummaryCard 
                  title="Profit Margin" 
-                 value={`${profitMetrics?.margin.toFixed(1)}%`} 
+                 value={`${(profitMetrics?.margin ?? 0).toFixed(1)}%`} 
                  icon={<BarChart3 className="w-4 h-4 text-purple-500" />}
                  theme={theme}
                />
@@ -229,7 +253,7 @@ export default function ReportsPage() {
             {/* 2. Main Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Sales Trend */}
-              <div className={`p-6 rounded-xl border ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"}`}>
+              <div className={`p-6 rounded-xl border min-w-0 ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"}`}>
                 <h3 className={`text-sm font-semibold mb-6 ${theme === "dark" ? "text-gray-200" : "text-gray-700"}`}>Sales Trend</h3>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -250,7 +274,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Payment Modes */}
-              <div className={`p-6 rounded-xl border ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"}`}>
+              <div className={`p-6 rounded-xl border min-w-0 ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"}`}>
                 <h3 className={`text-sm font-semibold mb-6 ${theme === "dark" ? "text-gray-200" : "text-gray-700"}`}>Payment Modes</h3>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -280,7 +304,7 @@ export default function ReportsPage() {
             {/* 3. Top Products & Navigation */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Top Products */}
-              <div className={`col-span-1 lg:col-span-2 p-6 rounded-xl border ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"}`}>
+              <div className={`col-span-1 lg:col-span-2 p-6 rounded-xl border min-w-0 ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"}`}>
                  <h3 className={`text-sm font-semibold mb-6 ${theme === "dark" ? "text-gray-200" : "text-gray-700"}`}>Top Selling Products</h3>
                  <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">

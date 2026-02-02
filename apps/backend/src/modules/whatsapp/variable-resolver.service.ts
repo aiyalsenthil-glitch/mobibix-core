@@ -6,6 +6,8 @@ import {
   VariableSourceType,
   formatVariableValue,
   getVariableByKey,
+  getVariablesByContext,
+  getVariablesByModule,
 } from './variable-registry';
 
 /**
@@ -34,6 +36,7 @@ export interface VariableResolutionContext {
   memberId?: string; // For GYM
   invoiceId?: string; // For MOBILE_SALES
   jobCardId?: string; // For MOBILE_REPAIR
+  followUpId?: string; // For CRM/Follow-ups
   shopId?: string; // For MOBILE_SALES and MOBILE_REPAIR
   manualInputs?: Record<string, any>; // User-provided values for MANUAL variables
 }
@@ -47,9 +50,16 @@ export class WhatsAppVariableResolver {
    */
   async resolveVariables(
     variableKeys: string[],
-    context: VariableResolutionContext,
+    context: VariableResolutionContext & { eventType?: string },
   ): Promise<Map<string, ResolvedVariable>> {
     const resolved = new Map<string, ResolvedVariable>();
+
+    // Get allowed variables for this context
+    const allowedVars = context.eventType
+      ? getVariablesByContext(context.module, context.eventType)
+      : getVariablesByModule(context.module);
+
+    const allowedKeys = new Set(allowedVars.map((v) => v.key));
 
     for (const key of variableKeys) {
       const variable = getVariableByKey(key);
@@ -65,23 +75,41 @@ export class WhatsAppVariableResolver {
         continue;
       }
 
-      try {
-        const value = await this.resolveVariable(variable, context);
-        const formatted = formatVariableValue(value, variable.dataType);
-
-        resolved.set(key, {
-          key,
-          value,
-          formatted,
-          source: variable.sourceType,
-        });
-      } catch (error) {
+      // 🚨 SAFETY CHECK: Is this variable allowed for the current module/event?
+      if (!allowedKeys.has(key)) {
         resolved.set(key, {
           key,
           value: null,
           formatted: '',
           source: variable.sourceType,
-          error: error.message,
+          error: `Variable ${key} is not allowed for ${context.module} ${context.eventType || ''}`,
+        });
+        continue;
+      }
+
+      try {
+        const value = await this.resolveVariable(variable, context);
+        const formatted = formatVariableValue(value, variable.dataType);
+
+        // 🚨 STRICT VALIDATION: If variable is required but result is empty/null, FAIL
+        if (variable.required && (value === null || value === undefined || value === '')) {
+             throw new Error(`Required variable '${key}' resolved to empty value`);
+        }
+
+        resolved.set(key, {
+          key,
+          value: value ?? null,
+          formatted,
+          source: variable.sourceType,
+        });
+      } catch (error) {
+        // Capture specific resolution error
+        resolved.set(key, {
+          key,
+          value: null,
+          formatted: '',
+          source: variable.sourceType,
+          error: (error as any).message,
         });
       }
     }
@@ -118,8 +146,15 @@ export class WhatsAppVariableResolver {
     variable: VariableDefinition,
     context: VariableResolutionContext,
   ): Promise<any> {
-    const { module, tenantId, memberId, invoiceId, jobCardId, shopId } =
-      context;
+    const {
+      module,
+      tenantId,
+      memberId,
+      invoiceId,
+      jobCardId,
+      followUpId,
+      shopId,
+    } = context;
 
     // Parse source path (e.g., "Member.fullName" -> table: Member, field: fullName)
     const [tableName, fieldName] = variable.sourcePath.split('.');
@@ -158,6 +193,51 @@ export class WhatsAppVariableResolver {
           where: { id: shopId },
         });
         return shop?.[fieldName] ?? null;
+      case 'Party':
+        // Resolve Party via Follow-up, Invoice, or JobCard
+        if (followUpId) {
+          const followUp = await this.prisma.customerFollowUp.findUnique({
+            where: { id: followUpId },
+            include: { customer: true },
+          });
+          return (followUp?.customer as any)?.[fieldName] ?? null;
+        }
+        if (invoiceId) {
+          const invoice = await this.prisma.invoice.findUnique({
+            where: { id: invoiceId },
+            include: { customer: true },
+          });
+          return (invoice?.customer as any)?.[fieldName] ?? null;
+        }
+        if (jobCardId) {
+          const jobCard = await this.prisma.jobCard.findUnique({
+            where: { id: jobCardId },
+            include: { customer: true },
+          });
+          return (jobCard?.customer as any)?.[fieldName] ?? null;
+        }
+        return null;
+      case 'CustomerFollowUp':
+        if (!followUpId) throw new Error('Follow-up context required');
+        const followUp = await this.prisma.customerFollowUp.findUnique({
+          where: { id: followUpId },
+        });
+        return followUp?.[fieldName] ?? null;
+      case 'User':
+        // Assignee Name for Follow-ups
+        if (followUpId) {
+          const followUp = await this.prisma.customerFollowUp.findUnique({
+            where: { id: followUpId },
+            include: { assignedToUser: true },
+          });
+          // Support both fullName and name
+          return (
+            (followUp?.assignedToUser as any)?.fullName ||
+            (followUp?.assignedToUser as any)?.name ||
+            null
+          );
+        }
+        return null;
 
       default:
         throw new Error(`Unknown table: ${tableName}`);

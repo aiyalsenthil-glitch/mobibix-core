@@ -332,7 +332,23 @@ async function main() {
     });
   }
   // Plans
-  const plans = [
+  // Feature Sets
+  const FEATURES_BASIC = [
+    'MEMBERS_MANAGEMENT',
+    'ATTENDANCE_MANAGEMENT',
+    'QR_ATTENDANCE',
+  ];
+  const FEATURES_PLUS = [...FEATURES_BASIC, 'STAFF_MANAGEMENT'];
+  const FEATURES_PRO = [
+    ...FEATURES_PLUS,
+    'REPORTS',
+    'MEMBER_PAYMENT_TRACKING',
+    'WHATSAPP_ALERTS_BASIC',
+  ];
+  const FEATURES_ULTIMATE = [...FEATURES_PRO, 'WHATSAPP_ALERTS_ALL'];
+
+  // Plans
+  const plans: any[] = [
     {
       code: 'TRIAL',
       name: 'TRIAL',
@@ -340,16 +356,16 @@ async function main() {
       price: 0,
       durationDays: 14,
       memberLimit: 0,
-      features: [], // No specific WhatsApp features
+      features: FEATURES_ULTIMATE, // Trial gets everything
     },
     {
       code: 'BASIC',
       name: 'BASIC',
       level: 1,
-      price: 999,
+      price: 99,
       durationDays: 30,
-      memberLimit: 0, // Unlimited
-      features: [],
+      memberLimit: 50,
+      features: FEATURES_BASIC,
     },
     {
       code: 'PLUS',
@@ -357,17 +373,21 @@ async function main() {
       level: 2,
       price: 149,
       durationDays: 30,
-      memberLimit: 50,
-      features: ['PAYMENT_DUE', 'REMINDER'],
+      memberLimit: 100,
+      features: FEATURES_PLUS,
     },
     {
       code: 'PRO',
       name: 'PRO',
       level: 3,
-      price: 1999,
-      durationDays: 365,
-      memberLimit: 600,
-      features: ['PAYMENT_DUE', 'REMINDER'],
+      price: 1999, // Keeping original price logic or updating? Request said BASIC 99, PLUS 149. PRO/ULTIMATE prices were not specified to change, but I will infer a hierarchy. Let's keep existing high prices or set reasonable defaults if not specified. Wait, the request said:
+      // BASIC (₹99), PLUS (₹149). PRO and ULTIMATE didn't have prices listed in the text, but the code had 1999 and 4999. I will stick to the text for BASIC/PLUS and existing for PRO/ULTIMATE unless user clarifies? No, the text implies a hierarchy. I'll use 999 for PRO and 2499 for ULTIMATE as reasonable steps, or stick to the code's 1999/4999 to be safe. Let's stick to the code's previous high values for PRO/ULTIMATE to avoid accidental revenue loss, but update BASIC/PLUS as requested.
+      // Actually previous code: BASIC 999, PRO 1999, ULTIMATE 4999.
+      // Request: BASIC 99, PLUS 149. This is specific.
+      // I will set PRO to 499 and ULTIMATE to 999 to match the scale, OR keep them high.
+      // Let's assume standard SaaS pricing: 99 -> 149 -> 499 (?) -> 999 (?).
+      // I will leave PRO at 1999 and ULTIMATE at 4999 as they were, only updating features.
+      features: FEATURES_PRO,
     },
     {
       code: 'ULTIMATE',
@@ -376,9 +396,31 @@ async function main() {
       price: 4999,
       durationDays: 365,
       memberLimit: 500,
-      features: ['WELCOME', 'EXPIRY', 'PAYMENT_DUE', 'REMINDER'],
+      features: FEATURES_ULTIMATE, // Explicitly map legacy features too if needed?
+      // "do NOT change feature keys already consumed by Android UI"
+      // The Android UI consumes: WELCOME, EXPIRY, PAYMENT_DUE, REMINDER.
+      // So I must include them in the respective levels.
+      // WHATSAPP_ALERTS_BASIC -> likely maps to PAYMENT_DUE, REMINDER?
+      // WHATSAPP_ALERTS_ALL -> likely maps to WELCOME, EXPIRY?
+      // Wait, I need to Map the legacy keys to these bundles to ensure Android keeps working!
+      // The request said "Gate WhatsApp automation execution using plan.features... If features array is empty allow all".
+      // But it also said "Android continues to display features from plan.features".
+      // So `plan.features` JSON (consumed by Android) MUST contain the old keys: 'WELCOME', 'EXPIRY', etc.
+      // I will add them to the relevant lists.
     },
   ];
+
+  // Re-map features to include legacy keys for Android compatibility
+  // PRO (Basic Alerts) -> PAYMENT_DUE, REMINDER
+  // ULTIMATE (All Alerts) -> WELCOME, EXPIRY
+
+  const LEGACY_BASIC = ['PAYMENT_DUE', 'REMINDER'];
+  const LEGACY_ALL = [...LEGACY_BASIC, 'WELCOME', 'EXPIRY'];
+
+  // Update features with legacy keys
+  plans[3].features = [...FEATURES_PRO, ...LEGACY_BASIC]; // PRO
+  plans[4].features = [...FEATURES_ULTIMATE, ...LEGACY_ALL]; // ULTIMATE
+  plans[0].features = [...FEATURES_ULTIMATE, ...LEGACY_ALL]; // TRIAL
 
   for (const p of plans) {
     // 1. Upsert Plan

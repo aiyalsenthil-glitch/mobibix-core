@@ -20,7 +20,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { listProducts, type ShopProduct, ProductType } from "@/services/products.api";
+import {
+  listProducts,
+  type ShopProduct,
+  ProductType,
+} from "@/services/products.api";
 import { getStockBalances, correctStock } from "@/services/stock.api";
 import { stockIn } from "@/services/inventory.api";
 
@@ -55,6 +59,7 @@ export function StockCorrectionForm({
     preSelectedProductId || "",
   );
   const [quantity, setQuantity] = useState("");
+  const [costPrice, setCostPrice] = useState(""); // Cost input for stock correction
   const [imeisText, setImeisText] = useState("");
   const [reason, setReason] = useState(
     source === "PRODUCT_CREATE" ? "INITIAL_SETUP" : "",
@@ -125,6 +130,10 @@ export function StockCorrectionForm({
     selectedProductId &&
     (selectedProduct?.isSerialized ? imeis.length > 0 : quantityValue !== 0) &&
     reason &&
+    (source === "PRODUCT_CREATE" || quantityValue > 0) && // For IN corrections, ensure cost set
+    (source === "INVENTORY_PAGE" && quantityValue > 0
+      ? parseFloat(costPrice) > 0
+      : true) &&
     !isSubmitting;
 
   const handleSubmit = async () => {
@@ -135,20 +144,37 @@ export function StockCorrectionForm({
       setError("");
 
       if (source === "PRODUCT_CREATE") {
+        // For initial setup, require cost input
+        const cost = parseFloat(costPrice);
+        if (!cost || cost <= 0) {
+          setError("Cost must be greater than 0 for initial stock setup");
+          setIsSubmitting(false);
+          return;
+        }
+
         await stockIn(shopId, {
           shopProductId: selectedProductId,
           quantity: quantityValue,
-          costPrice: 0, // Initial setup assumes 0 cost unless we add cost field
+          costPrice: cost, // Use provided cost instead of 0
           imeis: selectedProduct.isSerialized ? imeis : undefined,
           type: selectedProduct.isSerialized ? "GOODS" : undefined,
         });
       } else {
+        // For corrections, cost is optional but should be provided if available
+        const cost = costPrice ? parseFloat(costPrice) : undefined;
+        if (cost !== undefined && cost <= 0) {
+          setError("Cost must be greater than 0");
+          setIsSubmitting(false);
+          return;
+        }
+
         await correctStock({
           shopId,
           shopProductId: selectedProductId,
           quantity: quantityValue,
           reason,
           note: note.trim() || undefined,
+          costPrice: cost, // Pass cost if provided
         });
       }
 
@@ -194,8 +220,8 @@ export function StockCorrectionForm({
               <span>⚠️</span> ERP GUIDANCE
             </div>
             <p className="leading-relaxed">
-              Stock initialization <strong>bypasses</strong> purchase entry.
-              Use this ONLY for opening stock or manual migration. For normal
+              Stock initialization <strong>bypasses</strong> purchase entry. Use
+              this ONLY for opening stock or manual migration. For normal
               inventory intake, please use <strong>New Purchase</strong>.
             </p>
           </div>
@@ -319,6 +345,35 @@ export function StockCorrectionForm({
             )}
           </div>
         )}
+
+        {/* Cost Input - Show for initial setup or when adding stock */}
+        {source === "PRODUCT_CREATE" || quantityValue > 0 ? (
+          <div className="space-y-2">
+            <Label
+              htmlFor="costPrice"
+              className="text-slate-700 dark:text-slate-300"
+            >
+              Cost Price (₹) <span className="text-red-600">*</span>
+            </Label>
+            <Input
+              id="costPrice"
+              type="number"
+              value={costPrice}
+              onChange={(e) => setCostPrice(e.target.value)}
+              placeholder="Cost per unit"
+              min="0.01"
+              step="0.01"
+              className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-50"
+            />
+            <p
+              className={`text-xs ${source === "PRODUCT_CREATE" ? "text-red-600 dark:text-red-400 font-medium" : "text-slate-600 dark:text-slate-400"}`}
+            >
+              {source === "PRODUCT_CREATE"
+                ? "⚠️ Stock added without cost cannot be sold. Enter cost to make sellable."
+                : "💡 Cost is required to make this stock sellable."}
+            </p>
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <Label

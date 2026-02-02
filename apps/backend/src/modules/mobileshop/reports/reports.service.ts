@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
-import { InvoiceStatus, PurchaseStatus, VoucherType, PaymentMode, VoucherStatus, ReceiptType, ReceiptStatus } from '@prisma/client';
+import { InvoiceStatus, PurchaseStatus, VoucherType, PaymentMode, VoucherStatus, ReceiptType, ReceiptStatus, Prisma } from '@prisma/client';
 
 @Injectable()
 export class MobileShopReportsService {
@@ -28,7 +28,7 @@ export class MobileShopReportsService {
       where: {
         tenantId,
         ...whereShop,
-        status: { not: InvoiceStatus.CANCELLED },
+        status: { not: InvoiceStatus.VOIDED },
       },
       _sum: { totalAmount: true },
     });
@@ -103,7 +103,7 @@ export class MobileShopReportsService {
       tenantId,
       ...(shopId && { shopId }),
       ...(partyId && { customerId: partyId }),
-      status: { not: InvoiceStatus.CANCELLED },
+      status: { not: InvoiceStatus.VOIDED },
       ...(startDate && endDate && {
         invoiceDate: { gte: startDate, lte: endDate },
       }),
@@ -115,6 +115,7 @@ export class MobileShopReportsService {
         items: true,
         receipts: { where: { status: ReceiptStatus.ACTIVE } },
         customer: { select: { name: true } },
+        shop: { select: { name: true } },
       },
       orderBy: { invoiceDate: 'desc' },
     });
@@ -151,22 +152,47 @@ export class MobileShopReportsService {
           isProfitValid = false;
           break; // One missing cost voids invoice profit (conservative)
         }
-        // Profit = (Rate - Cost) * Qty
-        // Note: item.rate should be paisa. Ensure DB stores rate in paisa.
-        totalProfit! += (item.rate - cost) * item.quantity;
+        // Profit = (NetRevenue - Cost) * Qty
+        // NetRevenue per item (paisa) = item.lineTotal - item.gstAmount
+        // Cost per total quantity (paisa) = cost * item.quantity
+        // totalProfit! += (item.lineTotal - item.gstAmount) - (cost * item.quantity);
+        
+        // Wait, lineTotal is already total (rate * qty + gst). 
+        // So (lineTotal - gstAmount) is already total net revenue for that line.
+        totalProfit! += (item.lineTotal - item.gstAmount) - (cost * item.quantity);
       }
 
       if (!isProfitValid) totalProfit = null;
+
+      // Generate payment breakdown from receipts
+      let paymentDisplay = inv.paymentMode;
+      if (inv.receipts.length > 0) {
+        // Group receipts by payment method
+        const methodsMap = new Map<string, number>();
+        inv.receipts.forEach(r => {
+          const current = methodsMap.get(r.paymentMethod) || 0;
+          methodsMap.set(r.paymentMethod, current + r.amount);
+        });
+        
+        // Use receipts for payment display
+        if (methodsMap.size > 0) {
+          paymentDisplay = Array.from(methodsMap.keys())
+            .join(' + ') as any;
+        }
+      } else if (paymentDisplay === 'CREDIT' || !paymentDisplay) {
+        paymentDisplay = 'UNPAID' as any;
+      }
 
       return {
         invoiceNo: inv.invoiceNumber,
         date: inv.invoiceDate,
         customer: inv.customerName,
-        totalAmount: inv.totalAmount,
-        paidAmount: paid,
-        pendingAmount: pending,
-        paymentMode: inv.paymentMode,
-        profit: totalProfit, // Can be NULL
+        totalAmount: inv.totalAmount / 100, // Paisa to Rupees
+        paidAmount: paid / 100, // Paisa to Rupees
+        pendingAmount: pending / 100, // Paisa to Rupees
+        paymentMode: paymentDisplay as any, // Allow breakdown strings like "CASH + UPI"
+        profit: totalProfit !== null ? totalProfit / 100 : null, // Paisa to Rupees
+        shopName: inv.shop.name,
       };
     });
   }
@@ -194,6 +220,9 @@ export class MobileShopReportsService {
 
     const purchases = await this.prisma.purchase.findMany({
       where,
+      include: {
+        shop: { select: { name: true } },
+      },
       orderBy: { invoiceDate: 'desc' },
     });
 
@@ -205,6 +234,7 @@ export class MobileShopReportsService {
       paidAmount: p.paidAmount,
       pendingAmount: p.grandTotal - p.paidAmount,
       stockReceived: p.status !== PurchaseStatus.DRAFT, // Check logic
+      shopName: p.shop.name,
     }));
   }
 
@@ -237,6 +267,8 @@ export class MobileShopReportsService {
     // BUT `getCurrentStock` is single product. We need Bulk.
     // Efficient Approach: Raw Query.
     
+    const shopFilter = shopId ? Prisma.sql`AND "shopId" = ${shopId}` : Prisma.empty;
+    
     const balances = await this.prisma.$queryRaw<
       { shopProductId: string; balance: bigint }[]
     >`
@@ -244,7 +276,7 @@ export class MobileShopReportsService {
              SUM(CASE WHEN "type" = 'IN' THEN "quantity" ELSE -"quantity" END) as "balance"
       FROM "StockLedger"
       WHERE "tenantId" = ${tenantId}
-      ${shopId ? `AND "shopId" = ${shopId}` : ''}
+      ${shopFilter}
       GROUP BY "shopProductId"
       HAVING SUM(CASE WHEN "type" = 'IN' THEN "quantity" ELSE -"quantity" END) != 0
     `;
@@ -289,7 +321,7 @@ export class MobileShopReportsService {
       tenantId,
       ...(shopId && { shopId }),
       ...(partyId && { customerId: partyId }),
-      status: { not: InvoiceStatus.CANCELLED },
+      status: { not: InvoiceStatus.VOIDED },
       ...(startDate && endDate && {
         invoiceDate: { gte: startDate, lte: endDate },
       }),
@@ -320,6 +352,13 @@ export class MobileShopReportsService {
        WHERE sl."referenceType" = 'SALE' ...
     */
     
+
+    // Use Prisma.sql for dynamic parts
+    const shopFilter = shopId ? Prisma.sql`AND i."shopId" = ${shopId}` : Prisma.empty;
+    const partyFilter = partyId ? Prisma.sql`AND i."customerId" = ${partyId}` : Prisma.empty;
+    const dateStartFilter = startDate ? Prisma.sql`AND i."invoiceDate" >= ${startDate}` : Prisma.empty;
+    const dateEndFilter = endDate ? Prisma.sql`AND i."invoiceDate" <= ${endDate}` : Prisma.empty;
+
     const costResult = await this.prisma.$queryRaw<{ total_cost: bigint }[]>`
       SELECT SUM(sl."quantity" * sl."costPerUnit") as "total_cost"
       FROM "StockLedger" sl
@@ -327,23 +366,29 @@ export class MobileShopReportsService {
       JOIN "Invoice" i ON ii."invoiceId" = i."id"
       WHERE sl."tenantId" = ${tenantId}
         AND sl."referenceType" = 'SALE'
-        AND i."status" != 'CANCELLED'
-        ${shopId ? `AND i."shopId" = ${shopId}` : ''}
-        ${partyId ? `AND i."customerId" = ${partyId}` : ''}
-        ${startDate ? `AND i."invoiceDate" >= ${startDate}` : ''}
-        ${endDate ? `AND i."invoiceDate" <= ${endDate}` : ''}
+        AND i."status" != 'VOIDED'
+        ${shopFilter}
+        ${partyFilter}
+        ${dateStartFilter}
+        ${dateEndFilter}
     `;
 
-    const totalRevenue = revenueAgg._sum.lineTotal || 0;
-    const totalCost = Number(costResult[0]?.total_cost || 0);
+    const totalRevenuePaisa = Number(revenueAgg._sum.lineTotal || 0);
+    const totalCostPaisa = Number(costResult[0]?.total_cost || 0);
+
+    // Convert from paisa to rupees for display
+    const totalRevenue = totalRevenuePaisa / 100;
+    const totalCost = totalCostPaisa / 100;
+    const grossProfit = totalRevenue - totalCost;
+    const margin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
 
     return {
       metrics: {
         totalRevenue,
         totalCost,
-        grossProfit: totalRevenue - totalCost,
-        margin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0
-      }
+        grossProfit,
+        margin,
+      },
     };
   }
 
@@ -360,7 +405,7 @@ export class MobileShopReportsService {
     const whereInvoice: any = {
       tenantId,
       ...(shopId && { shopId }),
-      status: { not: InvoiceStatus.CANCELLED },
+      status: { not: InvoiceStatus.VOIDED },
       ...(startDate && endDate && {
         invoiceDate: { gte: startDate, lte: endDate },
       }),

@@ -21,7 +21,7 @@ export class CrmDashboardController {
    * GET /api/core/crm-dashboard
    * Get CRM dashboard metrics
    *
-   * @access OWNER, ADMIN only
+   * @access OWNER, ADMIN, STAFF
    * @returns Comprehensive dashboard with customer, follow-up, financial, loyalty, WhatsApp KPIs
    */
   @Get()
@@ -32,13 +32,7 @@ export class CrmDashboardController {
     const tenantId = req.user.tenantId;
     const role = req.user.role as UserRole;
 
-    // ✅ Role check: Only OWNER or ADMIN can access dashboard
-    if (role !== UserRole.OWNER && role !== UserRole.ADMIN) {
-      throw new ForbiddenException(
-        'Only Owners and Admins can access CRM dashboard',
-      );
-    }
-
-    return this.dashboardService.getDashboardMetrics(tenantId, query);
+    // ✅ Access check: Authenticated users can access, but service handles filtering
+    return this.dashboardService.getDashboardMetrics(tenantId, query, role);
   }
 }

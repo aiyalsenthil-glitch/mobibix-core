@@ -80,6 +80,7 @@ export class WhatsAppRemindersService {
             select: {
               id: true,
               name: true,
+              tenantType: true,
             },
           },
         },
@@ -242,16 +243,64 @@ export class WhatsAppRemindersService {
           where: { tenantId, phone: customer.phone },
         });
 
+        // 4a. For MOBILE_SHOP, we need to fetch the default Shop for context
+        let shopId: string | undefined;
+        if (reminder.tenant?.tenantType === 'MOBILESHOP') {
+          const shop = await this.prisma.shop.findFirst({
+            where: { tenantId },
+            select: { id: true },
+          });
+          shopId = shop?.id;
+        }
+
+        console.log(`[DEBUG] Reminder ${reminderId}: tenantType=${reminder.tenant?.tenantType}, templateKey=${templateKey}`);
+
         const context: VariableResolutionContext = {
-          module: WhatsAppModule.GYM,
+          module:
+            reminder.tenant?.tenantType === 'MOBILESHOP'
+              ? WhatsAppModule.MOBILE_SHOP
+              : WhatsAppModule.GYM,
           tenantId,
-          memberId: member?.id, // May be null if only a lead
+          memberId: member?.id, // May be null for Mobile Shop
+          // 🚨 CRITICAL FIX: Trigger value could be Invoice ID OR JobCard ID
+          // We pass it to both; the resolver will use the one that matches the variable source
+          invoiceId: reminder.triggerValue || undefined,
+          jobCardId: reminder.triggerValue || undefined, // Support Job Cards
+          shopId,
         };
+
+        // 5. Determine Event Type for Mobile Shop to ensure correct variable scoping
+        let eventType: string | undefined;
+        if (context.module === WhatsAppModule.MOBILE_SHOP) {
+            // Map template/trigger to EventType
+            if (templateKey === 'Invoice Create' || templateKey === 'invoice_created_confirmation_v1') {
+                eventType = 'INVOICE_CREATED';
+            } else if (templateKey === 'JOB READY' || templateKey === 'job_status_ready_v1') {
+                eventType = 'JOB_READY';
+            } else if (templateKey.includes('followup')) {
+                eventType = 'FOLLOW_UP_SCHEDULED'; 
+            }
+             // Add more mappings as needed based on seed data
+        }
 
         const resolvedMap = await this.variableResolver.resolveVariables(
           variableKeys,
-          context,
+          { ...context, eventType }, 
         );
+
+        // Check for resolution errors
+        const errors = variableKeys
+            .map(k => resolvedMap.get(k))
+            .filter(r => r?.error);
+            
+        if (errors.length > 0) {
+            const errorMsg = `Variable resolution failed: ${errors.map(e => e ? `${e.key} (${e.error})` : 'unknown').join(', ')}`;
+            this.logger.error(errorMsg);
+            // Mark as FAILED and abort
+            await this.updateReminderStatus(reminderId, ReminderStatus.FAILED, errorMsg);
+            await this.logAttempt(tenantId, customer.id, whatsAppPhone, 'FAILED', errorMsg);
+            return;
+        }
 
         // Map back to array in order
         parameters = variableKeys.map((key) => {
@@ -276,7 +325,7 @@ export class WhatsAppRemindersService {
         tenantId,
         WhatsAppFeature.REMINDER,
         whatsAppPhone,
-        templateKey,
+        template?.metaTemplateName || templateKey,
         parameters,
       );
 

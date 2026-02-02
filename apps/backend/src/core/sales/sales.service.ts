@@ -22,6 +22,8 @@ import {
 } from './invoice-calculator.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InvoiceCreatedEvent, InvoicePaidEvent } from '../events/crm.events';
+import { DocumentNumberService } from '../../common/services/document-number.service';
+import { DocumentType } from '@prisma/client';
 
 @Injectable()
 export class SalesService {
@@ -29,6 +31,7 @@ export class SalesService {
     private prisma: PrismaService,
     private stockService: StockService,
     private eventEmitter: EventEmitter2,
+    private documentNumberService: DocumentNumberService,
   ) {}
 
   // ============================================
@@ -154,7 +157,13 @@ export class SalesService {
           shopId: dto.shopId,
           isActive: true,
         },
-        select: { id: true, isSerialized: true, hsnCode: true, costPrice: true },
+        select: {
+          id: true,
+          name: true,
+          isSerialized: true,
+          hsnCode: true,
+          costPrice: true,
+        },
       });
       if (products.length !== productIds.length)
         throw new BadRequestException('Invalid product');
@@ -165,8 +174,21 @@ export class SalesService {
         products.map((p) => [p.id, p.hsnCode || null]),
       );
       const productCostMap = new Map(
-        products.map((p) => [p.id, p.costPrice || 0]),
+        products.map((p) => [p.id, p.costPrice ?? null]),
       );
+
+      // 🛡️ FIX 1: ENFORCE COST VALIDATION BEFORE SALE
+      // Validate that all items have valid cost prices (not NULL or ≤ 0)
+      for (const item of dto.items) {
+        const cost = productCostMap.get(item.shopProductId);
+        if (cost === null || cost === undefined || cost <= 0) {
+          const product = products.find((p) => p.id === item.shopProductId);
+          throw new BadRequestException(
+            `Cannot sell product "${product?.name || 'Unknown'}" without a valid cost price. ` +
+              `Please ensure a purchase has been recorded or update the cost price manually.`,
+          );
+        }
+      }
 
       // 3. IMEI logic
       const allImeis: string[] = [];
@@ -292,12 +314,19 @@ export class SalesService {
           : InvoiceStatus.CREDIT; // 1 rupee tolerance
 
       // 6. Create Invoice
+      const invoiceNumber =
+        await this.documentNumberService.generateDocumentNumber(
+          dto.shopId,
+          DocumentType.SALES_INVOICE,
+          new Date(),
+        );
+
       const invoice = await tx.invoice.create({
         data: {
           tenantId,
           shopId: dto.shopId,
           customerId: dto.customerId,
-          invoiceNumber: await this.getNextInvoiceNumber(tx, dto.shopId, 'S'),
+          invoiceNumber,
           customerName: dto.customerName,
           customerPhone: dto.customerPhone,
           customerState: dto.customerState,
@@ -391,6 +420,7 @@ export class SalesService {
         const invoiceItem = createdInvoice.items[i];
         const isSerialized = productSerializedMap.get(item.shopProductId);
 
+        const itemCost = productCostMap.get(item.shopProductId);
         await this.stockService.recordStockOut(
           tenantId,
           dto.shopId,
@@ -398,7 +428,7 @@ export class SalesService {
           item.quantity,
           'SALE',
           invoiceItem.id,
-          productCostMap.get(item.shopProductId), // Pass captured cost (LPP)
+          itemCost ?? undefined, // Pass captured cost (LPP)
           isSerialized ? item.imeis : undefined,
           tx, // Enforce transaction atomicity
         );
@@ -453,7 +483,7 @@ export class SalesService {
       });
 
       if (!oldInvoice) throw new BadRequestException('Invoice not found');
-      if (oldInvoice.status === 'CANCELLED')
+      if (oldInvoice.status === 'VOIDED')
         throw new BadRequestException('Cannot update cancelled invoice');
 
       const shop = await tx.shop.findFirst({
@@ -757,8 +787,20 @@ export class SalesService {
         include: { items: true, receipts: true },
       });
       if (!invoice) throw new BadRequestException('Invoice not found');
-      if (invoice.status === InvoiceStatus.CANCELLED)
+      if (invoice.status === InvoiceStatus.VOIDED)
         throw new BadRequestException('Already cancelled');
+
+      // 🔒 PAYMENT VALIDATION
+      const activeReceipts = invoice.receipts.filter(
+        (r) => r.status === ReceiptStatus.ACTIVE,
+      );
+      if (activeReceipts.length > 0) {
+        // Return receipt UUIDs (id) for cancellation API, not receiptId
+        const receiptIds = activeReceipts.map((r) => r.id).join(', ');
+        throw new BadRequestException(
+          `Cannot cancel invoice with active payment records. Please cancel or refund the following receipt(s) first: ${receiptIds}`,
+        );
+      }
 
       // 2. Revert Stock
       for (const item of invoice.items) {
@@ -767,7 +809,7 @@ export class SalesService {
           invoice.shopId,
           item.shopProductId,
           item.quantity,
-          'SALE_RETURN',
+          'ADJUSTMENT',
           item.id,
         );
       }
@@ -790,7 +832,7 @@ export class SalesService {
       // 5. Update Invoice Status
       await tx.invoice.update({
         where: { id: invoiceId },
-        data: { status: InvoiceStatus.CANCELLED },
+        data: { status: InvoiceStatus.VOIDED },
       });
 
       // 6. Financial Reversal
@@ -829,8 +871,15 @@ export class SalesService {
     page = 1,
     limit = 20,
     search?: string,
+    fromJobCard?: boolean,
   ) {
     const where: any = { tenantId, shopId };
+    
+    // Filter for invoices linked to job cards
+    if (fromJobCard) {
+      where.jobCardId = { not: null };
+    }
+
     if (search) {
       where.OR = [
         { invoiceNumber: { contains: search, mode: 'insensitive' } },
@@ -866,6 +915,7 @@ export class SalesService {
       return {
         id: invoice.id,
         invoiceNumber: invoice.invoiceNumber,
+        customerId: invoice.customerId,
         customerName: invoice.customerName,
         totalAmount: this.fromPaisa(invoice.totalAmount), // Fix: Paisa -> Rupee
         paymentMode: invoice.paymentMode,
@@ -1086,7 +1136,7 @@ export class SalesService {
           gte: defaultStart,
           lte: defaultEnd,
         },
-        status: { not: 'CANCELLED' },
+        status: { not: 'VOIDED' },
       },
       _sum: {
         totalAmount: true,
@@ -1193,7 +1243,7 @@ export class SalesService {
       });
 
       if (!invoice) throw new BadRequestException('Invoice not found');
-      if (invoice.status === 'CANCELLED')
+      if (invoice.status === 'VOIDED')
         throw new BadRequestException(
           'Cannot collect payment for cancelled invoice',
         );

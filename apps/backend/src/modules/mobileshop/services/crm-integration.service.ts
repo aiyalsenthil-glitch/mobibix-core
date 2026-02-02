@@ -57,6 +57,21 @@ export class CrmIntegrationService {
     }
   }
 
+  async getFollowUpCounts(headers: Record<string, string>) {
+    try {
+      const response = await firstValueFrom(
+        this.http.get('/api/core/follow-ups/counts', { headers }),
+      );
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to fetch follow-up counts: ${error.message}`);
+      throw new HttpException(
+        `Fetch follow-up counts error: ${error.message}`,
+        error.response?.status || 500,
+      );
+    }
+  }
+
   async createFollowUp(headers: Record<string, string>, dto: any) {
     try {
       const response = await firstValueFrom(

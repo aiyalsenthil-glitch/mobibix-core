@@ -28,7 +28,7 @@ export class WhatsAppSender {
   private mapFeatureToPurpose(
     feature: WhatsAppFeature,
   ): WhatsAppPhoneNumberPurpose {
-    const mapping: Record<WhatsAppFeature, WhatsAppPhoneNumberPurpose> = {
+    const mapping: Partial<Record<WhatsAppFeature, WhatsAppPhoneNumberPurpose>> = {
       WELCOME: 'DEFAULT',
       PAYMENT_DUE: 'BILLING',
       EXPIRY: 'REMINDER',
@@ -50,6 +50,67 @@ export class WhatsAppSender {
     skipped?: boolean;
     reason?: string;
   }> {
+    // 🔍 GUARDRAIL 1: Backward Compatibility & Empty Features
+    // 🔍 GUARDRAIL 1: Backward Compatibility & Empty Features
+    // Fetch rules specifically for this check
+    const planRules = await this.planRulesService.getPlanRulesForTenant(tenantId);
+    
+    // If no rules (no plan?) or NO features defined (Trial/Legacy), ALLOW ALL.
+    const isLegacyOrTrial = !planRules || !planRules.features || planRules.features.length === 0;
+
+    if (!isLegacyOrTrial) {
+      // 🔒 GATE: Check if tenant has the specific feature entitlement
+      
+      const hasEntitlement = planRules.features.includes(feature);
+
+      if (!hasEntitlement) {
+        await this.logger.log({
+          tenantId,
+          memberId: null,
+          phone,
+          type: feature,
+          status: 'SKIPPED',
+          error: `Plan missing feature: ${feature}`,
+        });
+        return {
+          success: false,
+          skipped: true,
+          error: `Plan missing feature: ${feature}`,
+        };
+      }
+    }
+
+    // 🔍 GUARDRAIL 2: DAILY QUOTA FOR TRIAL PLAN
+    // Max 10 messages per day per tenant
+    if (planRules?.code === 'TRIAL') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const count = await this.prisma.whatsAppLog.count({
+        where: {
+          tenantId,
+          sentAt: { gte: today },
+          status: { in: ['SENT', 'DELIVERED'] },
+        },
+      });
+
+      if (count >= 10) {
+        await this.logger.log({
+          tenantId,
+          memberId: null,
+          phone,
+          type: feature,
+          status: 'SKIPPED',
+          error: 'Daily WhatsApp quota exceeded for TRIAL plan (Max 10)',
+        });
+        return {
+          success: false,
+          skipped: true,
+          error: 'Daily WhatsApp quota exceeded for TRIAL plan',
+        };
+      }
+    }
+
     // ✅ NORMALIZE PHONE: Convert any format to 10 digits, then to 91XXXXXXXXXX
     const normalizedPhone = normalizePhone(phone);
     let whatsappFormattedPhone: string;
@@ -132,15 +193,14 @@ export class WhatsAppSender {
     // ─────────────────────────────
     // 3️⃣ Plan rules (DB-driven)
     // ─────────────────────────────
-    const rules = await this.planRulesService.getPlanRulesForTenant(tenantId);
-
-    if (!rules?.enabled) {
+    // Reuse planRules fetched above
+    
+    if (planRules && !planRules.enabled) {
       return { success: false, skipped: true, reason: 'Subscription plan disabled' };
     }
 
-    if (!rules.features.includes(feature)) {
-      return { success: false, skipped: true, reason: `Feature ${feature} not included in plan` };
-    }
+    // Feature check already done above for strict cases.
+    // Legacy/Trial skipped the check, so we don't block them here.
 
     // ─────────────────────────────
     // 4️⃣ Member limit check
@@ -149,7 +209,7 @@ export class WhatsAppSender {
       where: { tenantId },
     });
 
-    if (rules.maxMembers > 0 && memberCount > rules.maxMembers) {
+    if (planRules && planRules.maxMembers > 0 && memberCount > planRules.maxMembers) {
       return { success: false, skipped: true, reason: 'Plan member limit exceeded' };
     }
 
@@ -193,7 +253,7 @@ export class WhatsAppSender {
       await this.logger.log({
         tenantId,
         memberId: null, // pass memberId later if needed
-        phone,
+        phone: whatsappFormattedPhone,
         type: feature,
         status: 'SENT',
         messageId,
@@ -209,7 +269,7 @@ export class WhatsAppSender {
       await this.logger.log({
         tenantId,
         memberId: null,
-        phone,
+        phone: whatsappFormattedPhone || phone,
         type: feature,
         status: 'FAILED',
         error: errMsg,

@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { WhatsAppPhoneNumbersService } from './whatsapp-phone-numbers.service';
-import { WhatsAppPhoneNumberPurpose } from '@prisma/client';
+import { UserRole, WhatsAppPhoneNumberPurpose } from '@prisma/client';
 
 @Controller('whatsapp/phone-numbers')
 @UseGuards(JwtAuthGuard)
@@ -30,13 +30,23 @@ export class WhatsAppPhoneNumbersController {
     @Param('moduleType') moduleType: string,
     @Req() req: any,
   ) {
-    this.validateAccess(req);
-    return this.phoneNumbersService.listPhoneNumbers(moduleType);
+    const user = req.user as any;
+    const role = (user?.role?.toUpperCase() as UserRole) || UserRole.USER;
+
+    // Owners can only view numbers for their own tenant
+    if (role === UserRole.OWNER && moduleType !== user.tenantId) {
+      throw new BadRequestException('Unauthorized - Can only view own tenant numbers');
+    }
+
+    this.validateAccess(req, [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OWNER]);
+    
+    const phones = await this.phoneNumbersService.listPhoneNumbers(moduleType);
+    return phones.map((p) => this.phoneNumbersService.sanitizePhoneNumber(p, role));
   }
 
   /**
    * POST /whatsapp/phone-numbers/:moduleType
-   * Create a new phone number for a module
+   * Create a new phone number for a module (ADMIN ONLY)
    */
   @Post(':moduleType')
   async createPhoneNumber(
@@ -51,7 +61,7 @@ export class WhatsAppPhoneNumbersController {
     },
     @Req() req: any,
   ) {
-    this.validateAccess(req);
+    this.validateAccess(req, [UserRole.ADMIN, UserRole.SUPER_ADMIN]);
 
     return this.phoneNumbersService.createPhoneNumber({
       tenantId: moduleType,
@@ -65,7 +75,7 @@ export class WhatsAppPhoneNumbersController {
 
   /**
    * PATCH /whatsapp/phone-numbers/:id
-   * Update phone number settings
+   * Update phone number settings (OWNER can only set default/active)
    */
   @Patch(':id')
   async updatePhoneNumber(
@@ -79,30 +89,31 @@ export class WhatsAppPhoneNumbersController {
     },
     @Req() req: any,
   ) {
-    // TODO: Add tenant validation based on phone number's tenantId
+    this.validateAccess(req, [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OWNER]);
+    
+    // TODO: Add tenant validation to ensure OWNER only updates their own numbers
     return this.phoneNumbersService.updatePhoneNumber(id, body);
   }
 
   /**
    * DELETE /whatsapp/phone-numbers/:id
-   * Delete a phone number
+   * Delete a phone number (ADMIN ONLY)
    */
   @Delete(':id')
   async deletePhoneNumber(@Param('id') id: string, @Req() req: any) {
-    // TODO: Add tenant validation based on phone number's tenantId
+    this.validateAccess(req, [UserRole.ADMIN, UserRole.SUPER_ADMIN]);
     return this.phoneNumbersService.deletePhoneNumber(id);
   }
 
   /**
-   * Validate user has admin access
+   * Validate user has access
    */
-  private validateAccess(req: any) {
+  private validateAccess(req: any, allowedRoles: UserRole[]) {
     const user = req.user as any;
-    const userRole = user?.role as string;
+    const userRole = (user?.role?.toUpperCase() as UserRole) || UserRole.USER;
 
-    // Role is uppercase from UserTenant (ADMIN, STAFF, etc.)
-    if (!userRole || userRole.toUpperCase() !== 'ADMIN') {
-      throw new BadRequestException('Unauthorized - Admin access required');
+    if (!allowedRoles.includes(userRole)) {
+      throw new BadRequestException(`Unauthorized - Required roles: ${allowedRoles.join(', ')}`);
     }
   }
 }

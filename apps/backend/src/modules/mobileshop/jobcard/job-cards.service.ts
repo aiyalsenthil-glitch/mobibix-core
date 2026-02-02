@@ -1,8 +1,14 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+```typescript
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import * as crypto from 'crypto';
 import { CreateJobCardDto } from '../jobcard/dto/create-job-card.dto';
-import { JobStatus } from '@prisma/client';
+import { JobStatus, InvoiceStatus, Prisma, DocumentType } from '@prisma/client';
 import { UpdateJobCardDto } from '../jobcard/dto/update-job-card.dto';
 import {
   generateJobCardNumber,
@@ -10,12 +16,15 @@ import {
 } from '../../../common/utils/invoice-number.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JobStatusChangedEvent } from '../../../core/events/crm.events';
+import { JobStatusValidator } from './job-status-validator.service';
 
 @Injectable()
 export class JobCardsService {
   constructor(
     private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
+    private statusValidator: JobStatusValidator,
+    private documentNumberService: DocumentNumberService,
   ) {}
 
   async assertAccess(user: any, shopId: string) {
@@ -287,24 +296,67 @@ export class JobCardsService {
     return { jobCards, empty: false };
   }
 
-  async updateStatus(user, shopId: string, id: string, status: JobStatus) {
+  /**
+   * 🎯 UPDATE JOB STATUS with full lifecycle automation
+   * - Validates state transitions
+   * - Auto-creates DRAFT invoice on READY
+   * - Voids invoice on CANCELLED/RETURNED
+   * - Logs status history
+   * - Triggers WhatsApp only for customer-facing statuses
+   */
+  async updateStatus(user, shopId: string, id: string, newStatus: JobStatus) {
     await this.assertAccess(user, shopId);
-    const job = await this.prisma.jobCard.findUnique({ where: { id } });
+    
+    // 1️⃣ Fetch job with invoices
+    const job = await this.prisma.jobCard.findUnique({
+      where: { id },
+      include: { invoices: true },
+    });
 
     if (!job) {
       throw new BadRequestException('Job not found');
     }
-    if (['DELIVERED', 'CANCELLED'].includes(job.status)) {
-      throw new BadRequestException('Job is locked');
+
+    // 2️⃣ Validate state transition (throws if invalid)
+    this.statusValidator.validateTransition(job.status, newStatus);
+
+    // 3️⃣ Handle status-specific business logic
+    if (newStatus === 'READY') {
+      // 🚨 CRITICAL VALIDATION: Cannot mark READY without cost
+      // This ensures invoice creation never fails silently
+      if (!job.finalCost && !job.estimatedCost) {
+         throw new BadRequestException(
+           'Cannot mark job READY without cost. Please add Final Cost or Estimated Cost first.'
+         );
+      }
     }
+
+    if (this.statusValidator.shouldCreateInvoice(newStatus)) {
+      await this.handleJobReady(job);
+    } else if (this.statusValidator.shouldVoidInvoice(newStatus)) {
+      await this.handleJobTermination(job, newStatus);
+    }
+
+    // 4️⃣ Update status with history tracking
+    const statusHistory = (job.statusHistory as any[]) || [];
+    statusHistory.push({
+      from: job.status,
+      to: newStatus,
+      timestamp: new Date().toISOString(),
+      userId: user.sub,
+      userName: user.name || user.email,
+    });
 
     const updatedJob = await this.prisma.jobCard.update({
       where: { id },
-      data: { status },
+      data: {
+        status: newStatus,
+        statusHistory,
+      },
     });
 
-    // ⚡ EVENT (JobStatusChanged)
-    if (updatedJob) {
+    // 5️⃣ Emit WhatsApp event ONLY for customer-facing statuses (READY, DELIVERED, CANCELLED)
+    if (this.statusValidator.shouldTriggerWhatsApp(newStatus)) {
       this.eventEmitter.emit(
         'job.status.changed',
         new JobStatusChangedEvent(
@@ -312,7 +364,7 @@ export class JobCardsService {
           shopId,
           id,
           updatedJob.customerId,
-          status,
+          newStatus,
           updatedJob.customerPhone,
           updatedJob.deviceModel,
         ),
@@ -320,6 +372,109 @@ export class JobCardsService {
     }
 
     return updatedJob;
+  }
+
+  /**
+   * 🚀 AUTO-INVOICE CREATION
+   * Triggered when job status becomes READY
+   * Creates exactly ONE DRAFT invoice (editable)
+   */
+  private async handleJobReady(job: any) {
+    // Prevent duplicate creation
+    const existingInvoice = await this.prisma.invoice.findFirst({
+      where: {
+        jobCardId: job.id,
+        status: { not: InvoiceStatus.VOIDED },
+      },
+    });
+
+    if (existingInvoice) {
+      console.log(`⚠️ Job ${job.jobNumber} already has invoice, skipping auto-creation`);
+      return;
+    }
+
+    // Validate job has cost
+    if (!job.finalCost && !job.estimatedCost) {
+      console.warn(`⚠️ Job ${job.jobNumber} marked READY but has no cost estimate`);
+      return; // Don't block - invoice can be created manually
+    }
+
+    // Get shop for prefix
+    const shop = await this.prisma.shop.findUnique({
+      where: { id: job.shopId },
+      select: { invoicePrefix: true },
+    });
+
+    if (!shop) throw new BadRequestException('Shop not found');
+
+    // Generate Document Number via Service
+    const invoiceNumber =
+      await this.documentNumberService.generateDocumentNumber(
+        job.shopId,
+        DocumentType.SALES_INVOICE,
+        new Date(),
+      );
+
+    // Calculate totals in Paisa (Database uses Integer Paisa)
+    // Job costs are Float Rupees -> Convert to Paisa (* 100)
+    const subTotalPaisa = Math.round((job.finalCost || job.estimatedCost || 0) * 100);
+    const totalAmountPaisa = subTotalPaisa; // Assuming no tax for simple auto-invoice for now, or 0 tax
+
+    // Create DRAFT invoice
+    const invoice = await this.prisma.invoice.create({
+      data: {
+        tenantId: job.tenantId,
+        shopId: job.shopId,
+        jobCardId: job.id,
+        customerId: job.customerId,
+        invoiceNumber,
+        invoiceDate: new Date(),
+        financialYear: fy,
+        customerName: job.customerName,
+        customerPhone: job.customerPhone,
+        status: InvoiceStatus.DRAFT,
+        subTotal: subTotalPaisa,
+        gstAmount: 0,
+        totalAmount: totalAmountPaisa,
+        paymentMode: 'CASH',
+        cashAmount: 0,
+      },
+    });
+
+    console.log(`✅ Auto-created DRAFT invoice ${invoice.invoiceNumber} for job ${job.jobNumber}`);
+  }
+
+  /**
+   * 🚫 INVOICE VOIDING
+   * Triggered when job is CANCELLED or RETURNED
+   * Voids all non-paid invoices
+   */
+  private async handleJobTermination(job: any, reason: JobStatus) {
+    const invoices = await this.prisma.invoice.findMany({
+      where: {
+        jobCardId: job.id,
+        status: { notIn: [InvoiceStatus.VOIDED, InvoiceStatus.PAID] },
+      },
+    });
+
+    for (const invoice of invoices) {
+      if (invoice.status === InvoiceStatus.PAID) {
+        throw new BadRequestException(
+          `Cannot ${reason.toLowerCase()} job: Invoice ${invoice.invoiceNumber} is paid. Refund required.`
+        );
+      }
+
+      await this.prisma.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          status: InvoiceStatus.VOIDED,
+          voidReason: `Job ${reason.toLowerCase()}`,
+          voidedAt: new Date(),
+        },
+      });
+
+      console.log(`🗑️ VOIDED invoice ${invoice.invoiceNumber} for ${reason} job`);
+    }
   }
 
   async publicStatus(publicToken: string) {

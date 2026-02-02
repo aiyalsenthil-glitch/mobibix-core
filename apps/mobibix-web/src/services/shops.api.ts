@@ -264,6 +264,8 @@ export interface UpdateDocumentSettingDto {
   yearFormat?: YearFormat;
   numberLength?: number;
   resetPolicy?: ResetPolicy;
+  currentNumber?: number;
+  currentYear?: string;
 }
 
 /**

@@ -92,6 +92,7 @@ function DocumentSettingCard({
     yearFormat: setting.yearFormat,
     numberLength: setting.numberLength,
     resetPolicy: setting.resetPolicy,
+    currentNumber: setting.currentNumber,
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -140,7 +141,7 @@ function DocumentSettingCard({
                     </span>
                 </div>
                 <div className="text-sm text-stone-500 font-mono">
-                    Next: {preview.replace('1', String((setting.currentNumber || 0) + 1))}
+                    Next: {preview.replace('1', String((formData.currentNumber ?? setting.currentNumber ?? 0) + 1).padStart(formData.numberLength || setting.numberLength || 4, '0'))}
                 </div>
             </div>
             <button 

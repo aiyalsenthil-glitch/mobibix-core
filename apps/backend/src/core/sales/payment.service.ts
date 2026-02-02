@@ -28,7 +28,7 @@ export class PaymentService {
         throw new BadRequestException('Invoice not found');
       }
 
-      if (invoice.status === 'CANCELLED') {
+      if (invoice.status === 'VOIDED') {
         throw new BadRequestException(
           'Cannot record payment on cancelled invoice',
         );

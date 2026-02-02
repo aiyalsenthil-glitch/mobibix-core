@@ -89,6 +89,18 @@ export class FollowUpsController {
     return this.service.listMyFollowUps(tenantId, userId, query, notifyOnDue);
   }
 
+  @Get('counts')
+  async getCounts(@Req() req: any) {
+    const tenantId = req.user?.tenantId;
+    const userId = req.user?.sub;
+
+    if (!tenantId || !userId) {
+      throw new BadRequestException('Invalid user context');
+    }
+
+    return this.service.getMyFollowUpCounts(tenantId, userId);
+  }
+
   @Get('all')
   async listAll(@Req() req: any, @Query() query: FollowUpQueryDto) {
     const tenantId = req.user?.tenantId;

@@ -24,6 +24,7 @@ export class CrmDashboardService {
   async getDashboardMetrics(
     tenantId: string,
     query: DashboardQueryDto,
+    role?: string,
   ): Promise<CrmDashboardResponse> {
     const { startDate, endDate } = this.resolveDateRange(query);
 
@@ -36,11 +37,16 @@ export class CrmDashboardService {
         this.getLoyaltyMetrics(tenantId, startDate, endDate),
         this.getWhatsAppMetrics(tenantId, startDate, endDate),
       ]);
+    // 🔒 Role-based filtering for sensitive metrics
+    const isStaff = role === 'STAFF';
+    const filteredFinancials = isStaff
+      ? { totalOutstanding: 0, highValueCustomers: [] }
+      : financials;
 
     return {
       customers,
       followUps,
-      financials,
+      financials: filteredFinancials,
       loyalty,
       whatsapp,
       dateRange: {
