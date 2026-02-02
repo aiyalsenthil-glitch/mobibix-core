@@ -1,4 +1,3 @@
-```typescript
 import {
   BadRequestException,
   Injectable,
@@ -17,6 +16,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JobStatusChangedEvent } from '../../../core/events/crm.events';
 import { JobStatusValidator } from './job-status-validator.service';
+import { DocumentNumberService } from 'src/common/services/document-number.service';
 
 @Injectable()
 export class JobCardsService {
@@ -419,6 +419,8 @@ export class JobCardsService {
     // Job costs are Float Rupees -> Convert to Paisa (* 100)
     const subTotalPaisa = Math.round((job.finalCost || job.estimatedCost || 0) * 100);
     const totalAmountPaisa = subTotalPaisa; // Assuming no tax for simple auto-invoice for now, or 0 tax
+
+    const fy = getFinancialYear(new Date());
 
     // Create DRAFT invoice
     const invoice = await this.prisma.invoice.create({
