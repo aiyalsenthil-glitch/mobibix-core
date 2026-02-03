@@ -114,6 +114,17 @@ export class SalesController {
     return this.service.collectPayment(tenantId, invoiceId, dto);
   }
 
+  @Post('invoice/:invoiceId/items')
+  async addItem(
+    @Req() req: any,
+    @Param('invoiceId') invoiceId: string,
+    @Body() dto: any, // Basic DTO, validation happens in service/validation pipe
+  ) {
+    const tenantId = req.user?.tenantId;
+    // Ensure shop owner/staff permissions if needed (guard handles authentication)
+    return this.service.addItemToInvoice(tenantId, invoiceId, dto);
+  }
+
   @Get('invoice/:invoiceId/payments')
   async listPayments(@Req() req: any, @Param('invoiceId') invoiceId: string) {
     const tenantId = req.user?.tenantId;

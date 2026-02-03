@@ -10,7 +10,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { StockService } from '../stock/stock.service';
-import { SalesInvoiceDto } from './dto/sales-invoice.dto';
+import { SalesInvoiceDto, SalesInvoiceItemDto } from './dto/sales-invoice.dto';
 import { CollectPaymentDto } from './dto/collect-payment.dto';
 import {
   generateSalesInvoiceNumber,
@@ -940,6 +940,15 @@ export class SalesService {
         tenantId,
       },
       include: {
+        jobCard: { // Include linked Job Card
+           select: {
+              jobNumber: true,
+              deviceBrand: true,
+              deviceModel: true,
+              deviceSerial: true,
+              customerComplaint: true
+           }
+        },
         receipts: {
           where: { status: 'ACTIVE' },
           orderBy: { createdAt: 'desc' },
@@ -954,6 +963,7 @@ export class SalesService {
         },
         items: {
           select: {
+            id: true, // Needed for updates?? Not yet exposed but good to have
             shopProductId: true,
             quantity: true,
             rate: true,
@@ -961,6 +971,10 @@ export class SalesService {
             gstRate: true,
             gstAmount: true,
             lineTotal: true,
+            // Include product name for UI
+            product: { 
+               select: { name: true } 
+            }
           },
         },
       },
@@ -995,6 +1009,15 @@ export class SalesService {
       customerPhone: invoice.customerPhone,
       customerGstin: invoice.customerGstin,
       customerState: invoice.customerState,
+      
+      // Job Card Details (if applicable)
+      jobCard: invoice.jobCard ? {
+         jobNumber: invoice.jobCard.jobNumber,
+         deviceBrand: invoice.jobCard.deviceBrand,
+         deviceModel: invoice.jobCard.deviceModel,
+         deviceSerial: invoice.jobCard.deviceSerial,
+         problem: invoice.jobCard.customerComplaint // Fixed field name
+      } : undefined,
 
       // Monetary values (Paisa -> Rupee)
       subTotal: invoice.subTotal ? this.fromPaisa(invoice.subTotal) : 0,
@@ -1387,5 +1410,71 @@ export class SalesService {
     }
 
     return result;
+  }
+
+  /**
+   * Add a single item to an existing invoice
+   * Reuses updateInvoice logic by fetching current state, appending item, and calling update.
+   */
+  async addItemToInvoice(
+    tenantId: string,
+    invoiceId: string,
+    newItem: SalesInvoiceItemDto, // Use DTO which includes gstAmount
+  ) {
+    // 1. Fetch current invoice with all details needed to reconstruct DTO
+    const currentInvoice = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, tenantId },
+      include: {
+        items: true,
+        imeis: true, // Fetch linked IMEIs
+        shop: { select: { gstEnabled: true, state: true } },
+      },
+    });
+
+    if (!currentInvoice) throw new BadRequestException('Invoice not found');
+    if (currentInvoice.status === 'VOIDED')
+      throw new BadRequestException('Cannot add items to cancelled invoice');
+
+    // 2. Reconstruct current items DTO
+    const imeisByProduct = new Map<string, string[]>();
+    for (const imei of currentInvoice.imeis) {
+      if (!imeisByProduct.has(imei.shopProductId)) {
+        imeisByProduct.set(imei.shopProductId, []);
+      }
+      imeisByProduct.get(imei.shopProductId)?.push(imei.imei);
+    }
+
+    const currentItemsDto = currentInvoice.items.map((item) => {
+      const productImeis = imeisByProduct.get(item.shopProductId) || [];
+      // Consume IMEIs for this item quantity
+      const assignedImeis = productImeis.splice(0, item.quantity);
+
+      return {
+        shopProductId: item.shopProductId,
+        quantity: item.quantity,
+        rate: this.fromPaisa(item.rate), // Convert back to Rupee for DTO
+        gstRate: item.gstRate,
+        gstAmount: this.fromPaisa(item.gstAmount), 
+        imeis: assignedImeis.length > 0 ? assignedImeis : undefined,
+      };
+    });
+
+    // 3. Append new item
+    const newItemsDto = [...currentItemsDto, newItem];
+
+    // 4. Call updateInvoice
+    const updateDto: SalesInvoiceDto = {
+      shopId: currentInvoice.shopId,
+      customerId: currentInvoice.customerId ?? undefined,
+      customerName: currentInvoice.customerName,
+      customerPhone: currentInvoice.customerPhone ?? undefined,
+      customerGstin: currentInvoice.customerGstin ?? undefined,
+      customerState: currentInvoice.customerState ?? undefined,
+      paymentMode: currentInvoice.paymentMode,
+      items: newItemsDto,
+      pricesIncludeTax: false, 
+    };
+
+    return this.updateInvoice(tenantId, invoiceId, updateDto);
   }
 }

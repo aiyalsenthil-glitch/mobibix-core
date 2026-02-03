@@ -52,7 +52,7 @@ export class SalesInvoiceDto {
 
   @IsOptional()
   @IsString()
-  invoiceNumber: string;
+  invoiceNumber?: string;
 
   @IsOptional()
   @IsString()
@@ -78,7 +78,7 @@ export class SalesInvoiceDto {
 
   @IsOptional()
   @IsString()
-  paymentMode?: 'CASH' | 'CARD' | 'UPI' | 'BANK'; // Deprecated: use paymentMethods
+  paymentMode?: 'CASH' | 'CARD' | 'UPI' | 'BANK' | 'CREDIT'; // Deprecated: use paymentMethods
 
   @IsOptional()
   @IsArray()

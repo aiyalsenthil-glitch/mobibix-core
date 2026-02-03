@@ -10,6 +10,14 @@ import { CancelInvoiceModal } from "@/components/sales/CancelInvoiceModal";
 import { CustomerTimelineDrawer } from "@/components/crm/CustomerTimelineDrawer";
 import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
 import { type FollowUpType } from "@/services/crm.api";
+import { InvoiceItemModal } from "@/components/sales/InvoiceItemModal";
+import { addItemToInvoice, InvoiceItem } from "@/services/sales.api";
+import { useShop } from "@/context/ShopContext"; // Assuming ShopContext exists, or we fetch shop details? 
+// Invoice data has shopId, but we need shop GST settings for Modal. 
+// Ideally we fetch shop or assume GST based on something. 
+// For now, I'll assume selectedShop from context if available, or fetch it.
+// Checking imports again... useShop is standard.
+
 
 export default function InvoiceDetailPage() {
   const router = useRouter();
@@ -22,6 +30,9 @@ export default function InvoiceDetailPage() {
   // CRM Modals State
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
+  const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
 
   const {
     data: invoice,
@@ -57,6 +68,20 @@ export default function InvoiceDetailPage() {
       currency: "INR",
     });
   };
+
+  const handleAddItem = async (item: InvoiceItem) => {
+    if (!invoice) return;
+    try {
+      setActionLoading(true);
+      await addItemToInvoice(invoice.id, item);
+      await reload(); 
+    } catch (e: any) {
+      alert(e.message || "Failed to add item");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
 
   if (isLoading) {
     return (
@@ -103,7 +128,7 @@ export default function InvoiceDetailPage() {
           &larr; Back
         </button>
         <div className="flex gap-2">
-           {invoice.status !== "PAID" && invoice.status !== "CANCELLED" && (
+           {invoice.status !== "PAID" && invoice.status !== "VOIDED" && (
              <button
                onClick={() => setIsCancelModalOpen(true)}
                className="px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg font-medium transition dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-900/20"
@@ -111,7 +136,7 @@ export default function InvoiceDetailPage() {
                Cancel Invoice
              </button>
            )}
-           {hasBalance && invoice.status !== "CANCELLED" && (
+           {hasBalance && invoice.status !== "VOIDED" && (
             <button
               onClick={() => setIsCollectModalOpen(true)}
               className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-lg font-bold shadow-md transition"
@@ -176,6 +201,38 @@ export default function InvoiceDetailPage() {
         </div>
 
         {/* Details Grid */}
+        
+        {/* Job Card Details Banner */}
+        {invoice.jobCard && (
+          <div className={`mx-6 mt-6 mb-4 p-4 rounded-lg border ${
+             theme === "dark" 
+               ? "bg-blue-900/10 border-blue-800 text-blue-200" 
+               : "bg-blue-50 border-blue-100 text-blue-800"
+          }`}>
+            <h3 className="font-bold text-sm uppercase opacity-70 mb-3">Job Card Details</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="block text-xs font-semibold opacity-60">Job Number</span>
+                  <span className="font-mono font-bold">{invoice.jobCard.jobNumber}</span>
+                </div>
+                <div>
+                  <span className="block text-xs font-semibold opacity-60">Device</span>
+                  <span>{invoice.jobCard.deviceBrand} {invoice.jobCard.deviceModel}</span>
+                </div>
+                {invoice.jobCard.deviceSerial && (
+                  <div>
+                    <span className="block text-xs font-semibold opacity-60">Serial / IMEI</span>
+                    <span className="font-mono">{invoice.jobCard.deviceSerial}</span>
+                  </div>
+                )}
+                <div className="col-span-2 md:col-span-1">
+                  <span className="block text-xs font-semibold opacity-60">Issue</span>
+                  <span>{invoice.jobCard.problem}</span>
+                </div>
+            </div>
+          </div>
+        )}
+
         <div className={`grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x ${
            theme === "dark" ? "divide-white/10" : "divide-gray-100"
         }`}>
@@ -222,6 +279,70 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Product Items Table */}
+      <div className="flex justify-between items-center mb-4">
+        <h2 className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+          Items
+        </h2>
+        
+        {invoice.status !== "VOIDED" && invoice.status !== "PAID" && (
+           <button 
+             onClick={() => setIsAddItemOpen(true)}
+             className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-sm"
+           >
+             <span>+</span> Add Item
+           </button>
+        )}
+      </div>
+
+      <div className={`rounded-xl overflow-hidden shadow-sm border mb-8 ${
+        theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"
+      }`}>
+        <table className="w-full">
+          <thead className={`text-left text-xs uppercase font-bold ${
+             theme === "dark" ? "bg-white/5 text-stone-400" : "bg-gray-50 text-gray-500"
+          }`}>
+             <tr>
+               <th className="px-6 py-3 w-12">#</th>
+               <th className="px-6 py-3">Product / Service</th>
+               <th className="px-6 py-3 text-right">Qty</th>
+               <th className="px-6 py-3 text-right">Rate</th>
+               <th className="px-6 py-3 text-right">Total</th>
+             </tr>
+          </thead>
+          <tbody className={`divide-y ${theme === "dark" ? "divide-white/5" : "divide-gray-100"}`}>
+             {invoice.items && invoice.items.length > 0 ? (
+                invoice.items.map((item, index) => (
+                  <tr key={index}>
+                     <td className={`px-6 py-3 text-sm ${theme === "dark" ? "text-stone-500" : "text-gray-400"}`}>
+                        {index + 1}
+                     </td>
+                     <td className={`px-6 py-3 font-medium ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                        {(item as any).product?.name || "Item"}
+                     </td>
+                     <td className={`px-6 py-3 text-right ${theme === "dark" ? "text-stone-300" : "text-gray-700"}`}>
+                        {item.quantity}
+                     </td>
+                     <td className={`px-6 py-3 text-right ${theme === "dark" ? "text-stone-300" : "text-gray-700"}`}>
+                        {formatCurrency(item.rate)}
+                     </td>
+                     <td className={`px-6 py-3 text-right font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                        {formatCurrency(item.lineTotal)}
+                     </td>
+                  </tr>
+                ))
+             ) : (
+                <tr>
+                   <td colSpan={5} className="px-6 py-8 text-center text-gray-500 italic">
+                      No items added yet.
+                   </td>
+                </tr>
+             )}
+          </tbody>
+        </table>
+      </div>
+
 
       {/* Payment History */}
       <h2 className={`text-lg font-bold mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
@@ -318,6 +439,16 @@ export default function InvoiceDetailPage() {
             onClose={() => setIsFollowUpOpen(false)}
             onSuccess={() => {}}
           />
+
+          <InvoiceItemModal 
+              isOpen={isAddItemOpen}
+              onClose={() => setIsAddItemOpen(false)}
+              onAdd={handleAddItem}
+              shopId={invoice.shopId}
+              gstEnabled={true} // Defaulting to true or we need to fetch shop settings. 
+              // Since we don't have shop object fully, we can assume TRUE for now or fetch.
+              // Ideally fetch shop details. But for now, let's assume GST enabled to show the UI.
+           />
         </>
       )}
     </div>

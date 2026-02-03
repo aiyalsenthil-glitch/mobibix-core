@@ -98,6 +98,14 @@ export function mapInvoiceToPrintData(ctx: AdapterContext): PrintDocumentData {
       }),
       "Financial Year": "2025-26", // TODO: Dynamic
       "Place of Supply": invoice.customerState,
+      
+      // Job Card Details
+      ...(invoice.jobCard ? {
+        "Job No": invoice.jobCard.jobNumber,
+        "Device": `${invoice.jobCard.deviceBrand} ${invoice.jobCard.deviceModel}`,
+        ...(invoice.jobCard.deviceSerial ? { "Serial/IMEI": invoice.jobCard.deviceSerial } : {}),
+      } : {}),
+
       // Bank Details (Filtered in template if undefined)
       "Bank Name": shop.bankName,
       "A/c No": shop.accountNumber,

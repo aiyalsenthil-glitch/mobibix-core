@@ -39,6 +39,13 @@ export interface SalesInvoice {
     createdAt: string | Date;
     receiptNumber: string;
   }[];
+  jobCard?: {
+    jobNumber: string;
+    deviceBrand: string;
+    deviceModel: string;
+    deviceSerial: string | null;
+    problem: string;
+  };
 }
 
 export interface InvoiceItemDetail {
@@ -239,6 +246,30 @@ export async function collectPayment(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || "Failed to collect payment");
+  }
+
+
+  return response.json();
+}
+
+/**
+ * Add a single item to an invoice
+ */
+export async function addItemToInvoice(
+  invoiceId: string,
+  item: InvoiceItem,
+): Promise<SalesInvoice> {
+  const response = await authenticatedFetch(
+    `/mobileshop/sales/invoice/${invoiceId}/items`,
+    {
+      method: "POST",
+      body: JSON.stringify(item),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to add item");
   }
 
   return response.json();
