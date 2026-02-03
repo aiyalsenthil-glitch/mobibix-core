@@ -200,7 +200,7 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         label: 'Customer Name',
         module: WhatsAppModule.MOBILE_SHOP,
         sourceType: VariableSourceType.ENTITY,
-        sourcePath: 'Party.name',
+        sourcePath: 'Party.name', // Fallback to Party if no specific context, or keep as is for FollowUp if it has customer
         dataType: VariableDataType.STRING,
         required: true,
       },
@@ -252,7 +252,7 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         label: 'Customer Name',
         module: WhatsAppModule.MOBILE_SHOP,
         sourceType: VariableSourceType.ENTITY,
-        sourcePath: 'Party.name',
+        sourcePath: 'Invoice.customerName', // FIX: Use Invoice field directly
         dataType: VariableDataType.STRING,
         required: true,
       },
@@ -282,7 +282,7 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         label: 'Customer Name',
         module: WhatsAppModule.MOBILE_SHOP,
         sourceType: VariableSourceType.ENTITY,
-        sourcePath: 'Party.name',
+        sourcePath: 'Invoice.customerName', // FIX: Use Invoice field directly
         dataType: VariableDataType.STRING,
         required: true,
       },
@@ -314,7 +314,7 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         label: 'Customer Name',
         module: WhatsAppModule.MOBILE_SHOP,
         sourceType: VariableSourceType.ENTITY,
-        sourcePath: 'Party.name',
+        sourcePath: 'JobCard.customerName', // FIX: Use JobCard field directly
         dataType: VariableDataType.STRING,
         required: true,
       },
@@ -344,7 +344,7 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         label: 'Customer Name',
         module: WhatsAppModule.MOBILE_SHOP,
         sourceType: VariableSourceType.ENTITY,
-        sourcePath: 'Party.name', // Use Customer table - always populated
+        sourcePath: 'JobCard.customerName', // FIX: Use JobCard field directly
         dataType: VariableDataType.STRING,
         required: true,
       },
@@ -392,7 +392,7 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         label: 'Customer Name',
         module: WhatsAppModule.MOBILE_SHOP,
         sourceType: VariableSourceType.ENTITY,
-        sourcePath: 'Party.name',
+        sourcePath: 'JobCard.customerName', // FIX: Use JobCard field directly
         dataType: VariableDataType.STRING,
         required: true,
       },

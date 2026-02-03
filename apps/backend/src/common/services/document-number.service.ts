@@ -268,6 +268,16 @@ export class DocumentNumberService {
         },
         {
           shopId,
+          documentType: DocumentType.REPAIR_INVOICE,
+          prefix: shopPrefix,
+          separator: '-',
+          documentCode: 'RI',
+          yearFormat: YearFormat.FY,
+          numberLength: 4,
+          resetPolicy: ResetPolicy.YEARLY,
+        },
+        {
+          shopId,
           documentType: DocumentType.PURCHASE_INVOICE,
           prefix: shopPrefix,
           separator: '-',

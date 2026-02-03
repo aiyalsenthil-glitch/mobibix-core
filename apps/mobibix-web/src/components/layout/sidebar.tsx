@@ -16,15 +16,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "📊" },
   { label: "Sales", href: "/sales", icon: "💰" },
-  {
-    label: "Job Cards",
-    href: "/jobcards",
-    icon: "🔧",
-    submenu: [
-      { label: "All Job Cards", href: "/jobcards" },
-      { label: "Job Card Bills", href: "/jobcards/bills" },
-    ],
-  },
+  { label: "Job Cards", href: "/jobcards", icon: "🔧" },
   { label: "Products", href: "/products", icon: "🏷️" },
   {
     label: "Inventory",

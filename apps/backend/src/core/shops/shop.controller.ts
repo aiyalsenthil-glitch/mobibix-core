@@ -72,8 +72,9 @@ export class ShopController {
   updateSettings(
     @Req() req: any,
     @Param('shopId') shopId: string,
-    @Body() dto: UpdateShopSettingsDto,
+    @Body()    dto: UpdateShopSettingsDto,
   ) {
+    
     return this.shopService.updateShopSettings(
       req.user.tenantId,
       req.user.role,

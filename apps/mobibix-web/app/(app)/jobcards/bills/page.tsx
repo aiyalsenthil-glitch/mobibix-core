@@ -17,6 +17,7 @@ import { NoShopsAlert } from "../../components/NoShopsAlert";
 import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
 import { CancelInvoiceModal } from "@/components/sales/CancelInvoiceModal";
 import { type FollowUpType } from "@/services/crm.api";
+import { JobCardsTabs } from "@/components/jobcards/JobCardsTabs";
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
   DRAFT: "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-400",
@@ -130,10 +131,12 @@ export default function JobCardBillsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className={`text-xl font-bold ${theme === "dark" ? "text-stone-300" : "text-gray-800"}`}>
-          Linked Invoices
+          Job Cards
         </h2>
         {/* No Create Invoice button here - these are auto-generated from Job Cards */}
       </div>
+
+      <JobCardsTabs />
 
       {isLoadingShops ? (
         <div className={`${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"} border rounded-lg p-4 mb-6 shadow-sm`}>
@@ -272,7 +275,7 @@ export default function JobCardBillsPage() {
 
                           {inv.status !== 'VOIDED' && (
                             <button
-                              onClick={() => router.push(`/sales/${inv.id}/invoice?shopId=${selectedShopId}`)}
+                              onClick={() => router.push(`/print/invoice/${inv.id}?shopId=${selectedShopId}&noQr=true`)}
                               title="Print Invoice"
                               className={`p-2 rounded ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-zinc-200"} transition`}
                             >

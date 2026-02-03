@@ -110,7 +110,11 @@ export interface UpdateShopSettingsDto {
   bankName?: string;
   accountNumber?: string;
   ifscCode?: string;
+  ifscCode?: string;
   branchName?: string;
+
+  repairInvoiceNumberingMode?: RepairInvoiceNumberingMode;
+  repairGstDefault?: boolean;
 }
 
 /**
@@ -227,6 +231,12 @@ export enum DocumentType {
   RECEIPT = 'RECEIPT',
   QUOTATION = 'QUOTATION',
   PURCHASE_ORDER = 'PURCHASE_ORDER',
+  REPAIR_INVOICE = 'REPAIR_INVOICE',
+}
+
+export enum RepairInvoiceNumberingMode {
+  SHARED = 'SHARED',
+  SEPARATE = 'SEPARATE',
 }
 
 export enum YearFormat {

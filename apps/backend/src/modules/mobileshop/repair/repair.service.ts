@@ -122,15 +122,15 @@ export class RepairService {
         }
       }
 
-      // Create RepairPartUsed entries first
+      // Create JobCardPart entries first
       const partsUsedEntries = dto.items.map((i) => ({
         jobCardId: dto.jobCardId,
         shopProductId: i.shopProductId,
         quantity: i.quantity,
-        costPerUnit: i.costPerUnit,
+        costPrice: i.costPerUnit || 0, // Mapped to costPrice
       }));
 
-      await tx.repairPartUsed.createMany({ data: partsUsedEntries });
+      await tx.jobCardPart.createMany({ data: partsUsedEntries });
 
       // Create corresponding StockLedger OUT entries
       const entries = dto.items.map((i) => ({
@@ -495,9 +495,10 @@ export class RepairService {
       }
 
       // Find all parts used for this repair
-      const partsUsed = await tx.repairPartUsed.findMany({
+      // Find all parts used for this repair
+      const partsUsed = await tx.jobCardPart.findMany({
         where: { jobCardId },
-        select: { shopProductId: true, quantity: true, costPerUnit: true },
+        select: { shopProductId: true, quantity: true, costPrice: true },
       });
 
       if (partsUsed.length > 0) {
@@ -510,7 +511,7 @@ export class RepairService {
           quantity: part.quantity,
           referenceType: 'REPAIR' as const,
           referenceId: jobCardId,
-          costPerUnit: part.costPerUnit,
+          costPerUnit: part.costPrice, // Mapped from costPrice
           note: `Stock reversal: Job ${jobCardId} cancelled`,
         }));
 

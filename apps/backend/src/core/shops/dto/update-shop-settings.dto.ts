@@ -4,7 +4,9 @@ import {
   IsBoolean,
   IsArray,
   ArrayNotEmpty,
+  IsEnum,
 } from 'class-validator';
+import { RepairInvoiceNumberingMode } from '@prisma/client';
 
 export class UpdateShopSettingsDto {
   @IsOptional()
@@ -102,4 +104,13 @@ export class UpdateShopSettingsDto {
   @IsOptional()
   @IsString()
   branchName?: string;
+
+  // Repair Module
+  @IsOptional()
+  @IsEnum(RepairInvoiceNumberingMode)
+  repairInvoiceNumberingMode?: RepairInvoiceNumberingMode;
+
+  @IsOptional()
+  @IsBoolean()
+  repairGstDefault?: boolean;
 }

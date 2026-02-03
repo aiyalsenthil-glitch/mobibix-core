@@ -6,6 +6,7 @@ import {
   updateShopSettings,
   type Shop,
   type UpdateShopSettingsDto,
+  RepairInvoiceNumberingMode,
 } from "@/services/shops.api";
 import { ShopDocumentSettings } from "@/components/shops/ShopDocumentSettings";
 import { ShopPrintSettings } from "@/components/shops/ShopPrintSettings";
@@ -44,6 +45,10 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
     accountNumber: "",
     ifscCode: "",
     branchName: "",
+    
+    // Repair Config
+    repairInvoiceNumberingMode: RepairInvoiceNumberingMode.SHARED,
+    repairGstDefault: false,
   });
 
   useEffect(() => {
@@ -72,6 +77,10 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
             accountNumber: settings.accountNumber || "",
             ifscCode: settings.ifscCode || "",
             branchName: settings.branchName || "",
+            
+            // Repair Config
+            repairInvoiceNumberingMode: settings.repairInvoiceNumberingMode || RepairInvoiceNumberingMode.SHARED,
+            repairGstDefault: settings.repairGstDefault || false,
         });
       } catch (err: any) {
         setError(err.message || "Failed to load settings");
@@ -111,6 +120,9 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
         accountNumber: formData.accountNumber || undefined,
         ifscCode: formData.ifscCode || undefined,
         branchName: formData.branchName || undefined,
+        
+        repairInvoiceNumberingMode: formData.repairInvoiceNumberingMode,
+        repairGstDefault: formData.repairGstDefault,
       };
 
       await updateShopSettings(shopId, payload);
@@ -127,7 +139,7 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value, type } = e.target as HTMLInputElement;
     setFormData((prev) => ({

@@ -40,6 +40,7 @@ export interface JobCard {
   physicalCondition?: string;
 
   estimatedCost?: number;
+  finalCost?: number;
   diagnosticCharge?: number;
   advancePaid?: number;
   billType?: string;
@@ -50,6 +51,31 @@ export interface JobCard {
 
   createdAt: Date | string;
   updatedAt: Date | string;
+
+  invoices?: {
+    id: string;
+    invoiceNumber: string;
+    status: string;
+    totalAmount: number;
+    balanceAmount?: number;
+  }[];
+
+  parts?: {
+    id: string;
+    shopProductId: string;
+    quantity: number;
+    costPrice?: number;
+    product: {
+      id: string;
+      name: string;
+      salePrice: number;
+    };
+  }[];
+
+  // Owner specific fields
+  jobCost?: number;
+  profit?: number;
+  revenue?: number;
 }
 
 export interface CreateJobCardDto {
@@ -204,6 +230,50 @@ export async function updateJobCardStatus(
   }
 
   return response.json();
+}
+
+/**
+ * Add Part to Job Card
+ */
+export async function addJobCardPart(
+  shopId: string,
+  jobCardId: string,
+  productId: string,
+  quantity: number
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `/mobileshop/shops/${shopId}/job-cards/${jobCardId}/parts`,
+    {
+      method: "POST",
+      body: JSON.stringify({ productId, quantity }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to add part");
+  }
+}
+
+/**
+ * Remove Part from Job Card
+ */
+export async function removeJobCardPart(
+  shopId: string,
+  jobCardId: string,
+  partId: string
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `/mobileshop/shops/${shopId}/job-cards/${jobCardId}/parts/${partId}`,
+    {
+      method: "DELETE",
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to remove part");
+  }
 }
 
 /**

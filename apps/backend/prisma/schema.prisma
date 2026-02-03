@@ -605,6 +605,8 @@ model Shop {
   headerConfig        Json?
   tagline             String?
   terms               String[]              @default([])
+  repairInvoiceNumberingMode RepairInvoiceNumberingMode @default(SHARED)
+  repairGstDefault           Boolean                    @default(false)
   bankName            String?
   accountNumber       String?
   ifscCode            String?
@@ -713,7 +715,7 @@ model JobCard {
   customer             Party?        @relation(fields: [customerId], references: [id])
   shop                 Shop             @relation(fields: [shopId], references: [id])
   tenant               Tenant           @relation("TenantJobCards", fields: [tenantId], references: [id])
-  partsUsed            RepairPartUsed[]
+  parts           JobCardPart[]
   invoices             Invoice[]   @relation("JobCardInvoices")
 
   @@unique([shopId, jobNumber])
@@ -780,7 +782,7 @@ model ShopProduct {
   imeis            IMEI[]
   invoiceItems     InvoiceItem[]
   purchaseItems    PurchaseItem[]
-  partsUsed        RepairPartUsed[]
+  jobCardParts     JobCardPart[]
   global           GlobalProduct?    @relation(fields: [globalProductId], references: [id])
   shop             Shop              @relation(fields: [shopId], references: [id])
   tenant           Tenant            @relation(fields: [tenantId], references: [id])
@@ -884,6 +886,8 @@ model Invoice {
   upiAmount     Int?
   cardAmount    Int?
   status        InvoiceStatus @default(PAID)
+  invoiceType   InvoiceType   @default(SALES)
+  isGstApplicable Boolean     @default(true)
   jobCardId     String?       // Link to JobCard for auto-generated invoices
   voidReason    String?       // Reason for void (e.g., "Job cancelled")
   voidedAt      DateTime?     // When invoice was voided
@@ -918,12 +922,12 @@ model InvoiceItem {
   @@index([invoiceId])
 }
 
-model RepairPartUsed {
+model JobCardPart {
   id            String      @id @default(cuid())
   jobCardId     String
   shopProductId String
   quantity      Int
-  costPerUnit   Int?
+  costPrice     Int?        @default(0) // Snapshot of cost at time of usage
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   jobCard       JobCard     @relation(fields: [jobCardId], references: [id])
@@ -1415,6 +1419,17 @@ enum DocumentType {
   QUOTATION
   PURCHASE_ORDER
   PAYMENT_VOUCHER
+  REPAIR_INVOICE
+}
+
+enum InvoiceType {
+  SALES
+  REPAIR
+}
+
+enum RepairInvoiceNumberingMode {
+  SHARED
+  SEPARATE
 }
 
 enum YearFormat {

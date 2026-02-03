@@ -53,6 +53,7 @@ function GenericPrintContent() {
   const searchParams = useSearchParams();
   // Optional: Allow forcing a variant via ?variant=THERMAL
   const variantParam = searchParams.get("variant")?.toUpperCase();
+  const noQr = searchParams.get("noQr") === "true";
 
   const [data, setData] = useState<PrintDocumentData | null>(null);
   const [resolvedVariant, setResolvedVariant] = useState<string>("CLASSIC");
@@ -145,6 +146,13 @@ function GenericPrintContent() {
 
     loadData();
   }, [docType, docId, searchParams]);
+
+  // Effect to handle noQr logic cleanly after data load
+  useEffect(() => {
+    if (data && noQr) {
+      setData((prev) => prev ? ({ ...prev, qrCode: undefined }) : null);
+    }
+  }, [data?.id, noQr]); // Only run when data ID changes or noQr changes to avoid loops
 
   // Auto-print effect
   useEffect(() => {

@@ -131,6 +131,9 @@ export class ShopService {
         accountNumber: true,
         ifscCode: true,
         branchName: true,
+
+        repairInvoiceNumberingMode: true,
+        repairGstDefault: true,
       },
     });
 
@@ -198,7 +201,11 @@ export class ShopService {
         bankName: dto.bankName,
         accountNumber: dto.accountNumber,
         ifscCode: dto.ifscCode,
+
         branchName: dto.branchName,
+
+        repairInvoiceNumberingMode: dto.repairInvoiceNumberingMode,
+        repairGstDefault: dto.repairGstDefault,
       },
     });
   }
@@ -224,79 +231,102 @@ export class ShopService {
     });
 
     // If no settings exist, create defaults for all document types
-    if (settings.length === 0) {
-      const defaultSettings = [
-        {
-          shopId,
-          documentType: DocumentType.SALES_INVOICE,
-          prefix: shop.invoicePrefix || 'HP',
-          separator: '-',
-          documentCode: 'SI',
-          yearFormat: YearFormat.FY,
-          numberLength: 4,
-          resetPolicy: ResetPolicy.YEARLY,
-        },
-        {
-          shopId,
-          documentType: DocumentType.PURCHASE_INVOICE,
-          prefix: shop.invoicePrefix || 'HP',
-          separator: '-',
-          documentCode: 'PI',
-          yearFormat: YearFormat.FY,
-          numberLength: 4,
-          resetPolicy: ResetPolicy.YEARLY,
-        },
-        {
-          shopId,
-          documentType: DocumentType.JOB_CARD,
-          prefix: shop.invoicePrefix || 'HP',
-          separator: '-',
-          documentCode: 'JC',
-          yearFormat: YearFormat.FY,
-          numberLength: 4,
-          resetPolicy: ResetPolicy.YEARLY,
-        },
-        {
-          shopId,
-          documentType: DocumentType.RECEIPT,
-          prefix: shop.invoicePrefix || 'HP',
-          separator: '-',
-          documentCode: 'R',
-          yearFormat: YearFormat.FY,
-          numberLength: 4,
-          resetPolicy: ResetPolicy.YEARLY,
-        },
-        {
-          shopId,
-          documentType: DocumentType.QUOTATION,
-          prefix: shop.invoicePrefix || 'HP',
-          separator: '-',
-          documentCode: 'Q',
-          yearFormat: YearFormat.FY,
-          numberLength: 4,
-          resetPolicy: ResetPolicy.YEARLY,
-        },
-        {
-          shopId,
-          documentType: DocumentType.PURCHASE_ORDER,
-          prefix: shop.invoicePrefix || 'HP',
-          separator: '-',
-          documentCode: 'PO',
-          yearFormat: YearFormat.FY,
-          numberLength: 4,
-          resetPolicy: ResetPolicy.YEARLY,
-        },
-      ];
+    const defaultSettings = [
+      {
+        shopId,
+        documentType: DocumentType.SALES_INVOICE,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'SI',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+      {
+        shopId,
+        documentType: DocumentType.REPAIR_INVOICE,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'RI',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+      {
+        shopId,
+        documentType: DocumentType.PURCHASE_INVOICE,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'PI',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+      {
+        shopId,
+        documentType: DocumentType.JOB_CARD,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'JC',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+      {
+        shopId,
+        documentType: DocumentType.RECEIPT,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'R',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+      {
+        shopId,
+        documentType: DocumentType.QUOTATION,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'Q',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+      {
+        shopId,
+        documentType: DocumentType.PURCHASE_ORDER,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'PO',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+    ];
 
+    if (settings.length === 0) {
       await this.prisma.shopDocumentSetting.createMany({
         data: defaultSettings,
       });
+    } else {
+      // Lazy migration: Check if any default type is missing and create it
+      const existingTypes = new Set(settings.map((s) => s.documentType));
+      const missingSettings = defaultSettings.filter(
+        (ds) => !existingTypes.has(ds.documentType),
+      );
 
-      settings = await this.prisma.shopDocumentSetting.findMany({
-        where: { shopId },
-        orderBy: { documentType: 'asc' },
-      });
+      if (missingSettings.length > 0) {
+        await this.prisma.shopDocumentSetting.createMany({
+          data: missingSettings,
+        });
+      }
     }
+
+    // Re-fetch to ensure complete list and order
+    settings = await this.prisma.shopDocumentSetting.findMany({
+      where: { shopId },
+      orderBy: { documentType: 'asc' },
+    });
 
     return settings;
   }
@@ -410,7 +440,9 @@ export class ShopService {
                   ? 'R'
                   : documentType === DocumentType.QUOTATION
                     ? 'Q'
-                    : 'PO'),
+                    : documentType === DocumentType.REPAIR_INVOICE
+                      ? 'RI'
+                      : 'PO'),
         yearFormat: dto.yearFormat ?? 'FY',
         numberLength: dto.numberLength ?? 4,
         resetPolicy: dto.resetPolicy ?? 'YEARLY',

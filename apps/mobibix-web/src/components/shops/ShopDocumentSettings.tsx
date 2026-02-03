@@ -2,13 +2,17 @@
 
 import { useState, useEffect } from "react";
 import {
+  getShopSettings,
+  updateShopSettings,
   getShopDocumentSettings,
   updateShopDocumentSetting,
+  type Shop,
   type ShopDocumentSetting,
   type UpdateDocumentSettingDto,
   DocumentType,
   YearFormat,
   ResetPolicy,
+  RepairInvoiceNumberingMode,
 } from "@/services/shops.api";
 
 interface ShopDocumentSettingsProps {
@@ -16,25 +20,46 @@ interface ShopDocumentSettingsProps {
 }
 
 export function ShopDocumentSettings({ shopId }: ShopDocumentSettingsProps) {
+  const [shop, setShop] = useState<Shop | null>(null);
   const [settings, setSettings] = useState<ShopDocumentSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingType, setEditingType] = useState<DocumentType | null>(null);
+  const [togglingMode, setTogglingMode] = useState(false);
 
   // Load settings
   useEffect(() => {
     loadSettings();
   }, [shopId]);
 
+
+
   const loadSettings = async () => {
     try {
       setLoading(true);
-      const data = await getShopDocumentSettings(shopId);
-      setSettings(data);
+      const [shopData, settingsData] = await Promise.all([
+        getShopSettings(shopId),
+        getShopDocumentSettings(shopId)
+      ]);
+      setShop(shopData);
+      setSettings(settingsData);
     } catch (err: any) {
       setError(err.message || "Failed to load document settings");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleModeChange = async (mode: RepairInvoiceNumberingMode) => {
+    try {
+      setTogglingMode(true);
+      await updateShopSettings(shopId, { repairInvoiceNumberingMode: mode });
+      // Reload to reflect changes
+      await loadSettings();
+    } catch (err: any) {
+      alert("Failed to update numbering mode: " + err.message);
+    } finally {
+      setTogglingMode(false);
     }
   };
 
@@ -46,10 +71,48 @@ export function ShopDocumentSettings({ shopId }: ShopDocumentSettingsProps) {
       <div>
         <h3 className="text-lg font-semibold text-white mb-2">Document Numbering</h3>
         <p className="text-sm text-stone-400">
-          Configure how your invoice and document numbers are generated. 
+          Configure how your invoice and document numbers are generated.
           <br />
           <span className="text-yellow-500/80 text-xs">Note: Prefixes can only be changed if no documents have been generated in the current financial period.</span>
         </p>
+      </div>
+
+      {/* Repair Invoice Mode Toggle */}
+      <div className="bg-black/20 border border-white/5 p-5 rounded-lg">
+        <h4 className="font-medium text-white mb-3">Repair Invoice Strategy</h4>
+        <div className="flex flex-col md:flex-row gap-4">
+          <button
+            onClick={() => handleModeChange(RepairInvoiceNumberingMode.SHARED)}
+            disabled={togglingMode}
+            className={`flex-1 p-4 rounded-lg border text-left transition ${
+              shop?.repairInvoiceNumberingMode === RepairInvoiceNumberingMode.SHARED || !shop?.repairInvoiceNumberingMode
+                ? "bg-teal-500/10 border-teal-500 text-teal-100"
+                : "bg-transparent border-white/10 text-stone-400 hover:bg-white/5"
+            }`}
+          >
+            <div className="font-semibold mb-1">Shared Numbering</div>
+            <p className="text-xs opacity-70">
+              Repair invoices use the same sequence as Sales Invoices.
+              <br /> Example: Both share <code>AT-INV-2526-0123</code>
+            </p>
+          </button>
+
+          <button
+            onClick={() => handleModeChange(RepairInvoiceNumberingMode.SEPARATE)}
+            disabled={togglingMode}
+            className={`flex-1 p-4 rounded-lg border text-left transition ${
+              shop?.repairInvoiceNumberingMode === RepairInvoiceNumberingMode.SEPARATE
+                ? "bg-teal-500/10 border-teal-500 text-teal-100"
+                : "bg-transparent border-white/10 text-stone-400 hover:bg-white/5"
+            }`}
+          >
+            <div className="font-semibold mb-1">Separate Numbering</div>
+            <p className="text-xs opacity-70">
+              Repair invoices have their own unique sequence.
+              <br /> Example: <code>AT-RI-2526-0001</code>
+            </p>
+          </button>
+        </div>
       </div>
 
       <div className="space-y-4">

@@ -17,6 +17,8 @@ import { NoShopsAlert } from "../components/NoShopsAlert";
 import { CustomerTimelineDrawer } from "@/components/crm/CustomerTimelineDrawer";
 import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
 import { type FollowUpType } from "@/services/crm.api";
+import { JobCardsTabs } from "@/components/jobcards/JobCardsTabs";
+import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
 
 const STATUS_OPTIONS: JobStatus[] = [
   "RECEIVED",
@@ -107,6 +109,13 @@ export default function JobCardsPage() {
     defaultType: FollowUpType;
   } | null>(null);
 
+  // Payment Collection State
+  const [deliveringJob, setDeliveringJob] = useState<{
+    job: JobCard;
+    invoiceId: string;
+    balanceAmount: number;
+  } | null>(null);
+
   // Use modern hook for async data loading with built-in race condition prevention
   const {
     data: jobCards = [],
@@ -132,6 +141,22 @@ export default function JobCardsPage() {
       }
     }
 
+    // 💰 INTERCEPT DELIVERED STATUS FOR PAYMENT
+    if (status === 'DELIVERED') {
+      // Find valid invoice (not voided)
+      // Note: Backend returns invoices array due to our recent change
+      const invoice = job.invoices?.find(
+        (i) => i.status !== 'VOIDED' && i.status !== 'PAID'
+      );
+
+      if (invoice) {
+        // Redirect to Invoice Page for Billing/Payment
+        router.push(`/sales/${invoice.id}?shopId=${selectedShopId}`);
+        return; 
+      }
+      // If no valid invoice found (shouldn't happen if READY), proceed or let backend block
+    }
+
     try {
       await updateJobCardStatus(selectedShopId, job.id, status);
       // Reload job cards after status change
@@ -139,6 +164,19 @@ export default function JobCardsPage() {
     } catch (err: any) {
       alert(err.message || "Failed to update status");
     }
+  };
+
+  const handlePaymentSuccess = async () => {
+     if (!deliveringJob) return;
+     
+     try {
+       // After payment, update status to DELIVERED
+       await updateJobCardStatus(selectedShopId, deliveringJob.job.id, 'DELIVERED');
+       setDeliveringJob(null);
+       reload();
+     } catch (err: any) {
+        alert("Payment collected, but failed to update status to DELIVERED: " + err.message);
+     }
   };
 
   const handleDelete = async (jobCardId: string) => {
@@ -182,6 +220,8 @@ export default function JobCardsPage() {
           + Create New Job Card
         </button>
       </div>
+
+      <JobCardsTabs />
 
       {/* Shop Filter Section - Only show if multiple shops */}
       {isLoadingShops ? (
@@ -348,10 +388,11 @@ export default function JobCardsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 text-black dark:text-white">
+
                         <button
-                          onClick={() => handleEdit(job)}
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition"
-                          title="View/Edit"
+                          onClick={() => router.push(`/jobcards/${job.id}`)}
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition text-blue-600 dark:text-blue-400"
+                          title="Open Details & Parts"
                         >
                           👁️
                         </button>
@@ -397,6 +438,24 @@ export default function JobCardsPage() {
                         >
                           🖨️
                         </a>
+                        {/* New Print Invoice Button */}
+                        {(() => {
+                          const invoice = job.invoices?.find((i) => i.status !== "VOIDED");
+                          if (invoice) {
+                            return (
+                              <a
+                                href={`/print/invoice/${invoice.id}?noQr=true`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition"
+                                title="Print Repair Invoice"
+                              >
+                                🧾
+                              </a>
+                            );
+                          }
+                          return null;
+                        })()}
                         <button
                           onClick={() => handleDelete(job.id)}
                           className="p-2 hover:bg-rose-50 dark:hover:bg-red-500/20 rounded-lg transition"
@@ -455,6 +514,18 @@ export default function JobCardsPage() {
           onSuccess={() => {
             // refresh something if needed
           }}
+        />
+      )}
+
+      {/* Payment Collection Modal */}
+      {deliveringJob && (
+        <CollectPaymentModal
+          isOpen={true}
+          invoiceId={deliveringJob.invoiceId}
+          balanceAmount={deliveringJob.balanceAmount}
+          customerName={deliveringJob.job.customerName}
+          onClose={() => setDeliveringJob(null)}
+          onSuccess={handlePaymentSuccess}
         />
       )}
     </div>

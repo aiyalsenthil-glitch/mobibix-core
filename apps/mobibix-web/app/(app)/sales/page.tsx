@@ -498,7 +498,7 @@ export default function SalesPage() {
                             <button
                               onClick={() =>
                                 router.push(
-                                  `/sales/${inv.id}/invoice?shopId=${selectedShopId}`,
+                                  `/print/invoice/${inv.id}?shopId=${selectedShopId}`,
                                 )
                               }
                               title="Print Invoice"
