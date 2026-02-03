@@ -27,7 +27,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JobStatusChangedEvent } from '../../../core/events/crm.events';
 import { JobStatusValidator } from './job-status-validator.service';
-import { DocumentNumberService } from 'src/common/services/document-number.service';
+import { DocumentNumberService } from '../../../common/services/document-number.service';
 
 @Injectable()
 export class JobCardsService {

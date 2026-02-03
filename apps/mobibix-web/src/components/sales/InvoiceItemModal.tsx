@@ -155,7 +155,7 @@ export function InvoiceItemModal({
             />
             
             {showDropdown && filteredProducts.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto">
+              <div className="w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto">
                 {loadingProducts && <div className="p-2 text-center text-sm text-gray-500">Loading...</div>}
                 {filteredProducts.map((p) => (
                   <button
