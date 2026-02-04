@@ -552,7 +552,7 @@ export class SalesService {
           shopId: dto.shopId,
           isActive: true,
         },
-        select: { id: true, type: true, isSerialized: true, hsnCode: true },
+        select: { id: true, type: true, isSerialized: true, hsnCode: true, costPrice: true },
       });
 
       if (products.length !== productIds.length)
@@ -601,12 +601,12 @@ export class SalesService {
           throw new BadRequestException('One or more IMEIs not found');
 
         for (const record of imeiRecords) {
-          // Allow if status=IN_STOCK OR (status=SOLD and invoiceId=currentInvoiceId -- handled by revert step which freed them)
-          // Since we reverted in step 3, they should be IN_STOCK and invoiceId=null.
           if (record.status !== 'IN_STOCK')
             throw new BadRequestException(`IMEI ${record.imei} not available`);
         }
       }
+
+      const isRepairLinked = !!oldInvoice.jobCardId;
 
       // 7. Calculate New Totals
       const lineInputs = dto.items.map((i) => ({
@@ -674,6 +674,8 @@ export class SalesService {
         data: {
           customerName: dto.customerName,
           customerPhone: dto.customerPhone,
+          customerState: dto.customerState,
+          customerGstin: dto.customerGstin,
           subTotal: this.toPaisa(calc.subTotal),
           gstAmount: this.toPaisa(calc.gstAmount),
           totalAmount: totalAmountPaisa,
@@ -683,6 +685,26 @@ export class SalesService {
         },
         include: { items: true },
       });
+
+      // 9b. Synchronize Job Card Parts (if linked)
+      if (isRepairLinked && oldInvoice.jobCardId) {
+        // Clear existing parts to sync exactly with invoice
+        await tx.jobCardPart.deleteMany({
+          where: { jobCardId: oldInvoice.jobCardId },
+        });
+
+        const jobPartsData = products.map((p) => {
+          const item = dto.items.find((i) => i.shopProductId === p.id);
+          return {
+            jobCardId: oldInvoice.jobCardId!,
+            shopProductId: p.id,
+            quantity: item?.quantity || 0,
+            costPrice: p.costPrice || 0,
+          };
+        }).filter(p => p.quantity > 0);
+
+        await tx.jobCardPart.createMany({ data: jobPartsData });
+      }
 
       // 10. Create New Financial Entries
       if (dto.paymentMethods?.length) {
@@ -749,6 +771,13 @@ export class SalesService {
         const invoiceItem = updatedInvoice.items[i];
         const isSerialized = productSerializedMap.get(item.shopProductId);
 
+        // 🛡️ REPAIR FIX: Skip stock out if already managed by Job Card Part
+        // JobCardPart handles its own stock ledger entry.
+        // If we also do it here, it's a double deduction.
+        if (isRepairLinked) {
+           continue; 
+        }
+
         await this.stockService.recordStockOut(
           tenantId,
           dto.shopId,
@@ -758,6 +787,7 @@ export class SalesService {
           invoiceItem.id,
           undefined,
           isSerialized ? item.imeis : undefined,
+          tx,
         );
       }
 
@@ -1065,6 +1095,7 @@ export class SalesService {
           gstAmount,
           lineTotal,
           taxableValue,
+          product: (item as any).product ? { name: (item as any).product.name } : undefined,
         };
       }),
     };
@@ -1472,7 +1503,7 @@ export class SalesService {
       customerState: currentInvoice.customerState ?? undefined,
       paymentMode: 'CREDIT', // Force credit to avoid auto-marking as PAID
       items: newItemsDto,
-      pricesIncludeTax: false, 
+      pricesIncludeTax: true, 
     };
 
     return this.updateInvoice(tenantId, invoiceId, updateDto);

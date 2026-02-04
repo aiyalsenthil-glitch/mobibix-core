@@ -87,9 +87,9 @@ export function InvoiceItemModal({
   const filteredProducts = search
     ? products.filter((p) => 
         p.name.toLowerCase().includes(search.toLowerCase()) && 
-        p.type === 'SPARE'
+        (p.type === 'SPARE' || p.type === 'SERVICE')
       )
-    : products.filter(p => p.type === 'SPARE'); // Show spares by default even without search? Or keep empty? 
+    : products.filter(p => p.type === 'SPARE' || p.type === 'SERVICE'); // Show spares by default even without search? Or keep empty? 
     // Usually empty is better for large lists, but user wants to see "only spare parts".
     // Let's stick to search-based but also maybe allow listing all if search is empty?
     // Current logic returns [] if search is empty.
@@ -223,8 +223,8 @@ export function InvoiceItemModal({
         </div>
 
         <div className="p-6 overflow-y-auto space-y-4">
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded text-sm mb-4">
-            <strong>Note:</strong> Spare parts only visible in this invoice. For other products, use sales invoice.
+          <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded text-sm mb-4">
+            <strong>Note:</strong> You can add Spare Parts or Services here.
           </div>
 
           {!createMode ? (

@@ -5,6 +5,7 @@ import {
   BadRequestException,
   UseGuards,
   Req,
+  Logger,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -15,6 +16,8 @@ import { PaymentStatus } from '@prisma/client';
 @UseGuards(JwtAuthGuard)
 @Controller('payments')
 export class PaymentsVerifyController {
+  private readonly logger = new Logger(PaymentsVerifyController.name);
+
   constructor(
     private readonly subscriptionsService: SubscriptionsService,
     private readonly prisma: PrismaService,
@@ -29,11 +32,12 @@ export class PaymentsVerifyController {
       paymentId: string;
       signature: string;
       planId: string;
+      billingCycle: 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
     },
   ) {
-    const { orderId, paymentId, signature, planId } = body;
+    const { orderId, paymentId, signature, planId, billingCycle } = body;
 
-    if (!orderId || !paymentId || !signature || !planId) {
+    if (!orderId || !paymentId || !signature || !planId || !billingCycle) {
       throw new BadRequestException('Missing payment details');
     }
 
@@ -47,7 +51,7 @@ export class PaymentsVerifyController {
       throw new BadRequestException('Invalid payment signature');
     }
 
-    // 3️⃣ Store payment record (NO plan.price here)
+    // 2️⃣ Find payment record
     const existingPayment = await this.prisma.payment.findFirst({
       where: {
         provider: 'RAZORPAY',
@@ -55,25 +59,17 @@ export class PaymentsVerifyController {
         tenantId: req.user.tenantId,
       },
     });
-    if (existingPayment?.status === PaymentStatus.SUCCESS) {
-      // Payment already confirmed via webhook
-      return { success: true, alreadyVerified: true };
-    }
+
     if (!existingPayment) {
       throw new BadRequestException('Payment order not found');
     }
 
-    // 2️⃣ Upgrade subscription (SOURCE OF TRUTH)
-    // TODO: Phase 1 migration - use buyPlanPhase1 with billingCycle
-    // For now, skipping subscription creation (webhook controller handles this)
-    /* 
-    await this.subscriptionsService.changePlan(
-      req.user.tenantId,
-      planName,
-      'MOBILE_SHOP',
-    );
-    */
+    // 3️⃣ Idempotency: if already verified, skip subscription creation
+    if (existingPayment.status === PaymentStatus.SUCCESS) {
+      return { success: true, alreadyVerified: true };
+    }
 
+    // 4️⃣ Update payment to SUCCESS
     await this.prisma.payment.update({
       where: { id: existingPayment.id },
       data: {
@@ -83,6 +79,92 @@ export class PaymentsVerifyController {
       },
     });
 
-    return { success: true };
+    // 5️⃣ 🔥 CREATE/ACTIVATE SUBSCRIPTION
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: req.user.tenantId },
+      select: { tenantType: true },
+    });
+
+    const module =
+      (tenant?.tenantType || '').toUpperCase().replace(/[\s_-]/g, '') === 'GYM'
+        ? 'GYM'
+        : 'MOBILE_SHOP';
+
+    await this.subscriptionsService.buyPlanPhase1({
+      tenantId: req.user.tenantId,
+      planId: planId,
+      module,
+      billingCycle,
+    });
+
+    return { success: true, subscriptionCreated: true };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔄 FALLBACK: Retry subscription creation if webhook/verify failed
+  // Call this if user sees "SUBSCRIPTION_EXPIRED" after successful payment
+  // ═══════════════════════════════════════════════════════════════════════════
+  @Post('retry-subscription')
+  async retrySubscriptionCreation(
+    @Req() req: any,
+    @Body()
+    body: {
+      orderId: string;
+      billingCycle: 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
+    },
+  ) {
+    const { orderId, billingCycle } = body;
+
+    if (!orderId || !billingCycle) {
+      throw new BadRequestException(
+        'Missing orderId or billingCycle for retry',
+      );
+    }
+
+    // 1️⃣ Find the successful payment by orderId
+    const payment = await this.prisma.payment.findFirst({
+      where: {
+        provider: 'RAZORPAY',
+        providerOrderId: orderId,
+        tenantId: req.user.tenantId,
+        status: PaymentStatus.SUCCESS, // Only retry if payment is confirmed SUCCESS
+      },
+    });
+
+    if (!payment) {
+      throw new BadRequestException(
+        'No successful payment found for this order',
+      );
+    }
+
+    // 2️⃣ Call buyPlanPhase1 - will auto-upgrade if subscription exists
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: req.user.tenantId },
+      select: { tenantType: true },
+    });
+
+    const module =
+      (tenant?.tenantType || '').toUpperCase().replace(/[\s_-]/g, '') === 'GYM'
+        ? 'GYM'
+        : 'MOBILE_SHOP';
+
+    const subscription = await this.subscriptionsService.buyPlanPhase1({
+      tenantId: req.user.tenantId,
+      planId: payment.planId,
+      module,
+      billingCycle,
+    });
+
+    this.logger.log(
+      `✅ Retry-subscription: paymentId=${payment.id}, ` +
+        `subscriptionId=${subscription.id}, planId=${payment.planId}`,
+    );
+
+    return {
+      success: true,
+      subscriptionCreated: true,
+      subscriptionId: subscription.id,
+      message: 'Subscription created/upgraded successfully',
+    };
   }
 }

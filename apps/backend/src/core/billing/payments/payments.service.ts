@@ -39,7 +39,7 @@ export class PaymentsService {
     }
 
     const order = await this.REMOVED_PAYMENT_INFRA.orders.create({
-      amount: params.amount * 100, // paise
+      amount: params.amount, // already in paise from DB
       currency: 'INR',
       receipt: `rcpt_${Date.now()}`,
       payment_capture: true, // ✅ BOOLEAN

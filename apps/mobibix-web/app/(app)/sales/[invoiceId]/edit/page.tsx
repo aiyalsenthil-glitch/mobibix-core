@@ -17,6 +17,8 @@ import {
 import { getStockBalances } from "@/services/stock.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
+import { InvoiceItemModal } from "@/components/sales/InvoiceItemModal";
+import { type InvoiceItem } from "@/services/sales.api";
 
 const PAYMENT_MODES: PaymentMode[] = ["CASH", "UPI", "CARD", "BANK", "CREDIT"];
 
@@ -53,6 +55,8 @@ export default function EditInvoicePage() {
     Array<{ mode: PaymentMode; amount: number }>
   >([{ mode: "CASH", amount: 0 }]);
   const [invoiceDate, setInvoiceDate] = useState("");
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [editableItems, setEditableItems] = useState<any[]>([]);
 
   // Load invoice
   useEffect(() => {
@@ -88,13 +92,20 @@ export default function EditInvoicePage() {
         }
 
         // Initialize payment methods
-        if (data.paymentMethods && data.paymentMethods.length > 0) {
-          setPaymentMethods(data.paymentMethods);
+        // Initialize payment methods
+        const invoiceData = data as any;
+        if (invoiceData.paymentMethods && invoiceData.paymentMethods.length > 0) {
+          setPaymentMethods(invoiceData.paymentMethods);
+        } else if (invoiceData.payments && invoiceData.payments.length > 0) {
+          setPaymentMethods(invoiceData.payments.map((p: any) => ({ mode: p.method, amount: p.amount })));
         } else {
           setPaymentMethods([
             { mode: data.paymentMode as PaymentMode, amount: data.totalAmount },
           ]);
         }
+
+        // Initialize items
+        setEditableItems(data.items || []);
       } catch (err: any) {
         setError(err.message || "Failed to load invoice");
       } finally {
@@ -151,7 +162,12 @@ export default function EditInvoicePage() {
 
   const isPaid = invoice.status === "PAID";
   const isCredit = invoice.status === "CREDIT";
-  const totalAmount = invoice.totalAmount;
+  
+  // Recalculate Totals Locally
+  const subTotal = editableItems.reduce((sum, item) => sum + (item.lineTotal || (item.rate * item.quantity)), 0);
+  const gstTotal = editableItems.reduce((sum, item) => sum + (item.gstAmount || 0), 0);
+  const totalAmount = subTotal + gstTotal;
+  
   const totalPaid = paymentMethods.reduce((sum, p) => sum + p.amount, 0);
   const paymentDifference = totalAmount - totalPaid;
   const isBalanced = Math.abs(paymentDifference) < 0.01;
@@ -180,13 +196,13 @@ export default function EditInvoicePage() {
         paymentMethods: paymentMethods.filter((p) => p.amount > 0),
         pricesIncludeTax: false,
         items:
-          invoice.items?.map((item) => ({
+          editableItems.map((item) => ({
             shopProductId: item.shopProductId,
             quantity: item.quantity,
             rate: item.rate,
             gstRate: item.gstRate || 0,
             gstAmount: item.gstAmount || 0,
-          })) || [],
+          })),
       };
 
       await updateInvoice(invoiceId, payload as any);
@@ -390,7 +406,86 @@ export default function EditInvoicePage() {
       </div>
 
       <div
-        className={`border rounded-lg p-6 shadow-sm ${
+        className={`border rounded-lg p-6 shadow-sm mb-6 ${
+          theme === "dark"
+            ? "bg-white/5 border-white/10"
+            : "bg-white border-gray-200"
+        }`}
+      >
+        <h2
+          className={`text-lg font-semibold mb-4 ${
+            theme === "dark" ? "text-white" : "text-black"
+          }`}
+        >
+          Invoice Items
+        </h2>
+
+        <div className="overflow-x-auto mb-4">
+          <table className="w-full text-left text-sm">
+            <thead className={`border-b ${theme === 'dark' ? 'border-white/10 text-stone-400' : 'border-gray-100 text-gray-500'}`}>
+              <tr>
+                <th className="py-3 px-2">Item</th>
+                <th className="py-3 px-2">Qty</th>
+                <th className="py-3 px-2">Rate</th>
+                <th className="py-3 px-2">GST</th>
+                <th className="py-3 px-2 text-right">Total</th>
+                <th className="py-3 px-2"></th>
+              </tr>
+            </thead>
+            <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-gray-50'}`}>
+              {editableItems.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-400 italic">No items added yet.</td>
+                </tr>
+              )}
+              {editableItems.map((item, idx) => (
+                <tr key={`${item.shopProductId}-${idx}`} className={theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}>
+                  <td className="py-3 px-2 font-medium">
+                    {products.find(p => p.id === item.shopProductId)?.name || "Unknown Product"}
+                  </td>
+                  <td className="py-3 px-2">{item.quantity}</td>
+                  <td className="py-3 px-2">₹{item.rate.toFixed(2)}</td>
+                  <td className="py-3 px-2">₹{(item.gstAmount || 0).toFixed(2)} ({item.gstRate || 0}%)</td>
+                  <td className="py-3 px-2 text-right font-semibold">₹{(item.lineTotal || (item.rate * item.quantity + (item.gstAmount || 0))).toFixed(2)}</td>
+                  <td className="py-3 px-2 text-right">
+                    <button 
+                      onClick={() => {
+                        setEditableItems(editableItems.filter((_, i) => i !== idx));
+                      }}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsItemModalOpen(true)}
+          className={`w-full py-2 border-2 border-dashed rounded-lg font-medium transition ${
+            theme === 'dark' ? 'border-white/10 text-stone-400 hover:bg-white/5' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          + Add Product / Service
+        </button>
+
+        <InvoiceItemModal
+          isOpen={isItemModalOpen}
+          shopId={invoice.shopId}
+          gstEnabled={selectedShop?.gstEnabled || false}
+          onClose={() => setIsItemModalOpen(false)}
+          onAdd={async (newItem) => {
+             setEditableItems([...editableItems, newItem]);
+          }}
+        />
+      </div>
+
+      <div
+        className={`border rounded-lg p-6 shadow-sm mb-6 ${
           theme === "dark"
             ? "bg-white/5 border-white/10"
             : "bg-white border-gray-200"

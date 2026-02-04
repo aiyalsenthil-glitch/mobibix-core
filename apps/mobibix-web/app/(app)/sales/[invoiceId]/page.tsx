@@ -24,6 +24,7 @@ export default function InvoiceDetailPage() {
   const params = useParams();
   const invoiceId = params.invoiceId as string;
   const { theme } = useTheme();
+  const { selectedShop } = useShop();
   const [isCollectModalOpen, setIsCollectModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
@@ -319,7 +320,7 @@ export default function InvoiceDetailPage() {
                         {index + 1}
                      </td>
                      <td className={`px-6 py-3 font-medium ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
-                        {(item as any).product?.name || "Item"}
+                        {(item as any).product?.name || (item as any).itemName || "Item"}
                      </td>
                      <td className={`px-6 py-3 text-right ${theme === "dark" ? "text-stone-300" : "text-gray-700"}`}>
                         {item.quantity}
@@ -330,6 +331,50 @@ export default function InvoiceDetailPage() {
                      <td className={`px-6 py-3 text-right font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
                         {formatCurrency(item.lineTotal)}
                      </td>
+                     {invoice.status !== "PAID" && invoice.status !== "VOIDED" && (
+                       <td className="px-6 py-3 text-right">
+                          <button
+                            onClick={async () => {
+                              if(confirm('Remove item?')) {
+                                try {
+                                  // Reuse removeItemFromInvoice or just update via API? 
+                                  // Wait, we need an API to remove item from Detail Page context.
+                                  // Currently, updateInvoice handles items replacement.
+                                  // To "Delete", we need to call updateInvoice with items minus this one.
+                                  // OR call a dedicated endpoint? The edit page works by resubmitting the whole list.
+                                  // Let's rely on full list update logic if possible, OR check if we have removeItem API.
+                                  // Looking at imports... only addItemToInvoice is imported.
+                                  // I need to import updateInvoice.
+                                  const { updateInvoice } = await import("@/services/sales.api");
+                                  const newItems = invoice.items
+                                    .filter((_, i) => i !== index)
+                                    .map((i: any) => ({
+                                       shopProductId: i.shopProductId,
+                                       quantity: i.quantity,
+                                       rate: i.rate,
+                                       gstRate: i.gstRate,
+                                       gstAmount: i.gstAmount
+                                    }));
+                                  
+                                  await updateInvoice(invoice.id, {
+                                    shopId: invoice.shopId,
+                                    items: newItems,
+                                    customerName: invoice.customerName,
+                                    paymentMode: invoice.paymentMode as any, // Preserve
+                                    pricesIncludeTax: true 
+                                  });
+                                  reload();
+                                } catch(e: any) {
+                                  alert(e.message || "Failed to remove");
+                                }
+                              }
+                            }}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                             ✕
+                          </button>
+                       </td>
+                     )}
                   </tr>
                 ))
              ) : (
@@ -445,9 +490,7 @@ export default function InvoiceDetailPage() {
               onClose={() => setIsAddItemOpen(false)}
               onAdd={handleAddItem}
               shopId={invoice.shopId}
-              gstEnabled={true} // Defaulting to true or we need to fetch shop settings. 
-              // Since we don't have shop object fully, we can assume TRUE for now or fetch.
-              // Ideally fetch shop details. But for now, let's assume GST enabled to show the UI.
+              gstEnabled={selectedShop?.gstEnabled ?? true} // Use context shop settings if available
            />
         </>
       )}

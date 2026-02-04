@@ -633,7 +633,8 @@ export class JobCardsService {
       : DocumentType.SALES_INVOICE;
 
     const invoiceType = InvoiceType.REPAIR;
-    const isGstApplicable = shop.repairGstDefault ?? false;
+    // GST Logic: Respect Bill Type. If WITHOUT_GST, force false. Else default to shop settings.
+    const isGstApplicable = job.billType === 'WITHOUT_GST' ? false : (shop.repairGstDefault ?? false);
 
     // Generate Document Number
     const invoiceNumber =
@@ -644,30 +645,25 @@ export class JobCardsService {
       );
 
     // Calculate Totals & Items
-    const itemsData: any[] = []; // Explicit type to avoid 'never' inference
+    const itemsData: any[] = []; 
     let partsTotal = 0;
 
     // 1. Add Parts
     if (job.parts && job.parts.length > 0) {
        for (const part of job.parts) {
-          // Fetch product to get current sale price (or usage copy?)
-          // Usually we bill at current sale price.
           const rate = part.product.salePrice || 0;
-          const lineTotal = rate * part.quantity;
-          
-          // GST Logic (if applicable)
-          // Simplified: Assuming rate includes tax or excluded based on settings.
-          // For now, simple Copy.
+          const lineTotal = rate * part.quantity; // rate is Paisa
           
           itemsData.push({
              shopProductId: part.shopProductId,
              quantity: part.quantity,
-             rate: rate, // rate is already Paisa (from ShopProduct.salePrice)
-             
-             hsnCode: part.product.hsnCode || '9987', // 9987 is Repair Services, but for goods use product's.
+             rate: rate, 
+             hsnCode: part.product.hsnCode || '9987', 
              gstRate: part.product.gstRate || 0,
-             gstAmount: 0, // Calculate properly if needed
-             lineTotal: lineTotal // lineTotal = rate(Paisa) * quantity = Paisa
+             gstAmount: 0, // Recalculated later if needed or relying on updateInvoice? Ideally correct here.
+             // If WITHOUT_GST, gstAmount is 0. If WITH_GST, we should probably calc it? 
+             // Ideally we create DRAFT and let updateInvoice fix totals, but better consistency to set 0.
+             lineTotal: lineTotal 
           });
           
           partsTotal += lineTotal;
@@ -675,33 +671,45 @@ export class JobCardsService {
     }
     
     // 2. Add Service Charge (Differential)
-    // Job Final Cost (Rupees)
-    const targetTotal = job.finalCost || job.estimatedCost || 0;
+    const targetTotal = (job.finalCost || job.estimatedCost || 0) * 100; // Convert to Paisa to compare with partsTotal
     const difference = targetTotal - partsTotal;
     
     if (difference > 0) {
-       // Need a 'Service' product? Or ad-hoc?
-       // InvoiceItem requires 'shopProductId'.
-       // We need a dummy 'Repair Service' product in the shop?
-       // For now, create one if not exists OR skip validation?
-       // Schema requires shopProductId.
-       
-       // Strategy: Attempt to find a "Service" product. If not, maybe use first part?
-       // Better: Create a 'Repair Service' product on the fly? No, messy.
-       // Fallback: If no service product, we might fail to represent the full cost structurally.
-       // Workaround: We leave it to the user to add Service Charge in DRAFT mode?
-       // User requirement: "Auto-create DRAFT invoice". "Invoice items editable".
-       // Ideally we populate it.
-       
-       // I'll skip adding Service Charge item automatically if no ID available,
-       // BUT I will set the Invoice SubTotal to the Target Total, so the math prompts user to fix items.
-       // Actually, `totalAmount` is derived from items in strict systems.
-       // Let's just add parts. If `finalCost` > parts, the user adds the rest as "Service Charge" in UI.
-       console.log('Invoice auto-created with parts. Service charge difference:', difference);
+       // Find 'Service Charge' product or create it
+       let serviceProduct = await this.prisma.shopProduct.findFirst({
+         where: { shopId: job.shopId, name: 'Service Charge', type: 'SERVICE' }
+       });
+
+       if (!serviceProduct) {
+         serviceProduct = await this.prisma.shopProduct.create({
+           data: {
+             tenantId: job.tenantId,
+             shopId: job.shopId,
+             name: 'Service Charge',
+             type: 'SERVICE',
+             salePrice: 0,
+             gstRate: 18, // Default service tax
+             hsnCode: '9987',
+             isActive: true
+           }
+         });
+       }
+
+       itemsData.push({
+          shopProductId: serviceProduct.id,
+          quantity: 1,
+          rate: difference,
+          hsnCode: serviceProduct.hsnCode || '9987',
+          gstRate: serviceProduct.gstRate || 18,
+          gstAmount: 0,
+          lineTotal: difference
+       });
     }
     
     // Calculate Invoice Levels (Paisa)
-    const subTotalPaisa = Math.round(targetTotal * 100); 
+    // If No GST, Total = SubTotal. If GST, SubTotal is derived? 
+    // Here we treat TargetTotal as Final Amount.
+    const subTotalPaisa = Math.round(targetTotal); 
 
     const fy = getFinancialYear(new Date());
 
@@ -718,14 +726,13 @@ export class JobCardsService {
         customerName: job.customerName,
         customerPhone: job.customerPhone,
         status: InvoiceStatus.DRAFT,
-        subTotal: subTotalPaisa, // Initialize with Job Cost
+        subTotal: subTotalPaisa, 
         gstAmount: 0,
         totalAmount: subTotalPaisa,
         paymentMode: 'CASH',
         cashAmount: 0,
         invoiceType,
         isGstApplicable,
-        // Removed 'notes' as it's not in the schema
         items: {
            create: itemsData
         }

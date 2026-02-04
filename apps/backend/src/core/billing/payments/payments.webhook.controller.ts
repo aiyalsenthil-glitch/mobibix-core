@@ -97,32 +97,42 @@ export class PaymentsWebhookController {
           },
         });
 
-        // 4️⃣ 🔥 ACTIVATE / QUEUE SUBSCRIPTION (THIS WAS MISSING)
-        // TODO: Phase 1 migration - webhook needs to include billingCycle
-        // For now, skipping subscription creation (user must choose cycle manually)
-        /*
-        await this.prisma.$transaction(async (tx) => {
-          // Resolve module from tenant type
-          const tenant = await tx.tenant.findUnique({
-            where: { id: paymentRecord.tenantId },
-            select: { tenantType: true },
+        // 4️⃣ 🔥 ACTIVATE SUBSCRIPTION IMMEDIATELY (WEBHOOK IS SOURCE OF TRUTH)
+        try {
+          await this.prisma.$transaction(async (tx) => {
+            // Resolve module from tenant type
+            const tenant = await tx.tenant.findUnique({
+              where: { id: paymentRecord.tenantId },
+              select: { tenantType: true },
+            });
+
+            const module =
+              (tenant?.tenantType || '')
+                .toUpperCase()
+                .replace(/[\s_-]/g, '') === 'GYM'
+                ? 'GYM'
+                : 'MOBILE_SHOP';
+
+            // ✅ BILLINGCYCLE IS STORED IN PAYMENT TABLE - use it directly
+            await this.subscriptionsService.buyPlanPhase1({
+              tenantId: paymentRecord.tenantId,
+              planId: paymentRecord.planId,
+              module,
+              billingCycle: paymentRecord.billingCycle,
+            });
           });
 
-          const module = tenant?.tenantType === 'GYM' ? 'GYM' : 'MOBILE_SHOP';
-
-          // IMPORTANT: reuse backend business logic
-          await this.subscriptionsService.buyPlanPhase1({
-            tenantId: paymentRecord.tenantId,
-            planId: paymentRecord.planId,
-            module,
-            billingCycle: 'MONTHLY', // Default - user should specify via API
-          });
-        });
-
-        this.logger.log(
-          `Subscription updated for tenant ${paymentRecord.tenantId}`,
-        );
-        */
+          this.logger.log(
+            `✅ Subscription created for tenant ${paymentRecord.tenantId} via webhook`,
+          );
+        } catch (subscriptionErr) {
+          this.logger.error(
+            `❌ Failed to create subscription after payment: ${paymentRecord.tenantId}`,
+            subscriptionErr,
+          );
+          // ⚠️ Webhook still returns 200 OK so Razorpay doesn't retry
+          // Payment is marked SUCCESS; subscription creation can be retried manually
+        }
       }
 
       return { received: true };

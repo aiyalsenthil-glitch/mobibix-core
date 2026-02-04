@@ -8,6 +8,7 @@ import {
   Patch,
   Body,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { SubscriptionsService } from './subscriptions.service';
@@ -19,6 +20,8 @@ import { ToggleAutoRenewDto } from '../dto/phase1-subscriptions.dto';
 @UseGuards(JwtAuthGuard)
 @Controller('billing/subscription')
 export class SubscriptionsController {
+  private readonly logger = new Logger(SubscriptionsController.name);
+
   constructor(
     private readonly subscriptionsService: SubscriptionsService,
     private readonly prisma: PrismaService,
@@ -150,6 +153,77 @@ export class SubscriptionsController {
     return {
       subscriptionId: updated.id,
       autoRenew: updated.autoRenew,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔄 UPGRADE SUBSCRIPTION (Immediate Plan Change)
+  // ═══════════════════════════════════════════════════════════════════════════
+  @Patch('upgrade')
+  async upgradeSubscription(
+    @Req() req: any,
+    @Body()
+    body: {
+      newPlanId: string;
+    },
+    @Query('module') module?: ModuleType,
+  ) {
+    if (!req.user || !req.user.tenantId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    const { newPlanId } = body;
+
+    if (!newPlanId) {
+      throw new BadRequestException('newPlanId is required');
+    }
+
+    // 🔍 Resolve module if not provided
+    let resolvedModule = module;
+    if (!resolvedModule) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: req.user.tenantId },
+        select: { tenantType: true },
+      });
+
+      if (tenant) {
+        resolvedModule =
+          tenant.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
+      } else {
+        resolvedModule = ModuleType.MOBILE_SHOP;
+      }
+    }
+
+    // 1️⃣ Get current active subscription
+    const currentSub =
+      await this.subscriptionsService.getCurrentActiveSubscription(
+        req.user.tenantId,
+        resolvedModule,
+      );
+
+    if (!currentSub) {
+      throw new BadRequestException(
+        'No active subscription to upgrade. Please buy a plan first.',
+      );
+    }
+
+    // 2️⃣ Call upgradePlan service
+    const upgraded = await this.subscriptionsService.upgradePlan({
+      subscriptionId: currentSub.id,
+      newPlanId,
+    });
+
+    this.logger.log(
+      `✅ Upgrade API: tenantId=${req.user.tenantId}, ` +
+        `subscriptionId=${upgraded.id}, newPlanId=${newPlanId}`,
+    );
+
+    return {
+      success: true,
+      subscriptionId: upgraded.id,
+      planId: upgraded.planId,
+      nextPriceSnapshot: upgraded.nextPriceSnapshot,
+      message: 'Plan upgraded immediately. New price applies at next renewal.',
     };
   }
 }

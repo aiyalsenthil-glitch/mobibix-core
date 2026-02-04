@@ -173,10 +173,20 @@ export class SubscriptionsService {
             `${plan.name}@${billingCycle} (₹${priceResponse.price / 100})`,
         );
       } else if (existingSub.status === SubscriptionStatus.ACTIVE) {
-        // Active subscription with time remaining → ERROR
-        throw new BadRequestException(
-          `Tenant already has an ACTIVE subscription for ${module}. ` +
-            `Upgrade via upgradePlan() or downgrade via downgradeScheduled().`,
+        // Active subscription with time remaining → AUTO-UPGRADE (IDEMPOTENT)
+        // This happens after payment success → must NOT throw
+        this.logger.log(
+          `🔄 Auto-upgrading ${tenant.name}@${module}: detected ACTIVE subscription, ` +
+            `calling upgradePlan(subscriptionId=${existingSub.id}, newPlanId=${planId})`,
+        );
+
+        subscription = await this.upgradePlan({
+          subscriptionId: existingSub.id,
+          newPlanId: planId,
+        });
+
+        this.logger.log(
+          `✅ Auto-upgrade complete: ${tenant.name}@${module} → ${plan.name}`,
         );
       } else {
         // CANCELLED, SCHEDULED → ERROR
