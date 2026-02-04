@@ -16,7 +16,7 @@ import { WhatsAppCapabilityRouter } from './router/whatsapp-capability.router';
 
 
 @Public()
-@Controller('api/webhook/whatsapp')
+@Controller('webhook/whatsapp')
 export class WhatsAppWebhookController {
   private readonly logger = new Logger(WhatsAppWebhookController.name);
 

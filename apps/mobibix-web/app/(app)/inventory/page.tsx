@@ -653,8 +653,7 @@ export default function InventoryPage() {
 
                     {/* Status Badge */}
                     <td className="px-6 py-4">
-                      {(product.avgCost || product.costPrice) &&
-                      (product.avgCost || product.costPrice) > 0 ? (
+                      {(product.avgCost || product.costPrice || 0) > 0 ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-300">
                           🟢 Ready
                         </span>
