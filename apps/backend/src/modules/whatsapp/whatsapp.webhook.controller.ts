@@ -16,7 +16,7 @@ import { WhatsAppCapabilityRouter } from './router/whatsapp-capability.router';
 
 
 @Public()
-@Controller('webhook/whatsapp')
+@Controller('api/webhook/whatsapp')
 export class WhatsAppWebhookController {
   private readonly logger = new Logger(WhatsAppWebhookController.name);
 
@@ -45,33 +45,11 @@ export class WhatsAppWebhookController {
    */
   @Post()
   @Public()
-  async handleWebhook(@Body() body: any) {
-    try {
-      console.log('DEBUG: Webhook Payload:', JSON.stringify(body, null, 2));
-      // Meta webhook structure
-      const changes = body?.entry?.[0]?.changes?.[0];
-      if (!changes) {
-        return { received: true };
-      }
-
-      const metadata = changes.value?.metadata;
-      const statuses = changes.value?.statuses || [];
-      const messages = changes.value?.messages || [];
-
-      // Process status updates (message_status webhooks)
-      for (const status of statuses) {
-        await this.handleStatusUpdate(status, metadata);
-      }
-
-
-      // Process incoming messages
-      await this.handleIncomingMessages(messages, metadata);
-
-      return { received: true };
-    } catch (error) {
-      this.logger.error('Webhook processing error', error);
-      return { received: true };
-    }
+  handleWebhook(@Req() req, @Res() res) {
+    console.log('🔥 WEBHOOK RECEIVED 🔥');
+    console.log(req.headers);
+    console.log(JSON.stringify(req.body, null, 2));
+    res.sendStatus(200);
   }
 
      

@@ -619,8 +619,7 @@ export default function InventoryPage() {
                                 : "text-red-600"
                           }`}
                         >
-                          {(product.avgCost || product.costPrice) &&
-                          (product.avgCost || product.costPrice) > 0 ? (
+                          {(product.avgCost || product.costPrice || 0) > 0 ? (
                             <>
                               <span className="font-semibold">
                                 ₹
