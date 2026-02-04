@@ -610,8 +610,7 @@ export default function InventoryPage() {
                       ) : (
                         <div
                           className={`flex items-center gap-2 ${
-                            (product.avgCost || product.costPrice) &&
-                            (product.avgCost || product.costPrice) > 0
+                            (product.avgCost || product.costPrice || 0) > 0
                               ? theme === "dark"
                                 ? "text-white"
                                 : "text-gray-900"

@@ -7,6 +7,8 @@ import {
   ForbiddenException,
   Logger,
   Inject,
+  Req,
+  Res,
 } from '@nestjs/common';
 import { Public } from '../../core/auth/decorators/public.decorator';
 import { PrismaService } from '../../core/prisma/prisma.service';
@@ -25,16 +27,16 @@ export class WhatsAppWebhookController {
 
 
   @Get()
-  verifyWebhook(
-    @Query('hub.mode') mode: string,
-    @Query('hub.verify_token') token: string,
-    @Query('hub.challenge') challenge: string,
-  ) {
+  verifyWebhook(@Req() req, @Res() res) {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
     if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-      return challenge;
+      return res.status(200).send(challenge);
     }
 
-    throw new ForbiddenException('Invalid verify token');
+    return res.status(403).json({ message: 'Invalid verify token' });
   }
 
   /**
