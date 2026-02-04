@@ -26,6 +26,7 @@ export class WhatsAppCrmService {
       select: {
         whatsappCrmEnabled: true,
         whatsappPhoneNumberId: true,
+        tenantType: true, // ✅ Expose for UI logic
       },
     });
 
@@ -33,6 +34,7 @@ export class WhatsAppCrmService {
       hasSubscription,
       isEnabled: tenant?.whatsappCrmEnabled ?? false,
       hasPhoneNumber: !!tenant?.whatsappPhoneNumberId,
+      moduleType: tenant?.tenantType?.toUpperCase(), // ✅ Return moduleType normalized
     };
   }
 }

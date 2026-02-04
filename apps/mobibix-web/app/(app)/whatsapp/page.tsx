@@ -10,6 +10,7 @@ import {
   WhatsAppDashboard,
   WhatsAppLog,
 } from "@/services/whatsapp.api";
+import { authenticatedFetch } from "@/services/auth.api";
 import WhatsAppCrmPromo from "./WhatsAppCrmPromo";
 
 interface CrmStatus {
@@ -57,10 +58,16 @@ export default function WhatsAppPage() {
       setLoading(true);
 
       // First, check WhatsApp CRM subscription status
-      const statusResponse = await fetch("/api/user/whatsapp-crm/status");
+      const statusResponse = await authenticatedFetch("/user/whatsapp-crm/status");
       if (statusResponse.ok) {
         const status = await statusResponse.json();
         setCrmStatus(status);
+
+        // ✅ Redirect Retail Demo users to new CRM
+        if (status.moduleType === 'MOBILE_SHOP') {
+            window.location.href = '/whatsapp-crm'; // Hard redirect to ensure proper load
+            return;
+        }
 
         // If no subscription, show promo (return early)
         if (!status.hasSubscription) {

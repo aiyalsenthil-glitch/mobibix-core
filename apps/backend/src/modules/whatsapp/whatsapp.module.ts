@@ -24,6 +24,10 @@ import { EntityResolverService } from './entity-resolver.service';
 import { WhatsAppUserController } from './whatsapp-user.controller';
 import { WhatsAppUserService } from './whatsapp-user.service';
 import { WhatsAppCrmController } from './whatsapp-crm.controller';
+import { ShopProductsModule } from '../../core/shop-products/shop-products.module'; // ✅ Added
+import { WhatsAppCapabilityRouter } from './router/whatsapp-capability.router'; // ✅ Added
+import { RetailDemoHandler } from './capabilities/retail-demo/retail-demo.handler'; // ✅ Added
+import { RetailDemoCatalog } from './capabilities/retail-demo/retail-demo.catalog'; // ✅ Added
 
 @Module({
   controllers: [
@@ -43,7 +47,7 @@ import { WhatsAppCrmController } from './whatsapp-crm.controller';
     WhatsAppUserController,
     WhatsAppCrmController,
   ],
-  imports: [ScheduleModule.forRoot(), BillingModule],
+  imports: [ScheduleModule.forRoot(), BillingModule, ShopProductsModule], // ✅ Added ShopProductsModule
   providers: [
     PrismaService,
     WhatsAppSender,
@@ -58,6 +62,9 @@ import { WhatsAppCrmController } from './whatsapp-crm.controller';
     WhatsAppRemindersService, // ✅ Added for DI
     WhatsAppRemindersCron, // ✅ Added for reminder sending
     WhatsAppUserService,
+    WhatsAppCapabilityRouter, // ✅ Added
+    RetailDemoHandler,       // ✅ Added
+    RetailDemoCatalog,       // ✅ Added
   ],
   exports: [
     WhatsAppSender,

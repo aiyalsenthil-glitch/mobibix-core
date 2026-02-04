@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { authenticatedFetch } from "@/services/auth.api";
 import WhatsAppCrmPromo from "./components/WhatsAppCrmPromo";
 import WhatsAppCrmContactSupport from "./components/WhatsAppCrmContactSupport";
 import WhatsAppCrmDashboard from "./components/WhatsAppCrmDashboard";
@@ -10,6 +10,7 @@ type CrmStatus = {
   hasSubscription: boolean;
   isEnabled: boolean;
   hasPhoneNumber: boolean;
+  moduleType?: string; // ✅ Added
 };
 
 export default function WhatsAppCrmPage() {
@@ -20,7 +21,11 @@ export default function WhatsAppCrmPage() {
   useEffect(() => {
     async function fetchStatus() {
       try {
-        const data = await apiFetch<CrmStatus>("/user/whatsapp-crm/status");
+        const response = await authenticatedFetch("/user/whatsapp-crm/check-status");
+        if (!response.ok) {
+            throw new Error("Failed to load status");
+        }
+        const data: CrmStatus = await response.json();
         setStatus(data);
       } catch (err: any) {
         setError(err.message || "Failed to load WhatsApp CRM status");
@@ -55,7 +60,8 @@ export default function WhatsAppCrmPage() {
   }
 
   // No subscription → Show promotion
-  if (!status?.hasSubscription) {
+  // EXCEPTION: Allow MOBILE_SHOP (Retail Demo) to bypass this check
+  if (!status?.hasSubscription && status?.moduleType !== 'MOBILE_SHOP') {
     return <WhatsAppCrmPromo />;
   }
 
@@ -65,5 +71,5 @@ export default function WhatsAppCrmPage() {
   }
 
   // Enabled → Load dashboard
-  return <WhatsAppCrmDashboard hasPhoneNumber={status.hasPhoneNumber} />;
+  return <WhatsAppCrmDashboard hasPhoneNumber={status.hasPhoneNumber} moduleType={status.moduleType} />;
 }

@@ -94,7 +94,7 @@ export class WhatsAppUserService {
     }
 
     const normalized = tenant.tenantType.toUpperCase();
-    if (normalized === 'MOBILE_SHOP') return ModuleType.MOBILE_SHOP;
+    if (normalized === 'MOBILE_SHOP') return ModuleType.WHATSAPP_CRM;
     return ModuleType.GYM;
   }
 

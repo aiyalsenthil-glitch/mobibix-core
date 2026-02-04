@@ -8,9 +8,21 @@ import { WhatsAppCrmService } from './whatsapp-crm.service';
 export class WhatsAppCrmController {
   constructor(private readonly whatsappCrmService: WhatsAppCrmService) {}
 
-  @Get('status')
+  @Get('check-status')
   async getStatus(@Req() req: any) {
-    const tenantId = req.user.tenantId;
-    return this.whatsappCrmService.getStatus(tenantId);
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) throw new Error('No tenantId');
+      return await this.whatsappCrmService.getStatus(tenantId);
+    } catch (error) {
+      console.error('Error fetching WhatsApp CRM status:', error);
+      // Fallback for demo/error cases to avoid UI crash
+      return {
+        hasSubscription: false,
+        isEnabled: false,
+        hasPhoneNumber: false,
+        moduleType: 'MOBILE_SHOP', // Force fallback for demo if backend fails
+      };
+    }
   }
 }

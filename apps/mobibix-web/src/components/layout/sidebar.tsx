@@ -38,7 +38,15 @@ const navItems: NavItem[] = [
       { label: "My Follow-ups", href: "/crm/follow-ups" },
     ],
   },
-  { label: "WhatsApp", href: "/whatsapp", icon: "💬" },
+  {
+    label: "WhatsApp",
+    href: "/whatsapp",
+    icon: "💬",
+    submenu: [
+      { label: "Dashboard", href: "/whatsapp" },
+      { label: "Retail Inbox", href: "/whatsapp-crm" },
+    ],
+  },
   { label: "Suppliers", href: "/suppliers", icon: "🚚" },
   { label: "Purchases", href: "/purchases", icon: "📥" },
   {

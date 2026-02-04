@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     const backendUrl =
       process.env.NEXT_PUBLIC_API_URL ||
       process.env.API_URL ||
-      "http://localhost_REPLACED:3000";
+      "http://localhost_REPLACED:3000/api";
 
     // Get auth token from cookies or headers
     const authHeader = request.headers.get("authorization");

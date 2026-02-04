@@ -10,13 +10,19 @@ import {
 } from '@nestjs/common';
 import { Public } from '../../core/auth/decorators/public.decorator';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { WhatsAppCapabilityRouter } from './router/whatsapp-capability.router';
+
 
 @Public()
 @Controller('webhook/whatsapp')
 export class WhatsAppWebhookController {
   private readonly logger = new Logger(WhatsAppWebhookController.name);
 
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    private readonly router: WhatsAppCapabilityRouter,
+  ) {}
+
 
   @Get()
   verifyWebhook(
@@ -54,19 +60,80 @@ export class WhatsAppWebhookController {
         await this.handleStatusUpdate(status, metadata);
       }
 
-      // Process incoming messages (optional, not needed for status tracking)
-      for (const message of messages) {
-        this.logger.debug(
-          `Incoming message from ${message.from}: ${message.id}`,
-        );
-      }
+
+      // Process incoming messages
+      await this.handleIncomingMessages(messages, metadata);
 
       return { received: true };
     } catch (error) {
       this.logger.error('Webhook processing error', error);
-      return { received: true }; // Return success to Meta regardless
+      return { received: true };
     }
   }
+
+     
+       /**
+        * Handle incoming messages (Text, Quick Reply, etc.)
+        */
+       private async handleIncomingMessages(messages: any[], metadata: any) {
+         if (!messages || messages.length === 0) return;
+     
+         // Extract tenantId from metadata (if available) or we need another way?
+         // WAIT: The webhook from Meta doesn't send "tenantId".
+         // We must resolve tenantId from the `display_phone_number` or the `phone_number_id` in metadata.
+         // metadata: { display_phone_number: '...', phone_number_id: '...' }
+     
+         const phoneNumberId = metadata?.phone_number_id;
+         if (!phoneNumberId) {
+           this.logger.warn('No phone_number_id in webhook metadata');
+           return;
+         }
+     
+         try {
+           // Resolve Tenant by PhoneNumberId
+           // We need a way to find Tenant ID from PhoneNumberId.
+           // WhatsAppPhoneNumbersService has `findByPhoneNumberId`? Or direct Prisma query?
+           // Since we can't inject Service easily without refactor circular deps maybe?
+           // Let's rely on Prisma directly since it's already injected.
+           
+           const waNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
+             where: { phoneNumberId },
+             select: { tenantId: true },
+           });
+     
+           if (!waNumber) {
+             this.logger.warn(`Unknown WhatsApp Number ID: ${phoneNumberId}`);
+             return;
+           }
+     
+           const tenantId = waNumber.tenantId;
+     
+           for (const message of messages) {
+             const senderPhone = message.from; // e.g., 919876543210
+             
+             // Process only TEXT messages or QUICK REPLIES
+             let text = '';
+             if (message.type === 'text') {
+               text = message.text?.body;
+             } else if (message.type === 'interactive' && message.interactive?.type === 'button_reply') {
+               // Handle button clicks (e.g. Menu options if we use buttons later)
+               text = message.interactive.button_reply.id; // or title
+             } else if (message.type === 'interactive' && message.interactive?.type === 'list_reply') {
+                text = message.interactive.list_reply.id; 
+             }
+     
+             if (text) {
+               this.logger.log(`Received message from ${senderPhone} for Tenant ${tenantId}: "${text}"`);
+               
+               // ROUTE THE MESSAGE
+               await this.router.routeMessage(tenantId, senderPhone, text);
+             }
+           }
+      } catch (err) {
+      this.logger.error('Error handling incoming messages', err);
+    }
+  }
+
 
   /**
    * Handle message status updates from Meta
