@@ -45,6 +45,7 @@ export class WhatsAppWebhookController {
   @Public()
   async handleWebhook(@Body() body: any) {
     try {
+      console.log('DEBUG: Webhook Payload:', JSON.stringify(body, null, 2));
       // Meta webhook structure
       const changes = body?.entry?.[0]?.changes?.[0];
       if (!changes) {
