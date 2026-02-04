@@ -257,7 +257,7 @@ export class WhatsAppRemindersService {
           `[DEBUG] Reminder ${reminderId}: tenantType=${reminder.tenant?.tenantType}, templateKey=${templateKey}`,
         );
 
-        // Robust module detection for Mobile Shop/Repair
+        // Robust module detection for Mobile Shop
         const rawTenantType = (reminder.tenant?.tenantType || '')
           .toUpperCase()
           .replace(/[\s_-]/g, '');
@@ -265,23 +265,33 @@ export class WhatsAppRemindersService {
           .toUpperCase()
           .replace(/[\s_-]/g, '');
         const isMobileShop = rawTenantType === 'MOBILESHOP';
-        const isMobileRepair = rawTenantType === 'MOBILEREPAIR';
         const isTemplateMobileShop = templateModule === 'MOBILESHOP';
-        const isTemplateMobileRepair = templateModule === 'MOBILEREPAIR';
         const isTemplateGym = templateModule === 'GYM';
+        const mobileShopVariableKeys = new Set([
+          'shopName',
+          'customerName',
+          'customer_name',
+          'jobNumber',
+          'job_number',
+          'jobCardNumber',
+          'deviceModel',
+          'device_name',
+          'invoiceNumber',
+          'invoice_number',
+          'invoiceTotalAmount',
+          'invoicePendingAmount',
+        ]);
+        const hasMobileShopVariables = variableKeys.some((key) =>
+          mobileShopVariableKeys.has(key),
+        );
 
         const context: VariableResolutionContext = {
-          module: isTemplateMobileShop
-            ? WhatsAppModule.MOBILE_SHOP
-            : isTemplateMobileRepair
-              ? WhatsAppModule.MOBILE_REPAIR
+          module:
+            isTemplateMobileShop || hasMobileShopVariables || isMobileShop
+              ? WhatsAppModule.MOBILE_SHOP
               : isTemplateGym
                 ? WhatsAppModule.GYM
-                : isMobileShop
-                  ? WhatsAppModule.MOBILE_SHOP
-                  : isMobileRepair
-                    ? WhatsAppModule.MOBILE_REPAIR
-                    : WhatsAppModule.GYM,
+                : WhatsAppModule.GYM,
           tenantId,
           memberId: member?.id, // May be null for Mobile Shop
           // 🚨 CRITICAL FIX: Trigger value could be Invoice ID OR JobCard ID
@@ -314,8 +324,6 @@ export class WhatsAppRemindersService {
             .replace(/[\s_-]/g, '');
           if (autoModule === 'MOBILESHOP')
             context.module = WhatsAppModule.MOBILE_SHOP;
-          if (autoModule === 'MOBILEREPAIR')
-            context.module = WhatsAppModule.MOBILE_REPAIR;
           if (autoModule === 'GYM') context.module = WhatsAppModule.GYM;
 
           this.logger.error(
