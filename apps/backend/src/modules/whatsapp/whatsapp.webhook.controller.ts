@@ -46,9 +46,9 @@ export class WhatsAppWebhookController {
   @Post()
   @Public()
   handleWebhook(@Req() req, @Res() res) {
-    console.log('🔥 WEBHOOK RECEIVED 🔥');
-    console.log(req.headers);
-    console.log(JSON.stringify(req.body, null, 2));
+    console.log('🔥 WEBHOOK HIT');
+    console.log('phone_number_id =', req.body?.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id);
+    console.log('messages =', req.body?.entry?.[0]?.changes?.[0]?.value?.messages);
     res.sendStatus(200);
   }
 
