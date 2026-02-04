@@ -65,4 +65,8 @@ export class UpdateShopDto {
   @IsOptional()
   @IsString()
   branchName?: string;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
 }

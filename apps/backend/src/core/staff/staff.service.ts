@@ -30,8 +30,10 @@ export class StaffService {
       );
     }
 
-    const planName = subscription.plan.name;
-    const capability = PLAN_CAPABILITIES[planName];
+    const planCode = (
+      subscription.plan.code ?? subscription.plan.name
+    ).toUpperCase();
+    const capability = PLAN_CAPABILITIES[planCode];
 
     if (!capability?.staffAllowed) {
       throw new ForbiddenException(

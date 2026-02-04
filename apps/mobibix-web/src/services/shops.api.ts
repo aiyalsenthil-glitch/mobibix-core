@@ -24,6 +24,7 @@ export interface Shop {
   isActive: boolean;
   createdAt: Date | string;
   updatedAt: Date | string;
+  currency?: string;
 
   // Print Settings
   invoicePrinterType?: "NORMAL" | "THERMAL";
@@ -43,6 +44,8 @@ export interface Shop {
   accountNumber?: string;
   ifscCode?: string;
   branchName?: string;
+  repairInvoiceNumberingMode?: RepairInvoiceNumberingMode;
+  repairGstDefault?: boolean;
 }
 
 export interface CreateShopDto {
@@ -61,6 +64,7 @@ export interface CreateShopDto {
   // Default Print Settings
   invoicePrinterType?: "NORMAL" | "THERMAL";
   invoiceTemplate?: "CLASSIC" | "MODERN" | "THERMAL";
+  currency?: string;
 }
 
 export interface UpdateShopDto {
@@ -76,6 +80,7 @@ export interface UpdateShopDto {
   logoUrl?: string;
   invoiceFooter?: string;
   terms?: string[];
+  currency?: string;
 }
 
 export interface UpdateShopSettingsDto {
@@ -97,6 +102,7 @@ export interface UpdateShopSettingsDto {
   // Print Settings Updates
   invoicePrinterType?: "NORMAL" | "THERMAL";
   invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL";
+  currency?: string;
   jobCardPrinterType?: "THERMAL";
   jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL";
   

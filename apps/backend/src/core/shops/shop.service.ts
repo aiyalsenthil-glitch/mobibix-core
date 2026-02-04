@@ -10,9 +10,14 @@ import {
 } from './dto/update-document-setting.dto';
 import { isValidIndianGSTIN } from '../../common/validators/gstin.validator';
 import { getFinancialYear } from '../../common/utils/invoice-number.util';
+import { DocumentNumberService } from '../../common/services/document-number.service';
+
 @Injectable()
 export class ShopService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly docNumberService: DocumentNumberService,
+  ) {}
 
   async listShops(tenantId: string) {
     return this.prisma.shop.findMany({
@@ -32,7 +37,7 @@ export class ShopService {
       throw new ForbiddenException('Invalid GSTIN format');
     }
 
-    return this.prisma.shop.create({
+    const shop = await this.prisma.shop.create({
       data: {
         tenantId,
         name: dto.name,
@@ -49,6 +54,14 @@ export class ShopService {
         invoiceFooter: dto.invoiceFooter,
       },
     });
+
+    // Initialize document numbering settings for the new shop
+    await this.docNumberService.initializeShopDocumentSettings(
+      shop.id,
+      shop.invoicePrefix || 'HP', // Default prefix if none provided
+    );
+
+    return shop;
   }
   async getShopById(tenantId: string, shopId: string) {
     const shop = await this.prisma.shop.findFirst({

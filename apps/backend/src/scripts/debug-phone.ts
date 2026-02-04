@@ -24,7 +24,7 @@ async function main() {
   console.log('Tenant Phone Numbers:', tenantPhones);
 
   // 3. Check Module Phone Numbers
-  const moduleType = tenant.tenantType === 'MOBILESHOP' ? 'MOBILE_SHOP' : tenant.tenantType || 'GYM';
+  const moduleType = tenant.tenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : tenant.tenantType || 'GYM';
   console.log(`Checking Module Type: ${moduleType} (Raw: ${tenant.tenantType})`);
 
   const modulePhones = await prisma.whatsAppPhoneNumberModule.findMany({

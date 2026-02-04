@@ -5,7 +5,7 @@ import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
 import { toWhatsAppPhone, normalizePhone } from '../../common/utils/phone.util';
 import { WhatsAppLogger } from './whatsapp.logger';
 import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
-import { WhatsAppPhoneNumberPurpose } from '@prisma/client';
+import { WhatsAppPhoneNumberPurpose, ModuleType } from '@prisma/client';
 import { PlanRulesService } from '../../core/billing/plan-rules.service';
 
 @Injectable()
@@ -23,12 +23,33 @@ export class WhatsAppSender {
   ) {}
 
   /**
+   * Resolve tenant's module type (GYM or MOBILE_SHOP)
+   */
+  private async resolveTenantModule(tenantId: string): Promise<ModuleType> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { tenantType: true },
+    });
+
+    if (!tenant?.tenantType) {
+      // Default to MOBILE_SHOP if not found
+      return ModuleType.MOBILE_SHOP;
+    }
+
+    const normalized = tenant.tenantType.toUpperCase();
+    if (normalized === 'GYM') return ModuleType.GYM;
+    return ModuleType.MOBILE_SHOP;
+  }
+
+  /**
    * Map WhatsApp feature to phone number purpose
    */
   private mapFeatureToPurpose(
     feature: WhatsAppFeature,
   ): WhatsAppPhoneNumberPurpose {
-    const mapping: Partial<Record<WhatsAppFeature, WhatsAppPhoneNumberPurpose>> = {
+    const mapping: Partial<
+      Record<WhatsAppFeature, WhatsAppPhoneNumberPurpose>
+    > = {
       WELCOME: 'DEFAULT',
       PAYMENT_DUE: 'BILLING',
       EXPIRY: 'REMINDER',
@@ -43,6 +64,11 @@ export class WhatsAppSender {
     phone: string,
     templateName: string,
     parameters: string[],
+    options?: {
+      skipPlanCheck?: boolean;
+      logId?: string;
+      metadata?: Record<string, any> | null;
+    },
   ): Promise<{
     success: boolean;
     messageId?: string;
@@ -50,33 +76,76 @@ export class WhatsAppSender {
     skipped?: boolean;
     reason?: string;
   }> {
-    // 🔍 GUARDRAIL 1: Backward Compatibility & Empty Features
-    // 🔍 GUARDRAIL 1: Backward Compatibility & Empty Features
-    // Fetch rules specifically for this check
-    const planRules = await this.planRulesService.getPlanRulesForTenant(tenantId);
-    
-    // If no rules (no plan?) or NO features defined (Trial/Legacy), ALLOW ALL.
-    const isLegacyOrTrial = !planRules || !planRules.features || planRules.features.length === 0;
+    const skipPlanCheck = options?.skipPlanCheck ?? false;
+    const logId = options?.logId;
+    const metadata = options?.metadata ?? undefined;
 
-    if (!isLegacyOrTrial) {
-      // 🔒 GATE: Check if tenant has the specific feature entitlement
-      
-      const hasEntitlement = planRules.features.includes(feature);
+    const updateLogStatus = async (
+      status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'SKIPPED',
+      data?: { error?: string | null; messageId?: string | null },
+    ) => {
+      if (!logId) return;
 
-      if (!hasEntitlement) {
+      await this.prisma.whatsAppLog.update({
+        where: { id: logId },
+        data: {
+          status,
+          error: data?.error ?? undefined,
+          messageId: data?.messageId ?? undefined,
+          metadata: metadata ?? undefined,
+        },
+      });
+    };
+
+    const logFailure = async (
+      errorMessage: string,
+      skipped?: boolean,
+      reason?: string,
+    ) => {
+      if (logId) {
+        await updateLogStatus('FAILED', { error: errorMessage });
+      } else {
         await this.logger.log({
           tenantId,
           memberId: null,
           phone,
           type: feature,
-          status: 'SKIPPED',
-          error: `Plan missing feature: ${feature}`,
+          status: skipped ? 'SKIPPED' : 'FAILED',
+          error: errorMessage,
+          metadata,
         });
-        return {
-          success: false,
-          skipped: true,
-          error: `Plan missing feature: ${feature}`,
-        };
+      }
+
+      return {
+        success: false,
+        skipped,
+        reason,
+        error: errorMessage,
+      };
+    };
+    // 🔍 GUARDRAIL 1: Backward Compatibility & Empty Features
+    // Fetch rules specifically for this check
+    const module = await this.resolveTenantModule(tenantId);
+    const planRules = await this.planRulesService.getPlanRulesForTenant(
+      tenantId,
+      module,
+    );
+
+    // If no rules (no plan?) or NO features defined (Trial/Legacy), ALLOW ALL.
+    const isLegacyOrTrial =
+      !planRules || !planRules.features || planRules.features.length === 0;
+
+    if (!isLegacyOrTrial && !skipPlanCheck) {
+      // 🔒 GATE: Check if tenant has the specific feature entitlement
+
+      const hasEntitlement = planRules.features.includes(feature);
+
+      if (!hasEntitlement) {
+        return logFailure(
+          `Plan missing feature: ${feature}`,
+          true,
+          'Plan missing feature',
+        );
       }
     }
 
@@ -95,19 +164,11 @@ export class WhatsAppSender {
       });
 
       if (count >= 10) {
-        await this.logger.log({
-          tenantId,
-          memberId: null,
-          phone,
-          type: feature,
-          status: 'SKIPPED',
-          error: 'Daily WhatsApp quota exceeded for TRIAL plan (Max 10)',
-        });
-        return {
-          success: false,
-          skipped: true,
-          error: 'Daily WhatsApp quota exceeded for TRIAL plan',
-        };
+        return logFailure(
+          'Daily WhatsApp quota exceeded for TRIAL plan (Max 10)',
+          true,
+          'Daily WhatsApp quota exceeded for TRIAL plan',
+        );
       }
     }
 
@@ -118,15 +179,9 @@ export class WhatsAppSender {
     try {
       whatsappFormattedPhone = toWhatsAppPhone(normalizedPhone);
     } catch (error: any) {
-      await this.logger.log({
-        tenantId,
-        memberId: null,
-        phone,
-        type: feature,
-        status: 'FAILED',
-        error: `Invalid phone format: ${error?.message || 'Unknown error'}`,
-      });
-      return { success: false, error: error?.message };
+      return logFailure(
+        `Invalid phone format: ${error?.message || 'Unknown error'}`,
+      );
     }
 
     // ─────────────────────────────
@@ -140,17 +195,13 @@ export class WhatsAppSender {
     // Only block if setting explicitly exists and is set to false.
     // If setting is missing, assume enabled (plan limits will govern access).
     if (setting && setting.enabled === false) {
-      await this.logger.log({
-        tenantId,
-        memberId: null,
-        phone,
-        type: feature,
-        status: 'FAILED',
-        error: 'WhatsApp is disabled in tenant settings',
-      });
-      return { success: false, skipped: true, reason: 'WhatsApp disabled in settings' };
+      return logFailure(
+        'WhatsApp is disabled in tenant settings',
+        true,
+        'WhatsApp disabled in settings',
+      );
     }
-    
+
     // Previous "Tenant.whatsappEnabled" check is removed to prevent accidental blocking.
     // Logic now relies on Plan Rules (checked below) as the primary gatekeeper.
 
@@ -167,36 +218,32 @@ export class WhatsAppSender {
           purpose,
         );
     } catch (error) {
-      await this.logger.log({
-        tenantId,
-        memberId: null,
-        phone,
-        type: feature,
-        status: 'FAILED',
-        error: `No active phone number found for purpose ${purpose}: ${error.message}`,
-      });
-      return { success: false, skipped: true, reason: `No active phone number: ${error.message}` };
+      return logFailure(
+        `No active phone number found for purpose ${purpose}: ${error.message}`,
+        true,
+        `No active phone number: ${error.message}`,
+      );
     }
 
     if (!phoneNumberConfig.isActive) {
-      await this.logger.log({
-        tenantId,
-        memberId: null,
-        phone,
-        type: feature,
-        status: 'FAILED',
-        error: 'Phone number is inactive',
-      });
-      return { success: false, skipped: true, reason: 'Phone number inactive' };
+      return logFailure(
+        'Phone number is inactive',
+        true,
+        'Phone number inactive',
+      );
     }
 
     // ─────────────────────────────
     // 3️⃣ Plan rules (DB-driven)
     // ─────────────────────────────
     // Reuse planRules fetched above
-    
+
     if (planRules && !planRules.enabled) {
-      return { success: false, skipped: true, reason: 'Subscription plan disabled' };
+      return logFailure(
+        'Subscription plan disabled',
+        true,
+        'Subscription plan disabled',
+      );
     }
 
     // Feature check already done above for strict cases.
@@ -209,8 +256,16 @@ export class WhatsAppSender {
       where: { tenantId },
     });
 
-    if (planRules && planRules.maxMembers > 0 && memberCount > planRules.maxMembers) {
-      return { success: false, skipped: true, reason: 'Plan member limit exceeded' };
+    if (
+      planRules &&
+      planRules.maxMembers > 0 &&
+      memberCount > planRules.maxMembers
+    ) {
+      return logFailure(
+        'Plan member limit exceeded',
+        true,
+        'Plan member limit exceeded',
+      );
     }
 
     // ─────────────────────────────
@@ -250,14 +305,19 @@ export class WhatsAppSender {
       const messageId = response.data?.messages?.[0]?.id;
 
       // ✅ LOG SUCCESS
-      await this.logger.log({
-        tenantId,
-        memberId: null, // pass memberId later if needed
-        phone: whatsappFormattedPhone,
-        type: feature,
-        status: 'SENT',
-        messageId,
-      });
+      if (logId) {
+        await updateLogStatus('SENT', { messageId: messageId ?? null });
+      } else {
+        await this.logger.log({
+          tenantId,
+          memberId: null, // pass memberId later if needed
+          phone: whatsappFormattedPhone,
+          type: feature,
+          status: 'SENT',
+          messageId,
+          metadata,
+        });
+      }
 
       return { success: true, messageId };
     } catch (error) {
@@ -266,14 +326,19 @@ export class WhatsAppSender {
         : error.message;
 
       // ❌ LOG FAILURE
-      await this.logger.log({
-        tenantId,
-        memberId: null,
-        phone: whatsappFormattedPhone || phone,
-        type: feature,
-        status: 'FAILED',
-        error: errMsg,
-      });
+      if (logId) {
+        await updateLogStatus('FAILED', { error: errMsg });
+      } else {
+        await this.logger.log({
+          tenantId,
+          memberId: null,
+          phone: whatsappFormattedPhone || phone,
+          type: feature,
+          status: 'FAILED',
+          error: errMsg,
+          metadata,
+        });
+      }
 
       console.error('[WA META ERROR]', errMsg);
 

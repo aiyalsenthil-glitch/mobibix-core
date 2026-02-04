@@ -155,10 +155,12 @@ export class AdminController {
     @Param('planId') planId: string,
     @Body()
     body: {
-      price?: number;
-      durationDays?: number;
-      memberLimit?: number;
+      name?: string;
+      level?: number;
+      module?: ModuleType;
       isActive?: boolean;
+      isPublic?: boolean;
+      isAddon?: boolean;
     },
   ) {
     return this.plansService.updatePlan(planId, body);

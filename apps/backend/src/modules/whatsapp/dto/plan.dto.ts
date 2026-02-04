@@ -1,28 +1,18 @@
-import {
-  IsString,
-  IsNumber,
-  IsBoolean,
-  IsOptional,
-  Min,
-  MinLength,
-} from 'class-validator';
+import { IsString, IsBoolean, IsOptional, MinLength } from 'class-validator';
+import { ModuleType } from '@prisma/client';
 
 export class CreatePlanDto {
   @IsString()
   @MinLength(2)
   name: string;
 
+  @IsOptional()
   @IsString()
   @MinLength(2)
-  code: string;
+  code?: string;
 
-  @IsNumber()
-  @Min(0)
-  price: number;
-
-  @IsNumber()
-  @Min(1)
-  durationDays: number;
+  @IsString()
+  module: ModuleType;
 
   @IsOptional()
   @IsBoolean()
@@ -30,16 +20,6 @@ export class CreatePlanDto {
 }
 
 export class UpdatePlanDto {
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  price?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  durationDays?: number;
-
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;

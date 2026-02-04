@@ -97,8 +97,18 @@ export async function exchangeFirebaseToken(
     storeAccessToken(data.accessToken);
 
     return data;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Token exchange error:", error);
+    
+    // Handle network errors (Connection refused / Server down)
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      throw {
+        code: "NETWORK_ERROR",
+        message: "Unable to connect to server. Please check your internet connection or try again later.",
+        details: { originalError: error.message }
+      } as AuthError;
+    }
+
     throw error;
   }
 }

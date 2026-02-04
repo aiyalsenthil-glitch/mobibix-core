@@ -20,7 +20,7 @@ export async function stockIn(
     },
     body: JSON.stringify({
       productId: data.shopProductId,
-      type: data.type || "GOODS",
+      type: data.type,
       quantity: data.quantity,
       costPerUnit: data.costPrice,
       imeis: data.imeis,

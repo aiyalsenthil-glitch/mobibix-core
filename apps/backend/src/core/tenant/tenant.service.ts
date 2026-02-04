@@ -293,8 +293,9 @@ export class TenantService {
 
     const plan = subscription.plan;
 
-    const planKey = plan.name.toUpperCase();
-    const capability = PLAN_CAPABILITIES[planKey] ?? PLAN_CAPABILITIES.TRIAL;
+    const planCode = (plan.code ?? plan.name).toUpperCase();
+    const capability =
+      PLAN_CAPABILITIES[planCode] ?? PLAN_CAPABILITIES.GYM_TRIAL;
 
     // 4️⃣ Count members
     const membersUsed = await this.prisma.member.count({

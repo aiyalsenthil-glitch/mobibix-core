@@ -4,16 +4,22 @@ export const PLAN_LIMITS: Record<
     maxMembers: number | null;
   }
 > = {
-  TRIAL: {
+  GYM_TRIAL: {
     maxMembers: 25,
   },
-  BASIC: {
+  GYM_STANDARD: {
     maxMembers: 100,
   },
-  PRO: {
+  GYM_PRO: {
     maxMembers: null, // unlimited
   },
-  ULTIMATE: {
+  MOBIBIX_STANDARD: {
+    maxMembers: 100,
+  },
+  MOBIBIX_PRO: {
     maxMembers: null, // unlimited
+  },
+  WHATSAPP_CRM: {
+    maxMembers: null,
   },
 };

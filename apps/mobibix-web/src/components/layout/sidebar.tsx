@@ -38,6 +38,7 @@ const navItems: NavItem[] = [
       { label: "My Follow-ups", href: "/crm/follow-ups" },
     ],
   },
+  { label: "WhatsApp", href: "/whatsapp", icon: "💬" },
   { label: "Suppliers", href: "/suppliers", icon: "🚚" },
   { label: "Purchases", href: "/purchases", icon: "📥" },
   {
@@ -53,9 +54,7 @@ const navItems: NavItem[] = [
   {
     label: "Settings",
     icon: "⚙️",
-    submenu: [
-      { label: "General", href: "/settings" },
-    ],
+    submenu: [{ label: "General", href: "/settings" }],
   },
 ];
 
@@ -192,11 +191,13 @@ export function Sidebar() {
                         <span className="font-medium text-sm flex-1 text-left">
                           {item.label}
                         </span>
-                        {item.label === "Customers" && counts && counts.total > 0 && (
-                          <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow-sm whitespace-nowrap">
-                            {counts.total}
-                          </span>
-                        )}
+                        {item.label === "Customers" &&
+                          counts &&
+                          counts.total > 0 && (
+                            <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow-sm whitespace-nowrap">
+                              {counts.total}
+                            </span>
+                          )}
                         <span className="text-xs">
                           {isExpanded ? "▼" : "▶"}
                         </span>

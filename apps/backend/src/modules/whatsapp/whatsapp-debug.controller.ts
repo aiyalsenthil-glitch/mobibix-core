@@ -1,9 +1,15 @@
-import { Controller, Get, Param, UseGuards, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { PlanRulesService } from '../../core/billing/plan-rules.service';
 import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
-import { WhatsAppPhoneNumberPurpose } from '@prisma/client';
+import { WhatsAppPhoneNumberPurpose, ModuleType } from '@prisma/client';
 
 interface CheckItem {
   name: string;
@@ -26,21 +32,36 @@ export class WhatsAppDebugController {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
       // Select only scalar fields or known relations
-      select: { id: true, name: true, whatsappEnabled: true, businessType: true }, 
+      select: {
+        id: true,
+        name: true,
+        whatsappEnabled: true,
+        businessType: true,
+        tenantType: true,
+      },
     });
 
     if (!tenant) {
       throw new BadRequestException('Tenant not found');
     }
 
+    // Resolve module type
+    const module =
+      tenant.tenantType?.toUpperCase() === 'GYM'
+        ? ModuleType.GYM
+        : ModuleType.MOBILE_SHOP;
+
     // 2. Fetch Settings
     const setting = await this.prisma.whatsAppSetting.findUnique({
       where: { tenantId },
     });
 
-    // 3. Fetch Plan Rules
-    const rules = await this.planRulesService.getPlanRulesForTenant(tenantId);
-    
+    // 3. Fetch Plan Rules (with module filter)
+    const rules = await this.planRulesService.getPlanRulesForTenant(
+      tenantId,
+      module,
+    );
+
     // 4. Check Member Count
     const memberCount = await this.prisma.member.count({
       where: { tenantId, isActive: true }, // Using 'isActive' instead of 'status' if status field differs
@@ -50,7 +71,7 @@ export class WhatsAppDebugController {
     const checks: CheckItem[] = [];
     let isBlocked = false;
     let blockReason: string | null = null;
-    
+
     // Check 0: Active Phone Number (Critical)
     // We check for DEFAULT purpose as it's the fallback for everything.
     let phoneNumber: any = null;
@@ -65,8 +86,13 @@ export class WhatsAppDebugController {
 
     if (!phoneNumber) {
       isBlocked = true;
-      blockReason = 'No Active WhatsApp Phone Number found for Tenant (Default)';
-      checks.push({ name: 'Active Phone Number', status: 'FAIL', value: 'NONE' });
+      blockReason =
+        'No Active WhatsApp Phone Number found for Tenant (Default)';
+      checks.push({
+        name: 'Active Phone Number',
+        status: 'FAIL',
+        value: 'NONE',
+      });
     } else {
       checks.push({
         name: 'Active Phone Number',
@@ -80,7 +106,11 @@ export class WhatsAppDebugController {
     if (setting && setting.enabled === false) {
       isBlocked = true;
       blockReason = 'WhatsApp disabled in settings (explicit)';
-      checks.push({ name: 'Settings (Explicit)', status: 'FAIL', value: false });
+      checks.push({
+        name: 'Settings (Explicit)',
+        status: 'FAIL',
+        value: false,
+      });
     } else {
       checks.push({ name: 'Settings (Explicit)', status: 'PASS', value: true });
     }
@@ -103,18 +133,27 @@ export class WhatsAppDebugController {
     // Check 3: Member Limit
     // Handle null rules case first
     const maxMembers = rules ? rules.maxMembers : 0;
-    
-    const isLimitExceeded = rules && rules.maxMembers > 0 && memberCount > rules.maxMembers;
-    
+
+    const isLimitExceeded =
+      rules && rules.maxMembers > 0 && memberCount > rules.maxMembers;
+
     if (isLimitExceeded) {
-       if (!isBlocked) {
-         isBlocked = true;
-         // rules is guaranteed not null here because of check above
-         blockReason = `Member Limit Exceeded (${memberCount} > ${maxMembers})`;
-       }
-       checks.push({ name: 'Member Limit', status: 'FAIL', value: `Exceeded ${maxMembers}` });
+      if (!isBlocked) {
+        isBlocked = true;
+        // rules is guaranteed not null here because of check above
+        blockReason = `Member Limit Exceeded (${memberCount} > ${maxMembers})`;
+      }
+      checks.push({
+        name: 'Member Limit',
+        status: 'FAIL',
+        value: `Exceeded ${maxMembers}`,
+      });
     } else {
-       checks.push({ name: 'Member Limit', status: 'PASS', value: `OK (${memberCount} <= ${maxMembers > 0 ? maxMembers : 'Unlimited'})` });
+      checks.push({
+        name: 'Member Limit',
+        status: 'PASS',
+        value: `OK (${memberCount} <= ${maxMembers > 0 ? maxMembers : 'Unlimited'})`,
+      });
     }
 
     return {
@@ -123,7 +162,9 @@ export class WhatsAppDebugController {
         name: tenant.name,
         whatsappEnabledField: tenant.whatsappEnabled,
       },
-      setting: setting ? { enabled: setting.enabled } : 'NOT_FOUND (Defaults to Enabled)',
+      setting: setting
+        ? { enabled: setting.enabled }
+        : 'NOT_FOUND (Defaults to Enabled)',
       planRules: rules,
       memberCount,
       finalVerdict: {
@@ -133,7 +174,6 @@ export class WhatsAppDebugController {
       checks,
     };
   }
-
 
   @Get('templates/:tenantId')
   async getDebugTemplates(@Param('tenantId') tenantId: string) {
@@ -151,7 +191,7 @@ export class WhatsAppDebugController {
     let moduleType = tenant.tenantType || 'GYM';
 
     // Normalize legacy mobile shop type
-    if (moduleType === 'MOBILESHOP') {
+    if (moduleType === 'MOBILE_SHOP') {
       moduleType = 'MOBILE_SHOP';
     }
 

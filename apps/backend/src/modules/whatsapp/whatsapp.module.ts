@@ -21,6 +21,9 @@ import { AutomationController } from './automation.controller';
 import { AutomationService } from './automation.service';
 import { AutomationSafetyService } from './automation-safety.service';
 import { EntityResolverService } from './entity-resolver.service';
+import { WhatsAppUserController } from './whatsapp-user.controller';
+import { WhatsAppUserService } from './whatsapp-user.service';
+import { WhatsAppCrmController } from './whatsapp-crm.controller';
 
 @Module({
   controllers: [
@@ -37,6 +40,8 @@ import { EntityResolverService } from './entity-resolver.service';
     WhatsAppTenantsController,
     WhatsAppDebugController, // ✅ Added
     WhatsAppPlansController, // <-- Added for /whatsapp/plans
+    WhatsAppUserController,
+    WhatsAppCrmController,
   ],
   imports: [ScheduleModule.forRoot(), BillingModule],
   providers: [
@@ -52,6 +57,7 @@ import { EntityResolverService } from './entity-resolver.service';
     EntityResolverService,
     WhatsAppRemindersService, // ✅ Added for DI
     WhatsAppRemindersCron, // ✅ Added for reminder sending
+    WhatsAppUserService,
   ],
   exports: [
     WhatsAppSender,

@@ -64,11 +64,15 @@ export class PaymentsVerifyController {
     }
 
     // 2️⃣ Upgrade subscription (SOURCE OF TRUTH)
-    await this.subscriptionsService.upgradeSubscription(
+    // TODO: Phase 1 migration - use buyPlanPhase1 with billingCycle
+    // For now, skipping subscription creation (webhook controller handles this)
+    /* 
+    await this.subscriptionsService.changePlan(
       req.user.tenantId,
-      planId,
+      planName,
       'MOBILE_SHOP',
     );
+    */
 
     await this.prisma.payment.update({
       where: { id: existingPayment.id },

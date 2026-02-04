@@ -51,9 +51,11 @@ export class PlatformController {
       id: plan.id,
       code: plan.code,
       name: plan.name,
-      price: plan.price,
-      maxMembers: plan.maxMembers ?? plan.memberLimit,
+      level: plan.level,
+      module: plan.module,
       isActive: plan.isActive,
+      isPublic: plan.isPublic,
+      isAddon: plan.isAddon,
       features: plan.planFeatures.map((pf) => ({
         feature: pf.feature,
         enabled: pf.enabled,
@@ -83,9 +85,11 @@ export class PlatformController {
       where: { id: planId },
       data: {
         ...(dto.name && { name: dto.name }),
-        ...(dto.price !== undefined && { price: dto.price }),
-        ...(dto.maxMembers !== undefined && { maxMembers: dto.maxMembers }),
+        ...(dto.level !== undefined && { level: dto.level }),
+        ...(dto.module !== undefined && { module: dto.module }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+        ...(dto.isPublic !== undefined && { isPublic: dto.isPublic }),
+        ...(dto.isAddon !== undefined && { isAddon: dto.isAddon }),
       },
     });
 

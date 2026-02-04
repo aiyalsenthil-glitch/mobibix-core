@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { ModuleType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppFeature } from './whatsapp-rules';
+import { PLAN_LIMITS } from './plan-limits';
 
 export type PlanRules = {
   planId: string;
@@ -30,10 +32,7 @@ export class PlanRulesService {
 
     const plan = await this.prisma.plan.findFirst({
       where: {
-        OR: [
-          { code: normalized },
-          { name: normalized }
-        ]
+        OR: [{ code: normalized }, { name: normalized }],
       },
       include: { planFeatures: true },
     });
@@ -42,12 +41,15 @@ export class PlanRulesService {
       return null;
     }
 
+    const normalizedCode = (plan.code ?? plan.name).toUpperCase();
+    const limit = PLAN_LIMITS[normalizedCode]?.maxMembers;
+
     const rules: PlanRules = {
       planId: plan.id,
-      code: plan.code ?? plan.name,
+      code: normalizedCode,
       name: plan.name,
       enabled: plan.isActive,
-      maxMembers: plan.maxMembers ?? plan.memberLimit ?? 0,
+      maxMembers: limit === null || limit === undefined ? 0 : limit,
       features: plan.planFeatures
         .filter((feature) => feature.enabled)
         .map((feature) => feature.feature as WhatsAppFeature),
@@ -61,12 +63,16 @@ export class PlanRulesService {
     return rules;
   }
 
-  async getPlanRulesForTenant(tenantId: string): Promise<PlanRules | null> {
-    // 1. Try fetching Active Subscription
+  async getPlanRulesForTenant(
+    tenantId: string,
+    module?: ModuleType,
+  ): Promise<PlanRules | null> {
+    // 1. Try fetching Active Subscription (filtered by module if provided)
     const subscription = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
         status: { in: ['ACTIVE', 'TRIAL'] },
+        ...(module && { module }), // Filter by module if provided
       },
       orderBy: { startDate: 'desc' },
       include: { plan: true },
@@ -83,8 +89,9 @@ export class PlanRulesService {
   async isFeatureEnabledForTenant(
     tenantId: string,
     feature: WhatsAppFeature,
+    module?: ModuleType,
   ): Promise<boolean> {
-    const rules = await this.getPlanRulesForTenant(tenantId);
+    const rules = await this.getPlanRulesForTenant(tenantId, module);
     if (!rules?.enabled) {
       return false;
     }

@@ -65,8 +65,9 @@ export class PlanFeatureGuard implements CanActivate {
     if (subscription?.status === 'TRIAL') {
       return true;
     }
-    const planName = subscription.plan.name as keyof typeof PLAN_CAPABILITIES;
-    const plan = PLAN_CAPABILITIES[planName];
+    const planCode = (subscription.plan.code ??
+      subscription.plan.name) as keyof typeof PLAN_CAPABILITIES;
+    const plan = PLAN_CAPABILITIES[planCode];
 
     if (!plan || plan[feature] !== true) {
       throw new ForbiddenException('PLAN_UPGRADE_REQUIRED');

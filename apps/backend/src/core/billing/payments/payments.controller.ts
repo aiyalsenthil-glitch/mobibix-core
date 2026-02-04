@@ -25,7 +25,11 @@ export class PaymentsController {
   // 🔒 CREATE RAZORPAY ORDER (JWT REQUIRED)
   // ─────────────────────────────────────────────
   @Post('create-order')
-  async createOrder(@Req() req: any, @Body() body: { planId: string }) {
+  async createOrder(
+    @Req() req: any,
+    @Body()
+    body: { planId: string; billingCycle: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' },
+  ) {
     try {
       const tenantId = req.user?.tenantId;
 
@@ -50,27 +54,37 @@ export class PaymentsController {
         throw new NotFoundException('Plan not found');
       }
 
-      // 2️⃣ Validate price
-      if (plan.price === null || plan.price <= 0) {
-        throw new BadRequestException('Invalid plan price');
+      // 2️⃣ Get price from PlanPrice table
+      const planPrice = await this.prisma.planPrice.findUnique({
+        where: {
+          planId_billingCycle: {
+            planId: body.planId,
+            billingCycle: body.billingCycle,
+          },
+        },
+      });
+
+      if (!planPrice || !planPrice.isActive) {
+        throw new BadRequestException(
+          `No active price found for plan "${plan.name}" @ ${body.billingCycle}`,
+        );
       }
 
       // 3️⃣ Create Razorpay order
-      // 3️⃣ Create Razorpay order
       const order = await this.paymentsService.createOrder({
-        amount: plan.price,
+        amount: planPrice.price,
         tenantId,
         planId: plan.id,
       });
 
-      // 4️⃣ SAVE INIT PAYMENT (IMPORTANT STEP-2)
+      // 4️⃣ SAVE INIT PAYMENT
       await this.prisma.payment.create({
         data: {
           tenantId,
           planId: plan.id,
           provider: 'RAZORPAY',
           providerOrderId: order.id,
-          amount: plan.price, // INR value
+          amount: planPrice.price, // INR paise
           currency: 'INR',
           status: 'PENDING', // 👈 INIT STATE
         },

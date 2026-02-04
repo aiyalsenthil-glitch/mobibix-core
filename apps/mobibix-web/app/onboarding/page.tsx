@@ -66,7 +66,7 @@ export default function OnboardingPage() {
 
       const response = await createTenant({
         name: businessName,
-        tenantType: "MOBILESHOP",
+        tenantType: "MOBILE_SHOP",
       });
 
       // Store new access token if provided

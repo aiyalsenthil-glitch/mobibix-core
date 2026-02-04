@@ -82,7 +82,7 @@ export function EditProductModal({
     try {
       setIsSubmitting(true);
 
-      const updatedProduct = await updateProduct(product.id, shopId, {
+      const updatedProduct = await updateProduct(shopId, product.id, {
         name: formData.name.trim(),
         type: formData.type,
         hsnSac: formData.hsnSac.trim() || undefined,

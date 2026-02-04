@@ -62,7 +62,15 @@ export class WhatsAppVariableResolver {
     const allowedKeys = new Set(allowedVars.map((v) => v.key));
 
     for (const key of variableKeys) {
-      const variable = getVariableByKey(key);
+      // 🚨 CRITICAL FIX: Prefer definition from Context (Module+Event) over Global Registry
+      // The Global Registry flattens keys, causing collisions (e.g., 'customerName' maps to JobCard but needed for Invoice).
+      // allowedVars contains the CORRECT definitions for this specific event.
+      let variable = allowedVars.find((v) => v.key === key);
+      
+      // Fallback to global lookup if not found in context (legacy behavior)
+      if (!variable) {
+        variable = getVariableByKey(key);
+      }
 
       if (!variable) {
         resolved.set(key, {

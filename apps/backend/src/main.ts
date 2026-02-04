@@ -7,6 +7,8 @@ import cors from 'cors';
 import * as bodyParser from 'body-parser';
 import { join } from 'path';
 
+import { WhatsAppConfigValidator } from './modules/whatsapp/whatsapp.config-validator';
+
 async function bootstrap() {
   /**
    * 1️⃣ Create raw Express server
@@ -114,6 +116,9 @@ async function bootstrap() {
    * 🔟 Start server
    */
   const port = process.env.PORT || 3000;
+  // Validate WhatsApp Config
+  WhatsAppConfigValidator.validateOrExit();
+
   await app.listen(port);
 
   console.log(`🚀 GymPilot API running on port ${port}`);

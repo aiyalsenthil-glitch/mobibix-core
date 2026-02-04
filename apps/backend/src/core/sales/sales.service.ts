@@ -1470,7 +1470,7 @@ export class SalesService {
       customerPhone: currentInvoice.customerPhone ?? undefined,
       customerGstin: currentInvoice.customerGstin ?? undefined,
       customerState: currentInvoice.customerState ?? undefined,
-      paymentMode: currentInvoice.paymentMode,
+      paymentMode: 'CREDIT', // Force credit to avoid auto-marking as PAID
       items: newItemsDto,
       pricesIncludeTax: false, 
     };

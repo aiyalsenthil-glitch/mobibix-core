@@ -245,7 +245,7 @@ export class WhatsAppRemindersService {
 
         // 4a. For MOBILE_SHOP, we need to fetch the default Shop for context
         let shopId: string | undefined;
-        if (reminder.tenant?.tenantType === 'MOBILESHOP') {
+        if (reminder.tenant?.tenantType?.toUpperCase() === 'MOBILE_SHOP') {
           const shop = await this.prisma.shop.findFirst({
             where: { tenantId },
             select: { id: true },
@@ -253,13 +253,35 @@ export class WhatsAppRemindersService {
           shopId = shop?.id;
         }
 
-        console.log(`[DEBUG] Reminder ${reminderId}: tenantType=${reminder.tenant?.tenantType}, templateKey=${templateKey}`);
+        console.log(
+          `[DEBUG] Reminder ${reminderId}: tenantType=${reminder.tenant?.tenantType}, templateKey=${templateKey}`,
+        );
+
+        // Robust module detection for Mobile Shop/Repair
+        const rawTenantType = (reminder.tenant?.tenantType || '')
+          .toUpperCase()
+          .replace(/[\s_-]/g, '');
+        const templateModule = (template?.moduleType || '')
+          .toUpperCase()
+          .replace(/[\s_-]/g, '');
+        const isMobileShop = rawTenantType === 'MOBILESHOP';
+        const isMobileRepair = rawTenantType === 'MOBILEREPAIR';
+        const isTemplateMobileShop = templateModule === 'MOBILESHOP';
+        const isTemplateMobileRepair = templateModule === 'MOBILEREPAIR';
+        const isTemplateGym = templateModule === 'GYM';
 
         const context: VariableResolutionContext = {
-          module:
-            reminder.tenant?.tenantType === 'MOBILESHOP'
-              ? WhatsAppModule.MOBILE_SHOP
-              : WhatsAppModule.GYM,
+          module: isTemplateMobileShop
+            ? WhatsAppModule.MOBILE_SHOP
+            : isTemplateMobileRepair
+              ? WhatsAppModule.MOBILE_REPAIR
+              : isTemplateGym
+                ? WhatsAppModule.GYM
+                : isMobileShop
+                  ? WhatsAppModule.MOBILE_SHOP
+                  : isMobileRepair
+                    ? WhatsAppModule.MOBILE_REPAIR
+                    : WhatsAppModule.GYM,
           tenantId,
           memberId: member?.id, // May be null for Mobile Shop
           // 🚨 CRITICAL FIX: Trigger value could be Invoice ID OR JobCard ID
@@ -270,36 +292,130 @@ export class WhatsAppRemindersService {
         };
 
         // 5. Determine Event Type for Mobile Shop to ensure correct variable scoping
+        // 5. Determine Event Type via Automation Lookup (Dynamic)
+        // Instead of hardcoding, look up the automation definition by templateKey
         let eventType: string | undefined;
-        if (context.module === WhatsAppModule.MOBILE_SHOP) {
-            // Map template/trigger to EventType
-            if (templateKey === 'Invoice Create' || templateKey === 'invoice_created_confirmation_v1') {
-                eventType = 'INVOICE_CREATED';
-            } else if (templateKey === 'JOB READY' || templateKey === 'job_status_ready_v1') {
-                eventType = 'JOB_READY';
-            } else if (templateKey.includes('followup')) {
-                eventType = 'FOLLOW_UP_SCHEDULED'; 
+
+        // Try to find the automation that maps this template to an event
+        let automation = await this.prisma.whatsAppAutomation.findFirst({
+          where: {
+            templateKey: templateKey,
+            enabled: true,
+          },
+          select: { eventType: true, moduleType: true },
+        });
+
+        if (automation) {
+          eventType = automation.eventType;
+          // TRUST AUTOMATION: If automation exists, its moduleType is the authority for variable context
+          const autoModule = (automation.moduleType as any)
+            .toString()
+            .toUpperCase()
+            .replace(/[\s_-]/g, '');
+          if (autoModule === 'MOBILESHOP')
+            context.module = WhatsAppModule.MOBILE_SHOP;
+          if (autoModule === 'MOBILEREPAIR')
+            context.module = WhatsAppModule.MOBILE_REPAIR;
+          if (autoModule === 'GYM') context.module = WhatsAppModule.GYM;
+
+          this.logger.error(
+            `[WhatsAppReminders] TRACE: Found automation: eventType=${eventType}, autoModule=${autoModule}, finalModule=${context.module}`,
+          );
+        } else {
+          this.logger.error(
+            `[WhatsAppReminders] TRACE: ⚠️ NO AUTOMATION FOUND for templateKey='${templateKey}'. FALLBACK Mode.`,
+          );
+
+          // Fallback for hardcoded/legacy templates not in Automation table
+          if (context.module === WhatsAppModule.MOBILE_SHOP) {
+            // Normalize templateKey for comparison (lowercase, remove spaces)
+            const normalizedKey = templateKey.toLowerCase().replace(/\s+/g, '');
+
+            if (
+              normalizedKey.includes('invoice') &&
+              normalizedKey.includes('creat')
+            ) {
+              eventType = 'INVOICE_CREATED';
+            } else if (
+              normalizedKey.includes('jobready') ||
+              normalizedKey.includes('job_ready') ||
+              normalizedKey.includes('ready')
+            ) {
+              eventType = 'JOB_READY';
+            } else if (
+              normalizedKey.includes('jobcompleted') ||
+              normalizedKey.includes('job_completed') ||
+              normalizedKey.includes('completed')
+            ) {
+              eventType = 'JOB_COMPLETED';
+            } else if (normalizedKey.includes('followup')) {
+              eventType = 'FOLLOW_UP_SCHEDULED';
             }
-             // Add more mappings as needed based on seed data
+
+            this.logger.error(
+              `[WhatsAppReminders] TRACE: Fallback determined eventType=${eventType} for templateKey=${templateKey}`,
+            );
+          }
         }
+
+        this.logger.error(
+          `[WhatsAppReminders] TRACE: REMINDER_ID=${reminderId} MOD=${context.module} EVT=${eventType} T_TYPE='${reminder.tenant?.tenantType}'`,
+        );
+
+        console.log(
+          `[WhatsAppReminders] ========== VARIABLE RESOLUTION DEBUG ==========`,
+        );
+        console.log(`[WhatsAppReminders] Template Key: ${templateKey}`);
+        console.log(
+          `[WhatsAppReminders] Variable Keys: ${JSON.stringify(variableKeys)}`,
+        );
+        console.log(`[WhatsAppReminders] Context Module: ${context.module}`);
+        console.log(
+          `[WhatsAppReminders] Context: jobCardId=${context.jobCardId}, invoiceId=${context.invoiceId}, shopId=${context.shopId}`,
+        );
+        console.log(
+          `[WhatsAppReminders] Raw TriggerValue: ${reminder.triggerValue}`,
+        );
+        console.log(`[WhatsAppReminders] Determined EventType: ${eventType}`);
 
         const resolvedMap = await this.variableResolver.resolveVariables(
           variableKeys,
-          { ...context, eventType }, 
+          { ...context, eventType },
         );
+
+        // Log each resolved variable
+        console.log(`[WhatsAppReminders] Resolution Results:`);
+        for (const [key, resolved] of resolvedMap.entries()) {
+          console.log(
+            `  - ${key}: value="${resolved.value}", formatted="${resolved.formatted}", error="${resolved.error || 'none'}"`,
+          );
+        }
 
         // Check for resolution errors
         const errors = variableKeys
-            .map(k => resolvedMap.get(k))
-            .filter(r => r?.error);
-            
+          .map((k) => resolvedMap.get(k))
+          .filter((r) => r?.error);
+
         if (errors.length > 0) {
-            const errorMsg = `Variable resolution failed: ${errors.map(e => e ? `${e.key} (${e.error})` : 'unknown').join(', ')}`;
-            this.logger.error(errorMsg);
-            // Mark as FAILED and abort
-            await this.updateReminderStatus(reminderId, ReminderStatus.FAILED, errorMsg);
-            await this.logAttempt(tenantId, customer.id, whatsAppPhone, 'FAILED', errorMsg);
-            return;
+          const errorMsg = `Variable resolution failed: ${errors.map((e) => (e ? `${e.key} (${e.error})` : 'unknown')).join(', ')}`;
+          this.logger.error(errorMsg);
+          console.log(
+            `[WhatsAppReminders] ========== RESOLUTION FAILED ==========`,
+          );
+          // Mark as FAILED and abort
+          await this.updateReminderStatus(
+            reminderId,
+            ReminderStatus.FAILED,
+            errorMsg,
+          );
+          await this.logAttempt(
+            tenantId,
+            customer.id,
+            whatsAppPhone,
+            'FAILED',
+            errorMsg,
+          );
+          return;
         }
 
         // Map back to array in order

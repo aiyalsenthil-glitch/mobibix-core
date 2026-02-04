@@ -1,4 +1,3 @@
-
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
@@ -40,6 +39,7 @@ async function main() {
       price: 0,
       durationDays: 14,
       memberLimit: 0,
+      module: 'GYM',
       features: FEATURES_ULTIMATE, // Trial gets everything
     },
     {
@@ -49,6 +49,7 @@ async function main() {
       price: 99,
       durationDays: 30,
       memberLimit: 50,
+      module: 'GYM',
       features: FEATURES_BASIC,
     },
     {
@@ -58,6 +59,7 @@ async function main() {
       price: 149,
       durationDays: 30,
       memberLimit: 100,
+      module: 'GYM',
       features: FEATURES_PLUS,
     },
     {
@@ -67,6 +69,7 @@ async function main() {
       price: 1999,
       durationDays: 365,
       memberLimit: 600,
+      module: 'GYM',
       features: FEATURES_PRO,
     },
     {
@@ -76,6 +79,7 @@ async function main() {
       price: 4999,
       durationDays: 365,
       memberLimit: 500,
+      module: 'GYM',
       features: FEATURES_ULTIMATE,
     },
   ];
@@ -88,7 +92,7 @@ async function main() {
   const LEGACY_ALL = [...LEGACY_BASIC, 'WELCOME', 'EXPIRY'];
 
   // Update features with legacy keys explicitly for the relevant plans
-  // Note: We access by index since we just defined the array above. 
+  // Note: We access by index since we just defined the array above.
   // TRIAL
   plans[0].features = [...new Set([...plans[0].features, ...LEGACY_ALL])];
   // PRO
@@ -109,11 +113,6 @@ async function main() {
         where: { id: existingPlan.id },
         data: {
           level: p.level,
-          price: p.price,
-          durationDays: p.durationDays,
-          memberLimit: p.memberLimit,
-          billingCycle: 'MONTHLY',
-          features: p.features as any, 
         },
       });
       console.log(`✅ Updated Plan: ${p.name}`);
@@ -123,13 +122,8 @@ async function main() {
           code: p.code,
           name: p.name,
           level: p.level,
-          price: p.price,
-          currency: 'INR',
-          durationDays: p.durationDays,
-          memberLimit: p.memberLimit,
-          features: p.features as any,
           isActive: true,
-          billingCycle: 'MONTHLY',
+          module: p.module,
         },
       });
       planId = created.id;
@@ -147,7 +141,7 @@ async function main() {
         await prisma.planFeature.createMany({
           data: p.features.map((f: string) => ({
             planId: planId!,
-            feature: f as any, 
+            feature: f as any,
           })),
         });
         console.log(`   - Synced ${p.features.length} features for ${p.name}`);

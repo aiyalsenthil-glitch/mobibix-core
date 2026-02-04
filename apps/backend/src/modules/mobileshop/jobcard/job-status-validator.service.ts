@@ -77,9 +77,16 @@ export class JobStatusValidator {
       JobStatus.IN_PROGRESS,      // Re-repair if issue found
     ],
 
-    // Terminal states - NO transitions allowed
+    // Terminal states
     [JobStatus.DELIVERED]: [],
-    [JobStatus.CANCELLED]: [],
+    
+    // Cancelled - Can Reopen
+    [JobStatus.CANCELLED]: [
+      JobStatus.RECEIVED,
+      JobStatus.DIAGNOSING,
+      JobStatus.IN_PROGRESS
+    ],
+    
     [JobStatus.RETURNED]: [],
   };
 
@@ -111,7 +118,7 @@ export class JobStatusValidator {
   isTerminalState(status: JobStatus): boolean {
     const terminalStates: JobStatus[] = [
       JobStatus.DELIVERED,
-      JobStatus.CANCELLED,
+      // JobStatus.CANCELLED, // ALLOW REOPENING
       JobStatus.RETURNED,
     ];
     return terminalStates.includes(status);

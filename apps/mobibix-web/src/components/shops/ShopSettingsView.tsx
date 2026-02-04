@@ -39,6 +39,7 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
     invoiceFooter: "",
     logoUrl: "",
     terms: "",
+    currency: "INR",
     
     // Bank Details
     bankName: "",
@@ -71,6 +72,7 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
             invoiceFooter: settings.invoiceFooter || "",
             logoUrl: settings.logoUrl || "",
             terms: settings.terms?.join("\n") || "",
+            currency: settings.currency || "INR",
 
             // Bank Details
             bankName: settings.bankName || "",
@@ -340,6 +342,23 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
                             <div>
                                 <label className="block text-sm text-stone-400 mb-1">Invoice Footer Text</label>
                                 <input type="text" name="invoiceFooter" value={formData.invoiceFooter} onChange={handleChange} placeholder="Thank you for your business!" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-stone-400 mb-1">Currency</label>
+                                <select 
+                                    name="currency" 
+                                    value={formData.currency} 
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500 appearance-none"
+                                >
+                                    <option value="INR" className="bg-stone-900">🇮🇳 INR (₹)</option>
+                                    <option value="USD" className="bg-stone-900">🇺🇸 USD ($)</option>
+                                    <option value="EUR" className="bg-stone-900">🇪🇺 EUR (€)</option>
+                                    <option value="GBP" className="bg-stone-900">🇬🇧 GBP (£)</option>
+                                    <option value="AED" className="bg-stone-900">🇦🇪 AED (د.إ)</option>
+                                </select>
+                                <p className="text-xs text-stone-500 mt-1">Currency symbol used for invoices and receipts.</p>
                             </div>
                             <div>
                                 <label className="block text-sm text-stone-400 mb-1">Terms & Conditions</label>

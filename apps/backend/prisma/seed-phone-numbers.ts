@@ -12,11 +12,20 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
-const prisma = new PrismaClient();
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const adapter = new PrismaPg(pool);
+
+const prisma = new PrismaClient({ adapter });
 
 // ⚠️ TODO: Replace with your actual Meta WhatsApp Business credentials
-const DEFAULT_PHONE_NUMBER = process.env.WHATSAPP_PHONE_NUMBER || '+1234567890';
+const DEFAULT_PHONE_NUMBER =
+  process.env.WHATSAPP_PHONE_NUMBER || '++918667551566';
 const DEFAULT_PHONE_NUMBER_ID =
   process.env.WHATSAPP_PHONE_NUMBER_ID || 'YOUR_PHONE_NUMBER_ID';
 const DEFAULT_WABA_ID = process.env.WHATSAPP_WABA_ID || 'YOUR_WABA_ID';
@@ -90,4 +99,5 @@ seedPhoneNumbers()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

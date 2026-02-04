@@ -1,13 +1,12 @@
 import { Module } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscriptionsController } from './subscriptions.controller';
-import { AuthModule } from '../../auth/auth.module'; // 👈 ADD THIS
+import { AuthModule } from '../../auth/auth.module';
+import { PlanPriceService } from '../plan-price.service';
 
 @Module({
-  imports: [
-    AuthModule, // 👈 THIS IS THE FIX
-  ],
-  providers: [SubscriptionsService],
+  imports: [AuthModule],
+  providers: [SubscriptionsService, PlanPriceService],
   controllers: [SubscriptionsController],
   exports: [SubscriptionsService],
 })

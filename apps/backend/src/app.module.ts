@@ -10,6 +10,7 @@ import { AuthModule } from './core/auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './core/auth/guards/jwt-auth.guard';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
+import { WhatsAppCrmModule } from './modules/whatsapp-crm/whatsapp-crm.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { GymAppModule } from './modules/gymapp/gym-app.module';
 import { MobileShopModule } from './modules/mobileshop/mobileshop.module';
@@ -39,6 +40,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     CoreModule,
     AuthModule,
     WhatsAppModule,
+    WhatsAppCrmModule,
     CustomerTimelineModule,
     // 🧩 Business modules
     GymModule,

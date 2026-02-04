@@ -298,7 +298,10 @@ export class StockService {
       // Update ShopProduct with new avgCost
       await tx.shopProduct.update({
         where: { id: product.id },
-        data: { avgCost: newAvgCost },
+        data: { 
+          avgCost: newAvgCost,
+          costPrice: newCostPerUnit // Update Last Purchase Price
+        },
       });
 
       // Handle IMEIs for serialized products

@@ -74,8 +74,12 @@ export class AutomationSafetyService {
   async validateFeatureSafety(
     tenantId: string,
     feature: WhatsAppFeature,
+    module?: ModuleType,
   ): Promise<{ allowed: boolean; reason?: string }> {
-    const rules = await this.planRulesService.getPlanRulesForTenant(tenantId);
+    const rules = await this.planRulesService.getPlanRulesForTenant(
+      tenantId,
+      module,
+    );
 
     if (!rules?.enabled) {
       return {

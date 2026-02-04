@@ -1,49 +1,67 @@
 export const PLAN_CAPABILITIES = {
-  TRIAL: {
+  GYM_TRIAL: {
     staffAllowed: true,
     staff: true,
     staffInvite: true,
     maxStaff: 3,
-    memberLimit: 25, // keep limit if you want
+    memberLimit: 25,
     attendance: true,
     whatsapp: true,
     reports: true,
   },
 
-  BASIC: {
-    staffAllowed: false,
-    maxStaff: 0,
+  GYM_STANDARD: {
+    staffAllowed: true,
+    staff: true,
+    staffInvite: true,
+    maxStaff: 3,
     memberLimit: 100,
-    whatsapp: false,
+    attendance: true,
+    whatsapp: true,
     reports: false,
   },
-  PLUS: {
+
+  GYM_PRO: {
     staffAllowed: true,
-    staff: true, // 🔴 ADD
-    staffInvite: true, // 🔴 ADD (if used)
-    maxStaff: 3,
-    memberLimit: 999,
-    whatsapp: true,
-    reports: true,
-  },
-  PRO: {
-    staffAllowed: true,
+    staff: true,
+    staffInvite: true,
     maxStaff: Number.MAX_SAFE_INTEGER,
-    staff: true, // 🔴 ADD
-    staffInvite: true, // 🔴 ADD (if used)
     memberLimit: 9999,
     attendance: true,
     whatsapp: true,
     reports: true,
   },
-  ULTIMATE: {
+
+  MOBIBIX_STANDARD: {
     staffAllowed: true,
-    staff: true, // 🔴 ADD
-    staffInvite: true, // 🔴 ADD (if used)
+    staff: true,
+    staffInvite: true,
+    maxStaff: 3,
+    memberLimit: 100,
+    attendance: false,
+    whatsapp: false,
+    reports: false,
+  },
+
+  MOBIBIX_PRO: {
+    staffAllowed: true,
+    staff: true,
+    staffInvite: true,
     maxStaff: Number.MAX_SAFE_INTEGER,
-    memberLimit: 999999,
-    attendance: true,
-    whatsapp: true,
+    memberLimit: 9999,
+    attendance: false,
+    whatsapp: false,
     reports: true,
+  },
+
+  WHATSAPP_CRM: {
+    staffAllowed: false,
+    staff: false,
+    staffInvite: false,
+    maxStaff: 0,
+    memberLimit: 0,
+    attendance: false,
+    whatsapp: true,
+    reports: false,
   },
 } as const;

@@ -18,6 +18,7 @@ import { normalizePhone } from '../../common/utils/phone.util';
 import { WhatsAppSender } from '../../modules/whatsapp/whatsapp.sender';
 import { WhatsAppTemplates } from '../../modules/whatsapp/whatsapp.templates';
 import { WhatsAppFeature } from '../billing/whatsapp-rules';
+import { PLAN_LIMITS } from '../billing/plan-limits';
 import { TenantService } from '../tenant/tenant.service';
 import { PlanRulesService } from '../billing/plan-rules.service';
 
@@ -113,7 +114,7 @@ export class MembersService {
     private readonly prisma: PrismaService,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly auditService: AuditService,
-    private readonly whatsAppSender: WhatsAppSender, 
+    private readonly whatsAppSender: WhatsAppSender,
     private readonly tenantService: TenantService,
     private readonly planRulesService: PlanRulesService,
     private readonly automationService: AutomationService, // ✅ Injected
@@ -137,7 +138,10 @@ export class MembersService {
       throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
     }
 
-    const limit = subscription.plan.memberLimit;
+    const planCode = (
+      subscription.plan.code ?? subscription.plan.name
+    ).toUpperCase();
+    const limit = PLAN_LIMITS[planCode]?.maxMembers ?? 0;
     if (limit > 0) {
       const count = await this.prisma.member.count({ where: { tenantId } });
       if (count >= limit) {
@@ -243,8 +247,10 @@ export class MembersService {
     // ─────────────────────────────
     try {
       if (member.isActive) {
-        console.log(`[MembersService] Triggering MEMBER_CREATED automation for member ${member.id}`); // Temp log
-        
+        console.log(
+          `[MembersService] Triggering MEMBER_CREATED automation for member ${member.id}`,
+        ); // Temp log
+
         await this.automationService.handleEvent({
           moduleType: 'GYM',
           eventType: 'MEMBER_CREATED',

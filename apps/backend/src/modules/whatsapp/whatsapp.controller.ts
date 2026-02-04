@@ -14,8 +14,10 @@ import {
   Query,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
-import { ModuleType } from '@prisma/client';
+import { ModuleType, UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../core/auth/guards/roles.guard';
+import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { WhatsAppSender } from './whatsapp.sender';
 
 import {
@@ -25,7 +27,8 @@ import {
 } from './variable-registry';
 
 @Controller('whatsapp')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
 export class WhatsAppController {
   constructor(
     private readonly prisma: PrismaService,
@@ -220,7 +223,7 @@ export class WhatsAppController {
 
   /**
    * GET /whatsapp/templates/:moduleType
-   * Get WhatsApp templates for a module (GYM, MOBILESHOP)
+   * Get WhatsApp templates for a module (GYM, MOBILE_SHOP)
    */
   @Get('templates/:moduleType')
   async getTemplates(@Param('moduleType') moduleType: string) {
@@ -314,7 +317,10 @@ export class WhatsAppController {
    * Delete a WhatsApp template
    */
   @Delete('templates/:templateId')
-  async deleteTemplate(@Param('templateId') templateId: string, @Req() req: any) {
+  async deleteTemplate(
+    @Param('templateId') templateId: string,
+    @Req() req: any,
+  ) {
     this.validateAdminAccess(req);
     const template = await this.prisma.whatsAppTemplate.findUnique({
       where: { id: templateId },
@@ -331,14 +337,13 @@ export class WhatsAppController {
 
   /**
    * GET /whatsapp/automations/:moduleType
-   * Get WhatsApp automations for a module (GYM, MOBILESHOP)
+   * Get WhatsApp automations for a module (GYM, MOBILE_SHOP)
    */
   @Get('automations/:moduleType')
   async getAutomations(@Param('moduleType') moduleType: string) {
     // Map legacy/mobile UI value to correct enum
     let prismaModuleType: ModuleType;
-    if (moduleType === 'MOBILESHOP' || moduleType === 'MOBILE_SHOP')
-      prismaModuleType = ModuleType.MOBILE_SHOP;
+    if (moduleType === 'MOBILE_SHOP') prismaModuleType = ModuleType.MOBILE_SHOP;
     else if (moduleType === 'GYM') prismaModuleType = ModuleType.GYM;
     else throw new BadRequestException('Invalid moduleType');
     const automations = await this.prisma.whatsAppAutomation.findMany({
@@ -377,19 +382,28 @@ export class WhatsAppController {
       throw new BadRequestException('offsetDays must be a number');
     }
 
-    const allowedModules = ['GYM', 'MOBILESHOP', 'MOBILE_SHOP'];
+    const allowedModules = ['GYM', 'MOBILE_SHOP'];
     const allowedTriggers = [
       'DATE',
       'AFTER_INVOICE',
       'AFTER_JOB',
       'JOB_CREATED',
+      'JOB_READY',
       'JOB_COMPLETED',
       'INVOICE_CREATED',
       'PAYMENT_PENDING',
       'FOLLOW_UP_SCHEDULED',
       'FOLLOW_UP_OVERDUE',
       'FOLLOW_UP_COMPLETED',
-      'PAYMENT_DUE', // Added based on frontend options
+      'PAYMENT_DUE',
+      'MEMBER_CREATED',
+      'TRAINER_ASSIGNED',
+      'COACHING_FOLLOWUP',
+      'MEMBERSHIP_EXPIRY',
+      'MEMBERSHIP_EXPIRY_BEFORE',
+      'MEMBERSHIP_EXPIRY_AFTER',
+      'PAYMENT_DUE_BEFORE',
+      'PAYMENT_DUE_AFTER',
     ];
 
     if (!allowedModules.includes(moduleType)) {
@@ -401,9 +415,22 @@ export class WhatsAppController {
     }
 
     const prismaModuleType =
-      moduleType === 'MOBILESHOP' || moduleType === 'MOBILE_SHOP'
-        ? 'MOBILE_SHOP'
-        : moduleType;
+      moduleType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : moduleType;
+
+    const normalizedOffsetDays = (() => {
+      const parsed = Number(offsetDays);
+      if (
+        ['MEMBERSHIP_EXPIRY_AFTER', 'PAYMENT_DUE_AFTER'].includes(triggerType)
+      ) {
+        return -Math.abs(parsed);
+      }
+      if (
+        ['MEMBERSHIP_EXPIRY_BEFORE', 'PAYMENT_DUE_BEFORE'].includes(triggerType)
+      ) {
+        return Math.abs(parsed);
+      }
+      return parsed;
+    })();
 
     // Check for existing automation by UNIQUE Key (Module + Event)
     const existing = await this.prisma.whatsAppAutomation.findFirst({
@@ -419,7 +446,7 @@ export class WhatsAppController {
         where: { id: existing.id },
         data: {
           templateKey,
-          offsetDays: Number(offsetDays),
+          offsetDays: normalizedOffsetDays,
           enabled: enabled !== undefined ? enabled : true,
         },
       });
@@ -431,7 +458,7 @@ export class WhatsAppController {
         moduleType: prismaModuleType as any,
         eventType: triggerType,
         templateKey,
-        offsetDays: Number(offsetDays),
+        offsetDays: normalizedOffsetDays,
         enabled: enabled !== undefined ? enabled : true,
       },
     });

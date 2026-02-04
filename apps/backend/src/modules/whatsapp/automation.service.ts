@@ -33,7 +33,11 @@ export class AutomationService {
       'MEMBER_CREATED',
       'TRAINER_ASSIGNED',
       'MEMBERSHIP_EXPIRY',
+      'MEMBERSHIP_EXPIRY_BEFORE',
+      'MEMBERSHIP_EXPIRY_AFTER',
       'PAYMENT_DUE',
+      'PAYMENT_DUE_BEFORE',
+      'PAYMENT_DUE_AFTER',
       'COACHING_FOLLOWUP',
     ],
     MOBILE_SHOP: [
@@ -42,8 +46,9 @@ export class AutomationService {
       'FOLLOW_UP_COMPLETED',
       'INVOICE_CREATED',
       'PAYMENT_PENDING',
-      'JOB_COMPLETED',
       'JOB_CREATED',
+      'JOB_READY',
+      'JOB_COMPLETED',
     ],
   };
 
@@ -71,8 +76,14 @@ export class AutomationService {
    */
   private mapEventToReminderTrigger(eventType: string): ReminderTriggerType {
     switch (eventType) {
+      case 'DATE':
       case 'MEMBER_CREATED':
       case 'MEMBERSHIP_EXPIRY':
+      case 'MEMBERSHIP_EXPIRY_BEFORE':
+      case 'MEMBERSHIP_EXPIRY_AFTER':
+      case 'PAYMENT_DUE':
+      case 'PAYMENT_DUE_BEFORE':
+      case 'PAYMENT_DUE_AFTER':
       case 'MEMBERSHIP_EXPIRED':
         return ReminderTriggerType.DATE;
       case 'AFTER_JOB':
@@ -180,8 +191,10 @@ export class AutomationService {
    */
   async create(dto: CreateAutomationDto, userId?: string) {
     // Normalize eventType: replace spaces with underscores
-    const normalizedEventType = dto.eventType.replace(/\s+/g, '_').toUpperCase();
-    
+    const normalizedEventType = dto.eventType
+      .replace(/\s+/g, '_')
+      .toUpperCase();
+
     // Validate event type
     this.validateEventType(dto.moduleType, normalizedEventType);
 
@@ -329,8 +342,6 @@ export class AutomationService {
     };
   }
 
-
-
   /**
    * ────────────────────────────────────────────────
    * ⚡ EVENT HANDLING (CORE ENGINE)
@@ -390,7 +401,9 @@ export class AutomationService {
         localMinute: 0,
       });
 
-      this.logger.log(`[REMINDER] ScheduledAt UTC=${scheduledAt.toISOString()}`);
+      this.logger.log(
+        `[REMINDER] ScheduledAt UTC=${scheduledAt.toISOString()}`,
+      );
 
       await this.prisma.customerReminder.create({
         data: {
@@ -410,5 +423,4 @@ export class AutomationService {
       );
     }
   }
-
 }

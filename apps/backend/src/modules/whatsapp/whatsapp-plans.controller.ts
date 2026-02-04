@@ -42,7 +42,8 @@ export class WhatsAppPlansController {
   async createPlan(@Body() createPlanDto: CreatePlanDto) {
     return this.plansService.createPlan({
       name: createPlanDto.name,
-      price: createPlanDto.price,
+      code: createPlanDto.code,
+      module: createPlanDto.module,
       isActive: createPlanDto.isActive,
     });
   }
@@ -57,7 +58,6 @@ export class WhatsAppPlansController {
     @Body() updatePlanDto: UpdatePlanDto,
   ) {
     return this.plansService.updatePlan(id, {
-      price: updatePlanDto.price,
       isActive: updatePlanDto.isActive,
     });
   }

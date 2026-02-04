@@ -31,10 +31,10 @@ export class PlatformService {
       code: plan.code,
       name: plan.name,
       level: plan.level,
-      price: plan.price,
-      maxMembers: plan.maxMembers ?? plan.memberLimit,
+      module: plan.module,
       isActive: plan.isActive,
-      billingCycle: plan.billingCycle,
+      isPublic: plan.isPublic,
+      isAddon: plan.isAddon,
       features: plan.planFeatures.map((pf) => ({
         feature: pf.feature,
         enabled: pf.enabled,
@@ -89,11 +89,11 @@ export class PlatformService {
   }
 
   /**
-   * Update plan properties (maxMembers, isActive)
+   * Update plan properties
    */
   async updatePlan(
     planId: string,
-    data: { maxMembers?: number; isActive?: boolean },
+    data: { isActive?: boolean; isPublic?: boolean },
   ) {
     const plan = await this.prisma.plan.findUnique({
       where: { id: planId },
@@ -106,8 +106,8 @@ export class PlatformService {
     const updated = await this.prisma.plan.update({
       where: { id: planId },
       data: {
-        maxMembers: data.maxMembers,
         isActive: data.isActive,
+        isPublic: data.isPublic,
         updatedAt: new Date(),
       },
       include: {

@@ -68,6 +68,7 @@ export class InventoryService {
 
   async updateProduct(tenantId: string, id: string, dto: CreateProductDto) {
     // Fetch existing product to merge updates
+    console.log(`[DEBUG] Updating Product: ID=${id}, Tenant=${tenantId}`);
     const existing = await this.prisma.shopProduct.findUnique({
       where: { id },
       select: {
@@ -77,6 +78,7 @@ export class InventoryService {
         isSerialized: true,
       },
     });
+    console.log(`[DEBUG] Found product: ${JSON.stringify(existing)}`);
 
     if (!existing) {
       throw new Error('Product not found');

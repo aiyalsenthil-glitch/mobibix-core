@@ -141,7 +141,7 @@ export function ProductModal({
             quantity: stockQty,
             costPrice: parseFloat(formData.openingCost) || 0,
             imeis: formData.isSerialized ? imeis : undefined,
-            type: formData.isSerialized ? "GOODS" : undefined,
+            type: formData.type,
           });
         } catch (stockErr: any) {
           console.error("Stock in failed:", stockErr);

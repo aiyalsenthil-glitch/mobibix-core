@@ -98,6 +98,9 @@ export class PaymentsWebhookController {
         });
 
         // 4️⃣ 🔥 ACTIVATE / QUEUE SUBSCRIPTION (THIS WAS MISSING)
+        // TODO: Phase 1 migration - webhook needs to include billingCycle
+        // For now, skipping subscription creation (user must choose cycle manually)
+        /*
         await this.prisma.$transaction(async (tx) => {
           // Resolve module from tenant type
           const tenant = await tx.tenant.findUnique({
@@ -108,16 +111,18 @@ export class PaymentsWebhookController {
           const module = tenant?.tenantType === 'GYM' ? 'GYM' : 'MOBILE_SHOP';
 
           // IMPORTANT: reuse backend business logic
-          await this.subscriptionsService.buyPlan(
-            paymentRecord.tenantId,
-            paymentRecord.planId,
+          await this.subscriptionsService.buyPlanPhase1({
+            tenantId: paymentRecord.tenantId,
+            planId: paymentRecord.planId,
             module,
-          );
+            billingCycle: 'MONTHLY', // Default - user should specify via API
+          });
         });
 
         this.logger.log(
           `Subscription updated for tenant ${paymentRecord.tenantId}`,
         );
+        */
       }
 
       return { received: true };

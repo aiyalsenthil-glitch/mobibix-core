@@ -80,6 +80,7 @@ export async function createProduct(
     category?: string;
     hsnSac?: string;
     salePrice: number;
+    costPrice?: number; // Add cost price support
     gstRate?: number;
     isSerialized?: boolean;
   },
@@ -95,6 +96,7 @@ export async function createProduct(
       type: data.type,
       category: data.category,
       salePrice: data.salePrice,
+      costPrice: data.costPrice, // Add cost price
       hsnCode: data.hsnSac,
       gstRate: data.gstRate,
       isSerialized: data.isSerialized,

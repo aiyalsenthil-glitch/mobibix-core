@@ -1,68 +1,107 @@
-
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { Module, Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 
-const CONNECTION_STRING = "postgresql://postgres:k%2FWwZ9M!gJagvq6@db.wdjyrnldcsotkgoqcsfz.supabase.co:5432/postgres";
+const CONNECTION_STRING = process.env.DATABASE_URL;
 
-@Injectable()
-class CustomPrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  constructor() {
-    const adapter = new PrismaPg({ connectionString: CONNECTION_STRING });
-    super({ adapter } as any);
-  }
-  async onModuleInit() { await this.$connect(); }
-  async onModuleDestroy() { await this.$disconnect(); }
+if (!CONNECTION_STRING) {
+  throw new Error('DATABASE_URL is required to run this script');
 }
 
-@Module({
-  providers: [CustomPrismaService],
-})
-class ScriptModule {}
-
 async function main() {
-  const prisma = new CustomPrismaService();
-  await prisma.onModuleInit();
+  const adapter = new PrismaPg({ connectionString: CONNECTION_STRING });
+  const prisma = new PrismaClient({ adapter } as any);
 
-  console.log('--- Seeding Plan Features for ULTIMATE ---');
+  console.log('--- Seeding Plan Features (no plan changes) ---');
 
-  const ultimate = await prisma.plan.findFirst({
-    where: { 
-      OR: [{ name: 'ULTIMATE' }, { code: 'ULTIMATE' }]
-    }
+  const planFeatureMap: Record<string, string[]> = {
+    TRIAL: [
+      'MEMBERS_MANAGEMENT',
+      'ATTENDANCE_MANAGEMENT',
+      'QR_ATTENDANCE',
+      'STAFF_MANAGEMENT',
+      'REPORTS',
+      'MEMBER_PAYMENT_TRACKING',
+      'WHATSAPP_ALERTS_BASIC',
+      'WHATSAPP_ALERTS_ALL',
+      'PAYMENT_DUE',
+      'REMINDER',
+      'WELCOME',
+      'EXPIRY',
+    ],
+    BASIC: ['MEMBERS_MANAGEMENT', 'ATTENDANCE_MANAGEMENT', 'QR_ATTENDANCE'],
+    PLUS: [
+      'MEMBERS_MANAGEMENT',
+      'ATTENDANCE_MANAGEMENT',
+      'QR_ATTENDANCE',
+      'STAFF_MANAGEMENT',
+    ],
+    PRO: [
+      'MEMBERS_MANAGEMENT',
+      'ATTENDANCE_MANAGEMENT',
+      'QR_ATTENDANCE',
+      'STAFF_MANAGEMENT',
+      'REPORTS',
+      'MEMBER_PAYMENT_TRACKING',
+      'WHATSAPP_ALERTS_BASIC',
+      'PAYMENT_DUE',
+      'REMINDER',
+    ],
+    ULTIMATE: [
+      'MEMBERS_MANAGEMENT',
+      'ATTENDANCE_MANAGEMENT',
+      'QR_ATTENDANCE',
+      'STAFF_MANAGEMENT',
+      'REPORTS',
+      'MEMBER_PAYMENT_TRACKING',
+      'WHATSAPP_ALERTS_BASIC',
+      'WHATSAPP_ALERTS_ALL',
+      'PAYMENT_DUE',
+      'REMINDER',
+      'WELCOME',
+      'EXPIRY',
+    ],
+    WHATSAPP_PROMO: [],
+    WHATSAPP_PROMO_2999: [],
+  };
+
+  console.log('--- Removing duplicate PlanFeature rows (if any) ---');
+  await prisma.$executeRawUnsafe(`
+    WITH ranked AS (
+      SELECT id,
+             ROW_NUMBER() OVER (PARTITION BY "planId", "feature" ORDER BY id) AS rn
+      FROM "PlanFeature"
+    )
+    DELETE FROM "PlanFeature"
+    WHERE id IN (SELECT id FROM ranked WHERE rn > 1);
+  `);
+
+  const plans = await prisma.plan.findMany({
+    where: {
+      OR: [
+        { code: { in: Object.keys(planFeatureMap) } },
+        { name: { in: Object.keys(planFeatureMap) } },
+      ],
+    },
   });
 
-  if (!ultimate) {
-    throw new Error('Ultimate plan not found!');
-  }
-  console.log(`Found Plan: ${ultimate.name} (${ultimate.id})`);
+  for (const plan of plans) {
+    const key = (plan.code || plan.name || '').toUpperCase();
+    const featuresToSeed = planFeatureMap[key] ?? [];
 
-  const featuresToSeed = [
-    { code: 'WELCOME', name: 'Welcome Message' },
-    { code: 'EXPIRY', name: 'Expiry Reminder' },
-    { code: 'PAYMENT_DUE', name: 'Payment Due Reminder' },
-    { code: 'REMINDER', name: 'Custom Reminder' },
-  ];
-
-  for (const feat of featuresToSeed) {
-    // Check if exists
-    const existing = await prisma.planFeature.findFirst({
-      where: {
-        planId: ultimate.id,
-        feature: feat.code as any,
-      }
-    });
-
-    if (existing) {
-      console.log(`- [SKIP] ${feat.code} already exists.`);
-    } else {
-      await prisma.planFeature.create({
-        data: {
-          planId: ultimate.id,
-          feature: feat.code as any,
-        }
+    console.log(`\nPlan: ${plan.name} (${plan.id})`);
+    for (const feature of featuresToSeed) {
+      const existing = await prisma.planFeature.findFirst({
+        where: { planId: plan.id, feature: feature as any },
       });
-      console.log(`- [ADD] ${feat.code} added.`);
+
+      if (existing) {
+        console.log(`- [SKIP] ${feature} already exists.`);
+      } else {
+        await prisma.planFeature.create({
+          data: { planId: plan.id, feature: feature as any },
+        });
+        console.log(`- [ADD] ${feature} added.`);
+      }
     }
   }
 

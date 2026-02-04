@@ -88,6 +88,10 @@ export class UpdateShopSettingsDto {
   @IsString()
   tagline?: string;
 
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
   // Bank Details
   @IsOptional()
   @IsString()

@@ -1,0 +1,74 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { Request } from 'express';
+import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
+import { WhatsAppUserService } from './whatsapp-user.service';
+import {
+  CreateWhatsAppCampaignDto,
+  ScheduleWhatsAppCampaignDto,
+  SendWhatsAppMessageDto,
+  WhatsAppLogsQueryDto,
+} from './dto/whatsapp-user.dto';
+
+@Controller('user/whatsapp')
+@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+export class WhatsAppUserController {
+  constructor(private readonly whatsappUserService: WhatsAppUserService) {}
+
+  private getTenantId(req: Request & { user?: { tenantId?: string } }) {
+    return req.user?.tenantId ?? '';
+  }
+
+  @Get('dashboard')
+  async getDashboard(@Req() req: Request & { user?: { tenantId?: string } }) {
+    const tenantId = this.getTenantId(req);
+    return this.whatsappUserService.getDashboard(tenantId);
+  }
+
+  @Post('send')
+  async sendMessage(
+    @Req() req: Request & { user?: { tenantId?: string } },
+    @Body() dto: SendWhatsAppMessageDto,
+  ) {
+    const tenantId = this.getTenantId(req);
+    return this.whatsappUserService.sendMessage(tenantId, dto);
+  }
+
+  @Get('logs')
+  async getLogs(
+    @Req() req: Request & { user?: { tenantId?: string } },
+    @Query() query: WhatsAppLogsQueryDto,
+  ) {
+    const tenantId = this.getTenantId(req);
+    return this.whatsappUserService.getLogs(tenantId, query);
+  }
+
+  @Post('campaigns')
+  async createCampaign(
+    @Req() req: Request & { user?: { tenantId?: string } },
+    @Body() dto: CreateWhatsAppCampaignDto,
+  ) {
+    const tenantId = this.getTenantId(req);
+    return this.whatsappUserService.createCampaign(tenantId, dto);
+  }
+
+  @Patch('campaigns/:id/schedule')
+  async scheduleCampaign(
+    @Req() req: Request & { user?: { tenantId?: string } },
+    @Param('id') campaignId: string,
+    @Body() dto: ScheduleWhatsAppCampaignDto,
+  ) {
+    const tenantId = this.getTenantId(req);
+    return this.whatsappUserService.scheduleCampaign(tenantId, campaignId, dto);
+  }
+}

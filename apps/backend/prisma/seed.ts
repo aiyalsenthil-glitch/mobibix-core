@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { HSN_DATA } from './hsn-data';
+import { WhatsAppConfigValidator } from '../src/modules/whatsapp/whatsapp.config-validator';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -48,70 +49,10 @@ async function seedWhatsAppForModule(moduleType: string): Promise<{
   let templatesCount = 0;
   let automationsCount = 0;
 
-  const templates =
-    moduleType === 'GYM'
-      ? [
-          {
-            templateKey: 'WELCOME',
-            metaTemplateName: 'gym_welcome_v1',
-            category: 'UTILITY',
-            feature: 'WELCOME',
-            language: 'en',
-            status: 'ACTIVE',
-          },
-          {
-            templateKey: 'PAYMENT_DUE',
-            metaTemplateName: 'gym_payment_due_v1',
-            category: 'UTILITY',
-            feature: 'PAYMENT_DUE',
-            language: 'en',
-            status: 'ACTIVE',
-          },
-          {
-            templateKey: 'EXPIRY',
-            metaTemplateName: 'gym_expiry_reminder_v1',
-            category: 'UTILITY',
-            feature: 'EXPIRY',
-            language: 'en',
-            status: 'ACTIVE',
-          },
-        ]
-      : moduleType === 'MOBILE_SHOP'
-        ? [
-            {
-              templateKey: 'INVOICE_THANK_YOU',
-              metaTemplateName: 'sales_invoice_thank_you_v1',
-              category: 'UTILITY',
-              feature: 'WELCOME',
-              language: 'en',
-              status: 'ACTIVE',
-            },
-            {
-              templateKey: 'PAYMENT_REMINDER',
-              metaTemplateName: 'sales_payment_reminder_v1',
-              category: 'UTILITY',
-              feature: 'PAYMENT_DUE',
-              language: 'en',
-              status: 'ACTIVE',
-            },
-            {
-              templateKey: 'JOB_READY',
-              metaTemplateName: 'repair_job_ready_v1',
-              category: 'UTILITY',
-              feature: 'REMINDER',
-              language: 'en',
-              status: 'ACTIVE',
-            },
-            {
-              templateKey: 'JOB_UPDATE',
-              metaTemplateName: 'repair_job_update_v1',
-              category: 'UTILITY',
-              feature: 'REMINDER',
-              language: 'en',
-              status: 'ACTIVE',
-            },
-          ]
-        : [];
+  // Templates now seeded via dedicated scripts:
+  // - GYM: seed-mobibix-whatsapp-templates.ts
+  // - MOBILE_SHOP: seed-mobibix-whatsapp-templates.ts
+  const templates: any[] = [];
 
   for (const template of templates) {
     await prisma.whatsAppTemplate.upsert({
@@ -135,108 +76,11 @@ async function seedWhatsAppForModule(moduleType: string): Promise<{
     templatesCount++;
   }
 
-  const automations = [
-    {
-      triggerType: 'DATE' as const,
-      templateKey: 'EXPIRY',
-      offsetDays: -3,
-      enabled: true,
-    },
-    {
-      triggerType: 'AFTER_INVOICE' as const,
-      templateKey: 'PAYMENT_DUE',
-      offsetDays: 2,
-      enabled: true,
-    },
-    {
-      triggerType: 'AFTER_JOB' as const,
-      templateKey: 'WELCOME',
-      offsetDays: 0,
-      enabled: true,
-    },
-  ];
-
-  for (const automation of automations) {
-    const existing = await prisma.whatsAppAutomation.findFirst({
-      where: {
-        moduleType: moduleType as any,
-        eventType: automation.triggerType,
-        templateKey: automation.templateKey,
-        offsetDays: automation.offsetDays,
-      },
-    });
-
-    if (existing) {
-      await prisma.whatsAppAutomation.update({
-        where: { id: existing.id },
-        data: {
-          enabled: automation.enabled,
-        },
-      });
-    } else {
-      await prisma.whatsAppAutomation.create({
-        data: {
-          moduleType: moduleType as any,
-          eventType: automation.triggerType,
-          templateKey: automation.templateKey,
-          offsetDays: automation.offsetDays,
-          enabled: automation.enabled,
-        },
-      });
-    }
-    automationsCount++;
-  }
-
   return { templatesCount, automationsCount };
 }
 
-async function seedPhoneNumbers(): Promise<{
-  created: number;
-  skipped: number;
-  total: number;
-}> {
-  const DEFAULT_PHONE_NUMBER =
-    process.env.WHATSAPP_PHONE_NUMBER || '+1234567890';
-  const DEFAULT_PHONE_NUMBER_ID =
-    process.env.WHATSAPP_PHONE_NUMBER_ID || 'YOUR_PHONE_NUMBER_ID';
-  const DEFAULT_WABA_ID = process.env.WHATSAPP_WABA_ID || 'YOUR_WABA_ID';
-
-  const tenants = await prisma.tenant.findMany({
-    select: { id: true, name: true },
-  });
-
-  let created = 0;
-  let skipped = 0;
-
-  for (const tenant of tenants) {
-    // Check if tenant already has a default phone number
-    const existingPhone = await prisma.whatsAppPhoneNumber.findFirst({
-      where: { tenantId: tenant.id },
-    });
-
-    if (existingPhone) {
-      skipped++;
-      continue;
-    }
-
-    // Create default phone number
-    await prisma.whatsAppPhoneNumber.create({
-      data: {
-        tenantId: tenant.id,
-        phoneNumber: DEFAULT_PHONE_NUMBER,
-        phoneNumberId: DEFAULT_PHONE_NUMBER_ID,
-        wabaId: DEFAULT_WABA_ID,
-        purpose: 'DEFAULT',
-        isDefault: true,
-        isActive: true,
-      },
-    });
-
-    created++;
-  }
-
-  return { created, skipped, total: tenants.length };
-}
+// Tenant-based phone numbers now seeded via seed-phone-numbers.ts
+// Run: npx ts-node prisma/seed-phone-numbers.ts
 
 async function seedModulePhoneNumbers(): Promise<{
   created: number;
@@ -281,6 +125,11 @@ async function seedModulePhoneNumbers(): Promise<{
 }
 
 async function main() {
+  // ────────────────────────────────────────────────
+  // VALIDATE ENV BEFORE SEEDING
+  // ────────────────────────────────────────────────
+  WhatsAppConfigValidator.validateOrExit();
+
   // ────────────────────────────────────────────────
   // SEED REQUIRED GLOBAL GYM WHATSAPP TEMPLATES
   // ────────────────────────────────────────────────
@@ -332,101 +181,97 @@ async function main() {
     });
   }
   // Plans
-  // Feature Sets
-  const FEATURES_BASIC = [
+  // V1 CLEAN STRUCTURE - NO LEGACY
+  const FEATURES_STANDARD = [
     'MEMBERS_MANAGEMENT',
     'ATTENDANCE_MANAGEMENT',
     'QR_ATTENDANCE',
+    'STAFF_MANAGEMENT',
   ];
-  const FEATURES_PLUS = [...FEATURES_BASIC, 'STAFF_MANAGEMENT'];
+
   const FEATURES_PRO = [
-    ...FEATURES_PLUS,
+    ...FEATURES_STANDARD,
     'REPORTS',
     'MEMBER_PAYMENT_TRACKING',
     'WHATSAPP_ALERTS_BASIC',
+    'PAYMENT_DUE',
+    'REMINDER',
   ];
-  const FEATURES_ULTIMATE = [...FEATURES_PRO, 'WHATSAPP_ALERTS_ALL'];
 
-  // Plans
-  const plans: any[] = [
+  const FEATURES_WHATSAPP = [
+    'WHATSAPP_ALERTS_ALL',
+    'WELCOME',
+    'EXPIRY',
+    'PAYMENT_DUE',
+    'REMINDER',
+  ];
+
+  // V1 Plans (clean, no duplication)
+  const v1Plans = [
     {
       code: 'TRIAL',
       name: 'TRIAL',
       level: 0,
-      price: 0,
-      durationDays: 14,
-      memberLimit: 0,
-      features: FEATURES_ULTIMATE, // Trial gets everything
-    },
-    {
-      code: 'BASIC',
-      name: 'BASIC',
-      level: 1,
-      price: 99,
-      durationDays: 30,
       memberLimit: 50,
-      features: FEATURES_BASIC,
+      features: [...new Set([...FEATURES_PRO, ...FEATURES_WHATSAPP])], // Trial gets everything (deduplicated)
+      isPublic: false,
+      module: 'GYM',
     },
     {
-      code: 'PLUS',
-      name: 'PLUS',
-      level: 2,
-      price: 149,
-      durationDays: 30,
+      code: 'STANDARD',
+      name: 'STANDARD',
+      level: 1,
       memberLimit: 100,
-      features: FEATURES_PLUS,
+      features: FEATURES_STANDARD,
+      isPublic: true,
+      module: 'GYM',
     },
     {
       code: 'PRO',
       name: 'PRO',
-      level: 3,
-      price: 1999, // Keeping original price logic or updating? Request said BASIC 99, PLUS 149. PRO/ULTIMATE prices were not specified to change, but I will infer a hierarchy. Let's keep existing high prices or set reasonable defaults if not specified. Wait, the request said:
-      // BASIC (₹99), PLUS (₹149). PRO and ULTIMATE didn't have prices listed in the text, but the code had 1999 and 4999. I will stick to the text for BASIC/PLUS and existing for PRO/ULTIMATE unless user clarifies? No, the text implies a hierarchy. I'll use 999 for PRO and 2499 for ULTIMATE as reasonable steps, or stick to the code's 1999/4999 to be safe. Let's stick to the code's previous high values for PRO/ULTIMATE to avoid accidental revenue loss, but update BASIC/PLUS as requested.
-      // Actually previous code: BASIC 999, PRO 1999, ULTIMATE 4999.
-      // Request: BASIC 99, PLUS 149. This is specific.
-      // I will set PRO to 499 and ULTIMATE to 999 to match the scale, OR keep them high.
-      // Let's assume standard SaaS pricing: 99 -> 149 -> 499 (?) -> 999 (?).
-      // I will leave PRO at 1999 and ULTIMATE at 4999 as they were, only updating features.
+      level: 2,
+      memberLimit: 300,
       features: FEATURES_PRO,
+      isPublic: true,
+      module: 'GYM',
     },
     {
-      code: 'ULTIMATE',
-      name: 'ULTIMATE',
-      level: 4,
-      price: 4999,
-      durationDays: 365,
-      memberLimit: 500,
-      features: FEATURES_ULTIMATE, // Explicitly map legacy features too if needed?
-      // "do NOT change feature keys already consumed by Android UI"
-      // The Android UI consumes: WELCOME, EXPIRY, PAYMENT_DUE, REMINDER.
-      // So I must include them in the respective levels.
-      // WHATSAPP_ALERTS_BASIC -> likely maps to PAYMENT_DUE, REMINDER?
-      // WHATSAPP_ALERTS_ALL -> likely maps to WELCOME, EXPIRY?
-      // Wait, I need to Map the legacy keys to these bundles to ensure Android keeps working!
-      // The request said "Gate WhatsApp automation execution using plan.features... If features array is empty allow all".
-      // But it also said "Android continues to display features from plan.features".
-      // So `plan.features` JSON (consumed by Android) MUST contain the old keys: 'WELCOME', 'EXPIRY', etc.
-      // I will add them to the relevant lists.
+      code: 'WHATSAPP_CRM',
+      name: 'WhatsApp CRM',
+      level: 10, // Separate add-on
+      memberLimit: 0,
+      features: FEATURES_WHATSAPP,
+      isPublic: true,
+      module: 'WHATSAPP_CRM',
     },
   ];
 
-  // Re-map features to include legacy keys for Android compatibility
-  // PRO (Basic Alerts) -> PAYMENT_DUE, REMINDER
-  // ULTIMATE (All Alerts) -> WELCOME, EXPIRY
+  // V1 Pricing (explicit, no calculation)
+  const v1Pricing = {
+    TRIAL: {
+      MONTHLY: 0, // Free trial
+    },
+    STANDARD: {
+      MONTHLY: 19900, // ₹199/month (in paise)
+      QUARTERLY: 49900, // ₹499/quarter
+      YEARLY: 179900, // ₹1799/year
+    },
+    PRO: {
+      MONTHLY: 39900, // ₹399/month
+      QUARTERLY: 99900, // ₹999/quarter
+      YEARLY: 359900, // ₹3599/year
+    },
+    WHATSAPP_CRM: {
+      MONTHLY: 29900, // ₹299/month
+      QUARTERLY: 74900, // ₹749/quarter
+      YEARLY: 269900, // ₹2699/year
+    },
+  };
 
-  const LEGACY_BASIC = ['PAYMENT_DUE', 'REMINDER'];
-  const LEGACY_ALL = [...LEGACY_BASIC, 'WELCOME', 'EXPIRY'];
-
-  // Update features with legacy keys
-  plans[3].features = [...FEATURES_PRO, ...LEGACY_BASIC]; // PRO
-  plans[4].features = [...FEATURES_ULTIMATE, ...LEGACY_ALL]; // ULTIMATE
-  plans[0].features = [...FEATURES_ULTIMATE, ...LEGACY_ALL]; // TRIAL
-
-  for (const p of plans) {
-    // 1. Upsert Plan
-    // We try to find by name to maintain existing logic
+  for (const p of v1Plans) {
+    // 1. Upsert Plan (duration-agnostic)
     const existingPlan = await prisma.plan.findFirst({
-      where: { name: p.name },
+      where: { code: p.code },
     });
 
     let planId = existingPlan?.id;
@@ -435,13 +280,10 @@ async function main() {
       await prisma.plan.update({
         where: { id: existingPlan.id },
         data: {
+          name: p.name,
           level: p.level,
-          price: p.price,
-          durationDays: p.durationDays,
-          memberLimit: p.memberLimit,
-          billingCycle: 'MONTHLY',
-          // Legacy JSON column update if needed
-          features: p.features as any, 
+          isPublic: p.isPublic,
+          module: p.module as any,
         },
       });
       console.log(`✅ Updated Plan: ${p.name}`);
@@ -451,22 +293,46 @@ async function main() {
           code: p.code,
           name: p.name,
           level: p.level,
-          price: p.price,
-          currency: 'INR',
-          durationDays: p.durationDays,
-          memberLimit: p.memberLimit,
-          features: p.features as any,
           isActive: true,
-          billingCycle: 'MONTHLY',
+          isPublic: p.isPublic,
+          module: p.module as any,
         },
       });
       planId = created.id;
       console.log(`✅ Created Plan: ${p.name}`);
     }
 
+    // 2. Create PlanPrice entries (Phase 1)
+    if (planId && v1Pricing[p.code]) {
+      const prices = v1Pricing[p.code];
+
+      for (const [cycle, priceValue] of Object.entries(prices)) {
+        await prisma.planPrice.upsert({
+          where: {
+            planId_billingCycle: {
+              planId,
+              billingCycle: cycle as any,
+            },
+          },
+          update: {
+            price: priceValue as number,
+            isActive: true,
+          },
+          create: {
+            planId,
+            billingCycle: cycle as any,
+            price: priceValue as number,
+            isActive: true,
+          },
+        });
+      }
+      console.log(
+        `   - Created ${Object.keys(prices).length} price points for ${p.name}`,
+      );
+    }
+
+    // 3. Sync PlanFeature table
     if (planId) {
-      // 2. Sync Plan Features (The real table)
-      // Remove all existing features to ensure exact match
       await prisma.planFeature.deleteMany({
         where: { planId },
       });
@@ -475,7 +341,7 @@ async function main() {
         await prisma.planFeature.createMany({
           data: p.features.map((f) => ({
             planId: planId!,
-            feature: f as any, // Cast to any to bypass enum strictness in seed
+            feature: f as any,
           })),
         });
         console.log(`   - Synced ${p.features.length} features for ${p.name}`);
@@ -530,123 +396,9 @@ async function main() {
   }
 
   // ────────────────────────────────────────────────
-  // GLOBAL GYM AUTOMATIONS (Platform-level, no tenantId)
+  // NOTE: Tenant-based WhatsApp phone numbers removed from main seed
+  // Use dedicated script: npx ts-node prisma/seed-phone-numbers.ts
   // ────────────────────────────────────────────────
-  console.log('\n🌱 Seeding GLOBAL WhatsApp automations for Gym SaaS...');
-  const WhatsAppTemplates = {
-    WELCOME: 'new_member_welcome_v3',
-    EXPIRY: 'membership_expiry_reminder',
-    PAYMENT_DUE: 'payment_due_notice_util_v1',
-  };
-  const templateKeys = Object.values(WhatsAppTemplates);
-  const foundTemplates = await prisma.whatsAppTemplate.findMany({
-    where: {
-      templateKey: { in: templateKeys },
-      moduleType: 'GYM',
-      status: 'ACTIVE',
-    },
-    select: { templateKey: true },
-  });
-  const foundSet = new Set(foundTemplates.map((t) => t.templateKey));
-
-  // 1️⃣ NEW MEMBER WELCOME
-  if (foundSet.has(WhatsAppTemplates.WELCOME)) {
-    await prisma.whatsAppAutomation.upsert({
-      where: {
-        moduleType_eventType: {
-          moduleType: 'GYM',
-          eventType: 'MEMBER_CREATED',
-        },
-      },
-      update: {
-        templateKey: WhatsAppTemplates.WELCOME,
-        offsetDays: 0,
-        conditions: { set: null },
-        enabled: true,
-      },
-      create: {
-        moduleType: 'GYM',
-        eventType: 'MEMBER_CREATED',
-        templateKey: WhatsAppTemplates.WELCOME,
-        offsetDays: 0,
-        conditions: { set: null },
-        enabled: true,
-      },
-    });
-    console.log('✅ Seeded: NEW MEMBER WELCOME');
-  } else {
-    console.log('❌ Skipped: NEW MEMBER WELCOME (template missing)');
-  }
-
-  // 2️⃣ MEMBERSHIP EXPIRY REMINDER (BEFORE)
-  if (foundSet.has(WhatsAppTemplates.EXPIRY)) {
-    await prisma.whatsAppAutomation.upsert({
-      where: {
-        moduleType_eventType: {
-          moduleType: 'GYM',
-          eventType: 'MEMBERSHIP_EXPIRY',
-        },
-      },
-      update: {
-        templateKey: WhatsAppTemplates.EXPIRY,
-        offsetDays: -3,
-        conditions: [
-          { field: 'expiryDate', operator: 'DAYS_BEFORE', value: 3 },
-        ],
-        enabled: true,
-      },
-      create: {
-        moduleType: 'GYM',
-        eventType: 'MEMBERSHIP_EXPIRY',
-        templateKey: WhatsAppTemplates.EXPIRY,
-        offsetDays: -3,
-        conditions: [
-          { field: 'expiryDate', operator: 'DAYS_BEFORE', value: 3 },
-        ],
-        enabled: true,
-      },
-    });
-    console.log('✅ Seeded: MEMBERSHIP EXPIRY REMINDER (BEFORE)');
-  } else {
-    console.log('❌ Skipped: MEMBERSHIP EXPIRY REMINDER (template missing)');
-  }
-
-  // 3️⃣ PAYMENT DUE NOTICE (AFTER EXPIRY)
-  if (foundSet.has(WhatsAppTemplates.PAYMENT_DUE)) {
-    await prisma.whatsAppAutomation.upsert({
-      where: {
-        moduleType_eventType: {
-          moduleType: 'GYM',
-          eventType: 'MEMBERSHIP_EXPIRED',
-        },
-      },
-      update: {
-        templateKey: WhatsAppTemplates.PAYMENT_DUE,
-        offsetDays: 1,
-        conditions: [{ field: 'pendingAmount', operator: '>', value: 0 }],
-        enabled: true,
-      },
-      create: {
-        moduleType: 'GYM',
-        eventType: 'MEMBERSHIP_EXPIRED',
-        templateKey: WhatsAppTemplates.PAYMENT_DUE,
-        offsetDays: 1,
-        conditions: [{ field: 'pendingAmount', operator: '>', value: 0 }],
-        enabled: true,
-      },
-    });
-    console.log('✅ Seeded: PAYMENT DUE NOTICE (AFTER EXPIRY)');
-  } else {
-    console.log('❌ Skipped: PAYMENT DUE NOTICE (template missing)');
-  }
-
-  // PHONE NUMBERS INITIALIZATION
-  console.log('\n🌱 Seeding WhatsApp phone numbers...');
-  const phoneResult = await seedPhoneNumbers();
-  console.log(`✅ Phone numbers configured`);
-  console.log(`   Created: ${phoneResult.created}`);
-  console.log(`   Skipped: ${phoneResult.skipped}`);
-  console.log(`   Total tenants: ${phoneResult.total}`);
 
   // MODULE-LEVEL PHONE NUMBERS
   console.log('\n🌱 Seeding module-scoped WhatsApp phone numbers...');
@@ -722,7 +474,7 @@ async function main() {
   );
 
   if (
-    phoneResult.created > 0 &&
+    tenantSeedResult.created > 0 &&
     (process.env.WHATSAPP_PHONE_NUMBER_ID === 'YOUR_PHONE_NUMBER_ID' ||
       process.env.WHATSAPP_WABA_ID === 'YOUR_WABA_ID')
   ) {

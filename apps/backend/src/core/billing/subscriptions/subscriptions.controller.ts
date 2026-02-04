@@ -20,10 +20,7 @@ export class SubscriptionsController {
     private readonly prisma: PrismaService,
   ) {}
   @Get('current')
-  async getCurrent(
-    @Req() req: any,
-    @Query('module') module?: ModuleType,
-  ) {
+  async getCurrent(@Req() req: any, @Query('module') module?: ModuleType) {
     if (!req.user || !req.user.tenantId) {
       throw new UnauthorizedException('Authentication required');
     }
@@ -56,14 +53,12 @@ export class SubscriptionsController {
     // No active subscription → trial
     if (!sub) {
       return {
-        plan: 'TRIAL',
+        plan: 'GYM_TRIAL',
         planLevel: 0,
-        memberLimit: 0,
         daysLeft: 0,
         isTrial: true,
         subscriptionStatus: 'TRIAL',
         canUpgrade: true,
-        isUnlimited: true,
       };
     }
 
@@ -84,7 +79,6 @@ export class SubscriptionsController {
           : 'ACTIVE';
 
     const plan = sub.plan;
-    const isUnlimited = plan.memberLimit === 0;
 
     // IMPORTANT BUSINESS RULE:
     // Backend NEVER blocks upgrade based on expiry
@@ -93,11 +87,9 @@ export class SubscriptionsController {
       current: {
         plan: plan.name,
         planLevel: plan.level,
-        memberLimit: plan.memberLimit,
         daysLeft,
         isTrial: sub.status === 'TRIAL',
         subscriptionStatus,
-        isUnlimited,
       },
       upcoming: upcoming
         ? {

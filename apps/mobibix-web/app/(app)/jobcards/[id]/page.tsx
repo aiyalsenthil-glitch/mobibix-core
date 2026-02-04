@@ -14,7 +14,8 @@ import { useShop } from "@/context/ShopContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
-import { listProducts, ShopProduct } from "@/services/products.api";
+import { listProducts, ShopProduct, createProduct, ProductType } from "@/services/products.api";
+import { createPurchase } from "@/services/purchases.api";
 
 // Helper for status colors (reused)
 const STATUS_COLORS: Record<JobStatus, string> = {
@@ -133,15 +134,20 @@ export default function JobCardDetailPage() {
            >
              Print Job Card
            </a>
-           {job.status !== 'DELIVERED' && job.status !== 'CANCELLED' && (
+           {job.status === 'CANCELLED' ? (
+             <button
+               onClick={() => handleStatusChange('RECEIVED')}
+               className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-bold transition"
+             >
+               Reopen Job
+             </button>
+           ) : job.status !== 'DELIVERED' && job.status !== 'RETURNED' && (
              <select
                value={job.status}
                onChange={(e) => handleStatusChange(e.target.value as JobStatus)}
                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold cursor-pointer outline-none"
              >
                 <option value={job.status} disabled>Change Status</option>
-                {/* Simplified transitions for UI - Backend validates strictly */}
-                {/* We could use VALID_TRANSITIONS map here too if imported */}
                 <option value="READY">Mark READY</option>
                 <option value="DELIVERED">Mark DELIVERED</option>
                 <option value="CANCELLED">CANCEL Job</option>
@@ -309,7 +315,7 @@ export default function JobCardDetailPage() {
                     <div className="h-px bg-white/20 my-2"></div>
                     <div className="flex justify-between items-center text-xl font-bold">
                        <span>Net Profit</span>
-                       <span className={job.profit >= 0 ? 'text-green-400' : 'text-red-400'}>
+                       <span className={job.profit >= 0 ? 'text-green-400' : 'text-red-400'} >
                           ₹{job.profit?.toFixed(2)}
                        </span>
                     </div>
@@ -339,24 +345,82 @@ function AddPartModal({ shopId, jobId, onClose, onSuccess }: { shopId: string, j
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Creation Mode State
+  const [createMode, setCreateMode] = useState(false);
+  const [newProductName, setNewProductName] = useState("");
+  const [newSalePrice, setNewSalePrice] = useState(0);
+  const [newCostPrice, setNewCostPrice] = useState(0);
+  const [createPurchaseEntry, setCreatePurchaseEntry] = useState(false);
+  const [supplierName, setSupplierName] = useState("");
+
   useEffect(() => {
-     if (searchTerm.length > 1) {
+     if (searchTerm.length > 1 && !createMode) {
         listProducts(shopId).then(all => {
            setProducts(all.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())));
         });
      }
-  }, [searchTerm, shopId]);
+  }, [searchTerm, shopId, createMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
      e.preventDefault();
-     if (!selectedProduct) return;
      setIsSubmitting(true);
      try {
-        await addJobCardPart(shopId, jobId, selectedProduct.id, quantity);
+        let productId = selectedProduct?.id;
+
+        if (createMode) {
+           if (!newProductName || newSalePrice <= 0) {
+              alert("Name and Selling Price are required.");
+              setIsSubmitting(false);
+              return;
+           }
+           
+           if (createPurchaseEntry) {
+              if (newCostPrice <= 0 || !supplierName) {
+                 alert("Cost Price and Supplier Name are required for Purchase Entry.");
+                 setIsSubmitting(false);
+                 return;
+              }
+           }
+
+           // 1. Create Product
+           const newProduct = await createProduct(shopId, {
+              name: newProductName,
+              type: ProductType.SPARE, // Default to SPARE for Job Cards
+              salePrice: newSalePrice,
+              costPrice: newCostPrice > 0 ? newCostPrice : undefined,
+              isSerialized: false,
+           });
+           productId = newProduct.id;
+
+           // 2. Create Purchase Entry (Optional)
+           if (createPurchaseEntry) {
+               await createPurchase({
+                  shopId,
+                  supplierName: supplierName,
+                  invoiceNumber: `JOB-AUTO-${Date.now().toString().slice(-6)}`, // Random Invoice
+                  paymentMethod: "CASH",
+                  items: [{
+                     shopProductId: productId,
+                     description: newProductName,
+                     quantity: quantity,
+                     purchasePrice: newCostPrice,
+                  }]
+               });
+           }
+        }
+
+        if (!productId) {
+           alert("Please select or create a product.");
+           setIsSubmitting(false);
+           return;
+        }
+
+        await addJobCardPart(shopId, jobId, productId, quantity);
         onSuccess();
         onClose();
+        
      } catch (err: any) {
-        alert(err.message);
+        alert(err.message || "Failed to add part");
      } finally {
         setIsSubmitting(false);
      }
@@ -364,49 +428,160 @@ function AddPartModal({ shopId, jobId, onClose, onSuccess }: { shopId: string, j
 
   return (
      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md p-6 shadow-2xl">
-           <h3 className="text-xl font-bold mb-4 dark:text-white">Add Part</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+           <h3 className="text-xl font-bold mb-4 dark:text-white">
+              {createMode ? "Create Part" : "Add Part"}
+           </h3>
+           
            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                 <label className="block text-sm font-semibold mb-2 dark:text-gray-300">Search Product</label>
-                 <div className="relative">
-                   <input 
-                      autoFocus
-                      type="text" 
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                      placeholder="Type product name..."
-                      value={selectedProduct ? selectedProduct.name : searchTerm}
-                      onChange={(e) => {
-                         setSearchTerm(e.target.value);
-                         setSelectedProduct(null);
-                      }}
-                   />
-                   {selectedProduct && (
-                      <button 
-                        type="button" 
-                        onClick={() => { setSelectedProduct(null); setSearchTerm(""); }}
-                        className="absolute right-2 top-2 text-gray-500 hover:text-red-500"
-                      >
-                         ✕
-                      </button>
-                   )}
-                 </div>
-                 {/* Dropdown Results */}
-                 {!selectedProduct && searchTerm.length > 1 && products.length > 0 && (
-                    <div className="absolute z-10 w-full max-w-sm mt-1 bg-white dark:bg-gray-700 border rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                       {products.map(p => (
-                          <div 
-                             key={p.id} 
-                             onClick={() => { setSelectedProduct(p); setSearchTerm(""); }}
-                             className="px-4 py-2 hover:bg-teal-50 dark:hover:bg-gray-600 cursor-pointer border-b dark:border-gray-600 last:border-0"
-                          >
-                             <div className="font-semibold dark:text-gray-200">{p.name}</div>
-                             <div className="text-xs text-gray-500 dark:text-gray-400">Stock: {p.stockQty ?? 'N/A'} • ₹{p.salePrice}</div>
+              {!createMode ? (
+                 <>
+                    {/* SEARCH MODE */}
+                    <div>
+                       <label className="block text-sm font-semibold mb-2 dark:text-gray-300">Search Product</label>
+                       <div className="relative">
+                         <input 
+                            autoFocus
+                            type="text" 
+                            className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            placeholder="Type product name..."
+                            value={selectedProduct ? selectedProduct.name : searchTerm}
+                            onChange={(e) => {
+                               setSearchTerm(e.target.value);
+                               setSelectedProduct(null);
+                            }}
+                         />
+                         {searchTerm.length > 0 && !selectedProduct && (
+                            <button 
+                               type="button" 
+                               onClick={() => {
+                                  setCreateMode(true);
+                                  setNewProductName(searchTerm);
+                               }}
+                               className="absolute right-2 top-2 text-xs bg-teal-100 text-teal-700 px-2 py-1 rounded hover:bg-teal-200"
+                            >
+                               + Create New
+                            </button>
+                         )}
+                         {selectedProduct && (
+                            <button 
+                              type="button" 
+                              onClick={() => { setSelectedProduct(null); setSearchTerm(""); }}
+                              className="absolute right-12 top-2 text-gray-500 hover:text-red-500 px-2"
+                            >
+                               ✕
+                            </button>
+                         )}
+                       </div>
+                       
+                       {/* Dropdown Results */}
+                       {!selectedProduct && searchTerm.length > 1 && products.length > 0 && (
+                          <div className="absolute z-10 w-full max-w-sm mt-1 bg-white dark:bg-gray-700 border rounded-lg shadow-xl max-h-48 overflow-y-auto ring-1 ring-black/5">
+                             {products.map(p => (
+                                <div 
+                                   key={p.id} 
+                                   onClick={() => { setSelectedProduct(p); setSearchTerm(""); }}
+                                   className="px-4 py-2 hover:bg-teal-50 dark:hover:bg-gray-600 cursor-pointer border-b dark:border-gray-600 last:border-0"
+                                >
+                                   <div className="font-semibold dark:text-gray-200">{p.name}</div>
+                                   <div className="text-xs text-gray-500 dark:text-gray-400">Stock: {p.stockQty ?? 'N/A'} • ₹{p.salePrice}</div>
+                                </div>
+                             ))}
                           </div>
-                       ))}
+                       )}
+                       
+                       {/* Create New Prompt (if no results) */}
+                       {!selectedProduct && searchTerm.length > 1 && products.length === 0 && (
+                           <div className="mt-2 text-center p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                              <p className="text-sm text-gray-500 mb-2">Item not found.</p>
+                              <button
+                                 type="button"
+                                 onClick={() => {
+                                     setCreateMode(true);
+                                     setNewProductName(searchTerm);
+                                 }}
+                                 className="text-teal-600 hover:text-teal-700 font-bold text-sm"
+                              >
+                                 Create "{searchTerm}"
+                              </button>
+                           </div>
+                       )}
                     </div>
-                 )}
-              </div>
+                 </>
+              ) : (
+                 <>
+                    {/* CREATE MODE */}
+                    <div>
+                        <div className="flex justify-between items-center mb-2">
+                           <label className="block text-sm font-semibold dark:text-gray-300">Product Name</label>
+                           <button 
+                              type="button" 
+                              onClick={() => setCreateMode(false)}
+                              className="text-xs text-blue-500 hover:underline"
+                           >
+                              Switch to Search
+                           </button>
+                        </div>
+                        <input 
+                           type="text" 
+                           required
+                           className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                           value={newProductName}
+                           onChange={e => setNewProductName(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="block text-sm font-semibold mb-2 dark:text-gray-300">Selling Price</label>
+                           <input 
+                              type="number" 
+                              required
+                              className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                              value={newSalePrice}
+                              onChange={e => setNewSalePrice(Number(e.target.value))}
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-sm font-semibold mb-2 dark:text-gray-300">Cost Price</label>
+                           <input 
+                              type="number" 
+                              className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                              value={newCostPrice}
+                              onChange={e => setNewCostPrice(Number(e.target.value))}
+                           />
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border dark:border-gray-700">
+                        <label className="flex items-center gap-2 cursor-pointer mb-2">
+                           <input 
+                              type="checkbox" 
+                              checked={createPurchaseEntry}
+                              onChange={e => setCreatePurchaseEntry(e.target.checked)}
+                              className="w-4 h-4 text-teal-600 rounded"
+                           />
+                           <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Create Purchase Entry?</span>
+                        </label>
+                        
+                        {createPurchaseEntry && (
+                           <div className="mt-2 animate-in fade-in slide-in-from-top-1">
+                               <label className="block text-xs font-semibold mb-1 text-gray-500 dark:text-gray-400">Supplier Name</label>
+                               <input 
+                                  type="text" 
+                                  placeholder="e.g. Local Market / Vendor"
+                                  className="w-full px-3 py-1.5 text-sm border rounded dark:bg-gray-700 dark:border-gray-500 dark:text-white"
+                                  value={supplierName}
+                                  onChange={e => setSupplierName(e.target.value)}
+                               />
+                               <p className="text-xs text-gray-400 mt-1">
+                                  Will create a CASH purchase record for stock tracking.
+                               </p>
+                           </div>
+                        )}
+                    </div>
+                 </>
+              )}
 
               <div>
                  <label className="block text-sm font-semibold mb-2 dark:text-gray-300">Quantity</label>
@@ -429,10 +604,10 @@ function AddPartModal({ shopId, jobId, onClose, onSuccess }: { shopId: string, j
                  </button>
                  <button 
                    type="submit"
-                   disabled={!selectedProduct || isSubmitting}
+                   disabled={isSubmitting || (createMode && (!newProductName || !newSalePrice)) || (!createMode && !selectedProduct)}
                    className="flex-1 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold disabled:opacity-50"
                  >
-                    {isSubmitting ? "Adding..." : "Add Part"}
+                    {isSubmitting ? "Processing..." : (createMode ? "Create & Add" : "Add Part")}
                  </button>
               </div>
            </form>

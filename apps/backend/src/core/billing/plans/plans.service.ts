@@ -2,96 +2,38 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { BillingCycle, ModuleType } from '@prisma/client';
+import { ModuleType } from '@prisma/client';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+
 @Injectable()
 export class PlansService {
+  private readonly logger = new Logger(PlansService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptionsService: SubscriptionsService,
   ) {}
-
-  /**
-   * 🔒 Single source of truth for plan duration
-   */
-  private resolveDurationDays(
-    name: string,
-    billingCycle: BillingCycle,
-  ): number {
-    if (name === 'TRIAL') return 14;
-    return billingCycle === BillingCycle.ANNUAL ? 365 : 30;
-  }
 
   private resolvePlanCode(name: string): string {
     return name.trim().toUpperCase().replace(/\s+/g, '_');
   }
 
   /**
-   * Seed default plans (safe to run multiple times)
+   * Seed default plans (DEPRECATED - use prisma/seed.ts instead)
+   * Kept for backward compatibility only
    */
   async ensureDefaultPlans() {
-    const plans = [
-      {
-        name: 'BASIC',
-        price: 99,
-        level: 1,
-        billingCycle: BillingCycle.MONTHLY,
-        memberLimit: 100,
-        features: {},
-      },
-      {
-        name: 'PLUS',
-        price: 199,
-        level: 2,
-        billingCycle: BillingCycle.MONTHLY,
-        memberLimit: 150,
-        features: {},
-      },
-      {
-        name: 'PRO',
-        price: 1999,
-        level: 3,
-        billingCycle: BillingCycle.ANNUAL,
-        memberLimit: 0,
-        features: {},
-      },
-      {
-        name: 'ULTIMATE',
-        price: 4999,
-        level: 4,
-        billingCycle: BillingCycle.ANNUAL,
-        memberLimit: 0,
-        features: {},
-      },
-    ];
-
-    for (const plan of plans) {
-      const exists = await this.prisma.plan.findFirst({
-        where: { name: plan.name },
-      });
-
-      if (!exists) {
-        await this.prisma.plan.create({
-          data: {
-            ...plan,
-            code: this.resolvePlanCode(plan.name),
-            durationDays: this.resolveDurationDays(
-              plan.name,
-              plan.billingCycle,
-            ),
-            isActive: true,
-          },
-        });
-      }
-    }
+    this.logger.warn(
+      '⚠️ ensureDefaultPlans() is deprecated. Use prisma/seed.ts for V1 plans.',
+    );
+    // No-op: All plan seeding should happen via prisma/seed.ts
+    return;
   }
 
-  async getPlansWithUpgradeInfo(
-    tenantId: string,
-    module: ModuleType,
-  ) {
+  async getPlansWithUpgradeInfo(tenantId: string, module: ModuleType) {
     const currentSub =
       await this.subscriptionsService.getCurrentActiveSubscription(
         tenantId,
@@ -100,10 +42,13 @@ export class PlansService {
 
     const currentLevel = currentSub?.plan?.level ?? 0;
 
+    // Filter by module AND isPublic=true
     const plans = await this.prisma.plan.findMany({
       where: {
         isActive: true,
+        isPublic: true, // Only show public plans
         level: { gt: 0 }, // hide TRIAL
+        module, // Filter by exact module
       },
       orderBy: { level: 'asc' },
     });
@@ -116,12 +61,13 @@ export class PlansService {
   }
 
   /**
-   * Get all active plans
+   * Get all active public plans
    */
   async getActivePlans() {
     return this.prisma.plan.findMany({
       where: {
         isActive: true,
+        isPublic: true, // Only show public plans
         level: { gt: 0 }, // 👈 hide TRIAL from users
       },
       orderBy: { level: 'asc' },
@@ -129,15 +75,17 @@ export class PlansService {
   }
 
   /**
-   * Admin update plan (duration is AUTO controlled)
+   * Admin update plan (identity + module + tier only)
    */
   async updatePlan(
     planId: string,
     data: {
-      price?: number;
-      billingCycle?: BillingCycle;
-      memberLimit?: number;
+      name?: string;
+      level?: number;
+      module?: ModuleType;
       isActive?: boolean;
+      isPublic?: boolean;
+      isAddon?: boolean;
     },
   ) {
     const existing = await this.prisma.plan.findUnique({
@@ -148,18 +96,15 @@ export class PlansService {
       throw new NotFoundException('Plan not found');
     }
 
-    const billingCycle = data.billingCycle ?? existing.billingCycle;
-
-    const durationDays = this.resolveDurationDays(existing.name, billingCycle);
-
     return this.prisma.plan.update({
       where: { id: planId },
       data: {
-        price: data.price,
-        billingCycle: data.billingCycle,
-        memberLimit: data.memberLimit,
+        name: data.name?.trim(),
+        level: data.level,
+        module: data.module,
         isActive: data.isActive,
-        durationDays,
+        isPublic: data.isPublic,
+        isAddon: data.isAddon,
       },
     });
   }
@@ -169,18 +114,21 @@ export class PlansService {
    */
   async createPlan(data: {
     name: string;
-    price: number;
+    code?: string;
     level?: number;
-    billingCycle?: BillingCycle;
-    memberLimit?: number;
+    module: ModuleType;
     isActive?: boolean;
+    isPublic?: boolean;
+    isAddon?: boolean;
   }) {
     const normalizedName = data.name.trim();
-    const code = this.resolvePlanCode(normalizedName);
+    const normalizedCode = data.code
+      ? data.code.trim().toUpperCase()
+      : this.resolvePlanCode(normalizedName);
 
     const existing = await this.prisma.plan.findFirst({
       where: {
-        OR: [{ name: normalizedName }, { code }],
+        OR: [{ name: normalizedName }, { code: normalizedCode }],
       },
     });
 
@@ -189,9 +137,6 @@ export class PlansService {
         `Plan with name "${normalizedName}" already exists`,
       );
     }
-
-    const billingCycle = data.billingCycle ?? BillingCycle.MONTHLY;
-    const durationDays = this.resolveDurationDays(normalizedName, billingCycle);
 
     let level = data.level;
     if (level === undefined) {
@@ -205,14 +150,12 @@ export class PlansService {
     return this.prisma.plan.create({
       data: {
         name: normalizedName,
-        code,
+        code: normalizedCode,
         level,
-        price: data.price,
-        billingCycle,
-        memberLimit: data.memberLimit ?? 0,
-        durationDays,
+        module: data.module,
         isActive: data.isActive ?? true,
-        features: {},
+        isPublic: data.isPublic ?? true,
+        isAddon: data.isAddon ?? false,
       },
     });
   }
@@ -230,21 +173,20 @@ export class PlansService {
    */
   async getOrCreateTrialPlan() {
     const existing = await this.prisma.plan.findFirst({
-      where: { name: 'TRIAL' },
+      where: { code: 'GYM_TRIAL' },
     });
 
     if (existing) return existing;
 
     return this.prisma.plan.create({
       data: {
-        code: this.resolvePlanCode('TRIAL'),
-        name: 'TRIAL',
-        price: 0,
+        code: 'GYM_TRIAL',
+        name: 'Gym Trial',
         level: 0,
-        billingCycle: BillingCycle.MONTHLY,
-        durationDays: 14,
+        module: ModuleType.GYM,
         isActive: true,
-        features: {},
+        isPublic: false,
+        isAddon: false,
       },
     });
   }

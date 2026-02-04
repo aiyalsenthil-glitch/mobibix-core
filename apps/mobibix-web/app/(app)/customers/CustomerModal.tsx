@@ -86,6 +86,22 @@ export function CustomerModal({ customer, onClose }: CustomerModalProps) {
       return;
     }
 
+    // Phone validation
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(formData.phone)) {
+      alert("Please enter a valid 10-digit Indian mobile number.");
+      return;
+    }
+
+    // Email validation (if provided)
+    if (formData.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+    }
+
     try {
       setIsSubmitting(true);
 
