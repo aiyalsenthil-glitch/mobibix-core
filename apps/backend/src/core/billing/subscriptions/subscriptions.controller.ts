@@ -5,12 +5,16 @@ import {
   UseGuards,
   UnauthorizedException,
   Query,
+  Patch,
+  Body,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { SubscriptionsService } from './subscriptions.service';
 import { ModuleType } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
+import { ToggleAutoRenewDto } from '../dto/phase1-subscriptions.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('billing/subscription')
@@ -59,6 +63,8 @@ export class SubscriptionsController {
         isTrial: true,
         subscriptionStatus: 'TRIAL',
         canUpgrade: true,
+        autoRenew: false,
+        subscriptionId: null,
       };
     }
 
@@ -90,6 +96,8 @@ export class SubscriptionsController {
         daysLeft,
         isTrial: sub.status === 'TRIAL',
         subscriptionStatus,
+        autoRenew: sub.autoRenew,
+        subscriptionId: sub.id,
       },
       upcoming: upcoming
         ? {
@@ -98,6 +106,50 @@ export class SubscriptionsController {
             endsAt: upcoming.endDate,
           }
         : null,
+    };
+  }
+
+  @Patch('auto-renew')
+  async toggleAutoRenew(
+    @Req() req: any,
+    @Body() dto: ToggleAutoRenewDto,
+    @Query('module') module?: ModuleType,
+  ) {
+    if (!req.user || !req.user.tenantId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    let resolvedModule = module;
+    if (!resolvedModule) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: req.user.tenantId },
+        select: { tenantType: true },
+      });
+
+      if (tenant) {
+        resolvedModule = tenant.tenantType === 'GYM' ? 'GYM' : 'MOBILE_SHOP';
+      } else {
+        resolvedModule = 'MOBILE_SHOP';
+      }
+    }
+
+    const sub = await this.subscriptionsService.getCurrentActiveSubscription(
+      req.user.tenantId,
+      resolvedModule,
+    );
+
+    if (!sub) {
+      throw new BadRequestException('No active subscription to update');
+    }
+
+    const updated = await this.subscriptionsService.toggleAutoRenew(
+      sub.id,
+      dto.enabled,
+    );
+
+    return {
+      subscriptionId: updated.id,
+      autoRenew: updated.autoRenew,
     };
   }
 }

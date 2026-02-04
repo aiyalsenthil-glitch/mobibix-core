@@ -37,6 +37,15 @@ export interface ProfitSummaryMetrics {
   totalCost: number;
   grossProfit: number;
   margin: number;
+  
+  // Breakdown
+  salesRevenue: number;
+  salesCost: number;
+  salesProfit: number;
+  
+  repairRevenue: number;
+  repairCost: number;
+  repairProfit: number;
 }
 
 
@@ -97,12 +106,8 @@ export async function getInventoryReport(
   if (!response.ok) throw new Error("Failed to fetch inventory report");
   const data: InventoryReportItem[] = await response.json();
 
-  // Convert Paise to Rupees
-  return data.map(item => ({
-    ...item,
-    costPrice: item.costPrice / 100,
-    stockValue: item.stockValue !== null ? item.stockValue / 100 : null,
-  }));
+  // Backend already returns values in Rupees (Division by 100 handled in backend)
+  return data;
 }
 
 export async function getProfitSummary(

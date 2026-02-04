@@ -7,11 +7,13 @@ import {
   Req,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ModuleType } from '@prisma/client';
 
 @UseGuards(JwtAuthGuard)
 @Controller('payments')
@@ -45,6 +47,20 @@ export class PaymentsController {
         throw new BadRequestException('Tenant does not exist');
       }
 
+      const normalizedTenantType = (tenant.tenantType || '')
+        .toUpperCase()
+        .replace(/[\s_-]/g, '');
+      const tenantModule =
+        normalizedTenantType === 'MOBILESHOP'
+          ? ModuleType.MOBILE_SHOP
+          : normalizedTenantType === 'GYM'
+            ? ModuleType.GYM
+            : undefined;
+
+      if (!tenantModule) {
+        throw new BadRequestException('Unsupported tenant module');
+      }
+
       // 1️⃣ Validate plan exists
       const plan = await this.prisma.plan.findUnique({
         where: { id: body.planId },
@@ -52,6 +68,19 @@ export class PaymentsController {
 
       if (!plan) {
         throw new NotFoundException('Plan not found');
+      }
+
+      if (!plan.isActive || !plan.isPublic) {
+        throw new BadRequestException('Plan is not available for purchase');
+      }
+
+      if (
+        plan.module !== tenantModule &&
+        plan.module !== ModuleType.WHATSAPP_CRM
+      ) {
+        throw new ForbiddenException(
+          'Plan module does not match tenant module',
+        );
       }
 
       // 2️⃣ Get price from PlanPrice table
@@ -82,6 +111,8 @@ export class PaymentsController {
         data: {
           tenantId,
           planId: plan.id,
+          billingCycle: body.billingCycle,
+          priceSnapshot: planPrice.price,
           provider: 'RAZORPAY',
           providerOrderId: order.id,
           amount: planPrice.price, // INR paise

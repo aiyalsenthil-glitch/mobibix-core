@@ -299,8 +299,8 @@ export class MobileShopReportsService {
         product: prod?.name || 'Unknown',
         isSerialized: prod?.isSerialized || false,
         quantity: qty,
-        costPrice: cost,
-        stockValue: prod?.costPrice ? (qty * cost) : null, // Null if cost unknown
+        costPrice: prod?.costPrice ? (prod.costPrice / 100) : 0, // Paisa to Rupees
+        stockValue: prod?.costPrice ? ((qty * prod.costPrice) / 100) : null, // Paisa to Rupees
         lowStock: prod?.reorderLevel ? (qty <= prod.reorderLevel) : false
       };
     });
@@ -327,39 +327,54 @@ export class MobileShopReportsService {
       }),
     };
 
-    // 1. Total Revenue (From Invoice Items lineTotal)
-    // We strictly use lineTotal sum from InvoiceItem
-    const revenueAgg = await this.prisma.invoiceItem.aggregate({
+    // 1. Revenue Separation
+    const salesRevenueAgg = await this.prisma.invoiceItem.aggregate({
       where: {
-        invoice: whereInvoice
+        invoice: {
+          ...whereInvoice,
+          jobCardId: null, // Pure Sales
+        },
       },
-      _sum: { lineTotal: true }
+      _sum: { lineTotal: true },
     });
-    
-    // 2. Total Cost (From StockLedger OUT entries linked to these SALES)
-    // We need to find StockLedger entries where referenceId IN (InvoiceItem IDs).
-    // This is complex to join in Prisma efficiently for aggregation.
-    // Raw Query is cleaner to summing CostPerUnit * Qty for relevant entries.
-    
-    // Identify invoices first (to filter date/shop)
-    // Then join StockLedger.
-    
-    /* 
-       SELECT SUM(sl."quantity" * sl."costPerUnit") 
-       FROM "StockLedger" sl
-       JOIN "InvoiceItem" ii ON sl."referenceId" = ii."id"
-       JOIN "Invoice" i ON ii."invoiceId" = i."id"
-       WHERE sl."referenceType" = 'SALE' ...
-    */
-    
+
+    const repairRevenueAgg = await this.prisma.invoiceItem.aggregate({
+      where: {
+        invoice: {
+          ...whereInvoice,
+          jobCardId: { not: null }, // Repair Invoices
+        },
+      },
+      _sum: { lineTotal: true },
+    });
 
     // Use Prisma.sql for dynamic parts
     const shopFilter = shopId ? Prisma.sql`AND i."shopId" = ${shopId}` : Prisma.empty;
-    const partyFilter = partyId ? Prisma.sql`AND i."customerId" = ${partyId}` : Prisma.empty;
     const dateStartFilter = startDate ? Prisma.sql`AND i."invoiceDate" >= ${startDate}` : Prisma.empty;
     const dateEndFilter = endDate ? Prisma.sql`AND i."invoiceDate" <= ${endDate}` : Prisma.empty;
+    const salesPartyFilter = partyId ? Prisma.sql`AND i."customerId" = ${partyId}` : Prisma.empty;
+    // For Repair, JobCard also has customerId.
+    const repairPartyFilter = partyId ? Prisma.sql`AND jc."customerId" = ${partyId}` : Prisma.empty;
 
-    const costResult = await this.prisma.$queryRaw<{ total_cost: bigint }[]>`
+    // 2. Cost Separation (Raw Query for Weighted Sum)
+    // Note: StockLedger stores createdAt, not invoiceDate. Approximate match or join?
+    // Joining InvoiceItem -> Invoice is safer for exact period match if possible.
+    // However, StockLedger for 'REPAIR' references JobCard, 'SALE' references InvoiceItem.
+    // 'SALE' refId is InvoiceItem.id. 'REPAIR' refId is JobCard.id (mostly).
+    
+    // Complex Join Strategy for accuracy:
+    // Cost SALE: Join StockLedger -> InvoiceItem -> Invoice
+    // Cost REPAIR: Join StockLedger -> JobCard -> Invoice? 
+    // Repair Stock Out happens BEFORE Invoice usually. 
+    // But Profit Report is usually based on "Invoiced Period".
+    // If we count cost of parts used in jobs invoiced in this period:
+    // JOIN StockLedger on refId=jobCardId WHERE jobCardId IN (Invoices in Period).
+    
+    // SIMPLE APPROACH (User confirmed "Modernized Approach", implied robust).
+    // Let's iterate Invoices and summing costs? No, simplified aggregate.
+    
+    // Cost SALE (Linked to InvoiceItem)
+    const costSaleResult = await this.prisma.$queryRaw<{ total_cost: bigint }[]>`
       SELECT SUM(sl."quantity" * sl."costPerUnit") as "total_cost"
       FROM "StockLedger" sl
       JOIN "InvoiceItem" ii ON sl."referenceId" = ii."id"
@@ -367,27 +382,68 @@ export class MobileShopReportsService {
       WHERE sl."tenantId" = ${tenantId}
         AND sl."referenceType" = 'SALE'
         AND i."status" != 'VOIDED'
+        AND i."jobCardId" IS NULL
         ${shopFilter}
-        ${partyFilter}
         ${dateStartFilter}
         ${dateEndFilter}
+        ${salesPartyFilter}
     `;
 
-    const totalRevenuePaisa = Number(revenueAgg._sum.lineTotal || 0);
-    const totalCostPaisa = Number(costResult[0]?.total_cost || 0);
+    // Cost REPAIR (Linked to JobCard)
+    // JobCard Parts are OUT entries with refType='REPAIR', refId=JobCardId
+    // We need to filter these by Invoices in the date range?
+    // If we filter by StockLedger.createdAt, it might be different from InvoiceDate.
+    // Consistency: Filter by Invoice Date.
+    const costRepairResult = await this.prisma.$queryRaw<{ total_cost: bigint }[]>`
+      SELECT SUM(sl."quantity" * sl."costPerUnit") as "total_cost"
+      FROM "StockLedger" sl
+      JOIN "JobCard" jc ON sl."referenceId" = jc."id"
+      JOIN "Invoice" i ON jc."id" = i."jobCardId"
+      WHERE sl."tenantId" = ${tenantId}
+        AND sl."referenceType" = 'REPAIR'
+        AND i."status" != 'VOIDED'
+        ${shopFilter}
+        ${dateStartFilter}
+        ${dateEndFilter}
+        ${repairPartyFilter}
+    `;
 
-    // Convert from paisa to rupees for display
+    const salesRevenuePaisa = Number(salesRevenueAgg._sum.lineTotal || 0);
+    const repairRevenuePaisa = Number(repairRevenueAgg._sum.lineTotal || 0);
+    const totalRevenuePaisa = salesRevenuePaisa + repairRevenuePaisa;
+
+    const salesCostPaisa = Number(costSaleResult?.[0]?.total_cost || 0);
+    const repairCostPaisa = Number(costRepairResult?.[0]?.total_cost || 0);
+    const totalCostPaisa = salesCostPaisa + repairCostPaisa;
+
+    // Convert to Rupees
+    const salesRevenue = salesRevenuePaisa / 100;
+    const repairRevenue = repairRevenuePaisa / 100;
     const totalRevenue = totalRevenuePaisa / 100;
+    
+    const salesCost = salesCostPaisa / 100;
+    const repairCost = repairCostPaisa / 100;
     const totalCost = totalCostPaisa / 100;
-    const grossProfit = totalRevenue - totalCost;
-    const margin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+
+    const salesProfit = salesRevenue - salesCost;
+    const repairProfit = repairRevenue - repairCost;
+    const totalProfit = totalRevenue - totalCost;
 
     return {
       metrics: {
         totalRevenue,
         totalCost,
-        grossProfit,
-        margin,
+        grossProfit: totalProfit,
+        margin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
+        
+        // Breakdown
+        salesRevenue,
+        salesCost,
+        salesProfit,
+        
+        repairRevenue,
+        repairCost,
+        repairProfit
       },
     };
   }

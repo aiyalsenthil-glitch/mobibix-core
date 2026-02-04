@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ModuleType } from '@prisma/client';
 import { PlansService } from '../billing/plans/plans.service';
 import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
 import { CreateTenantDto } from './dto/tenant.dto';
@@ -63,7 +64,11 @@ export class TenantService {
     }
 
     await this.plansService.ensureDefaultPlans();
-    const trialPlan = await this.plansService.getOrCreateTrialPlan();
+    const trialPlan = await this.plansService.getOrCreateTrialPlan(
+      effectiveTenantType === 'MOBILE_SHOP'
+        ? ModuleType.MOBILE_SHOP
+        : ModuleType.GYM,
+    );
 
     const code = dto.code ?? randomBytes(4).toString('hex').toUpperCase();
 

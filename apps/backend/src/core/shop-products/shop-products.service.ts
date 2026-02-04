@@ -11,6 +11,11 @@ import { ShopProductLinkDto, LinkSource } from './dto/shop-product-link.dto';
 export class ShopProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private toPaisa(amount: number | undefined | null): number | undefined | null {
+    if (amount === undefined || amount === null) return amount;
+    return Math.round(amount * 100);
+  }
+
   async linkProductToShop(
     tenantId: string,
     role: string,
@@ -52,8 +57,8 @@ export class ShopProductsService {
         shopId: dto.shopId,
         globalProductId: dto.productId,
         name: prod.name,
-        salePrice: dto.salePrice,
-        costPrice: dto.costPrice,
+        salePrice: this.toPaisa(dto.salePrice),
+        costPrice: this.toPaisa(dto.costPrice),
         type: 'GOODS',
       },
     });

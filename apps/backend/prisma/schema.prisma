@@ -423,6 +423,8 @@ model Payment {
   id                String        @id @default(cuid())
   tenantId          String
   planId            String
+  billingCycle      BillingCycle
+  priceSnapshot     Int
   amount            Int
   currency          String        @default("INR")
   status            PaymentStatus

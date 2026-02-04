@@ -88,7 +88,7 @@ export class SubscriptionsService {
    * Creates a new subscription with:
    * - Explicit billingCycle chosen by user
    * - Price snapshotted from PlanPrice table
-   * - Auto-renew enabled by default
+   * - Auto-renew disabled by default (user-controlled)
    *
    * Handles:
    * - Trial → Paid upgrade (end trial immediately)
@@ -102,7 +102,7 @@ export class SubscriptionsService {
       module,
       billingCycle,
       startDate = new Date(),
-      autoRenew = true,
+      autoRenew = false,
     } = input;
 
     // Validate tenant exists

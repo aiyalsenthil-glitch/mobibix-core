@@ -358,30 +358,20 @@ export class JobCardsService {
 
     // 💰 PROFIT CALCULATION (Owner Only)
     if (user.role === 'OWNER') {
-       const jobPartsCost = job.parts.reduce((sum, part) => sum + (part.quantity * (part.costPrice || 0)), 0);
+       const jobPartsCostPaisa = job.parts.reduce((sum, part) => sum + (part.quantity * (part.costPrice || 0)), 0);
+       const jobPartsCostRupees = jobPartsCostPaisa / 100;
+       
        // Revenue comes from Invoice (excluding tax).
-       // If multiple invoices, sum them. (Usually one valid invoice).
-       const revenue = job.invoices
+       const revenuePaisa = job.invoices
          .filter(i => i.status !== InvoiceStatus.VOIDED)
-         .reduce((sum, i) => sum + i.subTotal, 0) / 100; // Invoice stored in Paisa, JobCost in Rupees (usually).
-         // WAIT! Schema says subTotal Int (Paisa?). 
-         // costPrice Int (Rupees? Or Paisa?). 
-         // ShopProduct costPrice is typically stored in Rupees or Paisa?
-         // Standardize: Assume everything in DB is Integer (Paisa) for consistency, OR check.
-         // Usually `costPrice` on product is Rupees in many systems. 
-         // Let's assume Rupees for now but logic needs verification. 
-         // IF DB uses Paisa for everything, then division by 100 is wrong for comparison, but right for display.
-         // Let's return raw values and let frontend format, OR return computed Profit in Rupees.
+         .reduce((sum, i) => sum + i.subTotal, 0);
        
-       // Assumption: ShopProduct costs -> Rupees (based on user "costPrice from stock ledger"). 
-       // Invoice -> Paisa (explicitly documented "Database uses Integer Paisa").
-       
-       const revenueRupees = revenue; // logic: subTotal / 100
-       const profit = revenueRupees - jobPartsCost;
+       const revenueRupees = revenuePaisa / 100;
+       const profit = revenueRupees - jobPartsCostRupees;
        
        return {
           ...job,
-          jobCost: jobPartsCost,
+          jobCost: jobPartsCostRupees, // Return Rupees
           profit: profit,
           revenue: revenueRupees
        };
@@ -672,17 +662,12 @@ export class JobCardsService {
           itemsData.push({
              shopProductId: part.shopProductId,
              quantity: part.quantity,
-             rate: rate * 100, // DB stores Paisa for InvoiceItem?
-             // Wait, Schema says InvoiceItem rate Int. Is it Paisa?
-             // Invoice.subTotal is Int.
-             // Usually consistent. Let's assume Paisa for Invoice Items.
-             // ShopProduct.salePrice is what? Usually Rupees if entered by user? 
-             // Need to be careful. If ShopProduct is Rupees, InvoiceItem Rate is Paisa -> * 100.
+             rate: rate, // rate is already Paisa (from ShopProduct.salePrice)
              
              hsnCode: part.product.hsnCode || '9987', // 9987 is Repair Services, but for goods use product's.
              gstRate: part.product.gstRate || 0,
              gstAmount: 0, // Calculate properly if needed
-             lineTotal: lineTotal * 100
+             lineTotal: lineTotal // lineTotal = rate(Paisa) * quantity = Paisa
           });
           
           partsTotal += lineTotal;

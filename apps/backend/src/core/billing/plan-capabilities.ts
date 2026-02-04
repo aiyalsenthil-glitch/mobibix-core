@@ -32,6 +32,17 @@ export const PLAN_CAPABILITIES = {
     reports: true,
   },
 
+  MOBIBIX_TRIAL: {
+    staffAllowed: true,
+    staff: true,
+    staffInvite: true,
+    maxStaff: 3,
+    memberLimit: 100,
+    attendance: false,
+    whatsapp: false,
+    reports: false,
+  },
+
   MOBIBIX_STANDARD: {
     staffAllowed: true,
     staff: true,

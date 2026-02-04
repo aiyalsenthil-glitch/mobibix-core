@@ -10,12 +10,13 @@
  *   4. Prices stored ONLY in PlanPrice table
  *   5. Plans are MODULE-SCOPED (GYM, MOBILE_SHOP, WHATSAPP_CRM)
  *
- * Plans Created (6 total):
+ * Plans Created (7 total):
  *   GYM module:
  *     - GYM_TRIAL (level 0, free)
  *     - GYM_STANDARD (level 1, standard features)
  *     - GYM_PRO (level 2, premium features)
  *   MOBILE_SHOP module:
+ *     - MOBIBIX_TRIAL (level 0, free)
  *     - MOBIBIX_STANDARD (level 1, ecommerce basic)
  *     - MOBIBIX_PRO (level 2, ecommerce advanced)
  *   WHATSAPP_CRM module:
@@ -74,6 +75,15 @@ const V1_PLANS = [
     isAddon: false,
   },
   // ======== MOBILE_SHOP Module ========
+  {
+    code: 'MOBIBIX_TRIAL',
+    name: 'MobiBix Trial',
+    module: 'MOBILE_SHOP' as const,
+    level: 0,
+    isPublic: false,
+    isActive: true,
+    isAddon: false,
+  },
   {
     code: 'MOBIBIX_STANDARD',
     name: 'MobiBix Standard',
@@ -138,6 +148,13 @@ const PLAN_FEATURES: Record<string, WhatsAppFeature[]> = {
     WhatsAppFeature.WELCOME,
     WhatsAppFeature.EXPIRY,
     WhatsAppFeature.REPORTS,
+  ],
+  MOBIBIX_TRIAL: [
+    WhatsAppFeature.MEMBERS_MANAGEMENT,
+    WhatsAppFeature.STAFF_MANAGEMENT,
+    WhatsAppFeature.MEMBER_PAYMENT_TRACKING,
+    WhatsAppFeature.PAYMENT_DUE,
+    WhatsAppFeature.REMINDER,
   ],
   MOBIBIX_STANDARD: [
     WhatsAppFeature.MEMBERS_MANAGEMENT,

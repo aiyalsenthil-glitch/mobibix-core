@@ -50,11 +50,22 @@ export class PlansService {
         level: { gt: 0 }, // hide TRIAL
         module, // Filter by exact module
       },
+      include: {
+        planPrices: {
+          where: { isActive: true },
+          select: { billingCycle: true, price: true },
+        },
+        planFeatures: {
+          select: { feature: true },
+        },
+      },
       orderBy: { level: 'asc' },
     });
 
     return plans.map((plan) => ({
       ...plan,
+      prices: plan.planPrices,
+      features: plan.planFeatures.map((f) => f.feature),
       isCurrent: plan.level === currentLevel,
       canUpgrade: plan.level > currentLevel,
     }));
@@ -171,19 +182,23 @@ export class PlansService {
   /**
    * Trial plan (system only)
    */
-  async getOrCreateTrialPlan() {
+  async getOrCreateTrialPlan(module: ModuleType) {
+    const isMobileShop = module === ModuleType.MOBILE_SHOP;
+    const code = isMobileShop ? 'MOBIBIX_TRIAL' : 'GYM_TRIAL';
+    const name = isMobileShop ? 'MobiBix Trial' : 'Gym Trial';
+
     const existing = await this.prisma.plan.findFirst({
-      where: { code: 'GYM_TRIAL' },
+      where: { code },
     });
 
     if (existing) return existing;
 
     return this.prisma.plan.create({
       data: {
-        code: 'GYM_TRIAL',
-        name: 'Gym Trial',
+        code,
+        name,
         level: 0,
-        module: ModuleType.GYM,
+        module: isMobileShop ? ModuleType.MOBILE_SHOP : ModuleType.GYM,
         isActive: true,
         isPublic: false,
         isAddon: false,

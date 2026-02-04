@@ -11,6 +11,11 @@ export class InventoryService {
     private stockService: StockService,
   ) {}
 
+  private toPaisa(amount: number | undefined | null): number | undefined | null {
+    if (amount === undefined || amount === null) return amount;
+    return Math.round(amount * 100);
+  }
+
   async createProduct(tenantId: string, dto: CreateProductDto) {
     // Name is required for creation
     if (!dto.name || !dto.shopId) {
@@ -57,8 +62,8 @@ export class InventoryService {
         type: normalizedType,
         category: dto.category,
         isSerialized,
-        salePrice: dto.salePrice,
-        costPrice: dto.costPrice,
+        salePrice: this.toPaisa(dto.salePrice),
+        costPrice: this.toPaisa(dto.costPrice),
         hsnCode: dto.hsnCode,
         gstRate: dto.gstRate,
         isActive: true,
@@ -123,8 +128,8 @@ export class InventoryService {
     if (dto.type !== undefined) updateData.type = normalizedType;
     if (dto.category !== undefined) updateData.category = dto.category;
     if (dto.isSerialized !== undefined) updateData.isSerialized = isSerialized;
-    if (dto.salePrice !== undefined) updateData.salePrice = dto.salePrice;
-    if (dto.costPrice !== undefined) updateData.costPrice = dto.costPrice;
+    if (dto.salePrice !== undefined) updateData.salePrice = this.toPaisa(dto.salePrice);
+    if (dto.costPrice !== undefined) updateData.costPrice = this.toPaisa(dto.costPrice);
     if (dto.hsnCode !== undefined) updateData.hsnCode = dto.hsnCode;
     if (dto.gstRate !== undefined) updateData.gstRate = dto.gstRate;
 

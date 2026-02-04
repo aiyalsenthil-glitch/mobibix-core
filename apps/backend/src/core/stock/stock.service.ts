@@ -215,6 +215,12 @@ export class StockService {
       },
     });
   }
+
+  private toPaisa(amount: number | undefined | null): number | undefined | null {
+    if (amount === undefined || amount === null) return amount;
+    return Math.round(amount * 100);
+  }
+
   async stockInSingleProduct(tenantId: string, dto: StockInDto) {
     const product = await this.prisma.shopProduct.findFirst({
       where: { id: dto.productId, tenantId, isActive: true },
@@ -270,7 +276,7 @@ export class StockService {
       }, 0);
 
       // Calculate new Weighted Average Cost (WAC)
-      const newCostPerUnit = dto.costPerUnit || 0;
+      const newCostPerUnit = this.toPaisa(dto.costPerUnit) || 0;
       const currentAvgCost = product.avgCost || 0;
 
       // Formula: newAvgCost = ((oldQty × oldAvgCost) + (inQty × inCost)) / (oldQty + inQty)
@@ -290,7 +296,7 @@ export class StockService {
         quantity,
         referenceType: 'PURCHASE' as const,
         referenceId: null,
-        costPerUnit: dto.costPerUnit,
+        costPerUnit: this.toPaisa(dto.costPerUnit),
       };
 
       await tx.stockLedger.create({ data: ledgerEntry });

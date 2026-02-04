@@ -13,6 +13,9 @@ export const PLAN_LIMITS: Record<
   GYM_PRO: {
     maxMembers: null, // unlimited
   },
+  MOBIBIX_TRIAL: {
+    maxMembers: 100,
+  },
   MOBIBIX_STANDARD: {
     maxMembers: 100,
   },

@@ -5,6 +5,11 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
+  private fromPaisa(amount: number | null | undefined): number | null {
+    if (amount === null || amount === undefined) return null;
+    return amount / 100;
+  }
+
   async listByShop(tenantId: string, shopId: string) {
     const products = await this.prisma.shopProduct.findMany({
       where: {
@@ -52,8 +57,8 @@ export class ProductsService {
         category: p.category,
         hsnCode: p.hsnCode || p.global?.hsn?.code,
         gstRate: p.gstRate || p.global?.hsn?.taxRate,
-        salePrice: p.salePrice,
-        costPrice: p.costPrice,
+        salePrice: this.fromPaisa(p.salePrice),
+        costPrice: this.fromPaisa(p.costPrice),
         isActive: p.isActive,
         stockQty,
       };

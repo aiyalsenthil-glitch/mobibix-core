@@ -20,6 +20,10 @@ export class PurchasesService {
     private readonly partiesService: PartiesService,
   ) {}
 
+  private toPaisa(amount: number): number {
+    return Math.round(amount * 100);
+  }
+
   /**
    * Create a new purchase invoice
    */
@@ -66,7 +70,10 @@ export class PurchasesService {
       let totalGst = 0;
 
       const itemsData = dto.items.map((item) => {
-        const itemSubTotal = item.purchasePrice * item.quantity;
+        // Convert input Rupees to Paisa
+        const purchasePricePaisa = this.toPaisa(item.purchasePrice);
+        
+        const itemSubTotal = purchasePricePaisa * item.quantity;
         const gstRate = item.gstRate || 0;
         const taxAmount = Math.round((itemSubTotal * gstRate) / 100);
         const totalAmount = itemSubTotal + taxAmount;
@@ -79,7 +86,7 @@ export class PurchasesService {
           description: item.description,
           hsnSac: item.hsnSac,
           quantity: item.quantity,
-          purchasePrice: item.purchasePrice,
+          purchasePrice: purchasePricePaisa, // Store Paisa
           gstRate,
           taxAmount,
           totalAmount,

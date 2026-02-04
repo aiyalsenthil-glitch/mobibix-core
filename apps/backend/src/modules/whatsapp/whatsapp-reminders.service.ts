@@ -25,6 +25,8 @@ interface ProcessReminderResult {
 export class WhatsAppRemindersService {
   private readonly logger = new Logger(WhatsAppRemindersService.name);
 
+
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly whatsAppSender: WhatsAppSender,
@@ -215,12 +217,23 @@ export class WhatsAppRemindersService {
       // 4️⃣ Build template parameters using Variable Resolver
       let parameters: string[] = [];
 
+      const rawTenantType = (reminder.tenant?.tenantType || '')
+        .toUpperCase()
+        .replace(/[\s_-]/g, '');
+      const tenantModuleHint =
+        rawTenantType === 'MOBILESHOP'
+          ? 'MOBILE_SHOP'
+          : rawTenantType === 'GYM'
+            ? 'GYM'
+            : undefined;
+
       // Fetch template definition to get variable keys
       // Try finding by templateKey (standard) OR metaTemplateName (legacy/direct reference)
       // Get the LATEST active template for this key
       const template = await this.prisma.whatsAppTemplate.findFirst({
         where: {
           status: 'ACTIVE',
+          ...(tenantModuleHint ? { moduleType: tenantModuleHint } : {}),
           OR: [{ templateKey: templateKey }, { metaTemplateName: templateKey }],
         },
         orderBy: { updatedAt: 'desc' },
@@ -258,9 +271,6 @@ export class WhatsAppRemindersService {
         );
 
         // Robust module detection for Mobile Shop
-        const rawTenantType = (reminder.tenant?.tenantType || '')
-          .toUpperCase()
-          .replace(/[\s_-]/g, '');
         const templateModule = (template?.moduleType || '')
           .toUpperCase()
           .replace(/[\s_-]/g, '');
@@ -307,10 +317,20 @@ export class WhatsAppRemindersService {
         let eventType: string | undefined;
 
         // Try to find the automation that maps this template to an event
+        const automationModuleHint =
+          context.module === WhatsAppModule.MOBILE_SHOP
+            ? 'MOBILE_SHOP'
+            : context.module === WhatsAppModule.GYM
+              ? 'GYM'
+              : tenantModuleHint;
+
         let automation = await this.prisma.whatsAppAutomation.findFirst({
           where: {
             templateKey: templateKey,
             enabled: true,
+            ...(automationModuleHint
+              ? { moduleType: automationModuleHint }
+              : {}),
           },
           select: { eventType: true, moduleType: true },
         });
@@ -324,15 +344,16 @@ export class WhatsAppRemindersService {
             .replace(/[\s_-]/g, '');
           if (autoModule === 'MOBILESHOP')
             context.module = WhatsAppModule.MOBILE_SHOP;
-          if (autoModule === 'GYM') context.module = WhatsAppModule.GYM;
+          if (
+            autoModule === 'GYM' &&
+            context.module !== WhatsAppModule.MOBILE_SHOP
+          ) {
+            context.module = WhatsAppModule.GYM;
+          }
 
-          this.logger.error(
-            `[WhatsAppReminders] TRACE: Found automation: eventType=${eventType}, autoModule=${autoModule}, finalModule=${context.module}`,
-          );
+
         } else {
-          this.logger.error(
-            `[WhatsAppReminders] TRACE: ⚠️ NO AUTOMATION FOUND for templateKey='${templateKey}'. FALLBACK Mode.`,
-          );
+
 
           // Fallback for hardcoded/legacy templates not in Automation table
           if (context.module === WhatsAppModule.MOBILE_SHOP) {
@@ -360,9 +381,7 @@ export class WhatsAppRemindersService {
               eventType = 'FOLLOW_UP_SCHEDULED';
             }
 
-            this.logger.error(
-              `[WhatsAppReminders] TRACE: Fallback determined eventType=${eventType} for templateKey=${templateKey}`,
-            );
+
           }
         }
 
