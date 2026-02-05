@@ -31,10 +31,10 @@ export interface Shop {
   invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL";
   jobCardPrinterType?: "THERMAL";
   jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL";
-  
+
   // Custom Header
   headerConfig?: {
-    layout: 'CLASSIC' | 'CENTERED' | 'SPLIT' | 'MINIMAL';
+    layout: "CLASSIC" | "CENTERED" | "SPLIT" | "MINIMAL";
     showLogo: boolean;
     showTagline: boolean;
     accentColor?: string;
@@ -60,7 +60,7 @@ export interface CreateShopDto {
   website?: string;
   logoUrl?: string;
   invoiceFooter?: string;
-  
+
   // Default Print Settings
   invoicePrinterType?: "NORMAL" | "THERMAL";
   invoiceTemplate?: "CLASSIC" | "MODERN" | "THERMAL";
@@ -105,9 +105,9 @@ export interface UpdateShopSettingsDto {
   currency?: string;
   jobCardPrinterType?: "THERMAL";
   jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL";
-  
+
   headerConfig?: {
-    layout: 'CLASSIC' | 'CENTERED' | 'SPLIT' | 'MINIMAL';
+    layout: "CLASSIC" | "CENTERED" | "SPLIT" | "MINIMAL";
     showLogo: boolean;
     showTagline: boolean;
     accentColor?: string;
@@ -115,7 +115,6 @@ export interface UpdateShopSettingsDto {
   // Bank Details
   bankName?: string;
   accountNumber?: string;
-  ifscCode?: string;
   ifscCode?: string;
   branchName?: string;
 
@@ -231,31 +230,31 @@ export async function updateShopSettings(
  * Document Setting Types
  */
 export enum DocumentType {
-  SALES_INVOICE = 'SALES_INVOICE',
-  PURCHASE_INVOICE = 'PURCHASE_INVOICE',
-  JOB_CARD = 'JOB_CARD',
-  RECEIPT = 'RECEIPT',
-  QUOTATION = 'QUOTATION',
-  PURCHASE_ORDER = 'PURCHASE_ORDER',
-  REPAIR_INVOICE = 'REPAIR_INVOICE',
+  SALES_INVOICE = "SALES_INVOICE",
+  PURCHASE_INVOICE = "PURCHASE_INVOICE",
+  JOB_CARD = "JOB_CARD",
+  RECEIPT = "RECEIPT",
+  QUOTATION = "QUOTATION",
+  PURCHASE_ORDER = "PURCHASE_ORDER",
+  REPAIR_INVOICE = "REPAIR_INVOICE",
 }
 
 export enum RepairInvoiceNumberingMode {
-  SHARED = 'SHARED',
-  SEPARATE = 'SEPARATE',
+  SHARED = "SHARED",
+  SEPARATE = "SEPARATE",
 }
 
 export enum YearFormat {
-  FY = 'FY',
-  YYYY = 'YYYY',
-  YY = 'YY',
-  NONE = 'NONE',
+  FY = "FY",
+  YYYY = "YYYY",
+  YY = "YY",
+  NONE = "NONE",
 }
 
 export enum ResetPolicy {
-  YEARLY = 'YEARLY',
-  MONTHLY = 'MONTHLY',
-  NEVER = 'NEVER',
+  YEARLY = "YEARLY",
+  MONTHLY = "MONTHLY",
+  NEVER = "NEVER",
 }
 
 export interface ShopDocumentSetting {
@@ -296,7 +295,7 @@ export async function getShopDocumentSettings(
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.message || 'Failed to fetch document settings');
+    throw new Error(error.message || "Failed to fetch document settings");
   }
 
   return response.json();
@@ -320,7 +319,7 @@ export async function updateShopDocumentSetting(
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.message || 'Failed to update document setting');
+    throw new Error(error.message || "Failed to update document setting");
   }
 
   return response.json();
