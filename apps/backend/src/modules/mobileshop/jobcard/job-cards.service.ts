@@ -190,11 +190,129 @@ export class JobCardsService {
   }
 
   /**
+   * 🛡️ CREATE WARRANTY REWORK JOB
+   * - Strict validation: DELIVERED, Warranty Active, Enabled in Settings
+   * - Creates NEW JobCard linked via notes
+   */
+  async createWarrantyJob(user, shopId: string, originalJobId: string) {
+     await this.assertAccess(user, shopId);
+
+     // 1. Fetch Original Job & Shop Settings
+     const originalJob = await this.prisma.jobCard.findUnique({
+       where: { id: originalJobId, shopId },
+       include: { shop: true }
+     });
+
+     if (!originalJob) throw new NotFoundException('Original Job Card not found');
+
+     // 2. Validate Settings
+     const headerConfig = originalJob.shop.headerConfig as any;
+     const isWarrantyEnabled = headerConfig?.enableWarrantyJobs === true;
+     
+     if (!isWarrantyEnabled) {
+       throw new BadRequestException('Warranty jobs are not enabled for this shop');
+     }
+
+     // 3. Validate Eligibility
+     if (originalJob.status !== JobStatus.DELIVERED) {
+       throw new BadRequestException('Warranty can only be claimed on DELIVERED jobs');
+     }
+
+     const warrantyDuration = originalJob.warrantyDuration || 0;
+     if (warrantyDuration <= 0) {
+       throw new BadRequestException('This job has no warranty coverage');
+     }
+
+     // Check Expiry
+     // logic: deliveredAt + duration (days) >= now
+     // If deliveredAt is missing (bad data), fallback to updatedAt
+     const referenceDate = new Date();
+     // Find the status history regarding delivery? Or assume logic persists.
+     // Schema doesn't have 'deliveredAt' field on JobCard directly? 
+     // Wait, checking schema... 
+     // Schema has `estimatedDelivery`. `status` is ENUM.
+     // We need to find when it was delivered. 
+     // `statusHistory` JSON? Or just use `updatedAt` if status is DELIVERED?
+     // Let's use `updatedAt` for now as proxy for delivery time if status is DELIVERED.
+     // Ideally we parse statusHistory but that's complex JSON.
+     // Valid simplification: If currently DELIVERED, assume updatedAt is the delivery time.
+     
+     const deliveredAt = originalJob.updatedAt; 
+     const expiryDate = new Date(deliveredAt);
+     expiryDate.setDate(expiryDate.getDate() + warrantyDuration);
+     
+     if (new Date() > expiryDate) {
+        throw new BadRequestException('Warranty period has expired');
+     }
+
+     // 4. Check for existing active warranty linking to this job?
+     // Difficult without a structured link. We use Notes linkage.
+     // "Warranty rework for JobCard <JOB_NUMBER>"
+     // We can skip this check or do a rough string search.
+     // Strict check is better:
+     const existingKw = `Warranty rework for JobCard ${originalJob.jobNumber}`;
+     const existing = await this.prisma.jobCard.findFirst({
+        where: {
+           shopId,
+           notes: { contains: existingKw }
+        }
+     });
+
+     if (existing) {
+        throw new BadRequestException(`Active warranty job (${existing.jobNumber}) already exists`);
+     }
+
+     // 5. Create Warranty Job
+     const newJobNumber = await this.nextJobNumber(shopId);
+     
+     return this.prisma.jobCard.create({
+       data: {
+         tenantId: user.tenantId,
+         shopId,
+         jobNumber: newJobNumber,
+         publicToken: crypto.randomUUID(),
+         status: JobStatus.RECEIVED,
+
+         createdByUserId: user.sub,
+         createdByName: user.name ?? user.email ?? 'Staff',
+
+         customerId: originalJob.customerId,
+         customerName: originalJob.customerName,
+         customerPhone: originalJob.customerPhone,
+         customerAltPhone: originalJob.customerAltPhone,
+
+         deviceType: originalJob.deviceType,
+         deviceBrand: originalJob.deviceBrand,
+         deviceModel: originalJob.deviceModel,
+         deviceSerial: originalJob.deviceSerial,
+         devicePassword: originalJob.devicePassword,
+         physicalCondition: originalJob.physicalCondition,
+
+         customerComplaint: `(Rework) ${originalJob.customerComplaint}`,
+         
+         // Warranty Specifics
+         estimatedCost: 0, // Free by default
+         diagnosticCharge: 0,
+         advancePaid: 0,
+         billType: 'WITHOUT_GST', // Default to tax-free service
+         warrantyDuration: 0, // Warranty on warranty? Usually no.
+         
+         notes: `${existingKw}. Original Issue: ${originalJob.customerComplaint}`,
+       },
+     });
+  }
+
+  /**
    * 🛒 ADD PART TO JOB CARD
    * - Deducts stock immediately
    * - Snapshots cost price
    */
-  async addPart(user, shopId: string, jobId: string, dto: { productId: string; quantity: number }) {
+  async addPart(
+    user,
+    shopId: string,
+    jobId: string,
+    dto: { productId: string; quantity: number },
+  ) {
     await this.assertAccess(user, shopId);
 
     const job = await this.prisma.jobCard.findUnique({
@@ -203,8 +321,11 @@ export class JobCardsService {
 
     if (!job) throw new NotFoundException('Job card not found');
 
-    if (['DELIVERED', 'CANCELLED', 'RETURNED'].includes(job.status)) {
-       throw new BadRequestException('Cannot add parts to closed job');
+    // 🛡️ GUARD: Cannot add parts after READY
+    if (['READY', 'DELIVERED', 'CANCELLED', 'RETURNED'].includes(job.status)) {
+      throw new BadRequestException(
+        'Cannot add parts: Job has moved past the parts stage. Create a new job or use credit note for changes.',
+      );
     }
 
     const product = await this.prisma.shopProduct.findUnique({
@@ -217,51 +338,56 @@ export class JobCardsService {
     // Services are billed separately, never tracked in inventory
     if (product.type === ProductType.SERVICE) {
       throw new BadRequestException(
-        `"${product.name}" is a service item and cannot be added as a repair part. Services are billed separately.`
+        `"${product.name}" is a service item and cannot be added as a repair part. Services are billed separately.`,
       );
     }
 
     // Use transaction to ensure stock deduction happens with part usage
     return this.prisma.$transaction(async (tx) => {
-       // 1. Upsert JobCardPart (accumulate quantity if already exists)
-       const existing = await tx.jobCardPart.findUnique({
-          where: { jobCardId_shopProductId: { jobCardId: jobId, shopProductId: dto.productId } }
-       });
+      // 1. Upsert JobCardPart (accumulate quantity if already exists)
+      const existing = await tx.jobCardPart.findUnique({
+        where: {
+          jobCardId_shopProductId: {
+            jobCardId: jobId,
+            shopProductId: dto.productId,
+          },
+        },
+      });
 
-       const newQty = (existing?.quantity || 0) + dto.quantity;
-       const costSnapshot = product.avgCost || product.costPrice || 0;
+      const newQty = (existing?.quantity || 0) + dto.quantity;
+      const costSnapshot = product.avgCost || product.costPrice || 0;
 
-       if (existing) {
-          await tx.jobCardPart.update({
-             where: { id: existing.id },
-             data: { quantity: newQty }
-          });
-       } else {
-          await tx.jobCardPart.create({
-             data: {
-                jobCardId: jobId,
-                shopProductId: dto.productId,
-                quantity: dto.quantity,
-                costPrice: costSnapshot
-             }
-          });
-       }
+      if (existing) {
+        await tx.jobCardPart.update({
+          where: { id: existing.id },
+          data: { quantity: newQty },
+        });
+      } else {
+        await tx.jobCardPart.create({
+          data: {
+            jobCardId: jobId,
+            shopProductId: dto.productId,
+            quantity: dto.quantity,
+            costPrice: costSnapshot,
+          },
+        });
+      }
 
-       // 2. Deduct Stock via StockService (enforces availability, IMEI validation, etc.)
-       // This ensures all stock rules are applied consistently across the system
-       await this.stockService.recordStockOut(
-         user.tenantId,
-         shopId,
-         dto.productId,
-         dto.quantity,
-         'REPAIR',
-         jobId,
-         costSnapshot,
-         undefined, // IMEIs handled by StockService internally
-         tx
-       );
-       
-       return { success: true };
+      // 2. Deduct Stock via StockService (enforces availability, IMEI validation, etc.)
+      // This ensures all stock rules are applied consistently across the system
+      await this.stockService.recordStockOut(
+        user.tenantId,
+        shopId,
+        dto.productId,
+        dto.quantity,
+        'REPAIR',
+        jobId,
+        costSnapshot,
+        undefined, // IMEIs handled by StockService internally
+        tx,
+      );
+
+      return { success: true };
     });
   }
 
@@ -270,43 +396,48 @@ export class JobCardsService {
    * - Restores stock
    */
   async removePart(user, shopId: string, jobId: string, partId: string) {
-     await this.assertAccess(user, shopId);
-     
-     const job = await this.prisma.jobCard.findUnique({ where: { id: jobId, shopId } });
-     if (!job) throw new NotFoundException('Job not found');
-     
-     if (['DELIVERED', 'CANCELLED'].includes(job.status)) {
-        throw new BadRequestException('Cannot modify closed job');
-     }
+    await this.assertAccess(user, shopId);
 
-     return this.prisma.$transaction(async (tx) => {
-        const part = await tx.jobCardPart.findUnique({
-           where: { id: partId },
-           include: { product: true }
-        });
-        
-        if (!part) throw new NotFoundException('Part not found');
+    const job = await this.prisma.jobCard.findUnique({
+      where: { id: jobId, shopId },
+    });
+    if (!job) throw new NotFoundException('Job not found');
 
-        // Restore Stock via StockService (consistent with addPart)
-        if (part.product.type !== ProductType.SERVICE) {
-           await this.stockService.recordStockIn(
-             user.tenantId,
-             shopId,
-             part.shopProductId,
-             part.quantity,
-             'REPAIR',
-             jobId,
-             part.costPrice ?? undefined,
-             undefined, // IMEIs
-             tx
-           );
-        }
-        
-        // Delete usage record
-        await tx.jobCardPart.delete({ where: { id: partId } });
-        
-        return { success: true };
-     });
+    // 🛡️ GUARD: Cannot remove parts after READY
+    if (['READY', 'DELIVERED', 'CANCELLED'].includes(job.status)) {
+      throw new BadRequestException(
+        'Cannot remove parts: Job has moved past the parts stage. Create a new job or use credit note for changes.',
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const part = await tx.jobCardPart.findUnique({
+        where: { id: partId },
+        include: { product: true },
+      });
+
+      if (!part) throw new NotFoundException('Part not found');
+
+      // Restore Stock via StockService (consistent with addPart)
+      if (part.product.type !== ProductType.SERVICE) {
+        await this.stockService.recordStockIn(
+          user.tenantId,
+          shopId,
+          part.shopProductId,
+          part.quantity,
+          'REPAIR',
+          jobId,
+          part.costPrice ?? undefined,
+          undefined, // IMEIs
+          tx,
+        );
+      }
+
+      // Delete usage record
+      await tx.jobCardPart.delete({ where: { id: partId } });
+
+      return { success: true };
+    });
   }
 
   async getOne(user: any, shopId: string, id: string) {
@@ -321,8 +452,8 @@ export class JobCardsService {
       include: {
         invoices: true,
         parts: {
-           include: { product: true }
-        }
+          include: { product: true },
+        },
       },
     });
 
@@ -332,23 +463,26 @@ export class JobCardsService {
 
     // 💰 PROFIT CALCULATION (Owner Only)
     if (user.role === 'OWNER') {
-       const jobPartsCostPaisa = job.parts.reduce((sum, part) => sum + (part.quantity * (part.costPrice || 0)), 0);
-       const jobPartsCostRupees = jobPartsCostPaisa / 100;
-       
-       // Revenue comes from Invoice (excluding tax).
-       const revenuePaisa = job.invoices
-         .filter(i => i.status !== InvoiceStatus.VOIDED)
-         .reduce((sum, i) => sum + i.subTotal, 0);
-       
-       const revenueRupees = revenuePaisa / 100;
-       const profit = revenueRupees - jobPartsCostRupees;
-       
-       return {
-          ...job,
-          jobCost: jobPartsCostRupees, // Return Rupees
-          profit: profit,
-          revenue: revenueRupees
-       };
+      const jobPartsCostPaisa = job.parts.reduce(
+        (sum, part) => sum + part.quantity * (part.costPrice || 0),
+        0,
+      );
+      const jobPartsCostRupees = jobPartsCostPaisa / 100;
+
+      // Revenue comes from Invoice (excluding tax).
+      const revenuePaisa = job.invoices
+        .filter((i) => i.status !== InvoiceStatus.VOIDED)
+        .reduce((sum, i) => sum + i.subTotal, 0);
+
+      const revenueRupees = revenuePaisa / 100;
+      const profit = revenueRupees - jobPartsCostRupees;
+
+      return {
+        ...job,
+        jobCost: jobPartsCostRupees, // Return Rupees
+        profit: profit,
+        revenue: revenueRupees,
+      };
     }
 
     return job; // Staff don't see profit
@@ -455,18 +589,18 @@ export class JobCardsService {
       orderBy: { createdAt: 'desc' },
       include: {
         invoices: true,
-        parts: user.role === 'OWNER' ? { include: { product: true } } : false // Only fetch parts logic for owner if needed for list view?
+        parts: user.role === 'OWNER' ? { include: { product: true } } : false, // Only fetch parts logic for owner if needed for list view?
         // Optimization: List view might not need parts details unless showing profit column.
-        // Assuming list view needs basic info. 
+        // Assuming list view needs basic info.
       },
     });
-    
+
     // If Owner, map to include profit?
     if (user.role === 'OWNER') {
-       // This might be expensive for list. 
-       // But required? "Profit visible to OWNER only". implicit in details. 
-       // User didn't strictly say "In list view". 
-       // I'll skip profit in list for performance unless requested.
+      // This might be expensive for list.
+      // But required? "Profit visible to OWNER only". implicit in details.
+      // User didn't strictly say "In list view".
+      // I'll skip profit in list for performance unless requested.
     }
 
     return { jobCards, empty: false };
@@ -477,7 +611,7 @@ export class JobCardsService {
    */
   async updateStatus(user, shopId: string, id: string, newStatus: JobStatus) {
     await this.assertAccess(user, shopId);
-    
+
     // 1️⃣ Fetch job with invoices
     const job = await this.prisma.jobCard.findUnique({
       where: { id },
@@ -495,31 +629,51 @@ export class JobCardsService {
     if (newStatus === 'READY') {
       // 🚨 CRITICAL VALIDATION: Cannot mark READY without cost
       if (!job.finalCost && !job.estimatedCost) {
-         throw new BadRequestException(
-           'Cannot mark job READY without cost. Please add Final Cost or Estimated Cost first.'
-         );
+        throw new BadRequestException(
+          'Cannot mark job READY without cost. Please add Final Cost or Estimated Cost first.',
+        );
+      }
+
+      // 🛡️ GUARD: SERVICE products cannot be in parts
+      const servicePartExists = job.parts.some(
+        (p) => p.product?.type === ProductType.SERVICE,
+      );
+      if (servicePartExists) {
+        throw new BadRequestException(
+          'Cannot mark READY: SERVICE products cannot be added as repair parts. Remove them and try again.',
+        );
       }
     }
-    
+
     // 🛑 DELIVERY GUARD
     if (newStatus === 'DELIVERED') {
-       const validInvoice = job.invoices.find(i => i.status !== InvoiceStatus.VOIDED);
-       
-       if (!validInvoice) {
-          throw new BadRequestException('Cannot deliver job without an invoice. Status must be READY first.');
-       }
-       
-       if (validInvoice.status !== InvoiceStatus.FINAL && validInvoice.status !== InvoiceStatus.PAID && validInvoice.status !== InvoiceStatus.CREDIT) {
-          // Note: PAID and CREDIT are roughly equivalent to FINAL in business logic (locked).
-          // But status enum has DRAFT, FINAL, PAID, CREDIT.
-          // Guards: "Block DELIVERED if invoice not FINAL". 
-          // Assuming FINAL is the state before payment or credit. 
-          // However, if it's PAID, it is Final.
-          // Let's be permissive check: Must NOT be DRAFT.
-          if (validInvoice.status === InvoiceStatus.DRAFT) {
-             throw new BadRequestException('Cannot deliver job. Invoice is still DRAFT. Finalize invoice first.');
-          }
-       }
+      const validInvoice = job.invoices.find(
+        (i) => i.status !== InvoiceStatus.VOIDED,
+      );
+
+      if (!validInvoice) {
+        throw new BadRequestException(
+          'Cannot deliver job without an invoice. Status must be READY first.',
+        );
+      }
+
+      if (
+        validInvoice.status !== InvoiceStatus.FINAL &&
+        validInvoice.status !== InvoiceStatus.PAID &&
+        validInvoice.status !== InvoiceStatus.CREDIT
+      ) {
+        // Note: PAID and CREDIT are roughly equivalent to FINAL in business logic (locked).
+        // But status enum has DRAFT, FINAL, PAID, CREDIT.
+        // Guards: "Block DELIVERED if invoice not FINAL".
+        // Assuming FINAL is the state before payment or credit.
+        // However, if it's PAID, it is Final.
+        // Let's be permissive check: Must NOT be DRAFT.
+        if (validInvoice.status === InvoiceStatus.DRAFT) {
+          throw new BadRequestException(
+            'Cannot deliver job. Invoice is still DRAFT. Finalize invoice first.',
+          );
+        }
+      }
     }
 
     if (this.statusValidator.shouldCreateInvoice(newStatus)) {
@@ -581,7 +735,9 @@ export class JobCardsService {
     });
 
     if (existingInvoice) {
-      console.log(`⚠️ Job ${job.jobNumber} already has invoice, skipping auto-creation`);
+      console.log(
+        `⚠️ Job ${job.jobNumber} already has invoice, skipping auto-creation`,
+      );
       return;
     }
 
@@ -608,7 +764,8 @@ export class JobCardsService {
 
     const invoiceType = InvoiceType.REPAIR;
     // GST Logic: Respect Bill Type. If WITHOUT_GST, force false. Else default to shop settings.
-    const isGstApplicable = job.billType === 'WITHOUT_GST' ? false : (shop.repairGstDefault ?? false);
+    const isGstApplicable =
+      job.billType === 'WITHOUT_GST' ? false : (shop.repairGstDefault ?? false);
 
     // Generate Document Number
     const invoiceNumber =
@@ -619,88 +776,96 @@ export class JobCardsService {
       );
 
     // Calculate Totals & Items
-    const itemsData: any[] = []; 
+    const itemsData: any[] = [];
     let partsSubtotalPaisa = 0; // Sum of parts only (before GST)
     let partsTaxPaisa = 0; // GST on parts
 
     // 1. Add Parts (physical inventory items)
     if (job.parts && job.parts.length > 0) {
-       for (const part of job.parts) {
-          const ratePaisa = part.product.salePrice || 0;
-          const quantityNum = part.quantity;
-          const gstRatePercent = isGstApplicable ? (part.product.gstRate || 0) : 0;
-          
-          // Calculate GST-inclusive line total
-          const lineSubtotalPaisa = ratePaisa * quantityNum;
-          const lineTaxPaisa = Math.round((lineSubtotalPaisa * gstRatePercent) / 100);
-          const lineTotalPaisa = lineSubtotalPaisa + lineTaxPaisa;
-          
-          itemsData.push({
-             shopProductId: part.shopProductId,
-             quantity: quantityNum,
-             rate: ratePaisa, 
-             hsnCode: part.product.hsnCode || '9987', 
-             gstRate: gstRatePercent,
-             gstAmount: lineTaxPaisa,
-             lineTotal: lineTotalPaisa
-          });
-          
-          partsSubtotalPaisa += lineSubtotalPaisa;
-          partsTaxPaisa += lineTaxPaisa;
-       }
+      for (const part of job.parts) {
+        const ratePaisa = part.product.salePrice || 0;
+        const rateRupees = Math.round(ratePaisa / 100); // Convert to integer rupees for rate field
+        const quantityNum = part.quantity;
+        const gstRatePercent = isGstApplicable ? part.product.gstRate || 0 : 0;
+
+        // Calculate GST-inclusive line total
+        const lineSubtotalPaisa = ratePaisa * quantityNum;
+        const lineTaxPaisa = Math.round(
+          (lineSubtotalPaisa * gstRatePercent) / 100,
+        );
+        const lineTotalPaisa = lineSubtotalPaisa + lineTaxPaisa;
+
+        itemsData.push({
+          shopProductId: part.shopProductId,
+          quantity: quantityNum,
+          rate: rateRupees, // Store as integer rupees (matches sales.service.ts convention)
+          hsnCode: part.product.hsnCode || '9987',
+          gstRate: gstRatePercent,
+          gstAmount: lineTaxPaisa,
+          lineTotal: lineTotalPaisa,
+        });
+
+        partsSubtotalPaisa += lineSubtotalPaisa;
+        partsTaxPaisa += lineTaxPaisa;
+      }
     }
-    
+
     // 2. Calculate Service Charge (difference between job cost and parts)
     // Service charge = What customer pays - Cost of parts used
     const targetTotalPaisa = (job.finalCost || job.estimatedCost || 0) * 100; // Convert to Paisa
     const partsWithTaxPaisa = partsSubtotalPaisa + partsTaxPaisa;
-    const serviceChargePaisa = Math.max(0, targetTotalPaisa - partsWithTaxPaisa); // Never negative
-    
+    const serviceChargePaisa = Math.max(
+      0,
+      targetTotalPaisa - partsWithTaxPaisa,
+    ); // Never negative
+
     // 3. Add ONE service line item if there's a service charge
     let serviceSubtotalPaisa = 0;
     let serviceTaxPaisa = 0;
-    
+
     if (serviceChargePaisa > 0) {
-       // Find or create "Repair Service" product (standard SERVICE type)
-       let serviceProduct = await this.prisma.shopProduct.findFirst({
-         where: { shopId: job.shopId, name: 'Repair Service', type: 'SERVICE' }
-       });
+      // Find or create "Repair Service" product (standard SERVICE type)
+      let serviceProduct = await this.prisma.shopProduct.findFirst({
+        where: { shopId: job.shopId, name: 'Repair Service', type: 'SERVICE' },
+      });
 
-       if (!serviceProduct) {
-         serviceProduct = await this.prisma.shopProduct.create({
-           data: {
-             tenantId: job.tenantId,
-             shopId: job.shopId,
-             name: 'Repair Service',
-             type: 'SERVICE',
-             salePrice: 0, // Dynamic pricing
-             gstRate: 18, // Default service tax rate
-             hsnCode: '9987', // SAC for repair services
-             isActive: true
-           }
-         });
-       }
+      if (!serviceProduct) {
+        serviceProduct = await this.prisma.shopProduct.create({
+          data: {
+            tenantId: job.tenantId,
+            shopId: job.shopId,
+            name: 'Repair Service',
+            type: 'SERVICE',
+            salePrice: 0, // Dynamic pricing
+            gstRate: 18, // Default service tax rate
+            hsnCode: '9987', // SAC for repair services
+            isActive: true,
+          },
+        });
+      }
 
-       const serviceGstRate = isGstApplicable ? (serviceProduct.gstRate || 18) : 0;
-       
-       // If serviceChargePaisa is GST-inclusive, extract base
-       // Assume serviceChargePaisa is the final amount to customer
-       // Back-calculate: base = total / (1 + gstRate/100)
-       const divisor = 1 + (serviceGstRate / 100);
-       serviceSubtotalPaisa = Math.round(serviceChargePaisa / divisor);
-       serviceTaxPaisa = serviceChargePaisa - serviceSubtotalPaisa;
+      const serviceGstRate = isGstApplicable ? serviceProduct.gstRate || 18 : 0;
 
-       itemsData.push({
-          shopProductId: serviceProduct.id,
-          quantity: 1,
-          rate: serviceSubtotalPaisa, // Base service charge
-          hsnCode: serviceProduct.hsnCode || '9987',
-          gstRate: serviceGstRate,
-          gstAmount: serviceTaxPaisa,
-          lineTotal: serviceChargePaisa // Total including GST
-       });
+      // If serviceChargePaisa is GST-inclusive, extract base
+      // Assume serviceChargePaisa is the final amount to customer
+      // Back-calculate: base = total / (1 + gstRate/100)
+      const divisor = 1 + serviceGstRate / 100;
+      serviceSubtotalPaisa = Math.round(serviceChargePaisa / divisor);
+      serviceTaxPaisa = serviceChargePaisa - serviceSubtotalPaisa;
+
+      const serviceRateRupees = Math.round(serviceSubtotalPaisa / 100); // Convert to integer rupees
+
+      itemsData.push({
+        shopProductId: serviceProduct.id,
+        quantity: 1,
+        rate: serviceRateRupees, // Store as integer rupees (matches sales.service.ts convention)
+        hsnCode: serviceProduct.hsnCode || '9987',
+        gstRate: serviceGstRate,
+        gstAmount: serviceTaxPaisa,
+        lineTotal: serviceChargePaisa, // Total including GST
+      });
     }
-    
+
     // 4. Calculate invoice-level totals
     const invoiceSubtotalPaisa = partsSubtotalPaisa + serviceSubtotalPaisa;
     const invoiceTaxPaisa = partsTaxPaisa + serviceTaxPaisa;
@@ -721,7 +886,7 @@ export class JobCardsService {
         customerName: job.customerName,
         customerPhone: job.customerPhone,
         status: InvoiceStatus.DRAFT,
-        subTotal: invoiceSubtotalPaisa, 
+        subTotal: invoiceSubtotalPaisa,
         gstAmount: invoiceTaxPaisa,
         totalAmount: invoiceGrandTotalPaisa,
         paymentMode: 'CASH',
@@ -729,8 +894,8 @@ export class JobCardsService {
         invoiceType,
         isGstApplicable,
         items: {
-           create: itemsData
-        }
+          create: itemsData,
+        },
       },
     });
 
@@ -753,7 +918,7 @@ export class JobCardsService {
     for (const invoice of invoices) {
       if (invoice.status === InvoiceStatus.PAID) {
         throw new BadRequestException(
-          `Cannot ${reason.toLowerCase()} job: Invoice ${invoice.invoiceNumber} is paid. Refund required.`
+          `Cannot ${reason.toLowerCase()} job: Invoice ${invoice.invoiceNumber} is paid. Refund required.`,
         );
       }
 
@@ -765,8 +930,10 @@ export class JobCardsService {
           voidedAt: new Date(),
         },
       });
-      
-      console.log(`🗑️ VOIDED invoice ${invoice.invoiceNumber} for ${reason} job`);
+
+      console.log(
+        `🗑️ VOIDED invoice ${invoice.invoiceNumber} for ${reason} job`,
+      );
     }
   }
 
@@ -782,6 +949,228 @@ export class JobCardsService {
         updatedAt: true,
       },
     });
+  }
+
+  /**
+   * 💰 UPDATE SERVICE CHARGE (with GST recalculation)
+   * Only allowed when JobCard status is READY
+   * Recalculates invoice totals automatically
+   */
+  async updateServiceCharge(
+    user: any,
+    shopId: string,
+    jobId: string,
+    newServiceChargePaisa: number,
+  ) {
+    await this.assertAccess(user, shopId);
+
+    const job = await this.prisma.jobCard.findUnique({
+      where: { id: jobId, shopId },
+      include: { invoices: true, parts: { include: { product: true } } },
+    });
+
+    if (!job) throw new NotFoundException('Job not found');
+
+    // 🛡️ GUARD: Service charge edits only allowed between READY and DELIVERY
+    if (job.status === 'DELIVERED') {
+      throw new BadRequestException(
+        'Cannot edit service charge after delivery. Use credit note for corrections.',
+      );
+    }
+
+    if (job.status !== 'READY') {
+      throw new BadRequestException(
+        'Service charge can only be edited after marking job READY',
+      );
+    }
+
+    // Find the non-voided invoice
+    const invoice = job.invoices.find((i) => i.status !== InvoiceStatus.VOIDED);
+    if (!invoice) {
+      throw new BadRequestException('No invoice found for this job');
+    }
+
+    // Get shop GST settings
+    const shop = await this.prisma.shop.findUnique({
+      where: { id: shopId },
+      select: { repairGstDefault: true },
+    });
+
+    const isGstApplicable =
+      invoice.isGstApplicable && (shop?.repairGstDefault ?? false);
+    const gstRate = isGstApplicable ? 18 : 0; // Service GST rate for repairs
+
+    // Calculate service GST
+    let newServiceSubtotalPaisa = newServiceChargePaisa;
+    let newServiceGstPaisa = 0;
+
+    if (isGstApplicable && gstRate > 0) {
+      const divisor = 1 + gstRate / 100;
+      newServiceSubtotalPaisa = Math.round(newServiceChargePaisa / divisor);
+      newServiceGstPaisa = newServiceChargePaisa - newServiceSubtotalPaisa;
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Find the "Repair Service" item in the invoice
+      const serviceItem = await tx.invoiceItem.findFirst({
+        where: {
+          invoiceId: invoice.id,
+          product: { name: 'Repair Service' },
+        },
+        include: { product: true },
+      });
+
+      if (!serviceItem) {
+        throw new BadRequestException('Service line item not found in invoice');
+      }
+
+      // Update the service line item
+      await tx.invoiceItem.update({
+        where: { id: serviceItem.id },
+        data: {
+          rate: Math.round(newServiceSubtotalPaisa / 100), // Store as integer rupees
+          gstAmount: newServiceGstPaisa,
+          lineTotal: newServiceChargePaisa,
+        },
+      });
+
+      // Recalculate invoice totals (sum all items)
+      const allItems = await tx.invoiceItem.findMany({
+        where: { invoiceId: invoice.id },
+      });
+
+      let newSubtotal = 0;
+      let newGstTotal = 0;
+      for (const item of allItems) {
+        newSubtotal += item.rate * item.quantity * 100; // rate is in rupees, convert to paisa
+        newGstTotal += item.gstAmount;
+      }
+
+      const newTotal = newSubtotal + newGstTotal;
+
+      // Update invoice totals
+      return await tx.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          subTotal: newSubtotal,
+          gstAmount: newGstTotal,
+          totalAmount: newTotal,
+        },
+      });
+    });
+  }
+
+  /**
+   * 🔍 INFER CANCEL STAGE (without DB field)
+   * Determines when the job was cancelled relative to READY/DELIVERY
+   * Returns: 'BEFORE_READY' | 'AFTER_READY' | 'AFTER_DELIVERY' | null
+   */
+  private async inferCancelStage(
+    job: any,
+  ): Promise<'BEFORE_READY' | 'AFTER_READY' | 'AFTER_DELIVERY' | null> {
+    if (job.status !== 'CANCELLED') return null;
+
+    // Check if any invoice exists (even voided = means it reached READY stage)
+    const invoices = await this.prisma.invoice.findMany({
+      where: { jobCardId: job.id },
+    });
+
+    // Check if any payment exists
+    const payments = await this.prisma.receipt.findMany({
+      where: { linkedInvoiceId: { in: invoices.map((i) => i.id) } },
+    });
+
+    // If invoices exist, job was READY (since invoice created at READY)
+    // If payments exist, job reached invoice stage
+    if (invoices.length === 0) {
+      return 'BEFORE_READY'; // No invoice = never reached READY
+    }
+
+    if (payments.length > 0) {
+      return 'AFTER_DELIVERY'; // Payment collected = delivered (not reopenable)
+    }
+
+    // If invoice exists but no payment, job was cancelled after READY but before/at delivery
+    const hasDeliveredInvoice = invoices.some(
+      (i) => i.status === InvoiceStatus.PAID,
+    );
+    if (hasDeliveredInvoice) {
+      return 'AFTER_DELIVERY'; // Invoice was paid = delivered
+    }
+
+    return 'AFTER_READY'; // Invoice exists but not paid/delivered = after READY but before delivery
+  }
+
+  /**
+   * 🔓 REOPEN CANCELLED JOB
+   * Safely reopens cancelled jobs based on cancellation stage
+   * CASE 1: Before READY → Reopen to IN_PROGRESS (safe, no invoice)
+   * CASE 2: After READY but before DELIVERY → Reopen to IN_PROGRESS (old invoice voided, new one on next READY)
+   * CASE 3: After DELIVERY → ❌ NOT ALLOWED
+   */
+  async reopen(user: any, shopId: string, jobId: string) {
+    await this.assertAccess(user, shopId);
+
+    const job = await this.prisma.jobCard.findUnique({
+      where: { id: jobId, shopId },
+      include: {
+        invoices: true,
+        parts: true,
+      },
+    });
+
+    if (!job) throw new NotFoundException('Job not found');
+
+    // 🛡️ GUARD: Only cancelled jobs can be reopened
+    if (job.status !== 'CANCELLED') {
+      throw new BadRequestException(
+        `Only cancelled jobs can be reopened. This job is currently ${job.status}.`,
+      );
+    }
+
+    // Determine cancellation stage
+    const cancelStage = await this.inferCancelStage(job);
+
+    // 🛡️ GUARD: Cannot reopen jobs cancelled after delivery
+    if (cancelStage === 'AFTER_DELIVERY') {
+      throw new BadRequestException(
+        'This job was delivered and cannot be reopened. Create a new job or use credit note for changes.',
+      );
+    }
+
+    // ✅ SAFE TO REOPEN
+    // Restore job status to IN_PROGRESS
+    const reopenedJob = await this.prisma.jobCard.update({
+      where: { id: jobId },
+      data: {
+        status: 'IN_PROGRESS',
+        // Track reopen in status history
+        statusHistory: (job.statusHistory as any[]) || [],
+      },
+    });
+
+    // Add reopen event to status history
+    const statusHistory = (reopenedJob.statusHistory as any[]) || [];
+    statusHistory.push({
+      from: 'CANCELLED',
+      to: 'IN_PROGRESS',
+      timestamp: new Date().toISOString(),
+      userId: user.sub,
+      userName: user.name || user.email,
+      reason: `Reopened (was cancelled at stage: ${cancelStage})`,
+    });
+
+    // Update with history
+    const finalJob = await this.prisma.jobCard.update({
+      where: { id: jobId },
+      data: { statusHistory },
+    });
+
+    console.log(
+      `♻️ Reopened job ${job.jobNumber} (cancelled at ${cancelStage} stage)`,
+    );
+
+    return finalJob;
   }
 
   async delete(user: any, shopId: string, id: string) {

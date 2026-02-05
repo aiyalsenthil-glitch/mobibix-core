@@ -5,10 +5,12 @@ import { useRouter, useParams } from "next/navigation";
 import {
   getJobCard,
   updateJobCardStatus,
+  reopenJobCard,
   addJobCardPart,
   removeJobCardPart,
   JobCard,
   JobStatus,
+  createWarrantyJob,
 } from "@/services/jobcard.api";
 import { useShop } from "@/context/ShopContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -55,6 +57,9 @@ export default function JobCardDetailPage() {
   const { authUser: user } = useAuth(); // To check role
   const { selectedShopId } = useShop();
   const [isAddPartModalOpen, setIsAddPartModalOpen] = useState(false);
+  const [isReadyConfirmOpen, setIsReadyConfirmOpen] = useState(false);
+  const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
+  const [isWarrantyConfirmOpen, setIsWarrantyConfirmOpen] = useState(false);
   const isOwner = user?.role?.toLowerCase() === "owner";
 
   // Load Job Details
@@ -77,6 +82,23 @@ export default function JobCardDetailPage() {
 
   const handleStatusChange = async (status: JobStatus) => {
     if (!job || !selectedShopId) return;
+
+    // 🛡️ READY CONFIRMATION: Ask user if they need to add parts
+    if (status === "READY") {
+      setIsReadyConfirmOpen(true);
+      return;
+    }
+
+    // 🛡️ CANCEL CONFIRMATION: Ask user to confirm cancellation
+    if (status === "CANCELLED") {
+      if (
+        !confirm(
+          "Cancel this job? Any linked invoice will be voided. This action cannot be easily undone.",
+        )
+      ) {
+        return;
+      }
+    }
 
     // Delivery Guard
     if (status === "DELIVERED") {
@@ -105,6 +127,30 @@ export default function JobCardDetailPage() {
     }
   };
 
+  const handleReadyConfirm = async () => {
+    if (!job || !selectedShopId) return;
+
+    try {
+      await updateJobCardStatus(selectedShopId, job.id, "READY");
+      setIsReadyConfirmOpen(false);
+      reload();
+    } catch (err: any) {
+      alert(err.message || "Failed to mark job READY");
+    }
+  };
+
+  const handleReopen = async () => {
+    if (!job || !selectedShopId) return;
+
+    try {
+      await reopenJobCard(selectedShopId, job.id);
+      setIsReopenConfirmOpen(false);
+      reload();
+    } catch (err: any) {
+      alert(err.message || "Failed to reopen job");
+    }
+  };
+
   const handleRemovePart = async (partId: string) => {
     if (!confirm("Remove this part? Stock will be restored.")) return;
     try {
@@ -112,6 +158,19 @@ export default function JobCardDetailPage() {
       reload();
     } catch (err: any) {
       alert(err.message || "Failed to remove part");
+    }
+  };
+
+  const handleCreateWarranty = async () => {
+    if (!job || !selectedShopId) return;
+    try {
+      const newJob = await createWarrantyJob(selectedShopId, job.id);
+      setIsWarrantyConfirmOpen(false);
+      // Redirect to new job
+      router.push(`/jobcards/${newJob.id}?shopId=${selectedShopId}`);
+    } catch (err: any) {
+      alert(err.message || "Failed to create warranty job");
+      setIsWarrantyConfirmOpen(false);
     }
   };
 
@@ -130,7 +189,7 @@ export default function JobCardDetailPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-bold dark:text-white">
+            <h1 className="flex items-center gap-2 text-3xl font-bold dark:text-white">
               Job #{job.jobNumber}
             </h1>
             <span
@@ -138,6 +197,11 @@ export default function JobCardDetailPage() {
             >
               {job.status.replace(/_/g, " ")}
             </span>
+            {job.notes?.includes("Warranty rework") && (
+              <span className="px-3 py-1 bg-purple-100 text-purple-700 border border-purple-300 rounded-full text-xs font-bold uppercase tracking-wider">
+                Warranty Rework
+              </span>
+            )}
           </div>
           <p className="text-gray-500 dark:text-gray-400">
             {job.deviceBrand} {job.deviceModel} • {job.customerName}
@@ -161,33 +225,43 @@ export default function JobCardDetailPage() {
           </a>
           {job.status === "CANCELLED" ? (
             <button
-              onClick={() => handleStatusChange("RECEIVED")}
+              onClick={() => setIsReopenConfirmOpen(true)}
               className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-bold transition"
             >
-              Reopen Job
+              ♻️ Reopen Job
             </button>
           ) : (
-            job.status !== "DELIVERED" &&
-            job.status !== "RETURNED" && (
-              <select
-                value={job.status}
-                onChange={(e) =>
-                  handleStatusChange(e.target.value as JobStatus)
-                }
-                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold cursor-pointer outline-none"
-              >
-                <option value={job.status} disabled>
-                  Change Status
-                </option>
-                <option value="READY">Mark READY</option>
-                <option value="DELIVERED">Mark DELIVERED</option>
-                <option value="CANCELLED">CANCEL Job</option>
-              </select>
-            )
+            <>
+              {job.status === "DELIVERED" && (job.warrantyDuration || 0) > 0 && (
+                <button
+                  onClick={() => setIsWarrantyConfirmOpen(true)}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold transition"
+                  title="Create a free rework job under warranty"
+                >
+                  🛡️ Warranty Job
+                </button>
+              )}
+              {job.status !== "DELIVERED" &&
+                job.status !== "RETURNED" && (
+                  <select
+                    value={job.status}
+                    onChange={(e) =>
+                      handleStatusChange(e.target.value as JobStatus)
+                    }
+                    className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold cursor-pointer outline-none"
+                  >
+                    <option value={job.status} disabled>
+                      Change Status
+                    </option>
+                    <option value="READY">Mark READY</option>
+                    <option value="DELIVERED">Mark DELIVERED</option>
+                    <option value="CANCELLED">CANCEL Job</option>
+                  </select>
+                )}
+            </>
           )}
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* LEFT COLUMN: Job Info */}
         <div className="lg:col-span-2 space-y-8">
@@ -283,12 +357,13 @@ export default function JobCardDetailPage() {
                           {part.quantity}
                         </td>
                         <td className="px-4 py-3 text-right dark:text-gray-300">
-                          ₹{part.product?.salePrice?.toFixed(2)}
+                          ₹{((part.product?.salePrice || 0) / 100).toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-right font-medium dark:text-white">
                           ₹
                           {(
-                            (part.product?.salePrice || 0) * part.quantity
+                            ((part.product?.salePrice || 0) / 100) *
+                            part.quantity
                           ).toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -432,7 +507,6 @@ export default function JobCardDetailPage() {
           )}
         </div>
       </div>
-
       {/* Add Part Modal */}
       {isAddPartModalOpen && (
         <AddPartModal
@@ -441,6 +515,115 @@ export default function JobCardDetailPage() {
           onClose={() => setIsAddPartModalOpen(false)}
           onSuccess={reload}
         />
+      )}
+      {/* READY CONFIRMATION MODAL */}
+      {isReadyConfirmOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-8 max-w-md mx-4">
+            <h2 className="text-xl font-bold dark:text-white mb-4">
+              Ready to Mark Job Complete?
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Before marking READY, do you need to add any spare parts to this
+              job?
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-500 mb-6 italic">
+              Once READY, parts cannot be added. The invoice will be created
+              automatically.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setIsReadyConfirmOpen(false);
+                  setIsAddPartModalOpen(true);
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition"
+              >
+                + Add Parts
+              </button>
+              <button
+                onClick={handleReadyConfirm}
+                className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
+              >
+                Continue to READY
+              </button>
+              <button
+                onClick={() => setIsReadyConfirmOpen(false)}
+                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 rounded-lg font-semibold transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* REOPEN CONFIRMATION MODAL */}
+      {isReopenConfirmOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-8 max-w-md mx-4">
+            <h2 className="text-xl font-bold dark:text-white mb-4">
+              Reopen This Job?
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              This job will be moved back to <strong>IN_PROGRESS</strong>{" "}
+              status.
+            </p>
+            <p className="text-sm text-orange-600 dark:text-orange-400 mb-6 font-semibold bg-orange-50 dark:bg-orange-900/30 p-3 rounded-lg">
+              ⚠️ A new invoice will be created if you mark it READY again. The
+              old invoice remains voided.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsReopenConfirmOpen(false)}
+                className="flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 rounded-lg font-semibold transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReopen}
+                className="flex-1 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold transition"
+              >
+                Reopen Job
+              </button>
+            </div>
+          </div>
+        </div>
+      )}{" "}
+      {/* WARRANTY CONFIRMATION MODAL */}
+      {isWarrantyConfirmOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-8 max-w-md mx-4">
+            <h2 className="text-xl font-bold dark:text-white mb-4">
+              Create Warranty Rework Job?
+            </h2>
+            <div className="space-y-3 text-gray-600 dark:text-gray-400 mb-6 text-sm">
+              <p>You are about to create a warranty claim for this repair.</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>A <strong>NEW</strong> Job Card will be created.</li>
+                <li>Original Invoice remains unchanged.</li>
+                <li>Service Charges will be <strong>Free (₹0)</strong> by default.</li>
+                <li>Parts can be billed if needed.</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsWarrantyConfirmOpen(false)}
+                className="flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 rounded-lg font-semibold transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateWarranty}
+                className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition shadow-lg shadow-purple-200 dark:shadow-purple-900/20"
+              >
+                Create Warranty Job
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -478,9 +661,10 @@ function AddPartModal({
       listProducts(shopId).then((all) => {
         // Filter out SERVICE products - only physical parts allowed
         setProducts(
-          all.filter((p) =>
-            p.type !== ProductType.SERVICE &&
-            p.name.toLowerCase().includes(searchTerm.toLowerCase()),
+          all.filter(
+            (p) =>
+              p.type !== ProductType.SERVICE &&
+              p.name.toLowerCase().includes(searchTerm.toLowerCase()),
           ),
         );
       });
@@ -571,7 +755,8 @@ function AddPartModal({
                   Search Product
                 </label>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                  Only physical parts shown. Service charges are calculated separately.
+                  Only physical parts shown. Service charges are calculated
+                  separately.
                 </p>
                 <div className="relative">
                   <input
@@ -629,7 +814,8 @@ function AddPartModal({
                             {p.name}
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            Stock: {p.stockQty ?? "N/A"} • ₹{p.salePrice}
+                            Stock: {p.stockQty ?? "N/A"} • ₹
+                            {(p.salePrice / 100).toFixed(2)}
                           </div>
                         </div>
                       ))}

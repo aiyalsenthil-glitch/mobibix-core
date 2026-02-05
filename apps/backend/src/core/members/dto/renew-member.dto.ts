@@ -28,4 +28,7 @@ export class RenewMemberDto {
 
   @IsOptional()
   isFeeOverridden?: boolean;
+
+  @IsOptional()
+  resolvePendingDues?: boolean;
 }

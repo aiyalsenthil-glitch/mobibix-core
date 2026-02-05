@@ -39,6 +39,9 @@ export interface JobCard {
   customerComplaint: string;
   physicalCondition?: string;
 
+  notes?: string;
+  warrantyDuration?: number;
+
   estimatedCost?: number;
   finalCost?: number;
   diagnosticCharge?: number;
@@ -233,13 +236,35 @@ export async function updateJobCardStatus(
 }
 
 /**
+ * Reopen a cancelled job card
+ */
+export async function reopenJobCard(
+  shopId: string,
+  jobCardId: string,
+): Promise<JobCard> {
+  const response = await authenticatedFetch(
+    `/mobileshop/shops/${shopId}/job-cards/${jobCardId}/reopen`,
+    {
+      method: "PATCH",
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to reopen job");
+  }
+
+  return response.json();
+}
+
+/**
  * Add Part to Job Card
  */
 export async function addJobCardPart(
   shopId: string,
   jobCardId: string,
   productId: string,
-  quantity: number
+  quantity: number,
 ): Promise<void> {
   const response = await authenticatedFetch(
     `/mobileshop/shops/${shopId}/job-cards/${jobCardId}/parts`,
@@ -261,7 +286,7 @@ export async function addJobCardPart(
 export async function removeJobCardPart(
   shopId: string,
   jobCardId: string,
-  partId: string
+  partId: string,
 ): Promise<void> {
   const response = await authenticatedFetch(
     `/mobileshop/shops/${shopId}/job-cards/${jobCardId}/parts/${partId}`,
@@ -294,4 +319,25 @@ export async function deleteJobCard(
     const error = await response.json();
     throw new Error(error.message || "Failed to delete job card");
   }
+}
+/**
+ * Create a new warranty rework job
+ */
+export async function createWarrantyJob(
+  shopId: string,
+  originalJobId: string,
+): Promise<JobCard> {
+  const response = await authenticatedFetch(
+    `/mobileshop/shops/${shopId}/job-cards/${originalJobId}/warranty`,
+    {
+      method: "POST",
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to create warranty job");
+  }
+
+  return response.json();
 }

@@ -70,4 +70,62 @@ export class JobCardsController {
   ) {
     return this.service.delete(req.user, shopId, id);
   }
+
+  // ===== PARTS MANAGEMENT =====
+
+  @Post(':id/parts')
+  addPart(
+    @Param('shopId') shopId: string,
+    @Param('id') jobId: string,
+    @Req() req: any,
+    @Body() dto: { productId: string; quantity: number },
+  ) {
+    return this.service.addPart(req.user, shopId, jobId, dto);
+  }
+
+  @Delete(':id/parts/:partId')
+  removePart(
+    @Param('shopId') shopId: string,
+    @Param('id') jobId: string,
+    @Param('partId') partId: string,
+    @Req() req: any,
+  ) {
+    return this.service.removePart(req.user, shopId, jobId, partId);
+  }
+
+  // ===== SERVICE CHARGE MANAGEMENT =====
+
+  @Patch(':id/service-charge')
+  updateServiceCharge(
+    @Param('shopId') shopId: string,
+    @Param('id') jobId: string,
+    @Req() req: any,
+    @Body() dto: { serviceChargePaisa: number },
+  ) {
+    return this.service.updateServiceCharge(
+      req.user,
+      shopId,
+      jobId,
+      dto.serviceChargePaisa,
+    );
+  }
+
+  // ===== REOPEN CANCELLED JOB =====
+
+  @Patch(':id/reopen')
+  reopen(
+    @Param('shopId') shopId: string,
+    @Param('id') jobId: string,
+    @Req() req: any,
+  ) {
+    return this.service.reopen(req.user, shopId, jobId);
+  }
+  @Post(':id/warranty')
+  createWarranty(
+    @Param('shopId') shopId: string,
+    @Param('id') originalJobId: string,
+    @Req() req: any,
+  ) {
+    return this.service.createWarrantyJob(req.user, shopId, originalJobId);
+  }
 }

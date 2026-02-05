@@ -143,10 +143,7 @@ export class AdminController {
     return this.plansService.createPlan(body);
   }
 
-  @Post('seed-plans')
-  async seedPlans() {
-    return this.plansService.ensureDefaultPlans();
-  }
+
   // ─────────────────────────────────────────────
   // UPDATE PLAN (PLATFORM ADMIN)
   // ─────────────────────────────────────────────

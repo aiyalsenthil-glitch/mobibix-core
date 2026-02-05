@@ -625,11 +625,43 @@ export class MembersService {
       },
       select: {
         membershipEndAt: true,
+        feeAmount: true,
+        paidAmount: true,
       },
     });
 
     if (!existingMember) {
       throw new BadRequestException('Member not found');
+    }
+
+    // ─────────────────────────────
+    // 🚨 STRICT PENDING CHECK
+    // ─────────────────────────────
+    const oldFee = existingMember.feeAmount ?? 0;
+    const oldPaid = existingMember.paidAmount ?? 0;
+    const pendingAmount = Math.max(oldFee - oldPaid, 0);
+
+    if (pendingAmount > 0) {
+      if (!dto.resolvePendingDues) {
+        throw new BadRequestException(
+          `Member has pending dues of ${pendingAmount}. Please clear dues or select 'Collect Pending & Renew'.`,
+        );
+      }
+
+      // ✅ Auto-Resolve Pending (Separate Payment Record)
+      await this.prisma.memberPayment.create({
+        data: {
+          tenantId,
+          memberId,
+          amount: pendingAmount,
+          status: 'PAID',
+          method: dto.method ?? 'CASH',
+          reference: 'RENEWAL_CLEARANCE',
+          // Mark this as clearing previous debt
+        },
+      });
+
+      // We strictly consider old debt cleared now.
     }
 
     // ─────────────────────────────

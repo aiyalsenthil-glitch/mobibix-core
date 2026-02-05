@@ -207,11 +207,25 @@ export default function InvoiceDetailPage() {
               Created on {formatDate(invoice.createdAt)}
             </div>
           </div>
-          <span
-            className={`px-3 py-1 rounded-full text-sm font-bold ${statusColor}`}
-          >
-            {invoice.status}
-          </span>
+          <div className="flex items-center gap-3">
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-bold ${statusColor}`}
+            >
+              {invoice.status}
+            </span>
+            {/* 🛡️ JobCard-linked invoices cannot be edited */}
+            {invoice.jobCard && (
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-bold ${
+                  theme === "dark"
+                    ? "bg-blue-900/30 text-blue-300 border border-blue-700"
+                    : "bg-blue-100 text-blue-700 border border-blue-300"
+                }`}
+              >
+                📋 From Job Card
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Details Grid */}
@@ -342,19 +356,40 @@ export default function InvoiceDetailPage() {
 
       {/* Product Items Table */}
       <div className="flex justify-between items-center mb-4">
-        <h2
-          className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
-        >
-          Items
-        </h2>
-
-        {invoice.status !== "VOIDED" && invoice.status !== "PAID" && (
-          <button
-            onClick={() => setIsAddItemOpen(true)}
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-sm"
+        <div>
+          <h2
+            className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
           >
-            <span>+</span> Add Item
-          </button>
+            Items
+          </h2>
+          {/* 🛡️ Show read-only status for JobCard invoices */}
+          {invoice.jobCard && (
+            <p
+              className={`text-xs mt-1 ${theme === "dark" ? "text-amber-400" : "text-amber-700"}`}
+            >
+              ℹ️ Parts are read-only. Service price can be adjusted before
+              delivery.
+            </p>
+          )}
+        </div>
+
+        {/* 🛡️ Hide Add Item for JobCard-linked invoices, show help text instead */}
+        {invoice.jobCard ? (
+          <div
+            className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
+          >
+            💡 Add spare parts from Job Card screen
+          </div>
+        ) : (
+          invoice.status !== "VOIDED" &&
+          invoice.status !== "PAID" && (
+            <button
+              onClick={() => setIsAddItemOpen(true)}
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-sm"
+            >
+              <span>+</span> Add Item
+            </button>
+          )
         )}
       </div>
 

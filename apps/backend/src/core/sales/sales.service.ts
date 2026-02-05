@@ -479,12 +479,31 @@ export class SalesService {
       // 1. Fetch Existing
       const oldInvoice = await tx.invoice.findFirst({
         where: { id: invoiceId, tenantId },
-        include: { items: true, receipts: true },
+        include: { items: true, receipts: true, jobCard: true },
       });
 
       if (!oldInvoice) throw new BadRequestException('Invoice not found');
       if (oldInvoice.status === 'VOIDED')
         throw new BadRequestException('Cannot update cancelled invoice');
+
+      // 🛡️ GUARD: JobCard-linked invoices have special rules
+      if (oldInvoice.jobCardId && oldInvoice.jobCard) {
+        // If JobCard is DELIVERED, invoice is fully locked
+        if (oldInvoice.jobCard.status === 'DELIVERED') {
+          throw new BadRequestException(
+            'This invoice is linked to a delivered job. Delivered invoices cannot be edited. Use credit note for any corrections.',
+          );
+        }
+
+        // If JobCard is READY, only allow service charge edits (items structure must match)
+        if (oldInvoice.jobCard.status === 'READY') {
+          // For now, reject full item updates
+          // Allow-listed: Only service charge can be edited via dedicated endpoint
+          throw new BadRequestException(
+            'This invoice is linked to a job. Use the Job Card interface to edit service charges, or add parts directly from the Job Card.',
+          );
+        }
+      }
 
       const shop = await tx.shop.findFirst({
         where: { id: dto.shopId, tenantId },
@@ -552,7 +571,13 @@ export class SalesService {
           shopId: dto.shopId,
           isActive: true,
         },
-        select: { id: true, type: true, isSerialized: true, hsnCode: true, costPrice: true },
+        select: {
+          id: true,
+          type: true,
+          isSerialized: true,
+          hsnCode: true,
+          costPrice: true,
+        },
       });
 
       if (products.length !== productIds.length)
@@ -693,15 +718,17 @@ export class SalesService {
           where: { jobCardId: oldInvoice.jobCardId },
         });
 
-        const jobPartsData = products.map((p) => {
-          const item = dto.items.find((i) => i.shopProductId === p.id);
-          return {
-            jobCardId: oldInvoice.jobCardId!,
-            shopProductId: p.id,
-            quantity: item?.quantity || 0,
-            costPrice: p.costPrice || 0,
-          };
-        }).filter(p => p.quantity > 0);
+        const jobPartsData = products
+          .map((p) => {
+            const item = dto.items.find((i) => i.shopProductId === p.id);
+            return {
+              jobCardId: oldInvoice.jobCardId!,
+              shopProductId: p.id,
+              quantity: item?.quantity || 0,
+              costPrice: p.costPrice || 0,
+            };
+          })
+          .filter((p) => p.quantity > 0);
 
         await tx.jobCardPart.createMany({ data: jobPartsData });
       }
@@ -775,7 +802,7 @@ export class SalesService {
         // JobCardPart handles its own stock ledger entry.
         // If we also do it here, it's a double deduction.
         if (isRepairLinked) {
-           continue; 
+          continue;
         }
 
         await this.stockService.recordStockOut(
@@ -904,7 +931,7 @@ export class SalesService {
     fromJobCard?: boolean,
   ) {
     const where: any = { tenantId, shopId };
-    
+
     // Filter for invoices linked to job cards
     if (fromJobCard) {
       where.jobCardId = { not: null };
@@ -970,14 +997,15 @@ export class SalesService {
         tenantId,
       },
       include: {
-        jobCard: { // Include linked Job Card
-           select: {
-              jobNumber: true,
-              deviceBrand: true,
-              deviceModel: true,
-              deviceSerial: true,
-              customerComplaint: true
-           }
+        jobCard: {
+          // Include linked Job Card
+          select: {
+            jobNumber: true,
+            deviceBrand: true,
+            deviceModel: true,
+            deviceSerial: true,
+            customerComplaint: true,
+          },
         },
         receipts: {
           where: { status: 'ACTIVE' },
@@ -1002,9 +1030,9 @@ export class SalesService {
             gstAmount: true,
             lineTotal: true,
             // Include product name for UI
-            product: { 
-               select: { name: true } 
-            }
+            product: {
+              select: { name: true },
+            },
           },
         },
       },
@@ -1039,15 +1067,17 @@ export class SalesService {
       customerPhone: invoice.customerPhone,
       customerGstin: invoice.customerGstin,
       customerState: invoice.customerState,
-      
+
       // Job Card Details (if applicable)
-      jobCard: invoice.jobCard ? {
-         jobNumber: invoice.jobCard.jobNumber,
-         deviceBrand: invoice.jobCard.deviceBrand,
-         deviceModel: invoice.jobCard.deviceModel,
-         deviceSerial: invoice.jobCard.deviceSerial,
-         problem: invoice.jobCard.customerComplaint // Fixed field name
-      } : undefined,
+      jobCard: invoice.jobCard
+        ? {
+            jobNumber: invoice.jobCard.jobNumber,
+            deviceBrand: invoice.jobCard.deviceBrand,
+            deviceModel: invoice.jobCard.deviceModel,
+            deviceSerial: invoice.jobCard.deviceSerial,
+            problem: invoice.jobCard.customerComplaint, // Fixed field name
+          }
+        : undefined,
 
       // Monetary values (Paisa -> Rupee)
       subTotal: invoice.subTotal ? this.fromPaisa(invoice.subTotal) : 0,
@@ -1095,7 +1125,9 @@ export class SalesService {
           gstAmount,
           lineTotal,
           taxableValue,
-          product: (item as any).product ? { name: (item as any).product.name } : undefined,
+          product: (item as any).product
+            ? { name: (item as any).product.name }
+            : undefined,
         };
       }),
     };
@@ -1485,7 +1517,7 @@ export class SalesService {
         quantity: item.quantity,
         rate: this.fromPaisa(item.rate), // Convert back to Rupee for DTO
         gstRate: item.gstRate,
-        gstAmount: this.fromPaisa(item.gstAmount), 
+        gstAmount: this.fromPaisa(item.gstAmount),
         imeis: assignedImeis.length > 0 ? assignedImeis : undefined,
       };
     });
@@ -1503,7 +1535,7 @@ export class SalesService {
       customerState: currentInvoice.customerState ?? undefined,
       paymentMode: 'CREDIT', // Force credit to avoid auto-marking as PAID
       items: newItemsDto,
-      pricesIncludeTax: true, 
+      pricesIncludeTax: true,
     };
 
     return this.updateInvoice(tenantId, invoiceId, updateDto);

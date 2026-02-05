@@ -63,7 +63,7 @@ export class TenantService {
       );
     }
 
-    await this.plansService.ensureDefaultPlans();
+
     const trialPlan = await this.plansService.getOrCreateTrialPlan(
       effectiveTenantType === 'MOBILE_SHOP'
         ? ModuleType.MOBILE_SHOP

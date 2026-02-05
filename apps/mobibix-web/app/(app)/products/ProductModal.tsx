@@ -34,7 +34,9 @@ export function ProductModal({
   const { theme } = useTheme();
   const { authUser } = useAuth();
   const [step, setStep] = useState<ModalStep>(ModalStep.FORM);
-  const [createdProduct, setCreatedProduct] = useState<ShopProduct | null>(null);
+  const [createdProduct, setCreatedProduct] = useState<ShopProduct | null>(
+    null,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -319,8 +321,12 @@ export function ProductModal({
                         : "bg-white border-gray-300 text-gray-900"
                     }`}
                   >
-                    <option value="MOBILE">Mobile Phone / Laptop (IMEI Tracking)</option>
-                    <option value="ACCESSORY">General Goods / Accessory (Bulk Quantity)</option>
+                    <option value="MOBILE">
+                      Mobile Phone / Laptop (IMEI Tracking)
+                    </option>
+                    <option value="ACCESSORY">
+                      General Goods / Accessory (Bulk Quantity)
+                    </option>
                     <option value={ProductType.SPARE}>Spare Part</option>
                     <option value={ProductType.SERVICE}>Service</option>
                   </select>
@@ -348,7 +354,8 @@ export function ProductModal({
                         theme === "dark" ? "text-gray-300" : "text-gray-700"
                       }`}
                     >
-                      Track by IMEI / Serial Number (Mandatory for Phones/Laptops)
+                      Track by IMEI / Serial Number (Mandatory for
+                      Phones/Laptops)
                     </label>
                   </div>
                 )}
@@ -506,113 +513,113 @@ export function ProductModal({
 
               {/* Initial Stock Section - Hidden for SERVICE products */}
               {formData.type !== ProductType.SERVICE && (
-              <div
-                className={`mt-6 p-4 rounded-xl border ${
-                  theme === "dark"
-                    ? "bg-stone-900/40 border-white/10"
-                    : "bg-gray-50 border-gray-200"
-                }`}
-              >
-                <h3
-                  className={`text-sm font-bold uppercase tracking-wider mb-4 ${
-                    theme === "dark" ? "text-stone-400" : "text-gray-500"
+                <div
+                  className={`mt-6 p-4 rounded-xl border ${
+                    theme === "dark"
+                      ? "bg-stone-900/40 border-white/10"
+                      : "bg-gray-50 border-gray-200"
                   }`}
                 >
-                  Opening Stock (Optional)
-                </h3>
-
-                {formData.isSerialized ? (
-                  <div className="space-y-4">
-                    <div>
-                      <label
-                        className={`block text-sm font-medium mb-2 ${
-                          theme === "dark" ? "text-gray-300" : "text-gray-700"
-                        }`}
-                      >
-                        IMEIs / Serial Numbers{" "}
-                        <span className="text-xs font-normal text-gray-500">
-                          (One per line)
-                        </span>
-                      </label>
-                      <textarea
-                        name="openingImeis"
-                        value={formData.openingImeis}
-                        onChange={handleChange}
-                        placeholder="Paste IMEIs here..."
-                        rows={4}
-                        className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono text-sm ${
-                          theme === "dark"
-                            ? "bg-gray-800 border-white/20 text-white"
-                            : "bg-white border-gray-300 text-gray-900"
-                        }`}
-                      />
-                      <p className="text-xs mt-1 text-teal-600 font-medium">
-                        Total Quantity:{" "}
-                        {
-                          formData.openingImeis
-                            .split(/\r?\n/)
-                            .filter((s) => s.trim()).length
-                        }{" "}
-                        units
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label
-                        className={`block text-sm font-medium mb-2 ${
-                          theme === "dark" ? "text-gray-300" : "text-gray-700"
-                        }`}
-                      >
-                        Quantity on Hand
-                      </label>
-                      <input
-                        type="number"
-                        name="openingStock"
-                        value={formData.openingStock}
-                        onChange={handleChange}
-                        placeholder="0"
-                        min="0"
-                        className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                          theme === "dark"
-                            ? "bg-gray-800 border-white/20 text-white"
-                            : "bg-white border-gray-300 text-gray-900"
-                        }`}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-4">
-                  <label
-                    className={`block text-sm font-medium mb-2 ${
-                      theme === "dark" ? "text-gray-300" : "text-gray-700"
+                  <h3
+                    className={`text-sm font-bold uppercase tracking-wider mb-4 ${
+                      theme === "dark" ? "text-stone-400" : "text-gray-500"
                     }`}
                   >
-                    Cost Price per Unit (Initial Value)
-                  </label>
-                  <input
-                    type="number"
-                    name="openingCost"
-                    value={formData.openingCost}
-                    onChange={handleChange}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                      theme === "dark"
-                        ? "bg-gray-800 border-white/20 text-white"
-                        : "bg-white border-gray-300 text-gray-900"
-                    }`}
-                  />
-                  <p className="text-[10px] mt-1 text-gray-500 italic">
-                    Note: Initial stock setup is typically for opening balance.
-                    For ongoing inventory, use "New Purchase" for proper
-                    accounting.
-                  </p>
+                    Opening Stock (Optional)
+                  </h3>
+
+                  {formData.isSerialized ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label
+                          className={`block text-sm font-medium mb-2 ${
+                            theme === "dark" ? "text-gray-300" : "text-gray-700"
+                          }`}
+                        >
+                          IMEIs / Serial Numbers{" "}
+                          <span className="text-xs font-normal text-gray-500">
+                            (One per line)
+                          </span>
+                        </label>
+                        <textarea
+                          name="openingImeis"
+                          value={formData.openingImeis}
+                          onChange={handleChange}
+                          placeholder="Paste IMEIs here..."
+                          rows={4}
+                          className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono text-sm ${
+                            theme === "dark"
+                              ? "bg-gray-800 border-white/20 text-white"
+                              : "bg-white border-gray-300 text-gray-900"
+                          }`}
+                        />
+                        <p className="text-xs mt-1 text-teal-600 font-medium">
+                          Total Quantity:{" "}
+                          {
+                            formData.openingImeis
+                              .split(/\r?\n/)
+                              .filter((s) => s.trim()).length
+                          }{" "}
+                          units
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label
+                          className={`block text-sm font-medium mb-2 ${
+                            theme === "dark" ? "text-gray-300" : "text-gray-700"
+                          }`}
+                        >
+                          Quantity on Hand
+                        </label>
+                        <input
+                          type="number"
+                          name="openingStock"
+                          value={formData.openingStock}
+                          onChange={handleChange}
+                          placeholder="0"
+                          min="0"
+                          className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                            theme === "dark"
+                              ? "bg-gray-800 border-white/20 text-white"
+                              : "bg-white border-gray-300 text-gray-900"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-4">
+                    <label
+                      className={`block text-sm font-medium mb-2 ${
+                        theme === "dark" ? "text-gray-300" : "text-gray-700"
+                      }`}
+                    >
+                      Cost Price per Unit (Initial Value)
+                    </label>
+                    <input
+                      type="number"
+                      name="openingCost"
+                      value={formData.openingCost}
+                      onChange={handleChange}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                        theme === "dark"
+                          ? "bg-gray-800 border-white/20 text-white"
+                          : "bg-white border-gray-300 text-gray-900"
+                      }`}
+                    />
+                    <p className="text-[10px] mt-1 text-gray-500 italic">
+                      Note: Initial stock setup is typically for opening
+                      balance. For ongoing inventory, use "New Purchase" for
+                      proper accounting.
+                    </p>
+                  </div>
                 </div>
-              </div>
               )}
 
               {/* Action Buttons */}

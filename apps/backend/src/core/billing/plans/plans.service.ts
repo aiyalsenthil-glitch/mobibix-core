@@ -21,17 +21,7 @@ export class PlansService {
     return name.trim().toUpperCase().replace(/\s+/g, '_');
   }
 
-  /**
-   * Seed default plans (DEPRECATED - use prisma/seed.ts instead)
-   * Kept for backward compatibility only
-   */
-  async ensureDefaultPlans() {
-    this.logger.warn(
-      '⚠️ ensureDefaultPlans() is deprecated. Use prisma/seed.ts for V1 plans.',
-    );
-    // No-op: All plan seeding should happen via prisma/seed.ts
-    return;
-  }
+
 
   async getPlansWithUpgradeInfo(tenantId: string, module: ModuleType) {
     const currentSub =
