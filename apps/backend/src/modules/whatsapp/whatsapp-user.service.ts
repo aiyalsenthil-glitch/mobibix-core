@@ -307,6 +307,57 @@ export class WhatsAppUserService {
 
     await this.ensureQuotaAvailable(tenantId, features.monthlyQuota);
 
+    // ---------------------------------------------------------
+    // A. FREE TEXT FLOW (Manual Reply / Staff)
+    // ---------------------------------------------------------
+    if (dto.text) {
+      // 1. Create Log Entry (MANUAL)
+      const log = await this.prisma.whatsAppLog.create({
+        data: {
+          tenantId,
+          phone: dto.phone,
+          type: 'MANUAL',
+          status: 'QUEUED',
+          metadata: {
+            text_snippet: dto.text.substring(0, 50),
+            campaignId: dto.campaignId ?? null,
+          },
+        },
+      });
+
+      // 2. Send Text Message
+      const result = await this.sender.sendTextMessage(
+        tenantId,
+        dto.phone,
+        dto.text,
+      );
+
+      // 3. Update Log Status
+      if (result.success && result.messageId) {
+        await this.prisma.whatsAppLog.update({
+          where: { id: log.id },
+          data: { status: 'SENT', messageId: result.messageId },
+        });
+      } else {
+        await this.prisma.whatsAppLog.update({
+          where: { id: log.id },
+          data: {
+            status: 'FAILED',
+            error: result.error ? JSON.stringify(result.error) : 'Unknown error',
+          },
+        });
+      }
+
+      return this.prisma.whatsAppLog.findUnique({ where: { id: log.id } });
+    }
+
+    // ---------------------------------------------------------
+    // B. TEMPLATE FLOW (Legacy / System)
+    // ---------------------------------------------------------
+    if (!dto.templateId) {
+      throw new BadRequestException('Either text or templateId must be provided');
+    }
+
     const template = await this.prisma.whatsAppTemplate.findFirst({
       where: {
         id: dto.templateId,

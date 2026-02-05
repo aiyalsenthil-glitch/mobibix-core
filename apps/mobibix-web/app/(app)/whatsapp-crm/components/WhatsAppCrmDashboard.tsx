@@ -46,9 +46,15 @@ export default function WhatsAppCrmDashboard({
              </p>
           </div>
           {isRetailDemo && (
-             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-               Retail Demo Mode – Automation & staff replies enabled
-             </span>
+             <div className="flex items-center gap-2">
+                <span className="flex h-2 w-2 relative">
+                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                   <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+                <span className="inline-flex items-center px-3 py-1 Rounded-lg text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-100 shadow-sm">
+                  Retail Demo Active
+                </span>
+             </div>
           )}
         </div>
       </div>
@@ -57,23 +63,24 @@ export default function WhatsAppCrmDashboard({
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Active Chats</div>
-            <div className="text-3xl font-bold text-gray-900">
-              {isRetailDemo ? "Demo" : "0"}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Total Chats</div>
+            <div className="text-3xl font-black text-gray-900 flex items-baseline gap-1">
+              {isRetailDemo ? "24" : "0"}
+              <span className="text-xs font-medium text-green-500">+12%</span>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Pending Follow-ups</div>
-            <div className="text-3xl font-bold text-gray-900">{isRetailDemo ? "--" : "0"}</div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Needs Staff</div>
+            <div className="text-3xl font-black text-amber-500">{isRetailDemo ? "3" : "0"}</div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Leads This Month</div>
-            <div className="text-3xl font-bold text-teal-600">{isRetailDemo ? "--" : "0"}</div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Sales Intent</div>
+            <div className="text-3xl font-black text-teal-600">{isRetailDemo ? "8" : "0"}</div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-            <div className="text-sm font-medium text-gray-500 mb-1">Avg Response Time</div>
-            <div className="text-3xl font-bold text-gray-900">--</div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Conv. Rate</div>
+            <div className="text-3xl font-black text-indigo-600">{isRetailDemo ? "33%" : "0%"}</div>
           </div>
         </div>
 

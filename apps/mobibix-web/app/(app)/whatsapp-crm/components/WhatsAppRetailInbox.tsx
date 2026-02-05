@@ -137,9 +137,24 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
         {/* RIGHT: Timeline View */}
         <div className={`lg:col-span-2 flex-col bg-gray-50/30 h-full overflow-hidden ${selectedPhone ? 'flex' : 'hidden lg:flex'}`}>
           {!selectedPhone ? (
-             <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
-               <div className="text-6xl mb-4 opacity-10">💬</div>
-               <p className="font-medium text-gray-500">Select a conversation to manage retail automation</p>
+             <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-8 bg-gradient-to-b from-white to-gray-50">
+               <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-lg mb-6 border border-gray-100 text-5xl">
+                 💬
+               </div>
+               <h3 className="text-xl font-bold text-gray-800 mb-2">Retail Inbox</h3>
+               <p className="max-w-xs text-center text-sm text-gray-500 leading-relaxed">
+                 Select a customer conversation from the left to view activity timeline and manage manual staff intervention.
+               </p>
+               <div className="mt-8 grid grid-cols-2 gap-3 text-[10px] uppercase tracking-widest font-bold">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
+                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                     Live Automation
+                  </div>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100">
+                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                     Staff Handover
+                  </div>
+               </div>
              </div>
           ) : (
             <>
@@ -220,13 +235,13 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
                   </div>
               )}
   
-              {/* Reply Input */}
-              <div className="p-4 bg-white border-t border-gray-200">
-                 <div className="relative shadow-sm rounded-xl overflow-hidden border border-gray-300 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent transition-shadow">
+              {/* Reply Input Area */}
+              <div className="p-5 bg-white border-t border-gray-200 shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+                 <div className="relative rounded-2xl overflow-hidden border border-gray-200 focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-500/10 transition-all duration-300 bg-white">
                    <textarea
-                     className="w-full pl-4 pr-14 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none bg-gray-50 focus:bg-white transition-colors"
+                     className="w-full pl-5 pr-16 py-4 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none bg-transparent"
                      rows={2}
-                     placeholder="Type a manual reply to take over..."
+                     placeholder="Type a manual reply to take over from automation..."
                      value={replyText}
                      onChange={e => setReplyText(e.target.value)}
                      onKeyDown={e => {
@@ -236,21 +251,27 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
                        }
                      }}
                    />
-                   <button 
-                    onClick={handleSend}
-                    disabled={sending || !replyText.trim()}
-                    className="absolute right-2 bottom-2 p-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:hover:bg-teal-600 transition-all shadow-sm"
-                   >
-                     {sending ? (
-                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                     ) : (
-                       <svg className="w-5 h-5 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                     )}
-                   </button>
+                   <div className="absolute right-3 bottom-3 flex items-center gap-2">
+                      <button 
+                        onClick={handleSend}
+                        disabled={sending || !replyText.trim()}
+                        className="p-2.5 bg-gradient-to-tr from-teal-600 to-teal-500 text-white rounded-xl hover:shadow-lg hover:shadow-teal-500/30 disabled:opacity-30 disabled:hover:shadow-none transition-all duration-300 active:scale-95"
+                        title="Send Message"
+                      >
+                        {sending ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        ) : (
+                          <svg className="w-5 h-5 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
+                        )}
+                      </button>
+                   </div>
                  </div>
-                 <div className="mt-2 flex justify-between items-center">
-                    <span className="text-[10px] text-gray-400">Staff replies will stop automation for 24 hours.</span>
-                    <span className="text-[10px] text-gray-400">Enter to send</span>
+                 <div className="mt-3 flex justify-between items-center px-1">
+                    <div className="flex items-center gap-1.5">
+                       <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
+                       <span className="text-[10px] font-medium text-gray-500">Retail Demo Mode Active</span>
+                    </div>
+                    <span className="text-[10px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded border border-gray-100 italic">Enter to send • Shift+Enter for new line</span>
                  </div>
               </div>
             </>
@@ -294,57 +315,57 @@ function getMessageBody(log: WhatsAppLog): string | null {
 }
 
 function getLogTitle(log: WhatsAppLog) {
-  if (log.type === 'INCOMING') return '👤 Customer Action';
-  if (log.type === 'WELCOME') return '🤖 Automated Greeting';
-  if (log.type === 'REMINDER') return '⏰ Automation Triggered';
-  if (log.type === 'MANUAL') return '📤 Staff Replied';
-  return '⚙️ System Message';
+  if (log.type === 'INCOMING') return 'Customer message';
+  if (log.type === 'WELCOME') return 'Greeting sent';
+  if (log.type === 'REMINDER') return 'Follow-up sent';
+  if (log.type === 'MANUAL') return 'Staff handover';
+  return 'System activity';
 }
 
 function getLogDescription(log: WhatsAppLog) {
   // Incoming (User Reply)
   if (log.type === 'INCOMING') {
     const text = getMessageBody(log);
-    if (!text) return 'Sent a message';
+    if (!text) return 'Sent an attachment or generic message';
     
     // Semantic mapping for Demo
-    if (text === '1' || text.includes('product')) return 'Selected: Product Enquiry';
-    if (text === '2' || text.includes('bulk')) return 'Selected: Bulk Order Enquiry';
-    if (text === '3' || text.includes('staff')) return 'Requested: Staff Handover';
+    if (text === '1' || text.includes('product')) return 'Enquired about product catalog';
+    if (text === '2' || text.includes('bulk')) return 'Interested in bulk/wholesale deal';
+    if (text === '3' || text.includes('staff')) return 'Requested to speak with a human';
     
-    return `Customer replied: "${text}"`;
+    return `"${text}"`;
   }
 
   // Outgoing (System/Staff)
   if (log.metadata && log.metadata['parameters']) {
      const params = log.metadata['parameters'] as string[];
-     return `Sent template with params: ${params.join(', ')}`;
+     return `Broadcast: ${params.join(', ')}`;
   }
   if (log.metadata && log.metadata['text_snippet']) {
-     return `Sent: "${log.metadata['text_snippet']}..."`;
+     return log.metadata['text_snippet'];
   }
   
-  if (log.type === 'WELCOME') return "Sent welcome menu & options";
-  if (log.type === 'MANUAL') return "Staff sent a manual message";
-  if (log.type === 'REMINDER') return "Reminder template sent";
+  if (log.type === 'WELCOME') return "Retail welcome flow triggered";
+  if (log.type === 'MANUAL') return "Staff took over the conversation";
+  if (log.type === 'REMINDER') return "Automated engagement reminder";
   
-  return `Sent ${log.type?.toLowerCase().replace('_', ' ')} template`;
+  return `Service message (${log.type?.toLowerCase()})`;
 }
 
 function getStatusColor(type: string) {
-  if (type === 'INCOMING') return 'bg-blue-50 text-blue-600 border-blue-100';
-  if (type === 'WELCOME') return 'bg-teal-50 text-teal-600 border-teal-100';
-  if (type === 'REMINDER') return 'bg-orange-50 text-orange-600 border-orange-100';
-  if (type === 'MANUAL') return 'bg-indigo-50 text-indigo-600 border-indigo-100';
-  return 'bg-gray-50 text-gray-600 border-gray-200';
+  if (type === 'INCOMING') return 'bg-white text-blue-500 border-blue-100';
+  if (type === 'WELCOME') return 'bg-white text-teal-500 border-teal-100';
+  if (type === 'REMINDER') return 'bg-white text-orange-500 border-orange-100';
+  if (type === 'MANUAL') return 'bg-white text-indigo-500 border-indigo-100';
+  return 'bg-white text-gray-400 border-gray-100';
 }
 
 function getStatusIcon(type: string) {
-  if (type === 'INCOMING') return <span className="text-lg">💬</span>;
-  if (type === 'WELCOME') return <span className="text-lg">👋</span>;
-  if (type === 'REMINDER') return <span className="text-lg">⏰</span>;
-  if (type === 'MANUAL') return <span className="text-lg">👤</span>;
-  return <span className="text-lg">⚙️</span>;
+  if (type === 'INCOMING') return <span className="text-sm">📥</span>;
+  if (type === 'WELCOME') return <span className="text-sm">✨</span>;
+  if (type === 'REMINDER') return <span className="text-sm">🔁</span>;
+  if (type === 'MANUAL') return <span className="text-sm">🧑‍💻</span>;
+  return <span className="text-sm">⚙️</span>;
 }
 
 function getIntentBadge(intent: string | null) {

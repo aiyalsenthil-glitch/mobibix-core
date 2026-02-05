@@ -11,8 +11,13 @@ export class SendWhatsAppMessageDto {
   @IsString()
   phone!: string;
 
+  @IsOptional()
   @IsString()
-  templateId!: string;
+  text?: string;
+
+  @IsOptional()
+  @IsString()
+  templateId?: string;
 
   @IsOptional()
   @IsArray()
