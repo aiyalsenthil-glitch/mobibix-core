@@ -24,7 +24,8 @@ export interface WhatsAppDashboard {
 
 export interface SendWhatsAppMessageRequest {
   phone: string;
-  templateId: string;
+  templateId?: string;
+  text?: string;
   parameters?: string[];
   campaignId?: string;
 }

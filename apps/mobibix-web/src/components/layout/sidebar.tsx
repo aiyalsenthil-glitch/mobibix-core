@@ -113,22 +113,15 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
 
   if (!mounted) return null;
 
-  const sidebarWidth = isCollapsed ? "w-20" : "w-60";
-  const sidebarPadding = isCollapsed ? "p-4" : "p-6";
-
-  // Mobile drawer logic: Fixed, Z-50.
-  // Desktop logic: Fixed, Z-40, hidden on mobile unless open (handled by translate transform instead of display:none to allow animation)
-
-  // Combined Class Logic:
-  // Mobile: fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out
-  // Desktop: lg:translate-x-0 lg:static (wait, needs to be fixed on desktop too as per original code).
-  // Original was: fixed left-0 top-0 h-screen ... hidden lg:flex
+  const effectiveCollapsed = mobileOpen ? false : isCollapsed;
+  const sidebarWidth = effectiveCollapsed ? "w-20" : "w-64";
+  const sidebarPadding = effectiveCollapsed ? "p-4" : "p-6";
 
   return (
     <>
       {/* Mobile Backdrop */}
       {mobileOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
           onClick={onClose}
         />
@@ -144,40 +137,39 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
             mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        {/* Logo/Brand */}
+        {/* Logo/Brand + Mobile Close */}
         <div
-          className={`${sidebarPadding} border-b transition-all duration-300 ${
+          className={`${sidebarPadding} border-b transition-all duration-300 flex items-center justify-between ${
             isDark
               ? "border-gray-800"
               : "border-teal-100 bg-gradient-to-r from-teal-50/50 to-transparent"
           }`}
         >
-          {!isCollapsed && (
-            <>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-md">
-                  M
-                </div>
-                <h1
-                  className={`text-xl font-bold bg-gradient-to-r ${
-                    isDark
-                      ? "text-white"
-                      : "from-teal-600 to-teal-700 bg-clip-text text-transparent"
-                  }`}
-                >
-                  MobiBix
-                </h1>
+          {!effectiveCollapsed && (
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-md">
+                M
               </div>
-              <p
-                className={`text-[10px] mt-1.5 leading-tight ${
-                  isDark ? "text-stone-400" : "text-teal-600/70 font-medium"
+              <h1
+                className={`text-xl font-bold bg-gradient-to-r ${
+                  isDark
+                    ? "text-white"
+                    : "from-teal-600 to-teal-700 bg-clip-text text-transparent"
                 }`}
               >
-                Digital Retail Platform
-              </p>
-            </>
+                MobiBix
+              </h1>
+            </div>
           )}
-          {isCollapsed && (
+
+          {/* Mobile Close Button */}
+          {mobileOpen && (
+             <button onClick={onClose} className="lg:hidden p-1 text-gray-500 hover:text-red-500">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+             </button>
+          )}
+
+          {effectiveCollapsed && (
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-lg">
               M
             </div>
@@ -215,11 +207,11 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                         : isDark
                           ? "text-gray-400 hover:bg-gray-800 hover:text-white"
                           : "text-gray-700 hover:bg-teal-50 hover:text-teal-700 hover:shadow-sm font-medium"
-                    } ${isCollapsed ? "justify-center" : ""}`}
-                    title={isCollapsed ? item.label : ""}
+                    } ${effectiveCollapsed ? "justify-center" : ""}`}
+                    title={effectiveCollapsed ? item.label : ""}
                   >
                     <span className="text-lg flex-shrink-0">{item.icon}</span>
-                    {!isCollapsed && (
+                    {!effectiveCollapsed && (
                       <>
                         <span className="font-medium text-sm flex-1 text-left">
                           {item.label}
@@ -237,7 +229,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                       </>
                     )}
 
-                    {isCollapsed && (
+                    {effectiveCollapsed && (
                       <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                         {item.label}
                       </div>
@@ -246,6 +238,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                 ) : (
                   <Link
                     href={item.href!}
+                    onClick={() => mobileOpen && onClose && onClose()}
                     className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${
                       isActive
                         ? isDark
@@ -254,15 +247,15 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                         : isDark
                           ? "text-gray-400 hover:bg-gray-800 hover:text-white"
                           : "text-gray-700 hover:bg-teal-50 hover:text-teal-700 hover:shadow-sm font-medium"
-                    } ${isCollapsed ? "justify-center" : ""}`}
-                    title={isCollapsed ? item.label : ""}
+                    } ${effectiveCollapsed ? "justify-center" : ""}`}
+                    title={effectiveCollapsed ? item.label : ""}
                   >
                     <span className="text-lg flex-shrink-0">{item.icon}</span>
-                    {!isCollapsed && (
+                    {!effectiveCollapsed && (
                       <span className="font-medium text-sm">{item.label}</span>
                     )}
 
-                    {isCollapsed && (
+                    {effectiveCollapsed && (
                       <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                         {item.label}
                       </div>
@@ -271,7 +264,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                 )}
 
                 {/* Submenu */}
-                {hasSubmenu && isExpanded && !isCollapsed && (
+                {hasSubmenu && isExpanded && !effectiveCollapsed && (
                   <div className="ml-4 mt-1 space-y-1 border-l-2 border-teal-200 dark:border-teal-800 pl-2">
                     {item.submenu!.map((subitem) => {
                       const isSubActive = pathname === subitem.href;
@@ -279,6 +272,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                         <Link
                           key={subitem.href}
                           href={subitem.href}
+                          onClick={() => mobileOpen && onClose && onClose()}
                           className={`block px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
                             isSubActive
                               ? isDark
@@ -300,9 +294,9 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           })}
         </nav>
 
-        {/* Toggle Button */}
+        {/* Toggle Button (Desktop Only) */}
         <div
-          className={`p-2 border-t transition-all duration-300 ${
+          className={`hidden lg:flex p-2 border-t transition-all duration-300 ${
             isDark ? "border-gray-800" : "border-teal-100"
           }`}
         >
@@ -313,9 +307,9 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                 ? "bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white"
                 : "bg-teal-50 hover:bg-teal-100 text-teal-700 hover:text-teal-800 font-medium shadow-sm hover:shadow-md"
             }`}
-            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={effectiveCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {isCollapsed ? (
+            {effectiveCollapsed ? (
               <>
                 <span>→</span>
               </>

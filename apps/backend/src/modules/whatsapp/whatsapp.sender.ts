@@ -345,4 +345,103 @@ export class WhatsAppSender {
       return { success: false, error: errMsg };
     }
   }
+  /**
+   * Send a FREE TEXT message (Session Message)
+   * Intended for MANUAL staff replies or session-based interactions.
+   * Skips strict feature entitlement checks (assumes basic manual reply capability).
+   */
+  async sendTextMessage(
+    tenantId: string,
+    phone: string,
+    text: string,
+  ): Promise<{ success: boolean; messageId?: string; error?: any }> {
+    // 1. Basic Plan/Settings Check (Minimal)
+    const module = await this.resolveTenantModule(tenantId);
+    const planRules = await this.planRulesService.getPlanRulesForTenant(
+      tenantId,
+      module,
+    );
+     // If plan is strictly disabled, block. But if trial/legacy, allow.
+    if (planRules && !planRules.enabled) {
+         return { success: false, error: 'Subscription plan disabled' };
+    }
+
+    // 2. Resolve Phone Number (DEFAULT purpose for manual replies)
+    let phoneNumberConfig;
+    try {
+      phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberForPurpose(
+        tenantId,
+        'DEFAULT',
+      );
+    } catch (e) {
+      this.logger.log({ tenantId, memberId: null, phone, type: 'MANUAL', status: 'FAILED', error: 'No phone number config' });
+      return { success: false, error: 'No phone number provided' };
+    }
+
+    if (!phoneNumberConfig?.isActive) {
+       return { success: false, error: 'Phone number inactive' };
+    }
+
+    // 3. Prepare & Send
+    const normalizedPhone = normalizePhone(phone);
+    let whatsappFormattedPhone: string;
+    try {
+        whatsappFormattedPhone = toWhatsAppPhone(normalizedPhone);
+    } catch (e) {
+        return { success: false, error: 'Invalid phone format' };
+    }
+
+    const url = `https://graph.facebook.com/${this.apiVersion}/${phoneNumberConfig.phoneNumberId}/messages`;
+
+    try {
+      const response = await axios.post(
+        url,
+        {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: whatsappFormattedPhone,
+          type: 'text',
+          text: { preview_url: false, body: text },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      const messageId = response.data?.messages?.[0]?.id;
+
+      // 4. Log Success
+      await this.prisma.whatsAppLog.create({
+        data: {
+            tenantId,
+            phone: whatsappFormattedPhone,
+            type: 'MANUAL', // Explicit type for staff replies
+            status: 'SENT',
+            messageId,
+            metadata: { text_snippet: text.substring(0, 50) }
+        }
+      });
+
+      return { success: true, messageId };
+
+    } catch (error) {
+        const errMsg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+        
+        await this.prisma.whatsAppLog.create({
+            data: {
+                tenantId,
+                phone: whatsappFormattedPhone,
+                type: 'MANUAL',
+                status: 'FAILED',
+                error: errMsg
+            }
+        });
+        
+        console.error('[WA TEXT ERROR]', errMsg);
+        return { success: false, error: errMsg };
+    }
+  }
 }

@@ -61,8 +61,7 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
       // For demo, we use 'bot_text_response' to simulate a generic message if no specific staff template exists
       await sendWhatsAppMessage({
         phone: selectedPhone,
-        templateId: "bot_text_response", 
-        parameters: [replyText]
+        text: replyText,
       });
       
       setReplyText("");

@@ -496,7 +496,7 @@ export class WhatsAppController {
 
   /**
    * POST /whatsapp/send
-   * Send a WhatsApp message via template
+   * Send a WhatsApp message (Template OR Text)
    */
   @Post('send')
   async sendMessage(
@@ -504,15 +504,20 @@ export class WhatsAppController {
     dto: {
       tenantId: string;
       phone: string;
-      templateId: string;
+      templateId?: string;
+      text?: string;
       parameters?: string[];
     },
     @Req() req: any,
   ) {
     this.validateAccess(req, dto.tenantId);
 
-    if (!dto.phone || !dto.templateId) {
-      throw new BadRequestException('Missing phone or templateId');
+    if (!dto.phone) {
+      throw new BadRequestException('Phone number is required');
+    }
+
+    if (!dto.templateId && !dto.text) {
+        throw new BadRequestException('Either templateId or text must be provided');
     }
 
     // Validate phone format (accept: +919876543210 or 919876543210)
@@ -523,58 +528,86 @@ export class WhatsAppController {
       );
     }
 
-    const template = await this.prisma.whatsAppTemplate.findUnique({
-      where: { id: dto.templateId },
-    });
+    // ---------------------------------------------------------
+    // A. FREE TEXT FLOW (Manual Reply / Staff)
+    // ---------------------------------------------------------
+    if (dto.text) {
+        const textBody = dto.text.trim();
+        if (!textBody) return { success: true, skipped: true }; // Empty text check
 
-    if (!template) {
-      throw new BadRequestException('Template not found');
+        // Create log entry
+        const log = await this.prisma.whatsAppLog.create({
+            data: {
+                tenantId: dto.tenantId,
+                phone: dto.phone,
+                type: 'MANUAL',
+                status: 'PENDING',
+                metadata: { text_snippet: textBody.substring(0, 50) },
+            },
+        });
+
+        // Send Text
+        const result = await this.sender.sendTextMessage(
+            dto.tenantId,
+            dto.phone,
+            textBody,
+        );
+
+        // Update Log
+        if (result.success && result.messageId) {
+            await this.prisma.whatsAppLog.update({
+                where: { id: log.id },
+                data: { messageId: result.messageId, status: 'SENT' },
+            });
+        } else {
+             await this.prisma.whatsAppLog.update({
+                where: { id: log.id },
+                data: { 
+                    status: 'FAILED', 
+                    error: typeof result.error === 'string' ? result.error : JSON.stringify(result.error) 
+                },
+            });
+        }
+        return this.prisma.whatsAppLog.findUnique({ where: { id: log.id } });
     }
 
-    // Create log entry with PENDING status first
-    const log = await this.prisma.whatsAppLog.create({
-      data: {
-        tenantId: dto.tenantId,
-        phone: dto.phone,
-        type: template.feature,
-        status: 'PENDING',
-        metadata: dto.parameters ? { parameters: dto.parameters } : undefined,
-      },
-    });
+    // ---------------------------------------------------------
+    // B. TEMPLATE FLOW (Automation / Notifications)
+    // ---------------------------------------------------------
+    if (dto.templateId) {
+        const template = await this.prisma.whatsAppTemplate.findUnique({
+            where: { id: dto.templateId },
+        });
 
-    // Send the message
-    const result = await this.sender.sendTemplateMessage(
-      dto.tenantId,
-      template.feature as any,
-      dto.phone,
-      template.metaTemplateName,
-      dto.parameters || [],
-    );
+        if (!template) {
+            throw new BadRequestException('Template not found');
+        }
 
-    if (result.success && result.messageId) {
-      // Update log with messageId
-      await this.prisma.whatsAppLog.update({
-        where: { id: log.id },
-        data: {
-          messageId: result.messageId,
-          status: 'SENT',
-        },
-      });
-    } else if (!result.success && result.error) {
-      // Update log with error
-      await this.prisma.whatsAppLog.update({
-        where: { id: log.id },
-        data: {
-          status: 'FAILED',
-          error:
-            typeof result.error === 'string'
-              ? result.error
-              : JSON.stringify(result.error),
-        },
-      });
+        // Create log entry with PENDING status first
+        const log = await this.prisma.whatsAppLog.create({
+            data: {
+                tenantId: dto.tenantId,
+                phone: dto.phone,
+                type: template.feature,
+                status: 'PENDING',
+                metadata: dto.parameters ? { parameters: dto.parameters } : undefined,
+            },
+        });
+
+        // Send the message
+        const result = await this.sender.sendTemplateMessage(
+            dto.tenantId,
+            template.feature as any,
+            dto.phone,
+            template.metaTemplateName,
+            dto.parameters || [],
+            { logId: log.id } // Pass logId to helper for auto update
+        );
+
+        // Note: sendTemplateMessage already updates the log if logId is passed.
+        // But we return the fresh log.
+        return this.prisma.whatsAppLog.findUnique({ where: { id: log.id } });
     }
-
-    return this.prisma.whatsAppLog.findUnique({ where: { id: log.id } });
   }
 
   /**
