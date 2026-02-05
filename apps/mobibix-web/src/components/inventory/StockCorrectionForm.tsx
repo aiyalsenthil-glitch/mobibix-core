@@ -174,7 +174,6 @@ export function StockCorrectionForm({
           quantity: quantityValue,
           reason,
           note: note.trim() || undefined,
-          costPrice: cost, // Pass cost if provided
         });
       }
 

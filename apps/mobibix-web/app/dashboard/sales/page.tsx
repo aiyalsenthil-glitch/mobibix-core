@@ -10,8 +10,11 @@ import {
 } from "@/services/sales.api";
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
+  DRAFT: "bg-gray-500/15 text-gray-400",
+  FINAL: "bg-blue-500/15 text-blue-400",
   PAID: "bg-green-500/15 text-green-400",
-  CANCELLED: "bg-red-500/15 text-red-400",
+  CREDIT: "bg-amber-500/15 text-amber-400",
+  VOIDED: "bg-red-500/15 text-red-400",
 };
 
 const PAYMENT_BADGES: Record<PaymentMode, string> = {
@@ -19,6 +22,7 @@ const PAYMENT_BADGES: Record<PaymentMode, string> = {
   UPI: "bg-purple-500/15 text-purple-300",
   CARD: "bg-teal-500/15 text-teal-300",
   BANK: "bg-amber-500/15 text-amber-300",
+  CREDIT: "bg-indigo-500/15 text-indigo-300",
 };
 
 export default function SalesPage() {

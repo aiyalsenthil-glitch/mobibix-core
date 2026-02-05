@@ -270,7 +270,7 @@ export default function CreateInvoicePage() {
             gstRate,
             gstAmount,
             total,
-            costPrice: product.costPrice, // Capture cost for visibility
+            costPrice: product.costPrice ?? null, // Capture cost for visibility
           };
         }
         return item;

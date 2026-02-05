@@ -88,7 +88,15 @@ export class RetailDemoHandler {
   // --- Flows ---
 
   private async sendWelcomeFlow(tenantId: string, phone: string, name: string) {
-    await this.sendText(tenantId, phone, RetailDemoMessages.WELCOME.greeting(name));
+    // 1. Send Greeting Template (retail_greeting)
+    await this.sender.sendTemplateMessage(
+      tenantId,
+      'WELCOME' as WhatsAppFeature,
+      phone,
+      'retail_greeting',
+      [] // No variables
+    );
+    // 2. Send Menu Text
     await this.sendText(tenantId, phone, RetailDemoMessages.WELCOME.menu);
   }
 
