@@ -185,7 +185,7 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
                       <div className="flex-1 bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex justify-between items-start mb-2">
                           <span className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                             {getLogTitle(log.type)}
+                             {getLogTitle(log)}
                           </span>
                           <span className="text-xs text-gray-400 font-mono">
                             {new Date(log.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
