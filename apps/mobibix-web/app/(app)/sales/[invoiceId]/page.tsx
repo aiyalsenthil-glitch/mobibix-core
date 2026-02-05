@@ -346,7 +346,7 @@ export default function InvoiceDetailPage() {
                                   // Looking at imports... only addItemToInvoice is imported.
                                   // I need to import updateInvoice.
                                   const { updateInvoice } = await import("@/services/sales.api");
-                                  const newItems = invoice.items
+                                  const newItems = (invoice.items ?? [])
                                     .filter((_, i) => i !== index)
                                     .map((i: any) => ({
                                        shopProductId: i.shopProductId,
