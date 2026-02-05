@@ -91,16 +91,25 @@ export class RetailDemoHandler {
   // --- Flows ---
 
   private async sendWelcomeFlow(tenantId: string, phone: string, name: string) {
-    // 1. Send Greeting Template (retail_greeting)
+    // 0. Fetch Shop Name for Template
+    const shop = await this.prisma.shop.findFirst({
+      where: { tenantId, isActive: true },
+      select: { name: true }
+    });
+    const shopName = shop?.name || 'Our Store';
+
+    // 1. Send Greeting Template (retail_greeting) -- Expects {{1}} = Shop Name
     await this.sender.sendTemplateMessage(
       tenantId,
       'WELCOME' as WhatsAppFeature,
       phone,
       'retail_greeting',
-      [] // No variables
+      [shopName] // {{1}}
     );
+    
     // 2. Send Menu Text
-    await this.sendText(tenantId, phone, RetailDemoMessages.WELCOME.menu);
+    // Note: 'bot_text_response' failing. Disabling until generic template resolves.
+    // await this.sendText(tenantId, phone, RetailDemoMessages.WELCOME.menu);
   }
 
   private async sendCatalogFlow(tenantId: string, phone: string) {
