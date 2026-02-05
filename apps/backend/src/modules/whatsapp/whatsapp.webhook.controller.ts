@@ -39,6 +39,8 @@ export class WhatsAppWebhookController {
     return res.status(403).json({ message: 'Invalid verify token' });
   }
 
+
+
   /**
    * Handle incoming webhook events from Meta WhatsApp Cloud API
    * Events: message_status, delivery status, read status, etc.
