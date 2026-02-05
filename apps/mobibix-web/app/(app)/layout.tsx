@@ -12,6 +12,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme } = useTheme();
   const isDark = mounted && theme === "dark";
 
@@ -35,6 +36,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [router]);
+
   if (!isReady) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -43,14 +49,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const marginLeft = mounted && isCollapsed ? "ml-20" : "ml-60";
+  const marginLeft = mounted && isCollapsed ? "lg:ml-20" : "lg:ml-60";
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 transition-colors duration-300">
-      <Sidebar />
-      <Topbar isCollapsed={mounted && isCollapsed} />
+      <Sidebar mobileOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <Topbar 
+        isCollapsed={mounted && isCollapsed} 
+        onMenuClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
+      />
       <main
-        className={`${marginLeft} pt-20 px-8 py-8 transition-all duration-300 bg-white dark:bg-slate-950 min-h-screen`}
+        className={`${marginLeft} pt-20 px-4 lg:px-8 py-8 transition-all duration-300 bg-white dark:bg-slate-950 min-h-screen`}
       >
         {children}
       </main>

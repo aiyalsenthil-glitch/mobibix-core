@@ -86,7 +86,7 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
     <div className="grid grid-cols-1 lg:grid-cols-3 bg-white rounded-lg shadow-sm h-[650px] overflow-hidden border border-gray-200 font-sans">
       
       {/* LEFT: Conversation List */}
-      <div className="border-r border-gray-200 flex flex-col bg-white h-full overflow-hidden">
+      <div className={`border-r border-gray-200 flex-col bg-white h-full overflow-hidden ${selectedPhone ? 'hidden lg:flex' : 'flex'}`}>
         <div className="p-4 border-b border-gray-100 bg-gray-50/50 backdrop-blur">
           <h2 className="font-semibold text-gray-800">Active Conversations</h2>
           <p className="text-xs text-gray-500 mt-1">{sortedPhones.length} customers active</p>
@@ -116,7 +116,7 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
                     <span className={`font-medium ${isSelected ? 'text-teal-900' : 'text-gray-900'}`}>
                       {phone}
                     </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-gray-100 text-gray-500">
+                        <span className="text-[10px] text-gray-400 uppercase tracking-widest">
                            {new Date(lastLog.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                          </span>
                        </div>
@@ -136,7 +136,7 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
         </div>
   
         {/* RIGHT: Timeline View */}
-        <div className="lg:col-span-2 flex flex-col bg-gray-50/30 h-full overflow-hidden">
+        <div className={`lg:col-span-2 flex-col bg-gray-50/30 h-full overflow-hidden ${selectedPhone ? 'flex' : 'hidden lg:flex'}`}>
           {!selectedPhone ? (
              <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
                <div className="text-6xl mb-4 opacity-10">💬</div>
@@ -147,6 +147,14 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
               {/* Header */}
               <div className="p-4 bg-white border-b border-gray-200 flex justify-between items-center shadow-sm z-10 sticky top-0">
                 <div className="flex items-center gap-3">
+                   {/* Mobile Back Button */}
+                   <button 
+                     onClick={() => setSelectedPhone(null)}
+                     className="lg:hidden p-1 -ml-1 text-gray-500 hover:text-gray-700"
+                   >
+                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+                   </button>
+
                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-white font-bold shadow-sm">
                      {selectedPhone.slice(-2)}
                    </div>
@@ -154,12 +162,15 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
                       <h3 className="font-bold text-gray-900 text-lg leading-tight">{selectedPhone}</h3>
                       <p className="text-xs text-gray-500 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                        Active Session
+                        WhatsApp Active
                       </p>
                    </div>
                 </div>
                 <div className="flex gap-2">
                    {getIntentBadge(deriveCustomerIntent(activeLogs))}
+                   <span className="hidden sm:inline-block px-2.5 py-1 bg-white border border-gray-200 text-gray-600 text-xs rounded-lg font-medium shadow-sm">
+                     Retail Customer
+                   </span>
                 </div>
               </div>
   

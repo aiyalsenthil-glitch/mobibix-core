@@ -7,9 +7,10 @@ import { useTheme } from "@/context/ThemeContext";
 
 interface TopbarProps {
   isCollapsed?: boolean;
+  onMenuClick?: () => void;
 }
 
-export function Topbar({ isCollapsed = false }: TopbarProps) {
+export function Topbar({ isCollapsed = false, onMenuClick }: TopbarProps) {
   const { authUser, logout } = useAuth();
   const router = useRouter();
   const { theme } = useTheme();
@@ -20,37 +21,48 @@ export function Topbar({ isCollapsed = false }: TopbarProps) {
     router.replace("/signin");
   };
 
-  const leftOffset = isCollapsed ? "left-20" : "left-60";
+  const leftOffset = isCollapsed ? "lg:left-20" : "lg:left-60";
 
   return (
     <header
-      className={`fixed ${leftOffset} right-0 top-0 h-16 border-b ${
+      className={`fixed ${leftOffset} left-0 right-0 top-0 h-16 border-b ${
         isDark
           ? "bg-gray-950 border-gray-800 text-white"
           : "bg-gradient-to-r from-white via-teal-50/40 to-white border-teal-100 text-black shadow-md shadow-teal-500/5"
-      } flex items-center justify-between px-6 z-10 transition-all duration-300`}
+      } flex items-center justify-between px-4 sm:px-6 z-30 transition-all duration-300`}
     >
-      {/* Business/Tenant Name */}
-      <div className="min-w-0">
-        <p
-          className={`text-xs font-medium ${isDark ? "text-gray-400" : "text-teal-600/70"} whitespace-nowrap uppercase tracking-wide`}
+      {/* Mobile Menu Button + Business Name */}
+      <div className="flex items-center gap-3 min-w-0">
+        <button
+          onClick={onMenuClick}
+          className="lg:hidden p-2 -ml-2 text-teal-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
         >
-          Business
-        </p>
-        <p
-          className={`text-lg font-bold bg-gradient-to-r ${
-            isDark
-              ? "text-white"
-              : "from-teal-700 to-teal-600 bg-clip-text text-transparent"
-          } whitespace-nowrap truncate`}
-        >
-          {authUser?.name || "Shop Name"}
-        </p>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+        <div className="min-w-0">
+          <p
+            className={`text-xs font-medium ${isDark ? "text-gray-400" : "text-teal-600/70"} whitespace-nowrap uppercase tracking-wide`}
+          >
+            Business
+          </p>
+          <p
+            className={`text-lg font-bold bg-gradient-to-r ${
+              isDark
+                ? "text-white"
+                : "from-teal-700 to-teal-600 bg-clip-text text-transparent"
+            } whitespace-nowrap truncate`}
+          >
+            {authUser?.name || "Shop Name"}
+          </p>
+        </div>
       </div>
 
       {/* User Info + Logout + Theme Switcher */}
       <div className="flex items-center gap-3 sm:gap-6">
-        <div className="text-right text-xs sm:text-sm">
+        <div className="hidden sm:block text-right text-xs sm:text-sm">
           <p
             className={`font-semibold ${
               isDark ? "text-white" : "text-teal-900"

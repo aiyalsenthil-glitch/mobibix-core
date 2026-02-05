@@ -66,7 +66,14 @@ const navItems: NavItem[] = [
   },
 ];
 
-export function Sidebar() {
+// ... imports
+
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { theme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -109,15 +116,33 @@ export function Sidebar() {
   const sidebarWidth = isCollapsed ? "w-20" : "w-60";
   const sidebarPadding = isCollapsed ? "p-4" : "p-6";
 
+  // Mobile drawer logic: Fixed, Z-50.
+  // Desktop logic: Fixed, Z-40, hidden on mobile unless open (handled by translate transform instead of display:none to allow animation)
+
+  // Combined Class Logic:
+  // Mobile: fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out
+  // Desktop: lg:translate-x-0 lg:static (wait, needs to be fixed on desktop too as per original code).
+  // Original was: fixed left-0 top-0 h-screen ... hidden lg:flex
+
   return (
     <>
+      {/* Mobile Backdrop */}
+      {mobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
+          onClick={onClose}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-screen ${sidebarWidth} flex flex-col transition-all duration-300 shadow-lg ${
+        className={`fixed left-0 top-0 h-screen ${sidebarWidth} flex flex-col transition-transform duration-300 shadow-lg ${
           isDark
             ? "bg-gray-950 border-gray-800"
             : "bg-gradient-to-b from-white via-teal-50/30 to-white border-teal-100"
-        } border-r z-40`}
+        } border-r z-50 lg:z-40 ${
+            mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
       >
         {/* Logo/Brand */}
         <div

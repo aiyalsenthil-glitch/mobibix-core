@@ -31,12 +31,14 @@ import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 @Module({
   imports: [
     HttpModule.registerAsync({
-      useFactory: (configService: ConfigService) => ({
-        baseURL:
-          configService.get<string>('CORE_API_BASE_URL') ||
-          'http://localhost_REPLACED:3000',
-        timeout: 10000,
-      }),
+      useFactory: (configService: ConfigService) => {
+        const port = configService.get('PORT') || 3000;
+        const baseUrl = configService.get<string>('CORE_API_BASE_URL') || `http://localhost_REPLACED:${port}`;
+        return {
+          baseURL: baseUrl,
+          timeout: 10000,
+        };
+      },
       inject: [ConfigService],
     }),
     WhatsAppModule,
