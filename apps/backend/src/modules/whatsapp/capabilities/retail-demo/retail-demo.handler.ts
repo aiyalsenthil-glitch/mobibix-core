@@ -17,10 +17,13 @@ export class RetailDemoHandler {
 
   async handleMessage(tenantId: string, phone: string, text: string): Promise<void> {
     const cleanText = text.trim().toLowerCase();
-    this.logger.log(`[RETAIL_DEMO] Processing '${cleanText}' from ${phone}`);
+    console.log(`[RETAIL_DEMO] Handle Message: '${cleanText}' from ${phone}`);
 
     // 0. STOP if Staff Replied Recently (24h)
-    if (await this.hasStaffRepliedRecently(tenantId, phone)) {
+    const staffReplied = await this.hasStaffRepliedRecently(tenantId, phone);
+    console.log(`[RETAIL_DEMO] Staff Replied Recently? ${staffReplied}`);
+
+    if (staffReplied) {
       this.logger.log(`[RETAIL_DEMO] Skipping automation - Staff active for ${phone}`);
       return;
     }

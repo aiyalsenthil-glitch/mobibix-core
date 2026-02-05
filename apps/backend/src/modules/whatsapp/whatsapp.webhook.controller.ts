@@ -85,6 +85,8 @@ export class WhatsAppWebhookController {
       const messages = changes.value?.messages || [];
       const statuses = changes.value?.statuses || [];
 
+      console.log(`[Webhook] Processing ${messages.length} messages, ${statuses.length} statuses.`);
+
       // A. Process Statuses (Async)
       for (const status of statuses) {
         // Void promise to avoid unhandled rejection crash at top level
@@ -95,10 +97,12 @@ export class WhatsAppWebhookController {
 
       // B. Process Messages (Async)
       if (messages.length > 0) {
+        console.log('[Webhook] Invoking handleIncomingMessages...');
         this.handleIncomingMessages(messages, metadata).catch(err => 
            this.logger.error(`Message processing error: ${err.message}`)
         );
       }
+
     } catch (error) {
       this.logger.error(`Webhook processing crashed: ${error.message}`, error.stack);
     }
@@ -108,9 +112,13 @@ export class WhatsAppWebhookController {
    * Handle incoming messages (Text, Quick Reply, etc.)
    */
   private async handleIncomingMessages(messages: any[], metadata: any) {
+    console.log('[Webhook] handleIncomingMessages started');
+
     if (!messages || messages.length === 0) return;
 
     const phoneNumberId = metadata?.phone_number_id;
+    console.log(`[Webhook] PhoneNumberId from metadata: ${phoneNumberId}`);
+
     if (!phoneNumberId) {
       this.logger.warn('No phone_number_id in webhook metadata');
       return;
@@ -123,6 +131,8 @@ export class WhatsAppWebhookController {
         select: { tenantId: true },
       });
 
+      console.log(`[Webhook] Tenant lookup result: ${JSON.stringify(waNumber)}`);
+
       if (!waNumber) {
         this.logger.warn(`Unknown WhatsApp Number ID: ${phoneNumberId}`);
         return;
@@ -132,6 +142,7 @@ export class WhatsAppWebhookController {
 
       for (const message of messages) {
         const messageId = message.id; // wamid.HBgLM...
+        console.log(`[Webhook] Processing messageId: ${messageId}`);
 
         // 2. Idempotency Check
         const existingLog = await this.prisma.whatsAppLog.findFirst({
@@ -141,6 +152,7 @@ export class WhatsAppWebhookController {
 
         if (existingLog) {
           this.logger.debug(`Duplicate message ignored: ${messageId}`);
+          console.log(`[Webhook] Duplicate ignored: ${messageId}`);
           continue;
         }
 
@@ -159,6 +171,8 @@ export class WhatsAppWebhookController {
           }
         }
 
+        console.log(`[Webhook] Extracted text: "${text}" from ${senderPhone}`);
+
         if (text) {
           this.logger.log(`📨 Received '${text}' from ${senderPhone} (Tenant: ${tenantId})`);
           
@@ -176,7 +190,10 @@ export class WhatsAppWebhookController {
           });
 
           // 5. Route to Automation
+          console.log(`[Webhook] Routing to automation for Tenant ${tenantId}...`);
           await this.router.routeMessage(tenantId, senderPhone, text);
+        } else {
+             console.log('[Webhook] No text content found in message.');
         }
       }
     } catch (err) {
