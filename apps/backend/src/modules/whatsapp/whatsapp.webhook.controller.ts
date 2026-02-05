@@ -45,144 +45,188 @@ export class WhatsAppWebhookController {
    */
   @Post()
   @Public()
-  handleWebhook(@Req() req, @Res() res) {
-    console.log('🔥 WEBHOOK HIT');
-    console.log('phone_number_id =', req.body?.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id);
-    console.log('messages =', req.body?.entry?.[0]?.changes?.[0]?.value?.messages);
-    res.sendStatus(200);
-  }
+  async handleWebhook(@Req() req, @Res() res) {
+    // 1. Validations (Signature)
+    const signature = req.headers['x-hub-signature-256'];
+    if (!signature) {
+      this.logger.warn('Missing signature');
+      return res.status(403).json({ message: 'Missing signature' });
+    }
 
-     
-       /**
-        * Handle incoming messages (Text, Quick Reply, etc.)
-        */
-       private async handleIncomingMessages(messages: any[], metadata: any) {
-         if (!messages || messages.length === 0) return;
-     
-         // Extract tenantId from metadata (if available) or we need another way?
-         // WAIT: The webhook from Meta doesn't send "tenantId".
-         // We must resolve tenantId from the `display_phone_number` or the `phone_number_id` in metadata.
-         // metadata: { display_phone_number: '...', phone_number_id: '...' }
-     
-         const phoneNumberId = metadata?.phone_number_id;
-         if (!phoneNumberId) {
-           this.logger.warn('No phone_number_id in webhook metadata');
-           return;
-         }
-     
-         try {
-           // Resolve Tenant by PhoneNumberId
-           // We need a way to find Tenant ID from PhoneNumberId.
-           // WhatsAppPhoneNumbersService has `findByPhoneNumberId`? Or direct Prisma query?
-           // Since we can't inject Service easily without refactor circular deps maybe?
-           // Let's rely on Prisma directly since it's already injected.
-           
-           const waNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
-             where: { phoneNumberId },
-             select: { tenantId: true },
-           });
-     
-           if (!waNumber) {
-             this.logger.warn(`Unknown WhatsApp Number ID: ${phoneNumberId}`);
-             return;
-           }
-     
-           const tenantId = waNumber.tenantId;
-     
-           for (const message of messages) {
-             const senderPhone = message.from; // e.g., 919876543210
-             
-             // Process only TEXT messages or QUICK REPLIES
-             let text = '';
-             if (message.type === 'text') {
-               text = message.text?.body;
-             } else if (message.type === 'interactive' && message.interactive?.type === 'button_reply') {
-               // Handle button clicks (e.g. Menu options if we use buttons later)
-               text = message.interactive.button_reply.id; // or title
-             } else if (message.type === 'interactive' && message.interactive?.type === 'list_reply') {
-                text = message.interactive.list_reply.id; 
-             }
-     
-             if (text) {
-               this.logger.log(`Received message from ${senderPhone} for Tenant ${tenantId}: "${text}"`);
-               
-               // ROUTE THE MESSAGE
-               await this.router.routeMessage(tenantId, senderPhone, text);
-             }
-           }
-      } catch (err) {
-      this.logger.error('Error handling incoming messages', err);
+    const appSecret = process.env.WHATSAPP_APP_SECRET; // Ensure this env is set
+    if (appSecret) {
+      // Basic HMAC verification if secret exists
+      const crypto = require('crypto');
+      const hmac = crypto.createHmac('sha256', appSecret);
+      const digest = Buffer.from(
+        'sha256=' + hmac.update(req.rawBody || JSON.stringify(req.body)).digest('hex'),
+        'utf8',
+      );
+      const checksum = Buffer.from(signature, 'utf8');
+
+      if (digest.length !== checksum.length || !crypto.timingSafeEqual(digest, checksum)) {
+        this.logger.warn('Invalid signature');
+        return res.status(403).json({ message: 'Invalid signature' });
+      }
+    }
+
+    // 2. Fast ACK
+    res.status(200).send('EVENT_RECEIVED');
+
+    // 3. Async Processing
+    try {
+      const body = req.body;
+      const changes = body?.entry?.[0]?.changes?.[0];
+      if (!changes) return; // Handshake or heartbeat
+
+      const metadata = changes.value?.metadata;
+      const messages = changes.value?.messages || [];
+      const statuses = changes.value?.statuses || [];
+
+      // A. Process Statuses (Async)
+      for (const status of statuses) {
+        // Void promise to avoid unhandled rejection crash at top level
+        this.handleStatusUpdate(status, metadata).catch(err => 
+          this.logger.error(`Status update error: ${err.message}`)
+        );
+      }
+
+      // B. Process Messages (Async)
+      if (messages.length > 0) {
+        this.handleIncomingMessages(messages, metadata).catch(err => 
+           this.logger.error(`Message processing error: ${err.message}`)
+        );
+      }
+
+  /**
+   * Handle incoming messages (Text, Quick Reply, etc.)
+   */
+  private async handleIncomingMessages(messages: any[], metadata: any) {
+    if (!messages || messages.length === 0) return;
+
+    const phoneNumberId = metadata?.phone_number_id;
+    if (!phoneNumberId) {
+      this.logger.warn('No phone_number_id in webhook metadata');
+      return;
+    }
+
+    try {
+      // 1. Resolve Tenant
+      const waNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
+        where: { phoneNumberId },
+        select: { tenantId: true },
+      });
+
+      if (!waNumber) {
+        this.logger.warn(`Unknown WhatsApp Number ID: ${phoneNumberId}`);
+        return;
+      }
+
+      const tenantId = waNumber.tenantId;
+
+      for (const message of messages) {
+        const messageId = message.id; // wamid.HBgLM...
+
+        // 2. Idempotency Check
+        const existingLog = await this.prisma.whatsAppLog.findFirst({
+          where: { messageId },
+          select: { id: true }
+        });
+
+        if (existingLog) {
+          this.logger.debug(`Duplicate message ignored: ${messageId}`);
+          continue;
+        }
+
+        // 3. Process Content
+        const senderPhone = message.from; 
+        let text = '';
+        
+        if (message.type === 'text') {
+          text = message.text?.body;
+        } else if (message.type === 'interactive') {
+          const interactive = message.interactive;
+          if (interactive.type === 'button_reply') {
+             text = interactive.button_reply.id;
+          } else if (interactive.type === 'list_reply') {
+             text = interactive.list_reply.id;
+          }
+        }
+
+        if (text) {
+          this.logger.log(`📨 Received '${text}' from ${senderPhone} (Tenant: ${tenantId})`);
+          
+          // 4. Log Incoming Message (Optional but good for history)
+          // We create a log entry so next time it's caught by idempotency
+          await this.prisma.whatsAppLog.create({
+            data: {
+              tenantId,
+              phone: senderPhone,
+              type: 'INCOMING',
+              status: 'RECEIVED',
+              messageId: messageId,
+              metadata: message
+            }
+          });
+
+          // 5. Route to Automation
+          await this.router.routeMessage(tenantId, senderPhone, text);
+        }
+      }
+    } catch (err) {
+      this.logger.error(`Error handling incoming messages: ${err.message}`, err.stack);
     }
   }
 
 
   /**
    * Handle message status updates from Meta
-   * Updates WhatsAppLog with delivery status
    */
   private async handleStatusUpdate(status: any, metadata: any) {
     const messageId = status.id;
-    const statusValue = status.status; // sent, delivered, read, failed
+    const statusValue = status.status; 
     const timestamp = status.timestamp
       ? new Date(parseInt(status.timestamp) * 1000)
       : new Date();
-    const recipientId = status.recipient_id;
 
-    if (!messageId) {
-      return;
-    }
+    if (!messageId) return;
 
     try {
       // Find the log entry by messageId
       const log = await this.prisma.whatsAppLog.findFirst({
         where: { messageId },
+        select: { id: true } // optim
       });
 
       if (!log) {
-        this.logger.warn(
-          `No log found for messageId: ${messageId}. Status: ${statusValue}`,
-        );
+        // Warning is okay, sometimes status arrives before log created if async race
+        // this.logger.warn(`No log found for status update: ${messageId}`);
         return;
       }
 
-      // Update log status based on Meta status
-      const updateData: any = {
-        updatedAt: timestamp,
-      };
+      const updateData: any = { updatedAt: timestamp };
 
-      switch (statusValue) {
-        case 'sent':
-          updateData.status = 'SENT';
-          break;
-        case 'delivered':
+      if (statusValue === 'sent') updateData.status = 'SENT';
+      else if (statusValue === 'delivered') {
           updateData.status = 'DELIVERED';
           updateData.deliveredAt = timestamp;
-          break;
-        case 'read':
+      }
+      else if (statusValue === 'read') {
           updateData.status = 'READ';
           updateData.readAt = timestamp;
-          break;
-        case 'failed':
+      }
+      else if (statusValue === 'failed') {
           updateData.status = 'FAILED';
-          updateData.error = status.errors
-            ? JSON.stringify(status.errors)
-            : 'Failed to deliver';
-          break;
-        default:
-          break;
+          updateData.error = status.errors ? JSON.stringify(status.errors) : 'Failed';
       }
 
       await this.prisma.whatsAppLog.update({
         where: { id: log.id },
         data: updateData,
       });
-
-      this.logger.log(`Updated message ${messageId} status to ${statusValue}`);
+      // this.logger.debug(`Updated status ${messageId} -> ${statusValue}`);
     } catch (error) {
-      this.logger.error(
-        `Failed to update status for messageId ${messageId}:`,
-        error,
-      );
+      this.logger.error(`Failed to update status ${messageId}: ${error.message}`);
     }
   }
 }
