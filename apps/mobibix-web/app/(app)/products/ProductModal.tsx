@@ -125,7 +125,7 @@ export function ProductModal({
         isSerialized: formData.isSerialized,
       });
 
-      // Handle Immediate Stock Initialization if provided
+      // Handle Immediate Stock Initialization if provided (skip for SERVICE)
       const imeis = formData.openingImeis
         .split(/\r?\n/)
         .map((s) => s.trim())
@@ -134,7 +134,7 @@ export function ProductModal({
         ? imeis.length
         : parseFloat(formData.openingStock) || 0;
 
-      if (stockQty > 0) {
+      if (stockQty > 0 && formData.type !== ProductType.SERVICE) {
         try {
           await stockIn(shopId, {
             shopProductId: newProduct.id,
@@ -504,7 +504,8 @@ export function ProductModal({
                 </div>
               </div>
 
-              {/* Initial Stock Section */}
+              {/* Initial Stock Section - Hidden for SERVICE products */}
+              {formData.type !== ProductType.SERVICE && (
               <div
                 className={`mt-6 p-4 rounded-xl border ${
                   theme === "dark"
@@ -612,6 +613,7 @@ export function ProductModal({
                   </p>
                 </div>
               </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-white/10">

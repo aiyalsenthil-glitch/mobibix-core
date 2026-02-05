@@ -476,8 +476,10 @@ function AddPartModal({
   useEffect(() => {
     if (searchTerm.length > 1 && !createMode) {
       listProducts(shopId).then((all) => {
+        // Filter out SERVICE products - only physical parts allowed
         setProducts(
           all.filter((p) =>
+            p.type !== ProductType.SERVICE &&
             p.name.toLowerCase().includes(searchTerm.toLowerCase()),
           ),
         );
@@ -568,6 +570,9 @@ function AddPartModal({
                 <label className="block text-sm font-semibold mb-2 dark:text-gray-300">
                   Search Product
                 </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Only physical parts shown. Service charges are calculated separately.
+                </p>
                 <div className="relative">
                   <input
                     autoFocus

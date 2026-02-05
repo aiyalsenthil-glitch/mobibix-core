@@ -28,6 +28,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JobStatusChangedEvent } from '../../../core/events/crm.events';
 import { JobStatusValidator } from './job-status-validator.service';
 import { DocumentNumberService } from '../../../common/services/document-number.service';
+import { StockService } from '../../../core/stock/stock.service';
 
 @Injectable()
 export class JobCardsService {
@@ -36,6 +37,7 @@ export class JobCardsService {
     private eventEmitter: EventEmitter2,
     private statusValidator: JobStatusValidator,
     private documentNumberService: DocumentNumberService,
+    private stockService: StockService,
   ) {}
 
   async assertAccess(user: any, shopId: string) {
@@ -211,20 +213,17 @@ export class JobCardsService {
 
     if (!product) throw new NotFoundException('Product not found');
 
-    // Check stock if goods
-    if (product.type === ProductType.GOODS || product.type === ProductType.SPARE) {
-       // Assuming quantity tracks stock for these types
-       // We only block if we track negative stock? For now, allow negative but warn?
-       // Usually we strictly deduct.
+    // 🛡️ BUSINESS RULE: SERVICE products cannot be added as parts
+    // Services are billed separately, never tracked in inventory
+    if (product.type === ProductType.SERVICE) {
+      throw new BadRequestException(
+        `"${product.name}" is a service item and cannot be added as a repair part. Services are billed separately.`
+      );
     }
 
     // Use transaction to ensure stock deduction happens with part usage
     return this.prisma.$transaction(async (tx) => {
-       // 1. Create JobCardPart
-       // Check if exists first? Or accumulate? Usually unique per product per job?
-       // Schema has unique constraint: @@unique([jobCardId, shopProductId])
-       // So we upsert or error. Let's upsert (accumulate qty)
-
+       // 1. Upsert JobCardPart (accumulate quantity if already exists)
        const existing = await tx.jobCardPart.findUnique({
           where: { jobCardId_shopProductId: { jobCardId: jobId, shopProductId: dto.productId } }
        });
@@ -235,11 +234,7 @@ export class JobCardsService {
        if (existing) {
           await tx.jobCardPart.update({
              where: { id: existing.id },
-             data: { quantity: newQty } // Cost price remains of original entry? Or weighted? Simplified: keep original or update?
-             // Let's keep original cost logic or update if new batch? 
-             // Requirement: "Snapshot cost price". If adding more, technically mixed.
-             // Simplification: Update cost to current snapshot for the *entire* line might be wrong.
-             // But usually you add parts once. If adding more, assume same cost or overwrite.
+             data: { quantity: newQty }
           });
        } else {
           await tx.jobCardPart.create({
@@ -252,38 +247,19 @@ export class JobCardsService {
           });
        }
 
-       // 2. Deduct Stock
-       if (product.type !== ProductType.SERVICE) {
-          // Update Product Stock (Assuming simplified quantity field on ShopProduct or via StockLedger agg)
-          // Since we don't have direct quantity on ShopProduct (it's derived?), we usually add StockLedger entry.
-          // Wait, schema show ShopProduct doesn't have 'quantity' field visible in my view (lines 761-796). 
-          // Ah, I missed 'quantity' field in ShopProduct view or it's not there? 
-          // Usually inventory is computed or cached.
-          // Let's double check ShopProduct fields in schema viewer (Lines 761+).
-          // Line 767: salePrice, 768 costPrice, 769 avgCost... 
-          // It seems 'quantity' is missing in the snippet I viewed. 
-          // Let's assume it exists or use StockLedger. 
-          // Most robust systems use StockLedger. I will create StockLedger entry.
-          
-          await tx.stockLedger.create({
-             data: {
-                tenantId: user.tenantId,
-                shopId: shopId,
-                shopProductId: dto.productId,
-                type: StockEntryType.OUT,
-                quantity: dto.quantity,
-                referenceType: StockRefType.REPAIR,
-                referenceId: jobId,
-                costPerUnit: costSnapshot,
-                note: `Used in Job #${job.jobNumber}`
-             }
-          });
-          
-          // Trigger stock update logic? (Usually triggers or service method).
-          // I will manually decrement if 'quantity' field exists, otherwise rely on ledger aggregation.
-          // Since I can't verify 'quantity' exists on ShopProduct without seeing schema, I'll assume StockLedger is the source of truth 
-          // OR I should use InventoryService if it existed.
-       }
+       // 2. Deduct Stock via StockService (enforces availability, IMEI validation, etc.)
+       // This ensures all stock rules are applied consistently across the system
+       await this.stockService.recordStockOut(
+         user.tenantId,
+         shopId,
+         dto.productId,
+         dto.quantity,
+         'REPAIR',
+         jobId,
+         costSnapshot,
+         undefined, // IMEIs handled by StockService internally
+         tx
+       );
        
        return { success: true };
     });
@@ -311,21 +287,19 @@ export class JobCardsService {
         
         if (!part) throw new NotFoundException('Part not found');
 
-        // Restore Stock
+        // Restore Stock via StockService (consistent with addPart)
         if (part.product.type !== ProductType.SERVICE) {
-           await tx.stockLedger.create({
-              data: {
-                 tenantId: user.tenantId,
-                 shopId: shopId,
-                 shopProductId: part.shopProductId,
-                 type: StockEntryType.IN,
-                 quantity: part.quantity,
-                 referenceType: StockRefType.REPAIR,
-                 referenceId: jobId,
-                 costPerUnit: part.costPrice, 
-                 note: `Removed from Job #${job.jobNumber}`
-              }
-           });
+           await this.stockService.recordStockIn(
+             user.tenantId,
+             shopId,
+             part.shopProductId,
+             part.quantity,
+             'REPAIR',
+             jobId,
+             part.costPrice ?? undefined,
+             undefined, // IMEIs
+             tx
+           );
         }
         
         // Delete usage record
@@ -646,38 +620,50 @@ export class JobCardsService {
 
     // Calculate Totals & Items
     const itemsData: any[] = []; 
-    let partsTotal = 0;
+    let partsSubtotalPaisa = 0; // Sum of parts only (before GST)
+    let partsTaxPaisa = 0; // GST on parts
 
-    // 1. Add Parts
+    // 1. Add Parts (physical inventory items)
     if (job.parts && job.parts.length > 0) {
        for (const part of job.parts) {
-          const rate = part.product.salePrice || 0;
-          const lineTotal = rate * part.quantity; // rate is Paisa
+          const ratePaisa = part.product.salePrice || 0;
+          const quantityNum = part.quantity;
+          const gstRatePercent = isGstApplicable ? (part.product.gstRate || 0) : 0;
+          
+          // Calculate GST-inclusive line total
+          const lineSubtotalPaisa = ratePaisa * quantityNum;
+          const lineTaxPaisa = Math.round((lineSubtotalPaisa * gstRatePercent) / 100);
+          const lineTotalPaisa = lineSubtotalPaisa + lineTaxPaisa;
           
           itemsData.push({
              shopProductId: part.shopProductId,
-             quantity: part.quantity,
-             rate: rate, 
+             quantity: quantityNum,
+             rate: ratePaisa, 
              hsnCode: part.product.hsnCode || '9987', 
-             gstRate: part.product.gstRate || 0,
-             gstAmount: 0, // Recalculated later if needed or relying on updateInvoice? Ideally correct here.
-             // If WITHOUT_GST, gstAmount is 0. If WITH_GST, we should probably calc it? 
-             // Ideally we create DRAFT and let updateInvoice fix totals, but better consistency to set 0.
-             lineTotal: lineTotal 
+             gstRate: gstRatePercent,
+             gstAmount: lineTaxPaisa,
+             lineTotal: lineTotalPaisa
           });
           
-          partsTotal += lineTotal;
+          partsSubtotalPaisa += lineSubtotalPaisa;
+          partsTaxPaisa += lineTaxPaisa;
        }
     }
     
-    // 2. Add Service Charge (Differential)
-    const targetTotal = (job.finalCost || job.estimatedCost || 0) * 100; // Convert to Paisa to compare with partsTotal
-    const difference = targetTotal - partsTotal;
+    // 2. Calculate Service Charge (difference between job cost and parts)
+    // Service charge = What customer pays - Cost of parts used
+    const targetTotalPaisa = (job.finalCost || job.estimatedCost || 0) * 100; // Convert to Paisa
+    const partsWithTaxPaisa = partsSubtotalPaisa + partsTaxPaisa;
+    const serviceChargePaisa = Math.max(0, targetTotalPaisa - partsWithTaxPaisa); // Never negative
     
-    if (difference > 0) {
-       // Find 'Service Charge' product or create it
+    // 3. Add ONE service line item if there's a service charge
+    let serviceSubtotalPaisa = 0;
+    let serviceTaxPaisa = 0;
+    
+    if (serviceChargePaisa > 0) {
+       // Find or create "Repair Service" product (standard SERVICE type)
        let serviceProduct = await this.prisma.shopProduct.findFirst({
-         where: { shopId: job.shopId, name: 'Service Charge', type: 'SERVICE' }
+         where: { shopId: job.shopId, name: 'Repair Service', type: 'SERVICE' }
        });
 
        if (!serviceProduct) {
@@ -685,35 +671,44 @@ export class JobCardsService {
            data: {
              tenantId: job.tenantId,
              shopId: job.shopId,
-             name: 'Service Charge',
+             name: 'Repair Service',
              type: 'SERVICE',
-             salePrice: 0,
-             gstRate: 18, // Default service tax
-             hsnCode: '9987',
+             salePrice: 0, // Dynamic pricing
+             gstRate: 18, // Default service tax rate
+             hsnCode: '9987', // SAC for repair services
              isActive: true
            }
          });
        }
 
+       const serviceGstRate = isGstApplicable ? (serviceProduct.gstRate || 18) : 0;
+       
+       // If serviceChargePaisa is GST-inclusive, extract base
+       // Assume serviceChargePaisa is the final amount to customer
+       // Back-calculate: base = total / (1 + gstRate/100)
+       const divisor = 1 + (serviceGstRate / 100);
+       serviceSubtotalPaisa = Math.round(serviceChargePaisa / divisor);
+       serviceTaxPaisa = serviceChargePaisa - serviceSubtotalPaisa;
+
        itemsData.push({
           shopProductId: serviceProduct.id,
           quantity: 1,
-          rate: difference,
+          rate: serviceSubtotalPaisa, // Base service charge
           hsnCode: serviceProduct.hsnCode || '9987',
-          gstRate: serviceProduct.gstRate || 18,
-          gstAmount: 0,
-          lineTotal: difference
+          gstRate: serviceGstRate,
+          gstAmount: serviceTaxPaisa,
+          lineTotal: serviceChargePaisa // Total including GST
        });
     }
     
-    // Calculate Invoice Levels (Paisa)
-    // If No GST, Total = SubTotal. If GST, SubTotal is derived? 
-    // Here we treat TargetTotal as Final Amount.
-    const subTotalPaisa = Math.round(targetTotal); 
+    // 4. Calculate invoice-level totals
+    const invoiceSubtotalPaisa = partsSubtotalPaisa + serviceSubtotalPaisa;
+    const invoiceTaxPaisa = partsTaxPaisa + serviceTaxPaisa;
+    const invoiceGrandTotalPaisa = invoiceSubtotalPaisa + invoiceTaxPaisa;
 
     const fy = getFinancialYear(new Date());
 
-    // Create DRAFT invoice
+    // Create DRAFT invoice with correct totals
     const invoice = await this.prisma.invoice.create({
       data: {
         tenantId: job.tenantId,
@@ -726,9 +721,9 @@ export class JobCardsService {
         customerName: job.customerName,
         customerPhone: job.customerPhone,
         status: InvoiceStatus.DRAFT,
-        subTotal: subTotalPaisa, 
-        gstAmount: 0,
-        totalAmount: subTotalPaisa,
+        subTotal: invoiceSubtotalPaisa, 
+        gstAmount: invoiceTaxPaisa,
+        totalAmount: invoiceGrandTotalPaisa,
         paymentMode: 'CASH',
         cashAmount: 0,
         invoiceType,
