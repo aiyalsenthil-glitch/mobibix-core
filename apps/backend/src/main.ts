@@ -48,6 +48,7 @@ async function bootstrap() {
         'https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com',
         'https://mobibix.in',
         'https://www.mobibix.in',
+        'https://gym-saas-cxg5.onrender.com',
         'http://10.0.2.2:3000',
       ],
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -80,7 +81,6 @@ async function bootstrap() {
   /**
    * 🚨 TEMPORARY: Raw Admin Injection Route (Bypasses Guards)
    */
-
 
   /**
    * 7️⃣ Create NestJS app ON SAME Express instance
@@ -129,72 +129,76 @@ async function bootstrap() {
    * 🚨 TEMPORARY: Raw Admin Injection Route (Bypasses Guards)
    * Using app.get(PrismaService) to reuse existing connection
    */
-    server.options('/admin/inject-sub', (req, res) => {
-        res.header('Access-Control-Allow-Origin', '*');
-        res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-        res.header('Access-Control-Allow-Headers', 'Content-Type');
-        res.sendStatus(200);
-    });
+  server.options('/admin/inject-sub', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.sendStatus(200);
+  });
 
-    server.post('/admin/inject-sub', async (req, res) => {
-        // Manually handle CORS for this raw route
-        res.header('Access-Control-Allow-Origin', '*'); 
-        res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-        res.header('Access-Control-Allow-Headers', 'Content-Type');
+  server.post('/admin/inject-sub', async (req, res) => {
+    // Manually handle CORS for this raw route
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
 
-        if (req.method === 'OPTIONS') {
-            res.sendStatus(200);
-            return;
-        }
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(200);
+      return;
+    }
 
-        try {
-            const { tenantId, planId } = req.body;
-            console.log(`[Raw] Injecting plan for ${tenantId}...`);
+    try {
+      const { tenantId, planId } = req.body;
+      console.log(`[Raw] Injecting plan for ${tenantId}...`);
 
-            // Resolve PrismaService from Nest App Context
-            const prisma = app.get(PrismaService);
+      // Resolve PrismaService from Nest App Context
+      const prisma = app.get(PrismaService);
 
-            await prisma.tenantSubscription.upsert({
-                where: {
-                    tenantId_module: {
-                        tenantId: tenantId,
-                        module: 'WHATSAPP_CRM', 
-                    },
-                },
-                update: {
-                    status: 'ACTIVE',
-                    planId: planId,
-                    startDate: new Date(),
-                    endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-                    autoRenew: true,
-                },
-                create: {
-                    tenantId: tenantId,
-                    planId: planId,
-                    module: 'WHATSAPP_CRM',
-                    status: 'ACTIVE',
-                    startDate: new Date(),
-                    endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-                    autoRenew: true,
-                },
-            });
+      await prisma.tenantSubscription.upsert({
+        where: {
+          tenantId_module: {
+            tenantId: tenantId,
+            module: 'WHATSAPP_CRM',
+          },
+        },
+        update: {
+          status: 'ACTIVE',
+          planId: planId,
+          startDate: new Date(),
+          endDate: new Date(
+            new Date().setFullYear(new Date().getFullYear() + 1),
+          ),
+          autoRenew: true,
+        },
+        create: {
+          tenantId: tenantId,
+          planId: planId,
+          module: 'WHATSAPP_CRM',
+          status: 'ACTIVE',
+          startDate: new Date(),
+          endDate: new Date(
+            new Date().setFullYear(new Date().getFullYear() + 1),
+          ),
+          autoRenew: true,
+        },
+      });
 
-            await prisma.tenant.update({
-                where: { id: tenantId },
-                data: { 
-                    whatsappCrmEnabled: true,
-                    whatsappPhoneNumberId: '100609346426084',
-                    tenantType: 'MOBILE_SHOP' 
-                },
-            });
-            
-            console.log('[Raw] Injection success');
-            res.json({ success: true, message: 'Injected via raw route' });
-        } catch (err: any) {
-            console.error('[Raw] Injection failed', err);
-            res.status(500).json({ error: err.message });
-        }
-    });
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: {
+          whatsappCrmEnabled: true,
+          whatsappPhoneNumberId: '100609346426084',
+          tenantType: 'MOBILE_SHOP',
+        },
+      });
+
+      console.log('[Raw] Injection success');
+      res.json({ success: true, message: 'Injected via raw route' });
+    } catch (err: any) {
+      console.error('[Raw] Injection failed', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
 
   await app.listen(port);
 
