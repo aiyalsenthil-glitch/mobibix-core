@@ -55,6 +55,7 @@ export default function JobCardDetailPage() {
   const { authUser: user } = useAuth(); // To check role
   const { selectedShopId } = useShop();
   const [isAddPartModalOpen, setIsAddPartModalOpen] = useState(false);
+  const isOwner = user?.role?.toLowerCase() === "owner";
 
   // Load Job Details
   const {
@@ -390,7 +391,7 @@ export default function JobCardDetailPage() {
           </div>
 
           {/* PROFIT CARD (OWNER ONLY) */}
-          {user?.role === "owner" && job.profit !== undefined && (
+          {isOwner && job.profit !== undefined && (
             <div className="bg-linear-to-br from-gray-900 to-gray-800 text-white rounded-xl p-6 shadow-xl overflow-hidden relative">
               <div className="absolute top-0 right-0 p-4 opacity-10 text-6xl">
                 💰

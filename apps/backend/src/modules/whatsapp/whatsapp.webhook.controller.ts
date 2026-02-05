@@ -97,6 +97,10 @@ export class WhatsAppWebhookController {
            this.logger.error(`Message processing error: ${err.message}`)
         );
       }
+    } catch (error) {
+      this.logger.error(`Webhook processing crashed: ${error.message}`, error.stack);
+    }
+  }
 
   /**
    * Handle incoming messages (Text, Quick Reply, etc.)
