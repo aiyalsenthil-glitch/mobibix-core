@@ -13,6 +13,8 @@ import { Permission } from '../../../core/auth/permissions.enum';
 import { GymAttendanceService } from './gym-attendance.service';
 import { PermissionsGuard } from '../../../core/auth/guards/permissions.guard';
 import { TenantStatusGuard } from '../../../core/tenant/guards/tenant-status.guard';
+import { Roles } from '../../../core/auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('gym/attendance')
 export class GymAttendanceController {
@@ -23,6 +25,7 @@ export class GymAttendanceController {
   // ========================
 
   @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_MARK)
   @Post('check-in')
   checkIn(@Req() req: any, @Body('memberId') memberId: string) {
@@ -30,6 +33,7 @@ export class GymAttendanceController {
   }
 
   @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_MARK)
   @Post('check-out')
   checkOut(@Req() req: any, @Body('memberId') memberId: string) {
@@ -37,6 +41,7 @@ export class GymAttendanceController {
   }
 
   @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('today')
   today(@Req() req: any) {
@@ -46,6 +51,7 @@ export class GymAttendanceController {
   // STATUS BY PHONE
   // ========================
   @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('status-by-phone/:phone')
   getStatusByPhone(@Req() req: any, @Param('phone') phone: string) {
@@ -70,6 +76,7 @@ export class GymAttendanceController {
   // CHECKIN CHEKOUT BY STAFF
   // ========================
   @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_MARK)
   @Post('staff/check')
   checkByPhoneStaff(@Req() req: any, @Body('phone') phone: string) {
@@ -78,6 +85,7 @@ export class GymAttendanceController {
 
   //Today attendance count
   @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('today-count')
   countToday(@Req() req: any) {
@@ -85,6 +93,7 @@ export class GymAttendanceController {
   }
   //Currently inside count
   @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('inside-count')
   countInside(@Req() req: any) {
@@ -93,6 +102,7 @@ export class GymAttendanceController {
     );
   }
   @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('member/:memberId/recent')
   getRecentForMember(@Req() req: any, @Param('memberId') memberId: string) {
@@ -104,6 +114,7 @@ export class GymAttendanceController {
   }
 
   @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('inside-members')
   getInsideMembers(@Req() req: any) {

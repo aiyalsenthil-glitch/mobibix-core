@@ -14,14 +14,17 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { PurchasesService } from './purchases.service';
 import { CreatePurchaseDto } from './dto/create-purchase.dto';
 import { UpdatePurchaseDto, PurchaseStatus } from './dto/update-purchase.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { PurchaseResponseDto } from './dto/purchase.response.dto';
+import { UserRole } from '@prisma/client';
 
 @Controller('purchases')
 @UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class PurchasesController {
   constructor(private readonly purchasesService: PurchasesService) {}
 

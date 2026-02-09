@@ -7,6 +7,12 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import { PLAN_CAPABILITIES } from '../billing/plan-capabilities';
+import {
+  excludeDeleted,
+  softDeleteData,
+  restoreData,
+} from '../soft-delete/soft-delete.helper';
+import { getCreateAudit, getUpdateAudit } from '../audit/audit.helper';
 
 @Injectable()
 export class StaffService {
@@ -68,8 +74,11 @@ export class StaffService {
       },
     });
 
-    return staff.map((s) => ({
-      id: s.user.id, // 🔥 THIS FIXES EVERYTHING
+    // Filter out soft-deleted users after query
+    const activeStaff = staff.filter((s) => !s.user.deletedAt);
+
+    return activeStaff.map((s) => ({
+      id: s.user.id,
       email: s.user.email,
       fullName: s.user.fullName,
       phone: s.user.phone,
@@ -80,6 +89,7 @@ export class StaffService {
   // ✅ Create staff (attach existing user to tenant)
   async createStaff(
     tenantId: string,
+    creatorId: string,
     data: {
       REMOVED_AUTH_PROVIDERUid: string;
       email?: string;
@@ -99,7 +109,7 @@ export class StaffService {
       throw new BadRequestException('User does not exist');
     }
 
-    // ✅ Attach user as STAFF
+    // ✅ Attach user as STAFF with audit trail
     await this.prisma.userTenant.upsert({
       where: {
         userId_tenantId: {
@@ -109,11 +119,13 @@ export class StaffService {
       },
       update: {
         role: UserRole.STAFF,
+        ...getUpdateAudit(creatorId),
       },
       create: {
         userId: existingUser.id,
         tenantId,
         role: UserRole.STAFF,
+        ...getCreateAudit(creatorId),
       },
     });
     // 🔹 MOBILE ERP ONLY: assign staff to shop
@@ -151,7 +163,13 @@ export class StaffService {
   }
 
   // ✅ Invite staff by email
-  async inviteByEmail(tenantId: string, email: string) {
+  async inviteByEmail(
+    tenantId: string,
+    creatorId: string,
+    email: string,
+    name?: string,
+    phone?: string,
+  ) {
     await this.ensureStaffAllowed(tenantId);
 
     // check if user already exists
@@ -189,12 +207,18 @@ export class StaffService {
       update: {
         accepted: false, // reset invite
         createdAt: new Date(), // refresh timestamp (optional)
+        name,
+        phone,
+        ...getUpdateAudit(creatorId),
       },
 
       create: {
         tenantId,
         email,
+        name,
+        phone,
         role: UserRole.STAFF,
+        ...getCreateAudit(creatorId),
       },
     });
   }
@@ -234,7 +258,7 @@ export class StaffService {
 
     return { success: true };
   }
-  // ✅ Remove staff from tenant
+  // ✅ Remove staff from tenant (soft delete)
   async removeStaff(
     tenantId: string,
     staffUserId: string,
@@ -252,6 +276,7 @@ export class StaffService {
           tenantId,
         },
       },
+      include: { user: true },
     });
 
     if (!staff) {
@@ -263,13 +288,10 @@ export class StaffService {
       throw new ForbiddenException('Cannot remove owner');
     }
 
-    await this.prisma.userTenant.delete({
-      where: {
-        userId_tenantId: {
-          userId: staffUserId,
-          tenantId,
-        },
-      },
+    // 🔥 Soft delete the user instead of hard delete
+    await this.prisma.user.update({
+      where: { id: staffUserId },
+      data: softDeleteData(requesterUserId || staffUserId) as any,
     });
 
     return { success: true };

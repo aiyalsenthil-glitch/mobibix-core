@@ -147,3 +147,95 @@ export async function getTopSellingProducts(
     totalAmount: item.totalAmount / 100,
   }));
 }
+
+// =============================================================================
+// GSTR-1 & TAX REPORTS (TIER-2)
+// =============================================================================
+
+export interface Gstr1SummaryItem {
+  hsnCode: string;
+  description: string;
+  uqc: string;
+  totalQuantity: number;
+  totalValue: number;
+  taxableValue: number;
+  integratedTax: number;
+  centralTax: number;
+  stateTax: number;
+  cess: number;
+}
+
+export interface Gstr1SalesRegisterItem {
+  invoiceNumber: string;
+  invoiceDate: string;
+  customerName: string;
+  gstin: string | null;
+  state: string | null;
+  invoiceValue: number;
+  taxableValue: number;
+  integratedTax: number;
+  centralTax: number;
+  stateTax: number;
+  cess: number;
+}
+
+export async function getGstr1SalesRegister(
+  startDate: string,
+  endDate: string
+): Promise<Gstr1SalesRegisterItem[]> {
+  const query = new URLSearchParams({ startDate, endDate });
+  const response = await authenticatedFetch(
+    `/api/reports/gstr1?${query}`
+  );
+  if (!response.ok) throw new Error("Failed to fetch GSTR-1 Sales Register");
+  const data = await response.json();
+  return data;
+}
+
+export async function getGstr1HsnSummary(
+  startDate: string,
+  endDate: string
+): Promise<Gstr1SummaryItem[]> {
+  const query = new URLSearchParams({ startDate, endDate });
+  const response = await authenticatedFetch(
+    `/api/reports/gstr1/hsn-summary?${query}`
+  );
+  if (!response.ok) throw new Error("Failed to fetch GSTR-1 HSN Summary");
+  const data = await response.json();
+  return data;
+}
+
+// =============================================================================
+// AGING REPORTS (TIER-2)
+// =============================================================================
+
+export interface AgingBucket {
+  bucket: string;
+  amount: number;
+  count: number;
+}
+
+export interface AgingReport {
+  totalOutstanding: number;
+  buckets: AgingBucket[];
+}
+
+export interface AgingReportDetailed extends AgingReport {
+  items: any[]; // Detailed items
+}
+
+export async function getReceivablesAging(detailed = false): Promise<AgingReport | AgingReportDetailed> {
+  const endpoint = detailed ? "/api/reports/receivables-aging/detailed" : "/api/reports/receivables-aging";
+  const response = await authenticatedFetch(endpoint);
+  if (!response.ok) throw new Error("Failed to fetch Receivables Aging report");
+  const data = await response.json();
+  return data;
+}
+
+export async function getPayablesAging(detailed = false): Promise<AgingReport | AgingReportDetailed> {
+  const endpoint = detailed ? "/api/reports/payables-aging/detailed" : "/api/reports/payables-aging";
+  const response = await authenticatedFetch(endpoint);
+  if (!response.ok) throw new Error("Failed to fetch Payables Aging report");
+  const data = await response.json();
+  return data;
+}

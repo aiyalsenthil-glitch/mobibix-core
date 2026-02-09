@@ -21,6 +21,7 @@ import { WhatsAppFeature } from '../billing/whatsapp-rules';
 import { PLAN_LIMITS } from '../billing/plan-limits';
 import { TenantService } from '../tenant/tenant.service';
 import { PlanRulesService } from '../billing/plan-rules.service';
+import { getCreateAudit, getUpdateAudit } from '../audit/audit.helper';
 
 // ─────────────────────────────
 // ✅ Membership duration resolver
@@ -120,7 +121,11 @@ export class MembersService {
     private readonly automationService: AutomationService, // ✅ Injected
   ) {}
 
-  async createMember(tenantId: string, dto: CreateMemberDto) {
+  async createMember(
+    tenantId: string,
+    dto: CreateMemberDto,
+    creatorId: string,
+  ) {
     const subscription = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
@@ -224,6 +229,7 @@ export class MembersService {
         weightKg: dto.weightKg ?? 0,
         fitnessGoal: dto.fitnessGoal,
         customerId: customer.id, // ✅ Linked Customer
+        ...getCreateAudit(creatorId), // ✅ Capture who created
       },
     });
     // ─────────────────────────────
@@ -266,33 +272,59 @@ export class MembersService {
     return member;
   }
 
-  async listMembers(tenantId: string) {
+  async listMembers(
+    tenantId: string,
+    options?: { skip?: number; take?: number; search?: string },
+  ) {
     if (!tenantId) {
       throw new ForbiddenException('Tenant not initialized');
     }
 
-    const members = await this.prisma.member.findMany({
-      where: {
-        tenantId,
-        isActive: true,
-      },
+    const where: any = {
+      tenantId,
+      isActive: true,
+    };
 
-      orderBy: { createdAt: 'desc' },
-    });
+    // Add search filter if provided
+    if (options?.search) {
+      where.OR = [
+        { fullName: { contains: options.search, mode: 'insensitive' } },
+        { phone: { contains: options.search } },
+      ];
+    }
 
-    return members.map((member) => ({
-      id: member.id,
-      fullName: member.fullName,
-      phone: member.phone,
-      photoUrl: member.photoUrl, // ✅ ADD THIS
-      membershipEndAt: member.membershipEndAt,
-      membershipStartAt: member.membershipStartAt,
-      paymentStatus: member.paymentStatus,
-      isActive: member.isActive,
-      isExpired: isMembershipExpired(member.membershipEndAt),
-      heightCm: member.heightCm,
-      weightKg: member.weightKg,
-    }));
+    // Parallel queries for better performance
+    const [members, total] = await Promise.all([
+      this.prisma.member.findMany({
+        where,
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          fullName: true,
+          phone: true,
+          photoUrl: true,
+          membershipEndAt: true,
+          membershipStartAt: true,
+          paymentStatus: true,
+          isActive: true,
+          heightCm: true,
+          weightKg: true,
+        },
+      }),
+      this.prisma.member.count({ where }),
+    ]);
+
+    return {
+      data: members.map((member) => ({
+        ...member,
+        isExpired: isMembershipExpired(member.membershipEndAt),
+      })),
+      total,
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 50,
+    };
   }
   // ===============================
   // MEMBERSHIP RENEWAL DUE
@@ -453,7 +485,12 @@ export class MembersService {
     return updatedMember;
   }
 
-  async updateMember(tenantId: string, memberId: string, dto: UpdateMemberDto) {
+  async updateMember(
+    tenantId: string,
+    memberId: string,
+    dto: UpdateMemberDto,
+    updaterId: string,
+  ) {
     const exists = await this.prisma.member.findFirst({
       where: {
         id: memberId,
@@ -478,7 +515,10 @@ export class MembersService {
 
     return this.prisma.member.update({
       where: { id: memberId },
-      data: updateData,
+      data: {
+        ...updateData,
+        ...getUpdateAudit(updaterId), // ✅ Capture who updated
+      },
     });
   }
   async getMemberPayments(tenantId: string, memberId: string) {

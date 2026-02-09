@@ -35,12 +35,18 @@ async function main() {
     orderBy: { updatedAt: 'desc' },
   });
 
-  console.log(`\n📊 Found ${failedReminders.length} FAILED MOBILE_SHOP reminders:\n`);
+  console.log(
+    `\n📊 Found ${failedReminders.length} FAILED MOBILE_SHOP reminders:\n`,
+  );
 
   for (const reminder of failedReminders) {
     console.log(`ID: ${reminder.id}`);
-    console.log(`  Tenant: ${reminder.tenant?.name} (${reminder.tenant?.tenantType})`);
-    console.log(`  Customer: ${reminder.customer?.name} - ${reminder.customer?.phone}`);
+    console.log(
+      `  Tenant: ${reminder.tenant?.name} (${reminder.tenant?.tenantType})`,
+    );
+    console.log(
+      `  Customer: ${reminder.customer?.name} - ${reminder.customer?.phone}`,
+    );
     console.log(`  Template: ${reminder.templateKey}`);
     console.log(`  Status: ${reminder.status}`);
     console.log(`  Created: ${reminder.createdAt}`);
@@ -51,7 +57,9 @@ async function main() {
   // Ask to reset one reminder to SCHEDULED for testing
   if (failedReminders.length > 0) {
     const reminderToReset = failedReminders[0];
-    console.log(`\n🔄 Resetting reminder ${reminderToReset.id} to SCHEDULED for testing...\n`);
+    console.log(
+      `\n🔄 Resetting reminder ${reminderToReset.id} to SCHEDULED for testing...\n`,
+    );
 
     await prisma.customerReminder.update({
       where: { id: reminderToReset.id },
@@ -64,7 +72,9 @@ async function main() {
 
     console.log(`✅ Reminder ${reminderToReset.id} reset to SCHEDULED`);
     console.log(`   Will be processed in ~5 seconds by the cron job`);
-    console.log(`   Watch the logs for: [DEBUG] Reminder ${reminderToReset.id}`);
+    console.log(
+      `   Watch the logs for: [DEBUG] Reminder ${reminderToReset.id}`,
+    );
   }
 }
 

@@ -11,6 +11,8 @@ import {
   JobCard,
   JobStatus,
   createWarrantyJob,
+  addJobCardAdvance,
+  refundJobCardAdvance,
 } from "@/services/jobcard.api";
 import { useShop } from "@/context/ShopContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -23,6 +25,7 @@ import {
   ProductType,
 } from "@/services/products.api";
 import { createPurchase } from "@/services/purchases.api";
+import { AdvanceModal } from "./AdvanceModal";
 
 // Helper for status colors (reused)
 const STATUS_COLORS: Record<JobStatus, string> = {
@@ -60,6 +63,10 @@ export default function JobCardDetailPage() {
   const [isReadyConfirmOpen, setIsReadyConfirmOpen] = useState(false);
   const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
   const [isWarrantyConfirmOpen, setIsWarrantyConfirmOpen] = useState(false);
+  // Advance Modals
+  const [isAddAdvanceModalOpen, setIsAddAdvanceModalOpen] = useState(false);
+  const [isRefundAdvanceModalOpen, setIsRefundAdvanceModalOpen] = useState(false);
+  
   const isOwner = user?.role?.toLowerCase() === "owner";
 
   // Load Job Details
@@ -465,6 +472,45 @@ export default function JobCardDetailPage() {
             </div>
           </div>
 
+          {/* FINANCIAL SUMMARY (VISIBLE TO ALL) */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-sm">
+            <h2 className="text-lg font-bold mb-4 dark:text-white">Financials</h2>
+            
+            <div className="space-y-4 mb-6">
+              <div className="flex justify-between items-center text-gray-600 dark:text-gray-400">
+                <span>Estimated Cost</span>
+                <span className="font-semibold dark:text-gray-200">₹{job.estimatedCost?.toFixed(2) || "0.00"}</span>
+              </div>
+              <div className="flex justify-between items-center text-teal-600 dark:text-teal-400">
+                <span>Advance Paid</span>
+                <span className="font-bold">₹{job.advancePaid?.toFixed(2) || "0.00"}</span>
+              </div>
+              <div className="h-px bg-gray-100 dark:bg-gray-800"></div>
+              <div className="flex justify-between items-center text-lg font-bold text-gray-900 dark:text-white">
+                <span>Balance Due</span>
+                <span>
+                  ₹{((job.estimatedCost || 0) - (job.advancePaid || 0)).toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                 onClick={() => setIsAddAdvanceModalOpen(true)}
+                 className="px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm font-bold hover:bg-green-100 transition flex items-center justify-center gap-1"
+              >
+                <span>💰</span> Add Advance
+              </button>
+              <button
+                 onClick={() => setIsRefundAdvanceModalOpen(true)}
+                 disabled={(job.advancePaid || 0) <= 0}
+                 className="px-3 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-bold hover:bg-red-100 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+              >
+                <span>💸</span> Refund
+              </button>
+            </div>
+          </div>
+
           {/* PROFIT CARD (OWNER ONLY) */}
           {isOwner && job.profit !== undefined && (
             <div className="bg-linear-to-br from-gray-900 to-gray-800 text-white rounded-xl p-6 shadow-xl overflow-hidden relative">
@@ -516,6 +562,31 @@ export default function JobCardDetailPage() {
           onSuccess={reload}
         />
       )}
+
+      {/* Add Advance Modal */}
+      {isAddAdvanceModalOpen && (
+        <AdvanceModal
+           type="ADD"
+           shopId={selectedShopId!}
+           jobId={job.id}
+           currentAdvance={job.advancePaid || 0}
+           onClose={() => setIsAddAdvanceModalOpen(false)}
+           onSuccess={reload}
+        />
+      )}
+
+      {/* Refund Advance Modal */}
+      {isRefundAdvanceModalOpen && (
+        <AdvanceModal
+           type="REFUND"
+           shopId={selectedShopId!}
+           jobId={job.id}
+           currentAdvance={job.advancePaid || 0}
+           onClose={() => setIsRefundAdvanceModalOpen(false)}
+           onSuccess={reload}
+        />
+      )}
+
       {/* READY CONFIRMATION MODAL */}
       {isReadyConfirmOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -800,22 +871,22 @@ function AddPartModal({
                 {!selectedProduct &&
                   searchTerm.length > 1 &&
                   products.length > 0 && (
-                    <div className="absolute z-10 w-full max-w-sm mt-1 bg-white dark:bg-gray-700 border rounded-lg shadow-xl max-h-48 overflow-y-auto ring-1 ring-black/5">
-                      {products.map((p) => (
+                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {products.map((product) => (
                         <div
-                          key={p.id}
+                          key={product.id}
+                          className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
                           onClick={() => {
-                            setSelectedProduct(p);
-                            setSearchTerm("");
+                            setSelectedProduct(product);
+                            setSearchTerm(product.name);
                           }}
-                          className="px-4 py-2 hover:bg-teal-50 dark:hover:bg-gray-600 cursor-pointer border-b dark:border-gray-600 last:border-0"
                         >
-                          <div className="font-semibold dark:text-gray-200">
-                            {p.name}
+                          <div className="font-semibold dark:text-white">
+                            {product.name}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            Stock: {p.stockQty ?? "N/A"} • ₹
-                            {(p.salePrice / 100).toFixed(2)}
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            Stock: {product.stock || 0} • Price: ₹
+                            {(product.salePrice / 100).toFixed(2)}
                           </div>
                         </div>
                       ))}
@@ -847,88 +918,98 @@ function AddPartModal({
           ) : (
             <>
               {/* CREATE MODE */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm font-semibold dark:text-gray-300">
-                    Product Name
-                  </label>
+              <div className="bg-teal-50 dark:bg-teal-900/20 p-4 rounded-lg border border-teal-100 dark:border-teal-800">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-sm font-bold text-teal-800 dark:text-teal-300">
+                    New Product Details
+                  </span>
                   <button
                     type="button"
                     onClick={() => setCreateMode(false)}
-                    className="text-xs text-blue-500 hover:underline"
+                    className="text-xs text-blue-600 hover:underline"
                   >
-                    Switch to Search
+                    Back to Search
                   </button>
                 </div>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  value={newProductName}
-                  onChange={(e) => setNewProductName(e.target.value)}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold mb-2 dark:text-gray-300">
-                    Selling Price
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    value={newSalePrice}
-                    onChange={(e) => setNewSalePrice(Number(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold mb-2 dark:text-gray-300">
-                    Cost Price
-                  </label>
-                  <input
-                    type="number"
-                    className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    value={newCostPrice}
-                    onChange={(e) => setNewCostPrice(Number(e.target.value))}
-                  />
-                </div>
-              </div>
-
-              <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border dark:border-gray-700">
-                <label className="flex items-center gap-2 cursor-pointer mb-2">
-                  <input
-                    type="checkbox"
-                    checked={createPurchaseEntry}
-                    onChange={(e) => setCreatePurchaseEntry(e.target.checked)}
-                    className="w-4 h-4 text-teal-600 rounded"
-                  />
-                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                    Create Purchase Entry?
-                  </span>
-                </label>
-
-                {createPurchaseEntry && (
-                  <div className="mt-2 animate-in fade-in slide-in-from-top-1">
-                    <label className="block text-xs font-semibold mb-1 text-gray-500 dark:text-gray-400">
-                      Supplier Name
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold block mb-1">
+                      Name
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Local Market / Vendor"
-                      className="w-full px-3 py-1.5 text-sm border rounded dark:bg-gray-700 dark:border-gray-500 dark:text-white"
-                      value={supplierName}
-                      onChange={(e) => setSupplierName(e.target.value)}
+                      className="w-full px-3 py-1.5 text-sm border rounded dark:bg-gray-700 dark:border-gray-600"
+                      value={newProductName}
+                      onChange={(e) => setNewProductName(e.target.value)}
                     />
-                    <p className="text-xs text-gray-400 mt-1">
-                      Will create a CASH purchase record for stock tracking.
-                    </p>
                   </div>
-                )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold block mb-1">
+                        Sale Price
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-1.5 text-sm border rounded dark:bg-gray-700 dark:border-gray-600"
+                        value={newSalePrice}
+                        onChange={(e) =>
+                          setNewSalePrice(parseFloat(e.target.value))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold block mb-1">
+                        Cost Price
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-1.5 text-sm border rounded dark:bg-gray-700 dark:border-gray-600"
+                        value={newCostPrice}
+                        onChange={(e) =>
+                          setNewCostPrice(parseFloat(e.target.value))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
+
+              {/* INTEGRATED PURCHASE ENTRY */}
+              <div className="flex items-center gap-2 mt-4 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="createPurchase"
+                  checked={createPurchaseEntry}
+                  onChange={(e) => setCreatePurchaseEntry(e.target.checked)}
+                  className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                />
+                <label
+                  htmlFor="createPurchase"
+                  className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Create Purchase Entry (Add Stock)
+                </label>
+              </div>
+
+              {createPurchaseEntry && (
+                <div className="animate-in slide-in-from-top-2">
+                  <label className="block text-sm font-semibold mb-1 dark:text-gray-300">
+                    Supplier Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                    placeholder="e.g. Local Market"
+                    value={supplierName}
+                    onChange={(e) => setSupplierName(e.target.value)}
+                  />
+                </div>
+              )}
             </>
           )}
 
+          {/* QUANTITY (Common) */}
           <div>
             <label className="block text-sm font-semibold mb-2 dark:text-gray-300">
               Quantity
@@ -936,9 +1017,10 @@ function AddPartModal({
             <input
               type="number"
               min="1"
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
+              required
               className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              value={quantity}
+              onChange={(e) => setQuantity(parseInt(e.target.value))}
             />
           </div>
 
@@ -946,24 +1028,16 @@ function AddPartModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg dark:bg-gray-700 dark:text-gray-300"
+              className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={
-                isSubmitting ||
-                (createMode && (!newProductName || !newSalePrice)) ||
-                (!createMode && !selectedProduct)
-              }
-              className="flex-1 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold disabled:opacity-50"
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold transition disabled:opacity-50"
             >
-              {isSubmitting
-                ? "Processing..."
-                : createMode
-                  ? "Create & Add"
-                  : "Add Part"}
+              {isSubmitting ? "Adding..." : createMode ? "Create & Add" : "Add Part"}
             </button>
           </div>
         </form>

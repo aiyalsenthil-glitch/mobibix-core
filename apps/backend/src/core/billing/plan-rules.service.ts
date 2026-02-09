@@ -2,14 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { ModuleType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppFeature } from './whatsapp-rules';
-import { PLAN_LIMITS } from './plan-limits';
 
 export type PlanRules = {
   planId: string;
   code: string;
   name: string;
   enabled: boolean;
-  maxMembers: number;
+  maxMembers: number | null; // null = unlimited
+  maxStaff: number | null; // null = unlimited
+  whatsapp?: {
+    utility: number;
+    marketing: number;
+    isDaily?: boolean;
+  };
+  analyticsHistoryDays: number;
   features: WhatsAppFeature[];
 };
 
@@ -42,14 +48,21 @@ export class PlanRulesService {
     }
 
     const normalizedCode = (plan.code ?? plan.name).toUpperCase();
-    const limit = PLAN_LIMITS[normalizedCode]?.maxMembers;
 
+    // Read limits from database (Task 1)
     const rules: PlanRules = {
       planId: plan.id,
       code: normalizedCode,
       name: plan.name,
       enabled: plan.isActive,
-      maxMembers: limit === null || limit === undefined ? 0 : limit,
+      maxMembers: plan.maxMembers, // null = unlimited
+      maxStaff: plan.maxStaff, // null = unlimited
+      whatsapp: {
+        utility: plan.whatsappUtilityQuota,
+        marketing: plan.whatsappMarketingQuota,
+        isDaily: false, // Monthly quotas
+      },
+      analyticsHistoryDays: plan.analyticsHistoryDays,
       features: plan.planFeatures
         .filter((feature) => feature.enabled)
         .map((feature) => feature.feature as WhatsAppFeature),
@@ -67,7 +80,7 @@ export class PlanRulesService {
     tenantId: string,
     module?: ModuleType,
   ): Promise<PlanRules | null> {
-    // 1. Try fetching Active Subscription (filtered by module if provided)
+    // 1. Fetch Active Subscription (filtered by module if provided)
     const subscription = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
@@ -75,15 +88,70 @@ export class PlanRulesService {
         ...(module && { module }), // Filter by module if provided
       },
       orderBy: { startDate: 'desc' },
-      include: { plan: true },
+      include: {
+        plan: {
+          include: { planFeatures: true },
+        },
+        addons: {
+          where: { status: 'ACTIVE' },
+          include: {
+            addonPlan: {
+              include: { planFeatures: true },
+            },
+          },
+        },
+      },
     });
 
-    if (subscription?.plan) {
-      const code = subscription.plan.code || subscription.plan.name;
-      return this.getPlanRulesByCode(code);
+    if (!subscription?.plan) {
+      return null;
     }
 
-    return null;
+    // 2. Get base plan rules
+    const basePlan = subscription.plan;
+    const baseRules: PlanRules = {
+      planId: basePlan.id,
+      code: basePlan.code,
+      name: basePlan.name,
+      enabled: basePlan.isActive,
+      maxMembers: basePlan.maxMembers,
+      maxStaff: basePlan.maxStaff,
+      whatsapp: {
+        utility: basePlan.whatsappUtilityQuota,
+        marketing: basePlan.whatsappMarketingQuota,
+        isDaily: false,
+      },
+      analyticsHistoryDays: basePlan.analyticsHistoryDays,
+      features: basePlan.planFeatures
+        .filter((f) => f.enabled)
+        .map((f) => f.feature as WhatsAppFeature),
+    };
+
+    // 3. Merge add-on features and quotas (Task 3)
+    if (subscription.addons && subscription.addons.length > 0) {
+      const addonFeatures = new Set(baseRules.features);
+      let totalUtilityQuota = baseRules.whatsapp?.utility || 0;
+      let totalMarketingQuota = baseRules.whatsapp?.marketing || 0;
+
+      for (const addon of subscription.addons) {
+        // Merge features
+        addon.addonPlan.planFeatures
+          .filter((f) => f.enabled)
+          .forEach((f) => addonFeatures.add(f.feature as WhatsAppFeature));
+
+        // Add quotas
+        totalUtilityQuota += addon.addonPlan.whatsappUtilityQuota;
+        totalMarketingQuota += addon.addonPlan.whatsappMarketingQuota;
+      }
+
+      baseRules.features = Array.from(addonFeatures);
+      if (baseRules.whatsapp) {
+        baseRules.whatsapp.utility = totalUtilityQuota;
+        baseRules.whatsapp.marketing = totalMarketingQuota;
+      }
+    }
+
+    return baseRules;
   }
 
   async isFeatureEnabledForTenant(

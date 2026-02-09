@@ -14,7 +14,11 @@ export class WhatsAppConfigValidator {
       'WHATSAPP_ACCESS_TOKEN',
     ];
 
-    const placeholders = ['YOUR_PHONE_NUMBER_ID', 'YOUR_WABA_ID', 'YOUR_ACCESS_TOKEN'];
+    const placeholders = [
+      'YOUR_PHONE_NUMBER_ID',
+      'YOUR_WABA_ID',
+      'YOUR_ACCESS_TOKEN',
+    ];
     const errors: string[] = [];
 
     for (const key of requiredVars) {
@@ -27,7 +31,9 @@ export class WhatsAppConfigValidator {
 
       // Check if value is a known placeholder
       if (placeholders.some((p) => value.includes(p))) {
-        errors.push(`Invalid ENV: ${key} contains placeholder value "${value}"`);
+        errors.push(
+          `Invalid ENV: ${key} contains placeholder value "${value}"`,
+        );
       }
     }
 

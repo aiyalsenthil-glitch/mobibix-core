@@ -56,7 +56,6 @@ export class UpdateDocumentSettingDto {
   @IsEnum(YearFormat)
   yearFormat?: YearFormat;
 
-
   @IsOptional()
   @IsInt()
   @Min(3)

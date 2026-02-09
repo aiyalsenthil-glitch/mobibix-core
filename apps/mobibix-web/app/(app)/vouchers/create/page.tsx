@@ -151,15 +151,22 @@ export default function CreateVoucherPage() {
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Supplier <span className="text-red-600">*</span>
               </label>
-              <input
-                type="text"
-                value={formData.globalSupplierId || ""}
-                onChange={(e) =>
-                  handleChange("globalSupplierId", e.target.value || undefined)
-                }
-                placeholder="Enter supplier ID or name"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+              <div className="relative">
+                 {/* TODO: Upgrade to PartySelector for Supplier when available */}
+                <input
+                  type="text"
+                  value={formData.globalSupplierId || ""}
+                  onChange={(e) =>
+                    handleChange("globalSupplierId", e.target.value || undefined)
+                  }
+                  placeholder="Enter supplier ID or name"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                 {/* Placeholder for Balance Display - Logic to be connected with getPartyBalance when Supplier Selector is ready */}
+                 <p className="text-xs text-gray-500 mt-1">
+                    Balance check will be enabled with Supplier Selection.
+                 </p>
+              </div>
               <p className="text-sm text-gray-600 mt-2">
                 Required for supplier payments
               </p>

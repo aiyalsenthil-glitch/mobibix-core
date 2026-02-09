@@ -12,9 +12,11 @@ import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PLAN_CAPABILITIES } from '../billing/plan-capabilities';
+import { PlanRulesService } from '../billing/plan-rules.service';
 import { normalizePhone } from '../../common/utils/phone.util';
 import { EmailService } from '../../common/email/email.service';
 import { welcomeEmailTemplate } from '../../common/email/templates/welcome.template';
+import { getCreateAudit } from '../audit/audit.helper';
 
 @Injectable()
 export class TenantService {
@@ -23,6 +25,7 @@ export class TenantService {
     private readonly plansService: PlansService,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly jwtService: JwtService,
+    private readonly planRulesService: PlanRulesService,
   ) {}
 
   /**
@@ -63,7 +66,6 @@ export class TenantService {
       );
     }
 
-
     const trialPlan = await this.plansService.getOrCreateTrialPlan(
       effectiveTenantType === 'MOBILE_SHOP'
         ? ModuleType.MOBILE_SHOP
@@ -87,6 +89,7 @@ export class TenantService {
         country: dto.country,
         currency: dto.currency,
         timezone: dto.timezone,
+        ...getCreateAudit(userId), // ✅ Capture who created
       },
     });
     // Send welcome email after gym creation
@@ -119,6 +122,7 @@ export class TenantService {
         userId,
         tenantId: tenant.id,
         role: UserRole.OWNER,
+        ...getCreateAudit(userId), // ✅ Capture who created
       },
     });
 
@@ -298,60 +302,91 @@ export class TenantService {
 
     const plan = subscription.plan;
 
-    const planCode = (plan.code ?? plan.name).toUpperCase();
-    const capability =
-      PLAN_CAPABILITIES[planCode] ?? PLAN_CAPABILITIES.GYM_TRIAL;
+    // 3️⃣ Resolve capabilities
+    const rules = await this.planRulesService.getPlanRulesForTenant(tenantId);
 
     // 4️⃣ Count members
     const membersUsed = await this.prisma.member.count({
       where: {
         tenantId,
+        isActive: true,
       },
     });
 
-    // 5️⃣ Calculate days left
+    // 5️⃣ Calculate daysLeft and usage period
+    const now = new Date();
     let daysLeft: number | null = null;
+    const cycleStart = new Date();
+    cycleStart.setDate(1); // Default to start of month
+    cycleStart.setHours(0, 0, 0, 0);
 
     if (subscription.endDate) {
-      const now = new Date();
       const end = new Date(subscription.endDate);
-
       const diffMs = end.getTime() - now.getTime();
       daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+      // If we want cycle tracking relative to subscription, we'd need billingCycle logic.
+      // For now, "Current Month" is the standard for quota display.
     }
-    const now = new Date();
-    const end = subscription.endDate ? new Date(subscription.endDate) : null;
 
     const isTrial =
       subscription.status === 'TRIAL' &&
-      end !== null &&
-      end.getTime() > now.getTime();
+      subscription.endDate &&
+      subscription.endDate.getTime() > now.getTime();
 
     const isTrialExpired =
       subscription.status === 'TRIAL' &&
-      end !== null &&
-      end.getTime() <= now.getTime();
-    // 6️⃣ Final response (stable contract)
+      subscription.endDate &&
+      subscription.endDate.getTime() <= now.getTime();
+
+    // 6️⃣ WhatsApp Usage Stats (Current Month)
+    const usageStats = await this.prisma.whatsAppDailyUsage.aggregate({
+      where: {
+        tenantId,
+        date: { gte: cycleStart },
+      },
+      _sum: {
+        marketing: true,
+        utility: true,
+        service: true,
+        authentication: true,
+      },
+    });
+
+    // 7️⃣ Final response
     return {
       hasTenant: true,
       tenantId,
-
       status: subscription.status,
-
-      isTrial, // ✅ ADD
-      trialExpired: isTrialExpired, // ✅ ADD
+      isTrial,
+      trialExpired: isTrialExpired,
 
       plan: {
         name: plan.name,
+        code: plan.code,
         level: plan.level,
-        memberLimit: capability.memberLimit,
-        staffAllowed: capability.staffAllowed,
-        whatsappAllowed: capability.whatsapp,
+        tagline: plan.tagline,
+        description: plan.description,
+        featuresJson: plan.featuresJson,
+        features: rules?.features || [],
+        memberLimit: rules?.maxMembers ?? null,
+        staffAllowed: (rules?.maxStaff ?? 0) !== 0,
+        maxStaff: rules?.maxStaff ?? null,
+        whatsappAllowed:
+          (rules?.whatsapp?.utility || 0) > 0 ||
+          (rules?.whatsapp?.marketing || 0) > 0,
       },
 
       membersUsed,
-      membersLimit: capability.memberLimit,
+      membersLimit: rules?.maxMembers ?? null,
       daysLeft,
+
+      whatsappUsage: {
+        marketing: usageStats._sum.marketing ?? 0,
+        utility: usageStats._sum.utility ?? 0,
+        service: usageStats._sum.service ?? 0,
+        startOfPeriod: cycleStart,
+      },
     };
   }
   // ============================

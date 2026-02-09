@@ -11,7 +11,9 @@ import { ShopProductLinkDto, LinkSource } from './dto/shop-product-link.dto';
 export class ShopProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private toPaisa(amount: number | undefined | null): number | undefined | null {
+  private toPaisa(
+    amount: number | undefined | null,
+  ): number | undefined | null {
     if (amount === undefined || amount === null) return amount;
     return Math.round(amount * 100);
   }

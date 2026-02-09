@@ -66,7 +66,7 @@ export class WhatsAppVariableResolver {
       // The Global Registry flattens keys, causing collisions (e.g., 'customerName' maps to JobCard but needed for Invoice).
       // allowedVars contains the CORRECT definitions for this specific event.
       let variable = allowedVars.find((v) => v.key === key);
-      
+
       // Fallback to global lookup if not found in context (legacy behavior)
       if (!variable) {
         variable = getVariableByKey(key);
@@ -100,8 +100,11 @@ export class WhatsAppVariableResolver {
         const formatted = formatVariableValue(value, variable.dataType);
 
         // 🚨 STRICT VALIDATION: If variable is required but result is empty/null, FAIL
-        if (variable.required && (value === null || value === undefined || value === '')) {
-             throw new Error(`Required variable '${key}' resolved to empty value`);
+        if (
+          variable.required &&
+          (value === null || value === undefined || value === '')
+        ) {
+          throw new Error(`Required variable '${key}' resolved to empty value`);
         }
 
         resolved.set(key, {
@@ -117,7 +120,7 @@ export class WhatsAppVariableResolver {
           value: null,
           formatted: '',
           source: variable.sourceType,
-          error: (error as any).message,
+          error: error.message,
         });
       }
     }

@@ -11,6 +11,8 @@ import {
   getSalesReport,
 } from "@/services/reports.api";
 import { MetricCard } from "@/components/dashboard/MetricCard";
+import { getUsageHistory, UsageSnapshot } from "@/services/tenant.api";
+import { UsageTrendsChart } from "@/components/dashboard/UsageTrendsChart";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, Legend, PieChart, Pie, Cell 
@@ -63,6 +65,7 @@ export default function DashboardPage() {
   const [todayProfit, setTodayProfit] = useState<number>(0);
   const [paymentStats, setPaymentStats] = useState<{name: string, value: number}[]>([]);
   const [salesTrend, setSalesTrend] = useState<{date: string, sales: number}[]>([]);
+  const [usageHistory, setUsageHistory] = useState<UsageSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
 
   const userRole = authUser?.role?.toLowerCase();
@@ -100,7 +103,7 @@ export default function DashboardPage() {
       const reportParams = selectedShopId ? { shopId: selectedShopId } : {};
 
       // Parallelize EVERYTHING to prevent serial hangs
-      const [dashRes, profitRes, salesRes, trendRes] = await Promise.all([
+      const [dashRes, profitRes, salesRes, trendRes, usageRes] = await Promise.all([
         fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api"}/mobileshop/dashboard/${endpoint}?cache=skip${shopQuery}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => null),
@@ -118,7 +121,8 @@ export default function DashboardPage() {
           ...reportParams,
           startDate: weekAgo.toISOString(),
           endDate: endStr,
-        }).catch(() => [])
+        }).catch(() => []),
+        isOwner ? getUsageHistory(30).catch(() => []) : Promise.resolve([]),
       ]);
 
       if (dashRes?.ok) {
@@ -154,6 +158,10 @@ export default function DashboardPage() {
         return acc;
       }, [] as {date: string, sales: number}[]).reverse();
       setSalesTrend(trend);
+
+      if (Array.isArray(usageRes)) {
+        setUsageHistory(usageRes);
+      }
 
     } catch (error) {
       console.error("Dashboard Fetch Error:", error);
@@ -395,6 +403,18 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      {/* Row 4: Usage Trends (Owner Only) */}
+      {isOwner && (
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-base font-semibold text-foreground">Growth Trends (Last 30 Days)</h3>
+            <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded-full font-medium">
+              Members • Staff • Shops
+            </span>
+          </div>
+          <UsageTrendsChart data={usageHistory} isLoading={loading} />
+        </div>
+      )}
     </div>
   );
 }

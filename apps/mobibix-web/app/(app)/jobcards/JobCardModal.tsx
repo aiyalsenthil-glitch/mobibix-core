@@ -16,6 +16,7 @@ import {
 import { CustomerModal } from "../customers/CustomerModal";
 import { PartySelector } from "@/components/common/PartySelector";
 import { type Party } from "@/services/parties.api";
+import { useShop } from "@/context/ShopContext";
 
 interface JobCardModalProps {
   shopId: string;
@@ -64,6 +65,15 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
       ? new Date(jobCard.estimatedDelivery).toISOString().split("T")[0]
       : "",
   });
+
+  const { selectedShop: shop } = useShop();
+
+  // STRICT COMPLIANCE: Force WITH_GST if shop has GST enabled
+  useEffect(() => {
+     if (shop?.gstEnabled && formData.billType !== 'WITH_GST') {
+         setFormData(prev => ({ ...prev, billType: 'WITH_GST' }));
+     }
+  }, [shop?.gstEnabled]);
 
   useEffect(() => {
     const loadCustomer = async () => {
@@ -132,9 +142,11 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
       diagnosticCharge: formData.diagnosticCharge
         ? parseFloat(formData.diagnosticCharge)
         : undefined,
-      advancePaid: formData.advancePaid
-        ? parseFloat(formData.advancePaid)
-        : undefined,
+      // Strict Accounting: Cannot update advancePaid directly in edit mode
+      advancePaid:
+        !isEdit && formData.advancePaid
+          ? parseFloat(formData.advancePaid)
+          : undefined,
       billType: formData.billType,
       estimatedDelivery: formData.estimatedDelivery || undefined,
     };
@@ -453,10 +465,18 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
                         onChange={handleChange}
                         step="0.01"
                         min="0"
-                        className="w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+                        disabled={isEdit}
+                        className={`w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition ${
+                          isEdit ? "bg-gray-100 cursor-not-allowed" : ""
+                        }`}
                         placeholder="0.00"
                       />
                     </div>
+                    {isEdit && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Manage advance in Financials tab
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -465,15 +485,22 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Bill Type
                     </label>
-                    <select
-                      name="billType"
-                      value={formData.billType}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
-                    >
-                      <option value="WITHOUT_GST">Without GST</option>
-                      <option value="WITH_GST">With GST (18%)</option>
-                    </select>
+                    {shop?.gstEnabled ? (
+                         <div className="w-full px-4 py-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed flex items-center justify-between">
+                            <span>Tax Invoice (GST)</span>
+                            <span className="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded">LOCKED</span>
+                         </div>
+                    ) : (
+                        <select
+                          name="billType"
+                          value={formData.billType}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
+                        >
+                          <option value="WITHOUT_GST">Without GST</option>
+                          <option value="WITH_GST">With GST (18%)</option>
+                        </select>
+                    )}
                   </div>
 
                   <div>

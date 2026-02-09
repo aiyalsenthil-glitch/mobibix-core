@@ -12,9 +12,12 @@ import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { TenantStatusGuard } from '../../core/tenant/guards/tenant-status.guard';
 import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
 import { LedgerService } from './ledger.service';
+import { Roles } from '../../core/auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('ledger')
 @UseGuards(JwtAuthGuard, TenantStatusGuard, TenantRequiredGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class LedgerController {
   constructor(private readonly ledgerService: LedgerService) {}
 

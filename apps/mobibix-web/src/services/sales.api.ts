@@ -7,6 +7,8 @@ export type PaymentMode = "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT";
 export type InvoiceStatus = "DRAFT" | "FINAL" | "PAID" | "CREDIT" | "VOIDED";
 export type PaymentStatus = "PAID" | "PARTIALLY_PAID" | "UNPAID" | "CANCELLED";
 
+export type InvoiceType = "SALES" | "REPAIR";
+
 export interface SalesInvoice {
   id: string;
   shopId: string;
@@ -31,6 +33,18 @@ export interface SalesInvoice {
   customerGstin?: string;
   createdAt: string | Date;
   updatedAt: string | Date;
+  
+  // Tier 2 Fields
+  financialYear?: string;
+  cashAmount?: number;
+  upiAmount?: number;
+  cardAmount?: number;
+  invoiceType?: InvoiceType;
+  isGstApplicable?: boolean;
+  jobCardId?: string;
+  voidReason?: string;
+  voidedAt?: string | Date;
+
   payments?: {
     id: string;
     amount: number;
@@ -57,6 +71,14 @@ export interface InvoiceItemDetail {
   gstAmount?: number;
   lineTotal?: number;
   taxableValue?: number; // Accurate taxable value (with 2 decimal precision)
+  
+  // Tier 2 Fields
+  cgstRate?: number;
+  sgstRate?: number;
+  igstRate?: number;
+  cgstAmount?: number;
+  sgstAmount?: number;
+  igstAmount?: number;
 }
 
 export interface InvoiceItem {
@@ -78,6 +100,11 @@ export interface CreateInvoiceDto {
   paymentMode: PaymentMode;
   items: InvoiceItem[];
   pricesIncludeTax?: boolean;
+  paymentMethods?: {
+    mode: PaymentMode;
+    amount: number;
+    transactionRef?: string;
+  }[];
 }
 
 /**

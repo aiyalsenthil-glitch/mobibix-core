@@ -2,6 +2,7 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import {
   Controller,
   Post,
+  Get,
   Body,
   Req,
   UseGuards,
@@ -9,8 +10,11 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { TenantStatusGuard } from '../../../core/tenant/guards/tenant-status.guard';
+import { Roles } from '../../../core/auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @UseGuards(JwtAuthGuard, TenantStatusGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('gym/payments')
 export class PaymentsController {
   constructor(private readonly prisma: PrismaService) {}
@@ -71,5 +75,38 @@ export class PaymentsController {
       paymentStatus,
       pendingAmount: Math.max(member.feeAmount - newPaid, 0),
     };
+  }
+
+  @Get()
+  @Get('history')
+  async getPaymentHistory(@Req() req) {
+    // Get all payments with member details for this tenant
+    const payments = await this.prisma.memberPayment.findMany({
+      where: {
+        tenantId: req.user.tenantId,
+      },
+      include: {
+        member: {
+          select: {
+            fullName: true,
+            feeAmount: true,
+            paidAmount: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Format for frontend
+    return payments.map((payment) => ({
+      id: payment.id,
+      memberName: payment.member.fullName,
+      planName: 'Membership', // Could be enhanced to include actual plan name
+      totalAmount: payment.member.feeAmount,
+      paidAmount: payment.amount,
+      createdAt: payment.createdAt,
+    }));
   }
 }

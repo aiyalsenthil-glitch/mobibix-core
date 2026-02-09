@@ -1,0 +1,2 @@
+app/(app)/purchases/new/page.tsx(45,4): error TS1128: Declaration or statement expected.
+app/(app)/purchases/new/page.tsx(825,1): error TS1128: Declaration or statement expected.

@@ -11,9 +11,11 @@ import * as crypto from 'crypto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PaymentStatus } from '@prisma/client';
+import { PaymentStatus, UserRole } from '@prisma/client';
+import { Roles } from '../../auth/decorators/roles.decorator';
 
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('payments')
 export class PaymentsVerifyController {
   private readonly logger = new Logger(PaymentsVerifyController.name);

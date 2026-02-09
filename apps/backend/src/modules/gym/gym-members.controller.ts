@@ -43,7 +43,11 @@ export class GymMembersController {
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Post()
   create(@Req() req: any, @Body() dto: CreateMemberDto) {
-    return this.membersService.createMember(req.user.tenantId, dto);
+    return this.membersService.createMember(
+      req.user.tenantId,
+      dto,
+      req.user.sub,
+    );
   }
   // ======================
   // RENEWAL / EXPIRY LISTS
@@ -117,7 +121,12 @@ export class GymMembersController {
     @Param('id') id: string,
     @Body() dto: UpdateMemberDto,
   ) {
-    return this.membersService.updateMember(req.user.tenantId, id, dto);
+    return this.membersService.updateMember(
+      req.user.tenantId,
+      id,
+      dto,
+      req.user.sub,
+    );
   }
 
   // ======================

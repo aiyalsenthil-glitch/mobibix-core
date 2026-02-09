@@ -5,14 +5,14 @@ import { JobStatus } from '@prisma/client';
  * ────────────────────────────────────────────────
  * JOB STATUS TRANSITION VALIDATOR
  * ────────────────────────────────────────────────
- * 
+ *
  * Enforces valid state transitions for JobCard lifecycle.
- * 
+ *
  * TERMINAL STATES (no transitions allowed):
  * - DELIVERED
  * - CANCELLED
  * - RETURNED
- * 
+ *
  * CRITICAL STATUS:
  * - READY: Triggers auto-invoice creation and WhatsApp
  */
@@ -31,22 +31,19 @@ export class JobStatusValidator {
     ],
 
     // Assigned - can start diagnosis or cancel
-    [JobStatus.ASSIGNED]: [
-      JobStatus.DIAGNOSING,
-      JobStatus.CANCELLED,
-    ],
+    [JobStatus.ASSIGNED]: [JobStatus.DIAGNOSING, JobStatus.CANCELLED],
 
     // Diagnosing - can go to approval, skip to repair, or cancel
     [JobStatus.DIAGNOSING]: [
       JobStatus.WAITING_APPROVAL,
-      JobStatus.IN_PROGRESS,      // Skip approval if minor repair
+      JobStatus.IN_PROGRESS, // Skip approval if minor repair
       JobStatus.CANCELLED,
     ],
 
     // Waiting for customer approval - can be approved, re-diagnosed, or cancelled
     [JobStatus.WAITING_APPROVAL]: [
       JobStatus.APPROVED,
-      JobStatus.DIAGNOSING,       // Re-diagnose if customer rejects
+      JobStatus.DIAGNOSING, // Re-diagnose if customer rejects
       JobStatus.CANCELLED,
     ],
 
@@ -58,35 +55,32 @@ export class JobStatusValidator {
     ],
 
     // Waiting for parts - can start repair or cancel
-    [JobStatus.WAITING_FOR_PARTS]: [
-      JobStatus.IN_PROGRESS,
-      JobStatus.CANCELLED,
-    ],
+    [JobStatus.WAITING_FOR_PARTS]: [JobStatus.IN_PROGRESS, JobStatus.CANCELLED],
 
     // Repair in progress - can finish, pause for parts, or cancel
     [JobStatus.IN_PROGRESS]: [
-      JobStatus.READY,            // 🚨 CRITICAL: Triggers invoice + WhatsApp
+      JobStatus.READY, // 🚨 CRITICAL: Triggers invoice + WhatsApp
       JobStatus.WAITING_FOR_PARTS,
       JobStatus.CANCELLED,
     ],
 
     // Ready for pickup - can deliver, return, or re-repair
     [JobStatus.READY]: [
-      JobStatus.DELIVERED,        // Terminal
-      JobStatus.RETURNED,         // Terminal
-      JobStatus.IN_PROGRESS,      // Re-repair if issue found
+      JobStatus.DELIVERED, // Terminal
+      JobStatus.RETURNED, // Terminal
+      JobStatus.IN_PROGRESS, // Re-repair if issue found
     ],
 
     // Terminal states
     [JobStatus.DELIVERED]: [],
-    
+
     // Cancelled - Can Reopen
     [JobStatus.CANCELLED]: [
       JobStatus.RECEIVED,
       JobStatus.DIAGNOSING,
-      JobStatus.IN_PROGRESS
+      JobStatus.IN_PROGRESS,
     ],
-    
+
     [JobStatus.RETURNED]: [],
   };
 
@@ -98,7 +92,7 @@ export class JobStatusValidator {
     // Check if current status is terminal
     if (this.isTerminalState(from)) {
       throw new BadRequestException(
-        `Cannot change status of ${from.toLowerCase()} job`
+        `Cannot change status of ${from.toLowerCase()} job`,
       );
     }
 
@@ -107,7 +101,7 @@ export class JobStatusValidator {
     if (!allowedTransitions.includes(to)) {
       throw new BadRequestException(
         `Invalid status transition from ${from} to ${to}. ` +
-        `Allowed transitions: ${allowedTransitions.join(', ') || 'none'}`
+          `Allowed transitions: ${allowedTransitions.join(', ') || 'none'}`,
       );
     }
   }
@@ -131,9 +125,9 @@ export class JobStatusValidator {
   shouldTriggerWhatsApp(status: JobStatus): boolean {
     // Only customer-facing statuses trigger WhatsApp
     const customerFacingStatuses: JobStatus[] = [
-      JobStatus.READY,      // "Your device is ready for pickup"
-      JobStatus.DELIVERED,  // "Thank you for choosing us"
-      JobStatus.CANCELLED,  // "Your job has been cancelled"
+      JobStatus.READY, // "Your device is ready for pickup"
+      JobStatus.DELIVERED, // "Thank you for choosing us"
+      JobStatus.CANCELLED, // "Your job has been cancelled"
     ];
     return customerFacingStatuses.includes(status);
   }
@@ -150,7 +144,10 @@ export class JobStatusValidator {
    * Check if a status requires invoice voiding
    */
   shouldVoidInvoice(status: JobStatus): boolean {
-    const voidableStatuses: JobStatus[] = [JobStatus.CANCELLED, JobStatus.RETURNED];
+    const voidableStatuses: JobStatus[] = [
+      JobStatus.CANCELLED,
+      JobStatus.RETURNED,
+    ];
     return voidableStatuses.includes(status);
   }
 

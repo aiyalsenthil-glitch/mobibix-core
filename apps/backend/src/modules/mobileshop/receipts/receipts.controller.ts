@@ -12,10 +12,12 @@ import { CurrentUser } from '../../../core/auth/decorators/current-user.decorato
 import { ReceiptsService } from './receipts.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { ReceiptEntity } from './entities/receipt.entity';
-import { PaymentMode, ReceiptStatus } from '@prisma/client';
+import { PaymentMode, ReceiptStatus, UserRole } from '@prisma/client';
+import { Roles } from '../../../core/auth/decorators/roles.decorator';
 
 @Controller('receipts')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class ReceiptsController {
   constructor(private readonly receiptsService: ReceiptsService) {}
 

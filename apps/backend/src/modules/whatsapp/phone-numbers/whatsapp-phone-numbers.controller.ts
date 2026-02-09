@@ -13,9 +13,11 @@ import {
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { WhatsAppPhoneNumbersService } from './whatsapp-phone-numbers.service';
 import { UserRole, WhatsAppPhoneNumberPurpose } from '@prisma/client';
+import { Roles } from '../../../core/auth/decorators/roles.decorator';
 
 @Controller('whatsapp/phone-numbers')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppPhoneNumbersController {
   constructor(
     private readonly phoneNumbersService: WhatsAppPhoneNumbersService,
@@ -30,18 +32,26 @@ export class WhatsAppPhoneNumbersController {
     @Param('moduleType') moduleType: string,
     @Req() req: any,
   ) {
-    const user = req.user as any;
+    const user = req.user;
     const role = (user?.role?.toUpperCase() as UserRole) || UserRole.USER;
 
     // Owners can only view numbers for their own tenant
     if (role === UserRole.OWNER && moduleType !== user.tenantId) {
-      throw new BadRequestException('Unauthorized - Can only view own tenant numbers');
+      throw new BadRequestException(
+        'Unauthorized - Can only view own tenant numbers',
+      );
     }
 
-    this.validateAccess(req, [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OWNER]);
-    
+    this.validateAccess(req, [
+      UserRole.ADMIN,
+      UserRole.SUPER_ADMIN,
+      UserRole.OWNER,
+    ]);
+
     const phones = await this.phoneNumbersService.listPhoneNumbers(moduleType);
-    return phones.map((p) => this.phoneNumbersService.sanitizePhoneNumber(p, role));
+    return phones.map((p) =>
+      this.phoneNumbersService.sanitizePhoneNumber(p, role),
+    );
   }
 
   /**
@@ -89,8 +99,12 @@ export class WhatsAppPhoneNumbersController {
     },
     @Req() req: any,
   ) {
-    this.validateAccess(req, [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.OWNER]);
-    
+    this.validateAccess(req, [
+      UserRole.ADMIN,
+      UserRole.SUPER_ADMIN,
+      UserRole.OWNER,
+    ]);
+
     // TODO: Add tenant validation to ensure OWNER only updates their own numbers
     return this.phoneNumbersService.updatePhoneNumber(id, body);
   }
@@ -109,11 +123,13 @@ export class WhatsAppPhoneNumbersController {
    * Validate user has access
    */
   private validateAccess(req: any, allowedRoles: UserRole[]) {
-    const user = req.user as any;
+    const user = req.user;
     const userRole = (user?.role?.toUpperCase() as UserRole) || UserRole.USER;
 
     if (!allowedRoles.includes(userRole)) {
-      throw new BadRequestException(`Unauthorized - Required roles: ${allowedRoles.join(', ')}`);
+      throw new BadRequestException(
+        `Unauthorized - Required roles: ${allowedRoles.join(', ')}`,
+      );
     }
   }
 }

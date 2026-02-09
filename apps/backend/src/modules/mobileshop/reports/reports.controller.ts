@@ -1,9 +1,12 @@
 import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
 import { MobileShopReportsService } from './reports.service';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
+import { Roles } from '../../../core/auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('api/mobileshop/reports')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class MobileShopReportsController {
   constructor(private readonly reportsService: MobileShopReportsService) {}
 

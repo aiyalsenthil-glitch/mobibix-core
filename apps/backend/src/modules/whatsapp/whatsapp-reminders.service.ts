@@ -10,6 +10,7 @@ import {
   VariableResolutionContext,
 } from './variable-resolver.service';
 import { WhatsAppModule } from './variable-registry';
+import { PLAN_LIMITS } from '../../core/billing/plan-limits';
 
 interface ReminderTemplateParams {
   [key: string]: string | number;
@@ -24,8 +25,6 @@ interface ProcessReminderResult {
 @Injectable()
 export class WhatsAppRemindersService {
   private readonly logger = new Logger(WhatsAppRemindersService.name);
-
-
 
   constructor(
     private readonly prisma: PrismaService,
@@ -83,6 +82,16 @@ export class WhatsAppRemindersService {
               id: true,
               name: true,
               tenantType: true,
+              subscription: {
+                where: { status: 'ACTIVE' },
+                orderBy: { startDate: 'desc' },
+                take: 1,
+                select: {
+                  plan: {
+                    select: { code: true },
+                  },
+                },
+              },
             },
           },
         },
@@ -167,6 +176,48 @@ export class WhatsAppRemindersService {
       const whatsAppSetting = await this.prisma.whatsAppSetting.findUnique({
         where: { tenantId },
       });
+
+      // 🛡️ QUOTA CHECK: Daily Reminder Limit
+      const activeSub = reminder.tenant?.subscription?.[0];
+      const planCode = activeSub?.plan?.code ?? 'MOBIBIX_TRIAL';
+
+      const limits =
+        PLAN_LIMITS[planCode as keyof typeof PLAN_LIMITS] ??
+        PLAN_LIMITS.MOBIBIX_TRIAL;
+
+      if (
+        limits.reminderQuotaPerDay !== null &&
+        limits.reminderQuotaPerDay !== undefined
+      ) {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
+        const sentToday = await this.prisma.whatsAppLog.count({
+          where: {
+            tenantId,
+            type: 'REMINDER',
+            status: 'SENT',
+            sentAt: { gte: todayStart },
+          },
+        });
+
+        if (sentToday >= limits.reminderQuotaPerDay) {
+          const reason = `Daily quota reached (${sentToday}/${limits.reminderQuotaPerDay})`;
+          await this.updateReminderStatus(
+            reminderId,
+            ReminderStatus.SKIPPED,
+            reason,
+          );
+          await this.logAttempt(
+            tenantId,
+            customer.id,
+            customer.phone || 'UNKNOWN',
+            'SKIPPED',
+            reason,
+          );
+          return;
+        }
+      }
 
       // Permissive Default: Only skip if explicitly set to false
       if (whatsAppSetting && whatsAppSetting.enabled === false) {
@@ -324,7 +375,7 @@ export class WhatsAppRemindersService {
               ? 'GYM'
               : tenantModuleHint;
 
-        let automation = await this.prisma.whatsAppAutomation.findFirst({
+        const automation = await this.prisma.whatsAppAutomation.findFirst({
           where: {
             templateKey: templateKey,
             enabled: true,
@@ -350,11 +401,7 @@ export class WhatsAppRemindersService {
           ) {
             context.module = WhatsAppModule.GYM;
           }
-
-
         } else {
-
-
           // Fallback for hardcoded/legacy templates not in Automation table
           if (context.module === WhatsAppModule.MOBILE_SHOP) {
             // Normalize templateKey for comparison (lowercase, remove spaces)
@@ -380,8 +427,6 @@ export class WhatsAppRemindersService {
             } else if (normalizedKey.includes('followup')) {
               eventType = 'FOLLOW_UP_SCHEDULED';
             }
-
-
           }
         }
 
@@ -462,11 +507,10 @@ export class WhatsAppRemindersService {
           `[WhatsAppReminders] Fallback Parameters: ${JSON.stringify(parameters)}`,
         );
       }
-
       // 5️⃣ Send message via WhatsAppSender
       const result = await this.whatsAppSender.sendTemplateMessage(
         tenantId,
-        WhatsAppFeature.REMINDER,
+        'REMINDER', // Core feature, always-on
         whatsAppPhone,
         template?.metaTemplateName || templateKey,
         parameters,

@@ -21,11 +21,19 @@ export interface Receipt {
   customerName: string;
   customerPhone?: string;
   linkedInvoiceId?: string;
-  linkedJobId?: string;
+  linkedJobId?: string; // ID for reference
   narration?: string;
   status: ReceiptStatus;
   createdAt: Date | string;
   createdBy?: string;
+  
+  // Relations (if populated)
+  jobCard?: {
+    jobNumber: string;
+  };
+  invoice?: {
+    invoiceNumber: string;
+  };
 }
 
 export interface CreateReceiptRequest {
@@ -33,6 +41,7 @@ export interface CreateReceiptRequest {
   amount: number;
   receiptType: ReceiptType;
   customerName: string;
+  customerId?: string; // Added field
   customerPhone?: string;
   linkedInvoiceId?: string;
   linkedJobId?: string;

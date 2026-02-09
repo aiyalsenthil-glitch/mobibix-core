@@ -1,6 +1,7 @@
 export const RetailDemoMessages = {
   WELCOME: {
-    greeting: (name: string) => `👋 Welcome to *Vessel Depot* 🍽️\nWe sell premium steel utensils for your home and business.`,
+    greeting: (name: string) =>
+      `👋 Welcome to *Vessel Depot* 🍽️\nWe sell premium steel utensils for your home and business.`,
     menu: `*Please choose an option:*\n\n1️⃣ View Products\n2️⃣ Bulk / Wholesale Enquiry\n3️⃣ Talk to Staff`,
   },
   CATALOG: {

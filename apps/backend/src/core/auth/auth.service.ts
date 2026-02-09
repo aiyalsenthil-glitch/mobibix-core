@@ -105,6 +105,9 @@ export class AuthService {
       // 4️⃣ Resolve active tenant context
       // ─────────────────────────────
 
+      // 4️⃣ Resolve active tenant context
+      // ─────────────────────────────
+
       let activeUserTenant: {
         id: string;
         tenantId: string;
@@ -112,6 +115,14 @@ export class AuthService {
         tenant: {
           id: string;
           name: string;
+          code: string;
+          subscription: {
+            status: string;
+            plan: {
+              code: string;
+              name: string;
+            };
+          }[];
         };
       } | null = null;
 
@@ -129,12 +140,28 @@ export class AuthService {
             userId: user.id,
             tenantId: tenant.id,
           },
-          include: { tenant: true },
+          include: {
+            tenant: {
+              include: {
+                subscription: {
+                  include: { plan: true },
+                },
+              },
+            },
+          },
         });
       } else {
         const userTenants = await this.prisma.userTenant.findMany({
           where: { userId: user.id },
-          include: { tenant: true },
+          include: {
+            tenant: {
+              include: {
+                subscription: {
+                  include: { plan: true },
+                },
+              },
+            },
+          },
         });
 
         activeUserTenant = userTenants[0] ?? null;
@@ -162,6 +189,7 @@ export class AuthService {
             fullName: user.fullName,
             role: user.role as any,
             tenantId: null,
+            tenantCode: null,
           },
           tenant: null,
         };
@@ -178,6 +206,10 @@ export class AuthService {
         });
       }
 
+      // Extract plan code (take first active/trial subscription or just first one)
+      const subscription = resolvedUserTenant.tenant.subscription?.[0];
+      const planCode = subscription?.plan?.code;
+
       // ─────────────────────────────
       // 5️⃣ Issue JWT
       // ─────────────────────────────
@@ -186,6 +218,7 @@ export class AuthService {
         tenantId: resolvedUserTenant.tenantId,
         userTenantId: resolvedUserTenant.id,
         role: resolvedUserTenant.role, // EXACT USER ROLE
+        planCode,
       });
 
       return {
@@ -193,13 +226,17 @@ export class AuthService {
         user: {
           id: user.id,
           tenantId: activeUserTenant?.tenantId ?? null,
+          tenantCode: resolvedUserTenant.tenant.code,
           role: activeUserTenant?.role ?? UserRole.USER,
           name: user.fullName,
           email: user.email,
+          planCode,
         },
         tenant: {
           id: resolvedUserTenant.tenant.id,
           name: resolvedUserTenant.tenant.name,
+          code: resolvedUserTenant.tenant.code,
+          planCode,
         },
       };
     } catch (err) {

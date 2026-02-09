@@ -28,14 +28,13 @@ import { ShopProductsModule } from '../../core/shop-products/shop-products.modul
 import { WhatsAppCapabilityRouter } from './router/whatsapp-capability.router'; // ✅ Added
 import { RetailDemoHandler } from './capabilities/retail-demo/retail-demo.handler'; // ✅ Added
 import { RetailDemoCatalog } from './capabilities/retail-demo/retail-demo.catalog'; // ✅ Added
+import { WhatsAppCrmService } from './whatsapp-crm.service';
+import { WhatsAppCrmSubscriptionGuard } from './guards/whatsapp-crm-subscription.guard';
+import { WhatsAppCrmEnabledGuard } from './guards/whatsapp-crm-enabled.guard';
+import { WhatsAppCrmPhoneNumberGuard } from './guards/whatsapp-crm-phone-number.guard';
 
 @Module({
   controllers: [
-    WhatsAppWebhookController,
-    WhatsAppSettingsController,
-    WhatsAppController,
-    WhatsAppPhoneNumbersController,
-    AutomationController,
     WhatsAppWebhookController,
     WhatsAppSettingsController,
     WhatsAppController,
@@ -63,14 +62,22 @@ import { RetailDemoCatalog } from './capabilities/retail-demo/retail-demo.catalo
     WhatsAppRemindersCron, // ✅ Added for reminder sending
     WhatsAppUserService,
     WhatsAppCapabilityRouter, // ✅ Added
-    RetailDemoHandler,       // ✅ Added
-    RetailDemoCatalog,       // ✅ Added
+    RetailDemoHandler, // ✅ Added
+    RetailDemoCatalog, // ✅ Added
+    WhatsAppCrmService,
+    WhatsAppCrmSubscriptionGuard,
+    WhatsAppCrmEnabledGuard,
+    WhatsAppCrmPhoneNumberGuard,
   ],
   exports: [
     WhatsAppSender,
     WhatsAppPhoneNumbersService,
     WhatsAppVariableResolver,
     AutomationService,
+    WhatsAppCrmService,
+    WhatsAppCrmSubscriptionGuard,
+    WhatsAppCrmEnabledGuard,
+    WhatsAppCrmPhoneNumberGuard,
   ],
 })
 export class WhatsAppModule {}

@@ -11,11 +11,14 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { ShopProductsService } from './shop-products.service';
 import { ShopProductLinkDto } from './dto/shop-product-link.dto';
+import { UserRole } from '@prisma/client';
 
 @Controller('shop-products')
 @UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class ShopProductsController {
   constructor(private readonly service: ShopProductsService) {}
 

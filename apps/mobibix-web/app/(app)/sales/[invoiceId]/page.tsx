@@ -108,12 +108,25 @@ export default function InvoiceDetailPage() {
   }
 
   const hasBalance = (invoice.balanceAmount || 0) > 0;
-  const statusColor =
-    invoice.status === "PAID"
-      ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300"
-      : invoice.status === "CREDIT"
-        ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
-        : "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300";
+  
+  let statusText: string = invoice.status;
+  let statusColor = "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
+
+  if (invoice.status === "VOIDED") {
+    statusColor = "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
+  } else if (invoice.status === "DRAFT") {
+     statusColor = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+  } else if (invoice.status === "PAID") {
+    statusColor = "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
+  } else if (invoice.status === "CREDIT") {
+     statusColor = "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
+  } else if (invoice.paymentStatus === "PARTIALLY_PAID") {
+    statusText = "PARTIALLY PAID";
+    statusColor = "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300";
+  } else if (invoice.paymentStatus === "UNPAID") {
+      statusText = "UNPAID"; // Show UNPAID instead of FINAL
+      statusColor = "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
+  }
 
   return (
     <div className="max-w-4xl mx-auto pb-12">
@@ -211,7 +224,7 @@ export default function InvoiceDetailPage() {
             <span
               className={`px-3 py-1 rounded-full text-sm font-bold ${statusColor}`}
             >
-              {invoice.status}
+              {statusText}
             </span>
             {/* 🛡️ JobCard-linked invoices cannot be edited */}
             {invoice.jobCard && (

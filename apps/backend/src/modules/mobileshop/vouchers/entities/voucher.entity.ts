@@ -6,6 +6,7 @@ export class VoucherEntity implements PaymentVoucher {
   shopId: string;
   voucherId: string;
   voucherType: any;
+  voucherSubType: any;
   date: Date;
   amount: number;
   paymentMethod: any;

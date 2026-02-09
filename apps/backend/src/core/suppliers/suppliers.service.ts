@@ -35,7 +35,7 @@ export class SuppliersService {
       if (existingSupplier.partyType === 'CUSTOMER') {
         const upgraded = await this.prisma.party.update({
           where: { id: existingSupplier.id },
-          data: { 
+          data: {
             partyType: 'BOTH',
             gstNumber: dto.gstin ?? existingSupplier.gstNumber,
             address: dto.address ?? existingSupplier.address,
@@ -89,7 +89,7 @@ export class SuppliersService {
   }> {
     const { skip = 0, take = 50, search = '', status } = options;
 
-    const whereClause: any = { 
+    const whereClause: any = {
       tenantId,
       partyType: { in: ['VENDOR', 'BOTH'] },
     };
@@ -131,8 +131,8 @@ export class SuppliersService {
    */
   async findOne(tenantId: string, id: string): Promise<SupplierResponseDto> {
     const supplier = await this.prisma.party.findFirst({
-      where: { 
-        id, 
+      where: {
+        id,
         tenantId,
         partyType: { in: ['VENDOR', 'BOTH'] },
       },
@@ -153,12 +153,12 @@ export class SuppliersService {
     id: string,
     dto: UpdateSupplierDto,
   ): Promise<SupplierResponseDto> {
-    const supplier = await this.prisma.party.findFirst({ 
-      where: { 
-        id, 
+    const supplier = await this.prisma.party.findFirst({
+      where: {
+        id,
         tenantId,
         partyType: { in: ['VENDOR', 'BOTH'] },
-      } 
+      },
     });
 
     if (!supplier) {
@@ -209,12 +209,12 @@ export class SuppliersService {
    * Soft delete a supplier
    */
   async remove(tenantId: string, id: string): Promise<SupplierResponseDto> {
-    const supplier = await this.prisma.party.findFirst({ 
-      where: { 
-        id, 
+    const supplier = await this.prisma.party.findFirst({
+      where: {
+        id,
         tenantId,
         partyType: { in: ['VENDOR', 'BOTH'] },
-      } 
+      },
     });
 
     if (!supplier) {
@@ -250,7 +250,7 @@ export class SuppliersService {
     supplierId: string,
   ): Promise<number> {
     const supplier = await this.prisma.party.findFirst({
-      where: { 
+      where: {
         id: supplierId,
         tenantId,
         partyType: { in: ['VENDOR', 'BOTH'] },

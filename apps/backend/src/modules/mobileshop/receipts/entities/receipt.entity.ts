@@ -14,9 +14,11 @@ export class ReceiptEntity implements Receipt {
   customerName: string;
   customerPhone: string | null;
   linkedInvoiceId: string | null;
-  linkedJobId: string | null;
+  linkedJobCardId: string | null;
+  linkedJobId: string | null; // Added missing field
   narration: string | null;
   status: any;
   createdAt: Date;
+  updatedAt: Date;
   createdBy: string | null;
 }

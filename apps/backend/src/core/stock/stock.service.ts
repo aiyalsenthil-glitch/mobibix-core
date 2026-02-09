@@ -139,7 +139,7 @@ export class StockService {
     shopId: string,
     productId: string,
     quantity: number,
-    referenceType: 'PURCHASE' | 'SALE' | 'REPAIR' | 'ADJUSTMENT' | 'ADJUSTMENT',
+    referenceType: 'PURCHASE' | 'SALE' | 'REPAIR' | 'ADJUSTMENT',
     referenceId: string | null,
     costPerUnit?: number,
     imeis?: string[],
@@ -216,7 +216,9 @@ export class StockService {
     });
   }
 
-  private toPaisa(amount: number | undefined | null): number | undefined | null {
+  private toPaisa(
+    amount: number | undefined | null,
+  ): number | undefined | null {
     if (amount === undefined || amount === null) return amount;
     return Math.round(amount * 100);
   }
@@ -304,9 +306,9 @@ export class StockService {
       // Update ShopProduct with new avgCost
       await tx.shopProduct.update({
         where: { id: product.id },
-        data: { 
+        data: {
           avgCost: newAvgCost,
-          costPrice: newCostPerUnit // Update Last Purchase Price
+          costPrice: newCostPerUnit, // Update Last Purchase Price
         },
       });
 

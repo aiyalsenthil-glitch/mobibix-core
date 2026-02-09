@@ -12,13 +12,16 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { SalesService } from './sales.service';
 import { PaymentService } from './payment.service';
 import { SalesInvoiceDto } from './dto/sales-invoice.dto';
 import { CollectPaymentDto } from './dto/collect-payment.dto';
+import { UserRole } from '@prisma/client';
 
 @Controller('mobileshop/sales')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class SalesController {
   constructor(
     private readonly service: SalesService,
@@ -86,7 +89,13 @@ export class SalesController {
   async recordPayment(
     @Req() req: any,
     @Param('invoiceId') invoiceId: string,
-    @Body() dto: { amount: number; paymentMethod: 'CASH' | 'CARD' | 'UPI' | 'BANK'; transactionRef?: string; narration?: string },
+    @Body()
+    dto: {
+      amount: number;
+      paymentMethod: 'CASH' | 'CARD' | 'UPI' | 'BANK';
+      transactionRef?: string;
+      narration?: string;
+    },
   ) {
     const tenantId = req.user?.tenantId;
     // 🛡️ FINANCIAL SAFETY LOCK

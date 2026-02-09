@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { listShops, type Shop } from "@/services/shops.api";
 import {
   createPurchase,
+  submitPurchase,
   type CreatePurchaseDto,
   type PurchaseItemDto,
   type PaymentMode,
@@ -13,6 +14,9 @@ import { authenticatedFetch } from "@/services/auth.api";
 import { useTheme } from "@/context/ThemeContext";
 import { PartySelector } from "@/components/common/PartySelector";
 import { type Party } from "@/services/parties.api";
+
+// GSTIN Regex Validation
+const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
 export default function NewPurchasePage() {
   const { theme } = useTheme();
@@ -28,12 +32,17 @@ export default function NewPurchasePage() {
     shopId: "",
     globalSupplierId: "",
     supplierName: "",
+    supplierGstin: "",
     invoiceNumber: "",
     invoiceDate: new Date().toISOString().split("T")[0],
     dueDate: "",
     paymentMethod: "CASH",
     items: [],
   });
+
+  // ... (existing code)
+
+
 
   // Current item being added
   const [currentItem, setCurrentItem] = useState<PurchaseItemDto>({
@@ -147,6 +156,12 @@ export default function NewPurchasePage() {
       return;
     }
 
+    // Validate GSTIN if provided
+    if (formData.supplierGstin && !GSTIN_REGEX.test(formData.supplierGstin)) {
+      setError("Invalid GSTIN format (e.g., 29ABCDE1234F1Z5)");
+      return;
+    }
+
     if (!formData.invoiceNumber) {
       setError("Please enter invoice number");
       return;
@@ -161,7 +176,14 @@ export default function NewPurchasePage() {
       setIsSubmitting(true);
       setError(null);
 
+      // 1. Always Create Purchase (Draft)
       const purchase = await createPurchase(formData);
+
+      // 2. If 'SUBMITTED', trigger atomic approval
+      if (status === "SUBMITTED") {
+        await submitPurchase(purchase.id);
+      }
+
       router.push("/purchases");
     } catch (err: any) {
       setError(err.message || "Failed to create purchase");
@@ -350,6 +372,34 @@ export default function NewPurchasePage() {
                       : "bg-white border-gray-300 text-gray-900"
                   }`}
                   placeholder="Supplier name"
+                />
+              </div>
+
+              {/* Supplier GSTIN (Manual Entry) */}
+              <div>
+                <label
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
+                  Supplier GSTIN (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.supplierGstin || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      supplierGstin: e.target.value.toUpperCase(),
+                    })
+                  }
+                  className={`w-full px-3 py-2 rounded-lg border ${
+                    theme === "dark"
+                      ? "bg-gray-800 border-gray-700 text-white"
+                      : "bg-white border-gray-300 text-gray-900"
+                  }`}
+                  placeholder="Ex: 29ABCDE1234F1Z5"
+                  maxLength={15}
                 />
               </div>
             </div>

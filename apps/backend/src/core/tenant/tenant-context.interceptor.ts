@@ -20,6 +20,6 @@ export class TenantContextInterceptor implements NestInterceptor {
       }
 
       return next.handle();
-    });
+    }) as Observable<any>;
   }
 }

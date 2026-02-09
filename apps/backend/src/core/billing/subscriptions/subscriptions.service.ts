@@ -16,11 +16,13 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CacheService } from '../../cache/cache.service';
 import {
   SubscriptionStatus,
   ModuleType,
   BillingCycle,
   TenantSubscription,
+  UserRole,
 } from '@prisma/client';
 import { PlanPriceService } from '../plan-price.service';
 import { addMonths, addYears } from 'date-fns';
@@ -41,11 +43,20 @@ export interface BuyPlanInput {
 export interface UpgradePlanInput {
   subscriptionId: string;
   newPlanId: string;
+  newBillingCycle?: BillingCycle;
 }
 
 export interface DowngradePlanInput {
   subscriptionId: string;
   newPlanId: string;
+  newBillingCycle?: BillingCycle;
+}
+
+export interface AddAddonInput {
+  subscriptionId: string;
+  addonPlanId: string;
+  billingCycle: BillingCycle;
+  autoRenew?: boolean;
 }
 
 // ============================================================================
@@ -59,6 +70,7 @@ export class SubscriptionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly planPriceService: PlanPriceService,
+    private readonly cacheService: CacheService,
   ) {}
 
   // =========================================================================
@@ -265,10 +277,11 @@ export class SubscriptionsService {
     }
 
     // Get price for next renewal
-    // Use existing billingCycle so price applies at next renewal
+    // Use new billing cycle if provided, otherwise stick to current
+    const targetCycle = input.newBillingCycle || subscription.billingCycle!;
     const nextPrice = await this.planPriceService.getPlanPrice({
       planId: newPlanId,
-      billingCycle: subscription.billingCycle!,
+      billingCycle: targetCycle,
     });
 
     // UPDATE: Change plan immediately, queue price for renewal
@@ -276,6 +289,7 @@ export class SubscriptionsService {
       where: { id: subscriptionId },
       data: {
         planId: newPlanId,
+        nextBillingCycle: input.newBillingCycle || subscription.billingCycle,
         // Keep current cycle, update price for next cycle
         nextPriceSnapshot: nextPrice.price,
         updatedAt: new Date(),
@@ -328,7 +342,7 @@ export class SubscriptionsService {
     // Get new plan
     const newPlan = await this.prisma.plan.findUnique({
       where: { id: newPlanId },
-      select: { id: true, name: true, isActive: true, level: true },
+      select: { id: true, name: true, isActive: true, level: true, code: true },
     });
 
     if (!newPlan || !newPlan.isActive) {
@@ -338,17 +352,33 @@ export class SubscriptionsService {
     }
 
     // Get price for next renewal
+    const targetCycle = input.newBillingCycle || subscription.billingCycle!;
     const nextPrice = await this.planPriceService.getPlanPrice({
       planId: newPlanId,
-      billingCycle: subscription.billingCycle!,
+      billingCycle: targetCycle,
     });
+
+    // ───────────────────────────────────────────────
+    // 🛡️ PLAN LIMITS ENFORCEMENT (Downgrade Safety)
+    // ───────────────────────────────────────────────
+    const eligibility = await this.checkDowngradeEligibility(
+      subscription.tenantId,
+      newPlanId,
+      subscription.module,
+    );
+
+    if (!eligibility.isEligible) {
+      throw new BadRequestException(
+        `Cannot downgrade to ${newPlan.name}: ${eligibility.blockers.join(' ')}`,
+      );
+    }
 
     // SCHEDULE downgrade: Set next* fields
     const scheduled = await this.prisma.tenantSubscription.update({
       where: { id: subscriptionId },
       data: {
         nextPlanId: newPlanId,
-        nextBillingCycle: subscription.billingCycle,
+        nextBillingCycle: targetCycle,
         nextPriceSnapshot: nextPrice.price,
         updatedAt: new Date(),
       },
@@ -432,6 +462,17 @@ export class SubscriptionsService {
       data: {
         status: SubscriptionStatus.EXPIRED,
         updatedAt: new Date(),
+      },
+    });
+
+    // Migrate active add-ons to new subscription row
+    await this.prisma.subscriptionAddon.updateMany({
+      where: {
+        subscriptionId: subscriptionId,
+        status: SubscriptionStatus.ACTIVE,
+      },
+      data: {
+        subscriptionId: renewed.id,
       },
     });
 
@@ -521,8 +562,22 @@ export class SubscriptionsService {
   /**
    * Get current active subscription with plan details
    * Automatically promotes SCHEDULED to ACTIVE if time reached
+   * ⚡ CACHED: 5 minutes TTL (invalidate on buyPlan, upgradePlan, changePlan, changeStatus)
    */
   async getCurrentActiveSubscription(tenantId: string, module: ModuleType) {
+    const cacheKey = `subscription:${tenantId}:${module}`;
+
+    return this.cacheService.getOrSet(
+      cacheKey,
+      async () => this._fetchActiveSubscription(tenantId, module),
+      5 * 60 * 1000, // 5 minutes
+    );
+  }
+
+  /**
+   * Internal method for fetching subscription (used by cache)
+   */
+  private async _fetchActiveSubscription(tenantId: string, module: ModuleType) {
     const now = new Date();
 
     // 1️⃣ Promote scheduled → active if time reached
@@ -552,7 +607,13 @@ export class SubscriptionsService {
         startDate: { lte: now },
         endDate: { gt: now },
       },
-      include: { plan: true },
+      include: {
+        plan: { include: { planFeatures: true } },
+        addons: {
+          where: { status: SubscriptionStatus.ACTIVE },
+          include: { addonPlan: { include: { planFeatures: true } } },
+        },
+      },
       orderBy: { startDate: 'desc' },
     });
 
@@ -567,7 +628,13 @@ export class SubscriptionsService {
         startDate: { lte: now },
         endDate: { gt: now },
       },
-      include: { plan: true },
+      include: {
+        plan: { include: { planFeatures: true } },
+        addons: {
+          where: { status: SubscriptionStatus.ACTIVE },
+          include: { addonPlan: { include: { planFeatures: true } } },
+        },
+      },
       orderBy: { startDate: 'desc' },
     });
   }
@@ -727,5 +794,198 @@ export class SubscriptionsService {
       orderBy: { startDate: 'asc' },
       include: { plan: true },
     });
+  }
+
+  /**
+   * CHECK DOWNGRADE ELIGIBILITY
+   *
+   * Checks if a tenant can downgrade to a specific plan based on their current usage.
+   * Returns a list of blockers (e.g., "Too many staff members").
+   */
+  async checkDowngradeEligibility(
+    tenantId: string,
+    targetPlanId: string,
+    module: ModuleType,
+  ) {
+    const targetPlan = await this.prisma.plan.findUnique({
+      where: { id: targetPlanId },
+      include: { planFeatures: true },
+    });
+
+    if (!targetPlan) {
+      throw new NotFoundException('Target plan not found');
+    }
+
+    const blockers: string[] = [];
+
+    // 1. Check Staff Limit
+    if (targetPlan.maxStaff !== null) {
+      const currentStaffCount = await this.prisma.userTenant.count({
+        where: {
+          tenantId,
+          role: UserRole.STAFF,
+        },
+      });
+
+      if (currentStaffCount > targetPlan.maxStaff) {
+        blockers.push(
+          `You have ${currentStaffCount} staff members, but the ${targetPlan.name} plan only allows ${targetPlan.maxStaff}. Please remove ${currentStaffCount - targetPlan.maxStaff} staff member(s) first.`,
+        );
+      }
+    }
+
+    // 2. Check Member Limit (GYM Only)
+    if (module === ModuleType.GYM && targetPlan.maxMembers !== null) {
+      const currentMemberCount = await this.prisma.member.count({
+        where: {
+          tenantId,
+          isActive: true,
+        },
+      });
+
+      if (currentMemberCount > targetPlan.maxMembers) {
+        blockers.push(
+          `You have ${currentMemberCount} active members, but the ${targetPlan.name} plan only allows ${targetPlan.maxMembers}. Please deactivate ${currentMemberCount - targetPlan.maxMembers} member(s) first.`,
+        );
+      }
+    }
+
+    // 3. Check Shop Limit (Mobile Shop)
+    if (targetPlan.maxShops !== null) {
+      const currentShopCount = await this.prisma.shop.count({
+        where: {
+          tenantId,
+          isActive: true,
+        },
+      });
+
+      if (currentShopCount > targetPlan.maxShops) {
+        blockers.push(
+          `You have ${currentShopCount} active shops, but the ${targetPlan.name} plan only allows ${targetPlan.maxShops}. Please deactivate ${currentShopCount - targetPlan.maxShops} shop(s) first.`,
+        );
+      }
+    }
+
+    // 4. Check WhatsApp Feature (Warning Only - or Blocker if strict)
+    // For now, we just check if they lose WhatsApp Access
+    const hasWhatsapp = targetPlan.planFeatures.some(
+      (f) => f.feature === 'WHATSAPP_UTILITY' && f.enabled,
+    );
+
+    // We can also check usage, but `checkDowngradeEligibility` logic
+    // primarily focuses on HARD LIMITS (counts). Feature loss is usually a warning.
+    // We'll return it as a structured warning if needed, but for now blockers are strings.
+    // Let's add it as a "blocker" ONLY if they have active WhatsApp usage?
+    // No, usually features are just disabled. We'll stick to Counts for blockers.
+
+    return {
+      isEligible: blockers.length === 0,
+      blockers,
+      currentUsage: {
+        staff: await this.prisma.userTenant.count({
+          where: { tenantId, role: UserRole.STAFF },
+        }),
+        members:
+          module === ModuleType.GYM
+            ? await this.prisma.member.count({
+                where: { tenantId, isActive: true },
+              })
+            : null,
+        shops: await this.prisma.shop.count({
+          where: { tenantId, isActive: true },
+        }),
+      },
+      limits: {
+        maxStaff: targetPlan.maxStaff,
+        maxMembers: targetPlan.maxMembers,
+        maxShops: targetPlan.maxShops,
+      },
+    };
+  }
+
+  /**
+   * MANAGE ADDON (Enable/Disable)
+   *
+   * Specifically handles 'WHATSAPP_CRM' as a module subscription + tenant flag.
+   */
+  async manageAddon(
+    tenantId: string,
+    addon: 'WHATSAPP_CRM',
+    action: 'ENABLE' | 'DISABLE',
+    planId?: string,
+  ) {
+    if (addon === 'WHATSAPP_CRM') {
+      if (action === 'ENABLE') {
+        if (!planId) {
+          throw new BadRequestException(
+            'planId is required to enable WHATSAPP_CRM',
+          );
+        }
+
+        // 1. Upsert Subscription
+        const sub = await this.prisma.tenantSubscription.upsert({
+          where: {
+            tenantId_module: {
+              tenantId: tenantId,
+              module: 'WHATSAPP_CRM',
+            },
+          },
+          update: {
+            status: 'ACTIVE',
+            planId: planId,
+            startDate: new Date(),
+            autoRenew: true,
+            endDate: addYears(new Date(), 1), // Default 1 year for now
+          },
+          create: {
+            tenantId: tenantId,
+            planId: planId,
+            module: 'WHATSAPP_CRM',
+            status: 'ACTIVE',
+            startDate: new Date(),
+            autoRenew: true,
+            endDate: addYears(new Date(), 1),
+          },
+        });
+
+        // 2. Update Tenant Flag
+        await this.prisma.tenant.update({
+          where: { id: tenantId },
+          data: { whatsappCrmEnabled: true },
+        });
+
+        this.logger.log(`✅ Enabled WHATSAPP_CRM for ${tenantId}`);
+        return sub;
+      } else {
+        // DISABLE
+        // 1. Cancel Subscription
+        const sub = await this.prisma.tenantSubscription.findUnique({
+          where: {
+            tenantId_module: {
+              tenantId: tenantId,
+              module: 'WHATSAPP_CRM',
+            },
+          },
+        });
+
+        if (sub) {
+          await this.prisma.tenantSubscription.update({
+            where: { id: sub.id },
+            data: { status: SubscriptionStatus.CANCELLED },
+          });
+        }
+
+        // 2. Update Tenant Flag
+        await this.prisma.tenant.update({
+          where: { id: tenantId },
+          data: { whatsappCrmEnabled: false },
+        });
+
+        this.logger.log(`🚫 Disabled WHATSAPP_CRM for ${tenantId}`);
+        return { message: 'Addon disabled' };
+      }
+    }
+
+    throw new BadRequestException(`Unsupported addon: ${addon}`);
   }
 }

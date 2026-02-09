@@ -5,7 +5,9 @@ import { ValidationPipe } from '@nestjs/common';
 import express from 'express';
 import cors from 'cors';
 import * as bodyParser from 'body-parser';
+import compression from 'compression';
 import { join } from 'path';
+import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
 
 import { WhatsAppConfigValidator } from './modules/whatsapp/whatsapp.config-validator';
 import { PrismaService } from './core/prisma/prisma.service';
@@ -29,7 +31,28 @@ async function bootstrap() {
   );
 
   /**
-   * 3️⃣ Enable CORS at Express level
+   * 🚀 3️⃣ Enable response compression (Tier 4 Performance)
+   * - Compresses all responses > 1KB
+   * - 70-90% size reduction for JSON
+   * - Critical for slow networks (3G/4G)
+   */
+  server.use(
+    compression({
+      level: 6, // Balance between compression ratio and CPU (1-9)
+      threshold: 1024, // Only compress responses larger than 1KB
+      filter: (req, res) => {
+        // Don't compress if client doesn't accept encoding
+        if (req.headers['x-no-compression']) {
+          return false;
+        }
+        // Use default compression filter
+        return compression.filter(req, res);
+      },
+    }),
+  );
+
+  /**
+   * 4️⃣ Enable CORS at Express level
    */
   server.use(
     cors({
@@ -58,12 +81,12 @@ async function bootstrap() {
   );
 
   /**
-   * 4️⃣ Serve static files
+   * 5️⃣ Serve static files
    */
   server.use('/public', express.static(join(__dirname, '..', '..', 'public')));
 
   /**
-   * 5️⃣ QR check-in page
+   * 6️⃣ QR check-in page
    */
   server.get('/public/checkin/:tenantCode', (_req, res) => {
     res.sendFile(
@@ -72,7 +95,7 @@ async function bootstrap() {
   });
 
   /**
-   * 6️⃣ Health check
+   * 7️⃣ Health check
    */
   server.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok' });
@@ -83,12 +106,18 @@ async function bootstrap() {
    */
 
   /**
-   * 7️⃣ Create NestJS app ON SAME Express instance
+   * 8️⃣ Create NestJS app ON SAME Express instance
    */
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
 
   /**
-   * 8️⃣ Global API prefix
+   * 📊 9️⃣ Add global performance monitoring (Tier 4)
+   * Logs request duration and warns on slow queries
+   */
+  app.useGlobalInterceptors(new PerformanceInterceptor());
+
+  /**
+   * 🌐 1️⃣0️⃣ Global API prefix
    */
   app.setGlobalPrefix('api');
 
@@ -125,80 +154,7 @@ async function bootstrap() {
   // Validate WhatsApp Config
   WhatsAppConfigValidator.validateOrExit();
 
-  /**
-   * 🚨 TEMPORARY: Raw Admin Injection Route (Bypasses Guards)
-   * Using app.get(PrismaService) to reuse existing connection
-   */
-  server.options('/admin/inject-sub', (req, res) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    res.sendStatus(200);
-  });
-
-  server.post('/admin/inject-sub', async (req, res) => {
-    // Manually handle CORS for this raw route
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(200);
-      return;
-    }
-
-    try {
-      const { tenantId, planId } = req.body;
-      console.log(`[Raw] Injecting plan for ${tenantId}...`);
-
-      // Resolve PrismaService from Nest App Context
-      const prisma = app.get(PrismaService);
-
-      await prisma.tenantSubscription.upsert({
-        where: {
-          tenantId_module: {
-            tenantId: tenantId,
-            module: 'WHATSAPP_CRM',
-          },
-        },
-        update: {
-          status: 'ACTIVE',
-          planId: planId,
-          startDate: new Date(),
-          endDate: new Date(
-            new Date().setFullYear(new Date().getFullYear() + 1),
-          ),
-          autoRenew: true,
-        },
-        create: {
-          tenantId: tenantId,
-          planId: planId,
-          module: 'WHATSAPP_CRM',
-          status: 'ACTIVE',
-          startDate: new Date(),
-          endDate: new Date(
-            new Date().setFullYear(new Date().getFullYear() + 1),
-          ),
-          autoRenew: true,
-        },
-      });
-
-      await prisma.tenant.update({
-        where: { id: tenantId },
-        data: {
-          whatsappCrmEnabled: true,
-          whatsappPhoneNumberId: '100609346426084',
-          tenantType: 'MOBILE_SHOP',
-        },
-      });
-
-      console.log('[Raw] Injection success');
-      res.json({ success: true, message: 'Injected via raw route' });
-    } catch (err: any) {
-      console.error('[Raw] Injection failed', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
+  // Routes removed: /admin/inject-sub (Moved to AdminController)
 
   await app.listen(port);
 

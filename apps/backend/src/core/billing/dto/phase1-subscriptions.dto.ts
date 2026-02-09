@@ -58,6 +58,21 @@ export class ToggleAutoRenewDto {
 }
 
 /**
+ * Add Subscription Add-on Request
+ */
+export class AddSubscriptionAddonDto {
+  @IsUUID()
+  addonPlanId: string;
+
+  @IsEnum(BillingCycle)
+  billingCycle: BillingCycle;
+
+  @IsOptional()
+  @IsBoolean()
+  autoRenew?: boolean;
+}
+
+/**
  * Subscription Response (API Response)
  */
 export class SubscriptionResponseDto {

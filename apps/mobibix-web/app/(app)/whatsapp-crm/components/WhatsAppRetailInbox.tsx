@@ -3,9 +3,10 @@ import { getWhatsAppLogs, WhatsAppLog, sendWhatsAppMessage } from "@/services/wh
 
 type InboxProps = {
   tenantId?: string;
+  disabled?: boolean; // ✅ Added
 };
 
-export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
+export default function WhatsAppRetailInbox({ disabled = false }: InboxProps) {
   const [conversations, setConversations] = useState<Record<string, WhatsAppLog[]>>({});
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -13,11 +14,12 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 1. Fetch Logs
+  // 1. Fetch Logs
   useEffect(() => {
     loadLogs();
     const interval = setInterval(loadLogs, 10000); // Poll every 10s for demo
     return () => clearInterval(interval);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadLogs() {
     try {
@@ -55,7 +57,7 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
   }, [selectedPhone, conversations]);
 
   async function handleSend() {
-    if (!selectedPhone || !replyText.trim()) return;
+    if (!selectedPhone || !replyText.trim() || disabled) return; // Block validation
     setSending(true);
     try {
       // For demo, we use 'bot_text_response' to simulate a generic message if no specific staff template exists
@@ -101,7 +103,6 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
               const logs = conversations[phone];
               const lastLog = logs[logs.length - 1];
               const isSelected = phone === selectedPhone;
-              const isStaff = lastLog.type === 'MANUAL';
               
               return (
                 <div 
@@ -239,9 +240,10 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
               <div className="p-5 bg-white border-t border-gray-200 shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
                  <div className="relative rounded-2xl overflow-hidden border border-gray-200 focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-500/10 transition-all duration-300 bg-white">
                    <textarea
-                     className="w-full pl-5 pr-16 py-4 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none bg-transparent"
+                     disabled={disabled}
+                     className={`w-full pl-5 pr-16 py-4 text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none bg-transparent ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
                      rows={2}
-                     placeholder="Type a manual reply to take over from automation..."
+                     placeholder={disabled ? "Upgrade to PRO to reply..." : "Type a manual reply to take over from automation..."}
                      value={replyText}
                      onChange={e => setReplyText(e.target.value)}
                      onKeyDown={e => {
@@ -254,9 +256,9 @@ export default function WhatsAppRetailInbox({ tenantId }: InboxProps) {
                    <div className="absolute right-3 bottom-3 flex items-center gap-2">
                       <button 
                         onClick={handleSend}
-                        disabled={sending || !replyText.trim()}
-                        className="p-2.5 bg-gradient-to-tr from-teal-600 to-teal-500 text-white rounded-xl hover:shadow-lg hover:shadow-teal-500/30 disabled:opacity-30 disabled:hover:shadow-none transition-all duration-300 active:scale-95"
-                        title="Send Message"
+                        disabled={sending || !replyText.trim() || disabled}
+                        className={`p-2.5 bg-gradient-to-tr from-teal-600 to-teal-500 text-white rounded-xl hover:shadow-lg hover:shadow-teal-500/30 disabled:opacity-30 disabled:hover:shadow-none transition-all duration-300 active:scale-95 ${disabled ? 'grayscale' : ''}`}
+                        title={disabled ? "Upgrade to send" : "Send Message"}
                       >
                         {sending ? (
                           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

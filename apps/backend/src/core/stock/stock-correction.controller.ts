@@ -9,10 +9,13 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { StockCorrectionService } from './stock-correction.service';
 import { StockCorrectionDto } from './dto/stock-correction.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 type ReqWithUser = { user?: { tenantId?: string; sub?: string } };
 
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('mobileshop/stock')
 export class StockCorrectionController {
   constructor(private readonly service: StockCorrectionService) {}

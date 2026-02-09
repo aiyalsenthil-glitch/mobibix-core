@@ -1,0 +1,144 @@
+FAIL test/tier2-accounting.e2e-spec.ts
+  ΓùÅ Tier 2 Accounting (e2e) ΓÇ║ /purchases (POST) ΓÇ║ should create a purchase draft
+
+    Nest can't resolve dependencies of the StockKpiController (StockKpiService, ?). Please make sure that the argument "CACHE_MANAGER" at index [1] is available in the StockModule context.
+
+    Potential solutions:
+    - Is StockModule a valid NestJS module?
+    - If "CACHE_MANAGER" is a provider, is it part of the current StockModule?
+    - If "CACHE_MANAGER" is exported from a separate @Module, is that module imported within StockModule?
+      @Module({
+        imports: [ /* the Module containing "CACHE_MANAGER" */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      65 |   beforeAll(async () => {
+      66 |
+    > 67 |     const moduleFixture: TestingModule = await Test.createTestingModule({
+         |                                          ^
+      68 |       imports: [
+      69 |         PurchasesModule, 
+      70 |         ReportsHardeningModule,
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/@nestjs/core/injector/injector.js:286:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 1)
+      at TestingInjector.resolveConstructorParams (../node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadController (../node_modules/@nestjs/core/injector/injector.js:94:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:68:13
+          at async Promise.all (index 2)
+      at TestingInstanceLoader.createInstancesOfControllers (../node_modules/@nestjs/core/injector/instance-loader.js:67:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:42:13
+          at async Promise.all (index 4)
+      at TestingInstanceLoader.createInstances (../node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (tier2-accounting.e2e-spec.ts:67:42)
+
+  ΓùÅ Tier 2 Accounting (e2e) ΓÇ║ /purchases/:id/submit (POST) ΓÇ║ should submit a purchase draft
+
+    Nest can't resolve dependencies of the StockKpiController (StockKpiService, ?). Please make sure that the argument "CACHE_MANAGER" at index [1] is available in the StockModule context.
+
+    Potential solutions:
+    - Is StockModule a valid NestJS module?
+    - If "CACHE_MANAGER" is a provider, is it part of the current StockModule?
+    - If "CACHE_MANAGER" is exported from a separate @Module, is that module imported within StockModule?
+      @Module({
+        imports: [ /* the Module containing "CACHE_MANAGER" */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      65 |   beforeAll(async () => {
+      66 |
+    > 67 |     const moduleFixture: TestingModule = await Test.createTestingModule({
+         |                                          ^
+      68 |       imports: [
+      69 |         PurchasesModule, 
+      70 |         ReportsHardeningModule,
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/@nestjs/core/injector/injector.js:286:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 1)
+      at TestingInjector.resolveConstructorParams (../node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadController (../node_modules/@nestjs/core/injector/injector.js:94:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:68:13
+          at async Promise.all (index 2)
+      at TestingInstanceLoader.createInstancesOfControllers (../node_modules/@nestjs/core/injector/instance-loader.js:67:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:42:13
+          at async Promise.all (index 4)
+      at TestingInstanceLoader.createInstances (../node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (tier2-accounting.e2e-spec.ts:67:42)
+
+  ΓùÅ Tier 2 Accounting (e2e) ΓÇ║ /reports/receivables-aging (GET) ΓÇ║ should return aging report
+
+    Nest can't resolve dependencies of the StockKpiController (StockKpiService, ?). Please make sure that the argument "CACHE_MANAGER" at index [1] is available in the StockModule context.
+
+    Potential solutions:
+    - Is StockModule a valid NestJS module?
+    - If "CACHE_MANAGER" is a provider, is it part of the current StockModule?
+    - If "CACHE_MANAGER" is exported from a separate @Module, is that module imported within StockModule?
+      @Module({
+        imports: [ /* the Module containing "CACHE_MANAGER" */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      65 |   beforeAll(async () => {
+      66 |
+    > 67 |     const moduleFixture: TestingModule = await Test.createTestingModule({
+         |                                          ^
+      68 |       imports: [
+      69 |         PurchasesModule, 
+      70 |         ReportsHardeningModule,
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/@nestjs/core/injector/injector.js:286:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 1)
+      at TestingInjector.resolveConstructorParams (../node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadController (../node_modules/@nestjs/core/injector/injector.js:94:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:68:13
+          at async Promise.all (index 2)
+      at TestingInstanceLoader.createInstancesOfControllers (../node_modules/@nestjs/core/injector/instance-loader.js:67:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:42:13
+          at async Promise.all (index 4)
+      at TestingInstanceLoader.createInstances (../node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (tier2-accounting.e2e-spec.ts:67:42)
+
+
+  ΓùÅ Test suite failed to run
+
+    TypeError: Cannot read properties of undefined (reading 'close')
+
+      92 |
+      93 |   afterAll(async () => {
+    > 94 |     await app.close();
+         |               ^
+      95 |   });
+      96 |
+      97 |   beforeEach(() => {
+
+      at Object.<anonymous> (tier2-accounting.e2e-spec.ts:94:15)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 3 total
+Snapshots:   0 total
+Time:        1.627 s, estimated 2 s
+Ran all test suites matching test/tier2-accounting.e2e-spec.ts.

@@ -3,6 +3,7 @@ import {
   Get,
   Query,
   Req,
+  Param,
   BadRequestException,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
@@ -24,5 +25,21 @@ export class ProductsController {
     }
 
     return this.service.listByShop(tenantId, shopId);
+  }
+
+  @Get(':id')
+  async getOne(
+    @Req() req,
+    @Param('id') id: string,
+    @Query('shopId') shopId: string,
+  ) {
+    if (!shopId) {
+      throw new BadRequestException('shopId is required');
+    }
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Invalid tenant');
+    }
+    return this.service.findOne(tenantId, shopId, id);
   }
 }

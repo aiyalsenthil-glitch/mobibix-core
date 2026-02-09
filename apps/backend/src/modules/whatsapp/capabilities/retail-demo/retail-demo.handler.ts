@@ -8,8 +8,7 @@ import { WhatsAppFeature } from '../../../../core/billing/whatsapp-rules';
 // --- CONSTANTS (Demo Content) ---
 
 // LEVEL 1: MENU (Implicitly handled via logic, but fallback mentions it)
-const FALLBACK_DEMO_TEXT = 
-`I didn't quite get that 🙂
+const FALLBACK_DEMO_TEXT = `I didn't quite get that 🙂
 
 Reply with:
 1 for Products
@@ -17,8 +16,7 @@ Reply with:
 3 to Talk to Staff`;
 
 // LEVEL 2A: PRODUCTS LIST
-const PRODUCTS_LIST_TEXT = 
-`Here are our top selling items:
+const PRODUCTS_LIST_TEXT = `Here are our top selling items:
 
 1. Prestige Pressure Cooker 3L – ₹1,450
 2. Pigeon Tawa 280mm – ₹850
@@ -28,8 +26,7 @@ const PRODUCTS_LIST_TEXT =
 Reply with the item number (1–4).`;
 
 // LEVEL 2B: BULK PROMPT
-const BULK_PROMPT_TEXT = 
-`Please reply with:
+const BULK_PROMPT_TEXT = `Please reply with:
 - Product Name
 - Quantity
 - Location
@@ -37,21 +34,21 @@ const BULK_PROMPT_TEXT =
 (e.g., 'Plates and mugs, 10 qty, Salem')`;
 
 // LEVEL 2C / 3: STAFF HANDOVER / CLOSE
-const STAFF_HANDOVER_TEXT = 
-`Thank you. Our team has been notified and will contact you shortly.`;
+const STAFF_HANDOVER_TEXT = `Thank you. Our team has been notified and will contact you shortly.`;
 
-const PRODUCT_THANKS_TEXT = 
-`Thank you for your interest.
+const PRODUCT_THANKS_TEXT = `Thank you for your interest.
 Our team will contact you shortly with availability details.`;
 
-const BULK_THANKS_TEXT = 
-`Thank you for the details.
+const BULK_THANKS_TEXT = `Thank you for the details.
 Our team will review your request and contact you shortly.`;
-
 
 // --- TYPE DEFINITIONS ---
 
-type DemoStep = 'MENU' | 'PRODUCT_SELECTION' | 'BULK_DETAILS' | 'WAITING_FOR_STAFF';
+type DemoStep =
+  | 'MENU'
+  | 'PRODUCT_SELECTION'
+  | 'BULK_DETAILS'
+  | 'WAITING_FOR_STAFF';
 
 interface DemoSession {
   step: DemoStep;
@@ -73,7 +70,11 @@ export class RetailDemoHandler {
     private readonly catalogHelper: RetailDemoCatalog,
   ) {}
 
-  async handleMessage(tenantId: string, phone: string, text: string): Promise<void> {
+  async handleMessage(
+    tenantId: string,
+    phone: string,
+    text: string,
+  ): Promise<void> {
     const cleanText = text.trim();
     const cleanLower = cleanText.toLowerCase();
     this.logger.log(`[RETAIL_DEMO] Msg from ${phone}: '${cleanText}'`);
@@ -99,13 +100,19 @@ export class RetailDemoHandler {
     // 3. Logic Flow Engine
     switch (session.step) {
       case 'MENU':
-        await this.handleMenuStep(tenantId, phone, cleanLower, customerName, session);
+        await this.handleMenuStep(
+          tenantId,
+          phone,
+          cleanLower,
+          customerName,
+          session,
+        );
         break;
 
       case 'PRODUCT_SELECTION':
         await this.handleProductSelection(tenantId, phone, cleanLower, session);
         break;
-      
+
       case 'BULK_DETAILS':
         await this.handleBulkDetails(tenantId, phone, cleanText, session);
         break;
@@ -113,7 +120,9 @@ export class RetailDemoHandler {
       case 'WAITING_FOR_STAFF':
         // STOP AUTOMATION explicitly.
         // We do absolutely nothing here. Staff must take over.
-        this.logger.log(`[RETAIL_DEMO] Automation stopped for ${phone}. Waiting for staff.`);
+        this.logger.log(
+          `[RETAIL_DEMO] Automation stopped for ${phone}. Waiting for staff.`,
+        );
         break;
     }
   }
@@ -121,19 +130,19 @@ export class RetailDemoHandler {
   // --- STEP HANDLERS ---
 
   private async handleMenuStep(
-    tenantId: string, 
-    phone: string, 
-    text: string, 
-    customerName: string, 
-    session: DemoSession
+    tenantId: string,
+    phone: string,
+    text: string,
+    customerName: string,
+    session: DemoSession,
   ) {
     // Check for Greetings first to send Welcome Template (only if context implies start)
     // But per requirements, we treat "1", "2", "3" strictly.
-    
+
     // GREETING OVERRIDE: If text looks like "hi", send Greeting Template but stay in MENU
     // The requirement says: "Greeting template is already sent... After greeting, user replies..."
     // So we assume the user is REPLYING to the greeting or menu.
-    
+
     if (text === '1' || text.includes('product')) {
       await this.sendFreeText(tenantId, phone, PRODUCTS_LIST_TEXT);
       session.step = 'PRODUCT_SELECTION';
@@ -153,21 +162,26 @@ export class RetailDemoHandler {
     }
 
     // Handling "Hi" re-entry or unknown inputs at MENU level
-    if (['hi', 'hello', 'menu', 'start'].some(w => text.includes(w))) {
-        // Resend Greeting Template (as a "Menu")
-        await this.sendWelcomeFlow(tenantId, phone);
-        // State remains MENU
-        return;
+    if (['hi', 'hello', 'menu', 'start'].some((w) => text.includes(w))) {
+      // Resend Greeting Template (as a "Menu")
+      await this.sendWelcomeFlow(tenantId, phone);
+      // State remains MENU
+      return;
     }
 
     // Fallback
     await this.sendFreeText(tenantId, phone, FALLBACK_DEMO_TEXT);
   }
 
-  private async handleProductSelection(tenantId: string, phone: string, text: string, session: DemoSession) {
+  private async handleProductSelection(
+    tenantId: string,
+    phone: string,
+    text: string,
+    session: DemoSession,
+  ) {
     // Expecting 1-4, but actually accept ANY text as selection for demo simplicity
     // Requirement: "Reply with the item number (1–4). Then wait for next user message." -> "After product selection... Send FREE TEXT... Stop"
-    
+
     // Validate minimally? Input text length > 0 is enough.
     if (text.length > 0) {
       await this.sendFreeText(tenantId, phone, PRODUCT_THANKS_TEXT);
@@ -176,7 +190,12 @@ export class RetailDemoHandler {
     }
   }
 
-  private async handleBulkDetails(tenantId: string, phone: string, rawText: string, session: DemoSession) {
+  private async handleBulkDetails(
+    tenantId: string,
+    phone: string,
+    rawText: string,
+    session: DemoSession,
+  ) {
     // Expecting: Name, Qty, Location.
     // "When any non-empty text is received... Proceed to THANK YOU step."
     if (rawText.length > 0) {
@@ -191,7 +210,7 @@ export class RetailDemoHandler {
   private async sendWelcomeFlow(tenantId: string, phone: string) {
     const shop = await this.prisma.shop.findFirst({
       where: { tenantId, isActive: true },
-      select: { name: true }
+      select: { name: true },
     });
     const shopName = shop?.name || 'Our Store';
 
@@ -200,22 +219,38 @@ export class RetailDemoHandler {
       'WELCOME' as WhatsAppFeature,
       phone,
       'retail_greeting',
-      [shopName]
+      [shopName],
     );
   }
 
-  private async hasStaffRepliedRecently(tenantId: string, phone: string): Promise<boolean> {
+  private async hasStaffRepliedRecently(
+    tenantId: string,
+    phone: string,
+  ): Promise<boolean> {
     const lastStaffLog = await this.prisma.whatsAppLog.findFirst({
-        where: { tenantId, phone, type: 'MANUAL', sentAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }
+      where: {
+        tenantId,
+        phone,
+        type: 'MANUAL',
+        sentAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
     });
     return !!lastStaffLog;
   }
 
   private async ensureLeadExists(tenantId: string, phone: string) {
-    let party = await this.prisma.party.findUnique({ where: { tenantId_phone: { tenantId, phone } } });
+    let party = await this.prisma.party.findUnique({
+      where: { tenantId_phone: { tenantId, phone } },
+    });
     if (!party) {
       party = await this.prisma.party.create({
-        data: { tenantId, phone, name: 'Guest', partyType: 'CUSTOMER', tags: ['WHATSAPP_LEAD'] }
+        data: {
+          tenantId,
+          phone,
+          name: 'Guest',
+          partyType: 'CUSTOMER',
+          tags: ['WHATSAPP_LEAD'],
+        },
       });
     }
     return party;
@@ -223,54 +258,66 @@ export class RetailDemoHandler {
 
   private async markHighIntent(tenantId: string, phone: string, tag: string) {
     try {
-        const party = await this.prisma.party.findUnique({ where: { tenantId_phone: { tenantId, phone } } });
-        if (party && !party.tags.includes('HIGH_INTENT')) {
-            await this.prisma.party.update({
-                where: { id: party.id },
-                data: { tags: { push: ['HIGH_INTENT', tag] } }
-            });
-        }
-    } catch (e) { this.logger.error(`Failed to mark intent: ${e}`); }
+      const party = await this.prisma.party.findUnique({
+        where: { tenantId_phone: { tenantId, phone } },
+      });
+      if (party && !party.tags.includes('HIGH_INTENT')) {
+        await this.prisma.party.update({
+          where: { id: party.id },
+          data: { tags: { push: ['HIGH_INTENT', tag] } },
+        });
+      }
+    } catch (e) {
+      this.logger.error(`Failed to mark intent: ${e}`);
+    }
   }
 
   // --- SENDER ---
 
   private async sendFreeText(tenantId: string, phone: string, text: string) {
     try {
-        const phoneNumberConfig = await this.prisma.whatsAppPhoneNumber.findFirst({
-            where: { tenantId, isActive: true, purpose: 'DEFAULT' }
-        });
+      const phoneNumberConfig = await this.prisma.whatsAppPhoneNumber.findFirst(
+        {
+          where: { tenantId, isActive: true, purpose: 'DEFAULT' },
+        },
+      );
 
-        if (!phoneNumberConfig) {
-            this.logger.error('[RETAIL_DEMO] No Active WhatsApp Number found');
-            return;
-        }
+      if (!phoneNumberConfig) {
+        this.logger.error('[RETAIL_DEMO] No Active WhatsApp Number found');
+        return;
+      }
 
-        const url = `https://graph.facebook.com/${this.apiVersion}/${phoneNumberConfig.phoneNumberId}/messages`;
+      const url = `https://graph.facebook.com/${this.apiVersion}/${phoneNumberConfig.phoneNumberId}/messages`;
 
-        await axios.post(url, {
-            messaging_product: 'whatsapp',
-            recipient_type: 'individual',
-            to: phone,
-            type: 'text',
-            text: { preview_url: false, body: text }
-        }, {
-            headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json' }
-        });
+      await axios.post(
+        url,
+        {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: phone,
+          type: 'text',
+          text: { preview_url: false, body: text },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
 
-        // LOG TO DB (Required for Frontend to see the reply)
-        await this.prisma.whatsAppLog.create({
-            data: {
-                tenantId,
-                phone,
-                type: 'AUTOMATION',
-                status: 'SENT',
-                metadata: { text_snippet: text.substring(0, 50) } // Store snippet
-            }
-        });
-
+      // LOG TO DB (Required for Frontend to see the reply)
+      await this.prisma.whatsAppLog.create({
+        data: {
+          tenantId,
+          phone,
+          type: 'AUTOMATION',
+          status: 'SENT',
+          metadata: { text_snippet: text.substring(0, 50) }, // Store snippet
+        },
+      });
     } catch (e) {
-        this.logger.error(`[RETAIL_DEMO] Failed to send free text: ${e.message}`);
+      this.logger.error(`[RETAIL_DEMO] Failed to send free text: ${e.message}`);
     }
   }
 }

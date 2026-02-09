@@ -9,7 +9,12 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { PlanRulesService } from '../../core/billing/plan-rules.service';
 import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
-import { WhatsAppPhoneNumberPurpose, ModuleType } from '@prisma/client';
+import {
+  WhatsAppPhoneNumberPurpose,
+  ModuleType,
+  UserRole,
+} from '@prisma/client';
+import { Roles } from '../../core/auth/decorators/roles.decorator';
 
 interface CheckItem {
   name: string;
@@ -19,6 +24,7 @@ interface CheckItem {
 
 @Controller('whatsapp/debug')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppDebugController {
   constructor(
     private readonly prisma: PrismaService,
@@ -135,7 +141,10 @@ export class WhatsAppDebugController {
     const maxMembers = rules ? rules.maxMembers : 0;
 
     const isLimitExceeded =
-      rules && rules.maxMembers > 0 && memberCount > rules.maxMembers;
+      rules &&
+      rules.maxMembers !== null &&
+      rules.maxMembers > 0 &&
+      memberCount > rules.maxMembers;
 
     if (isLimitExceeded) {
       if (!isBlocked) {
@@ -152,7 +161,7 @@ export class WhatsAppDebugController {
       checks.push({
         name: 'Member Limit',
         status: 'PASS',
-        value: `OK (${memberCount} <= ${maxMembers > 0 ? maxMembers : 'Unlimited'})`,
+        value: `OK (${memberCount} <= ${maxMembers !== null && maxMembers > 0 ? maxMembers : 'Unlimited'})`,
       });
     }
 

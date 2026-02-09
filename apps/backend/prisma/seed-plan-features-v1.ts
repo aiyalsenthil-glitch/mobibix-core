@@ -14,9 +14,10 @@
  *     - MEMBERS_MANAGEMENT
  *     - ATTENDANCE_MANAGEMENT
  *     - QR_ATTENDANCE
- *     - STAFF_MANAGEMENT
+ *
  *   PRO:
  *     - All STANDARD features +
+ *     - STAFF_MANAGEMENT
  *     - REPORTS
  *     - MEMBER_PAYMENT_TRACKING
  *     - WHATSAPP_ALERTS_BASIC
@@ -57,49 +58,38 @@ const prisma = new PrismaClient({ adapter });
  * V1 Feature Assignments
  * Based on: WhatsAppFeature enum
  */
+/**
+ * ════════════════════════════════════════════════════
+ * PLAN FEATURES V1
+ * ════════════════════════════════════════════════════
+ *
+ * CLEANED: Only premium unlocks.
+ * Core features (members, staff, attendance, etc.) are always-on.
+ *
+ * Premium Features:
+ * - REPORTS
+ * - MULTI_SHOP
+ * - CUSTOM_PRINT_LAYOUT
+ * - WHATSAPP_ALERTS_AUTOMATION
+ */
 const V1_PLAN_FEATURES = {
-  TRIAL: [
-    // GYM Core
-    'MEMBERS_MANAGEMENT',
-    'ATTENDANCE_MANAGEMENT',
-    'QR_ATTENDANCE',
-    'STAFF_MANAGEMENT',
+  // GYM Plans: Premium features only
+  GYM_TRIAL: [],
+  GYM_STANDARD: [],
+  GYM_PRO: ['REPORTS'],
+
+  // MOBIBIX Plans: Premium features only
+  MOBIBIX_TRIAL: [],
+  MOBIBIX_STANDARD: [],
+  MOBIBIX_PRO: [
     'REPORTS',
-    'MEMBER_PAYMENT_TRACKING',
-    // WhatsApp
-    'WHATSAPP_ALERTS_BASIC',
-    'WHATSAPP_ALERTS_ALL',
-    'PAYMENT_DUE',
-    'REMINDER',
-    'WELCOME',
-    'EXPIRY',
+    'CUSTOM_PRINT_LAYOUT',
+    'MULTI_SHOP',
+    'WHATSAPP_ALERTS_AUTOMATION',
   ],
-  STANDARD: [
-    'MEMBERS_MANAGEMENT',
-    'ATTENDANCE_MANAGEMENT',
-    'QR_ATTENDANCE',
-    'STAFF_MANAGEMENT',
-  ],
-  PRO: [
-    // Standard features
-    'MEMBERS_MANAGEMENT',
-    'ATTENDANCE_MANAGEMENT',
-    'QR_ATTENDANCE',
-    'STAFF_MANAGEMENT',
-    // Pro features
-    'REPORTS',
-    'MEMBER_PAYMENT_TRACKING',
-    'WHATSAPP_ALERTS_BASIC',
-    'PAYMENT_DUE',
-    'REMINDER',
-  ],
-  WHATSAPP_CRM: [
-    'WHATSAPP_ALERTS_ALL',
-    'WELCOME',
-    'EXPIRY',
-    'PAYMENT_DUE',
-    'REMINDER',
-  ],
+
+  // WHATSAPP_CRM: Add-on (no core features)
+  WHATSAPP_CRM: [],
 };
 
 async function seedPlanFeatures() {

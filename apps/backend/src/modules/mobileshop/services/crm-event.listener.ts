@@ -38,8 +38,8 @@ export class CrmEventListener {
         });
       } catch (err) {
         this.logger.error(
-          `Failed to trigger automation for Invoice Created: ${(err as any).message}`,
-          (err as any).stack,
+          `Failed to trigger automation for Invoice Created: ${err.message}`,
+          err.stack,
         );
       }
     }
@@ -67,8 +67,8 @@ export class CrmEventListener {
         });
       } catch (err) {
         this.logger.error(
-          `Failed to trigger automation for Invoice Paid: ${(err as any).message}`,
-          (err as any).stack,
+          `Failed to trigger automation for Invoice Paid: ${err.message}`,
+          err.stack,
         );
       }
     }
@@ -85,7 +85,7 @@ export class CrmEventListener {
   @OnEvent('job.status.changed')
   async handleJobStatusChangedEvent(event: JobStatusChangedEvent) {
     this.logger.log(
-      `[CRM Event] Job Status Changed: ${event.jobId} -> ${event.status}`
+      `[CRM Event] Job Status Changed: ${event.jobId} -> ${event.status}`,
     );
 
     // 🚨 CRITICAL FAILSAGE: STRICTLY ONLY "READY" TRIGGER
@@ -98,12 +98,14 @@ export class CrmEventListener {
 
     // Only proceed for jobs with customers
     if (!event.customerId) {
-      this.logger.warn(`Job ${event.jobId} has no customer ID, skipping automation`);
+      this.logger.warn(
+        `Job ${event.jobId} has no customer ID, skipping automation`,
+      );
       return;
     }
 
     this.logger.log(
-      `✅ Triggering WhatsApp automation for JOB_READY: ${event.jobId}`
+      `✅ Triggering WhatsApp automation for JOB_READY: ${event.jobId}`,
     );
 
     // Trigger WhatsApp automation for JOB_READY event

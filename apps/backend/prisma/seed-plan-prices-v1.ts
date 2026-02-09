@@ -20,6 +20,7 @@
  *   WHATSAPP_CRM:
  *     - MONTHLY: ₹299
  *     - QUARTERLY: ₹749
+ * 
  *     - YEARLY: ₹2699
  *
  * CRITICAL:
@@ -50,15 +51,15 @@ const prisma = new PrismaClient({ adapter });
  * V1 Explicit Pricing (in paise)
  */
 const V1_PRICING = {
-  TRIAL: {
+  GYM_TRIAL: {
     MONTHLY: 0, // Free
   },
-  STANDARD: {
+  GYM_STANDARD: {
     MONTHLY: 19900, // ₹199
     QUARTERLY: 49900, // ₹499
     YEARLY: 179900, // ₹1799
   },
-  PRO: {
+  GYM_PRO: {
     MONTHLY: 39900, // ₹399
     QUARTERLY: 99900, // ₹999
     YEARLY: 359900, // ₹3599
@@ -68,7 +69,21 @@ const V1_PRICING = {
     QUARTERLY: 74900, // ₹749
     YEARLY: 269900, // ₹2699
   },
+  MOBIBIX_TRIAL: {
+    MONTHLY: 0,
+  },
+  MOBIBIX_STANDARD: {
+    MONTHLY: 29900,
+    QUARTERLY: 79900,
+    YEARLY: 299900,
+  },
+  MOBIBIX_PRO: {
+    MONTHLY: 49900,
+    QUARTERLY: 139900,
+    YEARLY: 499900,
+  },
 };
+
 
 async function seedPlanPrices() {
   console.log('💰 V1 Plan Prices Seeder');

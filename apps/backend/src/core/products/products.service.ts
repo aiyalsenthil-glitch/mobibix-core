@@ -64,4 +64,39 @@ export class ProductsService {
       };
     });
   }
+    async findOne(tenantId: string, shopId: string, productId: string) {
+    const product = await this.prisma.shopProduct.findUnique({
+      where: { id: productId },
+      include: {
+        global: {
+          select: {
+            hsn: { select: { code: true, taxRate: true } },
+          },
+        },
+        stockEntries: {
+          select: { type: true, quantity: true },
+        },
+      },
+    });
+
+    if (!product || product.shopId !== shopId || product.tenantId !== tenantId) {
+      return null;
+    }
+
+    const stockQty = product.stockEntries.reduce((sum, e) => {
+      return e.type === 'IN' ? sum + e.quantity : sum - e.quantity;
+    }, 0);
+
+    return {
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      hsnCode: product.hsnCode || product.global?.hsn?.code,
+      gstRate: product.gstRate || product.global?.hsn?.taxRate,
+      salePrice: this.fromPaisa(product.salePrice),
+      costPrice: this.fromPaisa(product.costPrice),
+      isActive: product.isActive,
+      stockQty,
+    };
+  }
 }

@@ -19,6 +19,7 @@ import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { WhatsAppSender } from './whatsapp.sender';
+import { WhatsAppUserService } from './whatsapp-user.service';
 
 import {
   WhatsAppModule,
@@ -33,6 +34,7 @@ export class WhatsAppController {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(WhatsAppSender) private readonly sender: WhatsAppSender,
+    private readonly userService: WhatsAppUserService,
   ) {}
 
   /**
@@ -75,7 +77,7 @@ export class WhatsAppController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    // this.validateAccess(req, tenantId); // TEMPORARILY DISABLED FOR DEMO
+    this.validateAccess(req, tenantId); // TEMPORARILY DISABLED FOR DEMO
 
     // Default to last 7 days if no dates provided
     const end = endDate ? new Date(endDate) : new Date();
@@ -517,7 +519,9 @@ export class WhatsAppController {
     }
 
     if (!dto.templateId && !dto.text) {
-        throw new BadRequestException('Either templateId or text must be provided');
+      throw new BadRequestException(
+        'Either templateId or text must be provided',
+      );
     }
 
     // Validate phone format (accept: +919876543210 or 919876543210)
@@ -532,81 +536,84 @@ export class WhatsAppController {
     // A. FREE TEXT FLOW (Manual Reply / Staff)
     // ---------------------------------------------------------
     if (dto.text) {
-        const textBody = dto.text.trim();
-        if (!textBody) return { success: true, skipped: true }; // Empty text check
+      const textBody = dto.text.trim();
+      if (!textBody) return { success: true, skipped: true }; // Empty text check
 
-        // Create log entry
-        const log = await this.prisma.whatsAppLog.create({
-            data: {
-                tenantId: dto.tenantId,
-                phone: dto.phone,
-                type: 'MANUAL',
-                status: 'PENDING',
-                metadata: { text_snippet: textBody.substring(0, 50) },
-            },
+      // Create log entry
+      const log = await this.prisma.whatsAppLog.create({
+        data: {
+          tenantId: dto.tenantId,
+          phone: dto.phone,
+          type: 'MANUAL',
+          status: 'PENDING',
+          metadata: { text_snippet: textBody.substring(0, 50) },
+        },
+      });
+
+      // Send Text
+      const result = await this.sender.sendTextMessage(
+        dto.tenantId,
+        dto.phone,
+        textBody,
+      );
+
+      // Update Log
+      if (result.success && result.messageId) {
+        await this.prisma.whatsAppLog.update({
+          where: { id: log.id },
+          data: { messageId: result.messageId, status: 'SENT' },
         });
-
-        // Send Text
-        const result = await this.sender.sendTextMessage(
-            dto.tenantId,
-            dto.phone,
-            textBody,
-        );
-
-        // Update Log
-        if (result.success && result.messageId) {
-            await this.prisma.whatsAppLog.update({
-                where: { id: log.id },
-                data: { messageId: result.messageId, status: 'SENT' },
-            });
-        } else {
-             await this.prisma.whatsAppLog.update({
-                where: { id: log.id },
-                data: { 
-                    status: 'FAILED', 
-                    error: typeof result.error === 'string' ? result.error : JSON.stringify(result.error) 
-                },
-            });
-        }
-        return this.prisma.whatsAppLog.findUnique({ where: { id: log.id } });
+      } else {
+        await this.prisma.whatsAppLog.update({
+          where: { id: log.id },
+          data: {
+            status: 'FAILED',
+            error:
+              typeof result.error === 'string'
+                ? result.error
+                : JSON.stringify(result.error),
+          },
+        });
+      }
+      return this.prisma.whatsAppLog.findUnique({ where: { id: log.id } });
     }
 
     // ---------------------------------------------------------
     // B. TEMPLATE FLOW (Automation / Notifications)
     // ---------------------------------------------------------
     if (dto.templateId) {
-        const template = await this.prisma.whatsAppTemplate.findUnique({
-            where: { id: dto.templateId },
-        });
+      const template = await this.prisma.whatsAppTemplate.findUnique({
+        where: { id: dto.templateId },
+      });
 
-        if (!template) {
-            throw new BadRequestException('Template not found');
-        }
+      if (!template) {
+        throw new BadRequestException('Template not found');
+      }
 
-        // Create log entry with PENDING status first
-        const log = await this.prisma.whatsAppLog.create({
-            data: {
-                tenantId: dto.tenantId,
-                phone: dto.phone,
-                type: template.feature,
-                status: 'PENDING',
-                metadata: dto.parameters ? { parameters: dto.parameters } : undefined,
-            },
-        });
+      // Create log entry with PENDING status first
+      const log = await this.prisma.whatsAppLog.create({
+        data: {
+          tenantId: dto.tenantId,
+          phone: dto.phone,
+          type: template.feature,
+          status: 'PENDING',
+          metadata: dto.parameters ? { parameters: dto.parameters } : undefined,
+        },
+      });
 
-        // Send the message
-        const result = await this.sender.sendTemplateMessage(
-            dto.tenantId,
-            template.feature as any,
-            dto.phone,
-            template.metaTemplateName,
-            dto.parameters || [],
-            { logId: log.id } // Pass logId to helper for auto update
-        );
+      // Send the message
+      const result = await this.sender.sendTemplateMessage(
+        dto.tenantId,
+        template.feature as any,
+        dto.phone,
+        template.metaTemplateName,
+        dto.parameters || [],
+        { logId: log.id }, // Pass logId to helper for auto update
+      );
 
-        // Note: sendTemplateMessage already updates the log if logId is passed.
-        // But we return the fresh log.
-        return this.prisma.whatsAppLog.findUnique({ where: { id: log.id } });
+      // Note: sendTemplateMessage already updates the log if logId is passed.
+      // But we return the fresh log.
+      return this.prisma.whatsAppLog.findUnique({ where: { id: log.id } });
     }
   }
 
@@ -645,5 +652,18 @@ export class WhatsAppController {
     ) {
       throw new BadRequestException('Unauthorized - Admin access required');
     }
+  }
+
+  /**
+   * GET /whatsapp/summary
+   * Get WhatsApp usage summary for the current tenant
+   */
+  @Get('summary')
+  async getUsageSummary(@Req() req: any) {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant ID required');
+    }
+    return this.userService.getUsageSummary(tenantId);
   }
 }

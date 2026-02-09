@@ -6,8 +6,8 @@ import {
   SetMetadata,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PrismaService } from '../../prisma/prisma.service';
-import { PLAN_CAPABILITIES } from '../plan-capabilities';
+import { PlanRulesService } from '../plan-rules.service';
+import { WhatsAppFeature } from '../whatsapp-rules';
 
 export const PLAN_FEATURE_KEY = 'plan_feature';
 export const RequirePlanFeature = (feature: string) =>
@@ -16,7 +16,7 @@ export const RequirePlanFeature = (feature: string) =>
 @Injectable()
 export class PlanFeatureGuard implements CanActivate {
   constructor(
-    private prisma: PrismaService,
+    private planRulesService: PlanRulesService,
     private reflector: Reflector,
   ) {}
 
@@ -33,46 +33,54 @@ export class PlanFeatureGuard implements CanActivate {
 
     if (!tenantId) return true;
 
-    const now = new Date();
+    // Use centralized Plan Rules Service (Source of Truth: DB)
+    // This handles caching, active subscription checks, and trial restrictions correctly.
+    const isEnabled = await this.planRulesService.isFeatureEnabledForTenant(
+      tenantId,
+      feature as WhatsAppFeature,
+    );
 
-    const subscription = await this.prisma.tenantSubscription.findFirst({
-      where: {
-        tenantId,
-        OR: [
-          {
-            status: 'ACTIVE',
-            startDate: { lte: now },
-            endDate: { gt: now },
-          },
-          {
-            status: 'TRIAL',
-            startDate: { lte: now },
-            endDate: { gt: now },
-          },
-        ],
-      },
-      orderBy: [
-        { status: 'desc' }, // ACTIVE > TRIAL
-        { startDate: 'desc' },
-      ],
-      include: { plan: true },
-    });
-
-    if (!subscription?.plan) {
-      throw new ForbiddenException('PLAN_REQUIRED');
-    }
-    // 🔓 TRIAL has full access
-    if (subscription?.status === 'TRIAL') {
-      return true;
-    }
-    const planCode = (subscription.plan.code ??
-      subscription.plan.name) as keyof typeof PLAN_CAPABILITIES;
-    const plan = PLAN_CAPABILITIES[planCode];
-
-    if (!plan || plan[feature] !== true) {
-      throw new ForbiddenException('PLAN_UPGRADE_REQUIRED');
+    if (!isEnabled) {
+      // Enhanced error with upgrade metadata
+      throw new ForbiddenException({
+        error: 'UPGRADE_REQUIRED',
+        message: this.getFeatureMessage(feature),
+        requiredPlan: 'PRO',
+        requiredFeature: feature,
+        upgradeHint: this.getUpgradeHint(feature),
+      });
     }
 
     return true;
+  }
+
+  private getFeatureMessage(feature: string): string {
+    const messages = {
+      WHATSAPP_UTILITY:
+        'WhatsApp messaging is available in PRO or as an add-on.',
+      WHATSAPP_MARKETING:
+        'WhatsApp marketing campaigns are available in PRO or as an add-on.',
+      WHATSAPP_AUTOMATION:
+        'WhatsApp automation is available in PRO or as an add-on.',
+      WHATSAPP_ALERTS_AUTOMATION:
+        'WhatsApp automation is available in PRO or as an add-on.',
+      REPORTS: 'Reports & analytics are available in PRO plan.',
+      MULTI_SHOP: 'Multi-shop management is available in PRO plan.',
+      CUSTOM_PRINT_LAYOUT: 'Custom print layouts are available in PRO plan.',
+    };
+    return messages[feature] || 'This feature requires a plan upgrade.';
+  }
+
+  private getUpgradeHint(feature: string): string {
+    const hints = {
+      WHATSAPP_UTILITY: 'Enable customer alerts & notifications',
+      WHATSAPP_MARKETING: 'Enable marketing campaigns',
+      WHATSAPP_AUTOMATION: 'Enable automated messaging',
+      WHATSAPP_ALERTS_AUTOMATION: 'Enable automated messaging',
+      REPORTS: 'Access analytics & reports',
+      MULTI_SHOP: 'Manage multiple locations',
+      CUSTOM_PRINT_LAYOUT: 'Customize invoice templates',
+    };
+    return hints[feature] || 'Unlock premium features';
   }
 }

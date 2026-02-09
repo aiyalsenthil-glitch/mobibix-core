@@ -58,15 +58,17 @@ export default function WhatsAppPage() {
       setLoading(true);
 
       // First, check WhatsApp CRM subscription status
-      const statusResponse = await authenticatedFetch("/user/whatsapp-crm/status");
+      const statusResponse = await authenticatedFetch(
+        "/user/whatsapp-crm/status",
+      );
       if (statusResponse.ok) {
         const status = await statusResponse.json();
         setCrmStatus(status);
 
         // ✅ Redirect Retail Demo users to new CRM
-        if (status.moduleType === 'MOBILE_SHOP') {
-            window.location.href = '/whatsapp-crm'; // Hard redirect to ensure proper load
-            return;
+        if (status.moduleType === "MOBILE_SHOP") {
+          window.location.href = "/whatsapp-crm"; // Hard redirect to ensure proper load
+          return;
         }
 
         // If no subscription, show promo (return early)
@@ -79,6 +81,12 @@ export default function WhatsAppPage() {
       // If subscribed, load dashboard
       const dash = await getWhatsAppDashboard();
       setDashboard(dash);
+
+      // If plan is required, show promo instead
+      if (dash.planRequired) {
+        setLoading(false);
+        return;
+      }
 
       if (dash.features?.reports) {
         const recentLogs = await getWhatsAppLogs({});
@@ -161,6 +169,11 @@ export default function WhatsAppPage() {
 
   // Show promo if no subscription
   if (crmStatus && !crmStatus.hasSubscription) {
+    return <WhatsAppCrmPromo />;
+  }
+
+  // Show promo if dashboard indicates plan is required
+  if (dashboard && dashboard.planRequired) {
     return <WhatsAppCrmPromo />;
   }
 
@@ -346,6 +359,46 @@ export default function WhatsAppPage() {
               Monthly quota exhausted. Actions are disabled.
             </p>
           )}
+
+          {/* Daily Reminder Quota Section */}
+          <div className="mt-6 pt-6 border-t border-border">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-xs uppercase text-muted-foreground">
+                  Daily Reminders (Automated)
+                </p>
+                <p className="text-lg font-semibold">
+                  {dashboard.dailyReminderQuota ?? "Unlimited"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase text-muted-foreground">
+                  Used Today
+                </p>
+                <p className="text-lg font-semibold">
+                  {dashboard.dailyReminderUsed}
+                </p>
+              </div>
+            </div>
+            <div className="h-3 w-full rounded-full bg-muted">
+              <div
+                className="h-3 rounded-full bg-blue-500"
+                style={{
+                  width: `${
+                    dashboard.dailyReminderQuota &&
+                    dashboard.dailyReminderQuota > 0
+                      ? Math.min(
+                          100,
+                          (dashboard.dailyReminderUsed /
+                            dashboard.dailyReminderQuota) *
+                            100,
+                        )
+                      : 0
+                  }%`,
+                }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

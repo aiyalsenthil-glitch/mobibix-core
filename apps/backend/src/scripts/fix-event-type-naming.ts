@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 /**
  * Fix eventType naming inconsistency: spaces → underscores
- * 
+ *
  * Problem: Database has "JOB READY" but code emits "JOB_READY"
  * Solution: Normalize all event types to use underscores
  */
@@ -38,7 +38,9 @@ async function fixEventTypeNaming() {
     },
   });
 
-  console.log(`Found ${automations.length} automations with spaces in eventType\n`);
+  console.log(
+    `Found ${automations.length} automations with spaces in eventType\n`,
+  );
 
   if (automations.length === 0) {
     console.log('✅ No fixes needed - all event types already use underscores');
@@ -47,8 +49,12 @@ async function fixEventTypeNaming() {
 
   // Display what will be updated
   for (const automation of automations) {
-    const correctedType = eventTypeMapping[automation.eventType] || automation.eventType.replace(/\s+/g, '_');
-    console.log(`  📝 "${automation.eventType}" → "${correctedType}" (Template: ${automation.templateKey})`);
+    const correctedType =
+      eventTypeMapping[automation.eventType] ||
+      automation.eventType.replace(/\s+/g, '_');
+    console.log(
+      `  📝 "${automation.eventType}" → "${correctedType}" (Template: ${automation.templateKey})`,
+    );
   }
 
   console.log('\n🚀 Applying fixes...\n');
@@ -56,8 +62,10 @@ async function fixEventTypeNaming() {
   // Update each automation
   let updatedCount = 0;
   for (const automation of automations) {
-    const correctedType = eventTypeMapping[automation.eventType] || automation.eventType.replace(/\s+/g, '_');
-    
+    const correctedType =
+      eventTypeMapping[automation.eventType] ||
+      automation.eventType.replace(/\s+/g, '_');
+
     await prisma.whatsAppAutomation.update({
       where: { id: automation.id },
       data: { eventType: correctedType },

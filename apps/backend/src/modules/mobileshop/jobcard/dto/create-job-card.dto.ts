@@ -1,4 +1,10 @@
-import { IsOptional, IsString, IsNumber, IsDateString } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsDateString,
+  IsEnum,
+} from 'class-validator';
 
 export class CreateJobCardDto {
   @IsOptional()
@@ -54,11 +60,14 @@ export class CreateJobCardDto {
   advancePaid?: number;
 
   @IsOptional()
-  @IsString()
-  billType?: string;
+  @IsEnum(['WITH_GST', 'WITHOUT_GST'])
+  /**
+   * @deprecated Compliance Violation. Do not use.
+   * System now strictly respects Shop.gstEnabled status.
+   */
+  billType?: 'WITH_GST' | 'WITHOUT_GST';
 
   @IsOptional()
   @IsDateString()
   estimatedDelivery?: Date;
 }
-

@@ -16,7 +16,8 @@ import {
   UpdateAutomationDto,
   ValidateAutomationDto,
 } from './dto/automation.dto';
-import { ModuleType } from '@prisma/client';
+import { ModuleType, UserRole } from '@prisma/client';
+import { Roles } from '../../core/auth/decorators/roles.decorator';
 
 /**
  * ────────────────────────────────────────────────
@@ -29,6 +30,7 @@ import { ModuleType } from '@prisma/client';
  */
 @Controller('api/whatsapp/automations')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class AutomationController {
   constructor(private readonly automationService: AutomationService) {}
 

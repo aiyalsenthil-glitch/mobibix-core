@@ -11,6 +11,7 @@ interface WhatsAppQuickActionProps {
   source?: string;
   sourceId?: string;
   buttonLabel?: string;
+  whatsappAllowed?: boolean;
   onSuccess?: () => void;
 }
 
@@ -22,6 +23,7 @@ export function WhatsAppQuickAction({
   source,
   sourceId,
   buttonLabel = "📱 Send WhatsApp",
+  whatsappAllowed = true,
   onSuccess,
 }: WhatsAppQuickActionProps) {
   const [loading, setLoading] = useState(false);
@@ -101,9 +103,22 @@ export function WhatsAppQuickAction({
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={5}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 resize-none"
+                disabled={!whatsappAllowed}
+                className={`w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 resize-none ${!whatsappAllowed ? 'opacity-50 cursor-not-allowed' : ''}`}
+                placeholder={!whatsappAllowed ? "Upgrade to PRO to send manual messages" : ""}
               />
             </div>
+
+            {/* PRO Badge / Banner */}
+            {!whatsappAllowed && (
+              <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3 mb-4 flex items-center gap-3">
+                <span className="text-xl">⭐</span>
+                <div>
+                    <p className="text-indigo-400 text-xs font-bold uppercase tracking-wider">Pro Feature</p>
+                    <p className="text-gray-300 text-[10px]">Manual messaging is available in the PRO plan.</p>
+                </div>
+              </div>
+            )}
 
             {/* Error */}
             {error && (
@@ -123,8 +138,8 @@ export function WhatsAppQuickAction({
               </button>
               <button
                 onClick={handleSend}
-                disabled={loading || !message.trim()}
-                className="flex-1 bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors disabled:opacity-50"
+                disabled={loading || !message.trim() || !whatsappAllowed}
+                className={`flex-1 bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors disabled:opacity-50 ${!whatsappAllowed ? 'grayscale cursor-not-allowed' : ''}`}
               >
                 {loading ? "Sending..." : "Send"}
               </button>

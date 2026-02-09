@@ -5,9 +5,12 @@ import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { Permissions } from '../../../core/auth/decorators/permissions.decorator';
 import { Permission } from '../../../core/auth/permissions.enum';
 import { MobileShopDashboardService } from './mobileshop-dashboard.service';
+import { Roles } from '../../../core/auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('mobileshop/dashboard')
 @UseGuards(JwtAuthGuard, TenantStatusGuard, TenantRequiredGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class MobileShopDashboardController {
   constructor(private readonly dashboardService: MobileShopDashboardService) {}
 

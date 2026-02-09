@@ -8,11 +8,13 @@ import {
 } from '@nestjs/common';
 import { PlansService } from './plans.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { ModuleType } from '@prisma/client';
+import { ModuleType, UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Roles } from '../../auth/decorators/roles.decorator';
 
 @Controller('plans')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class PlansController {
   constructor(
     private readonly plansService: PlansService,

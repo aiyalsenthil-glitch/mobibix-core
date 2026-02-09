@@ -1,0 +1,35 @@
+FAIL test/tier2-accounting.e2e-spec.ts
+  Tier 2 Accounting (e2e)
+    /purchases (POST)
+      ΓêÜ should create a purchase draft (55 ms)
+    /purchases/:id/submit (POST)
+      ├ù should submit a purchase draft (8 ms)
+    /reports/receivables-aging (GET)
+      ΓêÜ should return aging report (6 ms)
+
+  ΓùÅ Tier 2 Accounting (e2e) ΓÇ║ /purchases/:id/submit (POST) ΓÇ║ should submit a purchase draft
+
+    expected 200 "OK", got 404 "Not Found"
+
+      167 |       return request(app.getHttpServer())
+      168 |         .post(`/purchases/${purchaseId}/submit`)
+    > 169 |         .expect(200) // Controller returns void? 200 or 201? Usually 201 for POST, but validation might be 200.
+          |          ^
+      170 |         // Actually atomicPurchaseSubmit returns void, so default might be 201 or 200 depending on framework. Supertest handles checking.
+      171 |     });
+      172 |   });
+
+      at Object.<anonymous> (tier2-accounting.e2e-spec.ts:169:10)
+      ----
+      at Test._assertStatus (../node_modules/supertest/lib/test.js:309:14)
+      at ../node_modules/supertest/lib/test.js:365:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:342:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:195:23)
+      at localAssert (../node_modules/supertest/lib/test.js:138:14)
+      at Server.<anonymous> (../node_modules/supertest/lib/test.js:152:11)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 2 passed, 3 total
+Snapshots:   0 total
+Time:        1.675 s, estimated 4 s
+Ran all test suites matching test/tier2-accounting.e2e-spec.ts.

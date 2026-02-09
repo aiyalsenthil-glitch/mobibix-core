@@ -7,17 +7,25 @@ import {
   Query,
   Patch,
   Body,
+  Post,
+  Delete,
+  Param,
   BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { SubscriptionsService } from './subscriptions.service';
-import { ModuleType } from '@prisma/client';
+import { ModuleType, BillingCycle, UserRole } from '@prisma/client';
+import { Roles } from '../../auth/decorators/roles.decorator';
 
 import { PrismaService } from '../../prisma/prisma.service';
-import { ToggleAutoRenewDto } from '../dto/phase1-subscriptions.dto';
+import {
+  ToggleAutoRenewDto,
+  AddSubscriptionAddonDto,
+} from '../dto/phase1-subscriptions.dto';
 
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 @Controller('billing/subscription')
 export class SubscriptionsController {
   private readonly logger = new Logger(SubscriptionsController.name);
@@ -89,13 +97,51 @@ export class SubscriptionsController {
 
     const plan = sub.plan;
 
-    // IMPORTANT BUSINESS RULE:
-    // Backend NEVER blocks upgrade based on expiry
+    // 🚀 NEW: Database-driven plan details
+    const planDetails = {
+      name: plan.name,
+      code: plan.code,
+      level: plan.level,
+      tagline: plan.tagline,
+      description: plan.description,
+      features: plan.planFeatures
+        .filter((f) => f.enabled)
+        .map((f) => f.feature),
+      featuresJson: plan.featuresJson,
+
+      // Limits from DB
+      memberLimit: plan.maxMembers,
+      maxStaff: plan.maxStaff,
+      whatsappAllowed: plan.planFeatures.some(
+        (f) => f.feature === 'WHATSAPP_UTILITY' && f.enabled,
+      ),
+      staffAllowed: plan.planFeatures.some(
+        (f) => f.feature === 'STAFF' && f.enabled,
+      ),
+      attendanceAllowed: plan.planFeatures.some(
+        (f) => f.feature === 'ATTENDANCE' && f.enabled,
+      ),
+      analyticsHistoryDays: plan.analyticsHistoryDays,
+    };
+
+    const addons = (sub.addons || []).map((a) => ({
+      id: a.id,
+      name: a.addonPlan.name,
+      code: a.addonPlan.code,
+      tagline: a.addonPlan.tagline,
+      status: a.status,
+      endDate: a.endDate,
+      priceSnapshot: a.priceSnapshot,
+      features: a.addonPlan.planFeatures
+        .filter((f) => f.enabled)
+        .map((f) => f.feature),
+    }));
+
     const canUpgrade = true;
     return {
       current: {
-        plan: plan.name,
-        planLevel: plan.level,
+        ...planDetails,
+        addons,
         daysLeft,
         isTrial: sub.status === 'TRIAL',
         subscriptionStatus,
@@ -165,6 +211,7 @@ export class SubscriptionsController {
     @Body()
     body: {
       newPlanId: string;
+      newBillingCycle?: BillingCycle;
     },
     @Query('module') module?: ModuleType,
   ) {
@@ -172,7 +219,7 @@ export class SubscriptionsController {
       throw new UnauthorizedException('Authentication required');
     }
 
-    const { newPlanId } = body;
+    const { newPlanId, newBillingCycle } = body;
 
     if (!newPlanId) {
       throw new BadRequestException('newPlanId is required');
@@ -211,6 +258,7 @@ export class SubscriptionsController {
     const upgraded = await this.subscriptionsService.upgradePlan({
       subscriptionId: currentSub.id,
       newPlanId,
+      newBillingCycle,
     });
 
     this.logger.log(
@@ -225,5 +273,110 @@ export class SubscriptionsController {
       nextPriceSnapshot: upgraded.nextPriceSnapshot,
       message: 'Plan upgraded immediately. New price applies at next renewal.',
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 📉 DOWNGRADE SUBSCRIPTION (Scheduled)
+  // ═══════════════════════════════════════════════════════════════════════════
+  @Patch('downgrade')
+  async downgradeSubscription(
+    @Req() req: any,
+    @Body()
+    body: {
+      newPlanId: string;
+      newBillingCycle?: BillingCycle;
+    },
+    @Query('module') module?: ModuleType,
+  ) {
+    if (!req.user || !req.user.tenantId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    const { newPlanId, newBillingCycle } = body;
+
+    if (!newPlanId) {
+      throw new BadRequestException('newPlanId is required');
+    }
+
+    // 🔍 Resolve module if not provided
+    let resolvedModule = module;
+    if (!resolvedModule) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: req.user.tenantId },
+        select: { tenantType: true },
+      });
+
+      if (tenant) {
+        resolvedModule =
+          tenant.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
+      } else {
+        resolvedModule = ModuleType.MOBILE_SHOP;
+      }
+    }
+
+    // 1️⃣ Get current active subscription
+    const currentSub =
+      await this.subscriptionsService.getCurrentActiveSubscription(
+        req.user.tenantId,
+        resolvedModule,
+      );
+
+    if (!currentSub) {
+      throw new BadRequestException('No active subscription to downgrade.');
+    }
+
+    // 2️⃣ Call downgradeScheduled service
+    const downgraded = await this.subscriptionsService.downgradeScheduled({
+      subscriptionId: currentSub.id,
+      newPlanId,
+      newBillingCycle,
+    });
+
+    this.logger.log(
+      `📉 Downgrade API: tenantId=${req.user.tenantId}, ` +
+        `subscriptionId=${downgraded.id}, newPlanId=${newPlanId}`,
+    );
+
+    return {
+      success: true,
+      subscriptionId: downgraded.id,
+      nextPlanId: downgraded.nextPlanId,
+      message: 'Plan downgrade scheduled. Changes apply at next renewal.',
+    };
+  }
+
+  /**
+   * Pre-check if downgrade is allowed
+   * TODO: Implement after downgradeSubscription method is added
+   */
+  @Get('downgrade-check')
+  async checkDowngrade(
+    @Req() req: any,
+    @Query('targetPlan') targetPlanId: string,
+    @Query('module') module?: ModuleType,
+  ) {
+    if (!req.user || !req.user.tenantId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    if (!targetPlanId) {
+      throw new BadRequestException('targetPlan query parameter is required');
+    }
+
+    // Resolve module
+    let resolvedModule = module;
+    if (!resolvedModule) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: req.user.tenantId },
+        select: { tenantType: true },
+      });
+      resolvedModule = tenant?.tenantType === 'GYM' ? 'GYM' : 'MOBILE_SHOP';
+    }
+
+    return this.subscriptionsService.checkDowngradeEligibility(
+      req.user.tenantId,
+      targetPlanId,
+      resolvedModule,
+    );
   }
 }

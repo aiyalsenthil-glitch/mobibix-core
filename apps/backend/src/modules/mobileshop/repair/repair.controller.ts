@@ -3,9 +3,12 @@ import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { RepairService } from './repair.service';
 import { RepairStockOutDto } from './dto/repair-stock-out.dto';
 import { RepairBillDto } from './dto/repair-bill.dto';
+import { Roles } from '../../../core/auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('mobileshop/repairs')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class RepairController {
   constructor(private repairService: RepairService) {}
 

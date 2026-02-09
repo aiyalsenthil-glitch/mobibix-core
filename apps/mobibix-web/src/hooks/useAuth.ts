@@ -35,6 +35,7 @@ export interface AuthUser {
   REMOVED_AUTH_PROVIDERUid: string;
   role: AuthRole;
   tenantId?: string;
+  planCode?: string;
 }
 
 export interface AuthContextType {
@@ -92,6 +93,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
                 REMOVED_AUTH_PROVIDERUid: user.uid,
                 role: claims.role,
                 tenantId: claims.tenantId,
+                planCode: claims.planCode,
               });
               setIsLoading(false);
               return;

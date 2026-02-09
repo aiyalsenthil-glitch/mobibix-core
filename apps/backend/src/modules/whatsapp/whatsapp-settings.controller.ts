@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
+import { Roles } from '../../core/auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 interface CreateWhatsAppSettingDto {
   enabled: boolean;
@@ -23,6 +25,7 @@ interface CreateWhatsAppSettingDto {
 
 @Controller('whatsapp/settings')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppSettingsController {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -33,16 +36,22 @@ export class WhatsAppSettingsController {
    */
   @Get(':moduleType')
   async getSettings(@Param('moduleType') moduleType: string, @Req() req: any) {
-    const user = req.user as any;
+    const user = req.user;
     const userRole = (user?.role?.toUpperCase() as string) || 'USER';
 
     // Owners can only access their own tenant settings
     if (userRole === 'OWNER' && moduleType !== user.tenantId) {
-      throw new BadRequestException('Unauthorized - Can only access own tenant settings');
+      throw new BadRequestException(
+        'Unauthorized - Can only access own tenant settings',
+      );
     }
 
     // Role is uppercase from UserTenant (ADMIN, STAFF, etc.)
-    if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && userRole !== 'OWNER') {
+    if (
+      userRole !== 'ADMIN' &&
+      userRole !== 'SUPER_ADMIN' &&
+      userRole !== 'OWNER'
+    ) {
       throw new BadRequestException('Unauthorized - Insufficient permissions');
     }
 
@@ -79,16 +88,22 @@ export class WhatsAppSettingsController {
     @Body() dto: CreateWhatsAppSettingDto,
     @Req() req: any,
   ) {
-    const user = req.user as any;
+    const user = req.user;
     const userRole = (user?.role?.toUpperCase() as string) || 'USER';
 
     // Owners can only access their own tenant settings
     if (userRole === 'OWNER' && moduleType !== user.tenantId) {
-      throw new BadRequestException('Unauthorized - Can only create own tenant settings');
+      throw new BadRequestException(
+        'Unauthorized - Can only create own tenant settings',
+      );
     }
 
     // Role is uppercase from UserTenant (ADMIN, STAFF, etc.)
-    if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && userRole !== 'OWNER') {
+    if (
+      userRole !== 'ADMIN' &&
+      userRole !== 'SUPER_ADMIN' &&
+      userRole !== 'OWNER'
+    ) {
       throw new BadRequestException('Unauthorized - Insufficient permissions');
     }
 
@@ -116,16 +131,22 @@ export class WhatsAppSettingsController {
     @Body() dto: Partial<CreateWhatsAppSettingDto>,
     @Req() req: any,
   ) {
-    const user = req.user as any;
+    const user = req.user;
     const userRole = (user?.role?.toUpperCase() as string) || 'USER';
 
     // Owners can only access their own tenant settings
     if (userRole === 'OWNER' && moduleType !== user.tenantId) {
-      throw new BadRequestException('Unauthorized - Can only update own tenant settings');
+      throw new BadRequestException(
+        'Unauthorized - Can only update own tenant settings',
+      );
     }
 
     // Role is uppercase from UserTenant (ADMIN, STAFF, etc.)
-    if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && userRole !== 'OWNER') {
+    if (
+      userRole !== 'ADMIN' &&
+      userRole !== 'SUPER_ADMIN' &&
+      userRole !== 'OWNER'
+    ) {
       throw new BadRequestException('Unauthorized - Insufficient permissions');
     }
 
@@ -172,12 +193,14 @@ export class WhatsAppSettingsController {
     @Param('moduleType') moduleType: string,
     @Req() req: any,
   ) {
-    const user = req.user as any;
+    const user = req.user;
     const userRole = (user?.role?.toUpperCase() as string) || 'USER';
 
     // Restricted for OWNER
     if (userRole === 'OWNER') {
-      throw new BadRequestException('Unauthorized - Owners cannot delete WhatsApp settings');
+      throw new BadRequestException(
+        'Unauthorized - Owners cannot delete WhatsApp settings',
+      );
     }
 
     if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {

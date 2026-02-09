@@ -1,6 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
-import { InvoiceStatus, PurchaseStatus, VoucherType, PaymentMode, VoucherStatus, ReceiptType, ReceiptStatus, Prisma } from '@prisma/client';
+import {
+  InvoiceStatus,
+  PurchaseStatus,
+  VoucherType,
+  PaymentMode,
+  VoucherStatus,
+  ReceiptType,
+  ReceiptStatus,
+  Prisma,
+} from '@prisma/client';
 
 @Injectable()
 export class MobileShopReportsService {
@@ -104,9 +113,10 @@ export class MobileShopReportsService {
       ...(shopId && { shopId }),
       ...(partyId && { customerId: partyId }),
       status: { not: InvoiceStatus.VOIDED },
-      ...(startDate && endDate && {
-        invoiceDate: { gte: startDate, lte: endDate },
-      }),
+      ...(startDate &&
+        endDate && {
+          invoiceDate: { gte: startDate, lte: endDate },
+        }),
     };
 
     const invoices = await this.prisma.invoice.findMany({
@@ -122,10 +132,10 @@ export class MobileShopReportsService {
 
     // Fetch StockLedger Costs for these invoices
     // We need to match: ReferenceType='SALE' AND ReferenceId IN (InvoiceItem.id)
-    const allItemIds = invoices.flatMap(inv => inv.items.map(i => i.id));
-    
+    const allItemIds = invoices.flatMap((inv) => inv.items.map((i) => i.id));
+
     // Optimized: Only fetch if we have items
-    let costMap = new Map<string, number | null>();
+    const costMap = new Map<string, number | null>();
     if (allItemIds.length > 0) {
       const costs = await this.prisma.stockLedger.findMany({
         where: {
@@ -135,7 +145,7 @@ export class MobileShopReportsService {
         },
         select: { referenceId: true, costPerUnit: true },
       });
-      costs.forEach(c => costMap.set(c.referenceId!, c.costPerUnit));
+      costs.forEach((c) => costMap.set(c.referenceId!, c.costPerUnit));
     }
 
     return invoices.map((inv) => {
@@ -156,10 +166,10 @@ export class MobileShopReportsService {
         // NetRevenue per item (paisa) = item.lineTotal - item.gstAmount
         // Cost per total quantity (paisa) = cost * item.quantity
         // totalProfit! += (item.lineTotal - item.gstAmount) - (cost * item.quantity);
-        
-        // Wait, lineTotal is already total (rate * qty + gst). 
+
+        // Wait, lineTotal is already total (rate * qty + gst).
         // So (lineTotal - gstAmount) is already total net revenue for that line.
-        totalProfit! += (item.lineTotal - item.gstAmount) - (cost * item.quantity);
+        totalProfit += item.lineTotal - item.gstAmount - cost * item.quantity;
       }
 
       if (!isProfitValid) totalProfit = null;
@@ -169,15 +179,14 @@ export class MobileShopReportsService {
       if (inv.receipts.length > 0) {
         // Group receipts by payment method
         const methodsMap = new Map<string, number>();
-        inv.receipts.forEach(r => {
+        inv.receipts.forEach((r) => {
           const current = methodsMap.get(r.paymentMethod) || 0;
           methodsMap.set(r.paymentMethod, current + r.amount);
         });
-        
+
         // Use receipts for payment display
         if (methodsMap.size > 0) {
-          paymentDisplay = Array.from(methodsMap.keys())
-            .join(' + ') as any;
+          paymentDisplay = Array.from(methodsMap.keys()).join(' + ') as any;
         }
       } else if (paymentDisplay === 'CREDIT' || !paymentDisplay) {
         paymentDisplay = 'UNPAID' as any;
@@ -213,9 +222,10 @@ export class MobileShopReportsService {
       ...(shopId && { shopId }),
       ...(partyId && { globalSupplierId: partyId }),
       status: { not: PurchaseStatus.CANCELLED },
-      ...(startDate && endDate && {
-        invoiceDate: { gte: startDate, lte: endDate },
-      }),
+      ...(startDate &&
+        endDate && {
+          invoiceDate: { gte: startDate, lte: endDate },
+        }),
     };
 
     const purchases = await this.prisma.purchase.findMany({
@@ -251,24 +261,26 @@ export class MobileShopReportsService {
       by: ['shopProductId'],
       where,
       _sum: {
-        quantity: true, // Need to handle IN vs OUT sign manually? 
+        quantity: true, // Need to handle IN vs OUT sign manually?
         // groupBy doesn't support conditional sum easily in Prisma standard API without raw.
         // Prisma stores signs? No, type='IN'/'OUT'.
         // So simple sum is not enough unless we stored signed quantity.
         // We stored unsigned quantity + type.
-      }
+      },
     });
-    
+
     // Standard Prisma GroupBy cannot do Conditional Sum (CASE WHEN).
     // We must use Raw Query or fetch all entries (too heavy).
     // Or we query IN sum and OUT sum separately.
-    
-    // Strategy: Fetch products, then get balances derived from `StockService.getCurrentStock` 
+
+    // Strategy: Fetch products, then get balances derived from `StockService.getCurrentStock`
     // BUT `getCurrentStock` is single product. We need Bulk.
     // Efficient Approach: Raw Query.
-    
-    const shopFilter = shopId ? Prisma.sql`AND "shopId" = ${shopId}` : Prisma.empty;
-    
+
+    const shopFilter = shopId
+      ? Prisma.sql`AND "shopId" = ${shopId}`
+      : Prisma.empty;
+
     const balances = await this.prisma.$queryRaw<
       { shopProductId: string; balance: bigint }[]
     >`
@@ -282,26 +294,32 @@ export class MobileShopReportsService {
     `;
 
     // Map to Product Details
-    const productIds = balances.map(b => b.shopProductId);
+    const productIds = balances.map((b) => b.shopProductId);
     const products = await this.prisma.shopProduct.findMany({
       where: { id: { in: productIds } },
-      select: { id: true, name: true, isSerialized: true, costPrice: true, reorderLevel: true }
+      select: {
+        id: true,
+        name: true,
+        isSerialized: true,
+        costPrice: true,
+        reorderLevel: true,
+      },
     });
-    
-    const productMap = new Map(products.map(p => [p.id, p]));
 
-    return balances.map(b => {
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    return balances.map((b) => {
       const prod = productMap.get(b.shopProductId);
       const qty = Number(b.balance);
       const cost = prod?.costPrice || 0;
-      
+
       return {
         product: prod?.name || 'Unknown',
         isSerialized: prod?.isSerialized || false,
         quantity: qty,
-        costPrice: prod?.costPrice ? (prod.costPrice / 100) : 0, // Paisa to Rupees
-        stockValue: prod?.costPrice ? ((qty * prod.costPrice) / 100) : null, // Paisa to Rupees
-        lowStock: prod?.reorderLevel ? (qty <= prod.reorderLevel) : false
+        costPrice: prod?.costPrice ? prod.costPrice / 100 : 0, // Paisa to Rupees
+        stockValue: prod?.costPrice ? (qty * prod.costPrice) / 100 : null, // Paisa to Rupees
+        lowStock: prod?.reorderLevel ? qty <= prod.reorderLevel : false,
       };
     });
   }
@@ -322,9 +340,10 @@ export class MobileShopReportsService {
       ...(shopId && { shopId }),
       ...(partyId && { customerId: partyId }),
       status: { not: InvoiceStatus.VOIDED },
-      ...(startDate && endDate && {
-        invoiceDate: { gte: startDate, lte: endDate },
-      }),
+      ...(startDate &&
+        endDate && {
+          invoiceDate: { gte: startDate, lte: endDate },
+        }),
     };
 
     // 1. Revenue Separation
@@ -349,32 +368,44 @@ export class MobileShopReportsService {
     });
 
     // Use Prisma.sql for dynamic parts
-    const shopFilter = shopId ? Prisma.sql`AND i."shopId" = ${shopId}` : Prisma.empty;
-    const dateStartFilter = startDate ? Prisma.sql`AND i."invoiceDate" >= ${startDate}` : Prisma.empty;
-    const dateEndFilter = endDate ? Prisma.sql`AND i."invoiceDate" <= ${endDate}` : Prisma.empty;
-    const salesPartyFilter = partyId ? Prisma.sql`AND i."customerId" = ${partyId}` : Prisma.empty;
+    const shopFilter = shopId
+      ? Prisma.sql`AND i."shopId" = ${shopId}`
+      : Prisma.empty;
+    const dateStartFilter = startDate
+      ? Prisma.sql`AND i."invoiceDate" >= ${startDate}`
+      : Prisma.empty;
+    const dateEndFilter = endDate
+      ? Prisma.sql`AND i."invoiceDate" <= ${endDate}`
+      : Prisma.empty;
+    const salesPartyFilter = partyId
+      ? Prisma.sql`AND i."customerId" = ${partyId}`
+      : Prisma.empty;
     // For Repair, JobCard also has customerId.
-    const repairPartyFilter = partyId ? Prisma.sql`AND jc."customerId" = ${partyId}` : Prisma.empty;
+    const repairPartyFilter = partyId
+      ? Prisma.sql`AND jc."customerId" = ${partyId}`
+      : Prisma.empty;
 
     // 2. Cost Separation (Raw Query for Weighted Sum)
     // Note: StockLedger stores createdAt, not invoiceDate. Approximate match or join?
     // Joining InvoiceItem -> Invoice is safer for exact period match if possible.
     // However, StockLedger for 'REPAIR' references JobCard, 'SALE' references InvoiceItem.
     // 'SALE' refId is InvoiceItem.id. 'REPAIR' refId is JobCard.id (mostly).
-    
+
     // Complex Join Strategy for accuracy:
     // Cost SALE: Join StockLedger -> InvoiceItem -> Invoice
-    // Cost REPAIR: Join StockLedger -> JobCard -> Invoice? 
-    // Repair Stock Out happens BEFORE Invoice usually. 
+    // Cost REPAIR: Join StockLedger -> JobCard -> Invoice?
+    // Repair Stock Out happens BEFORE Invoice usually.
     // But Profit Report is usually based on "Invoiced Period".
     // If we count cost of parts used in jobs invoiced in this period:
     // JOIN StockLedger on refId=jobCardId WHERE jobCardId IN (Invoices in Period).
-    
+
     // SIMPLE APPROACH (User confirmed "Modernized Approach", implied robust).
     // Let's iterate Invoices and summing costs? No, simplified aggregate.
-    
+
     // Cost SALE (Linked to InvoiceItem)
-    const costSaleResult = await this.prisma.$queryRaw<{ total_cost: bigint }[]>`
+    const costSaleResult = await this.prisma.$queryRaw<
+      { total_cost: bigint }[]
+    >`
       SELECT SUM(sl."quantity" * sl."costPerUnit") as "total_cost"
       FROM "StockLedger" sl
       JOIN "InvoiceItem" ii ON sl."referenceId" = ii."id"
@@ -394,7 +425,9 @@ export class MobileShopReportsService {
     // We need to filter these by Invoices in the date range?
     // If we filter by StockLedger.createdAt, it might be different from InvoiceDate.
     // Consistency: Filter by Invoice Date.
-    const costRepairResult = await this.prisma.$queryRaw<{ total_cost: bigint }[]>`
+    const costRepairResult = await this.prisma.$queryRaw<
+      { total_cost: bigint }[]
+    >`
       SELECT SUM(sl."quantity" * sl."costPerUnit") as "total_cost"
       FROM "StockLedger" sl
       JOIN "JobCard" jc ON sl."referenceId" = jc."id"
@@ -420,7 +453,7 @@ export class MobileShopReportsService {
     const salesRevenue = salesRevenuePaisa / 100;
     const repairRevenue = repairRevenuePaisa / 100;
     const totalRevenue = totalRevenuePaisa / 100;
-    
+
     const salesCost = salesCostPaisa / 100;
     const repairCost = repairCostPaisa / 100;
     const totalCost = totalCostPaisa / 100;
@@ -435,15 +468,15 @@ export class MobileShopReportsService {
         totalCost,
         grossProfit: totalProfit,
         margin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
-        
+
         // Breakdown
         salesRevenue,
         salesCost,
         salesProfit,
-        
+
         repairRevenue,
         repairCost,
-        repairProfit
+        repairProfit,
       },
     };
   }
@@ -462,9 +495,10 @@ export class MobileShopReportsService {
       tenantId,
       ...(shopId && { shopId }),
       status: { not: InvoiceStatus.VOIDED },
-      ...(startDate && endDate && {
-        invoiceDate: { gte: startDate, lte: endDate },
-      }),
+      ...(startDate &&
+        endDate && {
+          invoiceDate: { gte: startDate, lte: endDate },
+        }),
     };
 
     const topProducts = await this.prisma.invoiceItem.groupBy({

@@ -216,11 +216,14 @@ export class CrmIntegrationService {
     templateParams: string[],
   ) {
     try {
-      this.logger.warn(`Transactional WhatsApp not fully implemented yet - requires Template Lookup. Logged: ${feature} to ${phone}`);
+      this.logger.warn(
+        `Transactional WhatsApp not fully implemented yet - requires Template Lookup. Logged: ${feature} to ${phone}`,
+      );
       return { success: false, reason: 'Template lookup not implemented' };
-      
     } catch (error) {
-      this.logger.error(`Failed to send transactional WhatsApp: ${error.message}`);
+      this.logger.error(
+        `Failed to send transactional WhatsApp: ${error.message}`,
+      );
       return { success: false, error: error.message };
     }
   }
@@ -254,18 +257,18 @@ export class CrmIntegrationService {
 
   async healthCheck(headers: Record<string, string>) {
     try {
-        // Just verify we can reach the core API area (e.g. hello or specialized health)
-        // Using dashboard metrics with no data as a lightweight check, or use dedicated health if exists.
-        // Assuming /api/core/health exists or we can ping root.
-        // For now, simple ping.
-        const response = await firstValueFrom(
-            this.http.get('/api/core/health', { headers })
-        ); 
-        // If 404, we might assume core is reachable but route missing. 
-        // But let's assume valid route.
-        return true;
+      // Just verify we can reach the core API area (e.g. hello or specialized health)
+      // Using dashboard metrics with no data as a lightweight check, or use dedicated health if exists.
+      // Assuming /api/core/health exists or we can ping root.
+      // For now, simple ping.
+      const response = await firstValueFrom(
+        this.http.get('/api/core/health', { headers }),
+      );
+      // If 404, we might assume core is reachable but route missing.
+      // But let's assume valid route.
+      return true;
     } catch (e) {
-        return false;
+      return false;
     }
   }
 

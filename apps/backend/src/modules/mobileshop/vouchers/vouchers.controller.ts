@@ -12,10 +12,12 @@ import { CurrentUser } from '../../../core/auth/decorators/current-user.decorato
 import { VouchersService } from './vouchers.service';
 import { CreateVoucherDto } from './dto/create-voucher.dto';
 import { VoucherEntity } from './entities/voucher.entity';
-import { PaymentMode, VoucherStatus } from '@prisma/client';
+import { PaymentMode, VoucherStatus, UserRole } from '@prisma/client';
+import { Roles } from '../../../core/auth/decorators/roles.decorator';
 
 @Controller('vouchers')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class VouchersController {
   constructor(private readonly vouchersService: VouchersService) {}
 

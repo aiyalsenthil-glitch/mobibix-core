@@ -1,37 +1,35 @@
 import { WhatsAppFeature } from './whatsapp-rules';
 
 /**
- * Maps Automation Events to their Required Plan Feature.
- * 
- * GUARDRAIL 2: No "partial" WhatsApp sends. 
- * If a plan has WHATSAPP_ALERTS_BASIC, it can ONLY send events mapped here.
- * Any event NOT in this map is considered "Unrestricted" or "System Critical" 
- * unless caught by default logic. 
- * 
- * ACTUALLY: The requirement is "If a plan has WHATSAPP_ALERTS_BASIC... Allow only mapped events".
- * So we must map ALL events to a feature if we want to strict gate them.
+ * ════════════════════════════════════════════════════
+ * WHATSAPP EVENT FEATURE MAPPING
+ * ════════════════════════════════════════════════════
+ *
+ * CRITICAL CHANGE: Core notifications (welcome, payment due, reminders)
+ * are NO LONGER gated. They are always-on.
+ *
+ * ONLY premium features (WHATSAPP_ALERTS_AUTOMATION) require feature gates.
+ *
+ * Mapping is preserved for logging/analytics only.
+ * Do NOT use this map for feature enforcement.
  */
-export const WhatsAppFeatureEventMap: Record<string, WhatsAppFeature> = {
-    // Utility / System (Often free or basic)
-    'MEMBER_CREATED': WhatsAppFeature.WELCOME, // WELCOME
-    'MEMBERSHIP_EXPIRY': WhatsAppFeature.EXPIRY, // EXPIRY
-    
-    // Billing
-    'MEMBERSHIP_EXPIRED': WhatsAppFeature.PAYMENT_DUE, // PAYMENT_DUE
-    'PAYMENT_DUE': WhatsAppFeature.PAYMENT_DUE,
-    'INVOICE_CREATED': WhatsAppFeature.PAYMENT_DUE, 
-    
-    // Custom / Reminders
-    'CUSTOM_REMINDER': WhatsAppFeature.REMINDER, // REMINDER
-    'JOB_READY': WhatsAppFeature.REMINDER,
-    'JOB_UPDATE': WhatsAppFeature.REMINDER,
+export const WhatsAppFeatureEventMap: Record<string, string> = {
+  // CORE NOTIFICATIONS (Always-on, never gated)
+  MEMBER_CREATED: 'WELCOME_NOTIFICATION',
+  MEMBERSHIP_EXPIRY: 'EXPIRY_NOTIFICATION',
+  MEMBERSHIP_EXPIRED: 'PAYMENT_DUE_NOTIFICATION',
+  PAYMENT_DUE: 'PAYMENT_DUE_NOTIFICATION',
+  INVOICE_CREATED: 'PAYMENT_DUE_NOTIFICATION',
+  CUSTOM_REMINDER: 'REMINDER_NOTIFICATION',
+  JOB_READY: 'REMINDER_NOTIFICATION',
+  JOB_UPDATE: 'REMINDER_NOTIFICATION',
 };
 
 /**
  * Resolves the required feature for a given template/event context.
- * For now, we rely on the passed 'feature' enum from the caller, 
+ * For now, we rely on the passed 'feature' enum from the caller,
  * but this map can be used for verification.
  */
-export function getRequiredFeatureForEvent(eventType: string): WhatsAppFeature | null {
-    return WhatsAppFeatureEventMap[eventType] || null;
+export function getRequiredFeatureForEvent(eventType: string): string | null {
+  return WhatsAppFeatureEventMap[eventType] || null;
 }

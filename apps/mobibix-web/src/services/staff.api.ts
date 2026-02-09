@@ -1,0 +1,88 @@
+import { authenticatedFetch } from "./auth.api";
+
+export interface Staff {
+  id: string; // user.id or invite.id
+  email: string;
+  name: string | null;
+  phone: string | null;
+  role: "OWNER" | "STAFF";
+  status: "ACTIVE" | "INVITED";
+  joinDate: string; // createdAt
+}
+
+export interface AddStaffDto {
+  email: string;
+  name: string;
+  phone?: string;
+  shopId?: string; // Optional, for future use if we want to assign to shop immediately
+}
+
+/**
+ * List all staff members (Active + Invited)
+ * Returns a unified list for UI
+ */
+export async function listStaff(): Promise<Staff[]> {
+  // 1. Fetch active staff
+  const staffResponse = await authenticatedFetch("/staff");
+  const activeStaff = staffResponse.ok ? await staffResponse.json() : [];
+
+  // 2. Fetch invited staff
+  const invitesResponse = await authenticatedFetch("/staff/invites");
+  const invitedStaff = invitesResponse.ok ? await invitesResponse.json() : [];
+
+  // 3. Merge and Normalize
+  const normalizedActive = activeStaff.map((s: any) => ({
+    id: s.id,
+    email: s.email,
+    name: s.fullName,
+    phone: s.phone,
+    role: s.role,
+    status: "ACTIVE",
+    joinDate: s.createdAt || new Date().toISOString(), // Fallback if missing
+  }));
+
+  const normalizedInvites = invitedStaff.map((i: any) => ({
+    id: i.id, // Invite ID (needed for revoke)
+    email: i.email,
+    name: i.name,
+    phone: i.phone,
+    role: i.role,
+    status: "INVITED",
+    joinDate: i.createdAt,
+  }));
+
+  return [...normalizedActive, ...normalizedInvites];
+}
+
+/**
+ * Add (Invite) a new staff member
+ */
+export async function addStaff(dto: AddStaffDto): Promise<void> {
+  const response = await authenticatedFetch("/staff/invite", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.message || "Failed to add staff");
+  }
+}
+
+/**
+ * Remove a staff member or revoke an invite
+ */
+export async function removeStaff(staffId: string, status: "ACTIVE" | "INVITED"): Promise<void> {
+  const endpoint = status === "ACTIVE" 
+    ? `/staff/${staffId}` 
+    : `/staff/invite/${staffId}`;
+
+  const response = await authenticatedFetch(endpoint, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.message || "Failed to remove staff");
+  }
+}

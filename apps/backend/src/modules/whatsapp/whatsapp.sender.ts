@@ -42,25 +42,26 @@ export class WhatsAppSender {
   }
 
   /**
-   * Map WhatsApp feature to phone number purpose
+   * Map notification type to phone number purpose
+   *
+   * NOTE: Core notifications (WELCOME, REMINDER, BILLING) are always-on.
+   * Only premium automation (WHATSAPP_ALERTS_AUTOMATION) requires feature gating.
    */
   private mapFeatureToPurpose(
-    feature: WhatsAppFeature,
+    notificationType: string,
   ): WhatsAppPhoneNumberPurpose {
-    const mapping: Partial<
-      Record<WhatsAppFeature, WhatsAppPhoneNumberPurpose>
-    > = {
+    const mapping: Record<string, WhatsAppPhoneNumberPurpose> = {
       WELCOME: 'DEFAULT',
-      PAYMENT_DUE: 'BILLING',
-      EXPIRY: 'REMINDER',
+      BILLING: 'BILLING',
       REMINDER: 'REMINDER',
+      PAYMENT_DUE: 'BILLING',
     };
-    return mapping[feature] || 'DEFAULT';
+    return mapping[notificationType] || 'DEFAULT';
   }
 
   async sendTemplateMessage(
     tenantId: string,
-    feature: WhatsAppFeature,
+    notificationType: string, // Core notifications (WELCOME, REMINDER, BILLING) or premium feature
     phone: string,
     templateName: string,
     parameters: string[],
@@ -79,6 +80,7 @@ export class WhatsAppSender {
     const skipPlanCheck = options?.skipPlanCheck ?? false;
     const logId = options?.logId;
     const metadata = options?.metadata ?? undefined;
+    const feature = notificationType as WhatsAppFeature;
 
     const updateLogStatus = async (
       status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'SKIPPED',
@@ -258,6 +260,7 @@ export class WhatsAppSender {
 
     if (
       planRules &&
+      planRules.maxMembers !== null &&
       planRules.maxMembers > 0 &&
       memberCount > planRules.maxMembers
     ) {
@@ -319,6 +322,21 @@ export class WhatsAppSender {
         });
       }
 
+      // ✅ TRACK USAGE
+      // Determine category based on notificationType / Feature
+      let category: 'authentication' | 'marketing' | 'utility' | 'service' =
+        'utility';
+
+      if (notificationType === 'WHATSAPP_CAMPAIGN_MARKETING') {
+        category = 'marketing';
+      } else if (notificationType === 'OTP') {
+        category = 'authentication';
+      } else {
+        category = 'utility';
+      }
+
+      await this.incrementUsage(tenantId, category);
+
       return { success: true, messageId };
     } catch (error) {
       const errMsg = error.response?.data
@@ -343,8 +361,46 @@ export class WhatsAppSender {
       console.error('[WA META ERROR]', errMsg);
 
       return { success: false, error: errMsg };
+      return { success: false, error: errMsg };
     }
   }
+
+  /**
+   * Helper to increment usage stats
+   */
+  private async incrementUsage(
+    tenantId: string,
+    category: 'marketing' | 'utility' | 'service' | 'authentication',
+  ) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    try {
+      await this.prisma.whatsAppDailyUsage.upsert({
+        where: {
+          tenantId_date: {
+            tenantId,
+            date: today,
+          },
+        },
+        create: {
+          tenantId,
+          date: today,
+          [category]: 1,
+        },
+        update: {
+          [category]: { increment: 1 },
+        },
+      });
+    } catch (error) {
+      console.error(
+        `[WhatsAppSender] Failed to track usage for tenant ${tenantId}:`,
+        error,
+      );
+      // Don't block sending if tracking fails, but log it.
+    }
+  }
+
   /**
    * Send a FREE TEXT message (Session Message)
    * Intended for MANUAL staff replies or session-based interactions.
@@ -361,34 +417,42 @@ export class WhatsAppSender {
       tenantId,
       module,
     );
-     // If plan is strictly disabled, block. But if trial/legacy, allow.
+    // If plan is strictly disabled, block. But if trial/legacy, allow.
     if (planRules && !planRules.enabled) {
-         return { success: false, error: 'Subscription plan disabled' };
+      return { success: false, error: 'Subscription plan disabled' };
     }
 
     // 2. Resolve Phone Number (DEFAULT purpose for manual replies)
     let phoneNumberConfig;
     try {
-      phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberForPurpose(
-        tenantId,
-        'DEFAULT',
-      );
+      phoneNumberConfig =
+        await this.phoneNumbersService.getPhoneNumberForPurpose(
+          tenantId,
+          'DEFAULT',
+        );
     } catch (e) {
-      this.logger.log({ tenantId, memberId: null, phone, type: 'MANUAL', status: 'FAILED', error: 'No phone number config' });
+      this.logger.log({
+        tenantId,
+        memberId: null,
+        phone,
+        type: 'MANUAL',
+        status: 'FAILED',
+        error: 'No phone number config',
+      });
       return { success: false, error: 'No phone number provided' };
     }
 
     if (!phoneNumberConfig?.isActive) {
-       return { success: false, error: 'Phone number inactive' };
+      return { success: false, error: 'Phone number inactive' };
     }
 
     // 3. Prepare & Send
     const normalizedPhone = normalizePhone(phone);
     let whatsappFormattedPhone: string;
     try {
-        whatsappFormattedPhone = toWhatsAppPhone(normalizedPhone);
+      whatsappFormattedPhone = toWhatsAppPhone(normalizedPhone);
     } catch (e) {
-        return { success: false, error: 'Invalid phone format' };
+      return { success: false, error: 'Invalid phone format' };
     }
 
     const url = `https://graph.facebook.com/${this.apiVersion}/${phoneNumberConfig.phoneNumberId}/messages`;
@@ -416,32 +480,36 @@ export class WhatsAppSender {
       // 4. Log Success
       await this.prisma.whatsAppLog.create({
         data: {
-            tenantId,
-            phone: whatsappFormattedPhone,
-            type: 'MANUAL', // Explicit type for staff replies
-            status: 'SENT',
-            messageId,
-            metadata: { text_snippet: text.substring(0, 50) }
-        }
+          tenantId,
+          phone: whatsappFormattedPhone,
+          type: 'MANUAL', // Explicit type for staff replies
+          status: 'SENT',
+          messageId,
+          metadata: { text_snippet: text.substring(0, 50) },
+        },
       });
 
-      return { success: true, messageId };
+      // 5. Track Usage (Service)
+      await this.incrementUsage(tenantId, 'service');
 
+      return { success: true, messageId };
     } catch (error) {
-        const errMsg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
-        
-        await this.prisma.whatsAppLog.create({
-            data: {
-                tenantId,
-                phone: whatsappFormattedPhone,
-                type: 'MANUAL',
-                status: 'FAILED',
-                error: errMsg
-            }
-        });
-        
-        console.error('[WA TEXT ERROR]', errMsg);
-        return { success: false, error: errMsg };
+      const errMsg = error.response?.data
+        ? JSON.stringify(error.response.data)
+        : error.message;
+
+      await this.prisma.whatsAppLog.create({
+        data: {
+          tenantId,
+          phone: whatsappFormattedPhone,
+          type: 'MANUAL',
+          status: 'FAILED',
+          error: errMsg,
+        },
+      });
+
+      console.error('[WA TEXT ERROR]', errMsg);
+      return { success: false, error: errMsg };
     }
   }
 }

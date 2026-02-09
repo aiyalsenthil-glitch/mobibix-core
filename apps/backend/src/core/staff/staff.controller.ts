@@ -51,7 +51,7 @@ export class StaffController {
       shopId?: string; // 👈 ADD THIS
     },
   ) {
-    return this.staffService.createStaff(req.user.tenantId, {
+    return this.staffService.createStaff(req.user.tenantId, req.user.sub, {
       REMOVED_AUTH_PROVIDERUid: body.REMOVED_AUTH_PROVIDERUid,
       email: body.email,
       fullName: body.fullName,
@@ -60,11 +60,19 @@ export class StaffController {
   }
 
   // ✅ OWNER: INVITE staff by email (PROPER FLOW)
-  @UseGuards(JwtAuthGuard, PlanFeatureGuard)
   @Roles(UserRole.OWNER)
   @Post('invite')
-  async invite(@Req() req: any, @Body('email') email: string) {
-    return this.staffService.inviteByEmail(req.user.tenantId, email);
+  async invite(
+    @Req() req: any,
+    @Body() body: { email: string; name?: string; phone?: string },
+  ) {
+    return this.staffService.inviteByEmail(
+      req.user.tenantId,
+      req.user.sub,
+      body.email,
+      body.name,
+      body.phone,
+    );
   }
   @Roles(UserRole.OWNER)
   @Get('invites')

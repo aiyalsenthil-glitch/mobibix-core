@@ -15,10 +15,13 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { StockInDto } from './dto/stock-in.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { StockService } from '../stock/stock.service';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 type ReqWithUser = { user?: { tenantId?: string } };
 
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('mobileshop/inventory')
 export class InventoryController {
   constructor(

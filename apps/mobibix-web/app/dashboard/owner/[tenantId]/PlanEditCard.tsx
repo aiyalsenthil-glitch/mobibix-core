@@ -34,23 +34,49 @@ export default function PlanEditCard() {
       {error && <div className="text-red-400">{error}</div>}
       {!loading && !error && plans.length === 0 && <div>No plans found.</div>}
       <ul className="space-y-2">
-        {plans.map((plan) => (
-          <li
-            key={plan.id}
-            className="bg-white/10 rounded p-3 flex flex-col md:flex-row md:items-center md:justify-between"
-          >
-            <div>
-              <div className="font-semibold text-white">{plan.name}</div>
-              <div className="text-xs text-gray-400">
-                Code: {plan.code} | Price: ₹{plan.price} | Duration:{" "}
-                {plan.durationDays} days
+        {plans.map((plan) => {
+          // Get cheapest billing cycle for display
+          const cheapestCycle = plan.billingCycles?.reduce((min: any, cycle: any) =>
+            cycle.price < min.price ? cycle : min
+          , plan.billingCycles[0]);
+
+          return (
+            <li
+              key={plan.id}
+              className="bg-white/10 rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between hover:bg-white/15 transition-colors gap-4"
+            >
+              <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  <div className="font-bold text-white text-lg">{plan.displayName || plan.name}</div>
+                  {plan.tagline && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-teal-500/20 text-teal-300 px-2 py-0.5 rounded-full border border-teal-500/30">
+                      {plan.tagline}
+                    </span>
+                  )}
+                </div>
+                
+                {plan.description && (
+                  <p className="text-sm text-gray-400 mt-1 line-clamp-1">{plan.description}</p>
+                )}
+
+                <div className="text-xs text-gray-500 mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                  <span>Code: <span className="text-gray-300">{plan.code}</span></span>
+                  {cheapestCycle && (
+                    <span>
+                      Starting: <span className="text-teal-400 font-semibold">₹{(cheapestCycle.price / 100).toFixed(0)}</span> / {cheapestCycle.cycle.toLowerCase()}
+                    </span>
+                  )}
+                  {plan.billingCycles?.length > 1 && (
+                    <span className="text-gray-500 italic">({plan.billingCycles.length} plans available)</span>
+                  )}
+                </div>
               </div>
-            </div>
-            <button className="mt-2 md:mt-0 px-3 py-1 rounded bg-teal-600 text-white text-xs hover:bg-teal-700">
-              Edit
-            </button>
-          </li>
-        ))}
+              <button className="px-5 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 shadow-lg shadow-teal-900/20 transition-all active:scale-95 whitespace-nowrap">
+                Select Plan
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

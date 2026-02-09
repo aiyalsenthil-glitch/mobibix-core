@@ -67,19 +67,19 @@ export class UpdateShopSettingsDto {
   // Print Configuration
   @IsOptional()
   @IsString()
-  invoicePrinterType?: "NORMAL" | "THERMAL";
+  invoicePrinterType?: 'NORMAL' | 'THERMAL';
 
   @IsOptional()
   @IsString()
-  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL";
+  invoiceTemplate?: 'CLASSIC' | 'MODERN' | 'CORPORATE' | 'COMPACT' | 'THERMAL';
 
   @IsOptional()
   @IsString()
-  jobCardPrinterType?: "THERMAL";
+  jobCardPrinterType?: 'THERMAL';
 
   @IsOptional()
   @IsString()
-  jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL";
+  jobCardTemplate?: 'SIMPLE' | 'DETAILED' | 'THERMAL';
 
   @IsOptional()
   headerConfig?: any; // Using any for Json, could be specific DTO

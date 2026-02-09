@@ -29,8 +29,17 @@ export class MembersController {
 
   @Permissions(Permission.MEMBER_VIEW)
   @Get()
-  list(@Req() req: any) {
-    return this.membersService.listMembers(req.user.tenantId);
+  list(
+    @Req() req: any,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.membersService.listMembers(req.user.tenantId, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+      search,
+    });
   }
 
   @Permissions(Permission.MEMBER_CREATE)
@@ -40,7 +49,11 @@ export class MembersController {
       throw new ForbiddenException('Tenant not initialized');
     }
 
-    return this.membersService.createMember(req.user.tenantId, dto);
+    return this.membersService.createMember(
+      req.user.tenantId,
+      dto,
+      req.user.sub,
+    );
   }
 
   @Permissions(Permission.MEMBER_EDIT)
@@ -50,7 +63,12 @@ export class MembersController {
     @Param('id') id: string,
     @Body() dto: UpdateMemberDto,
   ) {
-    return this.membersService.updateMember(req.user.tenantId, id, dto);
+    return this.membersService.updateMember(
+      req.user.tenantId,
+      id,
+      dto,
+      req.user.sub,
+    );
   }
 
   @Permissions(Permission.MEMBER_EDIT)

@@ -140,7 +140,7 @@ async function main() {
       if (p.features.length > 0) {
         await prisma.planFeature.createMany({
           data: p.features.map((f: string) => ({
-            planId: planId!,
+            planId: planId,
             feature: f as any,
           })),
         });

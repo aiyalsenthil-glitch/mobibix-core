@@ -76,8 +76,7 @@ export class WhatsAppPhoneNumbersService {
         select: { tenantType: true },
       });
 
-      let moduleType = tenant?.tenantType ?? 'GYM';
-
+      const moduleType = tenant?.tenantType ?? 'GYM';
 
       // Try module purpose-specific
       let modulePhone = await this.prisma.whatsAppPhoneNumberModule.findFirst({
@@ -94,7 +93,10 @@ export class WhatsAppPhoneNumbersService {
           where: {
             moduleType,
             isActive: true,
-            OR: [{ isDefault: true }, { purpose: WhatsAppPhoneNumberPurpose.DEFAULT }],
+            OR: [
+              { isDefault: true },
+              { purpose: WhatsAppPhoneNumberPurpose.DEFAULT },
+            ],
           },
         });
       }
@@ -150,7 +152,6 @@ export class WhatsAppPhoneNumbersService {
         select: { tenantType: true },
       });
       moduleType = tenant?.tenantType ?? 'GYM';
-
     }
 
     const modulePhones = await this.prisma.whatsAppPhoneNumberModule.findMany({
@@ -186,7 +187,7 @@ export class WhatsAppPhoneNumbersService {
     // But logically, if I have a "Billing" number defined for Tenant, the "Billing" number for Module is shadowed.
     // However, for the UI "Manager", it's helpful to see what is being overridden.
     // Let's return ALL, but the frontend can visually distinguish.
-    
+
     // We will concat them.
     return [...mappedTenantPhones, ...mappedModulePhones];
   }
@@ -318,9 +319,10 @@ export class WhatsAppPhoneNumbersService {
     }
 
     // 2. Try to find in Module table
-    const storedModulePhone = await this.prisma.whatsAppPhoneNumberModule.findUnique({
-      where: { id },
-    });
+    const storedModulePhone =
+      await this.prisma.whatsAppPhoneNumberModule.findUnique({
+        where: { id },
+      });
 
     if (storedModulePhone) {
       // Found in Module table -> Update Module Phone
@@ -423,13 +425,14 @@ export class WhatsAppPhoneNumbersService {
           );
         }
 
-        const anotherActive = await this.prisma.whatsAppPhoneNumberModule.findFirst({
-          where: {
-            moduleType: modulePhone.moduleType,
-            id: { not: id },
-            isActive: true,
-          },
-        });
+        const anotherActive =
+          await this.prisma.whatsAppPhoneNumberModule.findFirst({
+            where: {
+              moduleType: modulePhone.moduleType,
+              id: { not: id },
+              isActive: true,
+            },
+          });
 
         if (!anotherActive) {
           throw new BadRequestException(
@@ -446,7 +449,7 @@ export class WhatsAppPhoneNumbersService {
       const deleted = await this.prisma.whatsAppPhoneNumberModule.delete({
         where: { id },
       });
-      
+
       return {
         ...deleted,
         tenantId: deleted.moduleType,

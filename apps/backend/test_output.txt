@@ -1,0 +1,372 @@
+[dotenv@17.2.3] injecting env (17) from .env -- tip: ≡ƒ¢á∩╕Å  run anywhere with `dotenvx run -- yourcommand`
+Generating JWT for test user...
+Extensions: Shop ID test-shop-cancellation
+Creating Job Card...
+Job Created: cmlequnv700078olepp1pj5hk, Advance: 500
+Creating Product...
+Product Created: cmlequo8x000a8ole611x2x7u
+Adding Stock...
+Stock Added: 10 qty
+Adding Part to Job Card...
+Part Added: 2 qty
+Test Failed (Full Object): AxiosError: Request failed with status code 404
+    at settle (E:\Projects\gym-saas\apps\backend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (E:\Projects\gym-saas\apps\backend\node_modules\axios\lib\adapters\http.js:798:11)
+    at IncomingMessage.emit (node:events:520:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1701:12)
+    at processTicksAndRejections (node:internal/process/task_queues:89:21)
+    at Axios.request (E:\Projects\gym-saas\apps\backend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async runTest (E:\Projects\gym-saas\apps\backend\test-cancellation.ts:125:29) {
+  isAxiosError: true,
+  code: 'ERR_BAD_REQUEST',
+  config: {
+    transitional: {
+      silentJSONParsing: true,
+      forcedJSONParsing: true,
+      clarifyTimeoutError: false
+    },
+    adapter: [ 'xhr', 'http', 'fetch' ],
+    transformRequest: [ [Function: transformRequest] ],
+    transformResponse: [ [Function: transformResponse] ],
+    timeout: 0,
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'X-XSRF-TOKEN',
+    maxContentLength: -1,
+    maxBodyLength: -1,
+    env: { FormData: [Function], Blob: [class Blob] },
+    validateStatus: [Function: validateStatus],
+    headers: Object [AxiosHeaders] {
+      Accept: 'application/json, text/plain, */*',
+      'Content-Type': undefined,
+      Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LW93bmVyLWNhbmNlbGxhdGlvbiIsInRlbmFudElkIjoidGVzdC10ZW5hbnQtY2FuY2VsbGF0aW9uIiwidXNlclRlbmFudElkIjoiY21sZXB6cWxzMDAwMGo4bGVqOWdxbDNiOSIsInJvbGUiOiJPV05FUiIsInBsYW5Db2RlIjoiVFJJQUwiLCJpYXQiOjE3NzA2MTU2NjUsImV4cCI6MTc3MDYxOTI2NX0.Vlu-st_XiLvGm9nLFxePDLiXkqkagzsiI74Y-pfKoMs',
+      'User-Agent': 'axios/1.13.4',
+      'Accept-Encoding': 'gzip, compress, deflate, br'
+    },
+    method: 'get',
+    url: 'http://localhost_REPLACED:3001/api/mobileshop/shops/test-shop-cancellation/products/cmlequo8x000a8ole611x2x7u',
+    allowAbsoluteUrls: true,
+    data: undefined
+  },
+  request: <ref *1> ClientRequest {
+    _events: [Object: null prototype] {
+      abort: [Function (anonymous)],
+      aborted: [Function (anonymous)],
+      connect: [Function (anonymous)],
+      error: [Function (anonymous)],
+      socket: [Function (anonymous)],
+      timeout: [Function (anonymous)],
+      finish: [Function: requestOnFinish]
+    },
+    _eventsCount: 7,
+    _maxListeners: undefined,
+    outputData: [],
+    outputSize: 0,
+    writable: true,
+    destroyed: true,
+    _last: true,
+    chunkedEncoding: false,
+    shouldKeepAlive: true,
+    maxRequestsOnConnectionReached: false,
+    _defaultKeepAlive: true,
+    useChunkedEncodingByDefault: false,
+    sendDate: false,
+    _removedConnection: false,
+    _removedContLen: false,
+    _removedTE: false,
+    strictContentLength: false,
+    _contentLength: 0,
+    _hasBody: true,
+    _trailer: '',
+    finished: true,
+    _headerSent: true,
+    _closed: true,
+    _header: 'GET /api/mobileshop/shops/test-shop-cancellation/products/cmlequo8x000a8ole611x2x7u HTTP/1.1\r\n' +
+      'Accept: application/json, text/plain, */*\r\n' +
+      'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LW93bmVyLWNhbmNlbGxhdGlvbiIsInRlbmFudElkIjoidGVzdC10ZW5hbnQtY2FuY2VsbGF0aW9uIiwidXNlclRlbmFudElkIjoiY21sZXB6cWxzMDAwMGo4bGVqOWdxbDNiOSIsInJvbGUiOiJPV05FUiIsInBsYW5Db2RlIjoiVFJJQUwiLCJpYXQiOjE3NzA2MTU2NjUsImV4cCI6MTc3MDYxOTI2NX0.Vlu-st_XiLvGm9nLFxePDLiXkqkagzsiI74Y-pfKoMs\r\n' +
+      'User-Agent: axios/1.13.4\r\n' +
+      'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+      'Host: localhost_REPLACED:3001\r\n' +
+      'Connection: keep-alive\r\n' +
+      '\r\n',
+    _keepAliveTimeout: 0,
+    _onPendingData: [Function: nop],
+    agent: Agent {
+      _events: [Object: null prototype],
+      _eventsCount: 2,
+      _maxListeners: undefined,
+      options: [Object: null prototype],
+      defaultPort: 80,
+      protocol: 'http:',
+      requests: [Object: null prototype] {},
+      sockets: [Object: null prototype] {},
+      freeSockets: [Object: null prototype],
+      keepAliveMsecs: 1000,
+      keepAlive: true,
+      maxSockets: Infinity,
+      maxFreeSockets: 256,
+      scheduling: 'lifo',
+      maxTotalSockets: Infinity,
+      totalSocketCount: 1,
+      agentKeepAliveTimeoutBuffer: 1000,
+      Symbol(shapeMode): false,
+      Symbol(kCapture): false
+    },
+    socketPath: undefined,
+    method: 'GET',
+    maxHeaderSize: undefined,
+    insecureHTTPParser: undefined,
+    joinDuplicateHeaders: undefined,
+    path: '/api/mobileshop/shops/test-shop-cancellation/products/cmlequo8x000a8ole611x2x7u',
+    _ended: true,
+    res: IncomingMessage {
+      _events: [Object],
+      _readableState: [ReadableState],
+      _maxListeners: undefined,
+      socket: null,
+      httpVersionMajor: 1,
+      httpVersionMinor: 1,
+      httpVersion: '1.1',
+      complete: true,
+      rawHeaders: [Array],
+      rawTrailers: [],
+      joinDuplicateHeaders: undefined,
+      aborted: false,
+      upgrade: false,
+      url: '',
+      method: null,
+      statusCode: 404,
+      statusMessage: 'Not Found',
+      client: [Socket],
+      _consuming: false,
+      _dumped: false,
+      req: [Circular *1],
+      _eventsCount: 4,
+      responseUrl: 'http://localhost_REPLACED:3001/api/mobileshop/shops/test-shop-cancellation/products/cmlequo8x000a8ole611x2x7u',
+      redirects: [],
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false,
+      Symbol(kHeaders): [Object],
+      Symbol(kHeadersCount): 18,
+      Symbol(kTrailers): null,
+      Symbol(kTrailersCount): 0
+    },
+    aborted: false,
+    timeoutCb: null,
+    upgradeOrConnect: false,
+    parser: null,
+    maxHeadersCount: null,
+    reusedSocket: true,
+    host: 'localhost',
+    protocol: 'http:',
+    _redirectable: Writable {
+      _events: [Object],
+      _writableState: [WritableState],
+      _maxListeners: undefined,
+      _options: [Object],
+      _ended: true,
+      _ending: true,
+      _redirectCount: 0,
+      _redirects: [],
+      _requestBodyLength: 0,
+      _requestBodyBuffers: [],
+      _eventsCount: 3,
+      _onNativeResponse: [Function (anonymous)],
+      _currentRequest: [Circular *1],
+      _currentUrl: 'http://localhost_REPLACED:3001/api/mobileshop/shops/test-shop-cancellation/products/cmlequo8x000a8ole611x2x7u',
+      _timeout: null,
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false
+    },
+    Symbol(shapeMode): false,
+    Symbol(kCapture): false,
+    Symbol(kBytesWritten): 0,
+    Symbol(kNeedDrain): false,
+    Symbol(corked): 0,
+    Symbol(kChunkedBuffer): [],
+    Symbol(kChunkedLength): 0,
+    Symbol(kSocket): Socket {
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: 'localhost',
+      _closeAfterHandlingError: false,
+      _events: [Object],
+      _readableState: [ReadableState],
+      _writableState: [WritableState],
+      allowHalfOpen: false,
+      _maxListeners: undefined,
+      _eventsCount: 6,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: null,
+      _server: null,
+      timeout: 4000,
+      parser: null,
+      _httpMessage: null,
+      autoSelectFamilyAttemptedAddresses: [Array],
+      Symbol(async_id_symbol): -1,
+      Symbol(kHandle): [TCP],
+      Symbol(lastWriteQueueSize): 0,
+      Symbol(timeout): Timeout {
+        _idleTimeout: 4000,
+        _idlePrev: [TimersList],
+        _idleNext: [TimersList],
+        _idleStart: 3872,
+        _onTimeout: [Function: bound ],
+        _timerArgs: undefined,
+        _repeat: null,
+        _destroyed: false,
+        Symbol(refed): false,
+        Symbol(kHasPrimitive): false,
+        Symbol(asyncId): 118,
+        Symbol(triggerId): 116,
+        Symbol(kAsyncContextFrame): undefined
+      },
+      Symbol(kBuffer): null,
+      Symbol(kBufferCb): null,
+      Symbol(kBufferGen): null,
+      Symbol(shapeMode): true,
+      Symbol(kCapture): false,
+      Symbol(kSetNoDelay): true,
+      Symbol(kSetKeepAlive): true,
+      Symbol(kSetKeepAliveInitialDelay): 1,
+      Symbol(kBytesRead): 0,
+      Symbol(kBytesWritten): 0
+    },
+    Symbol(kOutHeaders): [Object: null prototype] {
+      accept: [Array],
+      authorization: [Array],
+      'user-agent': [Array],
+      'accept-encoding': [Array],
+      host: [Array]
+    },
+    Symbol(errored): null,
+    Symbol(kHighWaterMark): 16384,
+    Symbol(kRejectNonStandardBodyWrites): false,
+    Symbol(kUniqueHeaders): null
+  },
+  response: {
+    status: 404,
+    statusText: 'Not Found',
+    headers: Object [AxiosHeaders] {
+      'x-powered-by': 'Express',
+      vary: 'Origin',
+      'access-control-allow-credentials': 'true',
+      'content-type': 'application/json; charset=utf-8',
+      'content-length': '141',
+      etag: 'W/"8d-Z7wOUGicqq7VucsxXOHcCCUdjzg"',
+      date: 'Mon, 09 Feb 2026 05:41:07 GMT',
+      connection: 'keep-alive',
+      'keep-alive': 'timeout=5'
+    },
+    config: {
+      transitional: [Object],
+      adapter: [Array],
+      transformRequest: [Array],
+      transformResponse: [Array],
+      timeout: 0,
+      xsrfCookieName: 'XSRF-TOKEN',
+      xsrfHeaderName: 'X-XSRF-TOKEN',
+      maxContentLength: -1,
+      maxBodyLength: -1,
+      env: [Object],
+      validateStatus: [Function: validateStatus],
+      headers: [Object [AxiosHeaders]],
+      method: 'get',
+      url: 'http://localhost_REPLACED:3001/api/mobileshop/shops/test-shop-cancellation/products/cmlequo8x000a8ole611x2x7u',
+      allowAbsoluteUrls: true,
+      data: undefined
+    },
+    request: <ref *1> ClientRequest {
+      _events: [Object: null prototype],
+      _eventsCount: 7,
+      _maxListeners: undefined,
+      outputData: [],
+      outputSize: 0,
+      writable: true,
+      destroyed: true,
+      _last: true,
+      chunkedEncoding: false,
+      shouldKeepAlive: true,
+      maxRequestsOnConnectionReached: false,
+      _defaultKeepAlive: true,
+      useChunkedEncodingByDefault: false,
+      sendDate: false,
+      _removedConnection: false,
+      _removedContLen: false,
+      _removedTE: false,
+      strictContentLength: false,
+      _contentLength: 0,
+      _hasBody: true,
+      _trailer: '',
+      finished: true,
+      _headerSent: true,
+      _closed: true,
+      _header: 'GET /api/mobileshop/shops/test-shop-cancellation/products/cmlequo8x000a8ole611x2x7u HTTP/1.1\r\n' +
+        'Accept: application/json, text/plain, */*\r\n' +
+        'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LW93bmVyLWNhbmNlbGxhdGlvbiIsInRlbmFudElkIjoidGVzdC10ZW5hbnQtY2FuY2VsbGF0aW9uIiwidXNlclRlbmFudElkIjoiY21sZXB6cWxzMDAwMGo4bGVqOWdxbDNiOSIsInJvbGUiOiJPV05FUiIsInBsYW5Db2RlIjoiVFJJQUwiLCJpYXQiOjE3NzA2MTU2NjUsImV4cCI6MTc3MDYxOTI2NX0.Vlu-st_XiLvGm9nLFxePDLiXkqkagzsiI74Y-pfKoMs\r\n' +
+        'User-Agent: axios/1.13.4\r\n' +
+        'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+        'Host: localhost_REPLACED:3001\r\n' +
+        'Connection: keep-alive\r\n' +
+        '\r\n',
+      _keepAliveTimeout: 0,
+      _onPendingData: [Function: nop],
+      agent: [Agent],
+      socketPath: undefined,
+      method: 'GET',
+      maxHeaderSize: undefined,
+      insecureHTTPParser: undefined,
+      joinDuplicateHeaders: undefined,
+      path: '/api/mobileshop/shops/test-shop-cancellation/products/cmlequo8x000a8ole611x2x7u',
+      _ended: true,
+      res: [IncomingMessage],
+      aborted: false,
+      timeoutCb: null,
+      upgradeOrConnect: false,
+      parser: null,
+      maxHeadersCount: null,
+      reusedSocket: true,
+      host: 'localhost',
+      protocol: 'http:',
+      _redirectable: [Writable],
+      Symbol(shapeMode): false,
+      Symbol(kCapture): false,
+      Symbol(kBytesWritten): 0,
+      Symbol(kNeedDrain): false,
+      Symbol(corked): 0,
+      Symbol(kChunkedBuffer): [],
+      Symbol(kChunkedLength): 0,
+      Symbol(kSocket): [Socket],
+      Symbol(kOutHeaders): [Object: null prototype],
+      Symbol(errored): null,
+      Symbol(kHighWaterMark): 16384,
+      Symbol(kRejectNonStandardBodyWrites): false,
+      Symbol(kUniqueHeaders): null
+    },
+    data: {
+      message: 'Cannot GET /api/mobileshop/shops/test-shop-cancellation/products/cmlequo8x000a8ole611x2x7u',
+      error: 'Not Found',
+      statusCode: 404
+    }
+  },
+  status: 404
+}
+Error keys: [
+  'name',
+  'isAxiosError',
+  'code',
+  'config',
+  'request',
+  'response',
+  'status'
+]
+Status: 404
+Data: {
+  "message": "Cannot GET /api/mobileshop/shops/test-shop-cancellation/products/cmlequo8x000a8ole611x2x7u",
+  "error": "Not Found",
+  "statusCode": 404
+}

@@ -79,7 +79,8 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         dataType: VariableDataType.STRING,
         required: true,
       },
-      gym_name: { // Legacy snake_case alias
+      gym_name: {
+        // Legacy snake_case alias
         key: 'gym_name',
         label: 'Gym Name',
         module: WhatsAppModule.GYM,
@@ -109,7 +110,8 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         required: true,
         description: 'Full name of the gym member',
       },
-      member_name: { // Legacy snake_case alias
+      member_name: {
+        // Legacy snake_case alias
         key: 'member_name',
         label: 'Member Name',
         module: WhatsAppModule.GYM,
@@ -137,7 +139,8 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         dataType: VariableDataType.DATE,
         required: true,
       },
-      start_date: { // Legacy snake_case alias
+      start_date: {
+        // Legacy snake_case alias
         key: 'start_date',
         label: 'Membership Start Date',
         module: WhatsAppModule.GYM,
@@ -155,7 +158,8 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         dataType: VariableDataType.DATE,
         required: true,
       },
-      end_date: { // Legacy snake_case alias
+      end_date: {
+        // Legacy snake_case alias
         key: 'end_date',
         label: 'Membership End Date',
         module: WhatsAppModule.GYM,
@@ -470,13 +474,13 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
 
     JOB_COMPLETED: {
       shopName: {
-          key: 'shopName',
-          label: 'Shop Name',
-          module: WhatsAppModule.MOBILE_SHOP,
-          sourceType: VariableSourceType.ENTITY,
-          sourcePath: 'Tenant.shopName',
-          dataType: VariableDataType.STRING,
-          required: true,
+        key: 'shopName',
+        label: 'Shop Name',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Tenant.shopName',
+        dataType: VariableDataType.STRING,
+        required: true,
       },
       customerName: {
         key: 'customerName',
@@ -505,7 +509,8 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         dataType: VariableDataType.STRING,
         required: true,
       },
-      jobCardNumber: { // ALIAS: Requested by user template
+      jobCardNumber: {
+        // ALIAS: Requested by user template
         key: 'jobCardNumber',
         label: 'Job Card Number',
         module: WhatsAppModule.MOBILE_SHOP,
@@ -515,13 +520,13 @@ export const SCOPED_VARIABLE_REGISTRY: Record<
         required: true,
       },
       deviceModel: {
-         key: 'deviceModel',
-         label: 'Device Model',
-         module: WhatsAppModule.MOBILE_SHOP,
-         sourceType: VariableSourceType.ENTITY,
-         sourcePath: 'JobCard.deviceModel', // Assumes deviceModel exists on JobCard
-         dataType: VariableDataType.STRING,
-         required: false,
+        key: 'deviceModel',
+        label: 'Device Model',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.deviceModel', // Assumes deviceModel exists on JobCard
+        dataType: VariableDataType.STRING,
+        required: false,
       },
       job_number: {
         key: 'job_number',

@@ -339,5 +339,56 @@ export async function createWarrantyJob(
     throw new Error(error.message || "Failed to create warranty job");
   }
 
+
+  return response.json();
+}
+
+/**
+ * Add Advance to Job Card
+ */
+export async function addJobCardAdvance(
+  shopId: string,
+  jobCardId: string,
+  amount: number,
+  mode: string
+): Promise<{ job: JobCard; receipt: any }> {
+  const response = await authenticatedFetch(
+    `/mobileshop/shops/${shopId}/job-cards/${jobCardId}/advance`,
+    {
+      method: "POST",
+      body: JSON.stringify({ amount, mode }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to add advance");
+  }
+
+  return response.json();
+}
+
+/**
+ * Refund Job Card Advance
+ */
+export async function refundJobCardAdvance(
+  shopId: string,
+  jobCardId: string,
+  amount: number,
+  mode: string
+): Promise<JobCard> {
+  const response = await authenticatedFetch(
+    `/mobileshop/shops/${shopId}/job-cards/${jobCardId}/advance/refund`,
+    {
+      method: "POST",
+      body: JSON.stringify({ amount, mode }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to refund advance");
+  }
+
   return response.json();
 }

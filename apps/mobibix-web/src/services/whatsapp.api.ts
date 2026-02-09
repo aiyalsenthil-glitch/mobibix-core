@@ -1,18 +1,27 @@
 import { authenticatedFetch } from "./auth.api";
 
 export interface WhatsAppDashboard {
+  planRequired?: boolean; // Added for no-plan scenario
+  message?: string; // Added for no-plan scenario
   messagesSentToday: number;
   messagesSentThisMonth: number;
   deliveredCount: number;
   readCount: number;
   failedCount: number;
   activeCampaignCount: number;
-  whatsappNumberStatus: "CONNECTED" | "DISCONNECTED" | "DISABLED" | string;
-  planName: string;
-  planExpiry: string;
+  whatsappNumberStatus:
+    | "CONNECTED"
+    | "DISCONNECTED"
+    | "DISABLED"
+    | string
+    | null;
+  planName: string | null;
+  planExpiry: string | null;
   monthlyQuota: number | null;
   usedQuota: number;
   remainingQuota: number | null;
+  dailyReminderQuota: number | null;
+  dailyReminderUsed: number;
   features?: {
     manualMessaging?: boolean;
     bulkCampaign?: boolean;

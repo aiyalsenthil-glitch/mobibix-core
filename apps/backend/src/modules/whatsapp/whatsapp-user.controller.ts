@@ -12,6 +12,7 @@ import {
 import { Request } from 'express';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
+import { RequirePlanFeature } from '../../core/billing/guards/plan-feature.guard';
 import { WhatsAppUserService } from './whatsapp-user.service';
 import {
   CreateWhatsAppCampaignDto,
@@ -19,9 +20,12 @@ import {
   SendWhatsAppMessageDto,
   WhatsAppLogsQueryDto,
 } from './dto/whatsapp-user.dto';
+import { Roles } from '../../core/auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('user/whatsapp')
 @UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppUserController {
   constructor(private readonly whatsappUserService: WhatsAppUserService) {}
 
@@ -36,6 +40,7 @@ export class WhatsAppUserController {
   }
 
   @Post('send')
+  @RequirePlanFeature('WHATSAPP_UTILITY') // Block STANDARD users
   async sendMessage(
     @Req() req: Request & { user?: { tenantId?: string } },
     @Body() dto: SendWhatsAppMessageDto,
@@ -54,6 +59,7 @@ export class WhatsAppUserController {
   }
 
   @Post('campaigns')
+  @RequirePlanFeature('WHATSAPP_MARKETING') // Block STANDARD users
   async createCampaign(
     @Req() req: Request & { user?: { tenantId?: string } },
     @Body() dto: CreateWhatsAppCampaignDto,
@@ -63,6 +69,7 @@ export class WhatsAppUserController {
   }
 
   @Patch('campaigns/:id/schedule')
+  @RequirePlanFeature('WHATSAPP_MARKETING') // Block STANDARD users
   async scheduleCampaign(
     @Req() req: Request & { user?: { tenantId?: string } },
     @Param('id') campaignId: string,

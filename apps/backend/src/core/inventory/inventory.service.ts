@@ -1,4 +1,4 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { ProductType as PrismaProductType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StockService, type StockBalance } from '../stock/stock.service';
@@ -11,12 +11,15 @@ export class InventoryService {
     private stockService: StockService,
   ) {}
 
-  private toPaisa(amount: number | undefined | null): number | undefined | null {
+  private toPaisa(
+    amount: number | undefined | null,
+  ): number | undefined | null {
     if (amount === undefined || amount === null) return amount;
     return Math.round(amount * 100);
   }
 
   async createProduct(tenantId: string, dto: CreateProductDto) {
+    console.log(`[InvService] createProduct called for tenant ${tenantId}`, JSON.stringify(dto));
     // Name is required for creation
     if (!dto.name || !dto.shopId) {
       throw new Error('Name and shopId are required for creating a product');
@@ -54,21 +57,27 @@ export class InventoryService {
       );
     }
 
-    return this.prisma.shopProduct.create({
-      data: {
-        tenantId,
-        shopId: dto.shopId,
-        name: dto.name,
-        type: normalizedType,
-        category: dto.category,
-        isSerialized,
-        salePrice: this.toPaisa(dto.salePrice),
-        costPrice: this.toPaisa(dto.costPrice),
-        hsnCode: dto.hsnCode,
-        gstRate: dto.gstRate,
-        isActive: true,
-      },
-    });
+
+    try {
+      return await this.prisma.shopProduct.create({
+        data: {
+          tenantId,
+          shopId: dto.shopId,
+          name: dto.name,
+          type: normalizedType,
+          category: dto.category,
+          isSerialized,
+          salePrice: this.toPaisa(dto.salePrice),
+          costPrice: this.toPaisa(dto.costPrice),
+          hsnCode: dto.hsnCode,
+          gstRate: dto.gstRate,
+          isActive: true,
+        },
+      });
+    } catch (error) {
+        console.error('Error creating product:', error);
+        throw new BadRequestException(`Failed to create product: ${error.message}`);
+    }
   }
 
   async updateProduct(tenantId: string, id: string, dto: CreateProductDto) {
@@ -128,8 +137,10 @@ export class InventoryService {
     if (dto.type !== undefined) updateData.type = normalizedType;
     if (dto.category !== undefined) updateData.category = dto.category;
     if (dto.isSerialized !== undefined) updateData.isSerialized = isSerialized;
-    if (dto.salePrice !== undefined) updateData.salePrice = this.toPaisa(dto.salePrice);
-    if (dto.costPrice !== undefined) updateData.costPrice = this.toPaisa(dto.costPrice);
+    if (dto.salePrice !== undefined)
+      updateData.salePrice = this.toPaisa(dto.salePrice);
+    if (dto.costPrice !== undefined)
+      updateData.costPrice = this.toPaisa(dto.costPrice);
     if (dto.hsnCode !== undefined) updateData.hsnCode = dto.hsnCode;
     if (dto.gstRate !== undefined) updateData.gstRate = dto.gstRate;
 

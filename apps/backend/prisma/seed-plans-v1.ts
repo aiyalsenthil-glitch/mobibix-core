@@ -116,68 +116,29 @@ const V1_PLANS = [
 
 /**
  * LOCKED FEATURE ASSIGNMENTS (per PlanFeature)
+ *
+ * CRITICAL: Only premium unlocks go here.
+ * Core domain features (members, staff, attendance, etc.) are ALWAYS ON.
+ * Limits (staff count, reminder quotas, etc.) go in PlanLimits.
  */
 const PLAN_FEATURES: Record<string, WhatsAppFeature[]> = {
-  GYM_TRIAL: [
-    WhatsAppFeature.MEMBERS_MANAGEMENT,
-    WhatsAppFeature.ATTENDANCE_MANAGEMENT,
-    WhatsAppFeature.QR_ATTENDANCE,
-    WhatsAppFeature.MEMBER_PAYMENT_TRACKING,
-    WhatsAppFeature.WELCOME,
-    WhatsAppFeature.EXPIRY,
-  ],
-  GYM_STANDARD: [
-    WhatsAppFeature.MEMBERS_MANAGEMENT,
-    WhatsAppFeature.ATTENDANCE_MANAGEMENT,
-    WhatsAppFeature.QR_ATTENDANCE,
-    WhatsAppFeature.STAFF_MANAGEMENT,
-    WhatsAppFeature.MEMBER_PAYMENT_TRACKING,
-    WhatsAppFeature.PAYMENT_DUE,
-    WhatsAppFeature.REMINDER,
-    WhatsAppFeature.WELCOME,
-    WhatsAppFeature.EXPIRY,
-  ],
-  GYM_PRO: [
-    WhatsAppFeature.MEMBERS_MANAGEMENT,
-    WhatsAppFeature.ATTENDANCE_MANAGEMENT,
-    WhatsAppFeature.QR_ATTENDANCE,
-    WhatsAppFeature.STAFF_MANAGEMENT,
-    WhatsAppFeature.MEMBER_PAYMENT_TRACKING,
-    WhatsAppFeature.PAYMENT_DUE,
-    WhatsAppFeature.REMINDER,
-    WhatsAppFeature.WELCOME,
-    WhatsAppFeature.EXPIRY,
-    WhatsAppFeature.REPORTS,
-  ],
-  MOBIBIX_TRIAL: [
-    WhatsAppFeature.MEMBERS_MANAGEMENT,
-    WhatsAppFeature.STAFF_MANAGEMENT,
-    WhatsAppFeature.MEMBER_PAYMENT_TRACKING,
-    WhatsAppFeature.PAYMENT_DUE,
-    WhatsAppFeature.REMINDER,
-  ],
-  MOBIBIX_STANDARD: [
-    WhatsAppFeature.MEMBERS_MANAGEMENT,
-    WhatsAppFeature.STAFF_MANAGEMENT,
-    WhatsAppFeature.MEMBER_PAYMENT_TRACKING,
-    WhatsAppFeature.PAYMENT_DUE,
-    WhatsAppFeature.REMINDER,
-  ],
+  // GYM Plans: Premium features only
+  GYM_TRIAL: [],
+  GYM_STANDARD: [],
+  GYM_PRO: [WhatsAppFeature.REPORTS],
+
+  // MOBIBIX Plans: Premium features only
+  MOBIBIX_TRIAL: [],
+  MOBIBIX_STANDARD: [],
   MOBIBIX_PRO: [
-    WhatsAppFeature.MEMBERS_MANAGEMENT,
-    WhatsAppFeature.STAFF_MANAGEMENT,
-    WhatsAppFeature.MEMBER_PAYMENT_TRACKING,
-    WhatsAppFeature.PAYMENT_DUE,
-    WhatsAppFeature.REMINDER,
     WhatsAppFeature.REPORTS,
+    WhatsAppFeature.CUSTOM_PRINT_LAYOUT,
+    WhatsAppFeature.MULTI_SHOP,
+    WhatsAppFeature.WHATSAPP_ALERTS_AUTOMATION,
   ],
-  WHATSAPP_CRM: [
-    WhatsAppFeature.WHATSAPP_ALERTS_ALL,
-    WhatsAppFeature.WELCOME,
-    WhatsAppFeature.PAYMENT_DUE,
-    WhatsAppFeature.REMINDER,
-    WhatsAppFeature.EXPIRY,
-  ],
+
+  // WHATSAPP_CRM: Specialized add-on
+  WHATSAPP_CRM: [],
 };
 
 /**

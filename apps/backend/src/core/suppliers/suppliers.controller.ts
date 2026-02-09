@@ -14,13 +14,16 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { SuppliersService } from './suppliers.service';
 import { CreateSupplierDto, SupplierStatus } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { SupplierResponseDto } from './dto/supplier.response.dto';
+import { UserRole } from '@prisma/client';
 
 @Controller('suppliers')
 @UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class SuppliersController {
   constructor(private readonly suppliersService: SuppliersService) {}
 

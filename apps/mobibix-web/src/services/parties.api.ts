@@ -86,3 +86,17 @@ export async function upgradeParty(
 
   return response.json();
 }
+
+/**
+ * Get party outstanding balance
+ */
+export async function getPartyBalance(id: string): Promise<{ balance: number; currency: string }> {
+  const response = await authenticatedFetch(`/core/parties/${id}/balance`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch balance");
+  }
+
+  return response.json();
+}

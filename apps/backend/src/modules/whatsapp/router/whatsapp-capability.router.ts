@@ -12,7 +12,11 @@ export class WhatsAppCapabilityRouter {
     private readonly retailDemoHandler: RetailDemoHandler,
   ) {}
 
-  async routeMessage(tenantId: string, phone: string, text: string): Promise<void> {
+  async routeMessage(
+    tenantId: string,
+    phone: string,
+    text: string,
+  ): Promise<void> {
     // 1. Resolve Tenant Type
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -26,21 +30,25 @@ export class WhatsAppCapabilityRouter {
       capability = WhatsAppCapability.RETAIL_DEMO;
     }
 
-    this.logger.debug(`Routing message from ${phone} [Tenant: ${tenantId}, Type: ${tenant?.tenantType}] -> ${capability}`);
+    this.logger.debug(
+      `Routing message from ${phone} [Tenant: ${tenantId}, Type: ${tenant?.tenantType}] -> ${capability}`,
+    );
 
     // 3. Dispatch
     switch (capability) {
       case WhatsAppCapability.RETAIL_DEMO:
         await this.retailDemoHandler.handleMessage(tenantId, phone, text);
         break;
-        
+
       case WhatsAppCapability.GYM_PILOT:
       default:
         // EXISTING BEHAVIOR PRESERVATION
         // The current GymPilot system only logs incoming messages in the webhook.
-        // We explicitily do NOTHING here so that the loop in the controller 
+        // We explicitily do NOTHING here so that the loop in the controller
         // can continue (or we just return and let the controller finish).
-        this.logger.debug(`[GYM_PILOT] Message parsed, no auto-response action taken.`);
+        this.logger.debug(
+          `[GYM_PILOT] Message parsed, no auto-response action taken.`,
+        );
         break;
     }
   }

@@ -237,6 +237,26 @@ export default function ReceiptsPage() {
                         >
                           {receipt.receiptId}
                         </Link>
+                        <div className="flex gap-1 mt-1">
+                          {receipt.jobCard ? (
+                             <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200">
+                               Job #{receipt.jobCard.jobNumber}
+                             </span>
+                          ) : receipt.linkedJobId && (
+                             <span className="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-100">
+                               Job Linked
+                             </span>
+                          )}
+                           {receipt.invoice ? (
+                             <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">
+                               Inv #{receipt.invoice.invoiceNumber}
+                             </span>
+                          ) : receipt.linkedInvoiceId && (
+                             <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">
+                               Inv Linked
+                             </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">
                         {formatDate(receipt.createdAt)}

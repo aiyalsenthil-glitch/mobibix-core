@@ -11,6 +11,7 @@ import {
 import { isValidIndianGSTIN } from '../../common/validators/gstin.validator';
 import { getFinancialYear } from '../../common/utils/invoice-number.util';
 import { DocumentNumberService } from '../../common/services/document-number.service';
+import { PLAN_CAPABILITIES } from '../billing/plan-capabilities';
 
 @Injectable()
 export class ShopService {
@@ -35,6 +36,38 @@ export class ShopService {
     const gstNumber = dto.gstNumber?.trim();
     if (gstNumber && !isValidIndianGSTIN(gstNumber)) {
       throw new ForbiddenException('Invalid GSTIN format');
+    }
+
+    // ───────────────────────────────────────────────
+    // 🛡️ MULTI-SHOP GUARD
+    // ───────────────────────────────────────────────
+    const shopCount = await this.prisma.shop.count({ where: { tenantId } });
+    if (shopCount >= 1) {
+      // Check if plan allows multi-shop
+      const subscription = await this.prisma.tenantSubscription.findFirst({
+        where: { tenantId, status: 'ACTIVE' },
+        include: { plan: true },
+        orderBy: { startDate: 'desc' },
+      });
+
+      // Default to TRIAL capabilities if no active sub, but safer to be restrictive if we can't determine
+      // Actually, if no sub, they might be in implicit trial or expired.
+      // Let's assume 'MOBIBIX_TRIAL' if nothing found for now, or fetch from tenant type.
+      const planCode = subscription?.plan?.code ?? 'MOBIBIX_TRIAL';
+
+      const capabilities =
+        PLAN_CAPABILITIES[planCode as keyof typeof PLAN_CAPABILITIES];
+
+      const canUseMultiShop =
+        'canUseMultiShop' in capabilities
+          ? capabilities.canUseMultiShop
+          : false;
+
+      if (!canUseMultiShop) {
+        throw new ForbiddenException(
+          'Your current plan does not support multiple shops. Please upgrade to Pro.',
+        );
+      }
     }
 
     const shop = await this.prisma.shop.create({
@@ -139,7 +172,7 @@ export class ShopService {
         logoUrl: true,
         tagline: true,
         headerConfig: true,
-        
+
         bankName: true,
         accountNumber: true,
         ifscCode: true,
@@ -210,7 +243,7 @@ export class ShopService {
         jobCardTemplate: dto.jobCardTemplate,
         headerConfig: dto.headerConfig,
         tagline: dto.tagline,
-        
+
         bankName: dto.bankName,
         accountNumber: dto.accountNumber,
         ifscCode: dto.ifscCode,

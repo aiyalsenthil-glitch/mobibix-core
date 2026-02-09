@@ -29,6 +29,10 @@ export class UpdatePurchaseDto {
   supplierName?: string;
 
   @IsOptional()
+  @IsString()
+  supplierGstin?: string;
+
+  @IsOptional()
   @IsDateString()
   invoiceDate?: string;
 

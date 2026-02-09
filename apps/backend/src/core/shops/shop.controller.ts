@@ -19,9 +19,12 @@ import {
   UpdateDocumentSettingDto,
   DocumentType,
 } from './dto/update-document-setting.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('mobileshop/shops')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class ShopController {
   constructor(private readonly shopService: ShopService) {}
 
@@ -72,9 +75,8 @@ export class ShopController {
   updateSettings(
     @Req() req: any,
     @Param('shopId') shopId: string,
-    @Body()    dto: UpdateShopSettingsDto,
+    @Body() dto: UpdateShopSettingsDto,
   ) {
-    
     return this.shopService.updateShopSettings(
       req.user.tenantId,
       req.user.role,

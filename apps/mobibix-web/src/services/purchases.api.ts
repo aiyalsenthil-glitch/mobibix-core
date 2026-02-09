@@ -38,6 +38,7 @@ export interface Purchase {
   shopId: string;
   globalSupplierId?: string;
   supplierName: string;
+  supplierGstin?: string;
   invoiceNumber: string;
   invoiceDate: string | Date;
   dueDate?: string | Date;
@@ -67,6 +68,7 @@ export interface CreatePurchaseDto {
   shopId: string;
   globalSupplierId?: string;
   supplierName: string;
+  supplierGstin?: string;
   invoiceNumber: string;
   invoiceDate?: string;
   dueDate?: string;
@@ -291,6 +293,24 @@ export async function getSupplierOutstanding(
     throw new Error(
       error.message || "Failed to fetch supplier outstanding balance",
     );
+  }
+
+  return response.json();
+}
+
+/**
+ * Submit a purchase for approval (Atomic Stock In & Cost Update)
+ */
+export async function submitPurchase(
+  purchaseId: string,
+): Promise<{ message: string; purchaseId: string }> {
+  const response = await authenticatedFetch(`/purchases/${purchaseId}/submit`, {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to submit purchase");
   }
 
   return response.json();

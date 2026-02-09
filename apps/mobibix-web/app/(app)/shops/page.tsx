@@ -5,23 +5,33 @@ import { listShops, type Shop } from "@/services/shops.api";
 import { ShopFormModal } from "./ShopFormModal";
 import { useRouter } from "next/navigation";
 
+import { getCurrentTenant, type CurrentTenantResponse } from "@/services/tenant.api";
+
   export default function ShopsPage() {
     const router = useRouter(); // Hook
     const [shops, setShops] = useState<Shop[]>([]);
+    const [tenant, setTenant] = useState<CurrentTenantResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     // REMOVED: isSettingsModalOpen state
     const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
 
-    const loadShops = async () => {
+    const loadData = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await listShops();
-        setShops(data);
+        
+        // Parallel fetch for speed
+        const [shopsData, tenantData] = await Promise.all([
+            listShops(),
+            getCurrentTenant()
+        ]);
+        
+        setShops(shopsData);
+        setTenant(tenantData);
       } catch (err: any) {
-        console.error("Error loading shops:", err);
+        console.error("Error loading data:", err);
         setError(err.message || "Failed to load shops");
       } finally {
         setIsLoading(false);
@@ -29,10 +39,11 @@ import { useRouter } from "next/navigation";
     };
 
     useEffect(() => {
-        loadShops();
+        loadData();
     }, []);
 
     const handleCreateShop = () => {
+        if (isLimitReached) return;
         setSelectedShop(null);
         setIsFormModalOpen(true);
     };
@@ -50,10 +61,12 @@ import { useRouter } from "next/navigation";
     const handleFormModalClose = () => {
       setIsFormModalOpen(false);
       setSelectedShop(null);
-      loadShops();
+      loadData(); // Reload both to ensure counts are accurate
     };
 
-    // REMOVED: handleSettingsModalClose
+    // Calculate Limits
+    const maxShops = tenant?.subscription?.plan?.maxShops ?? 1; // Default to 1 if unknown, though backend handles this
+    const isLimitReached = maxShops !== null && shops.length >= maxShops;
 
 
   const handleDeleteShop = async (shopId: string) => {
@@ -69,7 +82,7 @@ import { useRouter } from "next/navigation";
       // Note: DELETE endpoint not yet implemented in backend
       alert("Delete functionality coming soon");
       // await deleteShop(shopId);
-      // await loadShops();
+      // await loadData();
     } catch (err: any) {
       alert(err.message || "Failed to delete shop");
     }
@@ -78,12 +91,26 @@ import { useRouter } from "next/navigation";
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-white">Shops</h1>
+        <div>
+            <h1 className="text-3xl font-bold text-white">Shops</h1>
+            {tenant?.subscription && (
+                <p className="text-stone-400 text-sm mt-1">
+                    Plan: <span className="text-teal-400 font-medium">{tenant.subscription.plan.name}</span> • 
+                    Shops: <span className={isLimitReached ? "text-red-400" : "text-white"}>{shops.length}</span> / {maxShops === null ? "Unlimited" : maxShops}
+                </p>
+            )}
+        </div>
         <button
           onClick={handleCreateShop}
-          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-medium transition"
+          disabled={isLimitReached}
+          className={`px-4 py-2 rounded-lg font-medium transition ${
+            isLimitReached 
+                ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                : "bg-teal-500 hover:bg-teal-600 text-white"
+          }`}
+          title={isLimitReached ? "Shop limit reached. Upgrade your plan." : "Add new shop"}
         >
-          + Add Shop
+          {isLimitReached ? "Limit Reached" : "+ Add Shop"}
         </button>
       </div>
 
@@ -200,11 +227,16 @@ import { useRouter } from "next/navigation";
       {/* Floating Add Shop button to ensure visibility */}
       <button
         onClick={handleCreateShop}
-        className="fixed bottom-6 right-6 z-20 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-full shadow-lg font-medium transition"
+        disabled={isLimitReached}
+        className={`fixed bottom-6 right-6 z-20 px-4 py-2 rounded-full shadow-lg font-medium transition ${
+            isLimitReached 
+                ? "bg-gray-600 text-gray-400 cursor-not-allowed" 
+                : "bg-teal-500 hover:bg-teal-600 text-white"
+        }`}
         aria-label="Add Shop"
-        title="Add Shop"
+        title={isLimitReached ? "Limit Reached" : "Add Shop"}
       >
-        + Add Shop
+        {isLimitReached ? "Limit Reached" : "+ Add Shop"}
       </button>
     </div>
   );

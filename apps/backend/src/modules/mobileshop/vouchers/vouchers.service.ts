@@ -68,11 +68,12 @@ export class VouchersService {
     // ✅ TRANSACTION: Create voucher atomically
     try {
       // Use DocumentNumberService for sequential ID
-      const nextVoucherId = await this.documentNumberService.generateDocumentNumber(
-        shopId,
-        DocumentType.PAYMENT_VOUCHER,
-        new Date(),
-      );
+      const nextVoucherId =
+        await this.documentNumberService.generateDocumentNumber(
+          shopId,
+          DocumentType.PAYMENT_VOUCHER,
+          new Date(),
+        );
 
       const voucher = await this.prisma.paymentVoucher.create({
         data: {
@@ -296,11 +297,11 @@ export class VouchersService {
       byPaymentMode[v.paymentMethod].amount += v.amount;
     });
 
-
-
     return {
       totalVouchers: vouchers.length,
-      totalAmount: this.fromPaisa(vouchers.reduce((sum, v) => sum + v.amount, 0)),
+      totalAmount: this.fromPaisa(
+        vouchers.reduce((sum, v) => sum + v.amount, 0),
+      ),
       byVoucherType: Object.fromEntries(
         Object.entries(byVoucherType).map(([type, data]) => [
           type,
@@ -316,6 +317,86 @@ export class VouchersService {
     };
   }
 
+  /**
+   * Create voucher with atomic Purchase.outstanding update (Tier-2 hardening)
+   */
+  async createVoucherWithPurchaseUpdate(
+    tenantId: string,
+    shopId: string,
+    createVoucherDto: CreateVoucherDto,
+    userId: string,
+  ): Promise<VoucherEntity> {
+    // First, create the voucher (existing logic)
+    const voucher = await this.createVoucher(
+      tenantId,
+      shopId,
+      createVoucherDto,
+      userId,
+    );
+
+    // If linked to purchase, update purchase outstanding atomically
+    if (createVoucherDto.linkedPurchaseId) {
+      await this.updatePurchaseOutstandingStatus(
+        tenantId,
+        createVoucherDto.linkedPurchaseId,
+        this.toPaisa(createVoucherDto.amount),
+        createVoucherDto.voucherSubType || 'SETTLEMENT',
+      );
+    }
+
+    return voucher;
+  }
+
+  /**
+   * Update purchase outstanding amount (over-payment prevention)
+   */
+  private async updatePurchaseOutstandingStatus(
+    tenantId: string,
+    purchaseId: string,
+    voucherAmount: number,
+    voucherSubType: 'ADVANCE' | 'SETTLEMENT',
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // Get current purchase
+      const purchase = await tx.purchase.findUnique({
+        where: { id: purchaseId },
+      });
+
+      if (!purchase || purchase.tenantId !== tenantId) {
+        throw new BadRequestException('Purchase not found');
+      }
+
+      // Only SETTLEMENT vouchers reduce outstanding
+      if (voucherSubType !== 'SETTLEMENT') {
+        this.logger.debug(
+          `Purchase ${purchase.invoiceNumber}: ADVANCE voucher (not reducing outstanding)`,
+        );
+        return;
+      }
+
+      // Over-payment prevention: voucher <= (subTotal - paidAmount)
+      const outstanding = purchase.subTotal - purchase.paidAmount;
+      if (voucherAmount > outstanding) {
+        throw new BadRequestException(
+          `Over-payment prevented: voucher (${this.fromPaisa(voucherAmount)}) exceeds outstanding. Balance: ${this.fromPaisa(outstanding)}`,
+        );
+      }
+
+      // Update purchase paidAmount
+      const newPaidAmount = purchase.paidAmount + voucherAmount;
+      await tx.purchase.update({
+        where: { id: purchaseId },
+        data: {
+          paidAmount: newPaidAmount,
+        },
+      });
+
+      this.logger.debug(
+        `Purchase ${purchase.invoiceNumber}: paidAmount increased by ${this.fromPaisa(voucherAmount)}, new paid: ${this.fromPaisa(newPaidAmount)}/${this.fromPaisa(purchase.subTotal)}`,
+      );
+    });
+  }
+
   // ===== PRIVATE HELPERS =====
 
   private toPaisa(amount: number): number {
@@ -325,7 +406,6 @@ export class VouchersService {
   private fromPaisa(amount: number): number {
     return amount / 100;
   }
-
 
   private generateVoucherId(): string {
     const timestamp = Date.now();

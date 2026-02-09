@@ -67,7 +67,7 @@ export class FollowUpsService {
         entityId: followUp.id,
       });
     } catch (err) {
-      console.error('Failed to trigger WhatsApp automation:', (err as any).message);
+      console.error('Failed to trigger WhatsApp automation:', err.message);
     }
 
     return followUp;
@@ -131,7 +131,7 @@ export class FollowUpsService {
           entityId: followUp.id,
         });
       } catch (err) {
-        console.error('Failed to trigger WhatsApp automation:', (err as any).message);
+        console.error('Failed to trigger WhatsApp automation:', err.message);
       }
     }
 
@@ -251,7 +251,7 @@ export class FollowUpsService {
           entityId: followUp.id,
         });
       } catch (err) {
-        console.error('Failed to trigger WhatsApp automation:', (err as any).message);
+        console.error('Failed to trigger WhatsApp automation:', err.message);
       }
     }
 
@@ -385,7 +385,7 @@ export class FollowUpsService {
           entityId: item.id,
         });
       } catch (err) {
-        console.error('Failed to trigger WhatsApp automation:', (err as any).message);
+        console.error('Failed to trigger WhatsApp automation:', err.message);
       }
     }
   }

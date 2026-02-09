@@ -143,12 +143,12 @@ export class PlatformService {
           where: {
             planId_feature: {
               planId,
-              feature: item.feature,
+              feature: item.feature as any,
             },
           },
           create: {
             planId,
-            feature: item.feature,
+            feature: item.feature as any,
             enabled: item.enabled,
           },
           update: {
@@ -184,12 +184,12 @@ export class PlatformService {
       where: {
         planId_feature: {
           planId,
-          feature,
+          feature: feature as any,
         },
       },
       create: {
         planId,
-        feature,
+        feature: feature as any,
         enabled,
       },
       update: {

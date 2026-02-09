@@ -6,7 +6,7 @@ import {
   IsPositive,
   MinLength,
 } from 'class-validator';
-import { PaymentMode, VoucherType } from '@prisma/client';
+import { PaymentMode, VoucherType, VoucherSubType } from '@prisma/client';
 
 export class CreateVoucherDto {
   @IsEnum(PaymentMode)
@@ -18,6 +18,10 @@ export class CreateVoucherDto {
 
   @IsEnum(VoucherType)
   voucherType: VoucherType;
+
+  @IsOptional()
+  @IsEnum(VoucherSubType)
+  voucherSubType?: VoucherSubType;
 
   @IsOptional()
   @IsString()

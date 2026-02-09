@@ -16,6 +16,7 @@ export interface AuthUserPayload {
   REMOVED_AUTH_PROVIDERUid: string;
   role: AuthRole;
   tenantId?: string;
+  planCode?: string; // e.g., 'MOBIBIX_TRIAL', 'MOBIBIX_STANDARD'
 }
 
 export interface ExchangeTokenResponse {
@@ -25,12 +26,14 @@ export interface ExchangeTokenResponse {
     id: string;
     code: string;
     name: string;
+    planCode?: string;
   };
   tenants?: Array<{
     id: string;
     code?: string;
     name?: string;
     role?: AuthRole;
+    planCode?: string;
   }>;
   tenantCount?: number;
 }

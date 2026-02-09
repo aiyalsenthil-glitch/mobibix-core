@@ -10,6 +10,8 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { CrmIntegrationService } from './services/crm-integration.service';
+import { Roles } from '../../core/auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 /**
  * Example Controller: MobileShop CRM Dashboard Integration
@@ -19,6 +21,7 @@ import { CrmIntegrationService } from './services/crm-integration.service';
  */
 @Controller('mobileshop/crm')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class MobileShopCrmController {
   constructor(private readonly crmIntegration: CrmIntegrationService) {}
 

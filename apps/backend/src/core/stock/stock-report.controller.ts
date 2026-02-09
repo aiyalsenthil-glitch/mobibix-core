@@ -7,10 +7,13 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { StockReportService } from './stock-report.service';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 type ReqWithUser = { user?: { tenantId?: string } };
 
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('reports')
 export class StockReportController {
   constructor(private readonly service: StockReportService) {}

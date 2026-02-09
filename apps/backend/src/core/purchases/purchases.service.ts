@@ -72,7 +72,7 @@ export class PurchasesService {
       const itemsData = dto.items.map((item) => {
         // Convert input Rupees to Paisa
         const purchasePricePaisa = this.toPaisa(item.purchasePrice);
-        
+
         const itemSubTotal = purchasePricePaisa * item.quantity;
         const gstRate = item.gstRate || 0;
         const taxAmount = Math.round((itemSubTotal * gstRate) / 100);
@@ -102,6 +102,7 @@ export class PurchasesService {
           shopId: dto.shopId,
           globalSupplierId: dto.globalSupplierId,
           supplierName: dto.supplierName,
+          supplierGstin: dto.supplierGstin,
           invoiceNumber: dto.invoiceNumber,
           invoiceDate: dto.invoiceDate ? new Date(dto.invoiceDate) : new Date(),
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
@@ -128,30 +129,8 @@ export class PurchasesService {
         },
       });
 
-      // 🛡️ STOCK IN ENFORCEMENT
-      // Iterate created items to ensure we have the correct IDs and data
-      for (const item of purchase.items) {
-        await this.stockService.recordStockIn(
-          tenantId,
-          dto.shopId,
-          item.shopProductId!,
-          item.quantity,
-          'PURCHASE',
-          purchase.id, // Reference the Purchase ID
-          item.purchasePrice, // Cost per unit (Paisa)
-          undefined, // imeis
-          tx, // Pass transaction
-        );
-
-        // 🛡️ COST PRICE UPDATE (Option A: Last Purchase Price)
-        // Always update cost, even if 0 (Replenishment Cost Truth)
-        if (item.shopProductId) {
-          await tx.shopProduct.update({
-            where: { id: item.shopProductId },
-            data: { costPrice: item.purchasePrice },
-          });
-        }
-      }
+      // 🛡️ REFACTOR: Stock entry moved to atomicPurchaseSubmit
+      // Draft purchases do NOT affect stock or cost price until submitted.
 
       return this.mapToResponseDto(purchase);
     });
@@ -255,6 +234,7 @@ export class PurchasesService {
       where: { id },
       data: {
         ...(dto.supplierName && { supplierName: dto.supplierName }),
+        ...(dto.supplierGstin && { supplierGstin: dto.supplierGstin }),
         ...(dto.invoiceDate && { invoiceDate: new Date(dto.invoiceDate) }),
         ...(dto.dueDate && { dueDate: new Date(dto.dueDate) }),
         ...(dto.status && { status: dto.status }),
@@ -322,7 +302,9 @@ export class PurchasesService {
       });
 
       if (!purchase || purchase.tenantId !== tenantId) {
-        throw new NotFoundException(`Purchase with ID "${purchaseId}" not found`);
+        throw new NotFoundException(
+          `Purchase with ID "${purchaseId}" not found`,
+        );
       }
 
       if (purchase.status === 'CANCELLED') {
@@ -512,5 +494,108 @@ export class PurchasesService {
       createdAt: purchase.createdAt,
       updatedAt: purchase.updatedAt,
     };
+  }
+
+  async atomicPurchaseSubmit(
+    tenantId: string,
+    purchaseId: string,
+  ): Promise<void> {
+    // Validation 1: Purchase exists and belongs to tenant
+    const purchase = await this.prisma.purchase.findUnique({
+      where: { id: purchaseId },
+      include: { items: true },
+    });
+
+    if (!purchase || purchase.tenantId !== tenantId) {
+      throw new NotFoundException('Purchase not found');
+    }
+
+    // Validation 2: Cannot submit if already submitted/paid
+    if (purchase.status !== 'DRAFT') {
+      throw new ConflictException(
+        `Purchase cannot be submitted. Current status: ${purchase.status}`,
+      );
+    }
+
+    // Validation 3: Must have items
+    if (!purchase.items || purchase.items.length === 0) {
+      throw new BadRequestException('Purchase must have at least one item');
+    }
+
+    // Validation 4: GSTIN mandatory if GST > 0
+    // Cast to any to avoid TS error if type definition is lagging
+    if (purchase.totalGst > 0 && !(purchase as any).supplierGstin) {
+      throw new BadRequestException(
+        'Supplier GSTIN required for GST purchases (ITC eligibility)',
+      );
+    }
+
+    // Validation 5: Invoice date validation
+    const today = new Date();
+    if (purchase.invoiceDate > today) {
+      throw new BadRequestException('Invoice date cannot be in future');
+    }
+
+    // Validation 6: 180-day ITC claim window
+    const daysSinceInvoice = Math.floor(
+      (today.getTime() - purchase.invoiceDate.getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
+    if (daysSinceInvoice > 180) {
+      throw new BadRequestException(
+        'ITC claim window expired (CGST Act Sec 16 - 180 days)',
+      );
+    }
+
+    // Atomic transaction: Submit purchase + Create stock ledger entries
+    await this.prisma.$transaction(
+      async (tx) => {
+        // Double-check status inside transaction (Serializable isolation)
+        const currentStatus = await tx.purchase.findUnique({
+          where: { id: purchaseId },
+        });
+
+        if (currentStatus && currentStatus.status !== 'DRAFT') {
+          throw new ConflictException(
+            'Purchase already submitted by another request',
+          );
+        }
+
+        // Update purchase status to SUBMITTED
+        await tx.purchase.update({
+          where: { id: purchaseId },
+          data: { status: 'SUBMITTED' },
+        });
+
+        // Create stock ledger entries for each item
+        // 🛡️ STOCK IN & COST UPDATE (Tier-2 Hardening)
+        // Iterate items to record stock and update Last Purchase Price
+        for (const item of purchase.items) {
+          if (item.shopProductId) {
+            // 1. Record Consolidated Stock In
+            await this.stockService.recordStockIn(
+              tenantId,
+              purchase.shopId,
+              item.shopProductId,
+              item.quantity,
+              'PURCHASE',
+              purchase.id,
+              item.purchasePrice,
+              undefined, // imeis (Future: Extract from strict PurchaseItemIMEI relation if added)
+              tx,
+            );
+
+            // 2. Update Cost Price (LPP)
+            await tx.shopProduct.update({
+              where: { id: item.shopProductId },
+              data: { costPrice: item.purchasePrice },
+            });
+          }
+        }
+      },
+      {
+        isolationLevel: 'Serializable',
+      },
+    );
   }
 }

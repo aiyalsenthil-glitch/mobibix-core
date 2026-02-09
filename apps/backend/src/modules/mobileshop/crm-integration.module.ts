@@ -33,7 +33,9 @@ import { WhatsAppModule } from '../whatsapp/whatsapp.module';
     HttpModule.registerAsync({
       useFactory: (configService: ConfigService) => {
         const port = configService.get('PORT') || 3000;
-        const baseUrl = configService.get<string>('CORE_API_BASE_URL') || `http://localhost_REPLACED:${port}`;
+        const baseUrl =
+          configService.get<string>('CORE_API_BASE_URL') ||
+          `http://localhost_REPLACED:${port}`;
         return {
           baseURL: baseUrl,
           timeout: 10000,

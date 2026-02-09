@@ -482,15 +482,14 @@ export default function CreateInvoicePage() {
         }
       }
 
-      // For MIXED mode, create invoice as CREDIT first
-      const payload = {
+      // Prepare payload
+      const payload: any = {
         shopId: selectedShop.id,
         customerId: selectedCustomer.id,
         customerName: selectedCustomer.name,
         customerPhone: selectedCustomer.phone,
         customerState: selectedCustomer.state,
         customerGstin: selectedCustomer.gstNumber,
-        paymentMode: paymentMode === "MIXED" ? "CREDIT" : paymentMode,
         pricesIncludeTax,
         items: items.map((item) => ({
           shopProductId: item.shopProductId,
@@ -502,18 +501,22 @@ export default function CreateInvoicePage() {
         })),
       };
 
-      const createdInvoice = await createInvoice(payload);
-
-      // If MIXED mode, immediately collect split payments
+      // Handle Payment Modes
       if (paymentMode === "MIXED") {
-        await collectPayment(createdInvoice.id, {
-          paymentMethods: splitPayments.map((p) => ({
-            mode: p.mode,
-            amount: parseFloat(p.amount),
-          })),
-          narration: "Split payment at invoice creation",
-        });
+        // Atomic creation with mixed payments
+        payload.paymentMode = splitPayments[0].mode; // Default primary to first mode
+        payload.paymentMethods = splitPayments.map((p) => ({
+          mode: p.mode,
+          amount: parseFloat(p.amount),
+        }));
+      } else {
+        // Single mode
+        payload.paymentMode = paymentMode;
       }
+
+      await createInvoice(payload);
+      
+      // Navigate on success (no need for second collectPayment call)
 
       router.push(`/sales?shopId=${selectedShopId}`);
     } catch (err: any) {

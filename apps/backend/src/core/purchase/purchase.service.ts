@@ -6,6 +6,7 @@ import {
 import { ProductType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PurchaseStockInDto } from './dto/purchase-stock-in.dto';
+import { assertShopAccess } from '../../common/guards/shop-access.guard';
 
 @Injectable()
 export class PurchaseService {
@@ -17,15 +18,8 @@ export class PurchaseService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // validate shop belongs to tenant
-      const shop = await tx.shop.findFirst({
-        where: { id: dto.shopId, tenantId },
-        select: { id: true },
-      });
-
-      if (!shop) {
-        throw new BadRequestException('Invalid shop');
-      }
+      // Validate shop access
+      await assertShopAccess(tx, dto.shopId, tenantId);
 
       // validate products and build maps
       const productIds = dto.items.map((i) => i.shopProductId);

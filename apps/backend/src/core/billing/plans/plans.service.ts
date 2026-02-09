@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModuleType } from '@prisma/client';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { PlanMappingService } from '../plan-mapping.service';
 
 @Injectable()
 export class PlansService {
@@ -15,13 +16,12 @@ export class PlansService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly planMappingService: PlanMappingService,
   ) {}
 
   private resolvePlanCode(name: string): string {
     return name.trim().toUpperCase().replace(/\s+/g, '_');
   }
-
-
 
   async getPlansWithUpgradeInfo(tenantId: string, module: ModuleType) {
     const currentSub =
@@ -40,7 +40,14 @@ export class PlansService {
         level: { gt: 0 }, // hide TRIAL
         module, // Filter by exact module
       },
-      include: {
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        level: true,
+        tagline: true,
+        description: true,
+        featuresJson: true,
         planPrices: {
           where: { isActive: true },
           select: { billingCycle: true, price: true },
@@ -52,13 +59,43 @@ export class PlansService {
       orderBy: { level: 'asc' },
     });
 
-    return plans.map((plan) => ({
-      ...plan,
-      prices: plan.planPrices,
-      features: plan.planFeatures.map((f) => f.feature),
-      isCurrent: plan.level === currentLevel,
-      canUpgrade: plan.level > currentLevel,
-    }));
+    // Group plans by public name
+    const publicPlans = this.planMappingService.getPublicPlans(module);
+
+    return publicPlans
+      .map((publicPlan) => {
+        // Find the internal plan for this public plan
+        const internalCode = this.planMappingService.resolveInternalPlanCode(
+          publicPlan.name,
+          module,
+        );
+        const internalPlan = plans.find((p) => p.code === internalCode);
+
+        if (!internalPlan) {
+          return null;
+        }
+
+        return {
+          id: internalPlan.id,
+          name: publicPlan.name, // Simplified name (TRIAL, STANDARD, PRO)
+          displayName: publicPlan.displayName,
+          tagline: (internalPlan as any).tagline,
+          description: (internalPlan as any).description,
+          featuresJson: (internalPlan as any).featuresJson,
+          level: internalPlan.level,
+          billingCycles: (internalPlan as any).planPrices.map((price: any) => ({
+            cycle: price.billingCycle,
+            price: price.price,
+          })),
+          features: (internalPlan as any).planFeatures.map(
+            (f: any) => f.feature,
+          ),
+          isCurrent: internalPlan.level === currentLevel,
+          canUpgrade: internalPlan.level > currentLevel,
+          canDowngrade: internalPlan.level < currentLevel,
+        };
+      })
+      .filter(Boolean); // Remove nulls
   }
 
   /**
@@ -70,6 +107,23 @@ export class PlansService {
         isActive: true,
         isPublic: true, // Only show public plans
         level: { gt: 0 }, // 👈 hide TRIAL from users
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        level: true,
+        tagline: true,
+        description: true,
+        featuresJson: true,
+        module: true,
+        planPrices: {
+          where: { isActive: true },
+          select: { billingCycle: true, price: true },
+        },
+        planFeatures: {
+          select: { feature: true },
+        },
       },
       orderBy: { level: 'asc' },
     });

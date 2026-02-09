@@ -1,18 +1,30 @@
-
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { Injectable, OnModuleInit, OnModuleDestroy, Module } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Module,
+} from '@nestjs/common';
 
-const CONNECTION_STRING = "postgresql://postgres:k%2FWwZ9M!gJagvq6@db.wdjyrnldcsotkgoqcsfz.supabase.co:5432/postgres";
+const CONNECTION_STRING =
+  'postgresql://postgres:k%2FWwZ9M!gJagvq6@db.wdjyrnldcsotkgoqcsfz.supabase.co:5432/postgres';
 
 @Injectable()
-class CustomPrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+class CustomPrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   constructor() {
     const adapter = new PrismaPg({ connectionString: CONNECTION_STRING });
     super({ adapter } as any);
   }
-  async onModuleInit() { await this.$connect(); }
-  async onModuleDestroy() { await this.$disconnect(); }
+  async onModuleInit() {
+    await this.$connect();
+  }
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
 }
 
 @Module({
@@ -41,7 +53,7 @@ async function main() {
 
   // 2. Check existing
   const existing = await prisma.tenantSubscription.findFirst({
-    where: { tenantId, status: 'ACTIVE' }
+    where: { tenantId, status: 'ACTIVE' },
   });
 
   if (existing) {
@@ -55,18 +67,22 @@ async function main() {
         status: 'ACTIVE',
         startDate: new Date(),
         endDate: new Date('2099-12-31'), // Lifetime
-      }
+      },
     });
     console.log('✅ Created Active Subscription:', sub.id);
   }
 
   // 4. Debug Plan Features
-  const ultimatePlan = await prisma.plan.findFirst({ where: { name: 'ULTIMATE' } });
+  const ultimatePlan = await prisma.plan.findFirst({
+    where: { name: 'ULTIMATE' },
+  });
   if (ultimatePlan) {
-    const features = await prisma.planFeature.findMany({ where: { planId: ultimatePlan.id } });
+    const features = await prisma.planFeature.findMany({
+      where: { planId: ultimatePlan.id },
+    });
     console.log('ULTIMATE Plan Features:', JSON.stringify(features, null, 2));
   }
-  
+
   await prisma.$disconnect();
 }
 

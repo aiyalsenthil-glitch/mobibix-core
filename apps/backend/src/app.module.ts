@@ -9,13 +9,14 @@ import { rawBodyMiddleware } from './common/middleware/raw-body.middleware';
 import { AuthModule } from './core/auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './core/auth/guards/jwt-auth.guard';
+import { RolesGuard } from './core/auth/guards/roles.guard';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
-import { WhatsAppCrmModule } from './modules/whatsapp-crm/whatsapp-crm.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { GymAppModule } from './modules/gymapp/gym-app.module';
 import { MobileShopModule } from './modules/mobileshop/mobileshop.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { CacheModule } from '@nestjs/cache-manager';
+import { CacheModule as CustomCacheModule } from './core/cache/cache.module';
 import { SuppliersModule } from './core/suppliers/suppliers.module';
 import { PurchasesModule } from './core/purchases/purchases.module';
 import { GlobalProductsModule } from './core/global-products/global-products.module';
@@ -36,11 +37,13 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
       envFilePath: '.env',
     }),
 
-    // 🔒 Core Engine (ALL core logic lives here)
+    // � Performance & Caching (Tier 4)
+    CustomCacheModule,
+
+    // �🔒 Core Engine (ALL core logic lives here)
     CoreModule,
     AuthModule,
     WhatsAppModule,
-    WhatsAppCrmModule,
     CustomerTimelineModule,
     // 🧩 Business modules
     GymModule,
@@ -65,6 +68,10 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })

@@ -12,10 +12,12 @@ import {
 import { PartiesService } from './parties.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
-import { PartyType } from '@prisma/client';
+import { PartyType, UserRole } from '@prisma/client';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('core/parties')
 @UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class PartiesController {
   constructor(private readonly service: PartiesService) {}
 
@@ -53,11 +55,17 @@ export class PartiesController {
     }
 
     const party = await this.service.upgradeRole(tenantId, id, body.role);
-    
+
     if (!party) {
       throw new BadRequestException('Party not found'); // Using 400/404 based on pref, using BadRequest for safety or NotFoundException
     }
-    
+
     return party;
+  }
+
+  @Get(':id/balance')
+  async getBalance(@Req() req, @Param('id') id: string) {
+    const tenantId = req.user?.tenantId;
+    return this.service.getBalance(tenantId, id);
   }
 }

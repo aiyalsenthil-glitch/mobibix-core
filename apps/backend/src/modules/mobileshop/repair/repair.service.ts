@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { ProductType } from '@prisma/client';
+import { assertShopAccess } from '../../../common/guards/shop-access.guard';
 import { RepairStockOutDto } from './dto/repair-stock-out.dto';
 import { RepairBillDto, BillingMode } from './dto/repair-bill.dto';
 import {
@@ -18,12 +19,8 @@ export class RepairService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // validate shop
-      const shop = await tx.shop.findFirst({
-        where: { id: dto.shopId, tenantId },
-        select: { id: true },
-      });
-      if (!shop) throw new BadRequestException('Invalid shop');
+      // Validate shop access
+      await assertShopAccess(tx, dto.shopId, tenantId);
 
       // validate job card
       const job = await tx.jobCard.findFirst({
@@ -184,6 +181,9 @@ export class RepairService {
         );
       }
 
+      // Validate shop access
+      await assertShopAccess(tx, dto.shopId, tenantId);
+
       // Fetch shop for GST setting
       const shop = await tx.shop.findFirst({
         where: { id: dto.shopId, tenantId },
@@ -191,7 +191,7 @@ export class RepairService {
       });
 
       if (!shop) {
-        throw new BadRequestException('Shop not found');
+        throw new BadRequestException('Shop not found after validation');
       }
 
       // Validate GST choice against shop settings

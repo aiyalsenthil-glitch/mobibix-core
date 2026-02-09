@@ -9,15 +9,18 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { PaymentMode, UserRole } from '@prisma/client';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
 
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
+import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { JobCardsService } from '../jobcard/job-cards.service';
 import { CreateJobCardDto } from '../jobcard/dto/create-job-card.dto';
 import { UpdateJobCardDto } from './dto/update-job-card.dto';
 
 @Controller('mobileshop/shops/:shopId/job-cards')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class JobCardsController {
   constructor(private readonly service: JobCardsService) {}
 
@@ -59,7 +62,13 @@ export class JobCardsController {
     @Req() req: any,
     @Body() dto: UpdateJobStatusDto,
   ) {
-    return this.service.updateStatus(req.user, shopId, id, dto.status);
+    return this.service.updateStatus(
+      req.user,
+      shopId,
+      id,
+      dto.status,
+      dto.refundDetails,
+    );
   }
 
   @Delete(':id')
@@ -107,6 +116,40 @@ export class JobCardsController {
       shopId,
       jobId,
       dto.serviceChargePaisa,
+    );
+  }
+
+  // ===== ADVANCE MANAGEMENT =====
+
+  @Post(':id/advance')
+  addAdvance(
+    @Param('shopId') shopId: string,
+    @Param('id') jobId: string,
+    @Req() req: any,
+    @Body() dto: { amount: number; mode: string },
+  ) {
+    return this.service.addAdvance(
+      req.user,
+      shopId,
+      jobId,
+      dto.amount,
+      dto.mode as PaymentMode,
+    );
+  }
+
+  @Post(':id/advance/refund')
+  refundAdvance(
+    @Param('shopId') shopId: string,
+    @Param('id') jobId: string,
+    @Req() req: any,
+    @Body() dto: { amount: number; mode: string },
+  ) {
+    return this.service.refundAdvance(
+      req.user,
+      shopId,
+      jobId,
+      dto.amount,
+      dto.mode as PaymentMode,
     );
   }
 

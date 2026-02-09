@@ -1,4 +1,3 @@
-
 export class InvoiceCreatedEvent {
   constructor(
     public readonly tenantId: string,

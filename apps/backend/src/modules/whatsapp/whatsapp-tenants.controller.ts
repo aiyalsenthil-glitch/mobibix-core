@@ -1,8 +1,11 @@
 import { Controller, Get, UseGuards, Logger } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
+import { Roles } from '../../core/auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('whatsapp/modules')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppTenantsController {
   private readonly logger = new Logger(WhatsAppTenantsController.name);
 

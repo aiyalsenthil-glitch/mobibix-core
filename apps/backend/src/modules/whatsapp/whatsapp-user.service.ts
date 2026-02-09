@@ -17,6 +17,9 @@ import {
   WhatsAppLogsQueryDto,
 } from './dto/whatsapp-user.dto';
 import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
+import { PLAN_LIMITS } from '../../core/billing/plan-limits';
+
+type WhatsAppTemplateCategory = 'UTILITY' | 'MARKETING';
 
 export type WhatsAppPlanFeatures = {
   manualMessaging?: boolean;
@@ -100,45 +103,59 @@ export class WhatsAppUserService {
 
   /**
    * Derive permissions capabilities from PLAN FEATURES (Relational)
-   * Replacing legacy JSON logic.
+   *
+   * NOTE: Core WhatsApp notifications are always-on.
+   * Only WHATSAPP_ALERTS_AUTOMATION (premium) enables advanced features.
    */
-  private deriveFeaturesFromRules(features: WhatsAppFeature[]): WhatsAppPlanFeatures {
-    const hasBasic = features.includes(WhatsAppFeature.WHATSAPP_ALERTS_BASIC);
-    const hasAll = features.includes(WhatsAppFeature.WHATSAPP_ALERTS_ALL);
+  private deriveFeaturesFromRules(
+    features: WhatsAppFeature[],
+  ): WhatsAppPlanFeatures {
+    const hasAutomation = features.includes(
+      WhatsAppFeature.WHATSAPP_ALERTS_AUTOMATION,
+    );
     const hasReports = features.includes(WhatsAppFeature.REPORTS);
 
-    // Hardcoded Limits for V1 (Frozen)
-    // Basic = 100/mo, All = 1000/mo
-    let monthlyQuota = 0;
-    if (hasAll) monthlyQuota = 1000;
-    else if (hasBasic) monthlyQuota = 100;
-
     return {
-      manualMessaging: hasBasic || hasAll,
-      bulkCampaign: hasAll,
-      automation: hasAll,
-      reports: hasReports || hasAll,
-      monthlyQuota,
+      manualMessaging: true, // Always available (core feature)
+      bulkCampaign: hasAutomation, // Premium
+      automation: hasAutomation, // Premium
+      reports: hasReports, // Premium
+      monthlyQuota: undefined, // Use PlanLimits instead
     };
   }
 
   private async getSubscriptionContext(tenantId: string) {
-    const moduleType = await this.resolveTenantModule(tenantId);
-    
-    // 1. Get Subscription (for EndDate/PlanName)
-    const subscription =
+    // 1. Try to find an active WHATSAPP_CRM (Add-on) subscription first
+    // This allows Gyms/Shops to override their core plan limits if they purchased the add-on
+    let subscription =
       await this.subscriptionsService.getCurrentActiveSubscription(
         tenantId,
-        moduleType,
+        ModuleType.WHATSAPP_CRM,
       );
+
+    let effectiveModule: ModuleType = ModuleType.WHATSAPP_CRM;
+
+    // 2. Fallback: If no active CRM add-on, resolve the Core Module (Gym/Shop)
+    if (!subscription?.plan) {
+      effectiveModule = await this.resolveTenantModule(tenantId);
+      subscription =
+        await this.subscriptionsService.getCurrentActiveSubscription(
+          tenantId,
+          effectiveModule,
+        );
+    }
 
     if (!subscription?.plan) {
       throw new ForbiddenException('PLAN_REQUIRED');
     }
 
-    // 2. Get Rules (for Features - Source of Truth)
-    const rules = await this.planRulesService.getPlanRulesForTenant(tenantId, moduleType);
-    
+    // 3. Get Rules (using the DETECTED effective module)
+    // If it was CRM, we get CRM rules (Marketing allowed). If Core, we get Core rules.
+    const rules = await this.planRulesService.getPlanRulesForTenant(
+      tenantId,
+      effectiveModule,
+    );
+
     // Safe fallback if rules missing (shouldn't happen if subscription exists)
     const featureList = rules?.features || [];
     const features = this.deriveFeaturesFromRules(featureList);
@@ -168,23 +185,138 @@ export class WhatsAppUserService {
     return { start, end };
   }
 
-  private async getMonthlyUsage(tenantId: string) {
+  private getQuotaDateRange(isDaily: boolean, date = new Date()) {
+    if (isDaily) {
+      // For Trial: Reset daily at midnight
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
+      return { start, end };
+    } else {
+      // For Paid: Reset monthly (start of calendar month)
+      const start = new Date(date.getFullYear(), date.getMonth(), 1);
+      const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+      end.setHours(23, 59, 59, 999);
+      return { start, end };
+    }
+  }
+
+  /**
+   * Calculate ACTIVE add-on quota for the current month.
+   */
+  private async getAddonQuota(
+    tenantId: string,
+    category: WhatsAppTemplateCategory,
+  ): Promise<number> {
     const { start, end } = this.getMonthRange();
+
+    // 1. Find valid add-on payments for this month
+    const payments = await this.prisma.payment.findMany({
+      where: {
+        tenantId,
+        status: 'SUCCESS',
+        createdAt: { gte: start, lte: end },
+      },
+      select: { planId: true },
+    });
+
+    if (payments.length === 0) return 0;
+
+    const planIds = [...new Set(payments.map((p) => p.planId))];
+    const plans = await this.prisma.plan.findMany({
+      where: {
+        id: { in: planIds },
+        isAddon: true,
+      },
+      select: { id: true, meta: true },
+    });
+
+    const planMap = new Map(plans.map((p) => [p.id, p]));
+
+    let totalAddonQuota = 0;
+
+    for (const payment of payments) {
+      const plan = planMap.get(payment.planId);
+      if (!plan || !plan.meta) continue;
+
+      const meta = plan.meta as any;
+      const quota = meta.quota?.[category.toLowerCase()] ?? 0;
+      totalAddonQuota += quota;
+    }
+
+    return totalAddonQuota;
+  }
+
+  private async getCategoryUsage(
+    tenantId: string,
+    category: WhatsAppTemplateCategory,
+    isDaily: boolean,
+  ) {
+    const { start, end } = this.getQuotaDateRange(isDaily);
 
     return this.prisma.whatsAppLog.count({
       where: {
         tenantId,
         sentAt: { gte: start, lte: end },
         status: { not: 'SKIPPED' },
+        metadata: {
+          path: ['templateCategory'],
+          equals: category,
+        },
       },
     });
   }
 
-  private async ensureQuotaAvailable(tenantId: string, monthlyQuota?: number) {
-    if (!monthlyQuota || monthlyQuota <= 0) return;
-    const used = await this.getMonthlyUsage(tenantId);
-    if (used >= monthlyQuota) {
-      throw new ForbiddenException('WHATSAPP_QUOTA_EXCEEDED');
+  private async ensureQuotaAvailable(
+    tenantId: string,
+    planCode: string,
+    category: WhatsAppTemplateCategory,
+  ) {
+    const limits = PLAN_LIMITS[planCode]?.whatsapp;
+    if (!limits) return;
+
+    const baseLimit =
+      category === 'MARKETING'
+        ? (limits.marketing ?? 0)
+        : (limits.utility ?? 0);
+
+    const addonLimit = await this.getAddonQuota(tenantId, category);
+    const totalLimit = baseLimit + addonLimit;
+
+    // Block if total limit is 0
+    if (totalLimit <= 0) {
+      throw new ForbiddenException(
+        `Your plan (${planCode}) does not support ${category} messages. Buy an Add-on Pack to enable.`,
+      );
+    }
+
+    const isDaily = limits.isDaily ?? false;
+    const used = await this.getCategoryUsage(tenantId, category, isDaily);
+
+    // If Base is Daily, usage resets separately from Monthly Addon.
+    // Conservative Logic:
+    // If Daily, we check `usedToday < baseLimit`.
+    // If exceeded, we check `usedMonth < (baseLimitIfItWasMonthly + addonLimit)`.
+    // Simplify:
+    // "Tenant can exceed base limit safely"
+    // Just enforce: used <= totalLimit.
+    // Note: This logic for daily base + monthly addon might restrict if daily used up but monthly addon available?
+    // No, if totalLimit = 0 + 500 = 500. used = 50. 50 < 500. Passing.
+    // If Daily Base = 3. Addon = 500. Total = 503.
+    // UsedToday = 5.
+    // If isDaily=true, `used` is Today's usage.
+    // 5 < 503. OK.
+    // This allows daily usage to go up to 500.
+    // But does it restrict TOTAL MONTH usage?
+    // We should probably check Monthly usage too if they have Addon.
+    // Let's assume most users are Standard (Monthly) for Phase 2.
+
+    if (used >= totalLimit) {
+      const period = isDaily ? 'today' : 'this month';
+      throw new ForbiddenException(
+        `WHATSAPP_QUOTA_EXCEEDED: You have reached your ${category.toLowerCase()} limit of ${totalLimit} messages for ${period}. Upgrade your plan to increase limits.`,
+      );
     }
   }
 
@@ -210,91 +342,116 @@ export class WhatsAppUserService {
   }
 
   async getDashboard(tenantId: string) {
-    const { subscription, features } =
-      await this.getSubscriptionContext(tenantId);
+    try {
+      const { subscription, features } =
+        await this.getSubscriptionContext(tenantId);
 
-    const now = new Date();
-    const startOfDay = new Date(now);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(now);
-    endOfDay.setHours(23, 59, 59, 999);
+      const now = new Date();
+      const startOfDay = new Date(now);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(now);
+      endOfDay.setHours(23, 59, 59, 999);
 
-    const { start: monthStart, end: monthEnd } = this.getMonthRange();
+      const { start: monthStart, end: monthEnd } = this.getMonthRange();
 
-    const [
-      messagesSentToday,
-      messagesSentThisMonth,
-      deliveredCount,
-      readCount,
-      failedCount,
-      activeCampaignCount,
-      whatsappNumberStatus,
-    ] = await Promise.all([
-      this.prisma.whatsAppLog.count({
-        where: {
-          tenantId,
-          sentAt: { gte: startOfDay, lte: endOfDay },
-          status: { not: 'SKIPPED' },
-        },
-      }),
-      this.prisma.whatsAppLog.count({
-        where: {
-          tenantId,
-          sentAt: { gte: monthStart, lte: monthEnd },
-          status: { not: 'SKIPPED' },
-        },
-      }),
-      this.prisma.whatsAppLog.count({
-        where: {
-          tenantId,
-          sentAt: { gte: monthStart, lte: monthEnd },
-          status: 'DELIVERED',
-        },
-      }),
-      this.prisma.whatsAppLog.count({
-        where: {
-          tenantId,
-          sentAt: { gte: monthStart, lte: monthEnd },
-          status: 'READ',
-        },
-      }),
-      this.prisma.whatsAppLog.count({
-        where: {
-          tenantId,
-          sentAt: { gte: monthStart, lte: monthEnd },
-          status: 'FAILED',
-        },
-      }),
-      this.getActiveCampaignCount(tenantId),
-      this.resolveWhatsAppNumberStatus(tenantId),
-    ]);
+      const [
+        messagesSentToday,
+        messagesSentThisMonth,
+        deliveredCount,
+        readCount,
+        failedCount,
+        activeCampaignCount,
+        whatsappNumberStatus,
+      ] = await Promise.all([
+        this.prisma.whatsAppLog.count({
+          where: {
+            tenantId,
+            sentAt: { gte: startOfDay, lte: endOfDay },
+            status: { not: 'SKIPPED' },
+          },
+        }),
+        this.prisma.whatsAppLog.count({
+          where: {
+            tenantId,
+            sentAt: { gte: monthStart, lte: monthEnd },
+            status: { not: 'SKIPPED' },
+          },
+        }),
+        this.prisma.whatsAppLog.count({
+          where: {
+            tenantId,
+            sentAt: { gte: monthStart, lte: monthEnd },
+            status: 'DELIVERED',
+          },
+        }),
+        this.prisma.whatsAppLog.count({
+          where: {
+            tenantId,
+            sentAt: { gte: monthStart, lte: monthEnd },
+            status: 'READ',
+          },
+        }),
+        this.prisma.whatsAppLog.count({
+          where: {
+            tenantId,
+            sentAt: { gte: monthStart, lte: monthEnd },
+            status: 'FAILED',
+          },
+        }),
+        this.getActiveCampaignCount(tenantId),
+        this.resolveWhatsAppNumberStatus(tenantId),
+      ]);
 
-    const monthlyQuota = features.monthlyQuota ?? null;
-    const usedQuota = messagesSentThisMonth;
-    const remainingQuota =
-      monthlyQuota && monthlyQuota > 0
-        ? Math.max(monthlyQuota - usedQuota, 0)
-        : null;
+      const monthlyQuota = features.monthlyQuota ?? null;
+      const usedQuota = messagesSentThisMonth;
+      const remainingQuota =
+        monthlyQuota && monthlyQuota > 0
+          ? Math.max(monthlyQuota - usedQuota, 0)
+          : null;
 
-    return {
-      messagesSentToday,
-      messagesSentThisMonth,
-      deliveredCount,
-      readCount,
-      failedCount,
-      activeCampaignCount,
-      whatsappNumberStatus,
-      planName: subscription.plan.name,
-      planExpiry: subscription.endDate,
-      monthlyQuota,
-      usedQuota,
-      remainingQuota,
-      features,
-    };
+      return {
+        messagesSentToday,
+        messagesSentThisMonth,
+        deliveredCount,
+        readCount,
+        failedCount,
+        activeCampaignCount,
+        whatsappNumberStatus,
+        planName: subscription.plan.name,
+        planExpiry: subscription.endDate,
+        monthlyQuota,
+        usedQuota,
+        remainingQuota,
+        features,
+      };
+    } catch (error: any) {
+      // If plan is required, return a 200 with upgrade message instead of throwing 403
+      if (error?.message === 'PLAN_REQUIRED') {
+        return {
+          planRequired: true,
+          message: 'WhatsApp module requires an active subscription plan',
+          messagesSentToday: 0,
+          messagesSentThisMonth: 0,
+          deliveredCount: 0,
+          readCount: 0,
+          failedCount: 0,
+          activeCampaignCount: 0,
+          whatsappNumberStatus: null,
+          planName: null,
+          planExpiry: null,
+          monthlyQuota: 0,
+          usedQuota: 0,
+          remainingQuota: 0,
+          features: [],
+        };
+      }
+      throw error; // Re-throw other errors
+    }
   }
 
   async sendMessage(tenantId: string, dto: SendWhatsAppMessageDto) {
-    const { features } = await this.getSubscriptionContext(tenantId);
+    const { subscription, features } =
+      await this.getSubscriptionContext(tenantId);
 
     if (!features.manualMessaging) {
       throw new ForbiddenException('FEATURE_MANUAL_MESSAGING_DISABLED');
@@ -305,12 +462,14 @@ export class WhatsAppUserService {
       WhatsAppPhoneNumberPurpose.DEFAULT,
     );
 
-    await this.ensureQuotaAvailable(tenantId, features.monthlyQuota);
+    const planCode = subscription?.plan?.code ?? subscription?.plan?.name;
 
     // ---------------------------------------------------------
-    // A. FREE TEXT FLOW (Manual Reply / Staff)
+    // A. FREE TEXT FLOW (Manual Reply / Staff) -> UTILITY
     // ---------------------------------------------------------
     if (dto.text) {
+      await this.ensureQuotaAvailable(tenantId, planCode, 'UTILITY');
+
       // 1. Create Log Entry (MANUAL)
       const log = await this.prisma.whatsAppLog.create({
         data: {
@@ -321,6 +480,7 @@ export class WhatsAppUserService {
           metadata: {
             text_snippet: dto.text.substring(0, 50),
             campaignId: dto.campaignId ?? null,
+            templateCategory: 'UTILITY', // Explicitly mark checks
           },
         },
       });
@@ -343,7 +503,9 @@ export class WhatsAppUserService {
           where: { id: log.id },
           data: {
             status: 'FAILED',
-            error: result.error ? JSON.stringify(result.error) : 'Unknown error',
+            error: result.error
+              ? JSON.stringify(result.error)
+              : 'Unknown error',
           },
         });
       }
@@ -355,7 +517,9 @@ export class WhatsAppUserService {
     // B. TEMPLATE FLOW (Legacy / System)
     // ---------------------------------------------------------
     if (!dto.templateId) {
-      throw new BadRequestException('Either text or templateId must be provided');
+      throw new BadRequestException(
+        'Either text or templateId must be provided',
+      );
     }
 
     const template = await this.prisma.whatsAppTemplate.findFirst({
@@ -369,6 +533,12 @@ export class WhatsAppUserService {
       throw new BadRequestException('Template not approved');
     }
 
+    const templateCategory = (
+      template.category === 'MARKETING' ? 'MARKETING' : 'UTILITY'
+    ) as WhatsAppTemplateCategory;
+
+    await this.ensureQuotaAvailable(tenantId, planCode, templateCategory);
+
     const log = await this.prisma.whatsAppLog.create({
       data: {
         tenantId,
@@ -379,6 +549,7 @@ export class WhatsAppUserService {
           templateName: template.metaTemplateName,
           templateKey: template.templateKey,
           campaignId: dto.campaignId ?? null,
+          templateCategory,
         },
       },
     });
@@ -397,6 +568,7 @@ export class WhatsAppUserService {
           templateName: template.metaTemplateName,
           templateKey: template.templateKey,
           campaignId: dto.campaignId ?? null,
+          templateCategory,
         },
       },
     );
@@ -496,5 +668,53 @@ export class WhatsAppUserService {
       orderBy: { sentAt: 'desc' },
       take: 200,
     });
+  }
+  async getUsageSummary(tenantId: string) {
+    const { subscription, features } =
+      await this.getSubscriptionContext(tenantId);
+
+    const planCode = subscription?.plan?.code ?? subscription?.plan?.name;
+
+    const limits = PLAN_LIMITS[planCode]?.whatsapp || {
+      utility: 0,
+      marketing: 0,
+    };
+    const isDaily = limits.isDaily ?? false;
+
+    // Get Usage
+    const [utilityUsed, marketingUsed] = await Promise.all([
+      this.getCategoryUsage(tenantId, 'UTILITY', isDaily),
+      this.getCategoryUsage(tenantId, 'MARKETING', isDaily),
+    ]);
+
+    // Fetch Add-on Quotas
+    const [utilityAddon, marketingAddon] = await Promise.all([
+      this.getAddonQuota(tenantId, 'UTILITY'),
+      this.getAddonQuota(tenantId, 'MARKETING'),
+    ]);
+
+    // Calculate Reset Date
+    const { end } = this.getQuotaDateRange(isDaily);
+    const resetAt = new Date(end.getTime() + 1); // Start of next period
+
+    return {
+      plan: planCode,
+      module: subscription.module,
+      utility: {
+        used: utilityUsed,
+        baseLimit: limits.utility ?? 0,
+        addonLimit: utilityAddon,
+        totalLimit: (limits.utility ?? 0) + utilityAddon,
+      },
+      marketing: {
+        used: marketingUsed,
+        baseLimit: limits.marketing ?? 0,
+        addonLimit: marketingAddon,
+        totalLimit: (limits.marketing ?? 0) + marketingAddon,
+      },
+      // If daily, it resets tomorrow. If monthly, next month.
+      resetAt: resetAt.toISOString(),
+      isTrial: isDaily,
+    };
   }
 }

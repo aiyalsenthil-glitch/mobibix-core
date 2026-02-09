@@ -250,7 +250,7 @@ export class CrmDashboardService {
     const unpaidInvoices = await this.prisma.invoice.aggregate({
       where: {
         ...where,
-        status: 'CREDIT', // ✅ Correct field
+        status: 'PARTIALLY_PAID',
       },
       _sum: {
         totalAmount: true, // ✅ Correct field

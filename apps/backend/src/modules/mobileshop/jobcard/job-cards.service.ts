@@ -18,6 +18,9 @@ import {
   StockEntryType,
   StockRefType,
   ProductType,
+  FinanceRefType,
+  ReceiptType,
+  PaymentMode,
 } from '@prisma/client';
 import { UpdateJobCardDto } from '../jobcard/dto/update-job-card.dto';
 import {
@@ -127,6 +130,154 @@ export class JobCardsService {
     return generateJobCardNumber(shop.invoicePrefix, sequenceNumber, today);
   }
 
+  /**
+   * 💰 ADD ADVANCE (Strict Top-up)
+   */
+  async addAdvance(
+    user,
+    shopId: string,
+    jobId: string,
+    amount: number,
+    mode: PaymentMode = PaymentMode.CASH,
+  ) {
+    await this.assertAccess(user, shopId);
+
+    if (amount <= 0) {
+      throw new BadRequestException('Advance amount must be positive');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const job = await tx.jobCard.findUnique({
+        where: { id: jobId },
+      });
+
+      if (!job) throw new NotFoundException('Job not found');
+
+      // GUARD: Status Check
+      if (
+        job.status === 'READY' ||
+        job.status === 'DELIVERED' ||
+        job.status === 'CANCELLED'
+      ) {
+        throw new BadRequestException(
+          `Cannot add advance when job is ${job.status}`,
+        );
+      }
+
+      const advancePaisa = Math.round(amount * 100);
+      const receiptId = crypto.randomUUID();
+
+      // 1. Create Financial Entry (IN)
+      await tx.financialEntry.create({
+        data: {
+          tenantId: user.tenantId,
+          shopId,
+          type: 'IN',
+          amount: advancePaisa,
+          mode,
+          referenceType: FinanceRefType.JOBCARD_ADVANCE,
+          referenceId: job.id,
+          note: `Advance added for Job ${job.jobNumber}`,
+        },
+      });
+
+      // 2. Create Receipt
+      const receipt = await tx.receipt.create({
+        data: {
+          tenantId: user.tenantId,
+          shopId,
+          receiptId,
+          printNumber: `ADV-ADD-${job.jobNumber}-${Date.now().toString().slice(-4)}`,
+          receiptType: ReceiptType.JOB_ADVANCE,
+          amount: advancePaisa,
+          paymentMethod: mode,
+          customerId: job.customerId,
+          customerName: job.customerName,
+          customerPhone: job.customerPhone,
+          linkedJobCardId: job.id,
+          status: 'ACTIVE',
+          narration: 'Additional Advance',
+        },
+      });
+
+      // 3. Update JobCard
+      const updatedJob = await tx.jobCard.update({
+        where: { id: jobId },
+        data: {
+          advancePaid: { increment: amount },
+        },
+      });
+
+      return { job: updatedJob, receipt };
+    });
+  }
+
+  /**
+   * 💸 REFUND ADVANCE (Strict Refund)
+   */
+  async refundAdvance(
+    user,
+    shopId: string,
+    jobId: string,
+    amount: number,
+    mode: PaymentMode = PaymentMode.CASH,
+  ) {
+    await this.assertAccess(user, shopId);
+
+    if (amount <= 0) {
+      throw new BadRequestException('Refund amount must be positive');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const job = await tx.jobCard.findUnique({
+        where: { id: jobId },
+      });
+
+      if (!job) throw new NotFoundException('Job not found');
+
+      // GUARD: Balance Check
+      if ((job.advancePaid || 0) < amount) {
+        throw new BadRequestException(
+          `Cannot refund ${amount}. Current advance is only ${job.advancePaid}`,
+        );
+      }
+
+      // GUARD: Status Check
+      // Allowed: CANCELLED (cleanup), CREATED/RECEIVED/IN_PROGRESS (correction)
+      // Blocked: DELIVERED (too late)
+      if (job.status === 'DELIVERED') {
+        throw new BadRequestException(
+          `Cannot refund advance when job is ${job.status}`,
+        );
+      }
+
+      const refundPaisa = Math.round(amount * 100);
+
+      // 1. Create Financial Entry (OUT)
+      await tx.financialEntry.create({
+        data: {
+          tenantId: user.tenantId,
+          shopId,
+          type: 'OUT',
+          amount: refundPaisa,
+          mode,
+          referenceType: FinanceRefType.JOBCARD_ADVANCE,
+          referenceId: job.id,
+          note: `Advance refund for Job ${job.jobNumber}`,
+        },
+      });
+
+      // 2. Update JobCard
+      const updatedJob = await tx.jobCard.update({
+        where: { id: jobId },
+        data: {
+          advancePaid: { decrement: amount },
+        },
+      });
+
+      return updatedJob;
+    });
+  }
   async create(user, shopId: string, dto: CreateJobCardDto) {
     await this.assertAccess(user, shopId);
     let customer: { name: string; phone: string } | null = null;
@@ -153,39 +304,89 @@ export class JobCardsService {
     const customerName = customer ? customer.name : dto.customerName!;
     const customerPhone = customer ? customer.phone : dto.customerPhone!;
 
-    return this.prisma.jobCard.create({
-      data: {
-        tenantId: user.tenantId,
-        shopId,
-        jobNumber: await this.nextJobNumber(shopId),
-        publicToken: crypto.randomUUID(),
-        status: JobStatus.RECEIVED,
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Create Job Card
+      const job = await tx.jobCard.create({
+        data: {
+          tenantId: user.tenantId,
+          shopId,
+          jobNumber: await this.nextJobNumber(shopId),
+          publicToken: crypto.randomUUID(),
+          status: JobStatus.RECEIVED,
 
-        createdByUserId: user.sub,
-        createdByName: user.name ?? user.email ?? 'Staff',
+          createdByUserId: user.sub,
+          createdByName: user.name ?? user.email ?? 'Staff',
 
-        customerId: dto.customerId ?? null,
-        customerName,
-        customerPhone,
-        customerAltPhone: customer ? null : dto.customerAltPhone,
+          customerId: dto.customerId ?? null,
+          customerName,
+          customerPhone,
+          customerAltPhone: customer ? null : dto.customerAltPhone,
 
-        deviceType: dto.deviceType,
-        deviceBrand: dto.deviceBrand,
-        deviceModel: dto.deviceModel,
-        deviceSerial: dto.deviceSerial,
-        devicePassword: dto.devicePassword,
+          deviceType: dto.deviceType,
+          deviceBrand: dto.deviceBrand,
+          deviceModel: dto.deviceModel,
+          deviceSerial: dto.deviceSerial,
+          devicePassword: dto.devicePassword,
 
-        customerComplaint: dto.customerComplaint,
-        physicalCondition: dto.physicalCondition,
+          customerComplaint: dto.customerComplaint,
+          physicalCondition: dto.physicalCondition,
 
-        estimatedCost: dto.estimatedCost,
-        diagnosticCharge: dto.diagnosticCharge,
-        advancePaid: dto.advancePaid,
-        billType: dto.billType ?? 'WITHOUT_GST',
-        estimatedDelivery: dto.estimatedDelivery
-          ? new Date(dto.estimatedDelivery)
-          : null,
-      },
+          estimatedCost: dto.estimatedCost,
+          diagnosticCharge: dto.diagnosticCharge,
+          advancePaid: dto.advancePaid || 0, // Ensure numeric
+          billType: dto.billType ?? 'WITHOUT_GST',
+          estimatedDelivery: dto.estimatedDelivery
+            ? new Date(dto.estimatedDelivery)
+            : null,
+        },
+      });
+
+      // 2. 🛡️ STRICT ACCOUNTING: Create Financial Records for Advance
+      if (dto.advancePaid && dto.advancePaid > 0) {
+        const advancePaisa = Math.round(dto.advancePaid * 100);
+
+        // A. Create Receipt
+        // Needs a print number. We will generate UUID for receiptId.
+        // For now, we use a temporary placeholder for printNumber or rely on a different mechanisms.
+        // Ideally we used DocumentNumberService but we are in a transaction.
+
+        const receiptId = crypto.randomUUID();
+
+        // B. Create Financial Entry (Cash In)
+        await tx.financialEntry.create({
+          data: {
+            tenantId: user.tenantId,
+            shopId,
+            type: 'IN',
+            amount: advancePaisa,
+            mode: PaymentMode.CASH, // Default to CASH for now
+            referenceType: FinanceRefType.JOBCARD_ADVANCE,
+            referenceId: job.id,
+            note: `Advance for Job ${job.jobNumber}`,
+          },
+        });
+
+        // C. Create Receipt
+        await tx.receipt.create({
+          data: {
+            tenantId: user.tenantId,
+            shopId,
+            receiptId, // Public ID
+            printNumber: `ADV-${job.jobNumber}`, // Temporary print number based on job
+            receiptType: ReceiptType.JOB_ADVANCE,
+            amount: advancePaisa,
+            paymentMethod: PaymentMode.CASH,
+            customerId: job.customerId,
+            customerName: job.customerName,
+            customerPhone: job.customerPhone,
+            linkedJobCardId: job.id,
+            status: 'ACTIVE',
+            narration: 'Initial Advance',
+          },
+        });
+      }
+
+      return job;
     });
   }
 
@@ -195,111 +396,118 @@ export class JobCardsService {
    * - Creates NEW JobCard linked via notes
    */
   async createWarrantyJob(user, shopId: string, originalJobId: string) {
-     await this.assertAccess(user, shopId);
+    await this.assertAccess(user, shopId);
 
-     // 1. Fetch Original Job & Shop Settings
-     const originalJob = await this.prisma.jobCard.findUnique({
-       where: { id: originalJobId, shopId },
-       include: { shop: true }
-     });
+    // 1. Fetch Original Job & Shop Settings
+    const originalJob = await this.prisma.jobCard.findUnique({
+      where: { id: originalJobId, shopId },
+      include: { shop: true },
+    });
 
-     if (!originalJob) throw new NotFoundException('Original Job Card not found');
+    if (!originalJob)
+      throw new NotFoundException('Original Job Card not found');
 
-     // 2. Validate Settings
-     const headerConfig = originalJob.shop.headerConfig as any;
-     const isWarrantyEnabled = headerConfig?.enableWarrantyJobs === true;
-     
-     if (!isWarrantyEnabled) {
-       throw new BadRequestException('Warranty jobs are not enabled for this shop');
-     }
+    // 2. Validate Settings
+    const headerConfig = originalJob.shop.headerConfig as any;
+    const isWarrantyEnabled = headerConfig?.enableWarrantyJobs === true;
 
-     // 3. Validate Eligibility
-     if (originalJob.status !== JobStatus.DELIVERED) {
-       throw new BadRequestException('Warranty can only be claimed on DELIVERED jobs');
-     }
+    if (!isWarrantyEnabled) {
+      throw new BadRequestException(
+        'Warranty jobs are not enabled for this shop',
+      );
+    }
 
-     const warrantyDuration = originalJob.warrantyDuration || 0;
-     if (warrantyDuration <= 0) {
-       throw new BadRequestException('This job has no warranty coverage');
-     }
+    // 3. Validate Eligibility
+    if (originalJob.status !== JobStatus.DELIVERED) {
+      throw new BadRequestException(
+        'Warranty can only be claimed on DELIVERED jobs',
+      );
+    }
 
-     // Check Expiry
-     // logic: deliveredAt + duration (days) >= now
-     // If deliveredAt is missing (bad data), fallback to updatedAt
-     const referenceDate = new Date();
-     // Find the status history regarding delivery? Or assume logic persists.
-     // Schema doesn't have 'deliveredAt' field on JobCard directly? 
-     // Wait, checking schema... 
-     // Schema has `estimatedDelivery`. `status` is ENUM.
-     // We need to find when it was delivered. 
-     // `statusHistory` JSON? Or just use `updatedAt` if status is DELIVERED?
-     // Let's use `updatedAt` for now as proxy for delivery time if status is DELIVERED.
-     // Ideally we parse statusHistory but that's complex JSON.
-     // Valid simplification: If currently DELIVERED, assume updatedAt is the delivery time.
-     
-     const deliveredAt = originalJob.updatedAt; 
-     const expiryDate = new Date(deliveredAt);
-     expiryDate.setDate(expiryDate.getDate() + warrantyDuration);
-     
-     if (new Date() > expiryDate) {
-        throw new BadRequestException('Warranty period has expired');
-     }
+    const warrantyDuration = originalJob.warrantyDuration || 0;
+    if (warrantyDuration <= 0) {
+      throw new BadRequestException('This job has no warranty coverage');
+    }
 
-     // 4. Check for existing active warranty linking to this job?
-     // Difficult without a structured link. We use Notes linkage.
-     // "Warranty rework for JobCard <JOB_NUMBER>"
-     // We can skip this check or do a rough string search.
-     // Strict check is better:
-     const existingKw = `Warranty rework for JobCard ${originalJob.jobNumber}`;
-     const existing = await this.prisma.jobCard.findFirst({
-        where: {
-           shopId,
-           notes: { contains: existingKw }
-        }
-     });
+    // Check Expiry
+    // logic: deliveredAt + duration (days) >= now
+    // If deliveredAt is missing (bad data), fallback to updatedAt
+    const referenceDate = new Date();
+    // Find the status history regarding delivery? Or assume logic persists.
+    // Schema doesn't have 'deliveredAt' field on JobCard directly?
+    // Wait, checking schema...
+    // Schema has `estimatedDelivery`. `status` is ENUM.
+    // We need to find when it was delivered.
+    // `statusHistory` JSON? Or just use `updatedAt` if status is DELIVERED?
+    // Let's use `updatedAt` for now as proxy for delivery time if status is DELIVERED.
+    // Ideally we parse statusHistory but that's complex JSON.
+    // Valid simplification: If currently DELIVERED, assume updatedAt is the delivery time.
 
-     if (existing) {
-        throw new BadRequestException(`Active warranty job (${existing.jobNumber}) already exists`);
-     }
+    const deliveredAt = originalJob.updatedAt;
+    const expiryDate = new Date(deliveredAt);
+    expiryDate.setDate(expiryDate.getDate() + warrantyDuration);
 
-     // 5. Create Warranty Job
-     const newJobNumber = await this.nextJobNumber(shopId);
-     
-     return this.prisma.jobCard.create({
-       data: {
-         tenantId: user.tenantId,
-         shopId,
-         jobNumber: newJobNumber,
-         publicToken: crypto.randomUUID(),
-         status: JobStatus.RECEIVED,
+    if (new Date() > expiryDate) {
+      throw new BadRequestException('Warranty period has expired');
+    }
 
-         createdByUserId: user.sub,
-         createdByName: user.name ?? user.email ?? 'Staff',
+    // 4. Check for existing active warranty linking to this job?
+    // Difficult without a structured link. We use Notes linkage.
+    // "Warranty rework for JobCard <JOB_NUMBER>"
+    // We can skip this check or do a rough string search.
+    // Strict check is better:
+    const existingKw = `Warranty rework for JobCard ${originalJob.jobNumber}`;
+    const existing = await this.prisma.jobCard.findFirst({
+      where: {
+        shopId,
+        notes: { contains: existingKw },
+      },
+    });
 
-         customerId: originalJob.customerId,
-         customerName: originalJob.customerName,
-         customerPhone: originalJob.customerPhone,
-         customerAltPhone: originalJob.customerAltPhone,
+    if (existing) {
+      throw new BadRequestException(
+        `Active warranty job (${existing.jobNumber}) already exists`,
+      );
+    }
 
-         deviceType: originalJob.deviceType,
-         deviceBrand: originalJob.deviceBrand,
-         deviceModel: originalJob.deviceModel,
-         deviceSerial: originalJob.deviceSerial,
-         devicePassword: originalJob.devicePassword,
-         physicalCondition: originalJob.physicalCondition,
+    // 5. Create Warranty Job
+    const newJobNumber = await this.nextJobNumber(shopId);
 
-         customerComplaint: `(Rework) ${originalJob.customerComplaint}`,
-         
-         // Warranty Specifics
-         estimatedCost: 0, // Free by default
-         diagnosticCharge: 0,
-         advancePaid: 0,
-         billType: 'WITHOUT_GST', // Default to tax-free service
-         warrantyDuration: 0, // Warranty on warranty? Usually no.
-         
-         notes: `${existingKw}. Original Issue: ${originalJob.customerComplaint}`,
-       },
-     });
+    return this.prisma.jobCard.create({
+      data: {
+        tenantId: user.tenantId,
+        shopId,
+        jobNumber: newJobNumber,
+        publicToken: crypto.randomUUID(),
+        status: JobStatus.RECEIVED,
+
+        createdByUserId: user.sub,
+        createdByName: user.name ?? user.email ?? 'Staff',
+
+        customerId: originalJob.customerId,
+        customerName: originalJob.customerName,
+        customerPhone: originalJob.customerPhone,
+        customerAltPhone: originalJob.customerAltPhone,
+
+        deviceType: originalJob.deviceType,
+        deviceBrand: originalJob.deviceBrand,
+        deviceModel: originalJob.deviceModel,
+        deviceSerial: originalJob.deviceSerial,
+        devicePassword: originalJob.devicePassword,
+        physicalCondition: originalJob.physicalCondition,
+
+        customerComplaint: `(Rework) ${originalJob.customerComplaint}`,
+
+        // Warranty Specifics
+        estimatedCost: 0, // Free by default
+        diagnosticCharge: 0,
+        advancePaid: 0,
+        billType: 'WITHOUT_GST', // Default to tax-free service
+        warrantyDuration: 0, // Warranty on warranty? Usually no.
+
+        notes: `${existingKw}. Original Issue: ${originalJob.customerComplaint}`,
+      },
+    });
   }
 
   /**
@@ -315,11 +523,11 @@ export class JobCardsService {
   ) {
     await this.assertAccess(user, shopId);
 
-    const job = await this.prisma.jobCard.findUnique({
+    const job = await this.prisma.jobCard.findFirst({
       where: { id: jobId, shopId },
     });
 
-    if (!job) throw new NotFoundException('Job card not found');
+    if (!job) throw new NotFoundException(`Job card not found: ${jobId} in shop ${shopId}`);
 
     // 🛡️ GUARD: Cannot add parts after READY
     if (['READY', 'DELIVERED', 'CANCELLED', 'RETURNED'].includes(job.status)) {
@@ -328,11 +536,11 @@ export class JobCardsService {
       );
     }
 
-    const product = await this.prisma.shopProduct.findUnique({
+    const product = await this.prisma.shopProduct.findFirst({
       where: { id: dto.productId, shopId },
     });
 
-    if (!product) throw new NotFoundException('Product not found');
+    if (!product) throw new NotFoundException(`Product not found: ${dto.productId} in shop ${shopId}`);
 
     // 🛡️ BUSINESS RULE: SERVICE products cannot be added as parts
     // Services are billed separately, never tracked in inventory
@@ -345,12 +553,10 @@ export class JobCardsService {
     // Use transaction to ensure stock deduction happens with part usage
     return this.prisma.$transaction(async (tx) => {
       // 1. Upsert JobCardPart (accumulate quantity if already exists)
-      const existing = await tx.jobCardPart.findUnique({
+      const existing = await tx.jobCardPart.findFirst({
         where: {
-          jobCardId_shopProductId: {
-            jobCardId: jobId,
-            shopProductId: dto.productId,
-          },
+          jobCardId: jobId,
+          shopProductId: dto.productId,
         },
       });
 
@@ -562,9 +768,64 @@ export class JobCardsService {
         ? new Date(dto.estimatedDelivery)
         : null;
 
-    return this.prisma.jobCard.update({
-      where: { id },
-      data,
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Calculate Advance Delta 🛡️ STRICT ACCOUNTING
+      if (dto.advancePaid !== undefined) {
+        const oldAdvance = job.advancePaid || 0;
+        const newAdvance = dto.advancePaid;
+        const delta = newAdvance - oldAdvance;
+
+        if (delta < 0) {
+          // BLOCK REDUCTION
+          throw new BadRequestException(
+            'Cannot reduce advance amount directly. Please use the Refund flow to return money to customer.',
+          );
+        }
+
+        if (delta > 0) {
+          const deltaPaisa = Math.round(delta * 100);
+          const receiptId = crypto.randomUUID();
+
+          // A. Create Financial Entry (Cash In)
+          await tx.financialEntry.create({
+            data: {
+              tenantId: user.tenantId,
+              shopId,
+              type: 'IN',
+              amount: deltaPaisa,
+              mode: 'CASH', // Assumption: Update via UI defaults to CASH for now
+              referenceType: 'JOBCARD_ADVANCE',
+              referenceId: job.id,
+              note: `Advance top-up for Job ${job.jobNumber}`,
+            },
+          });
+
+          // B. Create Receipt
+          await tx.receipt.create({
+            data: {
+              tenantId: user.tenantId,
+              shopId,
+              receiptId,
+              printNumber: `ADV-TOP-${job.jobNumber}-${Date.now().toString().slice(-4)}`,
+              receiptType: 'JOB_ADVANCE',
+              amount: deltaPaisa,
+              paymentMethod: 'CASH',
+              customerId: job.customerId,
+              customerName: job.customerName,
+              customerPhone: job.customerPhone,
+              linkedJobCardId: job.id,
+              status: 'ACTIVE',
+              narration: 'Advance top-up',
+            },
+          });
+        }
+      }
+
+      // 2. Perform Update
+      return tx.jobCard.update({
+        where: { id },
+        data,
+      });
     });
   }
 
@@ -609,7 +870,16 @@ export class JobCardsService {
   /**
    * 🎯 UPDATE JOB STATUS
    */
-  async updateStatus(user, shopId: string, id: string, newStatus: JobStatus) {
+  /**
+   * 🎯 UPDATE JOB STATUS
+   */
+  async updateStatus(
+    user,
+    shopId: string,
+    id: string,
+    newStatus: JobStatus,
+    refundDetails?: { amount: number; mode: PaymentMode },
+  ) {
     await this.assertAccess(user, shopId);
 
     // 1️⃣ Fetch job with invoices
@@ -625,98 +895,166 @@ export class JobCardsService {
     // 2️⃣ Validate state transition (throws if invalid)
     this.statusValidator.validateTransition(job.status, newStatus);
 
-    // 3️⃣ Handle status-specific business logic
-    if (newStatus === 'READY') {
-      // 🚨 CRITICAL VALIDATION: Cannot mark READY without cost
-      if (!job.finalCost && !job.estimatedCost) {
-        throw new BadRequestException(
-          'Cannot mark job READY without cost. Please add Final Cost or Estimated Cost first.',
-        );
+    return this.prisma.$transaction(async (tx) => {
+      // 3️⃣ HANDLE CANCELLATION / RETURN RISK MITIGATION
+      if (['CANCELLED', 'RETURNED'].includes(newStatus)) {
+        // [Risk F-02] Finance Reconciliation
+        const advancePaid = job.advancePaid || 0;
+
+        if (advancePaid > 0) {
+          if (!refundDetails) {
+            throw new BadRequestException(
+              `Cannot cancel job with active advances (₹${advancePaid}). Refund details required.`,
+            );
+          }
+
+          if (Math.abs(refundDetails.amount - advancePaid) > 0.01) {
+            throw new BadRequestException(
+              `Refund amount (₹${refundDetails.amount}) must match the active advance (₹${advancePaid}).`,
+            );
+          }
+
+          // Process Refund (Atomic)
+          const refundPaisa = Math.round(refundDetails.amount * 100);
+
+          // A. Financial Entry (OUT)
+          await tx.financialEntry.create({
+            data: {
+              tenantId: user.tenantId,
+              shopId,
+              type: 'OUT',
+              amount: refundPaisa,
+              mode: refundDetails.mode,
+              referenceType: FinanceRefType.JOBCARD_ADVANCE,
+              referenceId: job.id,
+              note: `Advance refund on Cancellation of Job ${job.jobNumber}`,
+            },
+          });
+
+          // B. Update Job Advance to 0
+          await tx.jobCard.update({
+            where: { id },
+            data: { advancePaid: 0 },
+          });
+
+          // C. Create Refund Receipt (Optional but good audit)
+          // Since we are forcing full refund, we can log it.
+          // Or rely on FinancialEntry.
+        }
+
+        // [Risk S-01] Stock Reconciliation
+        if (job.parts.length > 0) {
+          for (const part of job.parts) {
+            // Restore stock if not a service
+            if (part.product.type !== ProductType.SERVICE) {
+              await this.stockService.recordStockIn(
+                user.tenantId,
+                shopId,
+                part.shopProductId,
+                part.quantity,
+                'REPAIR', // Reusing REPAIR type as it's a reversal of a repair usage
+                id,
+                part.costPrice ?? undefined,
+                undefined,
+                tx,
+              );
+            }
+            // Delete usage
+            await tx.jobCardPart.delete({ where: { id: part.id } });
+          }
+        }
       }
 
-      // 🛡️ GUARD: SERVICE products cannot be in parts
-      const servicePartExists = job.parts.some(
-        (p) => p.product?.type === ProductType.SERVICE,
-      );
-      if (servicePartExists) {
-        throw new BadRequestException(
-          'Cannot mark READY: SERVICE products cannot be added as repair parts. Remove them and try again.',
-        );
-      }
-    }
-
-    // 🛑 DELIVERY GUARD
-    if (newStatus === 'DELIVERED') {
-      const validInvoice = job.invoices.find(
-        (i) => i.status !== InvoiceStatus.VOIDED,
-      );
-
-      if (!validInvoice) {
-        throw new BadRequestException(
-          'Cannot deliver job without an invoice. Status must be READY first.',
-        );
-      }
-
-      if (
-        validInvoice.status !== InvoiceStatus.FINAL &&
-        validInvoice.status !== InvoiceStatus.PAID &&
-        validInvoice.status !== InvoiceStatus.CREDIT
-      ) {
-        // Note: PAID and CREDIT are roughly equivalent to FINAL in business logic (locked).
-        // But status enum has DRAFT, FINAL, PAID, CREDIT.
-        // Guards: "Block DELIVERED if invoice not FINAL".
-        // Assuming FINAL is the state before payment or credit.
-        // However, if it's PAID, it is Final.
-        // Let's be permissive check: Must NOT be DRAFT.
-        if (validInvoice.status === InvoiceStatus.DRAFT) {
+      // 4️⃣ Handle status-specific business logic
+      if (newStatus === 'READY') {
+        // 🚨 CRITICAL VALIDATION: Cannot mark READY without cost
+        if (!job.finalCost && !job.estimatedCost) {
           throw new BadRequestException(
-            'Cannot deliver job. Invoice is still DRAFT. Finalize invoice first.',
+            'Cannot mark job READY without cost. Please add Final Cost or Estimated Cost first.',
+          );
+        }
+
+        // 🛡️ GUARD: SERVICE products cannot be in parts
+        const servicePartExists = job.parts.some(
+          (p) => p.product?.type === ProductType.SERVICE,
+        );
+        if (servicePartExists) {
+          throw new BadRequestException(
+            'Cannot mark READY: SERVICE products cannot be added as repair parts. Remove them and try again.',
           );
         }
       }
-    }
 
-    if (this.statusValidator.shouldCreateInvoice(newStatus)) {
-      await this.handleJobReady(job, user); // Pass user for tenantId context if needed
-    } else if (this.statusValidator.shouldVoidInvoice(newStatus)) {
-      await this.handleJobTermination(job, newStatus);
-    }
+      // 🛑 DELIVERY GUARD
+      if (newStatus === 'DELIVERED') {
+        const validInvoice = job.invoices.find(
+          (i) => i.status !== InvoiceStatus.VOIDED,
+        );
 
-    // 4️⃣ Update status with history tracking
-    const statusHistory = (job.statusHistory as any[]) || [];
-    statusHistory.push({
-      from: job.status,
-      to: newStatus,
-      timestamp: new Date().toISOString(),
-      userId: user.sub,
-      userName: user.name || user.email,
+        if (!validInvoice) {
+          throw new BadRequestException(
+            'Cannot deliver job without an invoice. Status must be READY first.',
+          );
+        }
+
+        if (
+          validInvoice.status !== InvoiceStatus.PAID &&
+          validInvoice.status !== InvoiceStatus.PARTIALLY_PAID
+        ) {
+          if (validInvoice.status === InvoiceStatus.UNPAID) {
+            throw new BadRequestException(
+              'Cannot deliver job. Invoice is still DRAFT. Finalize invoice first.',
+            );
+          }
+        }
+      }
+
+      if (this.statusValidator.shouldCreateInvoice(newStatus)) {
+        await this.handleJobReady(job, user);
+      } else if (this.statusValidator.shouldVoidInvoice(newStatus)) {
+        await this.handleJobTermination(job, newStatus);
+      }
+
+      // 5️⃣ Update status with history tracking
+      const statusHistory = (job.statusHistory as any[]) || [];
+      statusHistory.push({
+        from: job.status,
+        to: newStatus,
+        timestamp: new Date().toISOString(),
+        userId: user.sub,
+        userName: user.name || user.email,
+        refundedAdvance:
+          ['CANCELLED', 'RETURNED'].includes(newStatus) && job.advancePaid > 0
+            ? job.advancePaid
+            : undefined,
+      });
+
+      const updatedJob = await tx.jobCard.update({
+        where: { id },
+        data: {
+          status: newStatus,
+          statusHistory,
+        },
+      });
+
+      // 6️⃣ Emit WhatsApp event
+      if (this.statusValidator.shouldTriggerWhatsApp(newStatus)) {
+        this.eventEmitter.emit(
+          'job.status.changed',
+          new JobStatusChangedEvent(
+            user.tenantId,
+            shopId,
+            id,
+            updatedJob.customerId,
+            newStatus,
+            updatedJob.customerPhone,
+            updatedJob.deviceModel,
+          ),
+        );
+      }
+
+      return updatedJob;
     });
-
-    const updatedJob = await this.prisma.jobCard.update({
-      where: { id },
-      data: {
-        status: newStatus,
-        statusHistory,
-      },
-    });
-
-    // 5️⃣ Emit WhatsApp event
-    if (this.statusValidator.shouldTriggerWhatsApp(newStatus)) {
-      this.eventEmitter.emit(
-        'job.status.changed',
-        new JobStatusChangedEvent(
-          user.tenantId,
-          shopId,
-          id,
-          updatedJob.customerId,
-          newStatus,
-          updatedJob.customerPhone,
-          updatedJob.deviceModel,
-        ),
-      );
-    }
-
-    return updatedJob;
   }
 
   /**
@@ -748,6 +1086,7 @@ export class JobCardsService {
         invoicePrefix: true,
         repairInvoiceNumberingMode: true,
         repairGstDefault: true,
+        gstEnabled: true,
       },
     });
 
@@ -763,9 +1102,9 @@ export class JobCardsService {
       : DocumentType.SALES_INVOICE;
 
     const invoiceType = InvoiceType.REPAIR;
-    // GST Logic: Respect Bill Type. If WITHOUT_GST, force false. Else default to shop settings.
-    const isGstApplicable =
-      job.billType === 'WITHOUT_GST' ? false : (shop.repairGstDefault ?? false);
+    // GST Logic: STRICTLY follow shop settings.
+    // Legacy `billType` ('WITHOUT_GST') is purposefully ignored to prevent compliance leaks.
+    const isGstApplicable = shop.gstEnabled ?? false;
 
     // Generate Document Number
     const invoiceNumber =
@@ -874,34 +1213,83 @@ export class JobCardsService {
     const fy = getFinancialYear(new Date());
 
     // Create DRAFT invoice with correct totals
-    const invoice = await this.prisma.invoice.create({
-      data: {
-        tenantId: job.tenantId,
-        shopId: job.shopId,
-        jobCardId: job.id,
-        customerId: job.customerId,
-        invoiceNumber,
-        invoiceDate: new Date(),
-        financialYear: fy,
-        customerName: job.customerName,
-        customerPhone: job.customerPhone,
-        status: InvoiceStatus.DRAFT,
-        subTotal: invoiceSubtotalPaisa,
-        gstAmount: invoiceTaxPaisa,
-        totalAmount: invoiceGrandTotalPaisa,
-        paymentMode: 'CASH',
-        cashAmount: 0,
-        invoiceType,
-        isGstApplicable,
-        items: {
-          create: itemsData,
+    // Create DRAFT invoice with correct totals
+    await this.prisma.$transaction(async (tx) => {
+      const invoice = await tx.invoice.create({
+        data: {
+          tenantId: job.tenantId,
+          shopId: job.shopId,
+          jobCardId: job.id,
+          customerId: job.customerId,
+          invoiceNumber,
+          invoiceDate: new Date(),
+          financialYear: fy,
+          customerName: job.customerName,
+          customerPhone: job.customerPhone,
+          status: InvoiceStatus.UNPAID,
+          subTotal: invoiceSubtotalPaisa,
+          gstAmount: invoiceTaxPaisa,
+          totalAmount: invoiceGrandTotalPaisa,
+          paymentMode: 'CASH',
+          cashAmount: 0,
+          invoiceType,
+          isGstApplicable,
+          items: {
+            create: itemsData,
+          },
         },
-      },
-    });
+      });
 
-    console.log(
-      `✅ Auto-created DRAFT invoice ${invoice.invoiceNumber} (${invoiceType}) for job ${job.jobNumber}`,
-    );
+      // 4. 🛡️ LINK ADVANCE RECEIPTS & UPDATE BALANCE
+      // Fetch all advances linked to this JobCard
+      const advanceReceipts = await tx.receipt.findMany({
+        where: {
+          linkedJobCardId: job.id,
+          receiptType: 'JOB_ADVANCE', // Type remains JOB_ADVANCE in Receipt model
+          // But we might want to filter by something?
+          // Wait, previous logic used receiptType: 'JOB_ADVANCE'.
+          // My new logic also creates receipt with receiptType: 'JOB_ADVANCE'.
+          // The referenceType 'JOBCARD_ADVANCE' is only for FinancialEntry.
+          // So this query is ACTUALLY CORRECT as is.
+          // BUT, creating the receipt in addAdvance used 'JOB_ADVANCE'.
+          // So I should just double check if I need to change anything here.
+          status: 'ACTIVE',
+        },
+      });
+
+      if (advanceReceipts.length > 0) {
+        const totalAdvancePaisa = advanceReceipts.reduce(
+          (sum, r) => sum + r.amount,
+          0,
+        );
+
+        // Link receipts to this new invoice
+        await tx.receipt.updateMany({
+          where: {
+            linkedJobCardId: job.id,
+            receiptType: 'JOB_ADVANCE',
+          },
+          data: {
+            linkedInvoiceId: invoice.id,
+          },
+        });
+
+        // Check if fully paid by advance
+        if (totalAdvancePaisa >= invoiceGrandTotalPaisa) {
+          await tx.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              status: InvoiceStatus.PAID,
+              paymentMode: 'CASH', // Default or derived?
+            },
+          });
+        }
+      }
+
+      console.log(
+        `✅ Auto-created DRAFT/PAID invoice ${invoice.invoiceNumber} (${invoiceType}) for job ${job.jobNumber}`,
+      );
+    });
   }
 
   /**

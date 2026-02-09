@@ -4,6 +4,7 @@ export class PurchaseResponseDto {
   shopId: string;
   invoiceNumber: string;
   globalSupplierId?: string;
+  supplierGstin?: string;
   supplierName: string;
   invoiceDate: Date;
   dueDate?: Date;

@@ -14,52 +14,24 @@ async function main() {
   console.log('--- Seeding Plan Features (no plan changes) ---');
 
   const planFeatureMap: Record<string, string[]> = {
-    TRIAL: [
-      'MEMBERS_MANAGEMENT',
-      'ATTENDANCE_MANAGEMENT',
-      'QR_ATTENDANCE',
-      'STAFF_MANAGEMENT',
+    // GYM Plans: Premium features only
+    TRIAL: [],
+    BASIC: [],
+    PLUS: [],
+    PRO: ['REPORTS'],
+    ULTIMATE: ['REPORTS'],
+
+    // MOBIBIX Plans: Premium features only
+    MOBIBIX_TRIAL: [],
+    MOBIBIX_STANDARD: [],
+    MOBIBIX_PRO: [
       'REPORTS',
-      'MEMBER_PAYMENT_TRACKING',
-      'WHATSAPP_ALERTS_BASIC',
-      'WHATSAPP_ALERTS_ALL',
-      'PAYMENT_DUE',
-      'REMINDER',
-      'WELCOME',
-      'EXPIRY',
+      'CUSTOM_PRINT_LAYOUT',
+      'MULTI_SHOP',
+      'WHATSAPP_ALERTS_AUTOMATION',
     ],
-    BASIC: ['MEMBERS_MANAGEMENT', 'ATTENDANCE_MANAGEMENT', 'QR_ATTENDANCE'],
-    PLUS: [
-      'MEMBERS_MANAGEMENT',
-      'ATTENDANCE_MANAGEMENT',
-      'QR_ATTENDANCE',
-      'STAFF_MANAGEMENT',
-    ],
-    PRO: [
-      'MEMBERS_MANAGEMENT',
-      'ATTENDANCE_MANAGEMENT',
-      'QR_ATTENDANCE',
-      'STAFF_MANAGEMENT',
-      'REPORTS',
-      'MEMBER_PAYMENT_TRACKING',
-      'WHATSAPP_ALERTS_BASIC',
-      'PAYMENT_DUE',
-      'REMINDER',
-    ],
-    ULTIMATE: [
-      'MEMBERS_MANAGEMENT',
-      'ATTENDANCE_MANAGEMENT',
-      'QR_ATTENDANCE',
-      'STAFF_MANAGEMENT',
-      'REPORTS',
-      'MEMBER_PAYMENT_TRACKING',
-      'WHATSAPP_ALERTS_BASIC',
-      'WHATSAPP_ALERTS_ALL',
-      'PAYMENT_DUE',
-      'REMINDER',
-      'WELCOME',
-      'EXPIRY',
-    ],
+
+    // WhatsApp Add-on: No core features
     WHATSAPP_PROMO: [],
     WHATSAPP_PROMO_2999: [],
   };

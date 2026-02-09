@@ -13,9 +13,11 @@ import {
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ModuleType } from '@prisma/client';
+import { ModuleType, UserRole } from '@prisma/client';
+import { Roles } from '../../auth/decorators/roles.decorator';
 
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('payments')
 export class PaymentsController {
   constructor(

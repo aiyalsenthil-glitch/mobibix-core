@@ -12,7 +12,9 @@ import {
   DollarSign,
   BarChart3,
   PieChart as PieChartIcon,
+  Lock,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { useShop } from "@/context/ShopContext";
 import {
   getSalesReport,
@@ -44,11 +46,37 @@ export default function ReportsPage() {
   const { selectedShopId } = useShop();
 
   // State
+  const { authUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [salesData, setSalesData] = useState<SalesReportItem[]>([]);
   const [topProducts, setTopProducts] = useState<TopProductItem[]>([]);
   const [profitMetrics, setProfitMetrics] = useState<ProfitSummaryMetrics | null>(null);
   const [dateRange, setDateRange] = useState(30); // Default 30 days
+  const [maxHistoryDays, setMaxHistoryDays] = useState(30);
+
+  // Load backend limit
+  useEffect(() => {
+    const loadLimit = async () => {
+        try {
+            // We can re-use the tenant API or infer from planCode if we trust the token
+            // Ideally, we fetch the limit dynamically
+            const { getCurrentTenant } = await import("@/services/tenant.api");
+            const tenant = await getCurrentTenant();
+            const limit = tenant.subscription?.plan?.analyticsHistoryDays ?? 30;
+            setMaxHistoryDays(limit);
+        } catch (e) {
+            console.warn("Failed to load plan limits", e);
+        }
+    };
+    loadLimit();
+  }, []);
+
+  // Auto-downgrade date range if current seleciton exceeds limit
+  useEffect(() => {
+    if (dateRange > maxHistoryDays) {
+      setDateRange(maxHistoryDays);
+    }
+  }, [maxHistoryDays, dateRange]);
 
   const fetchData = async () => {
     // Don't fetch if no shop is selected yet
@@ -194,24 +222,37 @@ export default function ReportsPage() {
               Overview of your business performance
             </p>
           </div>
-          <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
-            {[7, 30, 90].map((days) => (
-              <button
-                key={days}
-                onClick={() => setDateRange(days)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                  dateRange === days
-                    ? theme === "dark"
-                      ? "bg-gray-700 text-white shadow-sm"
-                      : "bg-gray-100 text-gray-900 shadow-sm"
-                    : theme === "dark"
-                    ? "text-gray-400 hover:text-white"
-                    : "text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                Last {days} Days
-              </button>
-            ))}
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
+              {[7, 30, 90, 365].map((days) => {
+                const isLocked = days > maxHistoryDays;
+                return (
+                  <button
+                    key={days}
+                    disabled={isLocked}
+                    onClick={() => !isLocked && setDateRange(days)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${
+                      dateRange === days
+                        ? theme === "dark"
+                          ? "bg-gray-700 text-white shadow-sm"
+                          : "bg-gray-100 text-gray-900 shadow-sm"
+                        : theme === "dark"
+                        ? "text-gray-400 hover:text-white"
+                        : "text-gray-500 hover:text-gray-900"
+                    } ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
+                    title={isLocked ? `Available in Pro plan` : `Last ${days} days`}
+                  >
+                    {isLocked && <Lock className="w-3 h-3" />}
+                    Last {days} Days
+                  </button>
+                );
+              })}
+            </div>
+            {maxHistoryDays < 365 && (
+              <p className="text-[10px] text-muted-foreground">
+                History limited to {maxHistoryDays} days on your current plan.
+              </p>
+            )}
           </div>
         </div>
 

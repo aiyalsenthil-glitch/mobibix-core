@@ -24,6 +24,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InvoiceCreatedEvent, InvoicePaidEvent } from '../events/crm.events';
 import { DocumentNumberService } from '../../common/services/document-number.service';
 import { DocumentType } from '@prisma/client';
+import { assertShopAccess } from '../../common/guards/shop-access.guard';
 
 @Injectable()
 export class SalesService {
@@ -141,12 +142,18 @@ export class SalesService {
     }
 
     const invoiceId = await this.prisma.$transaction(async (tx) => {
-      // 1. Validate shop
+      // 1. Validate shop access
+      await assertShopAccess(tx, dto.shopId, tenantId);
+
+      // Get shop details for invoice
       const shop = await tx.shop.findFirst({
         where: { id: dto.shopId, tenantId },
         select: { id: true, gstEnabled: true, state: true },
       });
-      if (!shop) throw new BadRequestException('Invalid shop');
+
+      if (!shop) {
+        throw new BadRequestException('Shop not found after validation');
+      }
 
       // 2. Validate products
       const productIds = dto.items.map((i) => i.shopProductId);
@@ -237,13 +244,23 @@ export class SalesService {
         }
       }
 
-      // 4. Calculate Totals (Money logic)
       const lineInputs: InvoiceLineInput[] = dto.items.map((i) => {
-        if (!shop.gstEnabled && i.gstRate > 0) {
-          throw new BadRequestException(
-            'GST not enabled for this shop. GST rate must be 0.',
-          );
+        // STRICT GST COMPLIANCE GUARD
+        if (shop.gstEnabled) {
+          if (i.gstRate <= 0) {
+            throw new BadRequestException(
+              'STRICT COMPLIANCE VOILATION: GST-enabled shops cannot issue 0% tax invoices. Please ensure all items have a valid GST rate defined in settings.',
+            );
+          }
+        } else {
+          // Non-GST Shop
+          if (i.gstRate > 0) {
+            throw new BadRequestException(
+              'GST not enabled for this shop. GST rate must be 0.',
+            );
+          }
         }
+
         if (i.gstRate < 0 || i.gstRate > 100) {
           throw new BadRequestException(
             `Invalid GST rate: ${i.gstRate}. Must be between 0 and 100%.`,
@@ -311,7 +328,7 @@ export class SalesService {
       const invoiceStatus =
         totalPaidPaisa >= totalAmountPaisa - 100
           ? InvoiceStatus.PAID
-          : InvoiceStatus.CREDIT; // 1 rupee tolerance
+          : InvoiceStatus.PARTIALLY_PAID; // 1 rupee tolerance
 
       // 6. Create Invoice
       const invoiceNumber =
@@ -505,11 +522,18 @@ export class SalesService {
         }
       }
 
+      // Validate shop access
+      await assertShopAccess(tx, dto.shopId, tenantId);
+
+      // Get shop details
       const shop = await tx.shop.findFirst({
         where: { id: dto.shopId, tenantId },
         select: { id: true, gstEnabled: true, state: true },
       });
-      if (!shop) throw new BadRequestException('Invalid shop');
+
+      if (!shop) {
+        throw new BadRequestException('Shop not found after validation');
+      }
 
       // 2. Revert Stock (IN)
       for (const item of oldInvoice.items) {
@@ -679,7 +703,7 @@ export class SalesService {
       const invoiceStatus =
         totalPaidPaisa >= totalAmountPaisa - 100
           ? InvoiceStatus.PAID
-          : InvoiceStatus.CREDIT;
+          : InvoiceStatus.PARTIALLY_PAID;
 
       // 9. Update Invoice
       await tx.invoiceItem.deleteMany({ where: { invoiceId: oldInvoice.id } });
@@ -1426,11 +1450,11 @@ export class SalesService {
       // New total paid = Old paid + Incoming
       const newTotalPaidPaisa = paidAmountPaisa + incomingTotalPaisa;
 
-      // If paid >= total (with tolerance), mark PAID. Else remains CREDIT.
+      // If paid >= total (with tolerance), mark PAID. Else remains PARTIALLY_PAID.
       const newStatus =
         newTotalPaidPaisa >= totalAmountPaisa - 100
           ? InvoiceStatus.PAID
-          : InvoiceStatus.CREDIT;
+          : InvoiceStatus.PARTIALLY_PAID;
 
       // Only update if status changed, but always nice to ensure consistency
       const updatedInvoice = await tx.invoice.update({

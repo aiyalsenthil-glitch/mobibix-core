@@ -73,11 +73,12 @@ export class ReceiptsService {
     // ✅ TRANSACTION: Create receipt atomically
     try {
       // Use DocumentNumberService for sequential ID
-      const nextReceiptId = await this.documentNumberService.generateDocumentNumber(
-        shopId,
-        DocumentType.RECEIPT,
-        new Date(),
-      );
+      const nextReceiptId =
+        await this.documentNumberService.generateDocumentNumber(
+          shopId,
+          DocumentType.RECEIPT,
+          new Date(),
+        );
 
       const receipt = await this.prisma.receipt.create({
         data: {
@@ -94,7 +95,7 @@ export class ReceiptsService {
           customerName: createReceiptDto.customerName,
           customerPhone: createReceiptDto.customerPhone,
           linkedInvoiceId: createReceiptDto.linkedInvoiceId || null,
-          linkedJobId: createReceiptDto.linkedJobId || null,
+          linkedJobCardId: createReceiptDto.linkedJobId || null,
           narration: createReceiptDto.narration,
           status: ReceiptStatus.ACTIVE,
           createdBy: userId,
@@ -102,9 +103,12 @@ export class ReceiptsService {
       });
 
       // Convert back to Rupees for response
-      const response = {
+      const response: ReceiptEntity = {
         ...receipt,
         amount: this.fromPaisa(receipt.amount),
+        updatedAt: receipt.updatedAt,
+        linkedJobCardId: receipt.linkedJobCardId,
+        linkedJobId: receipt.linkedJobCardId,
       };
 
       this.logger.log(
@@ -175,7 +179,13 @@ export class ReceiptsService {
     ]);
 
     return {
-      data: receipts.map((r) => ({ ...r, amount: this.fromPaisa(r.amount) })),
+      data: receipts.map((r) => ({
+        ...r,
+        amount: this.fromPaisa(r.amount),
+        updatedAt: r.updatedAt,
+        linkedJobCardId: r.linkedJobCardId,
+        linkedJobId: r.linkedJobCardId,
+      })),
       total,
     };
   }
@@ -200,7 +210,13 @@ export class ReceiptsService {
       throw new BadRequestException('Receipt not found');
     }
 
-    return { ...receipt, amount: this.fromPaisa(receipt.amount) };
+    return {
+      ...receipt,
+      amount: this.fromPaisa(receipt.amount),
+      updatedAt: receipt.updatedAt,
+      linkedJobCardId: receipt.linkedJobCardId,
+      linkedJobId: receipt.linkedJobCardId,
+    };
   }
 
   /**
@@ -224,9 +240,7 @@ export class ReceiptsService {
     // Only validate tenantId - allow cancelling receipts from any shop within the tenant
     // This allows invoice cancellation to work even if receipt is from a different shop
     if (receipt.tenantId !== tenantId) {
-      throw new BadRequestException(
-        'Receipt does not belong to this tenant',
-      );
+      throw new BadRequestException('Receipt does not belong to this tenant');
     }
 
     if (receipt.status === ReceiptStatus.CANCELLED) {
@@ -245,7 +259,13 @@ export class ReceiptsService {
       this.logger.log(
         `Receipt cancelled: ${receipt.receiptId} - Reason: ${reason}`,
       );
-      return { ...cancelled, amount: this.fromPaisa(cancelled.amount) };
+      return {
+        ...cancelled,
+        amount: this.fromPaisa(cancelled.amount),
+        updatedAt: cancelled.updatedAt,
+        linkedJobCardId: cancelled.linkedJobCardId,
+        linkedJobId: cancelled.linkedJobCardId,
+      };
     } catch (error) {
       this.logger.error(
         `Failed to cancel receipt ${receiptId}`,
@@ -292,7 +312,9 @@ export class ReceiptsService {
 
     return {
       totalReceipts: receipts.length,
-      totalAmount: this.fromPaisa(receipts.reduce((sum, r) => sum + r.amount, 0)),
+      totalAmount: this.fromPaisa(
+        receipts.reduce((sum, r) => sum + r.amount, 0),
+      ),
       byPaymentMode: Object.fromEntries(
         Object.entries(byPaymentMode).map(([mode, data]) => [
           mode,
@@ -300,6 +322,86 @@ export class ReceiptsService {
         ]),
       ),
     };
+  }
+
+  /**
+   * Create receipt with atomic Invoice.paidAmount update (Tier-2 hardening)
+   */
+  async createReceiptWithInvoiceUpdate(
+    tenantId: string,
+    shopId: string,
+    createReceiptDto: CreateReceiptDto,
+    userId: string,
+  ): Promise<ReceiptEntity> {
+    // First, create the receipt (existing logic)
+    const receipt = await this.createReceipt(
+      tenantId,
+      shopId,
+      createReceiptDto,
+      userId,
+    );
+
+    // If linked to invoice, update invoice status atomically
+    if (createReceiptDto.linkedInvoiceId) {
+      await this.updateInvoicePaymentStatus(
+        tenantId,
+        createReceiptDto.linkedInvoiceId,
+        this.toPaisa(createReceiptDto.amount),
+      );
+    }
+
+    return receipt;
+  }
+
+  /**
+   * Update invoice payment status and paidAmount (atomic)
+   */
+  private async updateInvoicePaymentStatus(
+    tenantId: string,
+    invoiceId: string,
+    receiptAmount: number,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // Get current invoice
+      const invoice = await tx.invoice.findUnique({
+        where: { id: invoiceId },
+      });
+
+      if (!invoice || invoice.tenantId !== tenantId) {
+        throw new BadRequestException('Invoice not found');
+      }
+
+      // Over-collection prevention: receipt + previous payments <= invoice amount
+      const newPaidAmount = invoice.paidAmount + receiptAmount;
+      if (newPaidAmount > invoice.subTotal) {
+        throw new BadRequestException(
+          `Over-collection prevented: receipt (${this.fromPaisa(receiptAmount)}) would exceed invoice balance. Outstanding: ${this.fromPaisa(invoice.subTotal - invoice.paidAmount)}`,
+        );
+      }
+
+      // Calculate new status
+      let newStatus = invoice.status;
+      if (newPaidAmount === 0) {
+        newStatus = 'UNPAID';
+      } else if (newPaidAmount >= invoice.subTotal) {
+        newStatus = 'PAID';
+      } else if (newPaidAmount > 0) {
+        newStatus = 'PARTIALLY_PAID';
+      }
+
+      // Update invoice atomically
+      await tx.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          paidAmount: newPaidAmount,
+          status: newStatus,
+        },
+      });
+
+      this.logger.debug(
+        `Invoice ${invoice.invoiceNumber}: status updated to ${newStatus}, paidAmount: ${this.fromPaisa(newPaidAmount)}/${this.fromPaisa(invoice.subTotal)}`,
+      );
+    });
   }
 
   // ===== PRIVATE HELPERS =====
@@ -311,7 +413,6 @@ export class ReceiptsService {
   private fromPaisa(amount: number): number {
     return amount / 100;
   }
-
 
   private generateReceiptId(): string {
     const timestamp = Date.now();

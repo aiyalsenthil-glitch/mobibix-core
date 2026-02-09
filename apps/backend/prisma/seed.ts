@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-dotenv.config({ path: 'apps/backend/.env' });
+dotenv.config({ path: '.env' });
 
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -181,29 +181,50 @@ async function main() {
     });
   }
   // Plans
-  // V1 CLEAN STRUCTURE - NO LEGACY
+  // V1 CLEAN STRUCTURE - ALL FEATURES IN DATABASE
+  
+  // STANDARD plans: Only core features, no premium features
   const FEATURES_STANDARD = [
-    'MEMBERS_MANAGEMENT',
-    'ATTENDANCE_MANAGEMENT',
-    'QR_ATTENDANCE',
-    'STAFF_MANAGEMENT',
+    'STAFF', // Staff management allowed
   ];
 
+  // PRO plans: All premium features enabled
   const FEATURES_PRO = [
-    ...FEATURES_STANDARD,
+    'STAFF',
     'REPORTS',
-    'MEMBER_PAYMENT_TRACKING',
-    'WHATSAPP_ALERTS_BASIC',
-    'PAYMENT_DUE',
-    'REMINDER',
+  ];
+  
+  // GYM-specific features
+  const FEATURES_GYM_STANDARD = [
+    'STAFF',
+    'ATTENDANCE', // GYM has attendance tracking
+  ];
+  
+  const FEATURES_GYM_PRO = [
+    'STAFF',
+    'ATTENDANCE',
+    'REPORTS',
+    'WHATSAPP_UTILITY',
+    'WHATSAPP_MARKETING',
+    'WHATSAPP_ALERTS_AUTOMATION',
   ];
 
+  // MOBIBIX-specific features
+  const FEATURES_MOBIBIX_PRO = [
+    'STAFF',
+    'REPORTS',
+    'CUSTOM_PRINT_LAYOUT',
+    'MULTI_SHOP',
+    'WHATSAPP_UTILITY',
+    'WHATSAPP_MARKETING',
+    'WHATSAPP_ALERTS_AUTOMATION',
+  ];
+
+  // WhatsApp CRM add-on features
   const FEATURES_WHATSAPP = [
-    'WHATSAPP_ALERTS_ALL',
-    'WELCOME',
-    'EXPIRY',
-    'PAYMENT_DUE',
-    'REMINDER',
+    'WHATSAPP_UTILITY',
+    'WHATSAPP_MARKETING',
+    'WHATSAPP_ALERTS_AUTOMATION',
   ];
 
   // V1 Plans (clean, no duplication)
@@ -213,27 +234,69 @@ async function main() {
       name: 'TRIAL',
       level: 0,
       memberLimit: 50,
-      features: [...new Set([...FEATURES_PRO, ...FEATURES_WHATSAPP])], // Trial gets everything (deduplicated)
+      features: FEATURES_GYM_PRO, // Trial gets all GYM features
       isPublic: false,
       module: 'GYM',
+      // Plan limits
+      maxStaff: 3,
+      maxMembers: 50,
+      whatsappUtilityQuota: 0, // Disabled for Trial
+      whatsappMarketingQuota: 0,
+      analyticsHistoryDays: 30,
+      tagline: 'Experience the full power of GymPilot.',
+      description: '14-day free trial with access to all premium features.',
+      featuresJson: [
+        'All Pro Features Included',
+        'Up to 50 Members',
+        '3 Staff Accounts',
+        'WhatsApp Automations (Trial)',
+      ],
     },
     {
       code: 'STANDARD',
       name: 'STANDARD',
       level: 1,
-      memberLimit: 100,
-      features: FEATURES_STANDARD,
+      memberLimit: 200,
+      features: FEATURES_GYM_STANDARD, // GYM STANDARD features
       isPublic: true,
       module: 'GYM',
+      // Plan limits
+      maxStaff: 3,
+      maxMembers: 200,
+      whatsappUtilityQuota: 0, // Disabled for Standard
+      whatsappMarketingQuota: 0,
+      analyticsHistoryDays: 90,
+      tagline: 'Essential management for single-location gyms.',
+      description: 'Manage your gym efficiently with attendance and basic staff roles.',
+      featuresJson: [
+        'Up to 200 Members',
+        '3 Staff Accounts',
+        'Attendance Tracking',
+        'Basic Reports',
+      ],
     },
     {
       code: 'PRO',
       name: 'PRO',
       level: 2,
-      memberLimit: 300,
-      features: FEATURES_PRO,
+      memberLimit: null,
+      features: FEATURES_GYM_PRO, // GYM PRO features
       isPublic: true,
       module: 'GYM',
+      // Plan limits
+      maxStaff: null, // Unlimited
+      maxMembers: null, // Unlimited
+      whatsappUtilityQuota: 1000,
+      whatsappMarketingQuota: 200,
+      analyticsHistoryDays: 365,
+      tagline: 'Advanced growth tools for high-performance gyms.',
+      description: 'Everything in Standard plus premium WhatsApp automations and unlimited growth.',
+      featuresJson: [
+        'Unlimited Members',
+        'Unlimited Staff',
+        'WhatsApp Marketing (200/mo)',
+        'Advanced Analytics',
+      ],
     },
     {
       code: 'WHATSAPP_CRM',
@@ -243,6 +306,90 @@ async function main() {
       features: FEATURES_WHATSAPP,
       isPublic: true,
       module: 'WHATSAPP_CRM',
+      // Plan limits
+      maxStaff: null,
+      maxMembers: null,
+      whatsappUtilityQuota: 2000,
+      whatsappMarketingQuota: 1000,
+      analyticsHistoryDays: 0,
+      tagline: 'Supercharge your growth with WhatsApp CRM.',
+      description: 'Enable premium WhatsApp marketing, utility alerts, and automated follow-ups.',
+      featuresJson: [
+        'Automated Welcome Messages',
+        'Payment Reminders',
+        'Marketing Campaigns',
+        'CRM Integration',
+      ],
+    },
+    // MOBILE_SHOP module plans
+    {
+      code: 'MOBIBIX_TRIAL',
+      name: 'Mobibix Trial',
+      level: 0,
+      memberLimit: null, // Mobibix never limits parties
+      features: FEATURES_MOBIBIX_PRO, // Trial gets all Mobibix features
+      isPublic: false,
+      module: 'MOBILE_SHOP',
+      // Plan limits (Mobibix doesn't limit Parties - only GYM limits Members)
+      maxStaff: 3,
+      maxMembers: null, // Unlimited parties for Mobibix
+      whatsappUtilityQuota: 0, // Disabled for Trial
+      whatsappMarketingQuota: 0,
+      analyticsHistoryDays: 30,
+      tagline: 'Experience the full power of Mobibix.',
+      description: '14-day free trial with access to all premium retail features.',
+      featuresJson: [
+        'Inventory Management',
+        'Sales & Billing',
+        'WhatsApp Alerts (Trial)',
+        '3 Staff Accounts',
+      ],
+    },
+    {
+      code: 'MOBIBIX_STANDARD',
+      name: 'Mobibix Standard',
+      level: 1,
+      memberLimit: null, // Mobibix never limits parties
+      features: FEATURES_STANDARD, // Mobibix STANDARD features
+      isPublic: true,
+      module: 'MOBILE_SHOP',
+      // Plan limits (Mobibix doesn't limit Parties - only GYM limits Members)
+      maxStaff: 3,
+      maxMembers: null, // Unlimited parties for Mobibix
+      whatsappUtilityQuota: 0, // Disabled for Standard
+      whatsappMarketingQuota: 0,
+      analyticsHistoryDays: 90,
+      tagline: 'Professional inventory & sales management.',
+      description: 'Perfect for single-store retailers needing robust stock control.',
+      featuresJson: [
+        'Unlimited Products',
+        'Sales Invoicing',
+        'Basic Inventory Tracking',
+        '3 Staff Accounts',
+      ],
+    },
+    {
+      code: 'MOBIBIX_PRO',
+      name: 'Mobibix Pro',
+      level: 2,
+      memberLimit: null,
+      features: FEATURES_MOBIBIX_PRO, // Mobibix PRO features
+      isPublic: true,
+      module: 'MOBILE_SHOP',
+      // Plan limits (Mobibix doesn't limit Parties - only GYM limits Members)
+      maxStaff: null, // Unlimited
+      maxMembers: null, // Unlimited parties for Mobibix
+      whatsappUtilityQuota: 1000,
+      whatsappMarketingQuota: 200,
+      analyticsHistoryDays: 365,
+      tagline: 'Scale your retail empire with multi-store power.',
+      description: 'The ultimate retail solution with multi-shop support and premium WhatsApp CRM.',
+      featuresJson: [
+        'Multi-Store Support',
+        'Unlimited Staff',
+        'WhatsApp Marketing',
+        'Advanced Reporting',
+      ],
     },
   ];
 
@@ -266,6 +413,19 @@ async function main() {
       QUARTERLY: 74900, // ₹749/quarter
       YEARLY: 269900, // ₹2699/year
     },
+    MOBIBIX_TRIAL: {
+      MONTHLY: 0, // Free trial
+    },
+    MOBIBIX_STANDARD: {
+      MONTHLY: 29900,  // ₹299/month
+      QUARTERLY: 79900, // ₹799/quarter
+      YEARLY: 299900,   // ₹2,999/year
+    },
+    MOBIBIX_PRO: {
+      MONTHLY: 49900,   // ₹499/month
+      QUARTERLY: 139900, // ₹1,399/quarter
+      YEARLY: 499900,    // ₹4,999/year
+    },
   };
 
   for (const p of v1Plans) {
@@ -284,6 +444,15 @@ async function main() {
           level: p.level,
           isPublic: p.isPublic,
           module: p.module as any,
+          // Update limits
+          maxStaff: p.maxStaff,
+          maxMembers: p.maxMembers,
+          whatsappUtilityQuota: p.whatsappUtilityQuota,
+          whatsappMarketingQuota: p.whatsappMarketingQuota,
+          analyticsHistoryDays: p.analyticsHistoryDays,
+          tagline: p.tagline,
+          description: p.description,
+          featuresJson: p.featuresJson,
         },
       });
       console.log(`✅ Updated Plan: ${p.name}`);
@@ -296,6 +465,15 @@ async function main() {
           isActive: true,
           isPublic: p.isPublic,
           module: p.module as any,
+          // Set limits
+          maxStaff: p.maxStaff,
+          maxMembers: p.maxMembers,
+          whatsappUtilityQuota: p.whatsappUtilityQuota,
+          whatsappMarketingQuota: p.whatsappMarketingQuota,
+          analyticsHistoryDays: p.analyticsHistoryDays,
+          tagline: p.tagline,
+          description: p.description,
+          featuresJson: p.featuresJson,
         },
       });
       planId = created.id;
