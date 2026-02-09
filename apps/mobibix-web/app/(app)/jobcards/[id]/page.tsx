@@ -65,8 +65,9 @@ export default function JobCardDetailPage() {
   const [isWarrantyConfirmOpen, setIsWarrantyConfirmOpen] = useState(false);
   // Advance Modals
   const [isAddAdvanceModalOpen, setIsAddAdvanceModalOpen] = useState(false);
-  const [isRefundAdvanceModalOpen, setIsRefundAdvanceModalOpen] = useState(false);
-  
+  const [isRefundAdvanceModalOpen, setIsRefundAdvanceModalOpen] =
+    useState(false);
+
   const isOwner = user?.role?.toLowerCase() === "owner";
 
   // Load Job Details
@@ -239,32 +240,32 @@ export default function JobCardDetailPage() {
             </button>
           ) : (
             <>
-              {job.status === "DELIVERED" && (job.warrantyDuration || 0) > 0 && (
-                <button
-                  onClick={() => setIsWarrantyConfirmOpen(true)}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold transition"
-                  title="Create a free rework job under warranty"
-                >
-                  🛡️ Warranty Job
-                </button>
-              )}
-              {job.status !== "DELIVERED" &&
-                job.status !== "RETURNED" && (
-                  <select
-                    value={job.status}
-                    onChange={(e) =>
-                      handleStatusChange(e.target.value as JobStatus)
-                    }
-                    className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold cursor-pointer outline-none"
+              {job.status === "DELIVERED" &&
+                (job.warrantyDuration || 0) > 0 && (
+                  <button
+                    onClick={() => setIsWarrantyConfirmOpen(true)}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold transition"
+                    title="Create a free rework job under warranty"
                   >
-                    <option value={job.status} disabled>
-                      Change Status
-                    </option>
-                    <option value="READY">Mark READY</option>
-                    <option value="DELIVERED">Mark DELIVERED</option>
-                    <option value="CANCELLED">CANCEL Job</option>
-                  </select>
+                    🛡️ Warranty Job
+                  </button>
                 )}
+              {job.status !== "DELIVERED" && job.status !== "RETURNED" && (
+                <select
+                  value={job.status}
+                  onChange={(e) =>
+                    handleStatusChange(e.target.value as JobStatus)
+                  }
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold cursor-pointer outline-none"
+                >
+                  <option value={job.status} disabled>
+                    Change Status
+                  </option>
+                  <option value="READY">Mark READY</option>
+                  <option value="DELIVERED">Mark DELIVERED</option>
+                  <option value="CANCELLED">CANCEL Job</option>
+                </select>
+              )}
             </>
           )}
         </div>
@@ -474,37 +475,46 @@ export default function JobCardDetailPage() {
 
           {/* FINANCIAL SUMMARY (VISIBLE TO ALL) */}
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold mb-4 dark:text-white">Financials</h2>
-            
+            <h2 className="text-lg font-bold mb-4 dark:text-white">
+              Financials
+            </h2>
+
             <div className="space-y-4 mb-6">
               <div className="flex justify-between items-center text-gray-600 dark:text-gray-400">
                 <span>Estimated Cost</span>
-                <span className="font-semibold dark:text-gray-200">₹{job.estimatedCost?.toFixed(2) || "0.00"}</span>
+                <span className="font-semibold dark:text-gray-200">
+                  ₹{job.estimatedCost?.toFixed(2) || "0.00"}
+                </span>
               </div>
               <div className="flex justify-between items-center text-teal-600 dark:text-teal-400">
                 <span>Advance Paid</span>
-                <span className="font-bold">₹{job.advancePaid?.toFixed(2) || "0.00"}</span>
+                <span className="font-bold">
+                  ₹{job.advancePaid?.toFixed(2) || "0.00"}
+                </span>
               </div>
               <div className="h-px bg-gray-100 dark:bg-gray-800"></div>
               <div className="flex justify-between items-center text-lg font-bold text-gray-900 dark:text-white">
                 <span>Balance Due</span>
                 <span>
-                  ₹{((job.estimatedCost || 0) - (job.advancePaid || 0)).toFixed(2)}
+                  ₹
+                  {((job.estimatedCost || 0) - (job.advancePaid || 0)).toFixed(
+                    2,
+                  )}
                 </span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <button
-                 onClick={() => setIsAddAdvanceModalOpen(true)}
-                 className="px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm font-bold hover:bg-green-100 transition flex items-center justify-center gap-1"
+                onClick={() => setIsAddAdvanceModalOpen(true)}
+                className="px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm font-bold hover:bg-green-100 transition flex items-center justify-center gap-1"
               >
                 <span>💰</span> Add Advance
               </button>
               <button
-                 onClick={() => setIsRefundAdvanceModalOpen(true)}
-                 disabled={(job.advancePaid || 0) <= 0}
-                 className="px-3 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-bold hover:bg-red-100 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                onClick={() => setIsRefundAdvanceModalOpen(true)}
+                disabled={(job.advancePaid || 0) <= 0}
+                className="px-3 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-bold hover:bg-red-100 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
               >
                 <span>💸</span> Refund
               </button>
@@ -562,31 +572,28 @@ export default function JobCardDetailPage() {
           onSuccess={reload}
         />
       )}
-
       {/* Add Advance Modal */}
       {isAddAdvanceModalOpen && (
         <AdvanceModal
-           type="ADD"
-           shopId={selectedShopId!}
-           jobId={job.id}
-           currentAdvance={job.advancePaid || 0}
-           onClose={() => setIsAddAdvanceModalOpen(false)}
-           onSuccess={reload}
+          type="ADD"
+          shopId={selectedShopId!}
+          jobId={job.id}
+          currentAdvance={job.advancePaid || 0}
+          onClose={() => setIsAddAdvanceModalOpen(false)}
+          onSuccess={reload}
         />
       )}
-
       {/* Refund Advance Modal */}
       {isRefundAdvanceModalOpen && (
         <AdvanceModal
-           type="REFUND"
-           shopId={selectedShopId!}
-           jobId={job.id}
-           currentAdvance={job.advancePaid || 0}
-           onClose={() => setIsRefundAdvanceModalOpen(false)}
-           onSuccess={reload}
+          type="REFUND"
+          shopId={selectedShopId!}
+          jobId={job.id}
+          currentAdvance={job.advancePaid || 0}
+          onClose={() => setIsRefundAdvanceModalOpen(false)}
+          onSuccess={reload}
         />
       )}
-
       {/* READY CONFIRMATION MODAL */}
       {isReadyConfirmOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -672,9 +679,13 @@ export default function JobCardDetailPage() {
             <div className="space-y-3 text-gray-600 dark:text-gray-400 mb-6 text-sm">
               <p>You are about to create a warranty claim for this repair.</p>
               <ul className="list-disc pl-5 space-y-1">
-                <li>A <strong>NEW</strong> Job Card will be created.</li>
+                <li>
+                  A <strong>NEW</strong> Job Card will be created.
+                </li>
                 <li>Original Invoice remains unchanged.</li>
-                <li>Service Charges will be <strong>Free (₹0)</strong> by default.</li>
+                <li>
+                  Service Charges will be <strong>Free (₹0)</strong> by default.
+                </li>
                 <li>Parts can be billed if needed.</li>
               </ul>
             </div>
@@ -729,7 +740,9 @@ function AddPartModal({
 
   useEffect(() => {
     if (searchTerm.length > 1 && !createMode) {
-      listProducts(shopId).then((all) => {
+      listProducts(shopId).then((response) => {
+        // Handle paginated response
+        const all = Array.isArray(response) ? response : response.data;
         // Filter out SERVICE products - only physical parts allowed
         setProducts(
           all.filter(
@@ -1037,7 +1050,11 @@ function AddPartModal({
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold transition disabled:opacity-50"
             >
-              {isSubmitting ? "Adding..." : createMode ? "Create & Add" : "Add Part"}
+              {isSubmitting
+                ? "Adding..."
+                : createMode
+                  ? "Create & Add"
+                  : "Add Part"}
             </button>
           </div>
         </form>

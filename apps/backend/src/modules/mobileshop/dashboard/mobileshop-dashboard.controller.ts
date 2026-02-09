@@ -16,7 +16,8 @@ export class MobileShopDashboardController {
 
   @Permissions(Permission.DASHBOARD_VIEW)
   @Get('owner')
-  getOwnerDashboard(@Req() req: any, @Query('shopId') shopId?: string) {
-    return this.dashboardService.getOwnerDashboard(req.user.tenantId, shopId);
+  getOwnerDashboard(@Req() req: any, @Query('shopId') shopId?: string, @Query('cache') cache?: string) {
+    const skipCache = cache === 'skip';
+    return this.dashboardService.getOwnerDashboard(req.user.tenantId, shopId, skipCache);
   }
 }

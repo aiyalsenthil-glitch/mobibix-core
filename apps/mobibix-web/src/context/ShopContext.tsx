@@ -113,7 +113,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const refreshShops = async () => {
+  const refreshShops = useCallback(async () => {
     const data = await fetchShops();
 
     // Keep a valid selection after refresh
@@ -127,7 +127,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(SELECTED_SHOP_KEY, fallbackId);
       }
     }
-  };
+  }, [fetchShops, selectedShopId]);
 
   // Listen for shop updates (same tab + cross-tab)
   useEffect(() => {
@@ -150,8 +150,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refreshShops]);
 
-  const selectedShop = shops.find((s) => s.id === selectedShopId) || null;
-  const hasMultipleShops = shops.length > 1;
+  const selectedShop = Array.isArray(shops) 
+    ? shops.find((s) => s.id === selectedShopId) || null 
+    : null;
+  const hasMultipleShops = Array.isArray(shops) && shops.length > 1;
 
   const value: ShopContextType = {
     shops,

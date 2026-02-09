@@ -159,7 +159,7 @@ import { getCurrentTenant, type CurrentTenantResponse } from "@/services/tenant.
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
-                {shops.map((shop) => (
+                {Array.isArray(shops) && shops.map((shop) => (
                   <tr key={shop.id} className="hover:bg-white/5 transition">
                     <td className="px-4 py-3 text-sm text-white font-medium">
                       {shop.name}

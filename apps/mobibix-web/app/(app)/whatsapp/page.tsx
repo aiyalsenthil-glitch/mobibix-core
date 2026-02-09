@@ -304,7 +304,7 @@ export default function WhatsAppPage() {
             <p className="text-xs uppercase text-muted-foreground">Plan</p>
             <p className="text-lg font-semibold">{dashboard.planName}</p>
             <p className="text-sm text-muted-foreground">
-              Expires: {new Date(dashboard.planExpiry).toLocaleDateString()}
+              Expires: {dashboard.planExpiry ? new Date(dashboard.planExpiry).toLocaleDateString() : 'N/A'}
             </p>
           </div>
           <div>

@@ -1,16 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, NotFoundException, BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -41,11 +29,11 @@ export class AdminMdmController {
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
-        { category: { contains: search, mode: 'insensitive' } },
+        { category: { name: { contains: search, mode: 'insensitive' } } },
       ];
     }
 
-    // @ts-ignore - Prisma might not have regenerated types yet in dev environment
+    // @ts-ignore
     const [total, products] = await Promise.all([
       this.prisma.globalProduct.count({ where }),
       this.prisma.globalProduct.findMany({
@@ -53,11 +41,23 @@ export class AdminMdmController {
         skip,
         take: limitNum,
         orderBy: { createdAt: 'desc' },
+        include: {
+            category: true,
+            hsn: true
+        }
       }),
     ]);
 
     return {
-      data: products,
+      data: products.map(p => ({
+          id: p.id,
+          name: p.name,
+          category: p.category.name,
+          categoryId: p.categoryId,
+          hsnCode: p.hsn.code,
+          taxRate: p.hsn.taxRate,
+          isActive: p.isActive,
+      })),
       meta: {
         total,
         page: pageNum,
@@ -68,31 +68,69 @@ export class AdminMdmController {
 
   @Post('products')
   async createProduct(@Body() dto: any) {
-    // Basic validation
     if (!dto.name) throw new BadRequestException('Name is required');
+    if (!dto.hsnCode) throw new BadRequestException('HSN Code is required');
+    if (!dto.category) throw new BadRequestException('Category is required');
 
+    // 1. Find/Create Category
+    // @ts-ignore
+    const category = await this.prisma.productCategory.upsert({
+        where: { name: dto.category },
+        update: {},
+        create: { name: dto.category }
+    });
+
+    // 2. Find HSN
+    // @ts-ignore
+    const hsn = await this.prisma.hSNCode.findUnique({
+        where: { code: dto.hsnCode }
+    });
+    if (!hsn) throw new NotFoundException(`HSN Code ${dto.hsnCode} not found. Please create it first.`);
+
+    // 3. Create Product
     // @ts-ignore
     return this.prisma.globalProduct.create({
       data: {
         name: dto.name,
-        categoryId: dto.categoryId,
-        hsnId: dto.hsnId,
+        categoryId: category.id,
+        hsnId: hsn.id,
         isActive: dto.isActive ?? true,
       },
+      include: { category: true, hsn: true }
     });
   }
 
   @Put('products/:id')
   async updateProduct(@Param('id') id: string, @Body() dto: any) {
+    const data: any = {
+        name: dto.name,
+        isActive: dto.isActive,
+    };
+
+    if (dto.category) {
+        // @ts-ignore
+        const category = await this.prisma.productCategory.upsert({
+            where: { name: dto.category },
+            update: {},
+            create: { name: dto.category }
+        });
+        data.categoryId = category.id;
+    }
+
+    if (dto.hsnCode) {
+        // @ts-ignore
+        const hsn = await this.prisma.hSNCode.findUnique({
+            where: { code: dto.hsnCode }
+        });
+        if (!hsn) throw new NotFoundException(`HSN Code ${dto.hsnCode} not found`);
+        data.hsnId = hsn.id;
+    }
+
     // @ts-ignore
     return this.prisma.globalProduct.update({
       where: { id },
-      data: {
-        name: dto.name,
-        categoryId: dto.categoryId,
-        hsnId: dto.hsnId,
-        isActive: dto.isActive,
-      },
+      data,
+      include: { category: true, hsn: true }
     });
   }
 
@@ -101,7 +139,9 @@ export class AdminMdmController {
   // ===============================
 
   @Get('hsn')
-  async listHSN(@Query('search') search?: string) {
+  async listHSN(
+    @Query('search') search?: string,
+  ) {
     const where: any = {};
     if (search) {
       where.OR = [
@@ -113,28 +153,27 @@ export class AdminMdmController {
     // @ts-ignore
     return this.prisma.hSNCode.findMany({
       where,
-      take: 50, // Limit check
+      take: 50,
       orderBy: { code: 'asc' },
     });
   }
 
   @Post('hsn')
   async upsertHSN(@Body() dto: any) {
-    if (!dto.code || dto.gstRate === undefined)
-      throw new BadRequestException('Code and GST Rate required');
+    if (!dto.code || dto.taxRate === undefined) throw new BadRequestException('Code and Tax Rate required');
 
     // @ts-ignore
     return this.prisma.hSNCode.upsert({
       where: { code: dto.code },
       update: {
         description: dto.description,
-        taxRate: parseFloat(dto.taxRate || dto.gstRate || '18'),
+        taxRate: parseFloat(dto.taxRate),
         isActive: dto.isActive ?? true,
       },
       create: {
         code: dto.code,
         description: dto.description,
-        taxRate: parseFloat(dto.taxRate || dto.gstRate || '18'),
+        taxRate: parseFloat(dto.taxRate),
         isActive: dto.isActive ?? true,
       },
     });

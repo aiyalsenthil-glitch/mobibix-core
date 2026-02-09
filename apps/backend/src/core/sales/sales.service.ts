@@ -167,6 +167,7 @@ export class SalesService {
         select: {
           id: true,
           name: true,
+          type: true,
           isSerialized: true,
           hsnCode: true,
           costPrice: true,
@@ -392,39 +393,7 @@ export class SalesService {
         });
       }
 
-      // 8. Create Receipts
-      if (receiptsToCreate.length > 0) {
-        // Atomic Print Number
-        // If multiple receipts, we need multiple print numbers.
-        // We will loop and increment counter atomically for each.
-        // Or better, update receiptPrintCounter by N and assign ranges.
-        // For absolute safety in loop without race condition on "reading range":
-        //   Single increment is safest standard pattern unless we lock range.
-        //   Given invoice rarely has >2 payment methods, simple loop with increment is fine.
-
-        for (const r of receiptsToCreate) {
-          const printNum = await this.getNextPrintNumberAtomic(tx, dto.shopId);
-          await tx.receipt.create({
-            data: {
-              id: uuidv4(),
-              tenantId,
-              shopId: dto.shopId,
-              receiptId: this.generateReceiptId(),
-              printNumber: String(printNum),
-              receiptType: ReceiptType.CUSTOMER,
-              amount: r.amountPaisa, // Paisa
-              paymentMethod: r.mode,
-              customerId: invoice.customerId,
-              customerName: invoice.customerName,
-              customerPhone: invoice.customerPhone,
-              linkedInvoiceId: invoice.id,
-              status: ReceiptStatus.ACTIVE,
-            },
-          });
-        }
-      }
-
-      // 9. Stock Out
+      // 8. Get invoice items for stock operations
       const createdInvoice = await tx.invoice.findUnique({
         where: { id: invoice.id },
         include: { items: true },
@@ -432,29 +401,71 @@ export class SalesService {
       if (!createdInvoice)
         throw new BadRequestException('Invoice creation validation failed');
 
+      // 8a. Batch allocate print numbers (single atomic increment for all receipts)
+      let startPrintNum = 0;
+      if (receiptsToCreate.length > 0) {
+        const shop = await tx.shop.update({
+          where: { id: dto.shopId },
+          data: { receiptPrintCounter: { increment: receiptsToCreate.length } },
+          select: { receiptPrintCounter: true },
+        });
+        startPrintNum = shop.receiptPrintCounter - receiptsToCreate.length + 1;
+      }
+
+      // 8b. Create Receipts (batch with pre-allocated print numbers)
+      if (receiptsToCreate.length > 0) {
+        const receiptsData = receiptsToCreate.map((r, idx) => ({
+          id: uuidv4(),
+          tenantId,
+          shopId: dto.shopId,
+          receiptId: this.generateReceiptId(),
+          printNumber: String(startPrintNum + idx),
+          receiptType: ReceiptType.CUSTOMER,
+          amount: r.amountPaisa,
+          paymentMethod: r.mode,
+          customerId: invoice.customerId,
+          customerName: invoice.customerName,
+          customerPhone: invoice.customerPhone,
+          linkedInvoiceId: invoice.id,
+          status: ReceiptStatus.ACTIVE,
+        }));
+        await tx.receipt.createMany({ data: receiptsData });
+      }
+
+      // 9. Batch create Stock Ledger entries (instead of looping recordStockOut)
+      const stockLedgerData: any[] = [];
       for (let i = 0; i < dto.items.length; i++) {
         const item = dto.items[i];
         const invoiceItem = createdInvoice.items[i];
-        const isSerialized = productSerializedMap.get(item.shopProductId);
-
         const itemCost = productCostMap.get(item.shopProductId);
-        await this.stockService.recordStockOut(
+
+        // Validate product type (SERVICE cannot have stock operations)
+        const product = products.find((p) => p.id === item.shopProductId);
+        if (product && product.type === ProductType.SERVICE) {
+          throw new BadRequestException(
+            `SERVICE product "${product.name}" cannot have stock operations`,
+          );
+        }
+
+        stockLedgerData.push({
           tenantId,
-          dto.shopId,
-          item.shopProductId,
-          item.quantity,
-          'SALE',
-          invoiceItem.id,
-          itemCost ?? undefined, // Pass captured cost (LPP)
-          isSerialized ? item.imeis : undefined,
-          tx, // Enforce transaction atomicity
-        );
+          shopId: dto.shopId,
+          shopProductId: item.shopProductId,
+          type: 'OUT',
+          quantity: item.quantity,
+          referenceType: 'SALE',
+          referenceId: invoiceItem.id,
+          costPerUnit: itemCost ?? null,
+        });
+      }
+      if (stockLedgerData.length > 0) {
+        await tx.stockLedger.createMany({ data: stockLedgerData });
       }
 
-      // 10. Update IMEIs
+      // 10. Update IMEIs (batch update)
       if (allImeis.length > 0) {
         await tx.iMEI.updateMany({
-          where: { imei: { in: allImeis }, tenantId }, // tenantId constraint
+          where: { imei: { in: allImeis }, tenantId },
           data: { invoiceId: invoice.id, status: 'SOLD', soldAt: new Date() },
         });
       }
@@ -969,20 +980,49 @@ export class SalesService {
       ];
     }
 
+    // Optimized: Get invoices without full receipts, then aggregate separately
     const [invoices, total] = await Promise.all([
       this.prisma.invoice.findMany({
         where,
         take: limit,
         skip: (page - 1) * limit,
         orderBy: { createdAt: 'desc' },
-        include: { receipts: true }, // Needed for balance calc
+        select: {
+          id: true,
+          invoiceNumber: true,
+          customerId: true,
+          customerName: true,
+          totalAmount: true,
+          paymentMode: true,
+          status: true,
+          invoiceDate: true,
+        },
       }),
       this.prisma.invoice.count({ where }),
     ]);
 
+    // Get receipt summaries (aggregated at DB level)
+    const invoiceIds = invoices.map((i) => i.id);
+    const receiptSummaries =
+      invoiceIds.length > 0
+        ? await this.prisma.receipt.groupBy({
+            by: ['linkedInvoiceId'],
+            _sum: { amount: true },
+            where: { linkedInvoiceId: { in: invoiceIds } },
+          })
+        : [];
+
+    // Build a map of invoiceId -> paidAmount
+    const paidAmountMap = new Map<string, number>();
+    receiptSummaries.forEach((summary: any) => {
+      if (summary.linkedInvoiceId) {
+        paidAmountMap.set(summary.linkedInvoiceId, summary._sum?.amount || 0);
+      }
+    });
+
     // Enrich with calculated fields: paidAmount, balanceAmount, paymentStatus
     const enrichedInvoices = invoices.map((invoice) => {
-      const paidAmount = invoice.receipts.reduce((sum, r) => sum + r.amount, 0);
+      const paidAmount = paidAmountMap.get(invoice.id) || 0;
       const balanceAmount = invoice.totalAmount - paidAmount;
 
       // Derive payment status
@@ -998,12 +1038,12 @@ export class SalesService {
         invoiceNumber: invoice.invoiceNumber,
         customerId: invoice.customerId,
         customerName: invoice.customerName,
-        totalAmount: this.fromPaisa(invoice.totalAmount), // Fix: Paisa -> Rupee
+        totalAmount: this.fromPaisa(invoice.totalAmount),
         paymentMode: invoice.paymentMode,
         status: invoice.status,
         invoiceDate: invoice.invoiceDate,
-        paidAmount: this.fromPaisa(paidAmount), // Fix: Paisa -> Rupee
-        balanceAmount: this.fromPaisa(balanceAmount), // Fix: Paisa -> Rupee
+        paidAmount: this.fromPaisa(paidAmount),
+        balanceAmount: this.fromPaisa(balanceAmount),
         paymentStatus,
       };
     });

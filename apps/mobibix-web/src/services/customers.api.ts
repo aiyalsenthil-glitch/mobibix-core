@@ -41,10 +41,36 @@ export interface UpdateCustomerDto {
 }
 
 /**
- * List all customers for the current tenant
+ * List all customers for the current tenant (unpaginated - for backward compatibility)
  */
 export async function listCustomers(): Promise<Customer[]> {
   const response = await authenticatedFetch(`/core/customers`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to load customers");
+  }
+
+  return response.json();
+}
+
+/**
+ * List customers with pagination and search
+ */
+export async function listCustomersPaginated(options?: {
+  skip?: number;
+  take?: number;
+  search?: string;
+}): Promise<{ data: Customer[]; total: number; skip: number; take: number }> {
+  const params = new URLSearchParams();
+  if (options?.skip !== undefined)
+    params.append("skip", options.skip.toString());
+  if (options?.take !== undefined)
+    params.append("take", options.take.toString());
+  if (options?.search) params.append("search", options.search);
+
+  const url = `/core/customers${params.toString() ? "?" + params.toString() : ""}`;
+  const response = await authenticatedFetch(url);
 
   if (!response.ok) {
     const error = await response.json();

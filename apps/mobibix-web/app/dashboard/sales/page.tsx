@@ -69,7 +69,9 @@ export default function SalesPage() {
       setIsLoading(true);
       setError(null);
       const data = await listInvoices(selectedShopId);
-      setInvoices(data);
+      // Handle both paginated and non-paginated responses
+      const invoicesList = Array.isArray(data) ? data : data.data;
+      setInvoices(invoicesList);
     } catch (err: any) {
       setError(err.message || "Failed to load invoices");
       setInvoices([]);

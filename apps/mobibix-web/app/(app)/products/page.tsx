@@ -48,7 +48,9 @@ export default function ProductsPage() {
         setIsLoading(true);
         setError(null);
         const data = await listProducts(selectedShopId);
-        setProducts(data);
+        // Handle both paginated and non-paginated responses
+        const productsList = Array.isArray(data) ? data : data.data;
+        setProducts(productsList);
       } catch (err: any) {
         console.error("Error loading products:", err);
         setError(err.message || "Failed to load products");
@@ -86,7 +88,9 @@ export default function ProductsPage() {
     if (selectedShopId) {
       try {
         const data = await listProducts(selectedShopId);
-        setProducts(data);
+        // Handle both paginated and non-paginated responses
+        const productsList = Array.isArray(data) ? data : data.data;
+        setProducts(productsList);
       } catch (err: any) {
         console.error("Error reloading products:", err);
       }

@@ -132,41 +132,52 @@ export class GymAttendanceService {
       },
     });
   }
-  async listTodayAttendance(tenantId: string) {
+  async listTodayAttendance(
+    tenantId: string,
+    options?: { skip?: number; take?: number },
+  ) {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const end = new Date();
     end.setHours(23, 59, 59, 999);
 
-    const records = await this.prisma.gymAttendance.findMany({
-      where: {
-        tenantId,
-        checkInTime: {
-          gte: start,
-          lte: end,
-        },
+    const where = {
+      tenantId,
+      checkInTime: {
+        gte: start,
+        lte: end,
       },
-      orderBy: { checkInTime: 'desc' },
-      include: {
-        member: {
-          select: {
-            id: true,
-            fullName: true,
-            phone: true,
+    };
+
+    const [records, total] = await Promise.all([
+      this.prisma.gymAttendance.findMany({
+        where,
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        orderBy: { checkInTime: 'desc' },
+        include: {
+          member: {
+            select: {
+              id: true,
+              fullName: true,
+              phone: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.gymAttendance.count({ where }),
+    ]);
 
-    // ✅ FLATTEN (this exposes attendanceId)
-    return records.map((r) => ({
-      attendanceId: r.id, // ← THIS IS THE ATTENDANCE ID
+    const data = records.map((r) => ({
+      attendanceId: r.id,
       checkInTime: r.checkInTime,
       checkOutTime: r.checkOutTime,
       memberId: r.member.id,
       memberName: r.member.fullName,
       phone: r.member.phone,
     }));
+
+    return { data, total, skip: options?.skip ?? 0, take: options?.take ?? 50 };
   }
 
   /**
@@ -258,19 +269,42 @@ export class GymAttendanceService {
   }
 
   //list currently checked-in members
-  async listCurrentlyCheckedInMembers(tenantId: string) {
-    return this.prisma.gymAttendance.findMany({
-      where: {
-        tenantId,
-        checkOutTime: null,
-      },
-      include: {
-        member: true,
-      },
-      orderBy: {
-        checkInTime: 'desc',
-      },
-    });
+  async listCurrentlyCheckedInMembers(
+    tenantId: string,
+    options?: { skip?: number; take?: number },
+  ) {
+    const where = {
+      tenantId,
+      checkOutTime: null,
+    };
+
+    const [records, total] = await Promise.all([
+      this.prisma.gymAttendance.findMany({
+        where,
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        include: {
+          member: {
+            select: {
+              id: true,
+              fullName: true,
+              phone: true,
+            },
+          },
+        },
+        orderBy: {
+          checkInTime: 'desc',
+        },
+      }),
+      this.prisma.gymAttendance.count({ where }),
+    ]);
+
+    return {
+      data: records,
+      total,
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 50,
+    };
   }
 
   //GET recent attendance for member

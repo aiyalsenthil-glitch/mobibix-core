@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   getMyFollowUps,
   updateFollowUpStatus,
@@ -8,27 +8,42 @@ import {
   type FollowUpStatus,
 } from "@/services/crm.api";
 
+const PAGE_SIZE = 50;
+
 export function MyFollowUpsWidget() {
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalFollowUps, setTotalFollowUps] = useState(0);
 
-  useEffect(() => {
-    loadFollowUps();
-  }, []);
-
-  async function loadFollowUps() {
+  const loadFollowUps = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getMyFollowUps();
-      setFollowUps(data);
+      const result = await getMyFollowUps({
+        skip: currentPage * PAGE_SIZE,
+        take: PAGE_SIZE,
+      });
+
+      // Handle both paginated and non-paginated responses
+      if (Array.isArray(result)) {
+        setFollowUps(result);
+        setTotalFollowUps(result.length);
+      } else {
+        setFollowUps(result.data);
+        setTotalFollowUps(result.total);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load follow-ups");
     } finally {
       setLoading(false);
     }
-  }
+  }, [currentPage]);
+
+  useEffect(() => {
+    loadFollowUps();
+  }, [loadFollowUps]);
 
   async function markAsDone(followUpId: string) {
     try {
@@ -181,6 +196,44 @@ export function MyFollowUpsWidget() {
                 +{upcoming.length - 5} more
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalFollowUps > PAGE_SIZE && (
+        <div className="mt-6 flex items-center justify-between px-4 py-3 rounded-lg border border-white/10 bg-white/5">
+          <div className="text-sm text-gray-400">
+            Showing {currentPage * PAGE_SIZE + 1} to{" "}
+            {Math.min((currentPage + 1) * PAGE_SIZE, totalFollowUps)} of{" "}
+            {totalFollowUps} follow-ups
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+              disabled={currentPage === 0}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                currentPage === 0
+                  ? "bg-white/5 text-stone-600 cursor-not-allowed"
+                  : "bg-white/10 hover:bg-white/20 text-stone-300"
+              }`}
+            >
+              Previous
+            </button>
+            <span className="px-4 py-2 text-stone-300">
+              Page {currentPage + 1} of {Math.ceil(totalFollowUps / PAGE_SIZE)}
+            </span>
+            <button
+              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={(currentPage + 1) * PAGE_SIZE >= totalFollowUps}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                (currentPage + 1) * PAGE_SIZE >= totalFollowUps
+                  ? "bg-white/5 text-stone-600 cursor-not-allowed"
+                  : "bg-white/10 hover:bg-white/20 text-stone-300"
+              }`}
+            >
+              Next
+            </button>
           </div>
         </div>
       )}

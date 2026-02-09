@@ -1,0 +1,160 @@
+{
+  "timestamp": "2026-02-09T08:36:00.584Z",
+  "tests": [
+    {
+      "name": "Customers Service: Has pagination options parameter",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Customers Service: Uses parallel queries",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Customers Service: Has field selection",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Customers Service: Returns pagination response",
+      "result": "FAIL",
+      "details": {}
+    },
+    {
+      "name": "Customers Controller: Has Query import",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Customers Controller: Accepts skip parameter",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Customers Controller: Accepts take parameter",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Customers Controller: Accepts search parameter",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Customers Controller: Passes options to service",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Invoices Service: Uses receipt aggregation",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Invoices Service: Maps receipt summaries",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Invoices Service: No full receipt includes",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Invoices Service: Calculates balance correctly",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Follow-ups Service: listMyFollowUps has pagination",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Follow-ups Service: listMyFollowUps uses parallel queries",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Follow-ups Service: listAllFollowUps has pagination",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Follow-ups Service: Returns paginated response",
+      "result": "FAIL",
+      "details": {}
+    },
+    {
+      "name": "Follow-ups Controller: listMy accepts skip",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Follow-ups Controller: listMy accepts take",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Follow-ups Controller: listAll accepts pagination",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Attendance Service: listTodayAttendance has pagination",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Attendance Service: listTodayAttendance uses parallel queries",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Attendance Service: listCurrentlyCheckedInMembers has pagination",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Attendance Service: Returns mapped response",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Attendance Controller: Has Query import",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Attendance Controller: today method accepts pagination",
+      "result": "FAIL",
+      "details": {}
+    },
+    {
+      "name": "Attendance Controller: getInsideMembers accepts pagination",
+      "result": "FAIL",
+      "details": {}
+    },
+    {
+      "name": "TypeScript: Builds without errors",
+      "result": "PASS",
+      "details": {}
+    },
+    {
+      "name": "Response Structure: All endpoints return { data, total, skip, take }",
+      "result": "FAIL",
+      "details": {}
+    },
+    {
+      "name": "Documentation: All guides present",
+      "result": "PASS",
+      "details": {}
+    }
+  ],
+  "summary": {
+    "total": 30,
+    "passed": 25,
+    "failed": 5
+  }
+}

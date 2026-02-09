@@ -149,10 +149,14 @@ export default function CreateInvoicePage() {
 
   const loadProducts = async (shopId: string) => {
     try {
-      const [productList, balances] = await Promise.all([
+      const [productsResponse, balances] = await Promise.all([
         listProducts(shopId),
         getStockBalances(shopId),
       ]);
+      // Handle paginated response
+      const productList = Array.isArray(productsResponse)
+        ? productsResponse
+        : productsResponse.data;
       const balanceMap = new Map(balances.map((b) => [b.productId, b]));
       const merged: ShopProduct[] = productList.map((p) => {
         const b = balanceMap.get(p.id);
@@ -393,11 +397,11 @@ export default function CreateInvoicePage() {
     selectedCustomer &&
     selectedShop.state !== selectedCustomer.state;
 
-  const cgst = isInterState
+  const cgst = isInterState || !selectedShop?.gstEnabled
     ? 0
     : items.reduce((sum, item) => sum + item.gstAmount / 2, 0);
   const sgst = cgst;
-  const igst = isInterState
+  const igst = (isInterState && selectedShop?.gstEnabled)
     ? items.reduce((sum, item) => sum + item.gstAmount, 0)
     : 0;
   const totalTax = cgst + sgst + igst;
@@ -515,7 +519,7 @@ export default function CreateInvoicePage() {
       }
 
       await createInvoice(payload);
-      
+
       // Navigate on success (no need for second collectPayment call)
 
       router.push(`/sales?shopId=${selectedShopId}`);
@@ -678,8 +682,8 @@ export default function CreateInvoicePage() {
           </div>
         </div>
 
-        {/* Inter-State Notice */}
-        {isInterState && (
+        {/* Inter-State Notice - Only show if GST is enabled */}
+        {isInterState && selectedShop?.gstEnabled && (
           <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 px-4 py-3 rounded-lg text-sm border border-blue-100 dark:border-blue-800 flex items-center gap-2">
             <span>ℹ️</span>
             <strong>Inter-State Sale:</strong> IGST will be applied as customer

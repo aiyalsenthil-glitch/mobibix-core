@@ -143,30 +143,35 @@ export class FollowUpsService {
     userId: string,
     query: FollowUpQueryDto,
     notifyOnDue?: boolean,
+    options?: { skip?: number; take?: number },
   ) {
     const where = this.buildFollowUpWhere(tenantId, query, userId);
 
-    const items: Prisma.CustomerFollowUpGetPayload<{
-      include: {
-        assignedToUser: { select: { id: true; fullName: true } };
-        shop: { select: { id: true; name: true } };
-        customer: { select: { id: true; name: true; phone: true } };
-      };
-    }>[] = await this.prisma.customerFollowUp.findMany({
-      where,
-      orderBy: { followUpAt: 'asc' },
-      include: {
-        assignedToUser: { select: { id: true, fullName: true } },
-        shop: { select: { id: true, name: true } },
-        customer: { select: { id: true, name: true, phone: true } },
-      },
-    });
+    const [items, total] = await Promise.all([
+      this.prisma.customerFollowUp.findMany({
+        where,
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        orderBy: { followUpAt: 'asc' },
+        include: {
+          assignedToUser: { select: { id: true, fullName: true } },
+          shop: { select: { id: true, name: true } },
+          customer: { select: { id: true, name: true, phone: true } },
+        },
+      }),
+      this.prisma.customerFollowUp.count({ where }),
+    ]);
 
     if (notifyOnDue) {
       await this.createDueAlerts(tenantId, items);
     }
 
-    return items;
+    return {
+      data: items,
+      total,
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 50,
+    };
   }
 
   async getMyFollowUpCounts(tenantId: string, userId: string) {
@@ -197,6 +202,7 @@ export class FollowUpsService {
     tenantId: string,
     role: UserRole,
     query: FollowUpQueryDto,
+    options?: { skip?: number; take?: number },
   ) {
     if (role !== UserRole.OWNER) {
       throw new ForbiddenException('Only owner can view all follow-ups');
@@ -204,15 +210,27 @@ export class FollowUpsService {
 
     const where = this.buildFollowUpWhere(tenantId, query);
 
-    return await this.prisma.customerFollowUp.findMany({
-      where,
-      orderBy: { followUpAt: 'asc' },
-      include: {
-        assignedToUser: { select: { id: true, fullName: true } },
-        shop: { select: { id: true, name: true } },
-        customer: { select: { id: true, name: true, phone: true } },
-      },
-    });
+    const [items, total] = await Promise.all([
+      this.prisma.customerFollowUp.findMany({
+        where,
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        orderBy: { followUpAt: 'asc' },
+        include: {
+          assignedToUser: { select: { id: true, fullName: true } },
+          shop: { select: { id: true, name: true } },
+          customer: { select: { id: true, name: true, phone: true } },
+        },
+      }),
+      this.prisma.customerFollowUp.count({ where }),
+    ]);
+
+    return {
+      data: items,
+      total,
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 50,
+    };
   }
 
   async updateStatus(

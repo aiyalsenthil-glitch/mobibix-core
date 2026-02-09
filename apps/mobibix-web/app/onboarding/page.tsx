@@ -24,7 +24,7 @@ export default function OnboardingPage() {
   const handleSignOut = async () => {
     try {
       await logout();
-      setCheckingAuth(true);
+      router.push('/signin');
       setError(null);
       setBusinessName("");
     } catch (err) {

@@ -6,6 +6,7 @@ import {
   UseGuards,
   Get,
   Param,
+  Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Permissions } from '../../../core/auth/decorators/permissions.decorator';
@@ -44,8 +45,15 @@ export class GymAttendanceController {
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('today')
-  today(@Req() req: any) {
-    return this.attendanceService.listTodayAttendance(req.user.tenantId);
+  today(
+    @Req() req: any,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
+    return this.attendanceService.listTodayAttendance(req.user.tenantId, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
   }
   // ========================
   // STATUS BY PHONE
@@ -117,9 +125,17 @@ export class GymAttendanceController {
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('inside-members')
-  getInsideMembers(@Req() req: any) {
+  getInsideMembers(
+    @Req() req: any,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
     return this.attendanceService.listCurrentlyCheckedInMembers(
       req.user.tenantId,
+      {
+        skip: skip ? parseInt(skip, 10) : undefined,
+        take: take ? parseInt(take, 10) : undefined,
+      },
     );
   }
 }

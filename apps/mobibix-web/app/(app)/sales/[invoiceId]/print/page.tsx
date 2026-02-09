@@ -41,10 +41,14 @@ export default function PrintInvoicePage() {
         if (invoiceData.shopId) {
           console.log("Fetching shop and products for:", invoiceData.shopId);
           try {
-            const [shopData, productsData] = await Promise.all([
+            const [shopData, productsResponse] = await Promise.all([
               getShop(invoiceData.shopId),
               listProducts(invoiceData.shopId),
             ]);
+            // Handle paginated response
+            const productsData = Array.isArray(productsResponse)
+              ? productsResponse
+              : productsResponse.data;
 
             console.log("Shop loaded:", shopData);
             console.log("Products loaded:", productsData?.length);

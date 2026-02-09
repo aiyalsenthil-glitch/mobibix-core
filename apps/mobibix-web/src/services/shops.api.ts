@@ -133,7 +133,21 @@ export async function listShops(): Promise<Shop[]> {
     throw new Error(error.message || "Failed to fetch shops");
   }
 
-  return response.json();
+  const result = await response.json();
+  
+  // Handle paginated response: { data: [], total, skip, take }
+  if (result && typeof result === 'object' && Array.isArray(result.data)) {
+    return result.data;
+  }
+  
+  // Fallback: if it's already an array, return it
+  if (Array.isArray(result)) {
+    return result;
+  }
+  
+  // Last resort: return empty array
+  console.error('[listShops] API returned unexpected response:', result);
+  return [];
 }
 
 /**

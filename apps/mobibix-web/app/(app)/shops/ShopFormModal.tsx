@@ -278,20 +278,21 @@ export function ShopFormModal({ shop, onClose }: ShopFormModalProps) {
                   <label className="block text-sm text-stone-400 mb-1">
                     State <span className="text-red-400">*</span>
                   </label>
-                  <select
+                  <input
+                    type="text"
                     name="state"
                     value={formData.state}
                     onChange={handleChange}
+                    list="states-list"
                     required
+                    placeholder="Type or select a state"
                     className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-teal-500"
-                  >
-                    <option value="">Select a state</option>
+                  />
+                  <datalist id="states-list">
                     {INDIAN_STATES.map((state) => (
-                      <option key={state} value={state}>
-                        {state}
-                      </option>
+                      <option key={state} value={state} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
                 <div>
                   <label className="block text-sm text-stone-400 mb-1">

@@ -77,13 +77,22 @@ export class CustomersController {
   }
 
   @Get()
-  async getAll(@Req() req) {
+  async getAll(
+    @Req() req,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+    @Query('search') search?: string,
+  ) {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
       throw new BadRequestException('Invalid tenant');
     }
 
-    return this.service.listCustomers(tenantId);
+    return this.service.listCustomers(tenantId, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+      search,
+    });
   }
 
   @Get(':customerId')

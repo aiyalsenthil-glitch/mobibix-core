@@ -33,7 +33,7 @@ export interface SalesInvoice {
   customerGstin?: string;
   createdAt: string | Date;
   updatedAt: string | Date;
-  
+
   // Tier 2 Fields
   financialYear?: string;
   cashAmount?: number;
@@ -71,7 +71,7 @@ export interface InvoiceItemDetail {
   gstAmount?: number;
   lineTotal?: number;
   taxableValue?: number; // Accurate taxable value (with 2 decimal precision)
-  
+
   // Tier 2 Fields
   cgstRate?: number;
   sgstRate?: number;
@@ -113,10 +113,18 @@ export interface CreateInvoiceDto {
 export async function listInvoices(
   shopId: string,
   fromJobCard?: boolean,
-): Promise<SalesInvoice[]> {
+  options?: { skip?: number; take?: number },
+): Promise<
+  | SalesInvoice[]
+  | { data: SalesInvoice[]; total: number; skip: number; take: number }
+> {
   try {
     const query = new URLSearchParams({ shopId });
     if (fromJobCard) query.append("fromJobCard", "true");
+    if (options?.skip !== undefined)
+      query.append("skip", options.skip.toString());
+    if (options?.take !== undefined)
+      query.append("take", options.take.toString());
 
     const response = await authenticatedFetch(
       `/mobileshop/sales/invoices?${query.toString()}`,
@@ -274,7 +282,6 @@ export async function collectPayment(
     const error = await response.json();
     throw new Error(error.message || "Failed to collect payment");
   }
-
 
   return response.json();
 }

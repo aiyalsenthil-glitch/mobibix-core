@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { StockKpiService } from '../../../core/stock/stock-kpi.service';
 
@@ -7,9 +9,20 @@ export class MobileShopDashboardService {
   constructor(
     private prisma: PrismaService,
     private stockKpiService: StockKpiService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  async getOwnerDashboard(tenantId: string, shopId?: string) {
+  async getOwnerDashboard(tenantId: string, shopId?: string, skipCache = false) {
+    // 🔴 CHECK CACHE FIRST
+    const cacheKey = `dashboard:owner:${tenantId}:${shopId || 'all'}`;
+    if (!skipCache) {
+      const cached = await this.cacheManager.get<any>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    // Rest of the method continues below...
     // 1️⃣ Resolve shops
     const shops = await this.prisma.shop.findMany({
       where: {
@@ -45,12 +58,22 @@ export class MobileShopDashboardService {
     }
 
     // -------------------------
-    // TODAY SNAPSHOT (existing)
+    // PARALLEL QUERIES (optimized)
     // -------------------------
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    const [salesToday, jobsReceivedToday] = await Promise.all([
+    // 🚀 Run ALL queries in parallel to minimize total latency
+    const [
+      salesToday,
+      jobsReceivedToday,
+      monthSales,
+      totalProducts,
+      inventoryKpi,
+      jobCardStats,
+    ] = await Promise.all([
+      // Today's sales
       this.prisma.invoice.aggregate({
         where: {
           tenantId,
@@ -59,6 +82,7 @@ export class MobileShopDashboardService {
         },
         _sum: { totalAmount: true },
       }),
+      // Today's job cards
       this.prisma.jobCard.count({
         where: {
           tenantId,
@@ -66,73 +90,133 @@ export class MobileShopDashboardService {
           createdAt: { gte: today },
         },
       }),
+      // Month sales
+      this.prisma.invoice.aggregate({
+        where: {
+          tenantId,
+          shopId: { in: shopIds },
+          createdAt: { gte: monthStart },
+        },
+        _sum: { totalAmount: true },
+        _count: { id: true },
+      }),
+      // Product count
+      this.prisma.shopProduct.count({
+        where: {
+          tenantId,
+          shopId: { in: shopIds },
+          isActive: true,
+        },
+      }),
+      // Inventory KPI (stock movements, fast/dead stock, negatives)
+      this.stockKpiService.overview(
+        tenantId,
+        shopId ?? shopIds[0],
+        'MONTH',
+        30,
+      ),
+      // Repair pipeline counts (batched in single query with groupBy)
+      this.prisma.jobCard.groupBy({
+        by: ['status'],
+        where: {
+          tenantId,
+          shopId: { in: shopIds },
+        },
+        _count: true,
+      }),
     ]);
 
-    // -------------------------
-    // MONTH SALES (existing)
-    // -------------------------
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    // Parse repair pipeline from groupBy result
+    const jobCardMap = new Map(
+      jobCardStats.map((stat) => [stat.status, stat._count]),
+    );
+    const inProgress = jobCardMap.get('IN_PROGRESS') ?? 0;
+    const waitingForParts = jobCardMap.get('WAITING_FOR_PARTS') ?? 0;
+    const ready = jobCardMap.get('READY') ?? 0;
 
-    const monthSales = await this.prisma.invoice.aggregate({
+    // Count delivered today (need separate query for timestamp check)
+    // Count delivered today (need separate query for timestamp check)
+    const deliveredToday = await this.prisma.jobCard.count({
       where: {
         tenantId,
         shopId: { in: shopIds },
-        createdAt: { gte: monthStart },
+        status: 'DELIVERED',
+        updatedAt: { gte: today },
+      },
+    });
+
+    // 🔹 NEW: PAYMENT DISTRIBUTION (aggregated)
+    const paymentStatsRaw = await this.prisma.invoice.groupBy({
+      by: ['paymentMode'],
+      where: {
+        tenantId,
+        shopId: { in: shopIds },
+        createdAt: { gte: today }, // Stats for TODAY only? Or Month? Frontend was using same date range as sales report context.
+                                   // Frontend call: getSalesReport({ startDate: startStr, endDate: endStr }) -> Today!
       },
       _sum: { totalAmount: true },
-      _count: { id: true },
     });
 
-    // =========================
-    // 🔹 NEW: INVENTORY KPIs
-    // =========================
-    const inventoryKpi = await this.stockKpiService.overview(
-      tenantId,
-      shopId ?? shopIds[0], // KPI service is shop-based
-      'MONTH',
-      30,
-    );
+    const paymentStats = paymentStatsRaw.map(stat => ({
+      name: stat.paymentMode,
+      value: (stat._sum.totalAmount ?? 0) / 100
+    }));
 
-    const totalProducts = await this.prisma.shopProduct.count({
+    // 🔹 NEW: SALES TREND (Last 7 days)
+    const trendStart = new Date();
+    trendStart.setDate(trendStart.getDate() - 7);
+    trendStart.setHours(0, 0, 0, 0);
+
+    const salesTrendRaw = await this.prisma.invoice.groupBy({
+      by: ['createdAt'],
       where: {
         tenantId,
         shopId: { in: shopIds },
-        isActive: true,
+        createdAt: { gte: trendStart },
       },
+      _sum: { totalAmount: true },
     });
 
-    // =========================
-    // 🔹 NEW: REPAIR PIPELINE
-    // =========================
-    const [inProgress, waitingForParts, ready, deliveredToday] =
-      await Promise.all([
-        this.prisma.jobCard.count({
-          where: { tenantId, shopId: { in: shopIds }, status: 'IN_PROGRESS' },
-        }),
-        this.prisma.jobCard.count({
-          where: {
-            tenantId,
-            shopId: { in: shopIds },
-            status: 'WAITING_FOR_PARTS',
-          },
-        }),
-        this.prisma.jobCard.count({
-          where: { tenantId, shopId: { in: shopIds }, status: 'READY' },
-        }),
-        this.prisma.jobCard.count({
-          where: {
-            tenantId,
-            shopId: { in: shopIds },
-            status: 'DELIVERED',
-            updatedAt: { gte: today },
-          },
-        }),
-      ]);
+    // Group by Date (YYYY-MM-DD) manually since Prisma groupBy by date part isn't direct
+    // Actually, fetching raw data might be better for trend if volume is low, or using raw query.
+    // For now, let's stick to a simpler approach: 
+    // Since we need daily sums, we can use a raw query or just fetch essential fields and aggregate in memory 
+    // (efficient enough for 7 days).
+    
+    // Better: Use `findMany` and aggregate in memory for last 7 days (usually < 1000 invoices)
+    const trendInvoices = await this.prisma.invoice.findMany({
+      where: {
+        tenantId,
+        shopId: { in: shopIds },
+        createdAt: { gte: trendStart },
+      },
+      select: { createdAt: true, totalAmount: true },
+    });
+
+    const trendMap = new Map<string, number>();
+    trendInvoices.forEach(inv => {
+      const date = inv.createdAt.toISOString().split('T')[0];
+      const amount = (inv.totalAmount ?? 0) / 100;
+      trendMap.set(date, (trendMap.get(date) ?? 0) + amount);
+    });
+
+    // Format for chart (last 7 days filled)
+    const salesTrend: { date: string; sales: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateKey = d.toISOString().split('T')[0];
+        const displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        salesTrend.push({
+            date: displayDate,
+            sales: trendMap.get(dateKey) ?? 0
+        });
+    }
 
     // =========================
     // 🔹 FINAL RESPONSE
     // =========================
-    return {
+    const response = {
       today: {
         salesAmount: (salesToday._sum.totalAmount ?? 0) / 100,
         jobsReceived: jobsReceivedToday,
@@ -161,6 +245,16 @@ export class MobileShopDashboardService {
         negativeStock: inventoryKpi.negativeStock.slice(0, 5),
         deadStock: inventoryKpi.deadStock.slice(0, 5),
       },
+
+      // aggregated stats
+      paymentStats,
+      salesTrend,
     };
+
+
+    // 📦 CACHE RESPONSE for 60 seconds
+    await this.cacheManager.set(cacheKey, response, 60000); // 60 seconds TTL
+
+    return response;
   }
 }

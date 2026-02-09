@@ -129,8 +129,22 @@ export async function getCrmDashboard(
 }
 
 /**
-export async function getMyFollowUps(): Promise<FollowUp[]> {
-  const response = await authenticatedFetch(`/mobileshop/crm/follow-ups`);
+ * Get my follow-ups with optional pagination
+ */
+export async function getMyFollowUps(options?: {
+  skip?: number;
+  take?: number;
+}): Promise<
+  FollowUp[] | { data: FollowUp[]; total: number; skip: number; take: number }
+> {
+  const params = new URLSearchParams();
+  if (options?.skip !== undefined)
+    params.append("skip", options.skip.toString());
+  if (options?.take !== undefined)
+    params.append("take", options.take.toString());
+
+  const url = `/mobileshop/crm/follow-ups${params.toString() ? "?" + params.toString() : ""}`;
+  const response = await authenticatedFetch(url);
 
   if (!response.ok) {
     const error = await response.json();
@@ -148,7 +162,9 @@ export async function getFollowUpCounts(): Promise<{
   overdue: number;
   total: number;
 }> {
-  const response = await authenticatedFetch(`/mobileshop/crm/follow-ups/counts`);
+  const response = await authenticatedFetch(
+    `/mobileshop/crm/follow-ups/counts`,
+  );
 
   if (!response.ok) {
     const error = await response.json();
@@ -274,11 +290,5 @@ export async function getWhatsAppLogs(
     throw new Error(error.message || "Failed to fetch WhatsApp logs");
   }
 
-  return response.json();
-}
-// ... existing code ...
-
-export async function getMyFollowUps(): Promise<FollowUp[]> {
-  const response = await authenticatedFetch("/core/follow-ups/my");
   return response.json();
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   listInvoices,
@@ -20,11 +20,14 @@ import { CustomerTimelineDrawer } from "@/components/crm/CustomerTimelineDrawer"
 import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
 import { type FollowUpType } from "@/services/crm.api";
 
+const PAGE_SIZE = 50;
+
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
   DRAFT: "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-400",
   FINAL: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
   PAID: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
-  CREDIT: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400", // Changed from blue to amber for credit
+  CREDIT:
+    "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400", // Changed from blue to amber for credit
   VOIDED: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
 };
 
@@ -63,6 +66,10 @@ export default function SalesPage() {
   const userRole = token ? decodeAccessToken(token).role : null;
   const isOwner = userRole === "OWNER";
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalInvoices, setTotalInvoices] = useState(0);
+
   // Use modern hook for async data loading with built-in race condition prevention
   const {
     data: invoicesData,
@@ -72,7 +79,7 @@ export default function SalesPage() {
   } = useDeferredAsyncData(
     useCallback(async () => {
       if (!selectedShopId) {
-        return [];
+        return { data: [], total: 0 };
       }
 
       // Debug: Check JWT token claims
@@ -95,13 +102,28 @@ export default function SalesPage() {
         throw new Error("Authentication required. Please log in again.");
       }
 
-      return await listInvoices(selectedShopId);
-    }, [selectedShopId]),
-    [selectedShopId],
-    [] as SalesInvoice[], // Initial data
+      const result = await listInvoices(selectedShopId, undefined, {
+        skip: currentPage * PAGE_SIZE,
+        take: PAGE_SIZE,
+      });
+
+      // Handle both paginated and non-paginated responses
+      if (Array.isArray(result)) {
+        return { data: result, total: result.length };
+      }
+      return result;
+    }, [selectedShopId, currentPage]),
+    [selectedShopId, currentPage],
+    { data: [], total: 0 }, // Initial data
   );
 
-  const invoices = invoicesData || [];
+  const invoices = invoicesData?.data || [];
+
+  useEffect(() => {
+    if (invoicesData?.total !== undefined) {
+      setTotalInvoices(invoicesData.total);
+    }
+  }, [invoicesData]);
 
   // Transform error messages for better UX
   const displayError = error
@@ -112,14 +134,17 @@ export default function SalesPage() {
         : error
     : null;
 
-
-  const [collectingInvoice, setCollectingInvoice] = useState<SalesInvoice | null>(
-    null,
-  );
-  const [cancellingInvoice, setCancellingInvoice] = useState<{ id: string; number: string } | null>(null);
+  const [collectingInvoice, setCollectingInvoice] =
+    useState<SalesInvoice | null>(null);
+  const [cancellingInvoice, setCancellingInvoice] = useState<{
+    id: string;
+    number: string;
+  } | null>(null);
 
   // CRM Modals State
-  const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(null);
+  const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(
+    null,
+  );
   const [timelineCustomerName, setTimelineCustomerName] = useState<string>("");
   const [followUpData, setFollowUpData] = useState<{
     customerId: string;
@@ -408,14 +433,16 @@ export default function SalesPage() {
                       <td className="px-4 py-3">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            inv.status === 'VOIDED'
-                              ? STATUS_COLORS['VOIDED']
+                            inv.status === "VOIDED"
+                              ? STATUS_COLORS["VOIDED"]
                               : inv.paymentStatus
                                 ? PAYMENT_STATUS_COLORS[inv.paymentStatus]
                                 : STATUS_COLORS[inv.status]
                           }`}
                         >
-                          {inv.status === 'VOIDED' ? 'VOIDED' : (inv.paymentStatus || inv.status)}
+                          {inv.status === "VOIDED"
+                            ? "VOIDED"
+                            : inv.paymentStatus || inv.status}
                         </span>
                       </td>
                       <td
@@ -425,8 +452,8 @@ export default function SalesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap items-center gap-2">
-                           {/* Collect Payment Button */}
-                           {inv.balanceAmount && inv.balanceAmount > 0 ? (
+                          {/* Collect Payment Button */}
+                          {inv.balanceAmount && inv.balanceAmount > 0 ? (
                             <button
                               onClick={() => handleCollectPayment(inv)}
                               title="Collect Payment"
@@ -434,7 +461,7 @@ export default function SalesPage() {
                             >
                               Collect ₹
                             </button>
-                           ) : null}
+                          ) : null}
 
                           {/* View Button */}
                           <button
@@ -471,7 +498,9 @@ export default function SalesPage() {
                           <button
                             onClick={() => {
                               setTimelineCustomerId(inv.customerId || "");
-                              setTimelineCustomerName(inv.customerName || "Customer");
+                              setTimelineCustomerName(
+                                inv.customerName || "Customer",
+                              );
                             }}
                             title="View History"
                             className={`p-2 rounded ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-zinc-200"} transition`}
@@ -494,7 +523,7 @@ export default function SalesPage() {
                           </button>
 
                           {/* Print Button - Hidden for voided invoices */}
-                          {inv.status !== 'VOIDED' && (
+                          {inv.status !== "VOIDED" && (
                             <button
                               onClick={() =>
                                 router.push(
@@ -521,7 +550,7 @@ export default function SalesPage() {
                           )}
 
                           {/* Share Button - Hidden for voided invoices */}
-                          {inv.status !== 'VOIDED' && (
+                          {inv.status !== "VOIDED" && (
                             <button
                               onClick={() =>
                                 router.push(
@@ -586,9 +615,66 @@ export default function SalesPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalInvoices > PAGE_SIZE && (
+            <div
+              className={`mt-4 flex items-center justify-between px-4 py-3 rounded-lg border ${
+                theme === "dark"
+                  ? "border-white/10 bg-white/5"
+                  : "border-gray-200 bg-gray-50"
+              }`}
+            >
+              <div
+                className={`text-sm ${theme === "dark" ? "text-stone-400" : "text-gray-600"}`}
+              >
+                Showing {currentPage * PAGE_SIZE + 1} to{" "}
+                {Math.min((currentPage + 1) * PAGE_SIZE, totalInvoices)} of{" "}
+                {totalInvoices} invoices
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                  disabled={currentPage === 0}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    currentPage === 0
+                      ? theme === "dark"
+                        ? "bg-white/5 text-stone-600 cursor-not-allowed"
+                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : theme === "dark"
+                        ? "bg-white/10 hover:bg-white/20 text-stone-300"
+                        : "bg-white hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  Previous
+                </button>
+                <span
+                  className={`px-4 py-2 ${theme === "dark" ? "text-stone-300" : "text-gray-700"}`}
+                >
+                  Page {currentPage + 1} of{" "}
+                  {Math.ceil(totalInvoices / PAGE_SIZE)}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={(currentPage + 1) * PAGE_SIZE >= totalInvoices}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    (currentPage + 1) * PAGE_SIZE >= totalInvoices
+                      ? theme === "dark"
+                        ? "bg-white/5 text-stone-600 cursor-not-allowed"
+                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : theme === "dark"
+                        ? "bg-white/10 hover:bg-white/20 text-stone-300"
+                        : "bg-white hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
-      
+
       {/* Collect Payment Modal */}
       {collectingInvoice && (
         <CollectPaymentModal

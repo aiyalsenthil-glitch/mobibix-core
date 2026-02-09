@@ -79,10 +79,14 @@ function GenericPrintContent() {
 
           // 2. Fetch Dependencies (Shop, Products)
           if (!invoice.shopId) throw new Error("Invoice has no shop ID");
-          const [shop, products] = await Promise.all([
+          const [shop, productsResponse] = await Promise.all([
             getShop(invoice.shopId),
             listProducts(invoice.shopId), // Optimization: Should ideally fetch only used products if list is huge
           ]);
+          // Handle paginated response
+          const products = Array.isArray(productsResponse)
+            ? productsResponse
+            : productsResponse.data;
 
           // Resolve Invoice Variant
           defaultVariant = shop.invoiceTemplate || "CLASSIC";
@@ -150,7 +154,7 @@ function GenericPrintContent() {
   // Effect to handle noQr logic cleanly after data load
   useEffect(() => {
     if (data && noQr) {
-      setData((prev) => prev ? ({ ...prev, qrCode: undefined }) : null);
+      setData((prev) => (prev ? { ...prev, qrCode: undefined } : null));
     }
   }, [data?.id, noQr]); // Only run when data ID changes or noQr changes to avoid loops
 

@@ -77,6 +77,8 @@ export class FollowUpsController {
     @Req() req: any,
     @Query() query: FollowUpQueryDto,
     @Query('notify') notify?: string,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
   ) {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.sub;
@@ -86,7 +88,10 @@ export class FollowUpsController {
     }
 
     const notifyOnDue = notify === 'true';
-    return this.service.listMyFollowUps(tenantId, userId, query, notifyOnDue);
+    return this.service.listMyFollowUps(tenantId, userId, query, notifyOnDue, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
   }
 
   @Get('counts')
@@ -102,7 +107,12 @@ export class FollowUpsController {
   }
 
   @Get('all')
-  async listAll(@Req() req: any, @Query() query: FollowUpQueryDto) {
+  async listAll(
+    @Req() req: any,
+    @Query() query: FollowUpQueryDto,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
     const tenantId = req.user?.tenantId;
     const role = req.user?.role as UserRole | undefined;
 
@@ -110,6 +120,9 @@ export class FollowUpsController {
       throw new BadRequestException('Invalid user context');
     }
 
-    return this.service.listAllFollowUps(tenantId, role, query);
+    return this.service.listAllFollowUps(tenantId, role, query, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
   }
 }

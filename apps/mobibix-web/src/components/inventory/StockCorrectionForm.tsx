@@ -79,10 +79,14 @@ export function StockCorrectionForm({
       setIsLoading(true);
       setError("");
 
-      const [productsData, balancesData] = await Promise.all([
+      const [productsResponse, balancesData] = await Promise.all([
         listProducts(shopId),
         getStockBalances(shopId),
       ]);
+      // Handle paginated response
+      const productsData = Array.isArray(productsResponse)
+        ? productsResponse
+        : productsResponse.data;
 
       // Filter: INVENTORY_PAGE only allows non-serialized. PRODUCT_CREATE allows both.
       const eligibleProducts = productsData.filter((p) => {

@@ -871,6 +871,7 @@ model JobCard {
   @@index([tenantId])
   @@index([shopId])
   @@index([customerId])
+  @@index([tenantId, shopId, status, createdAt])
 }
 
 model HSNCode {
@@ -942,6 +943,7 @@ model ShopProduct {
   @@index([tenantId])
   @@index([shopId])
   @@index([globalProductId])
+  @@index([tenantId, shopId, isActive])
 }
 
 model IMEI {
@@ -1057,6 +1059,7 @@ model Invoice {
   @@index([tenantId])
   @@index([shopId])
   @@index([customerId])
+  @@index([tenantId, shopId, createdAt])
 }
 
 model InvoiceItem {

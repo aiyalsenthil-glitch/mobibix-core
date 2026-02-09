@@ -35,6 +35,7 @@ export class ShopService {
           id: true,
           name: true,
           addressLine1: true,
+          city: true,
           phone: true,
           gstNumber: true,
           gstEnabled: true,

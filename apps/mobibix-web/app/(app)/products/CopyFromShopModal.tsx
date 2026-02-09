@@ -42,7 +42,9 @@ export function CopyFromShopModal({
       setIsLoading(true);
       setError(null);
       const data = await listProducts(selectedShopId);
-      setProducts(data);
+      // Handle both paginated and non-paginated responses
+      const productsList = Array.isArray(data) ? data : data.data;
+      setProducts(productsList);
       setSelectedProducts(new Set());
     } catch (err: any) {
       setError(err.message || "Failed to load products");

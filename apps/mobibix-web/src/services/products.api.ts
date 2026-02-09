@@ -56,7 +56,12 @@ export interface ShopProduct {
 /**
  * List all products for a shop
  */
-export async function listProducts(shopId: string): Promise<ShopProduct[]> {
+export async function listProducts(
+  shopId: string,
+): Promise<
+  | ShopProduct[]
+  | { data: ShopProduct[]; total: number; skip: number; take: number }
+> {
   const response = await authenticatedFetch(
     `/mobileshop/products?shopId=${shopId}`,
   );

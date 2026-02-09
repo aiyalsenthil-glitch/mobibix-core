@@ -53,16 +53,49 @@ export class CustomersService {
     });
   }
 
-  async listCustomers(tenantId: string) {
-    return this.prisma.party.findMany({
-      where: {
-        tenantId,
-        partyType: { in: ['CUSTOMER', 'BOTH'] },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+  async listCustomers(
+    tenantId: string,
+    options?: { skip?: number; take?: number; search?: string },
+  ) {
+    const where: any = {
+      tenantId,
+      partyType: { in: ['CUSTOMER', 'BOTH'] },
+    };
+
+    if (options?.search) {
+      where.OR = [
+        { name: { contains: options.search, mode: 'insensitive' } },
+        { phone: { contains: options.search } },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.party.findMany({
+        where,
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
+          businessType: true,
+          partyType: true,
+          gstNumber: true,
+          isActive: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.party.count({ where }),
+    ]);
+
+    return {
+      data: items,
+      total,
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 50,
+    };
   }
 
   async getCustomer(tenantId: string, customerId: string) {

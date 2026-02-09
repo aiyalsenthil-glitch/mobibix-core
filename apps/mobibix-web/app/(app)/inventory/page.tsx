@@ -51,10 +51,14 @@ export default function InventoryPage() {
         setIsLoading(true);
         setError(null);
         // Fetch products and stock balances, then merge on productId
-        const [productList, balances] = await Promise.all([
+        const [productsResponse, balances] = await Promise.all([
           listProducts(selectedShopId),
           getStockBalances(selectedShopId),
         ]);
+        // Handle paginated response
+        const productList = Array.isArray(productsResponse)
+          ? productsResponse
+          : productsResponse.data;
 
         const balanceMap = new Map(balances.map((b) => [b.productId, b]));
 
@@ -103,10 +107,14 @@ export default function InventoryPage() {
       });
 
       // Reload products + stock balances to get updated stock
-      const [productList, balances] = await Promise.all([
+      const [productsResponse, balances] = await Promise.all([
         listProducts(selectedShopId),
         getStockBalances(selectedShopId),
       ]);
+      // Handle paginated response
+      const productList = Array.isArray(productsResponse)
+        ? productsResponse
+        : productsResponse.data;
 
       const balanceMap = new Map(balances.map((b) => [b.productId, b]));
       const merged: ShopProduct[] = productList.map((p) => {

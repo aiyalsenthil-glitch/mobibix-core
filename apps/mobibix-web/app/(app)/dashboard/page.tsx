@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/context/ThemeContext";
@@ -52,6 +52,8 @@ interface DashboardData {
     ready: number;
     deliveredToday: number;
   };
+  paymentStats?: { name: string; value: number }[];
+  salesTrend?: { date: string; sales: number }[];
 }
 
 export default function DashboardPage() {
@@ -63,8 +65,10 @@ export default function DashboardPage() {
 
   const [data, setData] = useState<DashboardData>({});
   const [todayProfit, setTodayProfit] = useState<number>(0);
-  const [paymentStats, setPaymentStats] = useState<{name: string, value: number}[]>([]);
-  const [salesTrend, setSalesTrend] = useState<{date: string, sales: number}[]>([]);
+  // Derived state from data or fallback
+  const paymentStats = useMemo(() => data.paymentStats || [], [data]);
+  const salesTrend = useMemo(() => data.salesTrend || [], [data]);
+  
   const [usageHistory, setUsageHistory] = useState<UsageSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -96,15 +100,12 @@ export default function DashboardPage() {
       endOfDay.setHours(23, 59, 59, 999);
       const endStr = endOfDay.toISOString();
 
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-
       const shopQuery = selectedShopId ? `&shopId=${selectedShopId}` : "";
       const reportParams = selectedShopId ? { shopId: selectedShopId } : {};
 
-      // Parallelize EVERYTHING to prevent serial hangs
-      const [dashRes, profitRes, salesRes, trendRes, usageRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api"}/mobileshop/dashboard/${endpoint}?cache=skip${shopQuery}`, {
+      // Optimized: Reduced from 5 to 3 calls. Sales/Trend data now comes from main dashboard API.
+      const [dashRes, profitRes, usageRes] = await Promise.all([
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api"}/mobileshop/dashboard/${endpoint}${shopQuery ? '?' + shopQuery.substring(1) : ''}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => null),
         (isOwner && userRole !== "member") ? getProfitSummary({
@@ -112,16 +113,6 @@ export default function DashboardPage() {
           startDate: startStr,
           endDate: endStr,
         }).catch(() => ({ metrics: { grossProfit: 0 } })) : Promise.resolve({ metrics: { grossProfit: 0 } }),
-        getSalesReport({
-          ...reportParams,
-          startDate: startStr,
-          endDate: endStr,
-        }).catch(() => []),
-        getSalesReport({
-          ...reportParams,
-          startDate: weekAgo.toISOString(),
-          endDate: endStr,
-        }).catch(() => []),
         isOwner ? getUsageHistory(30).catch(() => []) : Promise.resolve([]),
       ]);
 
@@ -131,33 +122,6 @@ export default function DashboardPage() {
       }
 
       setTodayProfit(profitRes.metrics?.grossProfit ?? 0);
-
-      // Aggregate payment modes
-      const safeSales = Array.isArray(salesRes) ? salesRes : [];
-      const modes = safeSales.reduce((acc, curr) => {
-        const mode = curr.paymentMode || "UNKNOWN";
-        const methods = mode.includes(' + ') ? mode.split(' + ') : [mode];
-        methods.forEach(m => {
-          const name = m.trim();
-          const existing = acc.find(i => i.name === name);
-          const val = curr.totalAmount / methods.length;
-          if (existing) existing.value += val;
-          else acc.push({ name, value: val });
-        });
-        return acc;
-      }, [] as {name: string, value: number}[]);
-      setPaymentStats(modes);
-
-      // 7-day trend
-      const safeTrend = Array.isArray(trendRes) ? trendRes : [];
-      const trend = safeTrend.reduce((acc, curr) => {
-        const d = new Date(curr.date).toLocaleDateString("en-US", { month: 'short', day: 'numeric' });
-        const existing = acc.find(item => item.date === d);
-        if (existing) existing.sales += curr.totalAmount;
-        else acc.push({ date: d, sales: curr.totalAmount });
-        return acc;
-      }, [] as {date: string, sales: number}[]).reverse();
-      setSalesTrend(trend);
 
       if (Array.isArray(usageRes)) {
         setUsageHistory(usageRes);
@@ -172,9 +136,22 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboard();
-  }, [selectedShopId, authUser]);
+  }, [selectedShopId, authUser?.id]);
 
-  const COLORS = ["#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+  // Memoize chart colors to prevent recreation on every render
+  const COLORS = useMemo(() => ["#0ea5e9", "#10b981", "#f59e0b", "##ef4444", "#8b5cf6"], []);
+
+  // Memoize computed payment values for better performance
+  const cashCollection = useMemo(() => 
+    paymentStats.find(p => p.name === 'CASH')?.value ?? 0,
+    [paymentStats]
+  );
+
+  const digitalPayments = useMemo(() => 
+    paymentStats.filter(p => p.name !== 'CASH').reduce((s, p) => s + p.value, 0),
+    [paymentStats]
+  );
+
 
   return (
     <div className="space-y-8 pb-10">
@@ -224,7 +201,7 @@ export default function DashboardPage() {
         )}
         <MetricCard
           label="Cash Collection"
-          value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(paymentStats.find(p => p.name === 'CASH')?.value ?? 0)}
+          value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(cashCollection)}
           icon={<Wallet />}
           subtext="Physical cash in hand"
           accentColor="amber"
@@ -232,7 +209,7 @@ export default function DashboardPage() {
         />
         <MetricCard
           label="Digital Payments"
-          value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(paymentStats.filter(p => p.name !== 'CASH').reduce((s, p) => s + p.value, 0))}
+          value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(digitalPayments)}
           icon={<CreditCard />}
           subtext="UPI, Card, Bank"
           accentColor="purple"

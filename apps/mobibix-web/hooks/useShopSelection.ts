@@ -52,8 +52,10 @@ export function useShopSelection(initialShopId?: string) {
     }
   };
 
-  const selectedShop = shops.find((s) => s.id === selectedShopId) || null;
-  const hasMultipleShops = shops.length > 1;
+  const selectedShop = Array.isArray(shops) 
+    ? shops.find((s) => s.id === selectedShopId) || null 
+    : null;
+  const hasMultipleShops = Array.isArray(shops) && shops.length > 1;
 
   return {
     shops,
