@@ -1398,6 +1398,7 @@ enum WhatsAppPhoneNumberPurpose {
 /// It is named WhatsAppFeature for legacy reasons but covers core features
 /// like MEMBERS_MANAGEMENT, REPORTS, etc.
 /// TODO(Phase 2): Rename to PlanFeatureEnum
+
 enum WhatsAppFeature {
   // Core Features
   STAFF                      // Staff management

@@ -7,6 +7,7 @@ import {
   UseGuards,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -32,8 +33,17 @@ export class StaffController {
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions(Permission.STAFF_MANAGE)
   @Get()
-  listStaff(@Req() req: any) {
-    return this.staffService.listStaff(req.user.tenantId);
+  listStaff(
+    @Req() req: any,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.staffService.listStaff(req.user.tenantId, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+      search,
+    });
   }
 
   // ✅ OWNER: TEMP create staff (staff must have logged in once)

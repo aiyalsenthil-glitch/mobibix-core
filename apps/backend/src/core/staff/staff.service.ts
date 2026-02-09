@@ -63,27 +63,61 @@ export class StaffService {
   }
 
   // ✅ List staff for tenant
-  async listStaff(tenantId: string) {
-    const staff = await this.prisma.userTenant.findMany({
-      where: {
-        tenantId,
-        role: UserRole.STAFF,
+  async listStaff(
+    tenantId: string,
+    options?: { skip?: number; take?: number; search?: string },
+  ) {
+    const where: any = {
+      tenantId,
+      role: UserRole.STAFF,
+      user: {
+        deletedAt: null, // Filter at query level for performance
       },
-      include: {
-        user: true,
-      },
-    });
+    };
 
-    // Filter out soft-deleted users after query
-    const activeStaff = staff.filter((s) => !s.user.deletedAt);
+    // Add search filter if provided
+    if (options?.search) {
+      where.user = {
+        ...where.user,
+        OR: [
+          { fullName: { contains: options.search, mode: 'insensitive' } },
+          { email: { contains: options.search, mode: 'insensitive' } },
+        ],
+      };
+    }
 
-    return activeStaff.map((s) => ({
-      id: s.user.id,
-      email: s.user.email,
-      fullName: s.user.fullName,
-      phone: s.user.phone,
-      role: s.role,
-    }));
+    // Parallel queries for better performance
+    const [staff, total] = await Promise.all([
+      this.prisma.userTenant.findMany({
+        where,
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              fullName: true,
+              phone: true,
+            },
+          },
+        },
+      }),
+      this.prisma.userTenant.count({ where }),
+    ]);
+
+    return {
+      data: staff.map((s) => ({
+        id: s.user.id,
+        email: s.user.email,
+        fullName: s.user.fullName,
+        phone: s.user.phone,
+        role: s.role,
+      })),
+      total,
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 50,
+    };
   }
 
   // ✅ Create staff (attach existing user to tenant)

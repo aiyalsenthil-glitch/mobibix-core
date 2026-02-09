@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Put,
+  Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ShopService } from './shop.service';
@@ -29,12 +30,19 @@ export class ShopController {
   constructor(private readonly shopService: ShopService) {}
 
   @Get()
-  list(@Req() req: any) {
+  list(
+    @Req() req: any,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
     if (!req.user.tenantId) {
       throw new ForbiddenException('Tenant context missing');
     }
 
-    return this.shopService.listShops(req.user.tenantId);
+    return this.shopService.listShops(req.user.tenantId, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
   }
 
   @Post()

@@ -10,43 +10,55 @@ export class ProductsService {
     return amount / 100;
   }
 
-  async listByShop(tenantId: string, shopId: string) {
-    const products = await this.prisma.shopProduct.findMany({
-      where: {
-        tenantId,
-        shopId,
-        isActive: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        category: true,
-        salePrice: true,
-        costPrice: true,
-        isActive: true,
-        hsnCode: true,
-        gstRate: true,
-        global: {
-          select: {
-            hsn: {
-              select: {
-                code: true,
-                taxRate: true,
+  async listByShop(
+    tenantId: string,
+    shopId: string,
+    options?: { skip?: number; take?: number },
+  ) {
+    // Parallel queries for better performance
+    const [products, total] = await Promise.all([
+      this.prisma.shopProduct.findMany({
+        where: {
+          tenantId,
+          shopId,
+          isActive: true,
+        },
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          salePrice: true,
+          costPrice: true,
+          isActive: true,
+          hsnCode: true,
+          gstRate: true,
+          global: {
+            select: {
+              hsn: {
+                select: {
+                  code: true,
+                  taxRate: true,
+                },
               },
             },
           },
-        },
-        stockEntries: {
-          select: {
-            type: true,
-            quantity: true,
+          stockEntries: {
+            select: {
+              type: true,
+              quantity: true,
+            },
           },
         },
-      },
-      orderBy: { name: 'asc' },
-    });
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.shopProduct.count({
+        where: { tenantId, shopId, isActive: true },
+      }),
+    ]);
 
-    return products.map((p) => {
+    const mappedProducts = products.map((p) => {
       const stockQty = p.stockEntries.reduce((sum, e) => {
         return e.type === 'IN' ? sum + e.quantity : sum - e.quantity;
       }, 0);
@@ -63,8 +75,15 @@ export class ProductsService {
         stockQty,
       };
     });
+
+    return {
+      data: mappedProducts,
+      total,
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 50,
+    };
   }
-    async findOne(tenantId: string, shopId: string, productId: string) {
+  async findOne(tenantId: string, shopId: string, productId: string) {
     const product = await this.prisma.shopProduct.findUnique({
       where: { id: productId },
       include: {
@@ -79,7 +98,11 @@ export class ProductsService {
       },
     });
 
-    if (!product || product.shopId !== shopId || product.tenantId !== tenantId) {
+    if (
+      !product ||
+      product.shopId !== shopId ||
+      product.tenantId !== tenantId
+    ) {
       return null;
     }
 

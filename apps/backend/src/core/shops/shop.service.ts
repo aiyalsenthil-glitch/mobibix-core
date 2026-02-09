@@ -20,11 +20,37 @@ export class ShopService {
     private readonly docNumberService: DocumentNumberService,
   ) {}
 
-  async listShops(tenantId: string) {
-    return this.prisma.shop.findMany({
-      where: { tenantId, isActive: true },
-      orderBy: { createdAt: 'asc' },
-    });
+  async listShops(
+    tenantId: string,
+    options?: { skip?: number; take?: number },
+  ) {
+    // Parallel queries for better performance
+    const [shops, total] = await Promise.all([
+      this.prisma.shop.findMany({
+        where: { tenantId, isActive: true },
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          addressLine1: true,
+          phone: true,
+          gstNumber: true,
+          gstEnabled: true,
+          isActive: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.shop.count({ where: { tenantId, isActive: true } }),
+    ]);
+
+    return {
+      data: shops,
+      total,
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 50,
+    };
   }
 
   async createShop(tenantId: string, role: string, dto: CreateShopDto) {
