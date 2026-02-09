@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   listInvoices,
@@ -58,8 +58,20 @@ export default function SalesPage() {
     isLoadingShops,
     error: shopError,
     selectShop,
+    refreshShops,
     hasMultipleShops,
   } = useShop();
+
+  // Retry loading shops exactly once if empty (race condition fix)
+  const hasRetried = useRef(false);
+  useEffect(() => {
+    if (!isLoadingShops && shops.length === 0 && getAccessToken()) {
+      if (!hasRetried.current) {
+        hasRetried.current = true;
+        refreshShops();
+      }
+    }
+  }, [isLoadingShops, shops.length, refreshShops]);
 
   // Get user role for permission checks
   const token = getAccessToken();

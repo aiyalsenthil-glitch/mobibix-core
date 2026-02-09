@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
-import { addDays, addWeeks, addMonths } from 'date-fns';
+import { addDays, addWeeks, addMonths, differenceInDays } from 'date-fns';
 
 @Injectable()
 export class LedgerService {
@@ -216,10 +216,12 @@ export class LedgerService {
     data: {
       ledgerId: string;
       amount: number;
+      collectedBy: string;
+      method?: 'CASH' | 'UPI' | 'BANK';
       note?: string;
     },
   ) {
-    const { ledgerId, amount } = data;
+    const { ledgerId, amount, collectedBy, method = 'CASH', note } = data;
 
     if (!ledgerId || !amount || amount <= 0) {
       throw new BadRequestException('Invalid collection data');
@@ -256,32 +258,47 @@ export class LedgerService {
       }
 
       let remaining = amount;
+      const createdPayments: any[] = [];
 
-      // 3️⃣ Apply amount to collections
+      // 3️⃣ Apply amount to collections & create payment records
       for (const col of unpaid) {
         if (remaining <= 0) break;
 
-        if (remaining >= col.amount) {
-          // full payment
+        const amountForThisCollection = Math.min(
+          remaining,
+          col.amount - col.paidAmount,
+        );
+
+        if (amountForThisCollection > 0) {
+          const newPaidAmount = col.paidAmount + amountForThisCollection;
+          const isFullyPaid = newPaidAmount === col.amount;
+
+          // Update collection
           await tx.ledgerCollection.update({
             where: { id: col.id },
             data: {
-              paid: true,
-              paidAt: new Date(),
+              paidAmount: newPaidAmount,
+              paid: isFullyPaid,
+              paidAt: isFullyPaid ? new Date() : col.paidAt,
             },
           });
 
-          remaining -= col.amount;
-        } else {
-          // partial payment → reduce amount
-          await tx.ledgerCollection.update({
-            where: { id: col.id },
+          // Create payment record
+          const payment = await tx.ledgerPayment.create({
             data: {
-              amount: col.amount - remaining,
+              tenantId,
+              ledgerId,
+              customerId: ledger.customerId,
+              collectionId: col.id,
+              collectedBy,
+              amount: amountForThisCollection,
+              method,
+              note: note || null,
             },
           });
 
-          remaining = 0;
+          createdPayments.push(payment);
+          remaining -= amountForThisCollection;
         }
       }
 
@@ -304,6 +321,7 @@ export class LedgerService {
       return {
         ledgerId,
         collected: amount,
+        paymentRecords: createdPayments.length,
         remainingUnpaidPeriods: stillUnpaid,
         status: stillUnpaid === 0 ? 'COMPLETED' : 'ACTIVE',
       };
@@ -337,7 +355,8 @@ export class LedgerService {
       expectedTotal: number;
       collectedAmount: number;
       pendingPeriods: number;
-      health: 'GOOD' | 'WARNING' | 'CRITICAL' | 'CLOSED';
+      overduePeriods?: number;
+      health: 'OK' | 'DUE' | 'OVERDUE' | 'CRITICAL' | 'CLOSED';
     }[] = [];
 
     for (const ledger of ledgers) {
@@ -354,21 +373,39 @@ export class LedgerService {
       const paid = collections.filter((c) => c.paid);
       const unpaid = collections.filter((c) => !c.paid);
 
-      const collectedAmount = paid.reduce((sum, c) => sum + c.amount, 0);
+      const collectedAmount = paid.reduce((sum, c) => sum + c.paidAmount, 0);
 
       totalCollected += collectedAmount;
 
-      // 🔥 Loan health logic
-      let health: 'GOOD' | 'WARNING' | 'CRITICAL' | 'CLOSED';
+      // 🔥 Improved loan health logic (with overdue awareness)
+      let health: 'OK' | 'DUE' | 'OVERDUE' | 'CRITICAL' | 'CLOSED';
+      let overduePeriods = 0;
 
       if (ledger.status !== 'ACTIVE') {
         health = 'CLOSED';
       } else if (unpaid.length === 0) {
-        health = 'GOOD';
-      } else if (unpaid.length <= 2) {
-        health = 'WARNING';
+        health = 'OK';
       } else {
-        health = 'CRITICAL';
+        // Check for overdue status
+        const now = new Date();
+        const overdueCollections = unpaid.filter((c) => c.dueDate < now);
+
+        if (overdueCollections.length === 0) {
+          // All unpaid are not yet due
+          health = 'DUE';
+        } else {
+          overduePeriods = overdueCollections.length;
+          // Calculate max overdue days
+          const maxOverdueDays = Math.max(
+            ...overdueCollections.map((c) => differenceInDays(now, c.dueDate)),
+          );
+
+          if (maxOverdueDays >= 30) {
+            health = 'CRITICAL';
+          } else {
+            health = 'OVERDUE';
+          }
+        }
       }
 
       detailedLedgers.push({
@@ -379,6 +416,7 @@ export class LedgerService {
         expectedTotal: ledger.expectedTotal,
         collectedAmount,
         pendingPeriods: unpaid.length,
+        overduePeriods: overduePeriods > 0 ? overduePeriods : undefined,
         health,
       });
     }

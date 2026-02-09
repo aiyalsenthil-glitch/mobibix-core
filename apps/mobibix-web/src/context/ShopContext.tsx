@@ -65,6 +65,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const token = getAccessToken();
     if (token && !isInitialized) {
       initializeShops();
+    } else if (!token) {
+      setIsLoadingShops(false);
+      setIsInitialized(true);
     }
   }, []);
 

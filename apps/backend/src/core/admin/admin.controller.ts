@@ -441,4 +441,33 @@ export class AdminController {
       planId,
     );
   }
+  // ─────────────────────────────────────────────
+  // DOWNGRADE CHECK (ADMIN)
+  // ─────────────────────────────────────────────
+  @Get('subscription/downgrade-check')
+  async checkDowngrade(
+    @Query('tenantId') tenantId: string,
+    @Query('targetPlanId') targetPlanId: string,
+    @Query('module') module?: ModuleType,
+  ) {
+    if (!tenantId || !targetPlanId) {
+      throw new BadRequestException('tenantId and targetPlanId are required');
+    }
+
+    let resolvedModule = module;
+    if (!resolvedModule) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { tenantType: true },
+      });
+      resolvedModule =
+        tenant?.tenantType === 'GYM' ? 'GYM' : ('MOBILE_SHOP' as ModuleType);
+    }
+
+    return this.subscriptionsService.checkDowngradeEligibility(
+      tenantId,
+      targetPlanId,
+      resolvedModule,
+    );
+  }
 }

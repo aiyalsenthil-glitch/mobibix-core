@@ -7,6 +7,7 @@ import {
   Get,
   Query,
   Param,
+  ValidationPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { TenantStatusGuard } from '../../core/tenant/guards/tenant-status.guard';
@@ -14,6 +15,11 @@ import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
 import { LedgerService } from './ledger.service';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import {
+  CreateLedgerCustomerDto,
+  CreateLedgerAccountDto,
+  CollectPaymentDto,
+} from './dto';
 
 @Controller('ledger')
 @UseGuards(JwtAuthGuard, TenantStatusGuard, TenantRequiredGuard)
@@ -22,12 +28,18 @@ export class LedgerController {
   constructor(private readonly ledgerService: LedgerService) {}
 
   @Post('customers')
-  createCustomer(@Req() req: any, @Body() body: any) {
+  createCustomer(
+    @Req() req: any,
+    @Body(ValidationPipe) body: CreateLedgerCustomerDto,
+  ) {
     return this.ledgerService.createCustomer(req.user.tenantId, body);
   }
 
   @Post('accounts')
-  createAccount(@Req() req: any, @Body() body: any) {
+  createAccount(
+    @Req() req: any,
+    @Body(ValidationPipe) body: CreateLedgerAccountDto,
+  ) {
     return this.ledgerService.createAccount(req.user.tenantId, body);
   }
   @Get('customers/search')
@@ -39,8 +51,14 @@ export class LedgerController {
     return this.ledgerService.getCollectScreen(req.user.tenantId, ledgerId);
   }
   @Post('collections/collect')
-  collectAmount(@Req() req: any, @Body() body: any) {
-    return this.ledgerService.collectAmount(req.user.tenantId, body);
+  collectAmount(
+    @Req() req: any,
+    @Body(ValidationPipe) body: CollectPaymentDto,
+  ) {
+    return this.ledgerService.collectAmount(req.user.tenantId, {
+      ...body,
+      collectedBy: req.user.id,
+    });
   }
   @Get('customers/:customerId/profile')
   getCustomerProfile(@Req() req: any, @Param('customerId') customerId: string) {

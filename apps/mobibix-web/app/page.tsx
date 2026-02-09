@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { useTheme } from "@/context/ThemeContext";
 
 interface NavLinkProps {
   href: string;
@@ -9,18 +10,17 @@ interface NavLinkProps {
 }
 
 export default function HomePage() {
-  const [isDark, setIsDark] = useState(true);
+  const { theme, toggleTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    const saved = localStorage.getItem("theme") || "dark";
-    const isLight = saved === "light";
-    setIsDark(!isLight);
-
-    if (isLight) {
-      document.documentElement.classList.add("light-mode");
-    }
+    setMounted(true);
   }, []);
+
+  const isDark = mounted && theme === 'dark';
+
+  const scrollCooldown = useRef(0);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -31,20 +31,31 @@ export default function HomePage() {
       }
     };
 
+    const handleWheel = (e: WheelEvent) => {
+      const now = Date.now();
+      if (now - scrollCooldown.current < 800) return;
+
+      if (e.deltaY > 30 && currentSlide < 4) { // sensitivity 30
+        setCurrentSlide(prev => prev + 1);
+        scrollCooldown.current = now;
+      } else if (e.deltaY < -30 && currentSlide > 0) {
+        setCurrentSlide(prev => prev - 1);
+        scrollCooldown.current = now;
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("wheel", handleWheel);
+    };
   }, [currentSlide]);
 
-  const toggleTheme = () => {
-    const html = document.documentElement;
-    const newDarkMode = !isDark;
-    html.classList.toggle("light-mode", !newDarkMode);
-    localStorage.setItem("theme", newDarkMode ? "dark" : "light");
-    setIsDark(newDarkMode);
-  };
+  if (!mounted) return null;
 
   return (
-    <div className="bg-black text-white overflow-x-hidden w-screen">
+    <div className="bg-background text-foreground overflow-x-hidden w-screen transition-colors duration-300">
       <style>{`
         .slide {
           transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
@@ -55,18 +66,9 @@ export default function HomePage() {
           height: 100vh;
           position: relative;
         }
-        .light-mode {
-          background: linear-gradient(135deg, #f0fdfa 0%, #ecfdf5 100%) !important;
-          color: #0f766e !important;
-        }
-        .light-mode .bg-black { background: white !important; }
-        .light-mode .text-white { color: #0f766e !important; }
-        .light-mode .bg-teal-500 { background: #14b8a6 !important; }
-        .light-mode .border-white\/5 { border-color: rgba(20, 184, 166, 0.2) !important; }
-        .light-mode .text-stone-400 { color: #0d9488 !important; }
       `}</style>
       {/* Header - Modern Design */}
-      <header className="fixed top-0 z-50 w-full backdrop-blur-xl bg-gradient-to-b from-black/60 to-transparent border-b border-white/5 light-mode:from-white/40 light-mode:to-transparent light-mode:border-teal-200/30">
+      <header className="fixed top-0 z-50 w-full backdrop-blur-xl bg-gradient-to-b from-background/80 to-transparent border-b border-border/40">
         <nav className="max-w-7xl mx-auto px-6 md:px-12 h-16 flex items-center justify-between">
           {/* Logo & Brand */}
           <div className="flex items-center gap-3 group cursor-pointer">
@@ -75,17 +77,17 @@ export default function HomePage() {
               <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-300 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-bold uppercase tracking-widest text-white light-mode:text-slate-900">
+              <span className="text-sm font-bold uppercase tracking-widest text-foreground">
                 MobiBix
               </span>
-              <span className="text-[10px] text-stone-500 light-mode:text-teal-600 font-medium">
+              <span className="text-[10px] text-muted-foreground font-medium">
                 Digital Retail Platform
               </span>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <div className="hidden md:flex items-center gap-8 text-xs font-normal text-stone-400 light-mode:text-slate-600 tracking-wide">
+          <div className="hidden md:flex items-center gap-8 text-xs font-normal text-muted-foreground hover:text-foreground transition-colors tracking-wide">
             <NavLink href="#features">Features</NavLink>
             <NavLink href="#pricing">Pricing</NavLink>
             <NavLink href="#testimonials">Customers</NavLink>
@@ -96,7 +98,7 @@ export default function HomePage() {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-white/10 light-mode:hover:bg-teal-500/20 transition-all duration-300 text-stone-400 light-mode:text-teal-700"
+              className="p-2 rounded-lg hover:bg-muted transition-all duration-300 text-muted-foreground hover:text-foreground"
               aria-label="Toggle theme"
             >
               {isDark ? <SunIcon /> : <MoonIcon />}
@@ -105,7 +107,7 @@ export default function HomePage() {
             {/* Sign In Link */}
             <Link
               href="/auth"
-              className="text-xs font-medium px-3.5 py-1.5 rounded-lg border border-white/20 light-mode:border-teal-300/40 text-white light-mode:text-slate-900 hover:border-white/40 light-mode:hover:border-teal-400/60 hover:bg-white/5 light-mode:hover:bg-teal-500/10 transition-all duration-300"
+              className="text-xs font-medium px-3.5 py-1.5 rounded-lg border border-border text-foreground hover:border-border/80 hover:bg-muted transition-all duration-300"
             >
               Sign In
             </Link>
@@ -137,10 +139,10 @@ export default function HomePage() {
             transform: `translateY(${-currentSlide * 100}%)`,
           }}
         >
-          <main className="relative h-screen w-full overflow-hidden flex flex-col justify-center items-center border-b border-white/5">
+          <main className="relative h-screen w-full overflow-hidden flex flex-col justify-center items-center border-b border-border">
             <div className="absolute inset-0 z-0">
-              <div className="absolute inset-0 bg-gradient-to-b from-black via-neutral-950 to-black"></div>
-              <div className="absolute top-[15%] -left-[10%] w-[600px] h-[600px] bg-teal-600/15 rounded-full blur-[140px] pointer-events-none animate-pulse"></div>
+              <div className="absolute inset-0 bg-gradient-to-b from-background via-background/95 to-background"></div>
+              <div className="absolute top-[15%] -left-[10%] w-[600px] h-[600px] bg-primary/10 rounded-full blur-[140px] pointer-events-none animate-pulse"></div>
               <div
                 className="absolute bottom-[10%] -right-[10%] w-[500px] h-[500px] bg-purple-500/15 rounded-full blur-[140px] pointer-events-none animate-pulse"
                 style={{ animationDelay: "1.5s" }}
@@ -155,20 +157,20 @@ export default function HomePage() {
 
             <div className="relative z-10 w-full max-w-4xl px-4 sm:px-6 md:px-8 text-center mx-auto">
               {/* Status Badge */}
-              <div className="mb-4 inline-flex items-center gap-2 px-3 py-0.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md mx-auto">
+              <div className="mb-4 inline-flex items-center gap-2 px-3 py-0.5 rounded-full border border-border bg-card/30 backdrop-blur-md mx-auto shadow-sm">
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
                 </span>
-                <span className="text-[10px] uppercase tracking-wider text-stone-300 font-medium whitespace-nowrap">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium whitespace-nowrap">
                   Now Live
                 </span>
               </div>
 
               {/* Main Heading - modern, short and bold */}
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight tracking-tight text-white mb-3 font-extrabold">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight tracking-tight text-foreground mb-3 font-extrabold">
                 <span className="inline-block">Run Your Digital Retail &</span>
-                <span className="inline-block ml-2 text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-cyan-300 to-purple-400">
+                <span className="inline-block ml-2 text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-400 to-pink-400">
                   Service Business Smarter
                 </span>
               </h1>
@@ -183,9 +185,9 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
                 <Link
                   href="/auth"
-                  className="relative inline-flex items-center justify-center px-8 py-3 rounded-full text-base font-semibold text-black shadow-2xl overflow-hidden w-full sm:w-auto"
+                  className="relative inline-flex items-center justify-center px-8 py-3 rounded-full text-base font-semibold text-white shadow-xl overflow-hidden w-full sm:w-auto hover:shadow-2xl hover:shadow-primary/20 transition-all"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-cyan-400 rounded-full transform scale-100 transition-transform duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary to-purple-500 rounded-full transform scale-100 transition-transform duration-300" />
                   <span className="relative z-10 flex items-center gap-2">
                     Start Free Trial <ArrowIcon />
                   </span>
@@ -193,9 +195,9 @@ export default function HomePage() {
 
                 <Link
                   href="/dashboard"
-                  className="relative inline-flex items-center justify-center px-8 py-3 rounded-full text-base font-semibold text-black shadow-2xl overflow-hidden w-full sm:w-auto"
+                  className="relative inline-flex items-center justify-center px-8 py-3 rounded-full text-base font-semibold text-white shadow-xl overflow-hidden w-full sm:w-auto hover:shadow-2xl hover:shadow-secondary/20 transition-all"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-cyan-400 rounded-full transform scale-100 transition-transform duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary to-purple-500 rounded-full transform scale-100 transition-transform duration-300" />
                   <span className="relative z-10 flex items-center gap-2">
                     Get Started for Free <ArrowIcon />
                   </span>
@@ -203,7 +205,7 @@ export default function HomePage() {
 
                 <button
                   onClick={() => setCurrentSlide(1)}
-                  className="w-full sm:w-auto px-6 py-3 rounded-full border border-white/20 text-white font-semibold text-sm hover:bg-white/5 transition-all"
+                  className="w-full sm:w-auto px-6 py-3 rounded-full border border-border text-foreground font-semibold text-sm hover:bg-muted transition-all"
                 >
                   See Features
                 </button>
@@ -299,18 +301,18 @@ export default function HomePage() {
             transform: `translateY(${-currentSlide * 100}%)`,
           }}
         >
-          <section className="h-screen py-24 px-6 md:px-12 bg-black relative overflow-hidden flex flex-col justify-center border-b border-white/5">
-            <div className="absolute top-[40%] right-[10%] w-96 h-96 bg-teal-900/10 rounded-full blur-[128px] pointer-events-none animate-pulse"></div>
+          <section className="h-screen py-24 px-6 md:px-12 bg-background relative overflow-hidden flex flex-col justify-center border-b border-border">
+            <div className="absolute top-[40%] right-[10%] w-96 h-96 bg-primary/5 rounded-full blur-[128px] pointer-events-none animate-pulse"></div>
 
             <div className="max-w-7xl mx-auto w-full">
               <div className="mb-16 text-center">
-                <span className="inline-block py-1 px-3 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-widest text-stone-300 mb-6">
+                <span className="inline-block py-1 px-3 rounded-full border border-border bg-muted/50 text-[10px] uppercase tracking-widest text-muted-foreground mb-6">
                   Everything You Need
                 </span>
-                <h2 className="text-3xl md:text-5xl text-white mb-4">
+                <h2 className="text-3xl md:text-5xl text-foreground mb-4">
                   All-in-One Commerce Platform
                 </h2>
-                <p className="text-stone-400 max-w-2xl mx-auto font-light text-sm">
+                <p className="text-muted-foreground max-w-2xl mx-auto font-light text-sm">
                   Manage product sales, service orders, and customer
                   relationships with real-time visibility that keeps your team
                   aligned.
@@ -319,7 +321,7 @@ export default function HomePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 auto-rows-max">
                 {/* Main Feature */}
-                <div className="md:col-span-2 lg:col-span-2 lg:row-span-2 relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.03] to-transparent p-8 flex flex-col justify-between group hover:border-white/20 transition-all duration-500 shadow-lg backdrop-blur-sm">
+                <div className="md:col-span-2 lg:col-span-2 lg:row-span-2 relative overflow-hidden rounded-2xl border border-border bg-card/40 p-8 flex flex-col justify-between group hover:border-primary/20 transition-all duration-500 shadow-sm hover:shadow-xl backdrop-blur-sm">
                   <div
                     className="absolute inset-0 opacity-[0.05]"
                     style={{
@@ -330,13 +332,13 @@ export default function HomePage() {
                   <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-teal-900/20 via-transparent to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
 
                   <div className="relative z-10">
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-4 ring-1 ring-white/5 group-hover:ring-white/30 transition-all">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-4 ring-1 ring-border group-hover:ring-primary/30 transition-all">
                       <CheckIcon />
                     </div>
-                    <h3 className="text-2xl font-medium mb-2 text-white">
+                    <h3 className="text-2xl font-medium mb-2 text-foreground">
                       Unified Sales & Service Hub
                     </h3>
-                    <p className="text-stone-400 text-sm leading-relaxed max-w-sm">
+                    <p className="text-muted-foreground text-sm leading-relaxed max-w-sm">
                       Manage product sales, process orders, and deliver customer
                       services with real-time visibility that keeps your team
                       aligned.
@@ -346,46 +348,46 @@ export default function HomePage() {
                   {/* Real Feature Benefits */}
                   <div className="mt-8 space-y-3">
                     <div className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded-full bg-teal-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-teal-400 font-bold text-xs">
+                      <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-primary font-bold text-xs">
                           ✓
                         </span>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-white">
+                        <p className="text-sm font-medium text-foreground">
                           One platform, infinite possibilities
                         </p>
-                        <p className="text-xs text-stone-400">
+                        <p className="text-xs text-muted-foreground">
                           Sell, service, and scale simultaneously
                         </p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded-full bg-teal-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-teal-400 font-bold text-xs">
+                      <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-primary font-bold text-xs">
                           ✓
                         </span>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-white">
+                        <p className="text-sm font-medium text-foreground">
                           Instant order & service sync
                         </p>
-                        <p className="text-xs text-stone-400">
+                        <p className="text-xs text-muted-foreground">
                           Everything updates in real-time
                         </p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded-full bg-teal-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-teal-400 font-bold text-xs">
+                      <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-primary font-bold text-xs">
                           ✓
                         </span>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-white">
+                        <p className="text-sm font-medium text-foreground">
                           Complete customer lifecycle
                         </p>
-                        <p className="text-xs text-stone-400">
+                        <p className="text-xs text-muted-foreground">
                           From discovery to support, all integrated
                         </p>
                       </div>
@@ -394,7 +396,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Inventory Feature */}
-                <div className="md:col-span-1 lg:col-span-1 lg:row-span-2 relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.03] to-transparent p-8 flex flex-col group hover:border-white/20 transition-all duration-500 shadow-lg backdrop-blur-sm">
+                <div className="md:col-span-1 lg:col-span-1 lg:row-span-2 relative overflow-hidden rounded-2xl border border-border bg-card/40 p-8 flex flex-col group hover:border-primary/20 transition-all duration-500 shadow-sm hover:shadow-xl backdrop-blur-sm">
                   <div
                     className="absolute inset-0 opacity-[0.05]"
                     style={{
@@ -404,13 +406,13 @@ export default function HomePage() {
                   ></div>
 
                   <div className="mb-auto relative z-10">
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-4 ring-1 ring-white/5 group-hover:ring-white/20 transition-all">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-4 ring-1 ring-border group-hover:ring-primary/20 transition-all">
                       <InventoryIcon />
                     </div>
-                    <h3 className="text-lg font-medium mb-2 text-white">
+                    <h3 className="text-lg font-medium mb-2 text-foreground">
                       Dynamic Pricing & Bundling
                     </h3>
-                    <p className="text-stone-400 text-xs leading-relaxed">
+                    <p className="text-muted-foreground text-xs leading-relaxed">
                       Create smart product bundles and adjust pricing in
                       real-time based on demand and inventory.
                     </p>
@@ -436,26 +438,26 @@ export default function HomePage() {
                 </div>
 
                 {/* Customer Portal */}
-                <div className="md:col-span-1 lg:col-span-1 relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.03] to-transparent p-6 flex flex-col justify-center group hover:bg-white/[0.04] transition-all duration-500 backdrop-blur-sm">
+                <div className="md:col-span-1 lg:col-span-1 relative overflow-hidden rounded-2xl border border-border bg-card/40 p-6 flex flex-col justify-center group hover:bg-muted/50 transition-all duration-500 backdrop-blur-sm">
                   <div className="absolute right-0 top-0 p-32 bg-purple-500/5 blur-3xl rounded-full translate-x-10 -translate-y-10 group-hover:bg-purple-500/10 transition-colors"></div>
                   <UsersIcon />
-                  <h3 className="text-base font-medium mb-1 text-white relative z-10">
+                  <h3 className="text-base font-medium mb-1 text-foreground relative z-10">
                     White-Label Portal
                   </h3>
-                  <p className="text-stone-500 text-xs relative z-10">
+                  <p className="text-muted-foreground text-xs relative z-10">
                     Branded customer experience with account management and
                     support.
                   </p>
                 </div>
 
                 {/* Analytics */}
-                <div className="md:col-span-1 lg:col-span-1 relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.03] to-transparent p-6 flex flex-col justify-center group hover:bg-white/[0.04] transition-all duration-500 backdrop-blur-sm">
-                  <div className="absolute right-0 top-0 p-32 bg-teal-500/5 blur-3xl rounded-full translate-x-10 -translate-y-10 group-hover:bg-teal-500/10 transition-colors"></div>
+                <div className="md:col-span-1 lg:col-span-1 relative overflow-hidden rounded-2xl border border-border bg-card/40 p-6 flex flex-col justify-center group hover:bg-muted/50 transition-all duration-500 backdrop-blur-sm">
+                  <div className="absolute right-0 top-0 p-32 bg-primary/5 blur-3xl rounded-full translate-x-10 -translate-y-10 group-hover:bg-primary/10 transition-colors"></div>
                   <AnalyticsIcon />
-                  <h3 className="text-base font-medium mb-1 text-white relative z-10">
+                  <h3 className="text-base font-medium mb-1 text-foreground relative z-10">
                     Revenue Intelligence
                   </h3>
-                  <p className="text-stone-500 text-xs relative z-10">
+                  <p className="text-muted-foreground text-xs relative z-10">
                     Detailed sales, service, and customer lifetime value
                     analytics.
                   </p>
@@ -472,16 +474,16 @@ export default function HomePage() {
             transform: `translateY(${-currentSlide * 100}%)`,
           }}
         >
-          <section className="h-screen px-6 md:px-12 border-b border-white/5 bg-black flex flex-col justify-center overflow-hidden">
+          <section className="h-screen px-6 md:px-12 border-b border-border bg-background flex flex-col justify-center overflow-hidden">
             <div className="max-w-7xl mx-auto w-full">
               <div className="mb-16 text-center">
-                <span className="inline-block py-1 px-3 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-widest text-stone-300 mb-6">
+                <span className="inline-block py-1 px-3 rounded-full border border-border bg-muted/50 text-[10px] uppercase tracking-widest text-muted-foreground mb-6">
                   Real Results
                 </span>
-                <h2 className="text-3xl md:text-5xl text-white mb-6">
+                <h2 className="text-3xl md:text-5xl text-foreground mb-6">
                   The Numbers Speak
                 </h2>
-                <p className="text-stone-400 max-w-2xl mx-auto font-light text-base">
+                <p className="text-muted-foreground max-w-2xl mx-auto font-light text-base">
                   See how MobiBix transforms digital retail operations
                 </p>
               </div>
@@ -503,9 +505,9 @@ export default function HomePage() {
             transform: `translateY(${-currentSlide * 100}%)`,
           }}
         >
-          <section className="h-screen py-24 px-6 md:px-12 bg-neutral-950/30 border-b border-white/5 flex flex-col justify-center overflow-hidden">
+          <section className="h-screen py-24 px-6 md:px-12 bg-background/50 border-b border-border flex flex-col justify-center overflow-hidden">
             <div className="max-w-7xl mx-auto w-full">
-              <h2 className="text-3xl md:text-5xl mb-16 text-center text-white">
+              <h2 className="text-3xl md:text-5xl mb-16 text-center text-foreground">
                 Loved by Digital Retailers
               </h2>
 
@@ -537,28 +539,28 @@ export default function HomePage() {
             transform: `translateY(${-currentSlide * 100}%)`,
           }}
         >
-          <section className="h-screen px-6 md:px-12 relative overflow-hidden border-b border-white/5 flex flex-col justify-center">
-            <div className="absolute inset-0 bg-gradient-to-b from-neutral-900 via-black to-black opacity-60"></div>
+          <section className="h-screen px-6 md:px-12 relative overflow-hidden border-b border-border flex flex-col justify-center">
+            <div className="absolute inset-0 bg-gradient-to-b from-background via-background/90 to-background"></div>
             <div
               className="absolute inset-0 z-0 opacity-20"
               style={{
-                backgroundImage: `radial-gradient(white 1px, transparent 1px)`,
+                backgroundImage: `radial-gradient(var(--foreground) 1px, transparent 1px)`,
                 backgroundSize: "50px 50px",
               }}
             ></div>
 
             <div className="relative z-10 max-w-5xl mx-auto text-center w-full">
-              <span className="inline-block py-1 px-3 rounded-full border border-white/10 bg-white/5 text-[10px] uppercase tracking-widest text-stone-300 mb-6">
+              <span className="inline-block py-1 px-3 rounded-full border border-border bg-muted/50 text-[10px] uppercase tracking-widest text-muted-foreground mb-6">
                 Start Today
               </span>
 
-              <h2 className="text-4xl md:text-6xl mb-8 text-white">
+              <h2 className="text-4xl md:text-6xl mb-8 text-foreground">
                 Scale your digital retail.
                 <br />
                 Without the chaos.
               </h2>
 
-              <p className="text-lg text-stone-400 font-light mb-10 max-w-2xl mx-auto">
+              <p className="text-lg text-muted-foreground font-light mb-10 max-w-2xl mx-auto">
                 Join digital retailers and service providers transforming
                 complexity into streamlined operations with MobiBix.
               </p>
@@ -566,9 +568,9 @@ export default function HomePage() {
               <div className="flex flex-col md:flex-row items-center justify-center gap-4">
                 <Link
                   href="/login"
-                  className="group relative w-full md:w-auto px-8 py-4 rounded overflow-hidden text-black font-medium text-sm transition-all duration-300 transform hover:scale-[1.02]"
+                  className="group relative w-full md:w-auto px-8 py-4 rounded overflow-hidden text-primary-foreground font-medium text-sm transition-all duration-300 transform hover:scale-[1.02]"
                 >
-                  <div className="absolute inset-0 bg-white/90 z-0"></div>
+                  <div className="absolute inset-0 bg-primary z-0"></div>
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     Start Free Trial
                     <ArrowIcon />
@@ -576,13 +578,13 @@ export default function HomePage() {
                 </Link>
                 <a
                   href="#"
-                  className="w-full md:w-auto px-8 py-4 rounded border border-white/20 text-white font-medium text-sm hover:bg-white/5 transition-all duration-300 hover:border-white/40 text-center"
+                  className="w-full md:w-auto px-8 py-4 rounded border border-border text-foreground font-medium text-sm hover:bg-muted transition-all duration-300 hover:border-border/80 text-center"
                 >
                   Schedule Demo
                 </a>
               </div>
 
-              <p className="mt-8 text-xs text-stone-600">
+              <p className="mt-8 text-xs text-muted-foreground">
                 14-day free trial · No credit card required · Cancel anytime
               </p>
             </div>
@@ -612,7 +614,7 @@ export default function HomePage() {
         {currentSlide > 0 && (
           <button
             onClick={() => setCurrentSlide(currentSlide - 1)}
-            className="p-2 rounded-lg hover:bg-white/10 transition-all duration-300 text-stone-400 hover:text-white"
+            className="p-2 rounded-lg hover:bg-muted transition-all duration-300 text-muted-foreground hover:text-foreground"
             aria-label="Previous slide"
           >
             <svg
@@ -635,7 +637,7 @@ export default function HomePage() {
         {currentSlide < 4 && (
           <button
             onClick={() => setCurrentSlide(currentSlide + 1)}
-            className="p-2 rounded-lg hover:bg-white/10 transition-all duration-300 text-stone-400 hover:text-white animate-bounce"
+            className="p-2 rounded-lg hover:bg-muted transition-all duration-300 text-muted-foreground hover:text-foreground animate-bounce"
             aria-label="Next slide"
           >
             <svg
@@ -657,32 +659,32 @@ export default function HomePage() {
 
       {/* Footer - Only on last slide */}
       {currentSlide === 4 && (
-        <footer className="fixed bottom-0 w-full border-t border-white/10 bg-black py-6 px-6 md:px-12 text-sm z-30">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+        <footer className="fixed bottom-0 w-full border-t border-border bg-background py-6 px-6 md:px-12 text-sm z-30">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-gradient-to-r from-transparent via-border to-transparent"></div>
 
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-center gap-6">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium uppercase tracking-[0.25em] text-white">
+                <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium uppercase tracking-[0.25em] text-foreground">
                   MobiBix
                 </span>
               </div>
 
-              <div className="flex flex-wrap justify-center gap-6 text-xs text-stone-500">
-                <a href="#" className="hover:text-white transition-colors">
+              <div className="flex flex-wrap justify-center gap-6 text-xs text-muted-foreground">
+                <a href="#" className="hover:text-foreground transition-colors">
                   Privacy
                 </a>
-                <a href="#" className="hover:text-white transition-colors">
+                <a href="#" className="hover:text-foreground transition-colors">
                   Terms
                 </a>
-                <a href="#" className="hover:text-white transition-colors">
+                <a href="#" className="hover:text-foreground transition-colors">
                   Support
                 </a>
               </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-white/5 text-center text-stone-600 text-[10px] uppercase tracking-widest">
+            <div className="mt-4 pt-4 border-t border-border/50 text-center text-muted-foreground text-[10px] uppercase tracking-widest">
               <p>© 2026 MobiBix · All Systems Operational</p>
             </div>
           </div>
@@ -697,10 +699,10 @@ function NavLink({ href, children }: NavLinkProps) {
   return (
     <a
       href={href}
-      className="relative group hover:text-white transition-colors"
+      className="relative group hover:text-foreground transition-colors"
     >
       <span className="relative z-10">{children}</span>
-      <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-white transition-all duration-300 group-hover:w-full"></span>
+      <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-foreground transition-all duration-300 group-hover:w-full"></span>
     </a>
   );
 }
@@ -716,14 +718,14 @@ function StatItem({
   label: string;
 }) {
   return (
-    <div className="border-l border-white/10 pl-6 hover:border-teal-500/40 transition-colors duration-500">
-      <p className="text-4xl md:text-5xl font-light text-white mb-2">
+    <div className="border-l border-border pl-6 hover:border-primary/40 transition-colors duration-500">
+      <p className="text-4xl md:text-5xl font-light text-foreground mb-2">
         {value}
-        <span className="text-xl text-stone-500 font-normal align-top ml-1">
+        <span className="text-xl text-muted-foreground font-normal align-top ml-1">
           {unit}
         </span>
       </p>
-      <p className="text-xs uppercase tracking-wider text-stone-500">{label}</p>
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -739,20 +741,20 @@ function TestimonialCard({
   text: string;
 }) {
   return (
-    <div className="p-8 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300 group cursor-pointer">
-      <div className="mb-6 text-stone-700 group-hover:text-stone-500 transition-colors">
+    <div className="p-8 rounded-xl bg-card/40 border border-border hover:border-primary/20 hover:bg-card/60 transition-all duration-300 group cursor-pointer backdrop-blur-sm shadow-sm">
+      <div className="mb-6 text-muted-foreground group-hover:text-primary transition-colors">
         <QuoteIcon />
       </div>
-      <p className="text-stone-300 font-light italic mb-8 leading-relaxed text-sm">
+      <p className="text-foreground font-light italic mb-8 leading-relaxed text-sm">
         "{text}"
       </p>
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-stone-800 flex items-center justify-center text-xs text-white ring-2 ring-transparent group-hover:ring-white/20 transition-all">
+        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-xs text-foreground ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
           {name.charAt(0)}
         </div>
         <div>
-          <div className="font-semibold text-sm text-white">{name}</div>
-          <div className="text-xs text-stone-500">{role}</div>
+          <div className="font-semibold text-sm text-foreground">{name}</div>
+          <div className="text-xs text-muted-foreground">{role}</div>
         </div>
       </div>
     </div>
@@ -772,12 +774,12 @@ function InventoryItem({
   return (
     <div className="relative z-10">
       <div className="flex justify-between items-center mb-1">
-        <span className="text-xs text-stone-400">{label}</span>
-        <span className="text-xs font-medium text-white">{value}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <span className="text-xs font-medium text-foreground">{value}</span>
       </div>
-      <div className="w-full h-2 bg-stone-800/50 rounded-full overflow-hidden">
+      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-teal-500 to-teal-400 rounded-full"
+          className="h-full bg-gradient-to-r from-primary to-purple-400 rounded-full"
           style={{ width: `${percentage}%` }}
         ></div>
       </div>
@@ -789,7 +791,7 @@ function InventoryItem({
 function SunIcon() {
   return (
     <svg
-      className="w-5 h-5 text-stone-400 hover:text-white transition-colors"
+      className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
@@ -808,7 +810,7 @@ function SunIcon() {
 function MoonIcon() {
   return (
     <svg
-      className="w-5 h-5 text-stone-400 hover:text-white transition-colors"
+      className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors"
       xmlns="http://www.w3.org/2000/svg"
       fill="currentColor"
       viewBox="0 0 24 24"
@@ -849,7 +851,7 @@ function CheckIcon() {
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="w-6 h-6 text-teal-400"
+      className="w-6 h-6 text-primary"
     >
       <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
@@ -868,7 +870,7 @@ function InventoryIcon() {
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="w-6 h-6 text-stone-400"
+      className="w-6 h-6 text-muted-foreground"
     >
       <line x1="8" y1="6" x2="21" y2="6"></line>
       <line x1="8" y1="12" x2="21" y2="12"></line>
@@ -892,7 +894,7 @@ function UsersIcon() {
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="w-6 h-6 text-stone-400 mb-3 group-hover:text-purple-400 transition-colors relative z-10"
+      className="w-6 h-6 text-muted-foreground mb-3 group-hover:text-purple-400 transition-colors relative z-10"
     >
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
       <circle cx="9" cy="7" r="4"></circle>
@@ -914,7 +916,7 @@ function AnalyticsIcon() {
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="w-6 h-6 text-stone-400 mb-3 group-hover:text-teal-400 transition-colors relative z-10"
+      className="w-6 h-6 text-muted-foreground mb-3 group-hover:text-primary transition-colors relative z-10"
     >
       <path d="M3 3v18h18"></path>
       <path d="m19 9-5 5-4-4-3 3"></path>

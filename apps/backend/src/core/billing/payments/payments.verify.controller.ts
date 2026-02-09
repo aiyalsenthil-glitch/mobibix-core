@@ -7,11 +7,12 @@ import {
   Req,
   Logger,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import * as crypto from 'crypto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PaymentStatus, UserRole } from '@prisma/client';
+import { PaymentStatus, UserRole, ModuleType } from '@prisma/client';
 import { Roles } from '../../auth/decorators/roles.decorator';
 
 @UseGuards(JwtAuthGuard)
@@ -25,6 +26,8 @@ export class PaymentsVerifyController {
     private readonly prisma: PrismaService,
   ) {}
 
+  // Rate limited to 10 requests per 60 seconds (higher than createOrder to allow retries)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('verify')
   async verifyPayment(
     @Req() req: any,
@@ -89,14 +92,16 @@ export class PaymentsVerifyController {
 
     const module =
       (tenant?.tenantType || '').toUpperCase().replace(/[\s_-]/g, '') === 'GYM'
-        ? 'GYM'
-        : 'MOBILE_SHOP';
+        ? ModuleType.GYM
+        : ModuleType.MOBILE_SHOP;
 
+    // 🔒 SECURITY FIX: Use planId and billingCycle from the TRUSTED payment record
+    // Do NOT use the values from the request body (which could be tampered with)
     await this.subscriptionsService.buyPlanPhase1({
       tenantId: req.user.tenantId,
-      planId: planId,
+      planId: existingPayment.planId,
       module,
-      billingCycle,
+      billingCycle: existingPayment.billingCycle,
     });
 
     return { success: true, subscriptionCreated: true };

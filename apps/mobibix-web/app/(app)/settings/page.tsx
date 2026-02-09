@@ -8,20 +8,60 @@ import {
   upgradeSubscription,
   downgradeSubscription,
   checkDowngradeEligibility,
+  toggleAutoRenew,
   type SubscriptionDetails,
   type Plan,
 } from "@/services/tenant.api";
 import DowngradeBlockerModal from "./DowngradeBlockerModal";
+import { Check, AlertCircle, Loader2, Zap, Shield, Crown } from "lucide-react";
+
+// Marketing features mapping
+const PLAN_MARKETING_FEATURES: Record<string, string[]> = {
+  "MobiBix Trial": [
+    "1 Shop Limit",
+    "Staff Management",
+    "Basic Invoice Management",
+    "Digital Inventory Catalog",
+    "Limited Reports"
+  ],
+  "MobiBix Standard": [
+    "Multiple Shops Support",
+    "Complete Invoice Management",
+    "Advanced Repair Tracking",
+    "Purchase & Supplier Management",
+    "Staff Management",
+    "Real-time Inventory Sync",
+    "Standard Business Reports",
+    "GST/VAT Ready Invoicing"
+  ],
+  "MobiBix Pro": [
+    "Everything in Standard",
+    "WhatsApp CRM Automation",
+    "Business Intelligence Analytics",
+    "Custom Branded Invoices",
+    "Priority 24/7 Support",
+    "Bulk Data Export Tools"
+  ],
+  "Standard": [ // Fallback for plain names
+    "Multiple Shops Support",
+    "Complete Invoice Management",
+    "Advanced Repair Tracking",
+    "Purchase & Supplier Management",
+    "Staff Management",
+    "Real-time Inventory Sync",
+    "Standard Business Reports",
+    "GST/VAT Ready Invoicing"
+  ]
+};
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [subscription, setSubscription] = useState<SubscriptionDetails | null>(
-    null,
-  );
+  const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingPlanId, setProcessingPlanId] = useState<string | null>(null);
+  const [autoRenewLoading, setAutoRenewLoading] = useState(false);
   const [selectedCycle, setSelectedCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
 
   // Downgrade Modal State
@@ -37,7 +77,6 @@ export default function SettingsPage() {
         getAvailablePlans(),
       ]);
       setSubscription(subData.current);
-      // Filter plans by module if needed, but backend should handle it
       setPlans(plansData);
     } catch (err: any) {
       console.error("Failed to load settings data", err);
@@ -51,10 +90,25 @@ export default function SettingsPage() {
     loadData();
   }, []);
 
+  const handleAutoRenewToggle = async () => {
+    if (!subscription) return;
+    try {
+      setAutoRenewLoading(true);
+      const newState = !subscription.autoRenew;
+      await toggleAutoRenew(newState);
+      setSubscription(prev => prev ? { ...prev, autoRenew: newState } : null);
+    } catch (err: any) {
+      alert("Failed to update auto-renewal settings");
+    } finally {
+      setAutoRenewLoading(false);
+    }
+  };
+
   const handlePlanChange = async (plan: Plan) => {
     if (!subscription) return;
 
-    const isUpgrade = plan.level > subscription.planLevel;
+    // Fix: usage of 'level' instead of 'planLevel'
+    const isUpgrade = plan.level > (subscription.level ?? 0);
 
     if (!isUpgrade) {
       // 1. Run Pre-check
@@ -74,7 +128,7 @@ export default function SettingsPage() {
         return;
       }
     } else {
-        if (!confirm(`Confirm upgrade to ${plan.name}? You will be charged immediately.`)) {
+        if (!confirm(`Confirm upgrade to ${plan.displayName}? You will be charged immediately.`)) {
             return;
         }
     }
@@ -85,14 +139,11 @@ export default function SettingsPage() {
 
       if (isUpgrade) {
         await upgradeSubscription(plan.id, selectedCycle);
-        alert(`Successfully upgraded to ${plan.name}!`);
+        alert(`Successfully upgraded to ${plan.displayName}!`);
       } else {
-        // Should not happen here for downgrade, handled in confirmDowngrade
-        // But keeping as fallback if flow changes
+        // Fallback
         await downgradeSubscription(plan.id, selectedCycle); 
-        alert(
-          `Downgrade to ${plan.name} scheduled. Changes will apply at next renewal.`,
-        );
+        alert(`Downgrade to ${plan.displayName} scheduled. Changes will apply at next renewal.`);
       }
 
       await loadData();
@@ -113,9 +164,7 @@ export default function SettingsPage() {
 
       await downgradeSubscription(targetPlanForDowngrade.id, selectedCycle);
       
-      alert(
-        `Downgrade to ${targetPlanForDowngrade.name} scheduled. Changes will apply at next renewal.`,
-      );
+      alert(`Downgrade to ${targetPlanForDowngrade.displayName} scheduled. Changes will apply at next renewal.`);
 
       await loadData();
     } catch (err: any) {
@@ -129,68 +178,41 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-stone-400 animate-pulse">Loading settings...</div>
+        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto py-8 px-4">
+    <div className="max-w-6xl mx-auto py-8 px-4">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Settings & Billing
+            Subscription & Billing
           </h1>
-          <p className="text-stone-500">
-            Manage your subscription and billing details.
+          <p className="text-gray-500">
+            Manage your plan, billing cycle, and payment settings.
           </p>
-        </div>
-
-        {/* Cycle Selector */}
-        <div className="bg-stone-100 dark:bg-stone-800 p-1 rounded-xl flex items-center w-fit">
-          <button
-            onClick={() => setSelectedCycle("MONTHLY")}
-            className={`px-5 py-2 text-sm font-bold rounded-lg transition-all ${
-              selectedCycle === "MONTHLY"
-                ? "bg-white dark:bg-stone-700 text-teal-600 dark:text-teal-400 shadow-sm"
-                : "text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setSelectedCycle("YEARLY")}
-            className={`px-5 py-2 text-sm font-bold rounded-lg transition-all flex items-center gap-2 ${
-              selectedCycle === "YEARLY"
-                ? "bg-white dark:bg-stone-700 text-teal-600 dark:text-teal-400 shadow-sm"
-                : "text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
-            }`}
-          >
-            Yearly
-            <span className="bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-2 py-0.5 rounded text-[10px]">
-              -15%
-            </span>
-          </button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-600 px-4 py-3 rounded-lg mb-6">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
+          <AlertCircle size={18} />
           {error}
         </div>
       )}
 
       {/* Current Subscription Card */}
       {subscription && (
-        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-6 mb-10 shadow-sm">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="bg-white dark:bg-stone-900 border border-gray-200 dark:border-stone-800 rounded-2xl p-6 mb-10 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-2 h-full bg-indigo-500"></div>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Current Plan: {subscription.plan}
-                </h2>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-sm font-semibold text-indigo-600 tracking-wider uppercase">Current Plan</span>
                 <span
-                  className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
                     subscription.subscriptionStatus === "ACTIVE"
                       ? "bg-green-100 text-green-700"
                       : "bg-yellow-100 text-yellow-700"
@@ -199,109 +221,167 @@ export default function SettingsPage() {
                   {subscription.subscriptionStatus}
                 </span>
               </div>
-              <p className="text-stone-500 text-sm">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {subscription.plan}
+              </h2>
+              <p className="text-gray-500 text-sm mt-1">
                 {subscription.isTrial
                   ? `Trial ends in ${subscription.daysLeft} days`
                   : `Renews in ${subscription.daysLeft} days`}
               </p>
             </div>
             
-             {/* Usage Stats (Mini) */}
-              <div className="flex gap-6 text-sm">
-                <div>
-                    <span className="block text-stone-500 text-xs uppercase">Shops</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">
-                        {subscription.maxShops === null ? "Unlimited" : subscription.maxShops}
-                    </span>
-                 </div>
-                 <div>
-                    <span className="block text-stone-500 text-xs uppercase">Staff</span>
-                     <span className="font-semibold text-gray-900 dark:text-white">
-                        {subscription.maxStaff === null ? "Unlimited" : subscription.maxStaff}
-                    </span>
-                 </div>
-              </div>
+             {/* Auto Renew Toggle */}
+             <div className="flex items-center gap-3 bg-gray-50 dark:bg-stone-800 px-4 py-2 rounded-lg border border-gray-100 dark:border-stone-700">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Auto Renewal</span>
+                <button
+                    onClick={handleAutoRenewToggle}
+                    disabled={autoRenewLoading || subscription.isTrial} // Disable for trial? Usually trial doesn't auto-renew unless card attached
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                        subscription.autoRenew ? "bg-indigo-600" : "bg-gray-200"
+                    }`}
+                >
+                    <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            subscription.autoRenew ? "translate-x-6" : "translate-x-1"
+                        }`}
+                    />
+                </button>
+             </div>
           </div>
+          
+           {/* Limits / Usage */}
+           <div className="mt-6 pt-6 border-t border-gray-100 dark:border-stone-800 grid grid-cols-2 sm:grid-cols-4 gap-4">
+               <div>
+                  <div className="text-xs text-gray-500 uppercase">Shops</div>
+                  <div className="font-semibold text-gray-900">{subscription.maxShops === null ? "Unlimited" : subscription.maxShops}</div>
+               </div>
+               <div>
+                  <div className="text-xs text-gray-500 uppercase">Staff</div>
+                  <div className="font-semibold text-gray-900">{subscription.maxStaff === null ? "Unlimited" : subscription.maxStaff}</div>
+               </div>
+               <div>
+                  <div className="text-xs text-gray-500 uppercase">Members</div>
+                   <div className="font-semibold text-gray-900">{subscription.memberLimit === null ? "Unlimited" : subscription.memberLimit}</div>
+               </div>
+           </div>
         </div>
       )}
 
-      {/* Available Plans */}
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-        Available Plans
-      </h3>
-      <div className="grid md:grid-cols-3 gap-6">
+      {/* Available Plans Selector */}
+      <div className="text-center mb-8">
+        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+          Upgrade your plan
+        </h3>
+        {/* Cycle Toggle */}
+        <div className="inline-flex bg-gray-100 p-1 rounded-xl">
+           <button
+            onClick={() => setSelectedCycle("MONTHLY")}
+            className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
+              selectedCycle === "MONTHLY"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setSelectedCycle("YEARLY")}
+            className={`px-6 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+              selectedCycle === "YEARLY"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            Yearly <span className="text-xs bg-green-100 text-green-700 px-1.5 rounded-full">-15%</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-8 items-start">
         {plans.map((plan) => {
           const isCurrent = plan.isCurrent;
-          const isUpgrade = plan.canUpgrade;
-          const isDowngrade = plan.canDowngrade;
-
-          // Get price for selected cycle
+          const isUpgrade = plan.canUpgrade; // Note: logic in handlePlanChange overrides this visually if we want
           const cycleData = plan.billingCycles.find(c => c.cycle === selectedCycle) 
             || plan.billingCycles[0];
+
+          // Determine Icon
+          let PlanIcon = Shield;
+          if (plan.name.includes("Pro")) PlanIcon = Crown;
+          if (plan.name.includes("Trial")) PlanIcon = Zap;
 
           return (
             <div
               key={plan.id}
-              className={`relative border rounded-xl p-6 flex flex-col transition-all ${
+              className={`relative bg-white rounded-2xl border transition-all duration-300 flex flex-col h-full ${
                 isCurrent
-                  ? "border-teal-500 bg-teal-50/5 ring-1 ring-teal-500"
-                  : "border-stone-200 dark:border-stone-800 hover:border-teal-300 dark:hover:border-teal-700"
+                  ? "border-indigo-500 ring-2 ring-indigo-500 shadow-lg scale-105 z-10"
+                  : "border-gray-200 hover:border-indigo-300 hover:shadow-xl"
               }`}
             >
               {isCurrent && (
-                <div className="absolute top-0 right-0 bg-teal-500 text-white text-[10px] uppercase font-bold px-2 py-1 rounded-bl-lg rounded-tr-lg">
-                  Current
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-indigo-600 text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                  Current Plan
                 </div>
               )}
 
-              <div className="mb-4">
-                <h4 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {plan.displayName}
-                </h4>
-                <div className="flex items-baseline gap-1 mt-2">
-                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="p-8 pb-4">
+                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mb-4 text-indigo-600">
+                    <PlanIcon size={24} />
+                </div>
+                <h4 className="text-xl font-bold text-gray-900">{plan.displayName}</h4>
+                <p className="text-gray-500 text-sm mt-2 min-h-[40px]">{plan.description || plan.tagline || "Perfect for growing businesses"}</p>
+                
+                <div className="mt-6 flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold text-gray-900">
                     ₹{(cycleData.price / 100).toFixed(0)}
                   </span>
-                  <span className="text-stone-500 text-sm">/{cycleData.cycle.toLowerCase()}</span>
+                  <span className="text-gray-500 font-medium">/{selectedCycle === "YEARLY" ? "yr" : "mo"}</span>
                 </div>
                 {selectedCycle === "YEARLY" && (
-                    <p className="text-[10px] text-stone-500 mt-1">
-                        Billed ₹{((cycleData.price * 12) / 100).toFixed(0)} annually
+                    <p className="text-xs text-green-600 font-medium mt-1">
+                        Billed annually (Save 15%)
                     </p>
                 )}
               </div>
 
-              <div className="flex-grow space-y-3 mb-6">
-                <ul className="text-sm text-stone-600 dark:text-stone-300 space-y-2">
-                     {plan.features?.map((f, i) => (
-                         <li key={i} className="flex items-center gap-2">
-                             <span className="text-teal-500 font-bold text-base leading-none">✓</span> {f}
+              <div className="p-8 pt-4 flex-grow border-t border-gray-100 mt-4">
+                <ul className="space-y-3">
+                     {/* Prefer Marketing Features, else fallback to raw caps */}
+                     {(PLAN_MARKETING_FEATURES[plan.displayName] || plan.features || []).map((f, i) => (
+                         <li key={i} className="flex items-start gap-3 text-sm text-gray-600">
+                             <Check size={18} className="text-green-500 mt-0.5 flex-shrink-0" />
+                             <span>{f}</span>
                          </li>
                      ))}
                 </ul>
               </div>
 
-              <button
-                onClick={() => handlePlanChange(plan)}
-                disabled={isCurrent || processingPlanId !== null}
-                className={`w-full py-2.5 rounded-lg font-semibold text-sm transition-all ${
-                  isCurrent
-                    ? "bg-stone-100 dark:bg-stone-800 text-stone-400 cursor-default"
-                    : isUpgrade
-                      ? "bg-teal-600 hover:bg-teal-700 text-white shadow-md hover:shadow-lg"
-                      : "border border-stone-300 text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
-                }`}
-              >
-                {processingPlanId === plan.id ? (
-                  <span className="animate-pulse">Processing...</span>
-                ) : isCurrent ? (
-                  "Current Plan"
-                ) : isUpgrade ? (
-                  "Upgrade Plan"
-                ) : (
-                  "Downgrade"
-                )}
-              </button>
+              <div className="p-8 pt-0">
+                <button
+                    onClick={() => handlePlanChange(plan)}
+                    disabled={isCurrent || processingPlanId !== null}
+                    className={`w-full py-3 rounded-xl font-semibold transition-all ${
+                    isCurrent
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : plan.level > (subscription?.level ?? 0)
+                        ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg"
+                        : "bg-white border-2 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                >
+                    {processingPlanId === plan.id ? (
+                        <div className="flex items-center justify-center gap-2">
+                            <Loader2 size={18} className="animate-spin" /> Processing...
+                        </div>
+                    ) : isCurrent ? (
+                        "Current Plan"
+                    ) : plan.level > (subscription?.level ?? 0) ? (
+                        "Upgrade Now"
+                    ) : (
+                        "Downgrade"
+                    )}
+                </button>
+              </div>
             </div>
           );
         })}

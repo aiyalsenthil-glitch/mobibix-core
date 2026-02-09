@@ -407,11 +407,15 @@ export class TenantService {
   async listTenantsWithSubscription() {
     const tenants = await this.prisma.tenant.findMany({
       include: {
-        subscription: true,
+        subscription: {
+          include: {
+            plan: true,
+          },
+        },
         userTenants: {
           where: { role: UserRole.OWNER },
           include: {
-            user: { select: { email: true } },
+            user: { select: { email: true, fullName: true } },
           },
         },
       },
@@ -421,6 +425,7 @@ export class TenantService {
       id: t.id,
       name: t.name,
       ownerEmail: t.userTenants[0]?.user.email ?? null,
+      ownerName: t.userTenants[0]?.user.fullName ?? null,
 
       subscription: t.subscription,
     }));

@@ -1,5 +1,6 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 import { CoreModule } from './core/core.module';
 import { GymModule } from './modules/gym/gym.module';
@@ -37,6 +38,12 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
       envFilePath: '.env',
     }),
 
+    // 🛡️ Rate Limiting
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // 60 seconds
+      limit: 10, // 10 requests per TTL
+    }]),
+
     // � Performance & Caching (Tier 4)
     CustomCacheModule,
 
@@ -72,6 +79,10 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })

@@ -219,7 +219,7 @@ export default function DashboardPage() {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="lg:col-span-2 glass-card p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-base font-semibold text-foreground">7-Day Sales Trend</h3>
             <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded-full font-medium">
@@ -249,7 +249,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="glass-card p-6">
           <h3 className="text-base font-semibold text-foreground mb-6">Payment Distribution</h3>
           <div className="h-64 w-full text-xs">
             {loading ? (
@@ -301,7 +301,7 @@ export default function DashboardPage() {
           isLoading={loading}
           onClick={() => router.push("/inventory?filter=low-stock")}
         />
-        <div className="md:col-span-2 rounded-xl border border-border bg-muted/30 p-5 flex items-center justify-between">
+        <div className="md:col-span-2 glass-card p-5 flex items-center justify-between bg-primary/5">
             <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                     <Zap className="w-6 h-6" />
@@ -342,7 +342,7 @@ export default function DashboardPage() {
             </button>
         </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <div className="p-4 rounded-xl border border-border bg-card flex items-center gap-4">
+          <div className="p-4 rounded-xl border border-border bg-card/50 hover:bg-card/80 transition-colors flex items-center gap-4">
              <div className="h-10 w-10 rounded-lg bg-teal-50 dark:bg-teal-900/20 text-teal-600 flex items-center justify-center">
                 <Clock className="w-5 h-5" />
              </div>
@@ -351,7 +351,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">In Progress</p>
              </div>
           </div>
-          <div className="p-4 rounded-xl border border-border bg-card flex items-center gap-4">
+          <div className="p-4 rounded-xl border border-border bg-card/50 hover:bg-card/80 transition-colors flex items-center gap-4">
              <div className="h-10 w-10 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 flex items-center justify-center">
                 <Settings className="w-5 h-5" />
              </div>
@@ -360,7 +360,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">Await Parts</p>
              </div>
           </div>
-          <div className="p-4 rounded-xl border border-border bg-card flex items-center gap-4">
+          <div className="p-4 rounded-xl border border-border bg-card/50 hover:bg-card/80 transition-colors flex items-center gap-4">
              <div className="h-10 w-10 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 flex items-center justify-center">
                 <CheckCircle2 className="w-5 h-5" />
              </div>
@@ -369,7 +369,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">Ready</p>
              </div>
           </div>
-          <div className="p-4 rounded-xl border border-border bg-card flex items-center gap-4">
+          <div className="p-4 rounded-xl border border-border bg-card/50 hover:bg-card/80 transition-colors flex items-center gap-4">
              <div className="h-10 w-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center">
                 <CheckCircle2 className="w-5 h-5" />
              </div>
@@ -382,7 +382,7 @@ export default function DashboardPage() {
       </div>
       {/* Row 4: Usage Trends (Owner Only) */}
       {isOwner && (
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-base font-semibold text-foreground">Growth Trends (Last 30 Days)</h3>
             <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded-full font-medium">

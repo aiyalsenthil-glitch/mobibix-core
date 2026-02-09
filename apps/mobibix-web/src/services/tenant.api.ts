@@ -27,10 +27,10 @@ export interface CurrentTenantResponse {
 export interface SubscriptionDetails {
   plan: string;
   planCode: string;
-  planLevel: number;
+  level: number; // Changed from planLevel to match backend
   memberLimit: number | null;
   maxStaff: number | null;
-  maxShops?: number | null; // Added
+  maxShops?: number | null;
   whatsappAllowed: boolean;
   staffAllowed: boolean;
   attendanceAllowed: boolean;
@@ -39,13 +39,13 @@ export interface SubscriptionDetails {
   subscriptionStatus: 'ACTIVE' | 'TRIAL' | 'EXPIRED';
   autoRenew: boolean;
   subscriptionId: string;
-  price?: number; // Optional, might come from plan details
+  price?: number;
 }
 
 export interface Plan {
   id: string;
-  name: string; // Simplified: "TRIAL" | "STANDARD" | "PRO"
-  displayName: string; // "Trial", "Standard", "Pro"
+  name: string;
+  displayName: string;
   tagline: string | null;
   description: string | null;
   featuresJson: string[] | null;
@@ -59,6 +59,20 @@ export interface Plan {
 
 export interface AvailablePlansResponse {
     plans: Plan[];
+}
+
+/**
+ * Toggle Auto Renew
+ */
+export async function toggleAutoRenew(enabled: boolean): Promise<{ subscriptionId: string; autoRenew: boolean }> {
+  const response = await authenticatedFetch("/billing/subscription/auto-renew", {
+    method: "PATCH",
+    body: JSON.stringify({ enabled }),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to update auto-renewal settings");
+  }
+  return response.json();
 }
 
 /**

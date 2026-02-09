@@ -10,6 +10,7 @@ import {
   ForbiddenException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -25,9 +26,10 @@ export class PaymentsController {
     private readonly prisma: PrismaService,
   ) {}
 
-  // ─────────────────────────────────────────────
   // 🔒 CREATE RAZORPAY ORDER (JWT REQUIRED)
+  // Rate limited to 5 requests per 60 seconds to prevent abuse
   // ─────────────────────────────────────────────
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('create-order')
   async createOrder(
     @Req() req: any,
@@ -99,6 +101,37 @@ export class PaymentsController {
         throw new BadRequestException(
           `No active price found for plan "${plan.name}" @ ${body.billingCycle}`,
         );
+      }
+
+      // 🛡️ IDEMPOTENCY CHECK: Prevent duplicate orders from double-clicks
+      // Check if there's already a pending or successful order for this tenant+plan+cycle
+      const existingOrder = await this.prisma.payment.findFirst({
+        where: {
+          tenantId,
+          planId: body.planId,
+          billingCycle: body.billingCycle,
+          status: {
+            in: ['PENDING', 'SUCCESS'],
+          },
+          createdAt: {
+            // Only check orders created in the last 10 minutes
+            gte: new Date(Date.now() - 10 * 60 * 1000),
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      // If pending/success order exists, return it instead of creating new one
+      if (existingOrder) {
+        return {
+          orderId: existingOrder.providerOrderId,
+          amount: existingOrder.amount,
+          currency: existingOrder.currency,
+          key: process.env.RAZORPAY_KEY_ID,
+          idempotent: true, // Flag to indicate this is a cached response
+        };
       }
 
       // 3️⃣ Create Razorpay order

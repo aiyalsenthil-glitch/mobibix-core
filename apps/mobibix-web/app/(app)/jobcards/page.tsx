@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   listJobCards,
@@ -9,6 +9,7 @@ import {
   type JobCard,
   type JobStatus,
 } from "@/services/jobcard.api";
+import { getAccessToken } from "@/services/auth.api";
 import { JobCardModal } from "./JobCardModal";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
@@ -90,11 +91,24 @@ export default function JobCardsPage() {
   const {
     shops,
     selectedShopId,
+    selectedShop,
     isLoadingShops,
     error: shopsError,
     selectShop,
+    refreshShops,
     hasMultipleShops,
   } = useShop();
+
+  // Retry loading shops exactly once if empty (race condition fix)
+  const hasRetried = useRef(false);
+  useEffect(() => {
+    if (!isLoadingShops && shops.length === 0 && getAccessToken()) {
+      if (!hasRetried.current) {
+        hasRetried.current = true;
+        refreshShops();
+      }
+    }
+  }, [isLoadingShops, shops.length, refreshShops]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);

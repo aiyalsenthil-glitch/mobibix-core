@@ -49,6 +49,7 @@ model Tenant {
   jobCards            JobCard[]              @relation("TenantJobCards")
   ledgerAccounts      LedgerAccount[]
   ledgerCustomers     LedgerCustomer[]
+  ledgerPayments      LedgerPayment[]
   supplierPayments    SupplierPayment[]      @relation("TenantSupplierPayments")
   loyaltyTransactions LoyaltyTransaction[]
   members             Member[]               @relation("TenantMembers")
@@ -105,6 +106,7 @@ model User {
   assignedFollowUps CustomerFollowUp[]
   platformAuditLogs PlatformAuditLog[]
   shopStaffs        ShopStaff[]
+  ledgerPayments    LedgerPayment[]
   tenant            Tenant?            @relation(fields: [tenantId], references: [id])
   userTenants       UserTenant[]
 }
@@ -286,6 +288,7 @@ model LedgerCustomer {
   isActive  Boolean         @default(true)
   createdAt DateTime        @default(now())
   ledgers   LedgerAccount[]
+  payments  LedgerPayment[]
   tenant    Tenant          @relation(fields: [tenantId], references: [id])
 
   @@unique([tenantId, phone])
@@ -307,6 +310,7 @@ model LedgerAccount {
   customer          LedgerCustomer        @relation(fields: [customerId], references: [id])
   tenant            Tenant                @relation(fields: [tenantId], references: [id])
   collections       LedgerCollection[]
+  payments          LedgerPayment[]
 
   @@index([tenantId])
   @@index([customerId])
@@ -319,13 +323,40 @@ model LedgerCollection {
   periodNo  Int
   dueDate   DateTime
   amount    Int
+  paidAmount Int          @default(0)
   paid      Boolean       @default(false)
   paidAt    DateTime?
   createdAt DateTime      @default(now())
   ledger    LedgerAccount @relation(fields: [ledgerId], references: [id])
+  payments  LedgerPayment[]
 
   @@index([tenantId])
   @@index([ledgerId])
+}
+
+model LedgerPayment {
+  id          String               @id @default(cuid())
+  tenantId    String
+  ledgerId    String
+  customerId  String
+  collectionId String
+  collectedBy String
+  amount      Int
+  method      LedgerPaymentMethod
+  note        String?
+  collectedAt DateTime             @default(now())
+  createdAt   DateTime             @default(now())
+  ledger      LedgerAccount        @relation(fields: [ledgerId], references: [id])
+  customer    LedgerCustomer       @relation(fields: [customerId], references: [id])
+  collection  LedgerCollection     @relation(fields: [collectionId], references: [id])
+  collectedByUser User              @relation(fields: [collectedBy], references: [id])
+  tenant      Tenant               @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([ledgerId])
+  @@index([customerId])
+  @@index([collectionId])
+  @@index([collectedBy])
 }
 
 model StaffInvite {
@@ -1735,4 +1766,9 @@ enum AlertSource {
   CHURN_RISK
   INACTIVE
   CUSTOM
+}
+enum LedgerPaymentMethod {
+  CASH
+  UPI
+  BANK
 }

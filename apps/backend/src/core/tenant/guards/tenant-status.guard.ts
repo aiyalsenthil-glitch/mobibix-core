@@ -49,20 +49,35 @@ export class TenantStatusGuard implements CanActivate {
     }
 
     const now = new Date();
+    const gracePeriodDays = 7;
+    const gracePeriodEnd = new Date(now);
+    gracePeriodEnd.setDate(gracePeriodEnd.getDate() - gracePeriodDays);
 
     /**
-     * 1️⃣ ACTIVE always wins
+     * 1️⃣ ACTIVE always wins (including grace period)
      */
     const active = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
         module,
         status: 'ACTIVE',
-        endDate: { gt: now },
+        endDate: { gt: gracePeriodEnd }, // Allow grace period
       },
     });
 
     if (active) {
+      // If subscription expired but within grace period, attach warning
+      if (active.endDate < now) {
+        const daysRemaining = Math.ceil(
+          (active.endDate.getTime() - gracePeriodEnd.getTime()) /
+            (1000 * 60 * 60 * 24),
+        );
+        request.gracePeriodWarning = {
+          daysRemaining,
+          expiryDate: active.endDate,
+          message: `Subscription expired. ${daysRemaining} days remaining in grace period.`,
+        };
+      }
       return true;
     }
 

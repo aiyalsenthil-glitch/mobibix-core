@@ -20,8 +20,7 @@ interface UsageTrendsChartProps {
 }
 
 export function UsageTrendsChart({ data, isLoading }: UsageTrendsChartProps) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+  // Removed useTheme as we use CSS variables now
 
   if (isLoading) {
     return <div className="w-full h-64 bg-muted/20 animate-pulse rounded-lg" />;
@@ -48,39 +47,49 @@ export function UsageTrendsChart({ data, isLoading }: UsageTrendsChartProps) {
           <CartesianGrid
             strokeDasharray="3 3"
             vertical={false}
-            stroke={isDark ? "#334155" : "#e2e8f0"}
+            stroke="var(--border)"
+            opacity={0.5}
           />
           <XAxis
             dataKey="displayDate"
-            stroke="#94a3b8"
+            stroke="var(--muted-foreground)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
+            tick={{ fill: 'var(--muted-foreground)' }}
           />
-          <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+          <YAxis 
+            stroke="var(--muted-foreground)" 
+            fontSize={11} 
+            tickLine={false} 
+            axisLine={false}
+            tick={{ fill: 'var(--muted-foreground)' }}
+          />
           <Tooltip
             contentStyle={{
-              borderRadius: "8px",
-              border: "none",
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--border)",
               boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-              backgroundColor: isDark ? "#1e293b" : "#fff",
-              color: isDark ? "#fff" : "#0f172a",
+              backgroundColor: "var(--card)",
+              color: "var(--foreground)",
             }}
+            cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '4 4' }}
           />
-          <Legend />
+          <Legend wrapperStyle={{ paddingTop: '10px' }} />
           <Line
             type="monotone"
             dataKey="activeMembers"
             name="Members"
-            stroke="#0ea5e9"
+            stroke="var(--primary)"
             strokeWidth={2}
             dot={false}
+            activeDot={{ r: 4, strokeWidth: 0 }}
           />
           <Line
             type="monotone"
             dataKey="activeStaff"
             name="Staff"
-            stroke="#10b981"
+            stroke="#10b981" // Emerald-500 keeps its meaning
             strokeWidth={2}
             dot={false}
           />
@@ -88,7 +97,7 @@ export function UsageTrendsChart({ data, isLoading }: UsageTrendsChartProps) {
             type="monotone"
             dataKey="activeShops"
             name="Shops"
-            stroke="#8b5cf6"
+            stroke="#f59e0b" // Amber-500
             strokeWidth={2}
             dot={false}
           />
