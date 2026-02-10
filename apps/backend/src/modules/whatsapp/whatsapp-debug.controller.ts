@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { PlanRulesService } from '../../core/billing/plan-rules.service';
 import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
 import {
@@ -23,8 +24,8 @@ interface CheckItem {
 }
 
 @Controller('whatsapp/debug')
-@UseGuards(JwtAuthGuard)
-@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
 export class WhatsAppDebugController {
   constructor(
     private readonly prisma: PrismaService,

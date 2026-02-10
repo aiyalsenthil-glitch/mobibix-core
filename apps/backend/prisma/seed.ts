@@ -220,11 +220,27 @@ async function main() {
     'WHATSAPP_ALERTS_AUTOMATION',
   ];
 
-  // WhatsApp CRM add-on features
-  const FEATURES_WHATSAPP = [
+  // WhatsApp CRM add-on features (Tiered)
+  const FEATURES_WHATSAPP_STARTER = [
+    'WHATSAPP_UTILITY',
+    'WHATSAPP_ALERTS_AUTOMATION',
+  ];
+
+  const FEATURES_WHATSAPP_GROWTH = [
+    'WHATSAPP_UTILITY', 
+    'WHATSAPP_MARKETING',
+    'WHATSAPP_ALERTS_AUTOMATION', // Basic
+    'WHATSAPP_TEAM_INBOX',
+    'WHATSAPP_WEBHOOKS',
+  ];
+
+  const FEATURES_WHATSAPP_ADVANCED = [
     'WHATSAPP_UTILITY',
     'WHATSAPP_MARKETING',
-    'WHATSAPP_ALERTS_AUTOMATION',
+    'WHATSAPP_ALERTS_AUTOMATION', // Advanced
+    'WHATSAPP_TEAM_INBOX',
+    'WHATSAPP_WEBHOOKS',
+    'WHATSAPP_API_ACCESS',
   ];
 
   // V1 Plans (clean, no duplication)
@@ -299,26 +315,69 @@ async function main() {
       ],
     },
     {
-      code: 'WHATSAPP_CRM',
-      name: 'WhatsApp CRM',
-      level: 10, // Separate add-on
+      code: 'WHATSAPP_STARTER',
+      name: 'WhatsApp Starter',
+      level: 10,
       memberLimit: 0,
-      features: FEATURES_WHATSAPP,
+      features: FEATURES_WHATSAPP_STARTER,
       isPublic: true,
       module: 'WHATSAPP_CRM',
-      // Plan limits
       maxStaff: null,
       maxMembers: null,
-      whatsappUtilityQuota: 2000,
-      whatsappMarketingQuota: 1000,
-      analyticsHistoryDays: 0,
-      tagline: 'Supercharge your growth with WhatsApp CRM.',
-      description: 'Enable premium WhatsApp marketing, utility alerts, and automated follow-ups.',
+      whatsappUtilityQuota: 1000, // Message Quota
+      whatsappMarketingQuota: 0,
+      analyticsHistoryDays: 30,
+      tagline: 'Essential alerts for growing businesses.',
+      description: 'Start engaging customers with automated alerts and basic notifications.',
       featuresJson: [
-        'Automated Welcome Messages',
-        'Payment Reminders',
+        '1,000 Messages/mo',
+        'Automated Alerts',
+        'Smart Routing',
+        '5 Templates',
+      ],
+    },
+    {
+      code: 'WHATSAPP_GROWTH',
+      name: 'WhatsApp Growth',
+      level: 11,
+      memberLimit: 0,
+      features: FEATURES_WHATSAPP_GROWTH,
+      isPublic: true,
+      module: 'WHATSAPP_CRM',
+      maxStaff: null,
+      maxMembers: null,
+      whatsappUtilityQuota: 5000, // Message Quota
+      whatsappMarketingQuota: 0,
+      analyticsHistoryDays: 90,
+      tagline: 'Scale your marketing and support.',
+      description: 'Unlock team inbox, marketing campaigns, and webhooks.',
+      featuresJson: [
+        '5,000 Messages/mo',
         'Marketing Campaigns',
-        'CRM Integration',
+        'Team Inbox (3 Users)',
+        'Webhooks Integration',
+      ],
+    },
+    {
+      code: 'WHATSAPP_ADVANCED',
+      name: 'WhatsApp Advanced',
+      level: 12,
+      memberLimit: 0,
+      features: FEATURES_WHATSAPP_ADVANCED,
+      isPublic: true,
+      module: 'WHATSAPP_CRM',
+      maxStaff: null,
+      maxMembers: null,
+      whatsappUtilityQuota: 1000000, // High/Unlimited
+      whatsappMarketingQuota: 0,
+      analyticsHistoryDays: 365,
+      tagline: 'Full power for high-volume teams.',
+      description: 'Unlimited possibilities with full API access and advanced automation.',
+      featuresJson: [
+        'Unlimited Quota*',
+        'Full API Access',
+        'Unlimited Team Members',
+        'Advanced Chatbots',
       ],
     },
     // MOBILE_SHOP module plans
@@ -408,10 +467,20 @@ async function main() {
       QUARTERLY: 99900, // ₹999/quarter
       YEARLY: 359900, // ₹3599/year
     },
-    WHATSAPP_CRM: {
-      MONTHLY: 29900, // ₹299/month
-      QUARTERLY: 74900, // ₹749/quarter
-      YEARLY: 269900, // ₹2699/year
+    WHATSAPP_STARTER: {
+      MONTHLY: 79900,
+      QUARTERLY: 239700, 
+      YEARLY: 799900,
+    },
+    WHATSAPP_GROWTH: {
+      MONTHLY: 149900,
+      QUARTERLY: 449700,
+      YEARLY: 1499900,
+    },
+    WHATSAPP_ADVANCED: {
+      MONTHLY: 249900,
+      QUARTERLY: 749700,
+      YEARLY: 2499900,
     },
     MOBIBIX_TRIAL: {
       MONTHLY: 0, // Free trial

@@ -45,9 +45,10 @@ export class WhatsAppPhoneNumbersService {
    */
   async getPhoneNumberForPurpose(
     tenantId: string,
-    purpose: WhatsAppPhoneNumberPurpose,
+    purpose: WhatsAppPhoneNumberPurpose = WhatsAppPhoneNumberPurpose.DEFAULT,
+    routingTrack?: 'SYSTEM_DEFAULT' | 'TENANT_OWNED',
   ) {
-    // Try to find active phone number for specific purpose
+    // 1. Try to find specific phone number for this tenant
     let phoneNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
       where: {
         tenantId,
@@ -55,6 +56,10 @@ export class WhatsAppPhoneNumbersService {
         isActive: true,
       },
     });
+
+    if (phoneNumber) {
+      return phoneNumber;
+    }
 
     // Fallback to tenant default if no purpose-specific found
     if (!phoneNumber) {
@@ -67,9 +72,22 @@ export class WhatsAppPhoneNumbersService {
       });
     }
 
+    if (phoneNumber) {
+      return phoneNumber;
+    }
+
     // ─────────────────────────────────────────────────────────────
     // NEW: Fallback to Module-Level Defaults (Global Numbers)
     // ─────────────────────────────────────────────────────────────
+    
+    // CRITICAL: If routing track is TENANT_OWNED (CRM Add-on), we MUST NOT fallback.
+    // The rule is: CRM tenants must use their own number.
+    if (routingTrack === 'TENANT_OWNED') {
+         throw new NotFoundException(
+        `No active tenant-owned WhatsApp number found for purpose ${purpose}. CRM Add-on requires your own number.`,
+      );
+    }
+
     if (!phoneNumber) {
       const tenant = await this.prisma.tenant.findUnique({
         where: { id: tenantId },
@@ -110,13 +128,13 @@ export class WhatsAppPhoneNumbersService {
           phoneNumberId: modulePhone.phoneNumberId,
           wabaId: modulePhone.wabaId,
           purpose: modulePhone.purpose,
-          qualityRating: modulePhone.qualityRating,
-          encryptedAccessToken: modulePhone.encryptedAccessToken,
-          isDefault: modulePhone.isDefault,
+          qualityRating: null, // Module phone might not have this in schema or we ignore it
+          encryptedAccessToken: (modulePhone as any).encryptedAccessToken,
+          isDefault: false, // It is a default, but treated as specific here
           isActive: modulePhone.isActive,
           createdAt: modulePhone.createdAt,
           updatedAt: modulePhone.updatedAt,
-        };
+        } as any; // Cast to any to match return type if needed, or matched type
       }
     }
 
@@ -460,6 +478,31 @@ export class WhatsAppPhoneNumbersService {
 
     throw new NotFoundException('Phone number not found');
   }
+
+  /**
+   * Get a phone number by ID (checks both tenant and module tables)
+   */
+  async getPhoneNumberById(id: string) {
+    // 1. Check Tenant Table
+    const tenantPhone = await this.prisma.whatsAppPhoneNumber.findUnique({
+      where: { id },
+    });
+    if (tenantPhone) return tenantPhone;
+
+    // 2. Check Module Table
+    const modulePhone = await this.prisma.whatsAppPhoneNumberModule.findUnique({
+      where: { id },
+    });
+    if (modulePhone) {
+      return {
+        ...modulePhone,
+        tenantId: modulePhone.moduleType, // Virtual tenantId
+      };
+    }
+
+    return null;
+  }
+
 
   /**
    * Ensure tenant has at least one default phone number

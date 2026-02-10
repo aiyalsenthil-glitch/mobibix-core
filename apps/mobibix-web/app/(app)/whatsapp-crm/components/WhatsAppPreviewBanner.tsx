@@ -22,19 +22,19 @@ export default function WhatsAppPreviewBanner() {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
-              WhatsApp Integration is a Pro Feature
+              WhatsApp CRM is a Premium Add-on
             </h3>
             <p className="text-gray-600 mt-1">
-              Messaging, campaigns, and automation are available in the <span className="font-semibold text-indigo-600">PRO plan</span> or as an add-on.
+              Messaging, campaigns, and automation require an active <span className="font-semibold text-indigo-600">WhatsApp Add-on</span> subscription.
               You are currently viewing a preview.
             </p>
           </div>
         </div>
         <Link
-          href="/settings"
+          href="/whatsapp-crm?promo=true"
           className="whitespace-nowrap bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm"
         >
-          Upgrade to PRO
+          Buy Add-on
         </Link>
       </div>
     </div>

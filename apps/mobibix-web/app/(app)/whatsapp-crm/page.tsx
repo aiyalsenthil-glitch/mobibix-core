@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { authenticatedFetch } from "@/services/auth.api";
 import WhatsAppCrmPromo from "./components/WhatsAppCrmPromo";
 import WhatsAppCrmContactSupport from "./components/WhatsAppCrmContactSupport";
@@ -15,6 +16,8 @@ type CrmStatus = {
 };
 
 export default function WhatsAppCrmPage() {
+  const searchParams = useSearchParams();
+  const showPromo = searchParams.get("promo") === "true";
   const [status, setStatus] = useState<CrmStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,9 +82,9 @@ export default function WhatsAppCrmPage() {
     );
   }
 
-  // No subscription → Show promotion
+  // No subscription OR forced via query param → Show promotion
   // EXCEPTION: Allow MOBILE_SHOP (Retail Demo) to bypass this check
-  if (!status?.hasSubscription && status?.moduleType !== 'MOBILE_SHOP') {
+  if (showPromo || (!status?.hasSubscription && status?.moduleType !== 'MOBILE_SHOP')) {
     return <WhatsAppCrmPromo />;
   }
 

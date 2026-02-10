@@ -188,38 +188,19 @@ export class WhatsAppSender {
     }
 
     // ─────────────────────────────
-    // 1️⃣ Check WhatsApp Settings (enabled check)
-    // ─────────────────────────────
-    const setting = await this.prisma.whatsAppSetting.findUnique({
-      where: { tenantId },
-    });
-
-    // PERMISSIVE CHECK:
-    // Only block if setting explicitly exists and is set to false.
-    // If setting is missing, assume enabled (plan limits will govern access).
-    if (setting && setting.enabled === false) {
-      return logFailure(
-        'WhatsApp is disabled in tenant settings',
-        true,
-        'WhatsApp disabled in settings',
-      );
-    }
-
-    // Previous "Tenant.whatsappEnabled" check is removed to prevent accidental blocking.
-    // Logic now relies on Plan Rules (checked below) as the primary gatekeeper.
-
-    // ─────────────────────────────
     // 2️⃣ Get Dynamic Phone Number from DB
     // ─────────────────────────────
-
+    
     // 2a. Dual-Track Routing Check
-    const routing = await this.routingService.resolveTrack(tenantId, notificationType);
+    // For manual text, we treat the type as 'MANUAL' which is NOT in TRACK_A_ALLOWED_TYPES
+    const routing = await this.routingService.resolveTrack(tenantId, 'MANUAL');
+    
     if (!routing.allowed) {
-      return logFailure(
-        routing.reason || `Track ${routing.track} does not allow '${notificationType}'`,
-        true,
-        routing.reason || 'Routing denied',
-      );
+        return logFailure(
+            'Free-text messaging requires WHATSAPP_CRM add-on and a tenant-owned phone number.',
+            true,
+            'Free-text blocked by routing (Track A)',
+        );
     }
 
     // 2b. Resolve phone number
@@ -227,10 +208,12 @@ export class WhatsAppSender {
     let phoneNumberConfig;
 
     try {
+      // Pass routing track to ensure we don't fallback to system default if on Track B
       phoneNumberConfig =
         await this.phoneNumbersService.getPhoneNumberForPurpose(
           tenantId,
           purpose,
+          routing.track,
         );
     } catch (error) {
       return logFailure(

@@ -120,28 +120,28 @@ export default function WhatsAppCrmDashboard({
                   className={`w-full text-left px-4 py-3 rounded-lg transition items-center flex justify-between group ${!whatsappAllowed ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-teal-50 text-teal-700 hover:bg-teal-100'}`}
                 >
                   <span>📝 Create Template</span>
-                  {!whatsappAllowed && <span className="text-xs border border-gray-300 rounded px-1 group-hover:block">PRO</span>}
+                  {!whatsappAllowed && <span className="text-xs border border-gray-300 rounded px-1 group-hover:block">ADD-ON</span>}
                 </button>
                 <button 
                   disabled={!whatsappAllowed}
                   className={`w-full text-left px-4 py-3 rounded-lg transition items-center flex justify-between group ${!whatsappAllowed ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
                 >
                   <span>👥 Add Team Member</span>
-                  {!whatsappAllowed && <span className="text-xs border border-gray-300 rounded px-1">PRO</span>}
+                  {!whatsappAllowed && <span className="text-xs border border-gray-300 rounded px-1">ADD-ON</span>}
                 </button>
                 <button 
                   disabled={!whatsappAllowed}
                   className={`w-full text-left px-4 py-3 rounded-lg transition items-center flex justify-between group ${!whatsappAllowed ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}
                 >
                   <span>⚙️ Configure Automation</span>
-                  {!whatsappAllowed && <span className="text-xs border border-gray-300 rounded px-1">PRO</span>}
+                  {!whatsappAllowed && <span className="text-xs border border-gray-300 rounded px-1">ADD-ON</span>}
                 </button>
                 <button 
                   disabled={!whatsappAllowed}
                   className={`w-full text-left px-4 py-3 rounded-lg transition items-center flex justify-between group ${!whatsappAllowed ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}`}
                 >
                   <span>📊 View Analytics</span>
-                  {!whatsappAllowed && <span className="text-xs border border-gray-300 rounded px-1">PRO</span>}
+                  {!whatsappAllowed && <span className="text-xs border border-gray-300 rounded px-1">ADD-ON</span>}
                 </button>
               </div>
             </div>

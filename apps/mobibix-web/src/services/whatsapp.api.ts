@@ -145,3 +145,13 @@ export async function scheduleWhatsAppCampaign(
 
   return response.json();
 }
+
+
+export async function connectWhatsApp(): Promise<{ url: string }> {
+  const response = await authenticatedFetch("/integrations/whatsapp/connect");
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to initiate WhatsApp connection");
+  }
+  return response.json();
+}

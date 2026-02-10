@@ -20,10 +20,10 @@ import { ModuleType } from '@prisma/client';
  */
 
 export interface PublicPlan {
-  name: 'TRIAL' | 'STANDARD' | 'PRO';
+  name: string; // Changed from literal to string for flexibility
   displayName: string;
   level: number;
-  isAddon: false;
+  isAddon: boolean; // Changed to boolean
 }
 
 export interface PublicAddon {
@@ -59,7 +59,9 @@ export class PlanMappingService {
         PRO: 'MOBIBIX_PRO',
       },
       WHATSAPP_CRM: {
-        WHATSAPP_CRM: 'WHATSAPP_CRM',
+        STARTER: 'WHATSAPP_STARTER',
+        GROWTH: 'WHATSAPP_GROWTH',
+        ADVANCED: 'WHATSAPP_ADVANCED',
       },
     };
 
@@ -77,7 +79,9 @@ export class PlanMappingService {
       MOBIBIX_TRIAL: 'TRIAL',
       MOBIBIX_STANDARD: 'STANDARD',
       MOBIBIX_PRO: 'PRO',
-      WHATSAPP_CRM: 'WHATSAPP_CRM',
+      WHATSAPP_STARTER: 'STARTER',
+      WHATSAPP_GROWTH: 'GROWTH',
+      WHATSAPP_ADVANCED: 'ADVANCED',
     };
 
     return reverseMapping[internalCode] || internalCode;
@@ -88,7 +92,26 @@ export class PlanMappingService {
    */
   getPublicPlans(module: ModuleType): PublicPlan[] {
     if (module === ModuleType.WHATSAPP_CRM) {
-      return []; // WhatsApp CRM is an add-on, not a base plan
+      return [
+        {
+          name: 'STARTER',
+          displayName: 'Starter',
+          level: 10,
+          isAddon: true,
+        },
+        {
+          name: 'GROWTH',
+          displayName: 'Growth',
+          level: 11,
+          isAddon: true,
+        },
+        {
+          name: 'ADVANCED',
+          displayName: 'Advanced',
+          level: 12,
+          isAddon: true,
+        },
+      ];
     }
 
     // MOBILE_REPAIR uses same plans as MOBILE_SHOP

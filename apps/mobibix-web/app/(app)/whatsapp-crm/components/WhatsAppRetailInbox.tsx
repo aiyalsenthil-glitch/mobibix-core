@@ -16,12 +16,14 @@ export default function WhatsAppRetailInbox({ disabled = false }: InboxProps) {
   // 1. Fetch Logs
   // 1. Fetch Logs
   useEffect(() => {
+    if (disabled) return;
     loadLogs();
     const interval = setInterval(loadLogs, 10000); // Poll every 10s for demo
     return () => clearInterval(interval);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [disabled]); // ✅ Re-run if disabled changes
 
   async function loadLogs() {
+    if (disabled) return; // ✅ Block if disabled
     try {
       const logs = await getWhatsAppLogs();
       // Group by phone
@@ -46,8 +48,15 @@ export default function WhatsAppRetailInbox({ disabled = false }: InboxProps) {
         });
         setSelectedPhone(sortedPhones[0]);
       }
-    } catch (err) {
-      console.error("Failed to load WhatsApp logs", err);
+    } catch (err: any) {
+      if (err.message && (err.message.includes("PLAN_REQUIRED") || err.message.includes("upgrade"))) {
+          console.warn("WhatsApp logs access restricted:", err.message);
+          // Set a flag or just silent fail for logs, optionally show a banner
+          // For now, we just don't set conversations, so it shows empty state.
+          // But we could add a toast or specific UI state.
+      } else {
+          console.error("Failed to load WhatsApp logs", err);
+      }
     }
   }
 
@@ -96,7 +105,11 @@ export default function WhatsAppRetailInbox({ disabled = false }: InboxProps) {
           {sortedPhones.length === 0 ? (
             <div className="p-8 text-center text-gray-400">
               <div className="text-4xl mb-3 opacity-20">👥</div>
-              <p className="text-sm">Select a conversation to view activity</p>
+              <p className="text-sm">
+                No active conversations found. 
+                <br />
+                <span className="text-xs opacity-70">(Live updates might be restricted)</span>
+              </p>
             </div>
           ) : (
             sortedPhones.map(phone => {

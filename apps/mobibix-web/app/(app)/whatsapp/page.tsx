@@ -7,6 +7,7 @@ import {
   getWhatsAppLogs,
   scheduleWhatsAppCampaign,
   sendWhatsAppMessage,
+  connectWhatsApp,
   WhatsAppDashboard,
   WhatsAppLog,
 } from "@/services/whatsapp.api";
@@ -59,7 +60,7 @@ export default function WhatsAppPage() {
 
       // First, check WhatsApp CRM subscription status
       const statusResponse = await authenticatedFetch(
-        "/user/whatsapp-crm/status",
+        "/user/whatsapp-crm/check-status",
       );
       if (statusResponse.ok) {
         const status = await statusResponse.json();
@@ -183,9 +184,9 @@ export default function WhatsAppPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl shadow-lg max-w-2xl w-full p-8">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
-                className="w-8 h-8 text-yellow-600"
+                className="w-8 h-8 text-blue-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -199,48 +200,58 @@ export default function WhatsAppPage() {
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Setup Needed
+              Connect WhatsApp
             </h2>
             <p className="text-gray-600">
-              Your WhatsApp CRM subscription is active, but setup is needed.
+              Your subscription is active. Connect your Facebook account to start using WhatsApp CRM.
             </p>
           </div>
 
           {!crmStatus.hasPhoneNumber && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 text-center">
               <h3 className="font-semibold text-blue-900 mb-2">
-                📱 Verify WhatsApp Number
+                Step 1: Link Account
               </h3>
-              <p className="text-blue-800 text-sm mb-3">
-                Please contact our support team to verify and connect your
-                WhatsApp Business number.
+              <p className="text-blue-800 text-sm mb-6">
+                You will be redirected to Facebook to grant permissions.
               </p>
-              <a
-                href="mailto:support@mobibix.com"
-                className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+              
+              <button
+                onClick={async () => {
+                  try {
+                    setLoading(true);
+                    const { url } = await connectWhatsApp();
+                    window.location.href = url;
+                  } catch (err: any) {
+                    setError("Failed to initiate connection: " + err.message);
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold text-lg transition-transform hover:scale-105 shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Contact Support
-              </a>
+                {loading ? (
+                   <span>Redirecting...</span>
+                ) : (
+                  <>
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.791-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    Connect with Facebook
+                  </>
+                )}
+              </button>
             </div>
           )}
 
           <div className="bg-gray-100 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-900 mb-2">Next Steps</h3>
+            <h3 className="font-semibold text-gray-900 mb-2">How it works</h3>
             <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
-              <li>Contact our support team to enable WhatsApp CRM</li>
-              <li>Verify your WhatsApp Business number</li>
-              <li>Configure your business profile</li>
-              <li>Start managing customer conversations</li>
+              <li>Click "Connect with Facebook" above</li>
+              <li>Log in to your Facebook account</li>
+              <li>Select your WhatsApp Business Portfolio</li>
+              <li>Grant permissions to MobiBix</li>
             </ol>
-          </div>
-
-          <div className="mt-8 text-center">
-            <a
-              href="tel:+918667551566"
-              className="inline-block bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium"
-            >
-              Call Us Now
-            </a>
           </div>
         </div>
       </div>

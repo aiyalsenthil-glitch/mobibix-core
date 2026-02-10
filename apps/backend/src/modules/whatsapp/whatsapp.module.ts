@@ -35,6 +35,9 @@ import { WhatsAppCrmPhoneNumberGuard } from './guards/whatsapp-crm-phone-number.
 import { WhatsAppTokenService } from './whatsapp-token.service';
 import { WhatsAppRoutingService } from './whatsapp-routing.service';
 
+import { WhatsAppOnboardingController } from './onboarding/whatsapp-onboarding.controller';
+import { WhatsAppOnboardingService } from './onboarding/whatsapp-onboarding.service';
+
 @Module({
   controllers: [
     WhatsAppWebhookController,
@@ -43,12 +46,13 @@ import { WhatsAppRoutingService } from './whatsapp-routing.service';
     WhatsAppPhoneNumbersController,
     AutomationController,
     WhatsAppTenantsController,
-    WhatsAppDebugController, // ✅ Added
-    WhatsAppPlansController, // <-- Added for /whatsapp/plans
+    WhatsAppDebugController,
+    WhatsAppPlansController,
     WhatsAppUserController,
     WhatsAppCrmController,
+    WhatsAppOnboardingController, // ✅ Added
   ],
-  imports: [ScheduleModule.forRoot(), BillingModule, ShopProductsModule], // ✅ Added ShopProductsModule
+  imports: [ScheduleModule.forRoot(), BillingModule, ShopProductsModule],
   providers: [
     PrismaService,
     WhatsAppSender,
@@ -56,22 +60,23 @@ import { WhatsAppRoutingService } from './whatsapp-routing.service';
     SafeWhatsAppCron,
     WhatsAppLogger,
     WhatsAppPhoneNumbersService,
-    WhatsAppVariableResolver, // ✅ Restored
-    AutomationService, // ✅ Restored
+    WhatsAppVariableResolver,
+    AutomationService,
     AutomationSafetyService,
     EntityResolverService,
-    WhatsAppRemindersService, // ✅ Added for DI
-    WhatsAppRemindersCron, // ✅ Added for reminder sending
+    WhatsAppRemindersService,
+    WhatsAppRemindersCron,
     WhatsAppUserService,
-    WhatsAppCapabilityRouter, // ✅ Added
-    RetailDemoHandler, // ✅ Added
-    RetailDemoCatalog, // ✅ Added
+    WhatsAppCapabilityRouter,
+    RetailDemoHandler,
+    RetailDemoCatalog,
     WhatsAppCrmService,
     WhatsAppCrmSubscriptionGuard,
     WhatsAppCrmEnabledGuard,
     WhatsAppCrmPhoneNumberGuard,
     WhatsAppTokenService,
     WhatsAppRoutingService,
+    WhatsAppOnboardingService, // ✅ Added
   ],
   exports: [
     WhatsAppSender,
@@ -84,6 +89,7 @@ import { WhatsAppRoutingService } from './whatsapp-routing.service';
     WhatsAppCrmPhoneNumberGuard,
     WhatsAppTokenService,
     WhatsAppRoutingService,
+    WhatsAppOnboardingService, // ✅ Exported for transparency
   ],
 })
 export class WhatsAppModule {}

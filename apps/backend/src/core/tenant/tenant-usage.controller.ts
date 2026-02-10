@@ -12,8 +12,9 @@ interface UsageSummary {
   members: { used: number; limit: number | null };
   staff: { used: number; limit: number | null };
   whatsapp: {
-    utility: { used: number; limit: number; friendlyText: string };
-    marketing: { used: number; limit: number; friendlyText: string };
+    utility: { used: number; limit: number; remaining: number; friendlyText: string };
+    marketing: { used: number; limit: number; remaining: number; friendlyText: string };
+    service: { used: number; limit: number; remaining: number; friendlyText: string };
   };
   plan: { code: string; name: string; level: number };
   nextBillingDate: Date | null;
@@ -119,7 +120,8 @@ export class TenantUsageController {
       return `${limit} messages/month`;
     };
 
-    const whatsappLimits = rules?.whatsapp || { utility: 0, marketing: 0 };
+    const whatsappLimits = rules?.whatsapp || { messageQuota: 0 };
+    const totalQuota = whatsappLimits.messageQuota || 0;
     const maxStaff = rules?.maxStaff ?? 0;
     const maxMembers = rules?.maxMembers ?? 0;
 
@@ -134,21 +136,26 @@ export class TenantUsageController {
       },
       whatsapp: {
         utility: {
+          limit: totalQuota,
           used: whatsappUtilityUsed,
-          limit: whatsappLimits.utility,
-          friendlyText: translateQuota(
-            whatsappLimits.utility,
-            whatsappLimits.isDaily,
-          ),
+          remaining: Math.max(0, totalQuota - whatsappUtilityUsed - whatsappMarketingUsed),
+          friendlyText: translateQuota(totalQuota, false),
         },
         marketing: {
+          limit: totalQuota,
           used: whatsappMarketingUsed,
-          limit: whatsappLimits.marketing,
-          friendlyText: translateQuota(whatsappLimits.marketing, false),
+          remaining: Math.max(0, totalQuota - whatsappUtilityUsed - whatsappMarketingUsed),
+          friendlyText: translateQuota(totalQuota, false),
+        },
+        service: {
+            limit: -1, // Service is usually unlimited 24h window
+            used: (usageAggregation._sum.service || 0),
+            remaining: -1,
+            friendlyText: 'Unlimited',
         },
       },
       plan: {
-        code: planCode,
+        code: planCode, // Updated to use planCode variable
         name: subscription?.plan?.name || 'Trial',
         level: subscription?.plan?.level || 0,
       },

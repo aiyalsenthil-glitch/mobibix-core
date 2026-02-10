@@ -12,7 +12,10 @@ import {
 import { Request } from 'express';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
-import { RequirePlanFeature } from '../../core/billing/guards/plan-feature.guard';
+import {
+  PlanFeatureGuard,
+  RequirePlanFeature,
+} from '../../core/billing/guards/plan-feature.guard';
 import { WhatsAppUserService } from './whatsapp-user.service';
 import {
   CreateWhatsAppCampaignDto,
@@ -24,7 +27,7 @@ import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
 @Controller('user/whatsapp')
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, PlanFeatureGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppUserController {
   constructor(private readonly whatsappUserService: WhatsAppUserService) {}

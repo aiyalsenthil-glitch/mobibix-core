@@ -166,7 +166,7 @@ export class WhatsAppWebhookController {
 
       for (const message of messages) {
         const messageId = message.id; // wamid.HBgLM...
-        console.log(`[Webhook] Processing messageId: ${messageId}`);
+        this.logger.debug(`[Webhook] Processing messageId: ${messageId}`);
 
         // 2. Idempotency Check
         const existingLog = await this.prisma.whatsAppLog.findFirst({
@@ -176,7 +176,7 @@ export class WhatsAppWebhookController {
 
         if (existingLog) {
           this.logger.debug(`Duplicate message ignored: ${messageId}`);
-          console.log(`[Webhook] Duplicate ignored: ${messageId}`);
+          this.logger.debug(`[Webhook] Duplicate ignored: ${messageId}`);
           continue;
         }
 
@@ -195,11 +195,12 @@ export class WhatsAppWebhookController {
           }
         }
 
-        console.log(`[Webhook] Extracted text: "${text}" from ${senderPhone}`);
+        // REMOVED: console.log message text for security
+        this.logger.debug(`[Webhook] Extracted text from ${senderPhone}`);
 
         if (text) {
           this.logger.log(
-            `📨 Received '${text}' from ${senderPhone} (Tenant: ${tenantId})`,
+            `📨 Received message from ${senderPhone} (Tenant: ${tenantId})`,
           );
 
           // 4. Log Incoming Message (Optional but good for history)

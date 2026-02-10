@@ -376,8 +376,7 @@ export class TenantService {
         staffAllowed: (rules?.maxStaff ?? 0) !== 0,
         maxStaff: rules?.maxStaff ?? null,
         whatsappAllowed:
-          (rules?.whatsapp?.utility || 0) > 0 ||
-          (rules?.whatsapp?.marketing || 0) > 0,
+          (rules?.whatsapp?.messageQuota || 0) > 0,
       },
 
       membersUsed,

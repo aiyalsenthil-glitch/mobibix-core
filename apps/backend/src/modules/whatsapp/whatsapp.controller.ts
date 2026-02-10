@@ -29,7 +29,7 @@ import {
 
 @Controller('whatsapp')
 @UseGuards(JwtAuthGuard, RolesGuard)
-// @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN) // TEMPORARILY DISABLED FOR DEMO
+@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
 export class WhatsAppController {
   constructor(
     private readonly prisma: PrismaService,
@@ -77,7 +77,9 @@ export class WhatsAppController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    this.validateAccess(req, tenantId); // TEMPORARILY DISABLED FOR DEMO
+    // ✅ TENANT ISOLATION: Verify user has access to requested tenant
+    // Admins can view "all" logs; staff only their own tenant
+    this.validateAccess(req, tenantId);
 
     // Default to last 7 days if no dates provided
     const end = endDate ? new Date(endDate) : new Date();

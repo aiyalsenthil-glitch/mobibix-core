@@ -17,7 +17,7 @@ import {
   WhatsAppLogsQueryDto,
 } from './dto/whatsapp-user.dto';
 import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
-import { PLAN_LIMITS } from '../../core/billing/plan-limits';
+import { PLAN_LIMITS } from '../../core/billing/plan-limits'; // ⚠️ DEPRECATED: Fallback only — DB-driven PlanRulesService is primary
 
 type WhatsAppTemplateCategory = 'UTILITY' | 'MARKETING';
 
@@ -273,49 +273,43 @@ export class WhatsAppUserService {
     planCode: string,
     category: WhatsAppTemplateCategory,
   ) {
-    const limits = PLAN_LIMITS[planCode]?.whatsapp;
+    // ── PRIMARY: DB-driven plan rules (includes add-on merging) ──
+    const module = await this.resolveTenantModule(tenantId);
+    const planRules = await this.planRulesService.getPlanRulesForTenant(tenantId, module);
+    const limits = planRules?.whatsapp ?? PLAN_LIMITS[planCode]?.whatsapp;
     if (!limits) return;
 
-    const baseLimit =
-      category === 'MARKETING'
-        ? (limits.marketing ?? 0)
-        : (limits.utility ?? 0);
+    const baseLimit = limits.messageQuota ?? 0;
 
-    const addonLimit = await this.getAddonQuota(tenantId, category);
-    const totalLimit = baseLimit + addonLimit;
+    // Fetch Add-on Quotas (Sum of all categories if they are category-specific in DB, 
+    // but effectively they add to the global pool in this new model)
+    const [utilityAddon, marketingAddon] = await Promise.all([
+      this.getAddonQuota(tenantId, 'UTILITY'),
+      this.getAddonQuota(tenantId, 'MARKETING'),
+    ]);
+    const totalAddonLimit = utilityAddon + marketingAddon;
+    const totalLimit = baseLimit + totalAddonLimit;
 
     // Block if total limit is 0
     if (totalLimit <= 0) {
       throw new ForbiddenException(
-        `Your plan (${planCode}) does not support ${category} messages. Buy an Add-on Pack to enable.`,
+        `Your plan (${planCode}) does not support WhatsApp messaging. Buy an Add-on Pack to enable.`,
       );
     }
 
     const isDaily = limits.isDaily ?? false;
-    const used = await this.getCategoryUsage(tenantId, category, isDaily);
+    
+    // Check TOTAL usage (Shared Pool)
+    const [utilityUsed, marketingUsed] = await Promise.all([
+      this.getCategoryUsage(tenantId, 'UTILITY', isDaily),
+      this.getCategoryUsage(tenantId, 'MARKETING', isDaily),
+    ]);
+    const totalUsed = utilityUsed + marketingUsed;
 
-    // If Base is Daily, usage resets separately from Monthly Addon.
-    // Conservative Logic:
-    // If Daily, we check `usedToday < baseLimit`.
-    // If exceeded, we check `usedMonth < (baseLimitIfItWasMonthly + addonLimit)`.
-    // Simplify:
-    // "Tenant can exceed base limit safely"
-    // Just enforce: used <= totalLimit.
-    // Note: This logic for daily base + monthly addon might restrict if daily used up but monthly addon available?
-    // No, if totalLimit = 0 + 500 = 500. used = 50. 50 < 500. Passing.
-    // If Daily Base = 3. Addon = 500. Total = 503.
-    // UsedToday = 5.
-    // If isDaily=true, `used` is Today's usage.
-    // 5 < 503. OK.
-    // This allows daily usage to go up to 500.
-    // But does it restrict TOTAL MONTH usage?
-    // We should probably check Monthly usage too if they have Addon.
-    // Let's assume most users are Standard (Monthly) for Phase 2.
-
-    if (used >= totalLimit) {
+    if (totalUsed >= totalLimit) {
       const period = isDaily ? 'today' : 'this month';
       throw new ForbiddenException(
-        `WHATSAPP_QUOTA_EXCEEDED: You have reached your ${category.toLowerCase()} limit of ${totalLimit} messages for ${period}. Upgrade your plan to increase limits.`,
+        `WHATSAPP_QUOTA_EXCEEDED: You have reached your global message limit of ${totalLimit} messages for ${period}. Upgrade your plan to increase limits.`,
       );
     }
   }
@@ -675,9 +669,11 @@ export class WhatsAppUserService {
 
     const planCode = subscription?.plan?.code ?? subscription?.plan?.name;
 
-    const limits = PLAN_LIMITS[planCode]?.whatsapp || {
-      utility: 0,
-      marketing: 0,
+    // ── PRIMARY: DB-driven plan rules ──
+    const module = await this.resolveTenantModule(tenantId);
+    const planRules = await this.planRulesService.getPlanRulesForTenant(tenantId, module);
+    const limits = planRules?.whatsapp ?? PLAN_LIMITS[planCode]?.whatsapp ?? {
+      messageQuota: 0,
     };
     const isDaily = limits.isDaily ?? false;
 
@@ -696,21 +692,24 @@ export class WhatsAppUserService {
     // Calculate Reset Date
     const { end } = this.getQuotaDateRange(isDaily);
     const resetAt = new Date(end.getTime() + 1); // Start of next period
+    
+    const sharedBaseLimit = limits.messageQuota ?? 0;
 
     return {
       plan: planCode,
       module: subscription.module,
+      // Shared Pool Representation
       utility: {
         used: utilityUsed,
-        baseLimit: limits.utility ?? 0,
+        baseLimit: sharedBaseLimit, // Shared
         addonLimit: utilityAddon,
-        totalLimit: (limits.utility ?? 0) + utilityAddon,
+        totalLimit: sharedBaseLimit + utilityAddon + marketingAddon, // Shared pool
       },
       marketing: {
         used: marketingUsed,
-        baseLimit: limits.marketing ?? 0,
+        baseLimit: sharedBaseLimit, // Shared
         addonLimit: marketingAddon,
-        totalLimit: (limits.marketing ?? 0) + marketingAddon,
+        totalLimit: sharedBaseLimit + utilityAddon + marketingAddon, // Shared pool
       },
       // If daily, it resets tomorrow. If monthly, next month.
       resetAt: resetAt.toISOString(),

@@ -3,10 +3,10 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
-@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class UsersMeController {
   constructor(private readonly usersService: UsersService) {}
 

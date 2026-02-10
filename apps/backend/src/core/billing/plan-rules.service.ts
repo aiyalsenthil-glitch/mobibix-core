@@ -11,8 +11,7 @@ export type PlanRules = {
   maxMembers: number | null; // null = unlimited
   maxStaff: number | null; // null = unlimited
   whatsapp?: {
-    utility: number;
-    marketing: number;
+    messageQuota: number;
     isDaily?: boolean;
   };
   analyticsHistoryDays: number;
@@ -58,8 +57,7 @@ export class PlanRulesService {
       maxMembers: plan.maxMembers, // null = unlimited
       maxStaff: plan.maxStaff, // null = unlimited
       whatsapp: {
-        utility: plan.whatsappUtilityQuota,
-        marketing: plan.whatsappMarketingQuota,
+        messageQuota: (plan.whatsappUtilityQuota || 0) + (plan.whatsappMarketingQuota || 0),
         isDaily: false, // Monthly quotas
       },
       analyticsHistoryDays: plan.analyticsHistoryDays,
@@ -80,14 +78,18 @@ export class PlanRulesService {
     tenantId: string,
     module?: ModuleType,
   ): Promise<PlanRules | null> {
-    // 1. Fetch Active Subscription (filtered by module if provided)
-    const subscription = await this.prisma.tenantSubscription.findFirst({
+    // 1. Fetch ALL Active Subscriptions
+    const subscriptions = await this.prisma.tenantSubscription.findMany({
       where: {
         tenantId,
         status: { in: ['ACTIVE', 'TRIAL'] },
-        ...(module && { module }), // Filter by module if provided
+        // If module is specified, we STILL need to check if there are add-on subscriptions
+        // But for now, let's aggregate EVERYTHING to be safe, or filter if strict
+        // proper behavior: If module is GYM, we want GYM features + global add-ons
+        // If module is WHATSAPP, we want WHATSAPP features
+        // BUT: WhatsApp features might be accessed from a generic context.
+        // SAFE BET: Aggregate all active subscriptions for the tenant.
       },
-      orderBy: { startDate: 'desc' },
       include: {
         plan: {
           include: { planFeatures: true },
@@ -103,55 +105,72 @@ export class PlanRulesService {
       },
     });
 
-    if (!subscription?.plan) {
+    if (!subscriptions || subscriptions.length === 0) {
       return null;
     }
 
-    // 2. Get base plan rules
-    const basePlan = subscription.plan;
-    const baseRules: PlanRules = {
-      planId: basePlan.id,
-      code: basePlan.code,
-      name: basePlan.name,
-      enabled: basePlan.isActive,
-      maxMembers: basePlan.maxMembers,
-      maxStaff: basePlan.maxStaff,
+    // 2. Initialize aggregated rules with defaults
+    const aggregatedRules: PlanRules = {
+      planId: 'aggregated',
+      code: 'AGGREGATED',
+      name: 'Combined Subscription',
+      enabled: true,
+      maxMembers: 0,
+      maxStaff: 0,
       whatsapp: {
-        utility: basePlan.whatsappUtilityQuota,
-        marketing: basePlan.whatsappMarketingQuota,
+        messageQuota: 0,
         isDaily: false,
       },
-      analyticsHistoryDays: basePlan.analyticsHistoryDays,
-      features: basePlan.planFeatures
-        .filter((f) => f.enabled)
-        .map((f) => f.feature as WhatsAppFeature),
+      analyticsHistoryDays: 0,
+      features: [],
     };
 
-    // 3. Merge add-on features and quotas (Task 3)
-    if (subscription.addons && subscription.addons.length > 0) {
-      const addonFeatures = new Set(baseRules.features);
-      let totalUtilityQuota = baseRules.whatsapp?.utility || 0;
-      let totalMarketingQuota = baseRules.whatsapp?.marketing || 0;
+    const featuresSet = new Set<WhatsAppFeature>();
 
-      for (const addon of subscription.addons) {
-        // Merge features
-        addon.addonPlan.planFeatures
-          .filter((f) => f.enabled)
-          .forEach((f) => addonFeatures.add(f.feature as WhatsAppFeature));
+    // 3. Iterate and Merge
+    for (const sub of subscriptions) {
+      if (!sub.plan) continue;
 
-        // Add quotas
-        totalUtilityQuota += addon.addonPlan.whatsappUtilityQuota;
-        totalMarketingQuota += addon.addonPlan.whatsappMarketingQuota;
+      const plan = sub.plan;
+
+      // Merge Limits (Take MAX for non-additive, SUM for quotas)
+      if (plan.maxMembers === null) aggregatedRules.maxMembers = null; // Unlim wins
+      else if (aggregatedRules.maxMembers !== null) aggregatedRules.maxMembers = Math.max(aggregatedRules.maxMembers, plan.maxMembers);
+
+      if (plan.maxStaff === null) aggregatedRules.maxStaff = null;
+      else if (aggregatedRules.maxStaff !== null) aggregatedRules.maxStaff = Math.max(aggregatedRules.maxStaff, plan.maxStaff);
+
+      aggregatedRules.analyticsHistoryDays = Math.max(aggregatedRules.analyticsHistoryDays, plan.analyticsHistoryDays);
+
+      // Add WhatsApp Quotas (Additive)
+      if (aggregatedRules.whatsapp) {
+        aggregatedRules.whatsapp.messageQuota += (plan.whatsappUtilityQuota || 0) + (plan.whatsappMarketingQuota || 0);
       }
 
-      baseRules.features = Array.from(addonFeatures);
-      if (baseRules.whatsapp) {
-        baseRules.whatsapp.utility = totalUtilityQuota;
-        baseRules.whatsapp.marketing = totalMarketingQuota;
+      // Merge features
+      plan.planFeatures
+        .filter((f) => f.enabled)
+        .forEach((f) => featuresSet.add(f.feature as WhatsAppFeature));
+
+      // Merge Add-ons within this subscription
+      if (sub.addons) {
+        for (const addon of sub.addons) {
+          if (aggregatedRules.whatsapp) {
+            aggregatedRules.whatsapp.messageQuota += (addon.addonPlan.whatsappUtilityQuota || 0) + (addon.addonPlan.whatsappMarketingQuota || 0);
+          }
+          addon.addonPlan.planFeatures
+            .filter((f) => f.enabled)
+            .forEach((f) => featuresSet.add(f.feature as WhatsAppFeature));
+        }
       }
     }
 
-    return baseRules;
+    aggregatedRules.features = Array.from(featuresSet);
+
+    // If a specific module was requested, we might want to ensure that module is actually present
+    // but typically feature checks are "does tenant have X feature", regardless of which sub provided it.
+    
+    return aggregatedRules;
   }
 
   async isFeatureEnabledForTenant(

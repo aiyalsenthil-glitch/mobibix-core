@@ -85,22 +85,34 @@ export class PaymentsVerifyController {
     });
 
     // 5️⃣ 🔥 CREATE/ACTIVATE SUBSCRIPTION
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: req.user.tenantId },
-      select: { tenantType: true },
+    // 🔒 SECURITY FIX: Fetch PLAN to determine target module (WHATSAPP_CRM vs GYM vs MOBILE_SHOP)
+    const paymentRecord = await this.prisma.payment.findUnique({
+      where: { id: existingPayment.id },
     });
 
-    const module =
-      (tenant?.tenantType || '').toUpperCase().replace(/[\s_-]/g, '') === 'GYM'
-        ? ModuleType.GYM
-        : ModuleType.MOBILE_SHOP;
+    if (!paymentRecord) {
+        throw new BadRequestException('Payment record not found');
+    }
 
-    // 🔒 SECURITY FIX: Use planId and billingCycle from the TRUSTED payment record
-    // Do NOT use the values from the request body (which could be tampered with)
+    const plan = await this.prisma.plan.findUnique({
+        where: { id: paymentRecord.planId },
+        select: { module: true }
+    });
+
+    if (!plan) {
+      throw new BadRequestException('Plan not found for payment');
+    }
+
+    // Use plan's module (e.g., WHATSAPP_CRM) instead of deriving from tenant type
+    const module = plan.module;
+
+    this.logger.log(`Using module from plan: ${module} for tenant ${req.user.tenantId}`);
+
+    // Call buyPlanPhase1 with correct module
     await this.subscriptionsService.buyPlanPhase1({
       tenantId: req.user.tenantId,
       planId: existingPayment.planId,
-      module,
+      module: module, // ✅ CORRECT MODULE
       billingCycle: existingPayment.billingCycle,
     });
 
@@ -144,21 +156,20 @@ export class PaymentsVerifyController {
       );
     }
 
-    // 2️⃣ Call buyPlanPhase1 - will auto-upgrade if subscription exists
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: req.user.tenantId },
-      select: { tenantType: true },
+    // 2️⃣ Call buyPlanPhase1 with correct module from plan
+    const plan = await this.prisma.plan.findUnique({
+      where: { id: payment.planId },
+      select: { module: true },
     });
-
-    const module =
-      (tenant?.tenantType || '').toUpperCase().replace(/[\s_-]/g, '') === 'GYM'
-        ? 'GYM'
-        : 'MOBILE_SHOP';
+    
+    if (!plan) {
+      throw new BadRequestException('Plan not found for successful payment');
+    }
 
     const subscription = await this.subscriptionsService.buyPlanPhase1({
       tenantId: req.user.tenantId,
       planId: payment.planId,
-      module,
+      module: plan.module, // ✅ Use plan's module
       billingCycle,
     });
 

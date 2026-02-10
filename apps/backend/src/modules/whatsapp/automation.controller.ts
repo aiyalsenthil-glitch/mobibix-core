@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { AutomationService } from './automation.service';
 import {
   CreateAutomationDto,
@@ -29,8 +30,8 @@ import { Roles } from '../../core/auth/decorators/roles.decorator';
  * Protected by JWT auth (admin/owner only recommended)
  */
 @Controller('api/whatsapp/automations')
-@UseGuards(JwtAuthGuard)
-@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
 export class AutomationController {
   constructor(private readonly automationService: AutomationService) {}
 

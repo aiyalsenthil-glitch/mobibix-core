@@ -7,69 +7,69 @@ datasource db {
 }
 
 model Tenant {
-  id                  String                 @id @default(cuid())
-  name                String
-  legalName           String?
-  tenantType          String
-  code                String                 @unique
-  contactPhone        String?
-  contactEmail        String?
-  website             String?
-  logoUrl             String?
-  addressLine1        String?
-  addressLine2        String?
-  city                String?
-  state               String?
-  pincode             String?
-  country             String                 @default("India")
-  gstNumber           String?
-  taxId               String?
-  businessType        String?
-  currency            String                 @default("INR")
-  timezone            String                 @default("Asia/Kolkata")
-  createdAt           DateTime               @default(now())
-  createdBy           String?
-  updatedAt           DateTime               @updatedAt
-  updatedBy           String?
-  deletedAt           DateTime?
-  deletedBy           String?
-  kioskToken          String?                @unique
-  maxMembers          Int                    @default(50)
-  whatsappEnabled     Boolean                @default(true)
-  whatsappCrmEnabled  Boolean                @default(false)
+  id                    String               @id @default(cuid())
+  name                  String
+  legalName             String?
+  tenantType            String
+  code                  String               @unique
+  contactPhone          String?
+  contactEmail          String?
+  website               String?
+  logoUrl               String?
+  addressLine1          String?
+  addressLine2          String?
+  city                  String?
+  state                 String?
+  pincode               String?
+  country               String               @default("India")
+  gstNumber             String?
+  taxId                 String?
+  businessType          String?
+  currency              String               @default("INR")
+  timezone              String               @default("Asia/Kolkata")
+  createdAt             DateTime             @default(now())
+  createdBy             String?
+  updatedAt             DateTime             @updatedAt
+  updatedBy             String?
+  deletedAt             DateTime?
+  deletedBy             String?
+  kioskToken            String?              @unique
+  maxMembers            Int                  @default(50)
+  whatsappEnabled       Boolean              @default(true)
+  whatsappCrmEnabled    Boolean              @default(false)
   whatsappPhoneNumberId String?
-  auditLogs           AuditLog[]
-  parties             Party[]                @relation("TenantParties")
-  customerAlerts      CustomerAlert[]        @relation("TenantCustomerAlerts")
-  customerFollowUps   CustomerFollowUp[]     @relation("TenantCustomerFollowUps")
-  customerReminders   CustomerReminder[]     @relation("TenantCustomerReminders")
-  financialEntries    FinancialEntry[]
-  imeis               IMEI[]
-  invoices            Invoice[]              @relation("TenantInvoices")
-  jobCards            JobCard[]              @relation("TenantJobCards")
-  ledgerAccounts      LedgerAccount[]
-  ledgerCustomers     LedgerCustomer[]
-  ledgerPayments      LedgerPayment[]
-  supplierPayments    SupplierPayment[]      @relation("TenantSupplierPayments")
-  loyaltyTransactions LoyaltyTransaction[]
-  members             Member[]               @relation("TenantMembers")
-  payments            Payment[]
-  paymentVouchers     PaymentVoucher[]       @relation("TenantPaymentVouchers")
-  purchases           Purchase[]             @relation("TenantPurchases")
-  purchaseOrders      PurchaseOrder[]        @relation("TenantPurchaseOrders")
-  quotations          Quotation[]            @relation("TenantQuotations")
-  receipts            Receipt[]              @relation("TenantReceipts")
-  shops               Shop[]
-  shopProducts        ShopProduct[]
-  shopStaffs          ShopStaff[]
-  stockCorrections    StockCorrection[]
-  stockEntries        StockLedger[]          @relation("TenantStockEntries")
-  subscription        TenantSubscription[]
-  users               User[]
-  userTenants         UserTenant[]
-  whatsAppCampaigns   WhatsAppCampaign[]
-  whatsAppUsage       WhatsAppDailyUsage[]
-  usageSnapshots      UsageSnapshot[]
+  auditLogs             AuditLog[]
+  parties               Party[]              @relation("TenantParties")
+  customerAlerts        CustomerAlert[]      @relation("TenantCustomerAlerts")
+  customerFollowUps     CustomerFollowUp[]   @relation("TenantCustomerFollowUps")
+  customerReminders     CustomerReminder[]   @relation("TenantCustomerReminders")
+  financialEntries      FinancialEntry[]
+  imeis                 IMEI[]
+  invoices              Invoice[]            @relation("TenantInvoices")
+  jobCards              JobCard[]            @relation("TenantJobCards")
+  ledgerAccounts        LedgerAccount[]
+  ledgerCustomers       LedgerCustomer[]
+  ledgerPayments        LedgerPayment[]
+  supplierPayments      SupplierPayment[]    @relation("TenantSupplierPayments")
+  loyaltyTransactions   LoyaltyTransaction[]
+  members               Member[]             @relation("TenantMembers")
+  payments              Payment[]
+  paymentVouchers       PaymentVoucher[]     @relation("TenantPaymentVouchers")
+  purchases             Purchase[]           @relation("TenantPurchases")
+  purchaseOrders        PurchaseOrder[]      @relation("TenantPurchaseOrders")
+  quotations            Quotation[]          @relation("TenantQuotations")
+  receipts              Receipt[]            @relation("TenantReceipts")
+  shops                 Shop[]
+  shopProducts          ShopProduct[]
+  shopStaffs            ShopStaff[]
+  stockCorrections      StockCorrection[]
+  stockEntries          StockLedger[]        @relation("TenantStockEntries")
+  subscription          TenantSubscription[]
+  users                 User[]
+  userTenants           UserTenant[]
+  whatsAppCampaigns     WhatsAppCampaign[]
+  whatsAppUsage         WhatsAppDailyUsage[]
+  usageSnapshots        UsageSnapshot[]
 }
 
 model UserTenant {
@@ -145,7 +145,7 @@ model Member {
   customerId          String?
   attendances         GymAttendance[]
   gymMemberships      GymMembership[]
-  customer            Party?           @relation(fields: [customerId], references: [id])
+  customer            Party?              @relation(fields: [customerId], references: [id])
   tenant              Tenant              @relation("TenantMembers", fields: [tenantId], references: [id])
   payments            MemberPayment[]
 
@@ -209,7 +209,7 @@ model CustomerFollowUp {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   assignedToUser   User?           @relation(fields: [assignedToUserId], references: [id])
-  customer         Party        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer         Party           @relation(fields: [customerId], references: [id], onDelete: Cascade)
   shop             Shop?           @relation(fields: [shopId], references: [id])
   tenant           Tenant          @relation("TenantCustomerFollowUps", fields: [tenantId], references: [id])
 
@@ -235,7 +235,7 @@ model CustomerReminder {
   failureReason String?
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
-  customer      Party            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer      Party               @relation(fields: [customerId], references: [id], onDelete: Cascade)
   tenant        Tenant              @relation("TenantCustomerReminders", fields: [tenantId], references: [id])
 
   @@index([tenantId])
@@ -256,7 +256,6 @@ model LoyaltyTransaction {
   customer    Party         @relation(fields: [customerId], references: [id], onDelete: Cascade)
   tenant      Tenant        @relation(fields: [tenantId], references: [id])
 
-
   @@index([tenantId])
   @@index([customerId])
   @@index([createdAt])
@@ -272,7 +271,7 @@ model CustomerAlert {
   resolved   Boolean       @default(false)
   resolvedAt DateTime?
   createdAt  DateTime      @default(now())
-  customer   Party      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer   Party         @relation(fields: [customerId], references: [id], onDelete: Cascade)
   tenant     Tenant        @relation("TenantCustomerAlerts", fields: [tenantId], references: [id])
 
   @@index([tenantId])
@@ -320,40 +319,40 @@ model LedgerAccount {
 }
 
 model LedgerCollection {
-  id        String        @id @default(cuid())
-  tenantId  String
-  ledgerId  String
-  periodNo  Int
-  dueDate   DateTime
-  amount    Int
-  paidAmount Int          @default(0)
-  paid      Boolean       @default(false)
-  paidAt    DateTime?
-  createdAt DateTime      @default(now())
-  ledger    LedgerAccount @relation(fields: [ledgerId], references: [id])
-  payments  LedgerPayment[]
+  id         String          @id @default(cuid())
+  tenantId   String
+  ledgerId   String
+  periodNo   Int
+  dueDate    DateTime
+  amount     Int
+  paidAmount Int             @default(0)
+  paid       Boolean         @default(false)
+  paidAt     DateTime?
+  createdAt  DateTime        @default(now())
+  ledger     LedgerAccount   @relation(fields: [ledgerId], references: [id])
+  payments   LedgerPayment[]
 
   @@index([tenantId])
   @@index([ledgerId])
 }
 
 model LedgerPayment {
-  id          String               @id @default(cuid())
-  tenantId    String
-  ledgerId    String
-  customerId  String
-  collectionId String
-  collectedBy String
-  amount      Int
-  method      LedgerPaymentMethod
-  note        String?
-  collectedAt DateTime             @default(now())
-  createdAt   DateTime             @default(now())
-  ledger      LedgerAccount        @relation(fields: [ledgerId], references: [id])
-  customer    LedgerCustomer       @relation(fields: [customerId], references: [id])
-  collection  LedgerCollection     @relation(fields: [collectionId], references: [id])
-  collectedByUser User              @relation(fields: [collectedBy], references: [id])
-  tenant      Tenant               @relation(fields: [tenantId], references: [id])
+  id              String              @id @default(cuid())
+  tenantId        String
+  ledgerId        String
+  customerId      String
+  collectionId    String
+  collectedBy     String
+  amount          Int
+  method          LedgerPaymentMethod
+  note            String?
+  collectedAt     DateTime            @default(now())
+  createdAt       DateTime            @default(now())
+  ledger          LedgerAccount       @relation(fields: [ledgerId], references: [id])
+  customer        LedgerCustomer      @relation(fields: [customerId], references: [id])
+  collection      LedgerCollection    @relation(fields: [collectionId], references: [id])
+  collectedByUser User                @relation(fields: [collectedBy], references: [id])
+  tenant          Tenant              @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
   @@index([ledgerId])
@@ -398,45 +397,45 @@ model MemberPayment {
 }
 
 model Plan {
-  id            String               @id @default(uuid())
-  code          String               @unique
-  name          String               @unique
-  level         Int
-  module        ModuleType
-  isActive      Boolean              @default(true)
-  isPublic      Boolean              @default(true)
-  isAddon       Boolean              @default(false)
-  tagline       String?
-  description   String?
-  featuresJson  Json?                // For detailed feature list/UI display (frontend only)
-  meta          Json?                // For add-on config (e.g. { "quota": { "utility": 500 } })
-  
-  // Plan Limits (moved from hardcoded PLAN_LIMITS)
-  maxStaff                Int?                 // null = unlimited (applies to all modules)
-  maxMembers              Int?                 // null = unlimited (GYM only - Mobibix has unlimited Parties)
-  maxShops                Int?                 // null = unlimited (Mobile Shop)
-  whatsappUtilityQuota    Int                  @default(0) // Monthly quota (all modules)
-  whatsappMarketingQuota  Int                  @default(0) // Monthly quota (all modules)
-  analyticsHistoryDays    Int                  @default(30) // Days of analytics history (all modules)
-  
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  id           String     @id @default(uuid())
+  code         String     @unique
+  name         String     @unique
+  level        Int
+  module       ModuleType
+  isActive     Boolean    @default(true)
+  isPublic     Boolean    @default(true)
+  isAddon      Boolean    @default(false)
+  tagline      String?
+  description  String?
+  featuresJson Json? // For detailed feature list/UI display (frontend only)
+  meta         Json? // For add-on config (e.g. { "quota": { "utility": 500 } })
 
-  planFeatures        PlanFeature[]
-  subscriptions       TenantSubscription[]
-  planPrices          PlanPrice[]
-  addonSubscriptions  SubscriptionAddon[]  @relation("AddonPlans") // When this plan is used as an add-on
+  // Plan Limits (moved from hardcoded PLAN_LIMITS)
+  maxStaff               Int? // null = unlimited (applies to all modules)
+  maxMembers             Int? // null = unlimited (GYM only - Mobibix has unlimited Parties)
+  maxShops               Int? // null = unlimited (Mobile Shop)
+  whatsappUtilityQuota   Int  @default(0) // Monthly quota (all modules)
+  whatsappMarketingQuota Int  @default(0) // Monthly quota (all modules)
+  analyticsHistoryDays   Int  @default(30) // Days of analytics history (all modules)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  planFeatures       PlanFeature[]
+  subscriptions      TenantSubscription[]
+  planPrices         PlanPrice[]
+  addonSubscriptions SubscriptionAddon[]  @relation("AddonPlans") // When this plan is used as an add-on
 }
 
 model PlanPrice {
-  id            String       @id @default(cuid())
-  planId        String
-  billingCycle  BillingCycle
-  price         Int          // Price in paise (₹0.01 units)
-  isActive      Boolean      @default(true)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  plan          Plan         @relation(fields: [planId], references: [id], onDelete: Cascade)
+  id           String       @id @default(cuid())
+  planId       String
+  billingCycle BillingCycle
+  price        Int // Price in paise (₹0.01 units)
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  plan         Plan         @relation(fields: [planId], references: [id], onDelete: Cascade)
 
   @@unique([planId, billingCycle])
   @@index([planId])
@@ -464,19 +463,19 @@ model TenantSubscription {
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt @db.Timestamp(6)
   expiryReminderSentAt DateTime?          @db.Timestamp(6)
-  
+
   // Phase 1: Billing Migration Fields
-  billingCycle         BillingCycle?      // MONTHLY, QUARTERLY, YEARLY (null = use plan.billingCycle for compat)
-  priceSnapshot        Int?               // Price locked at subscription creation (paise)
-  autoRenew            Boolean            @default(true) // Auto-renew enabled by default
-  nextPlanId           String?            // For scheduled downgrades
-  nextBillingCycle     BillingCycle?      // For scheduled duration changes
-  nextPriceSnapshot    Int?               // Price for next cycle (when upgrading)
-  lastRenewedAt        DateTime?          // Track when last renewed (for audit)
-  
-  plan                 Plan                 @relation(fields: [planId], references: [id])
-  tenant               Tenant               @relation(fields: [tenantId], references: [id])
-  addons               SubscriptionAddon[]  // Add-ons attached to this subscription
+  billingCycle      BillingCycle? // MONTHLY, QUARTERLY, YEARLY (null = use plan.billingCycle for compat)
+  priceSnapshot     Int? // Price locked at subscription creation (paise)
+  autoRenew         Boolean       @default(true) // Auto-renew enabled by default
+  nextPlanId        String? // For scheduled downgrades
+  nextBillingCycle  BillingCycle? // For scheduled duration changes
+  nextPriceSnapshot Int? // Price for next cycle (when upgrading)
+  lastRenewedAt     DateTime? // Track when last renewed (for audit)
+
+  plan   Plan                @relation(fields: [planId], references: [id])
+  tenant Tenant              @relation(fields: [tenantId], references: [id])
+  addons SubscriptionAddon[] // Add-ons attached to this subscription
 
   @@unique([tenantId, module])
   @@index([tenantId])
@@ -487,23 +486,23 @@ model TenantSubscription {
 
 model SubscriptionAddon {
   id             String             @id @default(cuid())
-  subscriptionId String             // Reference to base subscription
-  addonPlanId    String             // Reference to add-on plan (e.g., WHATSAPP_CRM)
+  subscriptionId String // Reference to base subscription
+  addonPlanId    String // Reference to add-on plan (e.g., WHATSAPP_CRM)
   status         SubscriptionStatus @default(ACTIVE)
   startDate      DateTime
   endDate        DateTime
-  
+
   // Billing fields
-  billingCycle   BillingCycle?      // MONTHLY, QUARTERLY, YEARLY
-  priceSnapshot  Int?               // Price locked at addon creation (paise)
-  autoRenew      Boolean            @default(true)
-  
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  
-  subscription   TenantSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  addonPlan      Plan               @relation("AddonPlans", fields: [addonPlanId], references: [id])
-  
+  billingCycle  BillingCycle? // MONTHLY, QUARTERLY, YEARLY
+  priceSnapshot Int? // Price locked at addon creation (paise)
+  autoRenew     Boolean       @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subscription TenantSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  addonPlan    Plan               @relation("AddonPlans", fields: [addonPlanId], references: [id])
+
   @@unique([subscriptionId, addonPlanId])
   @@index([subscriptionId])
   @@index([addonPlanId])
@@ -582,19 +581,32 @@ model WhatsAppSetting {
   marketingOptInRequired Boolean  @default(true)
 }
 
+enum WhatsAppSetupStatus {
+  PENDING
+  IN_PROGRESS
+  ACTIVE
+  FAILED
+  DISCONNECTED
+}
+
 model WhatsAppPhoneNumber {
-  id                    String                     @id @default(uuid())
-  tenantId              String
-  phoneNumber           String
-  phoneNumberId         String
-  wabaId                String
-  purpose               WhatsAppPhoneNumberPurpose @default(DEFAULT)
-  qualityRating         String?
-  encryptedAccessToken  String?                    /// AES-256-GCM encrypted Meta API token (per-tenant isolation)
-  isDefault             Boolean                    @default(false)
-  isActive              Boolean                    @default(true)
-  createdAt             DateTime                   @default(now())
-  updatedAt             DateTime                   @updatedAt
+  id                   String                     @id @default(uuid())
+  tenantId             String
+  phoneNumber          String
+  phoneNumberId        String
+  wabaId               String
+  purpose              WhatsAppPhoneNumberPurpose @default(DEFAULT)
+  qualityRating        String?
+  encryptedAccessToken String? /// AES-256-GCM encrypted Meta API token (per-tenant isolation)
+  isDefault            Boolean                    @default(false)
+  isActive             Boolean                    @default(true)
+  
+  // OAuth & Setup Fields
+  setupStatus          WhatsAppSetupStatus        @default(ACTIVE) // Default ACTIVE for backward compat
+  metadata             Json?                      // Store raw WABA info/identifiers
+
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
 
   @@unique([tenantId, phoneNumberId])
   @@index([tenantId, isActive])
@@ -638,7 +650,7 @@ model WhatsAppTemplate {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  campaigns        WhatsAppCampaign[]
+  campaigns WhatsAppCampaign[]
 
   @@unique([moduleType, metaTemplateName])
   @@index([moduleType])
@@ -664,21 +676,21 @@ model WhatsAppAutomation {
 }
 
 model WhatsAppDailyUsage {
-  id             String   @id @default(uuid())
-  tenantId       String
-  date           DateTime @db.Date // Stores just the date part (midnight)
-  
-  marketing      Int      @default(0)
-  utility        Int      @default(0)
-  service        Int      @default(0)
-  authentication Int      @default(0)
-  
-  totalCost      Float    @default(0) // Estimated cost in base currency (INR)
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id       String   @id @default(uuid())
+  tenantId String
+  date     DateTime @db.Date // Stores just the date part (midnight)
 
-  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  marketing      Int @default(0)
+  utility        Int @default(0)
+  service        Int @default(0)
+  authentication Int @default(0)
+
+  totalCost Float @default(0) // Estimated cost in base currency (INR)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@unique([tenantId, date])
   @@index([tenantId])
@@ -686,18 +698,18 @@ model WhatsAppDailyUsage {
 }
 
 model UsageSnapshot {
-  id              String   @id @default(uuid())
-  tenantId        String
-  date            DateTime @db.Date // Midnight
-  
-  activeMembers   Int      @default(0)
-  activeStaff     Int      @default(0)
-  activeShops     Int      @default(0)
-  
-  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  id       String   @id @default(uuid())
+  tenantId String
+  date     DateTime @db.Date // Midnight
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  activeMembers Int @default(0)
+  activeStaff   Int @default(0)
+  activeShops   Int @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([tenantId, date])
   @@index([date])
@@ -715,8 +727,8 @@ model WhatsAppCampaign {
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
 
-  tenant   Tenant             @relation(fields: [tenantId], references: [id])
-  template WhatsAppTemplate?  @relation(fields: [templateId], references: [id])
+  tenant   Tenant            @relation(fields: [tenantId], references: [id])
+  template WhatsAppTemplate? @relation(fields: [templateId], references: [id])
 
   @@index([tenantId])
   @@index([status])
@@ -764,59 +776,59 @@ model GymAttendance {
 }
 
 model Shop {
-  id                  String                @id @default(cuid())
-  tenantId            String
-  name                String
-  phone               String
-  addressLine1        String
-  addressLine2        String?
-  city                String
-  state               String
-  pincode             String
-  gstNumber           String?
-  gstEnabled          Boolean               @default(false)
-  currency            String                @default("INR")
-  invoicePrefix       String
-  logoUrl             String?
-  website             String?
-  invoiceFooter       String?
-  invoicePrinterType  String?               @default("NORMAL")
-  invoiceTemplate     String?               @default("CLASSIC")
-  jobCardPrinterType  String?               @default("NORMAL")
-  jobCardTemplate     String?               @default("SIMPLE")
-  headerConfig        Json?
-  tagline             String?
-  terms               String[]              @default([])
+  id                         String                     @id @default(cuid())
+  tenantId                   String
+  name                       String
+  phone                      String
+  addressLine1               String
+  addressLine2               String?
+  city                       String
+  state                      String
+  pincode                    String
+  gstNumber                  String?
+  gstEnabled                 Boolean                    @default(false)
+  currency                   String                     @default("INR")
+  invoicePrefix              String
+  logoUrl                    String?
+  website                    String?
+  invoiceFooter              String?
+  invoicePrinterType         String?                    @default("NORMAL")
+  invoiceTemplate            String?                    @default("CLASSIC")
+  jobCardPrinterType         String?                    @default("NORMAL")
+  jobCardTemplate            String?                    @default("SIMPLE")
+  headerConfig               Json?
+  tagline                    String?
+  terms                      String[]                   @default([])
   repairInvoiceNumberingMode RepairInvoiceNumberingMode @default(SHARED)
   repairGstDefault           Boolean                    @default(false)
-  bankName            String?
-  accountNumber       String?
-  ifscCode            String?
-  branchName          String?
-  isActive            Boolean               @default(true)
-  createdAt           DateTime              @default(now())
-  createdBy           String?
-  updatedAt           DateTime              @updatedAt
-  updatedBy           String?
-  deletedAt           DateTime?
-  deletedBy           String?
-  receiptPrintCounter Int                   @default(0)
-  followUps           CustomerFollowUp[]
-  financialEntries    FinancialEntry[]
-  transferredIMEIs    IMEI[]                @relation("TransferredIMEIs")
-  invoices            Invoice[]
-  jobCards            JobCard[]
-  paymentVouchers     PaymentVoucher[]
-  purchases           Purchase[]
-  purchaseOrders      PurchaseOrder[]
-  quotations          Quotation[]
-  receipts            Receipt[]
-  tenant              Tenant                @relation(fields: [tenantId], references: [id])
-  documentSettings    ShopDocumentSetting[]
-  products            ShopProduct[]
-  staff               ShopStaff[]
-  stockCorrections    StockCorrection[]
-  stockEntries        StockLedger[] 
+  bankName                   String?
+  accountNumber              String?
+  ifscCode                   String?
+  branchName                 String?
+  isActive                   Boolean                    @default(true)
+  createdAt                  DateTime                   @default(now())
+  createdBy                  String?
+  updatedAt                  DateTime                   @updatedAt
+  updatedBy                  String?
+  deletedAt                  DateTime?
+  deletedBy                  String?
+  receiptPrintCounter        Int                        @default(0)
+  followUps                  CustomerFollowUp[]
+  financialEntries           FinancialEntry[]
+  transferredIMEIs           IMEI[]                     @relation("TransferredIMEIs")
+  invoices                   Invoice[]
+  jobCards                   JobCard[]
+  paymentVouchers            PaymentVoucher[]
+  purchases                  Purchase[]
+  purchaseOrders             PurchaseOrder[]
+  quotations                 Quotation[]
+  receipts                   Receipt[]
+  tenant                     Tenant                     @relation(fields: [tenantId], references: [id])
+  documentSettings           ShopDocumentSetting[]
+  products                   ShopProduct[]
+  staff                      ShopStaff[]
+  stockCorrections           StockCorrection[]
+  stockEntries               StockLedger[]
 
   @@unique([tenantId, invoicePrefix])
   @@index([tenantId])
@@ -862,12 +874,12 @@ model ShopStaff {
 }
 
 model JobCard {
-  id                   String           @id @default(cuid())
+  id                   String        @id @default(cuid())
   tenantId             String
   shopId               String
   customerId           String?
   jobNumber            String
-  publicToken          String           @unique
+  publicToken          String        @unique
   customerName         String
   customerPhone        String
   customerAltPhone     String?
@@ -879,31 +891,31 @@ model JobCard {
   customerComplaint    String
   physicalCondition    String?
   estimatedCost        Int?
-  diagnosticCharge     Int?             @default(0)
-  advancePaid          Int              @default(0)
+  diagnosticCharge     Int?          @default(0)
+  advancePaid          Int           @default(0)
   finalCost            Int?
-  billType             String           @default("WITHOUT_GST")
+  billType             String        @default("WITHOUT_GST")
   estimatedDelivery    DateTime?
   advancePaymentMethod String?
   advanceCashAmount    Int?
   advanceUpiAmount     Int?
-  warrantyDuration     Int?             @default(0)
-  consentAcknowledge   Boolean          @default(false)
-  consentDataLoss      Boolean          @default(false)
-  consentDiagnosticFee Boolean          @default(false)
+  warrantyDuration     Int?          @default(0)
+  consentAcknowledge   Boolean       @default(false)
+  consentDataLoss      Boolean       @default(false)
+  consentDiagnosticFee Boolean       @default(false)
   createdByUserId      String
   createdByName        String
-  status               JobStatus        @default(RECEIVED)
-  statusHistory        Json?            // Audit trail: [{ from, to, timestamp, userId, reason }]
+  status               JobStatus     @default(RECEIVED)
+  statusHistory        Json? // Audit trail: [{ from, to, timestamp, userId, reason }]
   notes                String?
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
   customer             Party?        @relation(fields: [customerId], references: [id])
-  shop                 Shop             @relation(fields: [shopId], references: [id])
-  receipts            Receipt[]      @relation("JobCardReceipts")
-  tenant               Tenant           @relation("TenantJobCards", fields: [tenantId], references: [id])
-  parts           JobCardPart[]
-  invoices             Invoice[]   @relation("JobCardInvoices")
+  shop                 Shop          @relation(fields: [shopId], references: [id])
+  receipts             Receipt[]     @relation("JobCardReceipts")
+  tenant               Tenant        @relation("TenantJobCards", fields: [tenantId], references: [id])
+  parts                JobCardPart[]
+  invoices             Invoice[]     @relation("JobCardInvoices")
 
   @@unique([shopId, jobNumber])
   @@index([tenantId])
@@ -953,8 +965,8 @@ model ShopProduct {
   globalProductId  String?
   name             String
   salePrice        Int?
-  costPrice        Int?              // Last Purchase Price (legacy)
-  avgCost          Int?              // Weighted Average Cost (WAC) - calculated on every stock IN
+  costPrice        Int? // Last Purchase Price (legacy)
+  avgCost          Int? // Weighted Average Cost (WAC) - calculated on every stock IN
   isActive         Boolean           @default(true)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
@@ -1053,46 +1065,46 @@ model StockCorrection {
 }
 
 model Invoice {
-  id            String        @id @default(cuid())
-  tenantId      String
-  shopId        String
-  customerId    String?
-  invoiceNumber String
-  invoiceDate   DateTime      @default(now())
-  financialYear String?
-  customerName  String
-  customerPhone String?
-  customerGstin String?
-  customerState String?
-  subTotal      Int
-  gstAmount     Int
-  cgst          Int?
-  sgst          Int?
-  igst          Int?
-  totalAmount   Int
-  paidAmount    Int           @default(0)
-  paymentMode   PaymentMode
-  cashAmount    Int?
-  upiAmount     Int?
-  cardAmount    Int?
-  status        InvoiceStatus @default(UNPAID)
-  invoiceType   InvoiceType   @default(SALES)
-  isGstApplicable Boolean     @default(true)
-  jobCardId     String?       // Link to JobCard for auto-generated invoices
-  voidReason    String?       // Reason for void (e.g., "Job cancelled")
-  voidedAt      DateTime?
-  createdAt     DateTime      @default(now())
-  createdBy     String?
-  updatedBy     String?
-  deletedAt     DateTime?
-  deletedBy     String?
-  imeis         IMEI[]
-  customer      Party?        @relation(fields: [customerId], references: [id])
-  shop          Shop          @relation(fields: [shopId], references: [id])
-  tenant        Tenant        @relation("TenantInvoices", fields: [tenantId], references: [id])
-  jobCard       JobCard?      @relation("JobCardInvoices", fields: [jobCardId], references: [id])
-  items         InvoiceItem[]
-  receipts      Receipt[]
+  id              String        @id @default(cuid())
+  tenantId        String
+  shopId          String
+  customerId      String?
+  invoiceNumber   String
+  invoiceDate     DateTime      @default(now())
+  financialYear   String?
+  customerName    String
+  customerPhone   String?
+  customerGstin   String?
+  customerState   String?
+  subTotal        Int
+  gstAmount       Int
+  cgst            Int?
+  sgst            Int?
+  igst            Int?
+  totalAmount     Int
+  paidAmount      Int           @default(0)
+  paymentMode     PaymentMode
+  cashAmount      Int?
+  upiAmount       Int?
+  cardAmount      Int?
+  status          InvoiceStatus @default(UNPAID)
+  invoiceType     InvoiceType   @default(SALES)
+  isGstApplicable Boolean       @default(true)
+  jobCardId       String? // Link to JobCard for auto-generated invoices
+  voidReason      String? // Reason for void (e.g., "Job cancelled")
+  voidedAt        DateTime?
+  createdAt       DateTime      @default(now())
+  createdBy       String?
+  updatedBy       String?
+  deletedAt       DateTime?
+  deletedBy       String?
+  imeis           IMEI[]
+  customer        Party?        @relation(fields: [customerId], references: [id])
+  shop            Shop          @relation(fields: [shopId], references: [id])
+  tenant          Tenant        @relation("TenantInvoices", fields: [tenantId], references: [id])
+  jobCard         JobCard?      @relation("JobCardInvoices", fields: [jobCardId], references: [id])
+  items           InvoiceItem[]
+  receipts        Receipt[]
 
   @@index([tenantId])
   @@index([shopId])
@@ -1109,9 +1121,9 @@ model InvoiceItem {
   hsnCode       String
   gstRate       Float
   gstAmount     Int
-  cgstRate      Decimal       @default(9.0)
-  sgstRate      Decimal       @default(9.0)
-  igstRate      Decimal       @default(0.0)
+  cgstRate      Decimal     @default(9.0)
+  sgstRate      Decimal     @default(9.0)
+  igstRate      Decimal     @default(0.0)
   cgstAmount    Int?
   sgstAmount    Int?
   igstAmount    Int?
@@ -1156,46 +1168,44 @@ model FinancialEntry {
   @@index([shopId])
 }
 
-
-
 model Purchase {
-  id               String            @id @default(cuid())
-  tenantId         String
-  shopId           String
-  invoiceNumber    String
-  globalSupplierId String?
-  supplierName     String
-  supplierGstin    String?           @db.VarChar(15)
-  invoiceDate      DateTime          @default(now())
-  dueDate          DateTime?
-  subTotal         Int
-  totalGst         Int
-  cgst             Int?              @default(0)
-  sgst             Int?              @default(0)
-  igst             Int?              @default(0)
-  grandTotal       Int
-  paidAmount       Int               @default(0)
-  paymentMethod    PaymentMode
-  paymentReference String?
-  cashAmount       Int?
-  upiAmount        Int?
-  purchaseType     String            @default("Goods")
-  taxInclusive     Boolean           @default(false)
-  isLegacyGstApproximation Boolean  @default(false)
+  id                       String               @id @default(cuid())
+  tenantId                 String
+  shopId                   String
+  invoiceNumber            String
+  globalSupplierId         String?
+  supplierName             String
+  supplierGstin            String?              @db.VarChar(15)
+  invoiceDate              DateTime             @default(now())
+  dueDate                  DateTime?
+  subTotal                 Int
+  totalGst                 Int
+  cgst                     Int?                 @default(0)
+  sgst                     Int?                 @default(0)
+  igst                     Int?                 @default(0)
+  grandTotal               Int
+  paidAmount               Int                  @default(0)
+  paymentMethod            PaymentMode
+  paymentReference         String?
+  cashAmount               Int?
+  upiAmount                Int?
+  purchaseType             String               @default("Goods")
+  taxInclusive             Boolean              @default(false)
+  isLegacyGstApproximation Boolean              @default(false)
   gstApproximationReason   String?
   verifiedByUserId         String?
   verifiedAt               DateTime?
-  status           PurchaseStatus    @default(DRAFT)
-  notes            String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  createdBy        String?
-  party            Party?         @relation("PartyToPurchases", fields: [globalSupplierId], references: [id])
-  shop             Shop           @relation(fields: [shopId], references: [id])
-  tenant           Tenant            @relation("TenantPurchases", fields: [tenantId], references: [id])
-  items            PurchaseItem[]
-  payments         SupplierPayment[]
-  supplierAdvances AdvanceApplication[]
+  status                   PurchaseStatus       @default(DRAFT)
+  notes                    String?
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  createdBy                String?
+  party                    Party?               @relation("PartyToPurchases", fields: [globalSupplierId], references: [id])
+  shop                     Shop                 @relation(fields: [shopId], references: [id])
+  tenant                   Tenant               @relation("TenantPurchases", fields: [tenantId], references: [id])
+  items                    PurchaseItem[]
+  payments                 SupplierPayment[]
+  supplierAdvances         AdvanceApplication[]
 
   @@unique([shopId, invoiceNumber])
   @@index([tenantId])
@@ -1212,9 +1222,9 @@ model PurchaseItem {
   quantity      Int
   purchasePrice Int
   gstRate       Float        @default(0)
-  cgstRate      Decimal       @default(9.0)
-  sgstRate      Decimal       @default(9.0)
-  igstRate      Decimal       @default(0.0)
+  cgstRate      Decimal      @default(9.0)
+  sgstRate      Decimal      @default(9.0)
+  igstRate      Decimal      @default(0.0)
   taxAmount     Int          @default(0)
   cgstAmount    Int?
   sgstAmount    Int?
@@ -1244,7 +1254,6 @@ model SupplierPayment {
   purchase         Purchase?   @relation(fields: [purchaseId], references: [id])
   tenant           Tenant      @relation("TenantSupplierPayments", fields: [tenantId], references: [id])
   party            Party?      @relation(fields: [globalSupplierId], references: [id])
-
 
   @@index([tenantId])
   @@index([shopId])
@@ -1285,26 +1294,26 @@ model Receipt {
 }
 
 model PaymentVoucher {
-  id               String        @id @default(cuid())
-  tenantId         String
-  shopId           String
-  voucherId        String        @unique
-  voucherType      VoucherType
-  voucherSubType   VoucherSubType?
-  date             DateTime      @default(now())
-  amount           Int
-  paymentMethod    PaymentMode
-  transactionRef   String?
-  narration        String?
-  globalSupplierId String?
-  expenseCategory  String?
-  linkedPurchaseId String?
-  status           VoucherStatus @default(ACTIVE)
-  createdAt        DateTime      @default(now())
-  createdBy        String?
-  party            Party?        @relation(fields: [globalSupplierId], references: [id])
-  shop             Shop          @relation(fields: [shopId], references: [id])
-  tenant           Tenant        @relation("TenantPaymentVouchers", fields: [tenantId], references: [id])
+  id                  String               @id @default(cuid())
+  tenantId            String
+  shopId              String
+  voucherId           String               @unique
+  voucherType         VoucherType
+  voucherSubType      VoucherSubType?
+  date                DateTime             @default(now())
+  amount              Int
+  paymentMethod       PaymentMode
+  transactionRef      String?
+  narration           String?
+  globalSupplierId    String?
+  expenseCategory     String?
+  linkedPurchaseId    String?
+  status              VoucherStatus        @default(ACTIVE)
+  createdAt           DateTime             @default(now())
+  createdBy           String?
+  party               Party?               @relation(fields: [globalSupplierId], references: [id])
+  shop                Shop                 @relation(fields: [shopId], references: [id])
+  tenant              Tenant               @relation("TenantPaymentVouchers", fields: [tenantId], references: [id])
   advanceApplications AdvanceApplication[]
 
   @@index([tenantId])
@@ -1312,13 +1321,13 @@ model PaymentVoucher {
 }
 
 model AdvanceApplication {
-  id                String          @id @default(cuid())
-  advanceVoucherId  String
-  purchaseId        String
-  appliedAmount     Int
-  appliedAt         DateTime        @default(now())
-  advanceVoucher    PaymentVoucher  @relation(fields: [advanceVoucherId], references: [id])
-  purchase          Purchase        @relation(fields: [purchaseId], references: [id])
+  id               String         @id @default(cuid())
+  advanceVoucherId String
+  purchaseId       String
+  appliedAmount    Int
+  appliedAt        DateTime       @default(now())
+  advanceVoucher   PaymentVoucher @relation(fields: [advanceVoucherId], references: [id])
+  purchase         Purchase       @relation(fields: [purchaseId], references: [id])
 
   @@unique([advanceVoucherId, purchaseId])
   @@index([advanceVoucherId])
@@ -1401,23 +1410,21 @@ model PurchaseOrderItem {
   @@index([poId])
 }
 
-
-
 /// POLICY: Module-level numbers are OUTBOUND-ONLY. No inbound message processing.
 /// See: implementation_plan.md — Condition 2 (Shared Number Policy)
 model WhatsAppPhoneNumberModule {
-  id                    String                     @id @default(uuid())
-  moduleType            String
-  phoneNumber           String
-  phoneNumberId         String
-  wabaId                String
-  purpose               WhatsAppPhoneNumberPurpose @default(DEFAULT)
-  qualityRating         String?
-  encryptedAccessToken  String?                    /// AES-256-GCM encrypted Meta API token (module-level)
-  isDefault             Boolean                    @default(false)
-  isActive              Boolean                    @default(true)
-  createdAt             DateTime                   @default(now())
-  updatedAt             DateTime                   @updatedAt
+  id                   String                     @id @default(uuid())
+  moduleType           String
+  phoneNumber          String
+  phoneNumberId        String
+  wabaId               String
+  purpose              WhatsAppPhoneNumberPurpose @default(DEFAULT)
+  qualityRating        String?
+  encryptedAccessToken String? /// AES-256-GCM encrypted Meta API token (module-level)
+  isDefault            Boolean                    @default(false)
+  isActive             Boolean                    @default(true)
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
 
   @@unique([moduleType, phoneNumberId])
   @@index([moduleType, isActive])
@@ -1445,18 +1452,21 @@ enum WhatsAppPhoneNumberPurpose {
 
 enum WhatsAppFeature {
   // Core Features
-  STAFF                      // Staff management
-  ATTENDANCE                 // Attendance tracking (GYM only)
-  
+  STAFF // Staff management
+  ATTENDANCE // Attendance tracking (GYM only)
+
   // Premium Features
-  REPORTS                    // Analytics & reports
-  CUSTOM_PRINT_LAYOUT        // Custom invoice templates
-  MULTI_SHOP                 // Multi-location management
-  
+  REPORTS // Analytics & reports
+  CUSTOM_PRINT_LAYOUT // Custom invoice templates
+  MULTI_SHOP // Multi-location management
+
   // WhatsApp Features
-  WHATSAPP_UTILITY           // WhatsApp utility messages
-  WHATSAPP_MARKETING         // WhatsApp marketing campaigns
+  WHATSAPP_UTILITY // WhatsApp utility messages
+  WHATSAPP_MARKETING // WhatsApp marketing campaigns
   WHATSAPP_ALERTS_AUTOMATION // WhatsApp automation & alerts
+  WHATSAPP_TEAM_INBOX // Shared Team Inbox
+  WHATSAPP_WEBHOOKS // Webhooks integration
+  WHATSAPP_API_ACCESS // Full API Access
 }
 
 enum WhatsAppCampaignStatus {
@@ -1487,23 +1497,23 @@ enum FinanceRefType {
 
 enum JobStatus {
   RECEIVED
-  ASSIGNED          // Job assigned to technician
-  DIAGNOSING        // Under diagnosis
-  WAITING_APPROVAL  // Awaiting customer approval for estimate
-  APPROVED          // Customer approved, ready to proceed
+  ASSIGNED // Job assigned to technician
+  DIAGNOSING // Under diagnosis
+  WAITING_APPROVAL // Awaiting customer approval for estimate
+  APPROVED // Customer approved, ready to proceed
   WAITING_FOR_PARTS // Waiting for spare parts
-  IN_PROGRESS       // Repair in progress
-  READY             // Repair completed, ready for pickup
-  DELIVERED         // Job delivered to customer (terminal)
-  CANCELLED         // Job cancelled (terminal)
-  RETURNED          // Job returned without repair (terminal)
+  IN_PROGRESS // Repair in progress
+  READY // Repair completed, ready for pickup
+  DELIVERED // Job delivered to customer (terminal)
+  CANCELLED // Job cancelled (terminal)
+  RETURNED // Job returned without repair (terminal)
 }
 
 enum InvoiceStatus {
-  UNPAID           // No payment received
-  PARTIALLY_PAID   // Some payment received
-  PAID             // Fully settled
-  VOIDED           // Cancelled
+  UNPAID // No payment received
+  PARTIALLY_PAID // Some payment received
+  PAID // Fully settled
+  VOIDED // Cancelled
 }
 
 enum PaymentMode {
@@ -1636,8 +1646,8 @@ enum VoucherType {
 }
 
 enum VoucherSubType {
-  ADVANCE      // Prepayment to supplier (not against specific purchase)
-  SETTLEMENT   // Payment against purchase
+  ADVANCE // Prepayment to supplier (not against specific purchase)
+  SETTLEMENT // Payment against purchase
 }
 
 enum VoucherStatus {
@@ -1777,6 +1787,7 @@ enum AlertSource {
   INACTIVE
   CUSTOM
 }
+
 enum LedgerPaymentMethod {
   CASH
   UPI

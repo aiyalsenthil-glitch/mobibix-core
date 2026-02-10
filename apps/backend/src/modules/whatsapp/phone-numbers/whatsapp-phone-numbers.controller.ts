@@ -105,7 +105,17 @@ export class WhatsAppPhoneNumbersController {
       UserRole.OWNER,
     ]);
 
-    // TODO: Add tenant validation to ensure OWNER only updates their own numbers
+    // Validate ownership for OWNER role
+    const user = req.user;
+    const role = (user?.role?.toUpperCase() as UserRole) || UserRole.USER;
+    
+    if (role === UserRole.OWNER) {
+      const phoneNumber = await this.phoneNumbersService.getPhoneNumberById(id);
+      if (!phoneNumber || phoneNumber.tenantId !== user.tenantId) {
+        throw new BadRequestException('Unauthorized - Can only update own tenant numbers');
+      }
+    }
+
     return this.phoneNumbersService.updatePhoneNumber(id, body);
   }
 

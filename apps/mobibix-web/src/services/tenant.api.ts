@@ -44,6 +44,7 @@ export interface SubscriptionDetails {
 
 export interface Plan {
   id: string;
+  code: string;
   name: string;
   displayName: string;
   tagline: string | null;
@@ -87,10 +88,11 @@ export async function getSubscription(): Promise<{ current: SubscriptionDetails 
 }
 
 /**
- * Fetch available plans
+ * Fetch available plans (optional module filter)
  */
-export async function getAvailablePlans(): Promise<Plan[]> {
-  const response = await authenticatedFetch("/plans/available");
+export async function getAvailablePlans(module?: string): Promise<Plan[]> {
+  const query = module ? `?module=${module}` : '';
+  const response = await authenticatedFetch(`/plans/available${query}`);
   if (!response.ok) {
     throw new Error("Failed to fetch plans");
   }

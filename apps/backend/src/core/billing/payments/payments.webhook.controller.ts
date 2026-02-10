@@ -106,12 +106,30 @@ export class PaymentsWebhookController {
               select: { tenantType: true },
             });
 
-            const module =
-              (tenant?.tenantType || '')
-                .toUpperCase()
-                .replace(/[\s_-]/g, '') === 'GYM'
-                ? 'GYM'
-                : 'MOBILE_SHOP';
+            // 🔐 SECURITY FIX: Fetch PLAN to determine target module (WHATSAPP_CRM vs GYM vs MOBILE_SHOP)
+            // Use tx to ensure we are in the same transaction
+            const paymentWithPlan = await tx.payment.findUnique({
+              where: { id: paymentRecord.id },
+            });
+            
+             if (!paymentWithPlan) {
+               this.logger.error(`❌ Payment record not found ${paymentRecord.id}`);
+               return; 
+            }
+
+            const plan = await tx.plan.findUnique({
+                where: { id: paymentRecord.planId },
+                select: { module: true }
+            });
+
+            if (!plan) {
+               this.logger.error(`❌ Plan not found for payment ${paymentRecord.id}`);
+               return; 
+            }
+
+            const module = plan.module;
+            
+            this.logger.log(`Using module from plan: ${module} for tenant ${paymentRecord.tenantId}`);
 
             // ✅ BILLINGCYCLE IS STORED IN PAYMENT TABLE - use it directly
             await this.subscriptionsService.buyPlanPhase1({

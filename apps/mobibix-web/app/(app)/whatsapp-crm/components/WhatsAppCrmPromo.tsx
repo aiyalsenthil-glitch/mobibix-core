@@ -1,4 +1,78 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useRazorpay } from '@/hooks/useRazorpay';
+import { createOrder, verifyPayment } from '@/services/payments.api';
+import { getAvailablePlans, Plan } from '@/services/tenant.api';
+import { Loader2 } from 'lucide-react';
+
 export default function WhatsAppCrmPromo() {
+  const router = useRouter();
+  const { openPayment } = useRazorpay();
+  const [loading, setLoading] = useState(false);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  useEffect(() => {
+    async function fetchPlans() {
+      try {
+        const plans = await getAvailablePlans('WHATSAPP_CRM');
+        setPlans(plans);
+        if (plans.length > 0) {
+          // Default to the middle plan if available, otherwise first
+          const defaultPlan = plans.find(p => p.code === 'WHATSAPP_GROWTH') || plans[0];
+          setSelectedPlan(defaultPlan);
+        }
+      } catch (error) {
+        console.error('Failed to fetch WhatsApp plans', error);
+      }
+    }
+    fetchPlans();
+  }, []);
+
+  const handleActivate = async (plan: Plan) => {
+    setLoading(true);
+
+    try {
+      const billingCycle = 'MONTHLY';
+      const order = await createOrder(plan.id, billingCycle);
+
+      await openPayment({
+        key: order.key,
+        amount: order.amount,
+        currency: order.currency,
+        name: `MobiBix ${plan.name}`,
+        description: `${plan.name} Add-on (${billingCycle})`,
+        order_id: order.orderId,
+        handler: async (response: any) => {
+          try {
+            await verifyPayment({
+              orderId: order.orderId,
+              paymentId: response.REMOVED_PAYMENT_INFRA_payment_id,
+              signature: response.REMOVED_PAYMENT_INFRA_signature,
+              planId: plan.id,
+              billingCycle,
+            });
+
+            router.push('/whatsapp?onboarding=true');
+          } catch (verifyError) {
+            console.error('Payment verification failed', verifyError);
+            alert('Payment successful but verification failed. Please contact support.');
+            setLoading(false);
+          }
+        },
+        theme: {
+          color: '#16a34a',
+        },
+      });
+    } catch (error: any) {
+      console.error('Activation failed', error);
+      alert(error.message || 'Failed to initiate payment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50">
       <div className="max-w-6xl mx-auto px-4 py-16">
@@ -31,389 +105,93 @@ export default function WhatsAppCrmPromo() {
           </p>
         </div>
 
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-          {/* Feature 1 */}
-          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-green-200 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Dedicated WhatsApp Number
-            </h3>
-            <p className="text-gray-600 text-sm">
-              Get a verified business WhatsApp number exclusively for customer
-              interactions and campaigns.
-            </p>
+        {/* Pricing Cards Section */}
+        {loading && plans.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-12 h-12 text-green-600 animate-spin mb-4" />
+            <p className="text-gray-600 font-medium">Loading available plans...</p>
           </div>
-
-          {/* Feature 2 */}
-          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-green-200 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Inbox & Replies
-            </h3>
-            <p className="text-gray-600 text-sm">
-              Unified inbox to manage all customer conversations with quick
-              replies, templates, and tags.
-            </p>
-          </div>
-
-          {/* Feature 3 */}
-          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-green-200 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Bulk Campaigns
-            </h3>
-            <p className="text-gray-600 text-sm">
-              Send targeted promotional messages to customer segments with
-              compliance and delivery tracking.
-            </p>
-          </div>
-
-          {/* Feature 4 */}
-          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-green-200 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Automation
-            </h3>
-            <p className="text-gray-600 text-sm">
-              Auto-assign conversations, trigger workflows, and send follow-ups
-              based on customer behavior.
-            </p>
-          </div>
-
-          {/* Feature 5 */}
-          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-green-200 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Analytics
-            </h3>
-            <p className="text-gray-600 text-sm">
-              Track message delivery, response rates, conversion metrics, and
-              team performance in real-time.
-            </p>
-          </div>
-
-          {/* Feature 6 - Lead Management */}
-          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-green-200 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Lead Management
-            </h3>
-            <p className="text-gray-600 text-sm">
-              Capture, qualify, and nurture leads through customizable pipelines
-              and follow-up reminders.
-            </p>
-          </div>
-        </div>
-
-        {/* Pricing Card */}
-        <div className="relative bg-gradient-to-br from-green-600 via-green-500 to-emerald-600 text-white rounded-2xl overflow-hidden max-w-3xl mx-auto mb-12">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIgLz48L3N2Zz4=')] bg-repeat"></div>
-          </div>
-
-          <div className="relative p-8 md:p-12">
-            <div className="text-center mb-8">
-              <div className="inline-block bg-white/20 backdrop-blur-sm px-4 py-1 rounded-full text-sm font-medium mb-4">
-                Premium Add-On
-              </div>
-              <div className="mb-2">
-                <span className="text-5xl md:text-6xl font-bold">₹2,999</span>
-                <span className="text-2xl text-green-100 ml-2">/month</span>
-              </div>
-              <p className="text-green-100 text-lg">
-                Unlock the full power of WhatsApp Business
-              </p>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-8">
-              <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+        ) : plans.length > 0 ? (
+          <div className="grid md:grid-cols-3 gap-8 mb-20">
+            {plans.map((p) => {
+              const isGrowth = p.code === 'WHATSAPP_GROWTH' || p.code === 'GROWTH';
+              const monthlyPrice = p.billingCycles.find(c => c.cycle === 'MONTHLY')?.price || 0;
+              const features = p.featuresJson && p.featuresJson.length > 0 ? p.featuresJson : p.features;
+              
+              return (
+                <div 
+                  key={p.id}
+                  className={`relative bg-white rounded-2xl shadow-sm border-2 transition-all duration-300 flex flex-col ${
+                    isGrowth ? 'border-green-500 scale-105 shadow-xl z-10' : 'border-gray-100 hover:border-green-200'
+                  }`}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                What's Included
-              </h3>
-              <ul className="space-y-3">
-                <li className="flex items-start gap-3">
-                  <svg
-                    className="w-5 h-5 text-green-200 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>Dedicated verified WhatsApp Business number</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg
-                    className="w-5 h-5 text-green-200 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>Unlimited conversations & message history</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg
-                    className="w-5 h-5 text-green-200 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>Bulk campaigns with broadcast limits</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg
-                    className="w-5 h-5 text-green-200 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>Smart automation & workflow triggers</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg
-                    className="w-5 h-5 text-green-200 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>Advanced analytics & reporting dashboard</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg
-                    className="w-5 h-5 text-green-200 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>Multi-user access & team collaboration</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg
-                    className="w-5 h-5 text-green-200 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span>Priority technical support & onboarding</span>
-                </li>
-              </ul>
-            </div>
+                  {isGrowth && (
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                      Most Popular
+                    </div>
+                  )}
+                  
+                  <div className="p-8 border-b border-gray-50 text-center">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{p.displayName || p.name}</h3>
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span className="text-4xl font-black text-gray-900">₹{monthlyPrice / 100}</span>
+                      <span className="text-gray-500 text-sm font-medium">/mo</span>
+                    </div>
+                    {p.tagline && <p className="text-gray-500 text-xs mt-2 uppercase tracking-tight">{p.tagline}</p>}
+                  </div>
 
-            <div className="text-center">
-              <button className="bg-white text-green-600 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-green-50 transition-all transform hover:scale-105 shadow-xl">
-                Contact Support to Enable
-              </button>
-              <p className="text-green-100 text-sm mt-4">
-                Our team will help you set up and configure your WhatsApp CRM
-              </p>
-            </div>
-          </div>
-        </div>
+                  <div className="p-8 flex-1">
+                     <ul className="space-y-4">
+                       {features?.map((f: any, idx: number) => (
+                         <li key={idx} className="flex items-start gap-3">
+                           <svg className="w-5 h-5 text-green-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                           </svg>
+                           <span className="text-gray-600 text-sm">{f.name || f}</span>
+                         </li>
+                       ))}
+                     </ul>
+                  </div>
 
-        {/* Contact Info */}
-        <div className="text-center">
-          <div className="bg-white rounded-xl p-8 max-w-2xl mx-auto shadow-sm border border-gray-100">
-            <h3 className="text-xl font-semibold text-gray-900 mb-3">
-              Ready to Transform Your Customer Engagement?
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Get in touch with our sales team for a personalized demo and
-              custom setup assistance.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <a
-                href="mailto:support@mobibix.com"
-                className="inline-flex items-center gap-2 text-green-600 hover:text-green-700 font-medium"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-                support@mobibix.com
-              </a>
-              <span className="text-gray-300 hidden sm:inline">|</span>
-              <a
-                href="tel:+918667551566"
-                className="inline-flex items-center gap-2 text-green-600 hover:text-green-700 font-medium"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                  />
-                </svg>
-                +91 86675 51566
-              </a>
-            </div>
+                  <div className="p-8 pt-0">
+                    <button
+                      onClick={() => handleActivate(p)}
+                      disabled={loading}
+                      className={`w-full py-4 rounded-xl font-bold transition-all transform active:scale-95 disabled:opacity-70 ${
+                        isGrowth 
+                          ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-200' 
+                          : 'bg-gray-50 text-gray-900 hover:bg-green-50 hover:text-green-700'
+                      }`}
+                    >
+                      {loading && selectedPlan?.id === p.id ? (
+                        <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                      ) : (
+                        'Get Started'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100 mb-20">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+               <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+               </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">No plans available</h3>
+            <p className="text-gray-600 mb-6">We couldn't find any WhatsApp plans for your region. Please try again later or contact support if the issue persists.</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="text-green-600 font-semibold hover:text-green-700 underline"
+            >
+              Refresh Page
+            </button>
+          </div>
+        )}
+
       </div>
     </div>
   );
