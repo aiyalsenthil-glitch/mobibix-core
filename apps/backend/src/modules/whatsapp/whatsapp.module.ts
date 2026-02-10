@@ -32,6 +32,8 @@ import { WhatsAppCrmService } from './whatsapp-crm.service';
 import { WhatsAppCrmSubscriptionGuard } from './guards/whatsapp-crm-subscription.guard';
 import { WhatsAppCrmEnabledGuard } from './guards/whatsapp-crm-enabled.guard';
 import { WhatsAppCrmPhoneNumberGuard } from './guards/whatsapp-crm-phone-number.guard';
+import { WhatsAppTokenService } from './whatsapp-token.service';
+import { WhatsAppRoutingService } from './whatsapp-routing.service';
 
 @Module({
   controllers: [
@@ -68,6 +70,8 @@ import { WhatsAppCrmPhoneNumberGuard } from './guards/whatsapp-crm-phone-number.
     WhatsAppCrmSubscriptionGuard,
     WhatsAppCrmEnabledGuard,
     WhatsAppCrmPhoneNumberGuard,
+    WhatsAppTokenService,
+    WhatsAppRoutingService,
   ],
   exports: [
     WhatsAppSender,
@@ -78,6 +82,8 @@ import { WhatsAppCrmPhoneNumberGuard } from './guards/whatsapp-crm-phone-number.
     WhatsAppCrmSubscriptionGuard,
     WhatsAppCrmEnabledGuard,
     WhatsAppCrmPhoneNumberGuard,
+    WhatsAppTokenService,
+    WhatsAppRoutingService,
   ],
 })
 export class WhatsAppModule {}

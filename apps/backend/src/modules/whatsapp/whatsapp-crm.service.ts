@@ -25,15 +25,20 @@ export class WhatsAppCrmService {
       where: { id: tenantId },
       select: {
         whatsappCrmEnabled: true,
-        whatsappPhoneNumberId: true,
         tenantType: true,
       },
+    });
+
+    // ── FIX: Check WhatsAppPhoneNumber table instead of deprecated field ──
+    const activeNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
+      where: { tenantId, isActive: true },
+      select: { id: true },
     });
 
     return {
       hasSubscription,
       isEnabled: tenant?.whatsappCrmEnabled ?? false,
-      hasPhoneNumber: !!tenant?.whatsappPhoneNumberId,
+      hasPhoneNumber: !!activeNumber,
       moduleType: tenant?.tenantType?.toUpperCase(),
       canPreview: !hasSubscription,
     };

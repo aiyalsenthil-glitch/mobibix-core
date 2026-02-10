@@ -225,28 +225,61 @@ export class PlansService {
 
   /**
    * Trial plan (system only)
+   * Ensures the trial plan exists and has all required default features enabled.
    */
   async getOrCreateTrialPlan(module: ModuleType) {
     const isMobileShop = module === ModuleType.MOBILE_SHOP;
     const code = isMobileShop ? 'MOBIBIX_TRIAL' : 'GYM_TRIAL';
     const name = isMobileShop ? 'MobiBix Trial' : 'Gym Trial';
 
-    const existing = await this.prisma.plan.findFirst({
+    let plan = await this.prisma.plan.findFirst({
       where: { code },
     });
 
-    if (existing) return existing;
+    if (!plan) {
+      plan = await this.prisma.plan.create({
+        data: {
+          code,
+          name,
+          level: 0,
+          module: isMobileShop ? ModuleType.MOBILE_SHOP : ModuleType.GYM,
+          isActive: true,
+          isPublic: false,
+          isAddon: false,
+          maxStaff: 5,
+          maxMembers: isMobileShop ? null : 100,
+          analyticsHistoryDays: 14,
+        },
+      });
+    }
 
-    return this.prisma.plan.create({
-      data: {
-        code,
-        name,
-        level: 0,
-        module: isMobileShop ? ModuleType.MOBILE_SHOP : ModuleType.GYM,
-        isActive: true,
-        isPublic: false,
-        isAddon: false,
-      },
-    });
+    // 🛡️ Ensure default features exist for this trial plan
+    const defaultFeatures = [
+      'STAFF',
+      'REPORTS',
+      'WHATSAPP_UTILITY',
+      ...(isMobileShop ? [] : ['ATTENDANCE']),
+    ];
+
+    for (const feat of defaultFeatures) {
+      await this.prisma.planFeature.upsert({
+        where: {
+          planId_feature: {
+            planId: plan.id,
+            feature: feat as any,
+          },
+        },
+        create: {
+          planId: plan.id,
+          feature: feat as any,
+          enabled: true,
+        },
+        update: {
+          enabled: true,
+        },
+      });
+    }
+
+    return plan;
   }
 }

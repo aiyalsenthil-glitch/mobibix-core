@@ -71,10 +71,15 @@ async function verifyAdminFeatures() {
     
     // Ensure CRM plan exists
     const crmPlan = await prisma.plan.upsert({
-        where: { code: 'CRM_ADDON' },
-        update: {},
+        where: { code: 'WHATSAPP_CRM' },
+        update: {
+            isActive: true,
+            isPublic: true,
+            isAddon: true,
+            module: 'WHATSAPP_CRM'
+        },
         create: {
-            code: 'CRM_ADDON',
+            code: 'WHATSAPP_CRM',
             name: 'CRM Addon',
             level: 1,
             module: 'WHATSAPP_CRM',
@@ -152,18 +157,18 @@ async function verifyAdminFeatures() {
     console.log('\n🧪 TEST 3: Enable Addon (WhatsApp CRM)');
     await adminController.manageAddon({
         tenantId,
-        addon: 'WHATSAPP_CRM',
+        module: 'MOBILE_SHOP',
         action: 'ENABLE',
         planId: crmPlan.id
     });
 
     const tenantAfterEnable = await prisma.tenant.findUnique({ where: { id: tenantId } });
-    const crmSub = await prisma.tenantSubscription.findFirst({
-        where: { tenantId, module: 'WHATSAPP_CRM' }
+    const crmSub = await prisma.subscriptionAddon.findFirst({
+        where: { subscriptionId: upgradedSub?.id, addonPlanId: crmPlan.id }
     });
 
     console.log('Tenant WhatsApp Enabled:', tenantAfterEnable?.whatsappCrmEnabled);
-    console.log('CRM Subscription:', crmSub);
+    console.log('CRM Addon Record:', crmSub);
 
     if (!tenantAfterEnable?.whatsappCrmEnabled || !crmSub || crmSub.status !== 'ACTIVE') {
         throw new Error('❌ Enable Addon failed');
@@ -177,17 +182,18 @@ async function verifyAdminFeatures() {
     console.log('\n🧪 TEST 4: Disable Addon');
     await adminController.manageAddon({
         tenantId,
-        addon: 'WHATSAPP_CRM',
-        action: 'DISABLE'
+        module: 'MOBILE_SHOP',
+        action: 'DISABLE',
+        planId: crmPlan.id
     });
 
     const tenantAfterDisable = await prisma.tenant.findUnique({ where: { id: tenantId } });
-    const crmSubDisabled = await prisma.tenantSubscription.findFirst({
-        where: { tenantId, module: 'WHATSAPP_CRM' }
+    const crmSubDisabled = await prisma.subscriptionAddon.findFirst({
+        where: { subscriptionId: upgradedSub?.id, addonPlanId: crmPlan.id }
     });
 
     console.log('Tenant WhatsApp Enabled:', tenantAfterDisable?.whatsappCrmEnabled);
-    console.log('CRM Subscription Status:', crmSubDisabled?.status);
+    console.log('CRM Addon Status:', crmSubDisabled?.status);
 
     if (tenantAfterDisable?.whatsappCrmEnabled || crmSubDisabled?.status !== 'CANCELLED') {
         throw new Error('❌ Disable Addon failed');

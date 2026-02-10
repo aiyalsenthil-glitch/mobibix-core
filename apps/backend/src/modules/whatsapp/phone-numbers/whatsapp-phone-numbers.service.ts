@@ -111,6 +111,7 @@ export class WhatsAppPhoneNumbersService {
           wabaId: modulePhone.wabaId,
           purpose: modulePhone.purpose,
           qualityRating: modulePhone.qualityRating,
+          encryptedAccessToken: modulePhone.encryptedAccessToken,
           isDefault: modulePhone.isDefault,
           isActive: modulePhone.isActive,
           createdAt: modulePhone.createdAt,

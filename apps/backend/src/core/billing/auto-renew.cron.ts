@@ -42,13 +42,19 @@ export class AutoRenewCronService {
     this.logger.log('🔄 Starting auto-renew cycle...');
 
     try {
-      // Find all subscriptions ready for renewal
+      // 🔄 CATCH-UP MECHANISM: Process renewals missed in last 3 days
+      const lookbackDays = 3;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - lookbackDays);
+
+      // Find all subscriptions ready for renewal (including missed ones)
       const dueSubs = await this.prisma.tenantSubscription.findMany({
         where: {
           status: 'ACTIVE' as SubscriptionStatus,
           autoRenew: true,
           endDate: {
-            lte: new Date(), // endDate is in the past or now
+            gte: cutoffDate, // Catch-up window
+            lte: new Date(), // Up to now
           },
         },
         include: {
@@ -67,13 +73,11 @@ export class AutoRenewCronService {
       let successCount = 0;
       let failCount = 0;
 
-      // Process each subscription
+      // Process each subscription with retry logic
       for (const sub of dueSubs) {
         try {
-          // Renew subscription
-          const renewed = await this.subscriptionsService.renewSubscription(
-            sub.id,
-          );
+          // 🔄 Renew subscription with retry
+          const renewed = await this.renewWithRetry(sub.id);
 
           // Send email notification (disabled - no EmailService yet)
           /*
@@ -129,6 +133,35 @@ export class AutoRenewCronService {
         `❌ Auto-renew cron failed: ${err instanceof Error ? err.message : err}`,
         err instanceof Error ? err.stack : undefined,
       );
+    }
+  }
+
+  /**
+   * 🔄 Retry logic with exponential backoff
+   * Attempts renewal up to 3 times with increasing delays
+   */
+  private async renewWithRetry(
+    subscriptionId: string,
+    maxRetries = 3,
+  ): Promise<any> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await this.subscriptionsService.renewSubscription(
+          subscriptionId,
+        );
+      } catch (err) {
+        if (attempt === maxRetries) {
+          // Final attempt failed
+          throw err;
+        }
+
+        // Exponential backoff: 2s, 4s, 8s
+        const delayMs = 1000 * Math.pow(2, attempt);
+        this.logger.warn(
+          `Retry attempt ${attempt}/${maxRetries} failed, waiting ${delayMs}ms...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
     }
   }
 

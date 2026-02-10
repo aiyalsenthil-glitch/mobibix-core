@@ -129,7 +129,7 @@ export class WhatsAppWebhookController {
     }
 
     try {
-      // 1. Resolve Tenant
+      // 1. Resolve Tenant from per-tenant phone numbers
       const waNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
         where: { phoneNumberId },
         select: { tenantId: true },
@@ -139,7 +139,25 @@ export class WhatsAppWebhookController {
         `[Webhook] Tenant lookup result: ${JSON.stringify(waNumber)}`,
       );
 
+      // ── OUTBOUND-ONLY POLICY ──────────────────────────────────
+      // If phoneNumberId is NOT found in per-tenant numbers, check
+      // if it's a module-level (shared) number. Module-level numbers
+      // are OUTBOUND-ONLY: do NOT process inbound messages to avoid
+      // routing ambiguity (many tenants share this number).
       if (!waNumber) {
+        const modulePhone =
+          await this.prisma.whatsAppPhoneNumberModule.findFirst({
+            where: { phoneNumberId, isActive: true },
+            select: { id: true },
+          });
+
+        if (modulePhone) {
+          this.logger.log(
+            `[OUTBOUND-ONLY] Dropping inbound message on module-level number ${phoneNumberId}. Policy: shared numbers are outbound-only.`,
+          );
+          return; // Silently drop — this is by design
+        }
+
         this.logger.warn(`Unknown WhatsApp Number ID: ${phoneNumberId}`);
         return;
       }

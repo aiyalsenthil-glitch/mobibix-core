@@ -87,10 +87,20 @@ export class AdminMdmController {
     });
     if (!hsn) throw new NotFoundException(`HSN Code ${dto.hsnCode} not found. Please create it first.`);
 
-    // 3. Create Product
+    // 3. Upsert Product
     // @ts-ignore
-    return this.prisma.globalProduct.create({
-      data: {
+    return this.prisma.globalProduct.upsert({
+      where: {
+        name_categoryId: {
+            name: dto.name,
+            categoryId: category.id
+        }
+      },
+      update: {
+        hsnId: hsn.id,
+        isActive: dto.isActive ?? true,
+      },
+      create: {
         name: dto.name,
         categoryId: category.id,
         hsnId: hsn.id,

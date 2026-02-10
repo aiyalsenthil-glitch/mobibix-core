@@ -15,14 +15,18 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { SubscriptionsService } from './subscriptions.service';
-import { ModuleType, BillingCycle, UserRole } from '@prisma/client';
-import { Roles } from '../../auth/decorators/roles.decorator';
-
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  SubscriptionStatus,
+  ModuleType,
+  BillingCycle,
+  UserRole,
+} from '@prisma/client';
 import {
   ToggleAutoRenewDto,
   AddSubscriptionAddonDto,
 } from '../dto/phase1-subscriptions.dto';
+import { Roles } from '../../auth/decorators/roles.decorator';
 
 @UseGuards(JwtAuthGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
@@ -40,35 +44,46 @@ export class SubscriptionsController {
       throw new UnauthorizedException('Authentication required');
     }
 
-    let resolvedModule = module;
-
-    // 🔍 If module not provided, resolve from Tenant Type
-    if (!resolvedModule) {
-      const tenant = await this.prisma.tenant.findUnique({
+    // 1️⃣ Resolve module and fetch initial data in parallel
+    const [tenant, legacyWhatsappSub] = await Promise.all([
+      this.prisma.tenant.findUnique({
         where: { id: req.user.tenantId },
         select: { tenantType: true },
-      });
+      }),
+      module !== (ModuleType.WHATSAPP_CRM as any)
+        ? this.prisma.tenantSubscription.findFirst({
+            where: {
+              tenantId: req.user.tenantId,
+              module: 'WHATSAPP_CRM' as ModuleType,
+              status: SubscriptionStatus.ACTIVE,
+            },
+            include: { plan: { include: { planFeatures: true } } },
+          })
+        : Promise.resolve(null),
+    ]);
 
-      if (tenant) {
-        resolvedModule = tenant.tenantType === 'GYM' ? 'GYM' : 'MOBILE_SHOP';
-      } else {
-        resolvedModule = 'MOBILE_SHOP'; // Fallback
-      }
+    let resolvedModule = module;
+    if (!resolvedModule) {
+      resolvedModule =
+        tenant?.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
     }
 
-    const sub = await this.subscriptionsService.getCurrentActiveSubscription(
-      req.user.tenantId,
-      resolvedModule,
-    );
-    const upcoming = await this.subscriptionsService.getUpcomingSubscription(
-      req.user.tenantId,
-      resolvedModule,
-    );
+    // 2️⃣ Fetch subscription data in parallel
+    const [sub, upcoming] = await Promise.all([
+      this.subscriptionsService.getCurrentActiveSubscription(
+        req.user.tenantId,
+        resolvedModule as ModuleType,
+      ),
+      this.subscriptionsService.getUpcomingSubscription(
+        req.user.tenantId,
+        resolvedModule as ModuleType,
+      ),
+    ]);
 
-    // No active subscription → trial
+    // No active subscription → trial fallback
     if (!sub) {
       return {
-        plan: 'GYM_TRIAL',
+        plan: resolvedModule === 'GYM' ? 'GYM_TRIAL' : 'MOBIBIX_TRIAL',
         planLevel: 0,
         daysLeft: 0,
         isTrial: true,
@@ -80,7 +95,6 @@ export class SubscriptionsController {
     }
 
     const now = new Date();
-
     const daysLeft = Math.max(
       Math.ceil(
         (sub.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
@@ -95,32 +109,46 @@ export class SubscriptionsController {
           ? 'TRIAL'
           : 'ACTIVE';
 
+    // ⚡ Optimization: Features are already included in the sub query
     const plan = sub.plan;
 
+    // 🔥 NEW: Merge features from active-plan, addons, and legacy-CRM
+    const planFeatures =
+      plan.planFeatures?.filter((f) => f.enabled).map((f) => f.feature) || [];
+
+    const addonFeatures = (sub.addons || [])
+      .filter((a) => a.status === SubscriptionStatus.ACTIVE)
+      .flatMap((a) => a.addonPlan?.planFeatures || [])
+      .filter((f: any) => f.enabled)
+      .map((f: any) => f.feature);
+
+    const legacyFeatures =
+      legacyWhatsappSub?.plan.planFeatures
+        .filter((f: any) => f.enabled)
+        .map((f: any) => f.feature) || [];
+
+    const allFeatures = Array.from(
+      new Set([...planFeatures, ...addonFeatures, ...legacyFeatures]),
+    );
+
+
     // 🚀 NEW: Database-driven plan details
+
     const planDetails = {
       name: plan.name,
       code: plan.code,
       level: plan.level,
       tagline: plan.tagline,
       description: plan.description,
-      features: plan.planFeatures
-        .filter((f) => f.enabled)
-        .map((f) => f.feature),
+      features: allFeatures,
       featuresJson: plan.featuresJson,
 
       // Limits from DB
       memberLimit: plan.maxMembers,
       maxStaff: plan.maxStaff,
-      whatsappAllowed: plan.planFeatures.some(
-        (f) => f.feature === 'WHATSAPP_UTILITY' && f.enabled,
-      ),
-      staffAllowed: plan.planFeatures.some(
-        (f) => f.feature === 'STAFF' && f.enabled,
-      ),
-      attendanceAllowed: plan.planFeatures.some(
-        (f) => f.feature === 'ATTENDANCE' && f.enabled,
-      ),
+      whatsappAllowed: allFeatures.includes('WHATSAPP_UTILITY'),
+      staffAllowed: allFeatures.includes('STAFF'),
+      attendanceAllowed: allFeatures.includes('ATTENDANCE'),
       analyticsHistoryDays: plan.analyticsHistoryDays,
     };
 
@@ -344,6 +372,53 @@ export class SubscriptionsController {
       message: 'Plan downgrade scheduled. Changes apply at next renewal.',
     };
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 💎 SUBSCRIPTION ADD-ONS (Generic)
+  // ═══════════════════════════════════════════════════════════════════════════
+  @Post('addons')
+  async addAddon(
+    @Req() req: any,
+    @Body() dto: AddSubscriptionAddonDto,
+    @Query('module') module?: ModuleType,
+  ) {
+    if (!req.user || !req.user.tenantId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    // 1. Resolve module
+    let resolvedModule = module;
+    if (!resolvedModule) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: req.user.tenantId },
+        select: { tenantType: true },
+      });
+      resolvedModule =
+        tenant?.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
+    }
+
+    // 2. Find current active subscription for this module
+    const currentSub =
+      await this.subscriptionsService.getCurrentActiveSubscription(
+        req.user.tenantId,
+        resolvedModule,
+      );
+
+    if (!currentSub) {
+      throw new BadRequestException(
+        'No active subscription to attach an addon to.',
+      );
+    }
+
+    // 3. Call buyAddon service
+    return this.subscriptionsService.buyAddon({
+      subscriptionId: currentSub.id,
+      addonPlanId: dto.addonPlanId,
+      billingCycle: dto.billingCycle,
+      autoRenew: dto.autoRenew,
+    });
+  }
+
 
   /**
    * Pre-check if downgrade is allowed

@@ -11,6 +11,7 @@ import { PerformanceInterceptor } from './common/interceptors/performance.interc
 
 import { WhatsAppConfigValidator } from './modules/whatsapp/whatsapp.config-validator';
 import { PrismaService } from './core/prisma/prisma.service';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
   /**
@@ -117,7 +118,13 @@ async function bootstrap() {
   app.useGlobalInterceptors(new PerformanceInterceptor());
 
   /**
-   * 🌐 1️⃣0️⃣ Global API prefix
+   * 🛡️ 1️⃣0️⃣ Global exception filter (Tier 4 Security)
+   * Sanitizes all error responses and logs full details on server
+   */
+  app.useGlobalFilters(new AllExceptionsFilter());
+
+  /**
+   * 🌐 1️⃣1️⃣ Global API prefix
    */
   app.setGlobalPrefix('api');
 

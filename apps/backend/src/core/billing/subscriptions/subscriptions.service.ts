@@ -486,6 +486,69 @@ export class SubscriptionsService {
   }
 
   /**
+   * BUY ADDON (Phase 1 - New Implementation)
+   *
+   * Attaches an addon to an existing subscription.
+   * Addons are co-terminus with the main subscription.
+   */
+  async buyAddon(input: AddAddonInput): Promise<any> {
+    const { subscriptionId, addonPlanId, billingCycle, autoRenew } = input;
+
+    // 1. Find parent subscription
+    const parentSub = await this.prisma.tenantSubscription.findUnique({
+      where: { id: subscriptionId },
+    });
+
+    if (!parentSub) {
+      throw new NotFoundException(`Subscription ${subscriptionId} not found`);
+    }
+
+    // 2. Verify addon plan
+    const addonPlan = await this.prisma.plan.findUnique({
+      where: { id: addonPlanId },
+    });
+
+    if (!addonPlan || !addonPlan.isAddon) {
+      throw new BadRequestException(
+        `Plan ${addonPlanId} is not a valid addon plan`,
+      );
+    }
+
+    // 3. co-terminus: Addon expires with the parent subscription
+    const endDate = parentSub.endDate;
+
+    this.logger.log(
+      `🛒 Buying addon ${addonPlan.name} for sub ${subscriptionId}. Co-terminus expiry: ${endDate}`,
+    );
+
+    // 4. Upsert addon record
+    return this.prisma.subscriptionAddon.upsert({
+      where: {
+        subscriptionId_addonPlanId: {
+          subscriptionId,
+          addonPlanId,
+        },
+      },
+      update: {
+        status: SubscriptionStatus.ACTIVE,
+        endDate: endDate,
+        billingCycle,
+        autoRenew: autoRenew ?? true,
+      },
+      create: {
+        subscriptionId,
+        addonPlanId,
+        status: SubscriptionStatus.ACTIVE,
+        startDate: new Date(),
+        endDate: endDate,
+        billingCycle,
+        autoRenew: autoRenew ?? true,
+      },
+    });
+  }
+
+
+  /**
    * TOGGLE AUTO-RENEW
    *
    * User can disable auto-renewal at any time.
@@ -903,89 +966,86 @@ export class SubscriptionsService {
     };
   }
 
-  /**
-   * MANAGE ADDON (Enable/Disable)
-   *
-   * Specifically handles 'WHATSAPP_CRM' as a module subscription + tenant flag.
-   */
   async manageAddon(
     tenantId: string,
-    addon: 'WHATSAPP_CRM',
     action: 'ENABLE' | 'DISABLE',
     planId?: string,
+    module?: ModuleType,
   ) {
-    if (addon === 'WHATSAPP_CRM') {
-      if (action === 'ENABLE') {
-        if (!planId) {
-          throw new BadRequestException(
-            'planId is required to enable WHATSAPP_CRM',
-          );
-        }
+    // 1. Resolve module if not provided or if it's an addon-only module
+    let resolvedModule = module;
+    if (!resolvedModule || resolvedModule === ModuleType.WHATSAPP_CRM) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { tenantType: true },
+      });
+      resolvedModule =
+        tenant?.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
+    }
 
-        // 1. Upsert Subscription
-        const sub = await this.prisma.tenantSubscription.upsert({
-          where: {
-            tenantId_module: {
-              tenantId: tenantId,
-              module: 'WHATSAPP_CRM',
-            },
-          },
-          update: {
-            status: 'ACTIVE',
-            planId: planId,
-            startDate: new Date(),
-            autoRenew: true,
-            endDate: addYears(new Date(), 1), // Default 1 year for now
-          },
-          create: {
-            tenantId: tenantId,
-            planId: planId,
-            module: 'WHATSAPP_CRM',
-            status: 'ACTIVE',
-            startDate: new Date(),
-            autoRenew: true,
-            endDate: addYears(new Date(), 1),
-          },
-        });
+    // 2. Resolve target subscription
+    const currentSub = await this.getCurrentActiveSubscription(
+      tenantId,
+      resolvedModule,
+    );
+    if (!currentSub) {
+      throw new BadRequestException(
+        'No active subscription found to manage addons.',
+      );
+    }
 
-        // 2. Update Tenant Flag
+    if (action === 'ENABLE') {
+      if (!planId) {
+        throw new BadRequestException('planId is required to enable addon');
+      }
+
+      const addon = await this.buyAddon({
+        subscriptionId: currentSub.id,
+        addonPlanId: planId,
+        billingCycle: currentSub.billingCycle || BillingCycle.MONTHLY, // Inherit from parent
+        autoRenew: true,
+      });
+
+      // Special handling for legacy flags if plan is WhatsApp CRM
+      const plan = await this.prisma.plan.findUnique({ where: { id: planId } });
+      if (plan?.code === 'WHATSAPP_CRM') {
         await this.prisma.tenant.update({
           where: { id: tenantId },
-          data: { whatsappCrmEnabled: true },
-        });
-
-        this.logger.log(`✅ Enabled WHATSAPP_CRM for ${tenantId}`);
-        return sub;
-      } else {
-        // DISABLE
-        // 1. Cancel Subscription
-        const sub = await this.prisma.tenantSubscription.findUnique({
-          where: {
-            tenantId_module: {
-              tenantId: tenantId,
-              module: 'WHATSAPP_CRM',
-            },
+          data: {
+            whatsappCrmEnabled: true,
+            tenantType: ModuleType.MOBILE_SHOP, // Legacy behavior
           },
         });
+      }
 
-        if (sub) {
-          await this.prisma.tenantSubscription.update({
-            where: { id: sub.id },
-            data: { status: SubscriptionStatus.CANCELLED },
-          });
-        }
+      return addon;
+    } else {
+      // DISABLE
+      if (!planId) {
+        throw new BadRequestException('planId is required to disable addon');
+      }
 
-        // 2. Update Tenant Flag
+      const updated = await this.prisma.subscriptionAddon.update({
+        where: {
+          subscriptionId_addonPlanId: {
+            subscriptionId: currentSub.id,
+            addonPlanId: planId,
+          },
+        },
+        data: { status: SubscriptionStatus.CANCELLED },
+      });
+
+      // Special handling for legacy flags
+      const plan = await this.prisma.plan.findUnique({ where: { id: planId } });
+      if (plan?.code === 'WHATSAPP_CRM') {
         await this.prisma.tenant.update({
           where: { id: tenantId },
           data: { whatsappCrmEnabled: false },
         });
-
-        this.logger.log(`🚫 Disabled WHATSAPP_CRM for ${tenantId}`);
-        return { message: 'Addon disabled' };
       }
-    }
 
-    throw new BadRequestException(`Unsupported addon: ${addon}`);
+      return updated;
+    }
   }
 }
+

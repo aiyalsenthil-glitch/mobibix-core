@@ -109,6 +109,9 @@ model User {
   ledgerPayments    LedgerPayment[]
   tenant            Tenant?            @relation(fields: [tenantId], references: [id])
   userTenants       UserTenant[]
+
+  @@index([REMOVED_AUTH_PROVIDERUid])
+  @@index([email])
 }
 
 model Member {
@@ -370,6 +373,9 @@ model StaffInvite {
   phone     String?
 
   @@unique([tenantId, email])
+  @@index([email])
+  @@index([tenantId])
+  @@index([accepted])
 }
 
 model MemberPayment {
@@ -577,17 +583,18 @@ model WhatsAppSetting {
 }
 
 model WhatsAppPhoneNumber {
-  id            String                     @id @default(uuid())
-  tenantId      String
-  phoneNumber   String
-  phoneNumberId String
-  wabaId        String
-  purpose       WhatsAppPhoneNumberPurpose @default(DEFAULT)
-  qualityRating String?
-  isDefault     Boolean                    @default(false)
-  isActive      Boolean                    @default(true)
-  createdAt     DateTime                   @default(now())
-  updatedAt     DateTime                   @updatedAt
+  id                    String                     @id @default(uuid())
+  tenantId              String
+  phoneNumber           String
+  phoneNumberId         String
+  wabaId                String
+  purpose               WhatsAppPhoneNumberPurpose @default(DEFAULT)
+  qualityRating         String?
+  encryptedAccessToken  String?                    /// AES-256-GCM encrypted Meta API token (per-tenant isolation)
+  isDefault             Boolean                    @default(false)
+  isActive              Boolean                    @default(true)
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
 
   @@unique([tenantId, phoneNumberId])
   @@index([tenantId, isActive])
@@ -1396,18 +1403,21 @@ model PurchaseOrderItem {
 
 
 
+/// POLICY: Module-level numbers are OUTBOUND-ONLY. No inbound message processing.
+/// See: implementation_plan.md — Condition 2 (Shared Number Policy)
 model WhatsAppPhoneNumberModule {
-  id            String                     @id @default(uuid())
-  moduleType    String
-  phoneNumber   String
-  phoneNumberId String
-  wabaId        String
-  purpose       WhatsAppPhoneNumberPurpose @default(DEFAULT)
-  qualityRating String?
-  isDefault     Boolean                    @default(false)
-  isActive      Boolean                    @default(true)
-  createdAt     DateTime                   @default(now())
-  updatedAt     DateTime                   @updatedAt
+  id                    String                     @id @default(uuid())
+  moduleType            String
+  phoneNumber           String
+  phoneNumberId         String
+  wabaId                String
+  purpose               WhatsAppPhoneNumberPurpose @default(DEFAULT)
+  qualityRating         String?
+  encryptedAccessToken  String?                    /// AES-256-GCM encrypted Meta API token (module-level)
+  isDefault             Boolean                    @default(false)
+  isActive              Boolean                    @default(true)
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
 
   @@unique([moduleType, phoneNumberId])
   @@index([moduleType, isActive])

@@ -39,7 +39,7 @@ export class AdminTenantController {
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } }, // Search by user email? No, tenant email logic complex
+        { contactEmail: { contains: search, mode: 'insensitive' } },
         { code: { contains: search, mode: 'insensitive' } },
         { contactPhone: { contains: search } },
       ];

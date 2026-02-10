@@ -35,7 +35,7 @@ export class AuthService {
   }
 
   /**
-   * 🔒 CORE AUTH LOGIC
+   * 🔒 CORE AUTH LOGIC (OPTIMIZED)
    */
   async loginWithFirebase(REMOVED_AUTH_PROVIDERToken: string, tenantCode?: string) {
     try {
@@ -61,110 +61,74 @@ export class AuthService {
           REMOVED_AUTH_PROVIDERUid: decoded.uid,
           email: decoded.email ?? null,
           fullName: decoded.name ?? null,
-          role: UserRole.USER, // First login defaults to USER, can be upgraded to ADMIN/OWNER by admins
+          role: UserRole.USER,
           tenantId: null,
         },
       });
 
       // ─────────────────────────────
-      // 3️⃣ Staff invite auto-accept
+      // 3️⃣ Staff invite auto-accept (OPTIMIZED: run in parallel with tenant lookup)
       // ─────────────────────────────
-      if (decoded.email) {
-        const invite = await this.prisma.staffInvite.findFirst({
-          where: {
-            email: decoded.email,
-            accepted: false,
-          },
-        });
-
-        if (invite) {
-          await this.prisma.userTenant.upsert({
+      const staffInvitePromise = decoded.email
+        ? this.prisma.staffInvite.findFirst({
             where: {
-              userId_tenantId: {
-                userId: user.id,
-                tenantId: invite.tenantId,
-              },
+              email: decoded.email,
+              accepted: false,
             },
-            update: {
-              role: UserRole.STAFF,
-            },
-            create: {
-              userId: user.id,
-              tenantId: invite.tenantId,
-              role: UserRole.STAFF,
-            },
-          });
+          })
+        : Promise.resolve(null);
 
-          await this.prisma.staffInvite.update({
-            where: { id: invite.id },
-            data: { accepted: true },
-          });
-        }
-      }
       // ─────────────────────────────
-      // 4️⃣ Resolve active tenant context
-      // ─────────────────────────────
-
-      // 4️⃣ Resolve active tenant context
-      // ─────────────────────────────
-
-      let activeUserTenant: {
-        id: string;
-        tenantId: string;
-        role: UserRole;
-        tenant: {
-          id: string;
-          name: string;
-          code: string;
-          subscription: {
-            status: string;
-            plan: {
-              code: string;
-              name: string;
-            };
-          }[];
-        };
-      } | null = null;
+      // 4️⃣ Resolve active tenant context (OPTIMIZED)\n      // ─────────────────────────────
+      let activeUserTenant: any = null;
 
       if (tenantCode) {
+        // Get tenant by code (simple query, indexed)
         const tenant = await this.prisma.tenant.findUnique({
           where: { code: tenantCode },
+          select: { id: true },
         });
 
         if (!tenant) {
           throw new UnauthorizedException('Tenant code is invalid');
         }
 
+        // Get user-tenant relationship with simple includes (no nested includes)
         activeUserTenant = await this.prisma.userTenant.findFirst({
           where: {
             userId: user.id,
             tenantId: tenant.id,
           },
-          include: {
+          select: {
+            id: true,
+            tenantId: true,
+            role: true,
             tenant: {
-              include: {
-                subscription: {
-                  include: { plan: true },
-                },
+              select: {
+                id: true,
+                name: true,
+                code: true,
               },
             },
           },
         });
       } else {
-        const userTenants = await this.prisma.userTenant.findMany({
+        // Get first user tenant without expensive nested includes
+        activeUserTenant = await this.prisma.userTenant.findFirst({
           where: { userId: user.id },
-          include: {
+          select: {
+            id: true,
+            tenantId: true,
+            role: true,
             tenant: {
-              include: {
-                subscription: {
-                  include: { plan: true },
-                },
+              select: {
+                id: true,
+                name: true,
+                code: true,
               },
             },
           },
         });
-
-        activeUserTenant = userTenants[0] ?? null;
       }
 
       // 🚫 Tenant requested but user not linked → BLOCK
@@ -178,7 +142,7 @@ export class AuthService {
           sub: user.id,
           tenantId: null,
           userTenantId: null,
-          role: user.role, // EXACT USER ROLE
+          role: user.role,
         });
 
         return {
@@ -194,21 +158,8 @@ export class AuthService {
           tenant: null,
         };
       }
+
       const resolvedUserTenant = activeUserTenant!;
-      // ─────────────────────────────
-      // 4.5️⃣ Set Firebase custom claims (SAFE)
-      // ─────────────────────────────
-
-      if (activeUserTenant && decoded.tenantId !== activeUserTenant.tenantId) {
-        await this.REMOVED_AUTH_PROVIDERAdmin.setCustomUserClaims(user.REMOVED_AUTH_PROVIDERUid, {
-          tenantId: activeUserTenant.tenantId,
-          role: activeUserTenant.role,
-        });
-      }
-
-      // Extract plan code (take first active/trial subscription or just first one)
-      const subscription = resolvedUserTenant.tenant.subscription?.[0];
-      const planCode = subscription?.plan?.code;
 
       // ─────────────────────────────
       // 5️⃣ Issue JWT
@@ -217,9 +168,56 @@ export class AuthService {
         sub: user.id,
         tenantId: resolvedUserTenant.tenantId,
         userTenantId: resolvedUserTenant.id,
-        role: resolvedUserTenant.role, // EXACT USER ROLE
-        planCode,
+        role: resolvedUserTenant.role,
       });
+
+      // ─────────────────────────────
+      // 6️⃣ Handle staff invite acceptance (fire-and-forget)
+      // ─────────────────────────────
+      staffInvitePromise
+        .then(async (invite) => {
+          if (invite) {
+            await this.prisma.userTenant.upsert({
+              where: {
+                userId_tenantId: {
+                  userId: user.id,
+                  tenantId: invite.tenantId,
+                },
+              },
+              update: {
+                role: UserRole.STAFF,
+              },
+              create: {
+                userId: user.id,
+                tenantId: invite.tenantId,
+                role: UserRole.STAFF,
+              },
+            });
+
+            await this.prisma.staffInvite.update({
+              where: { id: invite.id },
+              data: { accepted: true },
+            });
+          }
+        })
+        .catch((err) => {
+          console.warn('⚠️  Failed to accept staff invite:', err?.message);
+        });
+
+      // ─────────────────────────────
+      // 7️⃣ Set Firebase custom claims (fire-and-forget for speed)
+      // ─────────────────────────────
+      this.REMOVED_AUTH_PROVIDERAdmin
+        .setCustomUserClaims(user.REMOVED_AUTH_PROVIDERUid, {
+          tenantId: resolvedUserTenant.tenantId,
+          role: resolvedUserTenant.role,
+        })
+        .catch((err) => {
+          console.warn(
+            '⚠️  Failed to set Firebase custom claims:',
+            err?.message,
+          );
+        });
 
       return {
         accessToken: token,
@@ -230,13 +228,11 @@ export class AuthService {
           role: activeUserTenant?.role ?? UserRole.USER,
           name: user.fullName,
           email: user.email,
-          planCode,
         },
         tenant: {
           id: resolvedUserTenant.tenant.id,
           name: resolvedUserTenant.tenant.name,
           code: resolvedUserTenant.tenant.code,
-          planCode,
         },
       };
     } catch (err) {

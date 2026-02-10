@@ -7,12 +7,11 @@ import { WhatsAppLogger } from './whatsapp.logger';
 import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
 import { WhatsAppPhoneNumberPurpose, ModuleType } from '@prisma/client';
 import { PlanRulesService } from '../../core/billing/plan-rules.service';
+import { WhatsAppTokenService } from './whatsapp-token.service';
+import { WhatsAppRoutingService } from './whatsapp-routing.service';
 
 @Injectable()
 export class WhatsAppSender {
-  // ⚠️ REMOVED: No hardcoded phone number ID
-  // private readonly phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  private readonly token = process.env.WHATSAPP_ACCESS_TOKEN;
   private readonly apiVersion = process.env.WHATSAPP_API_VERSION || 'v22.0';
 
   constructor(
@@ -20,6 +19,8 @@ export class WhatsAppSender {
     private readonly logger: WhatsAppLogger,
     private readonly phoneNumbersService: WhatsAppPhoneNumbersService,
     private readonly planRulesService: PlanRulesService,
+    private readonly tokenService: WhatsAppTokenService,
+    private readonly routingService: WhatsAppRoutingService,
   ) {}
 
   /**
@@ -210,6 +211,18 @@ export class WhatsAppSender {
     // ─────────────────────────────
     // 2️⃣ Get Dynamic Phone Number from DB
     // ─────────────────────────────
+
+    // 2a. Dual-Track Routing Check
+    const routing = await this.routingService.resolveTrack(tenantId, notificationType);
+    if (!routing.allowed) {
+      return logFailure(
+        routing.reason || `Track ${routing.track} does not allow '${notificationType}'`,
+        true,
+        routing.reason || 'Routing denied',
+      );
+    }
+
+    // 2b. Resolve phone number
     const purpose = this.mapFeatureToPurpose(feature);
     let phoneNumberConfig;
 
@@ -272,9 +285,10 @@ export class WhatsAppSender {
     }
 
     // ─────────────────────────────
-    // 7️⃣ SEND WHATSAPP (Cloud API) - Using Dynamic Phone Number ID
+    // 7️⃣ SEND WHATSAPP (Cloud API) - Using Dynamic Phone Number ID + Isolated Token
     // ─────────────────────────────
     const url = `https://graph.facebook.com/${this.apiVersion}/${phoneNumberConfig.phoneNumberId}/messages`;
+    const resolvedToken = await this.tokenService.resolveToken(phoneNumberConfig);
 
     try {
       const response = await axios.post(
@@ -299,7 +313,7 @@ export class WhatsAppSender {
         },
         {
           headers: {
-            Authorization: `Bearer ${this.token}`,
+            Authorization: `Bearer ${resolvedToken}`,
             'Content-Type': 'application/json',
           },
         },
@@ -360,7 +374,6 @@ export class WhatsAppSender {
 
       console.error('[WA META ERROR]', errMsg);
 
-      return { success: false, error: errMsg };
       return { success: false, error: errMsg };
     }
   }
@@ -456,6 +469,7 @@ export class WhatsAppSender {
     }
 
     const url = `https://graph.facebook.com/${this.apiVersion}/${phoneNumberConfig.phoneNumberId}/messages`;
+    const resolvedToken = await this.tokenService.resolveToken(phoneNumberConfig);
 
     try {
       const response = await axios.post(
@@ -469,7 +483,7 @@ export class WhatsAppSender {
         },
         {
           headers: {
-            Authorization: `Bearer ${this.token}`,
+            Authorization: `Bearer ${resolvedToken}`,
             'Content-Type': 'application/json',
           },
         },

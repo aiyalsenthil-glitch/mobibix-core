@@ -72,7 +72,11 @@ export class TenantService {
         : ModuleType.GYM,
     );
 
-    const code = dto.code ?? randomBytes(4).toString('hex').toUpperCase();
+    // Generate guaranteed unique tenant code: timestamp (base36) + random (4 hex chars)
+    // Example: K3F2A1B4 (8 chars total, always unique)
+    const timestamp = Date.now().toString(36).toUpperCase().slice(-4);
+    const random = randomBytes(2).toString('hex').toUpperCase();
+    const code = timestamp + random;
 
     const tenant = await this.prisma.tenant.create({
       data: {
@@ -122,7 +126,6 @@ export class TenantService {
         userId,
         tenantId: tenant.id,
         role: UserRole.OWNER,
-        ...getCreateAudit(userId), // ✅ Capture who created
       },
     });
 

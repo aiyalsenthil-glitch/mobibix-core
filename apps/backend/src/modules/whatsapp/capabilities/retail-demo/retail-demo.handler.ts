@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../../core/prisma/prisma.service';
 import { WhatsAppSender } from '../../whatsapp.sender';
@@ -58,10 +57,8 @@ interface DemoSession {
 @Injectable()
 export class RetailDemoHandler {
   private readonly logger = new Logger(RetailDemoHandler.name);
-  private readonly token = process.env.WHATSAPP_ACCESS_TOKEN;
-  private readonly apiVersion = process.env.WHATSAPP_API_VERSION || 'v22.0';
 
-  // In-Memory Session Store for Demo (No DB persistence requested)
+  // In-Memory Session Store (No DB persistence requested)
   private sessions = new Map<string, DemoSession>();
 
   constructor(
@@ -272,52 +269,18 @@ export class RetailDemoHandler {
     }
   }
 
-  // --- SENDER ---
-
+  /**
+   * Send free text via WhatsAppSender (production-ready path).
+   * This ensures: token isolation, logging, plan checks, and usage tracking.
+   */
   private async sendFreeText(tenantId: string, phone: string, text: string) {
     try {
-      const phoneNumberConfig = await this.prisma.whatsAppPhoneNumber.findFirst(
-        {
-          where: { tenantId, isActive: true, purpose: 'DEFAULT' },
-        },
-      );
-
-      if (!phoneNumberConfig) {
-        this.logger.error('[RETAIL_DEMO] No Active WhatsApp Number found');
-        return;
+      const result = await this.sender.sendTextMessage(tenantId, phone, text);
+      if (!result.success) {
+        this.logger.error(`[RETAIL] Failed to send text: ${result.error}`);
       }
-
-      const url = `https://graph.facebook.com/${this.apiVersion}/${phoneNumberConfig.phoneNumberId}/messages`;
-
-      await axios.post(
-        url,
-        {
-          messaging_product: 'whatsapp',
-          recipient_type: 'individual',
-          to: phone,
-          type: 'text',
-          text: { preview_url: false, body: text },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.token}`,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      // LOG TO DB (Required for Frontend to see the reply)
-      await this.prisma.whatsAppLog.create({
-        data: {
-          tenantId,
-          phone,
-          type: 'AUTOMATION',
-          status: 'SENT',
-          metadata: { text_snippet: text.substring(0, 50) }, // Store snippet
-        },
-      });
     } catch (e) {
-      this.logger.error(`[RETAIL_DEMO] Failed to send free text: ${e.message}`);
+      this.logger.error(`[RETAIL] Failed to send free text: ${e.message}`);
     }
   }
 }
