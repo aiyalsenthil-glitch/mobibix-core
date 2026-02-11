@@ -26,6 +26,8 @@ import { DocumentNumberService } from '../../common/services/document-number.ser
 import { DocumentType } from '@prisma/client';
 import { assertShopAccess } from '../../common/guards/shop-access.guard';
 
+import { BillingService, CreateInvoiceOptions } from './billing.service';
+
 @Injectable()
 export class SalesService {
   constructor(
@@ -33,6 +35,7 @@ export class SalesService {
     private stockService: StockService,
     private eventEmitter: EventEmitter2,
     private documentNumberService: DocumentNumberService,
+    private billingService: BillingService,
   ) {}
 
   // ============================================
@@ -145,7 +148,7 @@ export class SalesService {
       // 1. Validate shop access
       await assertShopAccess(tx, dto.shopId, tenantId);
 
-      // Get shop details for invoice
+      // Get shop details
       const shop = await tx.shop.findFirst({
         where: { id: dto.shopId, tenantId },
         select: { id: true, gstEnabled: true, state: true },
@@ -175,22 +178,17 @@ export class SalesService {
       });
       if (products.length !== productIds.length)
         throw new BadRequestException('Invalid product');
-      const productSerializedMap = new Map(
-        products.map((p) => [p.id, p.isSerialized]),
-      );
-      const productHsnMap = new Map(
-        products.map((p) => [p.id, p.hsnCode || null]),
-      );
+
+      const productMap = new Map(products.map((p) => [p.id, p]));
       const productCostMap = new Map(
         products.map((p) => [p.id, p.costPrice ?? null]),
       );
 
       // 🛡️ FIX 1: ENFORCE COST VALIDATION BEFORE SALE
-      // Validate that all items have valid cost prices (not NULL or ≤ 0)
       for (const item of dto.items) {
         const cost = productCostMap.get(item.shopProductId);
         if (cost === null || cost === undefined || cost <= 0) {
-          const product = products.find((p) => p.id === item.shopProductId);
+          const product = productMap.get(item.shopProductId);
           throw new BadRequestException(
             `Cannot sell product "${product?.name || 'Unknown'}" without a valid cost price. ` +
               `Please ensure a purchase has been recorded or update the cost price manually.`,
@@ -198,22 +196,19 @@ export class SalesService {
         }
       }
 
-      // 3. IMEI logic
+      // 3. IMEI Validations
       const allImeis: string[] = [];
-      const imeisByProduct = new Map<string, string[]>();
       for (const item of dto.items) {
-        const isSerialized = productSerializedMap.get(item.shopProductId);
-        if (isSerialized && !item.imeis?.length)
+        const product = productMap.get(item.shopProductId);
+        if (product?.isSerialized && !item.imeis?.length)
           throw new BadRequestException(`Serialized product requires IMEI`);
-        if (!isSerialized && item.imeis?.length)
-          throw new BadRequestException(
-            `Non-serialized product cannot have IMEI`,
-          );
-        if (isSerialized && item.imeis) {
+        if (!product?.isSerialized && item.imeis?.length)
+          throw new BadRequestException(`Non-serialized product cannot have IMEI`);
+        
+        if (product?.isSerialized && item.imeis) {
           if (item.quantity !== item.imeis.length)
-            throw new BadRequestException(`Quantity mismatch`);
+             throw new BadRequestException(`Quantity mismatch for ${product.name}`);
           allImeis.push(...item.imeis);
-          imeisByProduct.set(item.shopProductId, item.imeis);
         }
       }
 
@@ -228,253 +223,62 @@ export class SalesService {
           throw new BadRequestException('One or more IMEIs not found');
         }
 
-        for (const record of imeiRecords) {
-          const expectedProductId = Array.from(imeisByProduct.entries()).find(
-            ([_, imeis]) => imeis.includes(record.imei),
-          )?.[0];
-          if (record.shopProductId !== expectedProductId) {
-            throw new BadRequestException(
-              `IMEI ${record.imei} does not belong to product ${expectedProductId}`,
-            );
-          }
-          if (record.status !== 'IN_STOCK') {
-            throw new BadRequestException(
-              `IMEI ${record.imei} is not available (status: ${record.status})`,
-            );
-          }
+        const imeiMap = new Map(imeiRecords.map(r => [r.imei, r]));
+        for (const item of dto.items) {
+             if (item.imeis) {
+                 for(const imei of item.imeis) {
+                     const record = imeiMap.get(imei);
+                     if (record?.shopProductId !== item.shopProductId) 
+                         throw new BadRequestException(`IMEI ${imei} does not belong to product`);
+                     if (record?.status !== 'IN_STOCK')
+                         throw new BadRequestException(`IMEI ${imei} is not available`);
+                 }
+             }
         }
       }
 
-      const lineInputs: InvoiceLineInput[] = dto.items.map((i) => {
-        // STRICT GST COMPLIANCE GUARD
-        if (shop.gstEnabled) {
-          if (i.gstRate <= 0) {
-            throw new BadRequestException(
-              'STRICT COMPLIANCE VOILATION: GST-enabled shops cannot issue 0% tax invoices. Please ensure all items have a valid GST rate defined in settings.',
-            );
-          }
-        } else {
-          // Non-GST Shop
-          if (i.gstRate > 0) {
-            throw new BadRequestException(
-              'GST not enabled for this shop. GST rate must be 0.',
-            );
-          }
-        }
-
-        if (i.gstRate < 0 || i.gstRate > 100) {
-          throw new BadRequestException(
-            `Invalid GST rate: ${i.gstRate}. Must be between 0 and 100%.`,
-          );
-        }
-        return {
-          shopProductId: i.shopProductId,
-          quantity: i.quantity,
-          rate: i.rate,
-          gstRate: i.gstRate,
-          hsnCode: productHsnMap.get(i.shopProductId) || undefined,
-        };
+      // 4. Map to CreateInvoiceOptions
+      const billingItems = dto.items.map(item => {
+          const product = productMap.get(item.shopProductId);
+          return {
+              shopProductId: item.shopProductId,
+              name: product?.name,
+              quantity: item.quantity,
+              rate: item.rate,
+              gstRate: item.gstRate,
+              hsnCode: product?.hsnCode || undefined,
+              costPrice: product?.costPrice || 0,
+              productType: product?.type,
+              imeis: item.imeis,
+              isSerialized: product?.isSerialized
+          };
       });
 
-      // Calculate GST flag
-      const isIndianGSTInvoice = shop.gstEnabled && shop.state !== '';
-      const calc = calculateInvoiceTotals(lineInputs, {
-        isIndianGSTInvoice,
-        pricesIncludeTax: !!dto.pricesIncludeTax,
-        shopState: shop.state,
-        customerState: dto.customerState,
-        customerGstin: dto.customerGstin,
-      });
-
-      // Re-map properly using helper
-      const invoiceItemsDataCorrected = calc.lines.map((line) => ({
-        shopProductId: line.shopProductId,
-        quantity: line.quantity,
-        rate: this.toInt(line.rate), // Rate typically stored as integer rupees in many legacy systems, but ideally should be paisa.
-        // We will keep `toInt` for rate to minimize friction if schema is weak,
-        // BUT `lineTotal` MUST be paisa.
-        hsnCode: line.hsnCode,
-        gstRate: line.gstRate,
-        gstAmount: this.toPaisa(line.gstAmount),
-        lineTotal: this.toPaisa(line.lineTotal), // CHANGED to toPaisa for consistency
-      }));
-
-      // 5. Determine Payment Status
-      // Total Amount in PAISA
-      const totalAmountPaisa = this.toPaisa(calc.subTotal + calc.gstAmount);
-
-      let totalPaidPaisa = 0;
-      const receiptsToCreate: { mode: PaymentMode; amountPaisa: number }[] = [];
-      const primaryPaymentMode =
-        (dto.paymentMethods?.[0]?.mode as PaymentMode) ||
-        (dto.paymentMode as PaymentMode) ||
-        PaymentMode.CASH;
-
-      if (dto.paymentMethods && dto.paymentMethods.length > 0) {
-        for (const pm of dto.paymentMethods) {
-          if (pm.mode !== PaymentMode.CREDIT) {
-            const amountPaisa = this.toPaisa(pm.amount);
-            totalPaidPaisa += amountPaisa;
-            receiptsToCreate.push({ mode: pm.mode, amountPaisa });
-          }
-        }
-      } else {
-        const mode = (dto.paymentMode as PaymentMode) || PaymentMode.CASH;
-        if (mode !== PaymentMode.CREDIT) {
-          totalPaidPaisa = totalAmountPaisa;
-          receiptsToCreate.push({ mode, amountPaisa: totalAmountPaisa });
-        }
-      }
-
-      const invoiceStatus =
-        totalPaidPaisa >= totalAmountPaisa - 100
-          ? InvoiceStatus.PAID
-          : InvoiceStatus.PARTIALLY_PAID; // 1 rupee tolerance
-
-      // 6. Create Invoice
-      const invoiceNumber =
-        await this.documentNumberService.generateDocumentNumber(
-          dto.shopId,
-          DocumentType.SALES_INVOICE,
-          new Date(),
-        );
-
-      const invoice = await tx.invoice.create({
-        data: {
+      const options: CreateInvoiceOptions = {
           tenantId,
           shopId: dto.shopId,
           customerId: dto.customerId,
-          invoiceNumber,
           customerName: dto.customerName,
           customerPhone: dto.customerPhone,
           customerState: dto.customerState,
           customerGstin: dto.customerGstin,
-          subTotal: this.toPaisa(calc.subTotal),
-          gstAmount: this.toPaisa(calc.gstAmount),
-          cgst: this.toPaisa(calc.cgst),
-          sgst: this.toPaisa(calc.sgst),
-          igst: this.toPaisa(calc.igst),
-          totalAmount: totalAmountPaisa,
-          paymentMode: primaryPaymentMode,
-          status: invoiceStatus,
-          items: { create: invoiceItemsDataCorrected },
-        },
-      });
-
-      // 7. Create Financial Entries (Ledger)
-      // Store in Paisa? Legacy might expect Rupees?
-      // Checking existing code: `amount: pm.amount` (likely Rupees from DTO).
-      // Checking `financialEntry` schema: Int.
-      // If we change to Paisa, it might break dashboard if dashboard expects Rupees.
-      // BUT requirement says: "Enforce ALL monetary values ... in PAISA".
-      // We will store in PAISA.
-      if (dto.paymentMethods && dto.paymentMethods.length > 0) {
-        const entries = dto.paymentMethods.map((pm) => ({
-          tenantId,
-          shopId: dto.shopId,
-          type: 'IN' as const,
-          amount: this.toPaisa(pm.amount), // Paisa
-          mode: pm.mode,
-          referenceType: 'INVOICE' as const,
-          referenceId: invoice.id,
-        }));
-        await tx.financialEntry.createMany({ data: entries });
-      } else {
-        await tx.financialEntry.create({
-          data: {
-            tenantId,
-            shopId: dto.shopId,
-            type: 'IN',
-            amount: totalAmountPaisa,
-            mode: (dto.paymentMode as PaymentMode) || 'CASH',
-            referenceType: 'INVOICE',
-            referenceId: invoice.id,
-          },
-        });
-      }
-
-      // 8. Get invoice items for stock operations
-      const createdInvoice = await tx.invoice.findUnique({
-        where: { id: invoice.id },
-        include: { items: true },
-      });
-      if (!createdInvoice)
-        throw new BadRequestException('Invoice creation validation failed');
-
-      // 8a. Batch allocate print numbers (single atomic increment for all receipts)
-      let startPrintNum = 0;
-      if (receiptsToCreate.length > 0) {
-        const shop = await tx.shop.update({
-          where: { id: dto.shopId },
-          data: { receiptPrintCounter: { increment: receiptsToCreate.length } },
-          select: { receiptPrintCounter: true },
-        });
-        startPrintNum = shop.receiptPrintCounter - receiptsToCreate.length + 1;
-      }
-
-      // 8b. Create Receipts (batch with pre-allocated print numbers)
-      if (receiptsToCreate.length > 0) {
-        const receiptsData = receiptsToCreate.map((r, idx) => ({
-          id: uuidv4(),
-          tenantId,
-          shopId: dto.shopId,
-          receiptId: this.generateReceiptId(),
-          printNumber: String(startPrintNum + idx),
-          receiptType: ReceiptType.CUSTOMER,
-          amount: r.amountPaisa,
-          paymentMethod: r.mode,
-          customerId: invoice.customerId,
-          customerName: invoice.customerName,
-          customerPhone: invoice.customerPhone,
-          linkedInvoiceId: invoice.id,
-          status: ReceiptStatus.ACTIVE,
-        }));
-        await tx.receipt.createMany({ data: receiptsData });
-      }
-
-      // 9. Batch create Stock Ledger entries (instead of looping recordStockOut)
-      const stockLedgerData: any[] = [];
-      for (let i = 0; i < dto.items.length; i++) {
-        const item = dto.items[i];
-        const invoiceItem = createdInvoice.items[i];
-        const itemCost = productCostMap.get(item.shopProductId);
-
-        // Validate product type (SERVICE cannot have stock operations)
-        const product = products.find((p) => p.id === item.shopProductId);
-        if (product && product.type === ProductType.SERVICE) {
-          throw new BadRequestException(
-            `SERVICE product "${product.name}" cannot have stock operations`,
-          );
-        }
-
-        stockLedgerData.push({
-          tenantId,
-          shopId: dto.shopId,
-          shopProductId: item.shopProductId,
-          type: 'OUT',
-          quantity: item.quantity,
+          items: billingItems,
+          paymentMode: (dto.paymentMode as PaymentMode) || PaymentMode.CASH,
+          paymentMethods: dto.paymentMethods?.map(pm => ({
+              mode: pm.mode as PaymentMode,
+              amount: pm.amount
+          })),
+          pricesIncludeTax: !!dto.pricesIncludeTax,
           referenceType: 'SALE',
-          referenceId: invoiceItem.id,
-          costPerUnit: itemCost ?? null,
-        });
-      }
-      if (stockLedgerData.length > 0) {
-        await tx.stockLedger.createMany({ data: stockLedgerData });
-      }
+          // skipStockUpdate: false, // Default
+      };
 
-      // 10. Update IMEIs (batch update)
-      if (allImeis.length > 0) {
-        await tx.iMEI.updateMany({
-          where: { imei: { in: allImeis }, tenantId },
-          data: { invoiceId: invoice.id, status: 'SOLD', soldAt: new Date() },
-        });
-      }
-
+      // 5. Delegate to BillingService
+      const invoice = await this.billingService.createInvoice(options, tx);
       return invoice.id;
     });
 
     // ⚡ EVENT (InvoiceCreated)
-    // We fetch details to have accurate total and number
     const created = await this.prisma.invoice.findUnique({
       where: { id: invoiceId },
     });

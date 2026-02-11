@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
-import { ReceiptsService } from '../../modules/mobileshop/receipts/receipts.service';
-import { PrismaService } from '../../core/prisma/prisma.service';
-import { DocumentNumberService } from '../../common/services/document-number.service';
+import { ReceiptsService } from '../../../core/receipts/receipts.service';
+import { PrismaService } from '../../../core/prisma/prisma.service';
+import { DocumentNumberService } from '../../../common/services/document-number.service';
 
 describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', () => {
   let service: ReceiptsService;

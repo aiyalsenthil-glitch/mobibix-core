@@ -10,6 +10,7 @@ import {
 } from "@/services/shops.api";
 import { ShopDocumentSettings } from "@/components/shops/ShopDocumentSettings";
 import { ShopPrintSettings } from "@/components/shops/ShopPrintSettings";
+import { StaffList } from "@/components/staff/StaffList";
 import { useRouter } from "next/navigation";
 
 interface ShopSettingsViewProps {
@@ -18,7 +19,7 @@ interface ShopSettingsViewProps {
 
 export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"GENERAL" | "PRINT" | "BANK" | "DOCUMENT">("GENERAL");
+  const [activeTab, setActiveTab] = useState<"GENERAL" | "PRINT" | "BANK" | "DOCUMENT" | "STAFF">("GENERAL");
   const [isLoading, setIsLoading] = useState(true);
   
   const [shop, setShop] = useState<Shop | null>(null);
@@ -217,6 +218,16 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
             >
                 Document Numbering
             </button>
+             <button
+                onClick={() => setActiveTab("STAFF")}
+                className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+                    activeTab === "STAFF" 
+                    ? "border-teal-500 text-teal-400" 
+                    : "border-transparent text-gray-400 hover:text-white"
+                }`}
+            >
+                Staff Management
+            </button>
         </div>
 
         {/* Content Area */}
@@ -226,6 +237,8 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
             </div>
         ) : activeTab === "DOCUMENT" ? (
             <ShopDocumentSettings shopId={shopId} />
+        ) : activeTab === "STAFF" ? (
+            <StaffList />
         ) : activeTab === "BANK" ? (
             <div className="bg-stone-900/50 border border-white/5 rounded-xl p-8 animate-fade-in">
                  <form onSubmit={handleSubmit} className="space-y-8">

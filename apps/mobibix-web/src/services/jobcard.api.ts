@@ -51,6 +51,7 @@ export interface JobCard {
 
   createdByUserId: string;
   createdByName: string;
+  assignedToUserId?: string | null;
 
   createdAt: Date | string;
   updatedAt: Date | string;
@@ -72,6 +73,8 @@ export interface JobCard {
       id: string;
       name: string;
       salePrice: number;
+      gstRate?: number;
+      hsnCode?: string;
     };
   }[];
 
@@ -102,6 +105,7 @@ export interface CreateJobCardDto {
   advancePaid?: number;
   billType?: string;
   estimatedDelivery?: Date | string;
+  assignedToUserId?: string;
 }
 
 export interface UpdateJobCardDto {
@@ -125,6 +129,7 @@ export interface UpdateJobCardDto {
   advancePaid?: number;
   billType?: string;
   estimatedDelivery?: Date | string;
+  assignedToUserId?: string | null;
 }
 
 /**
@@ -391,4 +396,43 @@ export async function refundJobCardAdvance(
   }
 
   return response.json();
+}
+
+/**
+ * Repair Bill DTO
+ */
+export interface RepairBillDto {
+  shopId: string;
+  jobCardId: string;
+  services: { description: string; amount: number; gstRate?: number }[];
+  parts?: { shopProductId: string; quantity: number; rate: number; gstRate: number }[];
+  billingMode: 'WITH_GST' | 'WITHOUT_GST';
+  paymentMode: string;
+  pricesIncludeTax?: boolean;
+}
+
+/**
+ * Generate Repair Bill
+ */
+export async function generateRepairBill(
+  shopId: string,
+  jobCardId: string,
+  data: RepairBillDto
+): Promise<any> {
+    // Note: The backend controller is @Controller('mobileshop/repairs')
+    // Post(':jobCardId/bill') -> /mobileshop/repairs/:jobCardId/bill
+    const response = await authenticatedFetch(
+        `/mobileshop/repairs/${jobCardId}/bill`,
+        {
+            method: "POST",
+            body: JSON.stringify(data),
+        }
+    );
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to generate bill");
+    }
+
+    return response.json();
 }

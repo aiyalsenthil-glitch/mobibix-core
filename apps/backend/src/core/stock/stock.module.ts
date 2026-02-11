@@ -10,6 +10,7 @@ import { StockCorrectionController } from './stock-correction.controller';
 import { StockCorrectionService } from './stock-correction.service';
 import { StockReportController } from './stock-report.controller';
 import { StockReportService } from './stock-report.service';
+import { StockValidationService } from './stock-validation.service';
 
 @Module({
   controllers: [
@@ -25,8 +26,9 @@ import { StockReportService } from './stock-report.service';
     StockSummaryService,
     StockCorrectionService,
     StockReportService,
+    StockValidationService,
     PrismaService,
   ],
-  exports: [StockService, StockSummaryService],
+  exports: [StockService, StockSummaryService, StockValidationService],
 })
 export class StockModule {}

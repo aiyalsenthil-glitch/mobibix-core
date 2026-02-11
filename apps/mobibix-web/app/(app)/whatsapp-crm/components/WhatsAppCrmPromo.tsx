@@ -169,6 +169,28 @@ export default function WhatsAppCrmPromo() {
                         'Get Started'
                       )}
                     </button>
+
+                    {/* Temporary Bypass Button */}
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!confirm(`BYPASS PAYMENT: Activate ${p.name} directly?`)) return;
+                        setLoading(true);
+                        try {
+                          const { bypassPayment } = await import('@/services/payments.api');
+                          await bypassPayment(p.id, 'MONTHLY');
+                          router.push('/whatsapp?onboarding=true');
+                        } catch (err: any) {
+                          alert(err.message || "Bypass failed");
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading}
+                      className="w-full mt-2 py-2 text-xs font-semibold text-gray-400 hover:text-red-500 transition-colors uppercase tracking-widest"
+                    >
+                      Unlock for Testing (Bypass)
+                    </button>
                   </div>
                 </div>
               );

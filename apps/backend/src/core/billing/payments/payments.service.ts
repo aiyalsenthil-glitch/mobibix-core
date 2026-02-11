@@ -6,6 +6,9 @@ export class PaymentsService {
   private REMOVED_PAYMENT_INFRA: Razorpay | null = null;
   private logger = new Logger(PaymentsService.name);
 
+  // Payment expiry duration in minutes
+  private readonly PAYMENT_EXPIRY_MINUTES = 15;
+
   constructor() {
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
@@ -31,12 +34,16 @@ export class PaymentsService {
     amount: number;
     tenantId: string;
     planId: string;
-  }) {
+  }): Promise<{ order: any; expiresAt: Date }> {
     if (!this.REMOVED_PAYMENT_INFRA) {
       throw new Error(
         'Razorpay is not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.',
       );
     }
+
+    // Calculate expiry time (15 minutes from now)
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + this.PAYMENT_EXPIRY_MINUTES);
 
     const order = await this.REMOVED_PAYMENT_INFRA.orders.create({
       amount: params.amount, // already in paise from DB
@@ -46,9 +53,22 @@ export class PaymentsService {
       notes: {
         tenantId: params.tenantId,
         planId: params.planId,
+        expiresAt: expiresAt.toISOString(), // Store in Razorpay notes
       },
     });
 
-    return order; // ✅ must return
+    this.logger.log(
+      `Created Razorpay order ${order.id} expiring at ${expiresAt.toISOString()}`,
+    );
+
+    return { order, expiresAt };
+  }
+
+  /**
+   * Check if a payment order has expired
+   */
+  isOrderExpired(expiresAt: Date | null): boolean {
+    if (!expiresAt) return false;
+    return new Date() > expiresAt;
   }
 }

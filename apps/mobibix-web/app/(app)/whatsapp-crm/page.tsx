@@ -23,6 +23,14 @@ export default function WhatsAppCrmPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const statusParam = searchParams.get("status");
+    if (statusParam === "success") {
+       // Optional: Show a toast or message
+       console.log("WhatsApp connected successfully!");
+    } else if (statusParam === "error") {
+       setError(searchParams.get("message") || "Connection failed");
+    }
+
     async function fetchStatus() {
       try {
         const response = await authenticatedFetch("/user/whatsapp-crm/check-status");

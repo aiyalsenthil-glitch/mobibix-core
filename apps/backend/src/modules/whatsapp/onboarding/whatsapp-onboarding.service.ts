@@ -31,12 +31,13 @@ export class WhatsAppOnboardingService {
   /**
    * Generates the Meta Business Login URL with encrypted state
    */
-  async generateConnectUrl(tenantId: string): Promise<string> {
+  async generateConnectUrl(tenantId: string, returnUrl?: string): Promise<string> {
     // 1. Create State Object (Tenant + Timestamp)
     const statePayload = JSON.stringify({
       tenantId,
       ts: Date.now(),
       nonce: Math.random().toString(36).substring(7),
+      returnUrl,
     });
 
     // 2. Encrypt State (AES-256) - prevents tampering & CSRF
@@ -61,9 +62,10 @@ export class WhatsAppOnboardingService {
   async handleCallback(code: string, state: string) {
     // 1. Decrypt & Validate State
     let tenantId: string;
+    let payload: any;
     try {
       const decodedState = decrypt(state);
-      const payload = JSON.parse(decodedState);
+      payload = JSON.parse(decodedState);
       
       // Expire state after 15 mins
       if (Date.now() - payload.ts > 15 * 60 * 1000) {
@@ -86,36 +88,68 @@ export class WhatsAppOnboardingService {
 
       const { data } = await axios.get(tokenUrl);
       accessToken = data.access_token;
+      
+      this.logger.log(`Token exchanged successfully for tenant ${tenantId}`);
     } catch (error) {
       this.logger.error(
-        `Failed to exchange token: ${error.response?.data?.error?.message || error.message}`,
+        `Failed to exchange token for ${tenantId}: ${error.response?.data?.error?.message || error.message}`,
       );
       throw new BadRequestException('Failed to connect with Meta');
     }
 
-    // 3. Fetch WABA & Phone Number Details
-    // In Embedded Signup, specific logic is needed to get the shared WABA ID
-    // For now, we assume standard graph API call to get associated system user assets exists check
-    // or we use the debug_token endpoint to get granular scopes.
-    
-    // SIMPLIFIED MOCK implementation for MVP flow since we can't hit real Graph API
-    // Real implementation requires detailed parsing of 'granular_scopes' or
-    // calling /me/accounts, /me/phone_numbers depending on permission granted.
-    
+    // 3. Retrieve WABA and Phone Details (Production logic)
+    // NOTE: In production with Embedded Signup, we usually get the WABA ID 
+    // from the initial signup response or by calling /debug_token to see granted permissions.
+    // For this implementation, we will fetch the first associated WhatsApp Business Account 
+    // and its primary phone number.
+
+    let wabaId: string;
+    let phoneNumberId: string;
+    let phoneNumber: string;
+
+    try {
+      // Step A: Get WABAs associated with the token
+      const wabaUrl = `https://graph.facebook.com/v18.0/me/whatsapp_business_accounts?access_token=${accessToken}`;
+      const { data: wabaData } = await axios.get(wabaUrl);
+      
+      if (!wabaData.data || wabaData.data.length === 0) {
+        throw new Error('No WhatsApp Business Account found for this user');
+      }
+
+      // Pick the first one for now (Simplification)
+      wabaId = wabaData.data[0].id;
+      this.logger.log(`Found WABA ID: ${wabaId} for tenant ${tenantId}`);
+
+      // Step B: Get Phone Numbers for that WABA
+      const phoneUrl = `https://graph.facebook.com/v18.0/${wabaId}/phone_numbers?access_token=${accessToken}`;
+      const { data: phoneData } = await axios.get(phoneUrl);
+
+      if (!phoneData.data || phoneData.data.length === 0) {
+        throw new Error('No phone numbers found in the selected WABA');
+      }
+
+      // Pick the first active one
+      const phone = phoneData.data[0];
+      phoneNumberId = phone.id;
+      phoneNumber = phone.display_phone_number.replace(/\D/g, ''); // Clean number
+      
+      this.logger.log(`Found Phone ID: ${phoneNumberId} (${phoneNumber}) for tenant ${tenantId}`);
+      this.logger.log(`Found Phone ID: ${phoneNumberId} (${phoneNumber}) for tenant ${tenantId}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch Meta assets for ${tenantId}. Error: ${error.message}`,
+        error.stack,
+      );
+      throw new BadRequestException(
+        'Failed to connect to Facebook. Please ensure your account has a valid WhatsApp Business Account and Phone Number.',
+      );
+    }
+
     // 4. Encrypt Access Token
     const encryptedAccessToken = encrypt(accessToken);
 
     // 5. Update DB (Upsert)
-    // For MVP flow, we assume single number per tenant or overwrite existing.
-    // In production, we'd fetch WABA ID and Phone ID from Graph API.
-    // Here we use a placeholder or derived ID since we can't make the real call without credentials.
-    
-    // MOCK DATA for WABA/Phone ID (would come from Graph API response)
-    const wabaId = `waba_${tenantId}_${Date.now()}`;
-    const phoneNumberId = `phone_${tenantId}_${Date.now()}`;
-    const phoneNumber = `+${Math.floor(Math.random() * 10000000000)}`;
-
-    await this.prisma.whatsAppPhoneNumber.upsert({
+    await (this.prisma.whatsAppPhoneNumber as any).upsert({
       where: {
         tenantId_phoneNumberId: {
           tenantId,
@@ -129,7 +163,7 @@ export class WhatsAppOnboardingService {
         wabaId,
         phoneNumber,
         updatedAt: new Date(),
-      },
+      } as any,
       create: {
         tenantId,
         phoneNumberId,
@@ -140,11 +174,11 @@ export class WhatsAppOnboardingService {
         purpose: 'DEFAULT',
         isDefault: true,
         isActive: true,
-      },
+      } as any,
     });
 
-    this.logger.log(`WhatsApp OAuth successful for tenant ${tenantId}`);
-    return { success: true };
+    this.logger.log(`WhatsApp integration completed for tenant ${tenantId}`);
+    return { success: true, returnUrl: payload.returnUrl };
   }
 
   /**
@@ -167,7 +201,7 @@ export class WhatsAppOnboardingService {
         isActive: false,
         setupStatus: 'DISCONNECTED',
         encryptedAccessToken: null, // Clear token for security
-      },
+      } as any,
     });
     
     this.logger.log(`WhatsApp integration disconnected for tenant ${tenantId}`);

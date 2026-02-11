@@ -7,10 +7,16 @@ import { GSTVerificationService } from './gst-verification.service';
 import { PurchaseAuditService } from './purchase-audit.service';
 import { StockModule } from '../stock/stock.module';
 import { PartiesModule } from '../parties/parties.module';
+import { PurchasePaymentService } from '../../modules/mobileshop/services/purchase-payment.service';
 
 @Module({
   imports: [PrismaModule, StockModule, PartiesModule],
-  providers: [PurchasesService, GSTVerificationService, PurchaseAuditService],
+  providers: [
+    PurchasesService,
+    GSTVerificationService,
+    PurchaseAuditService,
+    PurchasePaymentService,
+  ],
   controllers: [PurchasesController, PurchasesHardeningController],
   exports: [PurchasesService],
 })

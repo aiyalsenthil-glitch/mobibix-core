@@ -1008,12 +1008,15 @@ export class SubscriptionsService {
 
       // Special handling for legacy flags if plan is WhatsApp CRM
       const plan = await this.prisma.plan.findUnique({ where: { id: planId } });
-      if (plan?.code === 'WHATSAPP_CRM') {
+      if (plan?.module === ModuleType.WHATSAPP_CRM) {
         await this.prisma.tenant.update({
           where: { id: tenantId },
           data: {
             whatsappCrmEnabled: true,
-            tenantType: ModuleType.MOBILE_SHOP, // Legacy behavior
+            // Only set default if not already set
+            whatsappPhoneNumberId: {
+              set: (await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { whatsappPhoneNumberId: true } }))?.whatsappPhoneNumberId || '100609346426084'
+            }
           },
         });
       }
@@ -1037,7 +1040,7 @@ export class SubscriptionsService {
 
       // Special handling for legacy flags
       const plan = await this.prisma.plan.findUnique({ where: { id: planId } });
-      if (plan?.code === 'WHATSAPP_CRM') {
+      if (plan?.module === ModuleType.WHATSAPP_CRM) {
         await this.prisma.tenant.update({
           where: { id: tenantId },
           data: { whatsappCrmEnabled: false },

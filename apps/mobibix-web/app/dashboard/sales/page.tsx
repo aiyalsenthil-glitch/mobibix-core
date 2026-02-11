@@ -81,7 +81,8 @@ export default function SalesPage() {
   };
 
   const handleCreateInvoice = () => {
-    alert("Create Invoice coming soon – UI under construction.");
+    // Navigate to create invoice page
+    window.location.href = "/dashboard/sales/create";
   };
 
   return (

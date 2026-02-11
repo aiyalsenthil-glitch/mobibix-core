@@ -26,9 +26,9 @@ export class WhatsAppOnboardingController {
   @UseGuards(JwtAuthGuard, RolesGuard, PlanFeatureGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER)
   @RequirePlanFeature('WHATSAPP_CRM') // Only for paid add-on
-  async connect(@Req() req, @Res() res: Response) {
+  async connect(@Req() req, @Res() res: Response, @Query('returnUrl') returnUrl?: string) {
     const tenantId = req.user.tenantId;
-    const url = await this.onboardingService.generateConnectUrl(tenantId);
+    const url = await this.onboardingService.generateConnectUrl(tenantId, returnUrl);
     return res.json({ url });
   }
 
@@ -39,15 +39,25 @@ export class WhatsAppOnboardingController {
     @Query('error') error: string,
     @Res() res: Response,
   ) {
+    const defaultErrorRedirect = '/whatsapp-crm?status=error';
+    const defaultSuccessRedirect = '/whatsapp-crm?status=success';
+
     if (error) {
-      return res.redirect('/dashboard/settings/whatsapp?status=error&message=' + error);
+      return res.redirect(defaultErrorRedirect + '&message=' + encodeURIComponent(error));
     }
 
     try {
-      await this.onboardingService.handleCallback(code, state);
-      return res.redirect('/dashboard/settings/whatsapp?status=success');
+      const result = await this.onboardingService.handleCallback(code, state);
+      const redirectUrl = result.returnUrl || defaultSuccessRedirect;
+      
+      // Ensure the redirect URL has the success status
+      const finalUrl = redirectUrl.includes('?') 
+        ? `${redirectUrl}&status=success` 
+        : `${redirectUrl}?status=success`;
+
+      return res.redirect(finalUrl);
     } catch (err) {
-      return res.redirect('/dashboard/settings/whatsapp?status=error&message=' + err.message);
+      return res.redirect(defaultErrorRedirect + '&message=' + encodeURIComponent(err.message));
     }
   }
 

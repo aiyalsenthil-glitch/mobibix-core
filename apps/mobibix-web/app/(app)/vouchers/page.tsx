@@ -10,82 +10,15 @@ import {
   VoucherType,
 } from "@/services/vouchers.api";
 import { AlertCircle, Plus, Trash2 } from "lucide-react";
+import { PaymentTabs } from "@/components/sales/PaymentTabs";
 
 export default function VouchersPage() {
   const [vouchers, setVouchers] = useState<PaymentVoucher[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
-  const pageSize = 20;
-
-  // Filters
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<
-    PaymentMode | ""
-  >("");
-  const [statusFilter, setStatusFilter] = useState<VoucherStatus | "">("");
-  const [voucherTypeFilter, setVoucherTypeFilter] = useState<VoucherType | "">(
-    "",
-  );
-  const [startDateFilter, setStartDateFilter] = useState("");
-  const [endDateFilter, setEndDateFilter] = useState("");
-
-  const loadVouchers = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getVouchers({
-        skip: currentPage * pageSize,
-        take: pageSize,
-        paymentMethod: paymentMethodFilter || undefined,
-        status: statusFilter || undefined,
-        voucherType: voucherTypeFilter || undefined,
-        startDate: startDateFilter || undefined,
-        endDate: endDateFilter || undefined,
-      });
-      setVouchers(result.data);
-      setTotal(result.total);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadVouchers();
-  }, [
-    currentPage,
-    paymentMethodFilter,
-    statusFilter,
-    voucherTypeFilter,
-    startDateFilter,
-    endDateFilter,
-  ]);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (date: string | Date) => {
-    return new Date(date).toLocaleDateString("en-IN");
-  };
-
-  const totalPages = Math.ceil(total / pageSize);
-
-  const voucherTypeColors: Record<string, string> = {
-    SUPPLIER: "bg-purple-100 text-purple-800",
-    EXPENSE: "bg-orange-100 text-orange-800",
-    SALARY: "bg-green-100 text-green-800",
-    ADJUSTMENT: "bg-gray-100 text-gray-800",
-  };
+  // ... existing hooks
 
   return (
     <div className="space-y-6">
+      <PaymentTabs />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

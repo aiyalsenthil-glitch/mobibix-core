@@ -69,6 +69,18 @@ export class PaymentsVerifyController {
       throw new BadRequestException('Payment order not found');
     }
 
+    // 🆕 Check if order expired
+    if (existingPayment.expiresAt && new Date() > existingPayment.expiresAt) {
+      await this.prisma.payment.update({
+        where: { id: existingPayment.id },
+        data: { status: PaymentStatus.EXPIRED },
+      });
+
+      throw new BadRequestException(
+        'Payment order expired. Please create a new order.',
+      );
+    }
+
     // 3️⃣ Idempotency: if already verified, skip subscription creation
     if (existingPayment.status === PaymentStatus.SUCCESS) {
       return { success: true, alreadyVerified: true };
@@ -91,12 +103,12 @@ export class PaymentsVerifyController {
     });
 
     if (!paymentRecord) {
-        throw new BadRequestException('Payment record not found');
+      throw new BadRequestException('Payment record not found');
     }
 
     const plan = await this.prisma.plan.findUnique({
-        where: { id: paymentRecord.planId },
-        select: { module: true }
+      where: { id: paymentRecord.planId },
+      select: { module: true },
     });
 
     if (!plan) {
@@ -106,7 +118,9 @@ export class PaymentsVerifyController {
     // Use plan's module (e.g., WHATSAPP_CRM) instead of deriving from tenant type
     const module = plan.module;
 
-    this.logger.log(`Using module from plan: ${module} for tenant ${req.user.tenantId}`);
+    this.logger.log(
+      `Using module from plan: ${module} for tenant ${req.user.tenantId}`,
+    );
 
     // Call buyPlanPhase1 with correct module
     await this.subscriptionsService.buyPlanPhase1({
@@ -161,7 +175,7 @@ export class PaymentsVerifyController {
       where: { id: payment.planId },
       select: { module: true },
     });
-    
+
     if (!plan) {
       throw new BadRequestException('Plan not found for successful payment');
     }

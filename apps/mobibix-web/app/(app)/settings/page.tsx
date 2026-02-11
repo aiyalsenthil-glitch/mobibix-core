@@ -381,6 +381,31 @@ export default function SettingsPage() {
                         "Downgrade"
                     )}
                 </button>
+                
+                {/* Temporary Bypass Button */}
+                {!isCurrent && (
+                <button
+                    onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!confirm(`BYPASS PAYMENT: Activate ${plan.displayName} directly?`)) return;
+                        setProcessingPlanId(plan.id);
+                        try {
+                            const { bypassPayment } = await import('@/services/payments.api');
+                            await bypassPayment(plan.id, selectedCycle);
+                            alert(`Successfully activated ${plan.displayName} via test bypass!`);
+                            window.location.reload();
+                        } catch (err: any) {
+                          alert(err.message || "Bypass failed");
+                        } finally {
+                          setProcessingPlanId(null);
+                        }
+                    }}
+                    disabled={processingPlanId !== null}
+                    className="w-full mt-2 py-2 text-[10px] font-bold text-gray-400 hover:text-indigo-500 transition-colors uppercase tracking-widest"
+                >
+                    Test Bypass (Free)
+                </button>
+                )}
               </div>
             </div>
           );

@@ -84,12 +84,18 @@ export class AdminController {
 
     console.log(`[Admin] Injecting plan for ${tenantId}...`);
 
+    // 0. Fetch Plan to get Module
+    const plan = await this.prisma.plan.findUnique({ where: { id: planId } });
+    if (!plan) throw new BadRequestException('Plan not found');
+
+    const resolvedModule = plan.module;
+
     // 1. Upsert Subscription
     const sub = await this.prisma.tenantSubscription.upsert({
       where: {
         tenantId_module: {
           tenantId: tenantId,
-          module: 'WHATSAPP_CRM',
+          module: resolvedModule,
         },
       },
       update: {
@@ -102,7 +108,7 @@ export class AdminController {
       create: {
         tenantId: tenantId,
         planId: planId,
-        module: 'WHATSAPP_CRM',
+        module: resolvedModule,
         status: 'ACTIVE',
         startDate: new Date(),
         endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
@@ -110,15 +116,19 @@ export class AdminController {
       },
     });
 
-    // 2. Update Tenant Settings
-    await this.prisma.tenant.update({
-      where: { id: tenantId },
-      data: {
-        whatsappCrmEnabled: true,
-        whatsappPhoneNumberId: '100609346426084', // Default ID from raw route
-        tenantType: 'MOBILE_SHOP',
-      },
-    });
+    // 2. Update Tenant Settings if it's WhatsApp CRM
+    if (resolvedModule === 'WHATSAPP_CRM') {
+      await this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: {
+          whatsappCrmEnabled: true,
+          // Only set default if not already set
+          whatsappPhoneNumberId: {
+            set: (await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { whatsappPhoneNumberId: true } }))?.whatsappPhoneNumberId || '100609346426084'
+          }
+        },
+      });
+    }
 
     return {
       success: true,

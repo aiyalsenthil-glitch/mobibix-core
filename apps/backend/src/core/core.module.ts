@@ -17,6 +17,7 @@ import { PurchaseModule } from './purchase/purchase.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { ProductsModule } from './products/products.module';
 import { StockModule } from './stock/stock.module';
+import { ReceiptsModule } from './receipts/receipts.module';
 import { HsnModule } from './hsn/hsn.module';
 import { FollowUpsModule } from './follow-ups/follow-ups.module';
 import { CrmDashboardModule } from './crm-dashboard/crm-dashboard.module';
@@ -46,6 +47,7 @@ import { ReportsHardeningModule } from './reports/reports-hardening.module';
     InventoryModule,
     ProductsModule,
     StockModule,
+    ReceiptsModule,
     HsnModule,
     FollowUpsModule,
     CrmDashboardModule,

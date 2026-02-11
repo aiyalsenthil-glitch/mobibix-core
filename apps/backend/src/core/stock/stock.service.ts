@@ -19,8 +19,13 @@ export class StockService {
   ) {}
 
   // Calculate current stock from StockLedger (single source of truth)
-  async getCurrentStock(productId: string, tenantId: string): Promise<number> {
-    const product = await this.prisma.shopProduct.findFirst({
+  async getCurrentStock(
+    productId: string,
+    tenantId: string,
+    tx?: any,
+  ): Promise<number> {
+    const prisma = tx || this.prisma;
+    const product = await prisma.shopProduct.findFirst({
       where: { id: productId, tenantId },
       select: { isSerialized: true, type: true },
     });
@@ -29,7 +34,7 @@ export class StockService {
 
     // For serialized products, count IN_STOCK IMEIs
     if (product.isSerialized) {
-      return await this.prisma.iMEI.count({
+      return await prisma.iMEI.count({
         where: {
           shopProductId: productId,
           tenantId,
@@ -39,7 +44,7 @@ export class StockService {
     }
 
     // For bulk products, sum StockLedger entries
-    const entries = await this.prisma.stockLedger.findMany({
+    const entries = await prisma.stockLedger.findMany({
       where: { shopProductId: productId, tenantId },
       select: { type: true, quantity: true },
     });
@@ -118,7 +123,6 @@ export class StockService {
       // If allowed, skip availability check and let ledger go negative
     }
 
-    // Create StockLedger OUT entry
     return prisma.stockLedger.create({
       data: {
         tenantId,
@@ -128,9 +132,217 @@ export class StockService {
         quantity,
         referenceType,
         referenceId,
-        costPerUnit,
+        costPerUnit: costPerUnit ?? null,
       },
     });
+  }
+
+  // Batch stock OUT
+  async recordStockOutBatch(
+    tenantId: string,
+    shopId: string,
+    items: {
+      productId: string;
+      quantity: number;
+      costPerUnit?: number;
+      imeis?: string[];
+      note?: string;
+    }[],
+    referenceType: 'PURCHASE' | 'SALE' | 'REPAIR' | 'ADJUSTMENT',
+    referenceId: string | null,
+    tx?: any,
+  ) {
+    const prisma = tx || this.prisma;
+    const productIds = items.map((i) => i.productId);
+
+    // Bulk fetch products
+    const products = (await prisma.shopProduct.findMany({
+      where: {
+        id: { in: productIds },
+        tenantId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        type: true,
+        isSerialized: true,
+        name: true,
+        costPrice: true,
+      },
+    })) as {
+      id: string;
+      type: ProductType;
+      isSerialized: boolean;
+      name: string;
+      costPrice: number | null;
+    }[];
+
+    if (products.length !== new Set(productIds).size) {
+      // Find missing
+      const foundIds = products.map((p) => p.id);
+      const missing = productIds.find((id) => !foundIds.includes(id));
+      throw new BadRequestException(`Product not found: ${missing}`);
+    }
+
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    // Validation Phase
+    for (const item of items) {
+      const product = productMap.get(item.productId);
+      if (!product)
+        throw new BadRequestException(`Product ${item.productId} not found`);
+
+      if (product.type === ProductType.SERVICE) {
+        throw new BadRequestException(
+          `SERVICE product "${product.name}" cannot have stock operations`,
+        );
+      }
+
+      if (product.isSerialized) {
+        if (!item.imeis || item.imeis.length !== item.quantity) {
+          throw new BadRequestException(
+            `Serialized product "${product.name}" requires IMEI list matching quantity`,
+          );
+        }
+        // Check count of IN_STOCK imeis
+        const availableIMEIs = await prisma.iMEI.count({
+          where: {
+            imei: { in: item.imeis },
+            shopProductId: item.productId,
+            tenantId,
+            status: IMEIStatus.IN_STOCK,
+          },
+        });
+        if (availableIMEIs !== item.quantity) {
+          throw new BadRequestException(
+            `Some IMEIs for "${product.name}" are not available.`,
+          );
+        }
+      } else {
+        // Bulk
+        const allowNegativeBulk = !!this.config.get<boolean>(
+          'ALLOW_NEGATIVE_BULK_STOCK',
+        );
+
+        if (!allowNegativeBulk) {
+          // Efficient batch check:
+          const entries = await prisma.stockLedger.findMany({
+            where: { shopProductId: item.productId, tenantId },
+            select: { type: true, quantity: true },
+          });
+          const currentStock = entries.reduce(
+            (sum, e) => (e.type === 'IN' ? sum + e.quantity : sum - e.quantity),
+            0,
+          );
+          if (currentStock < item.quantity) {
+            throw new BadRequestException(
+              `Insufficient stock for ${product.name}. Available: ${currentStock}, Required: ${item.quantity}`,
+            );
+          }
+        }
+      }
+    }
+
+    // Execution Phase
+    const ledgerEntries = items.map((item) => ({
+      tenantId,
+      shopId,
+      shopProductId: item.productId,
+      type: 'OUT' as const,
+      quantity: item.quantity,
+      referenceType,
+      referenceId,
+      costPerUnit: item.costPerUnit ?? null,
+      note: item.note,
+    }));
+
+    await prisma.stockLedger.createMany({ data: ledgerEntries });
+  }
+
+  // Batch stock IN
+  async recordStockInBatch(
+    tenantId: string,
+    shopId: string,
+    items: {
+      productId: string;
+      quantity: number;
+      costPerUnit?: number;
+      imeis?: string[];
+      note?: string;
+    }[],
+    referenceType: 'PURCHASE' | 'SALE' | 'REPAIR' | 'ADJUSTMENT',
+    referenceId: string | null,
+    tx?: any,
+  ) {
+    const prisma = tx || this.prisma;
+    const productIds = items.map((i) => i.productId);
+    // Bulk fetch products
+    const products = (await prisma.shopProduct.findMany({
+      where: {
+        id: { in: productIds },
+        tenantId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        type: true,
+        isSerialized: true,
+        name: true,
+        costPrice: true,
+      },
+    })) as {
+      id: string;
+      type: ProductType;
+      isSerialized: boolean;
+      name: string;
+      costPrice: number | null;
+    }[];
+
+    if (products.length !== new Set(productIds).size) {
+      throw new BadRequestException(`Invalid product in batch`);
+    }
+
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    for (const item of items) {
+      const product = productMap.get(item.productId);
+      if (product?.type === ProductType.SERVICE) {
+        throw new BadRequestException(
+          `SERVICE product "${product.name}" cannot have stock operations`,
+        );
+      }
+
+      if (referenceType === 'ADJUSTMENT') {
+        // Cost discipline
+        if (!item.costPerUnit || item.costPerUnit <= 0) {
+          item.costPerUnit = product?.costPrice || undefined;
+        }
+        if (!item.costPerUnit || item.costPerUnit <= 0) {
+          throw new BadRequestException(
+            `Stock correction requires cost price for "${product?.name}"`,
+          );
+        }
+      }
+
+      if (product?.isSerialized) {
+        if (item.imeis && item.imeis.length !== item.quantity)
+          throw new BadRequestException(`IMEI mismatch for ${product.name}`);
+      }
+    }
+
+    const ledgerEntries = items.map((item) => ({
+      tenantId,
+      shopId,
+      shopProductId: item.productId,
+      type: 'IN' as const,
+      quantity: item.quantity,
+      referenceType,
+      referenceId,
+      costPerUnit: item.costPerUnit ?? null,
+      note: item.note,
+    }));
+
+    await prisma.stockLedger.createMany({ data: ledgerEntries });
   }
 
   // Validate and record stock IN (used for reversals/returns/transfers)

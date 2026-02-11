@@ -9,6 +9,7 @@ import {
   BadRequestException,
   ForbiddenException,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { PaymentsService } from './payments.service';
@@ -21,6 +22,8 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('payments')
 export class PaymentsController {
+  private readonly logger = new Logger(PaymentsController.name);
+
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly prisma: PrismaService,
@@ -123,25 +126,44 @@ export class PaymentsController {
         },
       });
 
-      // If pending/success order exists, return it instead of creating new one
+      // If pending/success order exists, check if expired
       if (existingOrder) {
-        return {
-          orderId: existingOrder.providerOrderId,
-          amount: existingOrder.amount,
-          currency: existingOrder.currency,
-          key: process.env.RAZORPAY_KEY_ID,
-          idempotent: true, // Flag to indicate this is a cached response
-        };
+        const isExpired =
+          existingOrder.expiresAt && new Date() > existingOrder.expiresAt;
+
+        if (isExpired) {
+          // Mark as expired and allow new order creation
+          await this.prisma.payment.update({
+            where: { id: existingOrder.id },
+            data: { status: 'EXPIRED' },
+          });
+          this.logger.log(
+            `Marked expired payment ${existingOrder.id} as EXPIRED`,
+          );
+        } else if (
+          existingOrder.status === 'PENDING' ||
+          existingOrder.status === 'SUCCESS'
+        ) {
+          // Still valid, return existing order
+          return {
+            orderId: existingOrder.providerOrderId,
+            amount: existingOrder.amount,
+            currency: existingOrder.currency,
+            key: process.env.RAZORPAY_KEY_ID,
+            expiresAt: existingOrder.expiresAt,
+            idempotent: true, // Flag to indicate this is a cached response
+          };
+        }
       }
 
-      // 3️⃣ Create Razorpay order
-      const order = await this.paymentsService.createOrder({
+      // 3️⃣ Create Razorpay order with expiry
+      const { order, expiresAt } = await this.paymentsService.createOrder({
         amount: planPrice.price,
         tenantId,
         planId: plan.id,
       });
 
-      // 4️⃣ SAVE INIT PAYMENT
+      // 4️⃣ SAVE INIT PAYMENT with expiresAt
       await this.prisma.payment.create({
         data: {
           tenantId,
@@ -153,15 +175,17 @@ export class PaymentsController {
           amount: planPrice.price, // INR paise
           currency: 'INR',
           status: 'PENDING', // 👈 INIT STATE
+          expiresAt, // 🆕 Store expiry time
         },
       });
 
-      // 5️⃣ RETURN SAME RESPONSE (Android unchanged)
+      // 5️⃣ RETURN with expiry info (frontend can show countdown timer)
       return {
         orderId: order.id,
         amount: order.amount,
         currency: order.currency,
         key: process.env.RAZORPAY_KEY_ID,
+        expiresAt, // 🆕 Frontend can show countdown
       };
     } catch (err: any) {
       // rethrow known HTTP errors

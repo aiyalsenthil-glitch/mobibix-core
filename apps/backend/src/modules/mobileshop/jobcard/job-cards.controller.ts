@@ -102,6 +102,16 @@ export class JobCardsController {
     return this.service.removePart(req.user, shopId, jobId, partId);
   }
 
+  @Post(':id/cancel')
+  cancelJob(
+    @Param('shopId') shopId: string,
+    @Param('id') jobId: string,
+    @Req() req: any,
+    @Body() dto: { reason?: string },
+  ) {
+    return this.service.cancelJob(req.user, shopId, jobId, dto.reason);
+  }
+
   // ===== SERVICE CHARGE MANAGEMENT =====
 
   @Patch(':id/service-charge')
@@ -170,5 +180,24 @@ export class JobCardsController {
     @Req() req: any,
   ) {
     return this.service.createWarrantyJob(req.user, shopId, originalJobId);
+  }
+
+  // ===== CONSENT MANAGEMENT =====
+
+  @Post(':id/consent')
+  recordConsent(
+    @Param('shopId') shopId: string,
+    @Param('id') jobId: string,
+    @Req() req: any,
+    @Body()
+    dto: { consentNonRefundable: boolean; consentSignatureUrl?: string },
+  ) {
+    return this.service.recordConsent(
+      req.user,
+      shopId,
+      jobId,
+      dto.consentNonRefundable,
+      dto.consentSignatureUrl,
+    );
   }
 }

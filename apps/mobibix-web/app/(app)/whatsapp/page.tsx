@@ -1,26 +1,32 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   createWhatsAppCampaign,
   getWhatsAppDashboard,
   getWhatsAppLogs,
   scheduleWhatsAppCampaign,
   sendWhatsAppMessage,
-  connectWhatsApp,
   WhatsAppDashboard,
   WhatsAppLog,
 } from "@/services/whatsapp.api";
 import { authenticatedFetch } from "@/services/auth.api";
-import WhatsAppCrmPromo from "./WhatsAppCrmPromo";
+import WhatsAppCrmPromo from "../whatsapp-crm/components/WhatsAppCrmPromo";
+import WhatsAppCrmDashboard from "../whatsapp-crm/components/WhatsAppCrmDashboard";
+import WhatsAppDashboardView from "./components/WhatsAppDashboardView";
 
 interface CrmStatus {
   hasSubscription: boolean;
   isEnabled: boolean;
   hasPhoneNumber: boolean;
+  moduleType?: string;
+  whatsappAllowed?: boolean;
 }
 
 export default function WhatsAppPage() {
+  const searchParams = useSearchParams();
+  const showPromo = searchParams.get("promo") === "true";
   const [crmStatus, setCrmStatus] = useState<CrmStatus | null>(null);
   const [dashboard, setDashboard] = useState<WhatsAppDashboard | null>(null);
   const [logs, setLogs] = useState<WhatsAppLog[]>([]);
@@ -28,6 +34,7 @@ export default function WhatsAppPage() {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [campaigning, setCampaigning] = useState(false);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "inbox">("dashboard");
 
   const [sendForm, setSendForm] = useState({
     phone: "",
@@ -54,56 +61,75 @@ export default function WhatsAppPage() {
     );
   }, [dashboard]);
 
-  const loadDashboard = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
 
-      // First, check WhatsApp CRM subscription status
+      // 1. Check WhatsApp CRM subscription status
       const statusResponse = await authenticatedFetch(
         "/user/whatsapp-crm/check-status",
       );
-      if (statusResponse.ok) {
-        const status = await statusResponse.json();
-        setCrmStatus(status);
-
-        // ✅ Redirect Retail Demo users to new CRM
-        if (status.moduleType === "MOBILE_SHOP") {
-          window.location.href = "/whatsapp-crm"; // Hard redirect to ensure proper load
-          return;
-        }
-
-        // If no subscription, show promo (return early)
-        if (!status.hasSubscription) {
-          setLoading(false);
-          return;
-        }
+      
+      if (!statusResponse.ok) {
+         throw new Error("Failed to load WhatsApp status");
       }
 
-      // If subscribed, load dashboard
-      const dash = await getWhatsAppDashboard();
-      setDashboard(dash);
+      const statusData = await statusResponse.json();
+      
+      // Fetch separate subscription details for permissions if needed
+      let whatsappAllowed = false;
+      try {
+          const subRes = await authenticatedFetch("/billing/subscription/current");
+          if (subRes.ok) {
+              const subData = await subRes.json();
+              whatsappAllowed = subData.whatsappAllowed ?? false;
+          }
+      } catch (e) {
+          console.warn("Failed to fetch subscription details", e);
+      }
+      
+      const fullStatus: CrmStatus = { ...statusData, whatsappAllowed };
+      setCrmStatus(fullStatus);
 
-      // If plan is required, show promo instead
-      if (dash.planRequired) {
+      // Redirect Retail Demo users to Inbox tab by default?
+      // Or maybe keep Dashboard as default?
+      // statusData.moduleType === "MOBILE_SHOP" might prefer Inbox.
+      if (statusData.moduleType === "MOBILE_SHOP") {
+          // setActiveTab("inbox"); // Optional: auto-switch
+      }
+
+      // If no subscription, stop here (promo will show)
+      if (!statusData.hasSubscription && statusData.moduleType !== 'MOBILE_SHOP') {
         setLoading(false);
         return;
       }
 
-      if (dash.features?.reports) {
-        const recentLogs = await getWhatsAppLogs({});
-        setLogs(recentLogs.slice(0, 10));
-      } else {
-        setLogs([]);
+      // 2. Load Dashboard Stats (for the 'Dashboard' tab)
+      // Only if we have access
+      try {
+          const dash = await getWhatsAppDashboard();
+          setDashboard(dash);
+
+          if (dash.features?.reports) {
+            const recentLogs = await getWhatsAppLogs({});
+            setLogs(recentLogs.slice(0, 10));
+          } else {
+            setLogs([]);
+          }
+      } catch (dashErr) {
+          console.warn("Failed to load dashboard stats", dashErr);
+          // Don't block the whole page if dashboard stats fail (might be permission issue)
       }
+
     } catch (err: any) {
-      setError(err?.message || "Failed to load WhatsApp dashboard");
+      setError(err?.message || "Failed to load WhatsApp data");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadDashboard();
+    loadData();
   }, []);
 
   const handleSend = async () => {
@@ -122,7 +148,7 @@ export default function WhatsAppPage() {
           ? sendForm.parameters.split(",").map((p) => p.trim())
           : undefined,
       });
-      await loadDashboard();
+      await loadData(); // Refresh logs/stats
       setSendForm({ phone: "", templateId: "", parameters: "" });
     } catch (err: any) {
       setError(err?.message || "Failed to send WhatsApp message");
@@ -151,7 +177,7 @@ export default function WhatsAppPage() {
         });
       }
 
-      await loadDashboard();
+      await loadData();
       setCampaignForm({ name: "", templateId: "", scheduledAt: "" });
     } catch (err: any) {
       setError(err?.message || "Failed to create campaign");
@@ -163,418 +189,83 @@ export default function WhatsAppPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <p className="text-muted-foreground">Loading WhatsApp...</p>
-      </div>
-    );
-  }
-
-  // Show promo if no subscription
-  if (crmStatus && !crmStatus.hasSubscription) {
-    return <WhatsAppCrmPromo />;
-  }
-
-  // Show promo if dashboard indicates plan is required
-  if (dashboard && dashboard.planRequired) {
-    return <WhatsAppCrmPromo />;
-  }
-
-  // Show setup instruction if subscribed but not enabled
-  if (crmStatus && crmStatus.hasSubscription && !crmStatus.isEnabled) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-lg max-w-2xl w-full p-8">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-blue-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4v2m0 4v2m0-14a9 9 0 110 18 9 9 0 010-18z"
-                />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Connect WhatsApp
-            </h2>
-            <p className="text-gray-600">
-              Your subscription is active. Connect your Facebook account to start using WhatsApp CRM.
-            </p>
-          </div>
-
-          {!crmStatus.hasPhoneNumber && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 text-center">
-              <h3 className="font-semibold text-blue-900 mb-2">
-                Step 1: Link Account
-              </h3>
-              <p className="text-blue-800 text-sm mb-6">
-                You will be redirected to Facebook to grant permissions.
-              </p>
-              
-              <button
-                onClick={async () => {
-                  try {
-                    setLoading(true);
-                    const { url } = await connectWhatsApp();
-                    window.location.href = url;
-                  } catch (err: any) {
-                    setError("Failed to initiate connection: " + err.message);
-                    setLoading(false);
-                  }
-                }}
-                disabled={loading}
-                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold text-lg transition-transform hover:scale-105 shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                   <span>Redirecting...</span>
-                ) : (
-                  <>
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.791-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                    </svg>
-                    Connect with Facebook
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-
-          <div className="bg-gray-100 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-900 mb-2">How it works</h3>
-            <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
-              <li>Click "Connect with Facebook" above</li>
-              <li>Log in to your Facebook account</li>
-              <li>Select your WhatsApp Business Portfolio</li>
-              <li>Grant permissions to MobiBix</li>
-            </ol>
-          </div>
+        <div className="flex flex-col items-center gap-4">
+             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+             <p className="text-muted-foreground">Loading WhatsApp...</p>
         </div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold">WhatsApp Dashboard</h1>
-        <p className="text-red-500">{error}</p>
-        <button
-          onClick={loadDashboard}
-          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground"
-        >
-          Retry
-        </button>
-      </div>
-    );
+  // Show promo if no subscription (and not retail demo)
+  if (showPromo || (crmStatus && !crmStatus.hasSubscription && crmStatus.moduleType !== 'MOBILE_SHOP')) {
+    return <WhatsAppCrmPromo />;
   }
-
-  if (!dashboard) return null;
+  
+  // Show error state
+  if (error) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="bg-white p-8 rounded-lg shadow max-w-md text-center">
+            <h2 className="text-xl font-bold text-red-600 mb-2">Something went wrong</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button onClick={loadData} className="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700">Retry</button>
+          </div>
+        </div>
+      );
+  }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">WhatsApp Dashboard</h1>
-        <p className="text-muted-foreground">
-          Monitor usage, plan limits, and campaigns for your tenant.
-        </p>
-      </div>
+    <div className="space-y-6">
+       {/* Page Header & Tabs */}
+       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-1 flex p-1.5 gap-2 w-fit">
+           <button 
+              onClick={() => setActiveTab('dashboard')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'dashboard' ? 'bg-teal-50 text-teal-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+           >
+              📊 Campaigns & Usage
+           </button>
+           <button 
+              onClick={() => setActiveTab('inbox')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'inbox' ? 'bg-teal-50 text-teal-700 shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+           >
+              💬 Retail Inbox
+           </button>
+       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <p className="text-xs uppercase text-muted-foreground">Sent Today</p>
-          <p className="text-2xl font-semibold">
-            {dashboard.messagesSentToday}
-          </p>
-        </div>
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <p className="text-xs uppercase text-muted-foreground">
-            Sent This Month
-          </p>
-          <p className="text-2xl font-semibold">
-            {dashboard.messagesSentThisMonth}
-          </p>
-        </div>
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <p className="text-xs uppercase text-muted-foreground">Delivered</p>
-          <p className="text-2xl font-semibold">{dashboard.deliveredCount}</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <p className="text-xs uppercase text-muted-foreground">Failed</p>
-          <p className="text-2xl font-semibold">{dashboard.failedCount}</p>
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
-          <div>
-            <p className="text-xs uppercase text-muted-foreground">Plan</p>
-            <p className="text-lg font-semibold">{dashboard.planName}</p>
-            <p className="text-sm text-muted-foreground">
-              Expires: {dashboard.planExpiry ? new Date(dashboard.planExpiry).toLocaleDateString() : 'N/A'}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs uppercase text-muted-foreground">
-              WhatsApp Status
-            </p>
-            <p className="text-sm font-semibold">
-              {dashboard.whatsappNumberStatus}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs uppercase text-muted-foreground">
-              Active Campaigns
-            </p>
-            <p className="text-lg font-semibold">
-              {dashboard.activeCampaignCount}
-            </p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4 lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">
-                Monthly Quota
-              </p>
-              <p className="text-lg font-semibold">
-                {dashboard.monthlyQuota ?? "Unlimited"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Used</p>
-              <p className="text-lg font-semibold">{dashboard.usedQuota}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">
-                Remaining
-              </p>
-              <p className="text-lg font-semibold">
-                {dashboard.remainingQuota ?? "Unlimited"}
-              </p>
-            </div>
-          </div>
-          <div className="h-3 w-full rounded-full bg-muted">
-            <div
-              className="h-3 rounded-full bg-emerald-500"
-              style={{ width: `${quotaPercent}%` }}
-            />
-          </div>
-          {quotaExhausted && (
-            <p className="text-sm text-red-500">
-              Monthly quota exhausted. Actions are disabled.
-            </p>
+       {/* Tab Content */}
+       <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          {activeTab === 'dashboard' ? (
+              dashboard ? (
+                  <WhatsAppDashboardView
+                    dashboard={dashboard}
+                    logs={logs}
+                    featureFlags={featureFlags}
+                    quotaExhausted={quotaExhausted}
+                    quotaPercent={quotaPercent}
+                    sendForm={sendForm}
+                    setSendForm={setSendForm}
+                    campaignForm={campaignForm}
+                    setCampaignForm={setCampaignForm}
+                    sending={sending}
+                    campaigning={campaigning}
+                    onSend={handleSend}
+                    onCreateCampaign={handleCreateCampaign}
+                    onRefresh={loadData}
+                  />
+              ) : (
+                  <div className="p-8 text-center text-gray-500">
+                      Failed to load dashboard statistics.
+                  </div>
+              )
+          ) : (
+              <WhatsAppCrmDashboard 
+                 hasPhoneNumber={crmStatus?.hasPhoneNumber || false}
+                 moduleType={crmStatus?.moduleType}
+                 whatsappAllowed={crmStatus?.whatsappAllowed}
+              />
           )}
-
-          {/* Daily Reminder Quota Section */}
-          <div className="mt-6 pt-6 border-t border-border">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-xs uppercase text-muted-foreground">
-                  Daily Reminders (Automated)
-                </p>
-                <p className="text-lg font-semibold">
-                  {dashboard.dailyReminderQuota ?? "Unlimited"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase text-muted-foreground">
-                  Used Today
-                </p>
-                <p className="text-lg font-semibold">
-                  {dashboard.dailyReminderUsed}
-                </p>
-              </div>
-            </div>
-            <div className="h-3 w-full rounded-full bg-muted">
-              <div
-                className="h-3 rounded-full bg-blue-500"
-                style={{
-                  width: `${
-                    dashboard.dailyReminderQuota &&
-                    dashboard.dailyReminderQuota > 0
-                      ? Math.min(
-                          100,
-                          (dashboard.dailyReminderUsed /
-                            dashboard.dailyReminderQuota) *
-                            100,
-                        )
-                      : 0
-                  }%`,
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {featureFlags.manualMessaging && (
-          <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold">Manual Message</h2>
-              <p className="text-sm text-muted-foreground">
-                Send a one-off approved template message.
-              </p>
-            </div>
-            <div className="grid gap-3">
-              <input
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder="Phone (e.g., 9876543210)"
-                value={sendForm.phone}
-                onChange={(e) =>
-                  setSendForm((prev) => ({ ...prev, phone: e.target.value }))
-                }
-                disabled={quotaExhausted}
-              />
-              <input
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder="Template ID"
-                value={sendForm.templateId}
-                onChange={(e) =>
-                  setSendForm((prev) => ({
-                    ...prev,
-                    templateId: e.target.value,
-                  }))
-                }
-                disabled={quotaExhausted}
-              />
-              <input
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder="Parameters (comma separated)"
-                value={sendForm.parameters}
-                onChange={(e) =>
-                  setSendForm((prev) => ({
-                    ...prev,
-                    parameters: e.target.value,
-                  }))
-                }
-                disabled={quotaExhausted}
-              />
-              <button
-                onClick={handleSend}
-                disabled={sending || quotaExhausted}
-                className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                {sending ? "Sending..." : "Send Message"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {featureFlags.bulkCampaign && (
-          <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold">Campaigns</h2>
-              <p className="text-sm text-muted-foreground">
-                Create and schedule bulk campaigns.
-              </p>
-            </div>
-            <div className="grid gap-3">
-              <input
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder="Campaign name"
-                value={campaignForm.name}
-                onChange={(e) =>
-                  setCampaignForm((prev) => ({ ...prev, name: e.target.value }))
-                }
-                disabled={quotaExhausted}
-              />
-              <input
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder="Template ID"
-                value={campaignForm.templateId}
-                onChange={(e) =>
-                  setCampaignForm((prev) => ({
-                    ...prev,
-                    templateId: e.target.value,
-                  }))
-                }
-                disabled={quotaExhausted}
-              />
-              <input
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                type="datetime-local"
-                value={campaignForm.scheduledAt}
-                onChange={(e) =>
-                  setCampaignForm((prev) => ({
-                    ...prev,
-                    scheduledAt: e.target.value,
-                  }))
-                }
-                disabled={quotaExhausted}
-              />
-              <button
-                onClick={handleCreateCampaign}
-                disabled={campaigning || quotaExhausted}
-                className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                {campaigning ? "Saving..." : "Create Campaign"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {featureFlags.reports && (
-        <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">Recent Logs</h2>
-              <p className="text-sm text-muted-foreground">
-                Latest WhatsApp delivery activity.
-              </p>
-            </div>
-            <button
-              onClick={() => loadDashboard()}
-              className="text-sm text-emerald-600 hover:text-emerald-700"
-            >
-              Refresh
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="text-left text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="py-2">Phone</th>
-                  <th className="py-2">Status</th>
-                  <th className="py-2">Template</th>
-                  <th className="py-2">Sent At</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log) => (
-                  <tr key={log.id} className="border-t">
-                    <td className="py-2">{log.phone}</td>
-                    <td className="py-2">{log.status}</td>
-                    <td className="py-2">
-                      {log.metadata?.templateName || log.type}
-                    </td>
-                    <td className="py-2">
-                      {new Date(log.sentAt).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-                {logs.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="py-4 text-center text-muted-foreground"
-                    >
-                      No logs available yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+       </div>
     </div>
   );
 }

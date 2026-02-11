@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTheme } from "@/context/ThemeContext";
+import { authenticatedFetch } from "@/services/auth.api";
 
 interface ExportProductsModalProps {
   shopId: string;
@@ -25,9 +26,9 @@ export function ExportProductsModal({
       setIsExporting(true);
       setError(null);
 
-      // TODO: Call backend API to export products
-      const response = await fetch(
-        `/api/products/export?shopId=${shopId}&includeStock=${includeStock}&format=${format}`,
+      // Call backend API to export products (CSV only, backend generates CSV)
+      const response = await authenticatedFetch(
+        `/mobileshop/products/export?shopId=${shopId}&includeStock=${includeStock}`,
         {
           method: "GET",
         },
@@ -44,12 +45,17 @@ export function ExportProductsModal({
       const a = document.createElement("a");
       a.href = url;
       const timestamp = new Date().toISOString().split("T")[0];
-      const filename = `${shopName.replace(/\s+/g, "_")}_products_${timestamp}${includeStock ? "_with_stock" : ""}.${format === "excel" ? "xlsx" : "csv"}`;
+      const filename = `${shopName.replace(/\s+/g, "_")}_products_${timestamp}${includeStock ? "_with_stock" : ""}.csv`;
       a.download = filename;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      onClose();
+      // Close modal after successful export
+      setTimeout(() => {
+        onClose();
+      }, 500);
     } catch (err: any) {
       setError(err.message || "Failed to export products");
     } finally {

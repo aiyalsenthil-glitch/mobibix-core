@@ -9,9 +9,9 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../core/auth/decorators/current-user.decorator';
-import { ReceiptsService } from './receipts.service';
-import { CreateReceiptDto } from './dto/create-receipt.dto';
-import { ReceiptEntity } from './entities/receipt.entity';
+import { ReceiptsService } from '../../../core/receipts/receipts.service';
+import { CreateReceiptDto } from '../../../core/receipts/dto/create-receipt.dto';
+import { ReceiptEntity } from '../../../core/receipts/entities/receipt.entity';
 import { PaymentMode, ReceiptStatus, UserRole } from '@prisma/client';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 

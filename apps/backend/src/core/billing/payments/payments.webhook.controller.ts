@@ -80,6 +80,28 @@ export class PaymentsWebhookController {
           return { received: true };
         }
 
+        // 🆕 Check if order expired
+        if (paymentRecord.expiresAt && new Date() > paymentRecord.expiresAt) {
+          this.logger.warn(
+            `Payment ${paymentRecord.id} received after expiry (${paymentRecord.expiresAt})`,
+          );
+
+          // Mark as FAILED due to late payment
+          await this.prisma.payment.update({
+            where: { id: paymentRecord.id },
+            data: {
+              status: PaymentStatus.FAILED,
+              providerPaymentId: REMOVED_PAYMENT_INFRAPayment.id, // Store for reference
+            },
+          });
+
+          return {
+            received: true,
+            status: 'rejected',
+            reason: 'Payment received after order expiry',
+          };
+        }
+
         // 2️⃣ Idempotency: if already processed, skip
         if (paymentRecord.status === PaymentStatus.SUCCESS) {
           this.logger.log(`Payment already processed: ${paymentRecord.id}`);
@@ -111,25 +133,31 @@ export class PaymentsWebhookController {
             const paymentWithPlan = await tx.payment.findUnique({
               where: { id: paymentRecord.id },
             });
-            
-             if (!paymentWithPlan) {
-               this.logger.error(`❌ Payment record not found ${paymentRecord.id}`);
-               return; 
+
+            if (!paymentWithPlan) {
+              this.logger.error(
+                `❌ Payment record not found ${paymentRecord.id}`,
+              );
+              return;
             }
 
             const plan = await tx.plan.findUnique({
-                where: { id: paymentRecord.planId },
-                select: { module: true }
+              where: { id: paymentRecord.planId },
+              select: { module: true },
             });
 
             if (!plan) {
-               this.logger.error(`❌ Plan not found for payment ${paymentRecord.id}`);
-               return; 
+              this.logger.error(
+                `❌ Plan not found for payment ${paymentRecord.id}`,
+              );
+              return;
             }
 
             const module = plan.module;
-            
-            this.logger.log(`Using module from plan: ${module} for tenant ${paymentRecord.tenantId}`);
+
+            this.logger.log(
+              `Using module from plan: ${module} for tenant ${paymentRecord.tenantId}`,
+            );
 
             // ✅ BILLINGCYCLE IS STORED IN PAYMENT TABLE - use it directly
             await this.subscriptionsService.buyPlanPhase1({

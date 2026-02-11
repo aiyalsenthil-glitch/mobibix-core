@@ -109,6 +109,7 @@ model User {
   ledgerPayments    LedgerPayment[]
   tenant            Tenant?            @relation(fields: [tenantId], references: [id])
   userTenants       UserTenant[]
+  assignedJobs      JobCard[]          @relation("JobCardAssignment")
 
   @@index([REMOVED_AUTH_PROVIDERUid])
   @@index([email])
@@ -522,10 +523,15 @@ model Payment {
   providerPaymentId String?
   providerSignature String?
   meta              Json?
+  expiresAt         DateTime?     // Order expiry time (15 minutes from creation)
   createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
   tenant            Tenant        @relation(fields: [tenantId], references: [id])
 
   @@unique([provider, providerPaymentId, providerOrderId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([expiresAt])
 }
 
 model AuditLog {
@@ -900,11 +906,19 @@ model JobCard {
   advanceCashAmount    Int?
   advanceUpiAmount     Int?
   warrantyDuration     Int?          @default(0)
+  warrantyType         String?       @default("BOTH") // PARTS, LABOR, BOTH
+  warrantyExclusions   String[]      @default([]) // e.g., ["Water damage", "Physical damage"]
+  warrantyAcceptedAt   DateTime?
   consentAcknowledge   Boolean       @default(false)
   consentDataLoss      Boolean       @default(false)
   consentDiagnosticFee Boolean       @default(false)
+  consentNonRefundable Boolean       @default(false)
+  consentAt            DateTime?
+  consentSignatureUrl  String?
   createdByUserId      String
   createdByName        String
+  assignedToUserId     String?
+  assignedTo           User?         @relation("JobCardAssignment", fields: [assignedToUserId], references: [id])
   status               JobStatus     @default(RECEIVED)
   statusHistory        Json? // Audit trail: [{ from, to, timestamp, userId, reason }]
   notes                String?
@@ -978,6 +992,7 @@ model ShopProduct {
   reorderLevel     Int?
   reorderQty       Int?
   barcode          String?
+  sku              String?           // Stock Keeping Unit (internal identifier)
   location         String?
   imeis            IMEI[]
   invoiceItems     InvoiceItem[]
@@ -1573,6 +1588,7 @@ enum PaymentStatus {
   SUCCESS
   FAILED
   PENDING
+  EXPIRED
 }
 
 enum SubscriptionStatus {

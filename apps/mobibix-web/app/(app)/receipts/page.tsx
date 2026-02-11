@@ -9,70 +9,15 @@ import {
   PaymentMode,
 } from "@/services/receipts.api";
 import { AlertCircle, Plus, Trash2 } from "lucide-react";
+import { PaymentTabs } from "@/components/sales/PaymentTabs";
 
 export default function ReceiptsPage() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
-  const pageSize = 20;
-
-  // Filters
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<
-    PaymentMode | ""
-  >("");
-  const [statusFilter, setStatusFilter] = useState<ReceiptStatus | "">("");
-  const [startDateFilter, setStartDateFilter] = useState("");
-  const [endDateFilter, setEndDateFilter] = useState("");
-
-  const loadReceipts = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getReceipts({
-        skip: currentPage * pageSize,
-        take: pageSize,
-        paymentMethod: paymentMethodFilter || undefined,
-        status: statusFilter || undefined,
-        startDate: startDateFilter || undefined,
-        endDate: endDateFilter || undefined,
-      });
-      setReceipts(result.data);
-      setTotal(result.total);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadReceipts();
-  }, [
-    currentPage,
-    paymentMethodFilter,
-    statusFilter,
-    startDateFilter,
-    endDateFilter,
-  ]);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (date: string | Date) => {
-    return new Date(date).toLocaleDateString("en-IN");
-  };
-
-  const totalPages = Math.ceil(total / pageSize);
+  // ... existing hooks
 
   return (
     <div className="space-y-6">
+      <PaymentTabs />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

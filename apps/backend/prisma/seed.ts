@@ -321,6 +321,7 @@ async function main() {
       memberLimit: 0,
       features: FEATURES_WHATSAPP_STARTER,
       isPublic: true,
+      isAddon: true, // Mark as addon
       module: 'WHATSAPP_CRM',
       maxStaff: null,
       maxMembers: null,
@@ -343,6 +344,7 @@ async function main() {
       memberLimit: 0,
       features: FEATURES_WHATSAPP_GROWTH,
       isPublic: true,
+      isAddon: true, // Mark as addon
       module: 'WHATSAPP_CRM',
       maxStaff: null,
       maxMembers: null,
@@ -365,6 +367,7 @@ async function main() {
       memberLimit: 0,
       features: FEATURES_WHATSAPP_ADVANCED,
       isPublic: true,
+      isAddon: true, // Mark as addon
       module: 'WHATSAPP_CRM',
       maxStaff: null,
       maxMembers: null,
@@ -512,6 +515,7 @@ async function main() {
           name: p.name,
           level: p.level,
           isPublic: p.isPublic,
+          isAddon: (p as any).isAddon || false,
           module: p.module as any,
           // Update limits
           maxStaff: p.maxStaff,
@@ -533,6 +537,7 @@ async function main() {
           level: p.level,
           isActive: true,
           isPublic: p.isPublic,
+          isAddon: (p as any).isAddon || false,
           module: p.module as any,
           // Set limits
           maxStaff: p.maxStaff,

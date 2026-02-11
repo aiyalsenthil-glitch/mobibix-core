@@ -1,11 +1,11 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PaymentMode, ReceiptStatus } from '@prisma/client';
-import { PrismaService } from '../../../core/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { ReceiptEntity } from './entities/receipt.entity';
 import { v4 as uuidv4 } from 'uuid';
 
-import { DocumentNumberService } from '../../../common/services/document-number.service';
+import { DocumentNumberService } from '../../common/services/document-number.service';
 import { DocumentType } from '@prisma/client';
 
 @Injectable()

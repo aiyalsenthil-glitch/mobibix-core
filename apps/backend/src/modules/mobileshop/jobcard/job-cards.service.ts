@@ -32,6 +32,7 @@ import { JobStatusChangedEvent } from '../../../core/events/crm.events';
 import { JobStatusValidator } from './job-status-validator.service';
 import { DocumentNumberService } from '../../../common/services/document-number.service';
 import { StockService } from '../../../core/stock/stock.service';
+import { StockValidationService } from '../../../core/stock/stock-validation.service';
 
 @Injectable()
 export class JobCardsService {
@@ -41,7 +42,42 @@ export class JobCardsService {
     private statusValidator: JobStatusValidator,
     private documentNumberService: DocumentNumberService,
     private stockService: StockService,
+    private stockValidation: StockValidationService,
   ) {}
+
+  private async validateStaffAssignment(
+    tenantId: string,
+    shopId: string,
+    userId: string,
+  ) {
+    const staff = await this.prisma.shopStaff.findFirst({
+      where: {
+        tenantId,
+        shopId,
+        userId,
+        isActive: true,
+      },
+    });
+
+    if (!staff) {
+      // Also allow OWNER to be assigned even if not separately in ShopStaff?
+      // Usually Owners are not in ShopStaff table unless explicitly added.
+      // Let's check UserTenant for OWNER role as fallback.
+      const owner = await this.prisma.userTenant.findFirst({
+        where: {
+          tenantId,
+          userId,
+          role: 'OWNER',
+        },
+      });
+
+      if (!owner) {
+        throw new BadRequestException(
+          'Assigned user is not a valid staff member of this shop',
+        );
+      }
+    }
+  }
 
   async assertAccess(user: any, shopId: string) {
     // OWNER → any shop under tenant
@@ -304,6 +340,14 @@ export class JobCardsService {
     const customerName = customer ? customer.name : dto.customerName!;
     const customerPhone = customer ? customer.phone : dto.customerPhone!;
 
+    if (dto.assignedToUserId) {
+      await this.validateStaffAssignment(
+        user.tenantId,
+        shopId,
+        dto.assignedToUserId,
+      );
+    }
+
     return this.prisma.$transaction(async (tx) => {
       // 1. Create Job Card
       const job = await tx.jobCard.create({
@@ -338,6 +382,7 @@ export class JobCardsService {
           estimatedDelivery: dto.estimatedDelivery
             ? new Date(dto.estimatedDelivery)
             : null,
+          assignedToUserId: dto.assignedToUserId ?? null,
         },
       });
 
@@ -527,7 +572,10 @@ export class JobCardsService {
       where: { id: jobId, shopId },
     });
 
-    if (!job) throw new NotFoundException(`Job card not found: ${jobId} in shop ${shopId}`);
+    if (!job)
+      throw new NotFoundException(
+        `Job card not found: ${jobId} in shop ${shopId}`,
+      );
 
     // 🛡️ GUARD: Cannot add parts after READY
     if (['READY', 'DELIVERED', 'CANCELLED', 'RETURNED'].includes(job.status)) {
@@ -540,7 +588,10 @@ export class JobCardsService {
       where: { id: dto.productId, shopId },
     });
 
-    if (!product) throw new NotFoundException(`Product not found: ${dto.productId} in shop ${shopId}`);
+    if (!product)
+      throw new NotFoundException(
+        `Product not found: ${dto.productId} in shop ${shopId}`,
+      );
 
     // 🛡️ BUSINESS RULE: SERVICE products cannot be added as parts
     // Services are billed separately, never tracked in inventory
@@ -549,6 +600,14 @@ export class JobCardsService {
         `"${product.name}" is a service item and cannot be added as a repair part. Services are billed separately.`,
       );
     }
+
+    // ✅ NEW: Validate stock availability BEFORE creating part entry
+    // Prevents negative stock by checking balance upfront
+    await this.stockValidation.validateStockOut(
+      user.tenantId,
+      dto.productId,
+      dto.quantity,
+    );
 
     // Use transaction to ensure stock deduction happens with part usage
     return this.prisma.$transaction(async (tx) => {
@@ -594,6 +653,91 @@ export class JobCardsService {
       );
 
       return { success: true };
+    });
+  }
+
+  /**
+   * ❌ CANCEL JOB CARD
+   * - Restores all used parts to inventory
+   * - Voids linked invoice if exists
+   * - Updates status to CANCELLED
+   */
+  async cancelJob(user, shopId: string, jobId: string, reason?: string) {
+    await this.assertAccess(user, shopId);
+
+    const job = await this.prisma.jobCard.findUnique({
+      where: { id: jobId, shopId },
+      include: {
+        parts: {
+          include: { product: true },
+        },
+        invoices: true,
+      },
+    });
+
+    if (!job) throw new NotFoundException('Job card not found');
+
+    // 🛡️ GUARD: Cannot cancel if already delivered or cancelled
+    if (['DELIVERED', 'CANCELLED', 'RETURNED'].includes(job.status)) {
+      throw new BadRequestException(
+        `Cannot cancel job in ${job.status} status. Use proper return/void flow instead.`,
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Step 1: Restore all used parts to inventory
+      for (const part of job.parts) {
+        if (part.product.type !== ProductType.SERVICE) {
+          await this.stockService.recordStockIn(
+            user.tenantId,
+            shopId,
+            part.shopProductId,
+            part.quantity,
+            'ADJUSTMENT',
+            jobId,
+            part.costPrice ?? undefined,
+            undefined, // IMEIs
+            tx,
+          );
+        }
+      }
+
+      // Step 2: Void linked invoice if exists
+      if (job.invoices && job.invoices.length > 0) {
+        // Void all linked invoices
+        await tx.invoice.updateMany({
+          where: { id: { in: job.invoices.map((inv) => inv.id) } },
+          data: { status: InvoiceStatus.VOIDED },
+        });
+      }
+
+      // Step 3: Update job status to CANCELLED
+      const updated = await tx.jobCard.update({
+        where: { id: jobId },
+        data: {
+          status: JobStatus.CANCELLED,
+          notes: reason
+            ? `CANCELLED: ${reason}. ${job.notes || ''}`
+            : job.notes,
+        },
+      });
+
+      // Step 4: Emit event for CRM/notifications
+      this.eventEmitter.emit('job.cancelled', {
+        tenantId: user.tenantId,
+        shopId,
+        jobId,
+        jobNumber: job.jobNumber,
+        partsRestored: job.parts.length,
+      });
+
+      return {
+        success: true,
+        partsRestored: job.parts.map((p) => ({
+          name: p.product.name,
+          quantity: p.quantity,
+        })),
+      };
     });
   }
 
@@ -767,6 +911,19 @@ export class JobCardsService {
       data.estimatedDelivery = dto.estimatedDelivery
         ? new Date(dto.estimatedDelivery)
         : null;
+
+    if (dto.assignedToUserId !== undefined) {
+      if (dto.assignedToUserId) {
+        await this.validateStaffAssignment(
+          user.tenantId,
+          shopId,
+          dto.assignedToUserId,
+        );
+        data.assignedToUserId = dto.assignedToUserId;
+      } else {
+        data.assignedToUserId = null;
+      }
+    }
 
     return this.prisma.$transaction(async (tx) => {
       // 1. Calculate Advance Delta 🛡️ STRICT ACCOUNTING
@@ -1559,6 +1716,51 @@ export class JobCardsService {
     );
 
     return finalJob;
+  }
+
+  /**
+   * Record customer consent for non-refundable advance
+   * Required before accepting payment or moving to READY status
+   */
+  async recordConsent(
+    user: any,
+    shopId: string,
+    jobId: string,
+    consentNonRefundable: boolean,
+    consentSignatureUrl?: string,
+  ) {
+    await this.assertAccess(user, shopId);
+
+    const job = await this.prisma.jobCard.findUnique({ where: { id: jobId } });
+
+    if (!job) {
+      throw new NotFoundException('Job not found');
+    }
+
+    if (job.tenantId !== user.tenantId) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    // Cannot modify consent on delivered/cancelled jobs
+    if (['DELIVERED', 'CANCELLED'].includes(job.status)) {
+      throw new BadRequestException('Cannot modify consent on completed job');
+    }
+
+    // Record consent
+    const updatedJob = await this.prisma.jobCard.update({
+      where: { id: jobId },
+      data: {
+        consentNonRefundable,
+        consentAt: new Date(),
+        ...(consentSignatureUrl && { consentSignatureUrl }),
+      },
+    });
+
+    console.log(
+      `✅ Recorded consent for job ${job.jobNumber}: nonRefundable=${consentNonRefundable}`,
+    );
+
+    return updatedJob;
   }
 
   async delete(user: any, shopId: string, id: string) {

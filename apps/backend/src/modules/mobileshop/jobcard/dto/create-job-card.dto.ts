@@ -70,4 +70,8 @@ export class CreateJobCardDto {
   @IsOptional()
   @IsDateString()
   estimatedDelivery?: Date;
+
+  @IsOptional()
+  @IsString()
+  assignedToUserId?: string;
 }

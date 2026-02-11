@@ -392,35 +392,89 @@ export class AutomationService {
       return;
     }
 
-    // 3️⃣ Create Reminders for each automation
+    // 3️⃣ EXECUTION STRATEGY: Transactional vs Scheduled
+    // Transactional events (Utility/Auth) must be sent IMMEDIATELY.
+    // Marketing/Reminders are scheduled.
+
+    const TRANSACTIONAL_EVENTS = [
+      'JOB_READY',
+      'INVOICE_CREATED',
+      'INVOICE_PAID',
+      'OTP',
+      'MEMBER_WELCOME', // Gym welcome
+    ];
+
+    const isTransactional = TRANSACTIONAL_EVENTS.includes(eventType);
+
     for (const automation of automations) {
-      // Calculate scheduled date with offset
-      const scheduledAt = getScheduledAtUTC({
-        offsetDays: automation.offsetDays || 0,
-        localHour: 9, // Default to 9 AM
-        localMinute: 0,
-      });
+      if (isTransactional) {
+        // 🚀 FIRE INSTANTLY
+        this.logger.log(
+          `[INSTANT] Firing transactional automation ${automation.templateKey} for ${customerId}`,
+        );
 
-      this.logger.log(
-        `[REMINDER] ScheduledAt UTC=${scheduledAt.toISOString()}`,
-      );
+        // Resolve customer phone
+        const customer = await this.prisma.party.findUnique({
+          where: { id: customerId },
+        });
 
-      await this.prisma.customerReminder.create({
-        data: {
-          tenantId,
-          customerId,
-          triggerType: this.mapEventToReminderTrigger(automation.eventType), // ✅ Mapped Enum
-          triggerValue: entityId,
-          channel: 'WHATSAPP',
-          templateKey: automation.templateKey,
-          status: 'SCHEDULED',
-          scheduledAt, // ✅ Calculated with offset
-        },
-      });
+        if (!customer?.phone) {
+          this.logger.warn(`Skipping instant message: Customer ${customerId} has no phone`);
+          continue;
+        }
 
-      this.logger.log(
-        `✅ Triggered automation ${automation.templateKey} for customer ${customerId} (Scheduled: ${scheduledAt.toISOString()})`,
-      );
+        // BETTER APPROACH: scheduledAt = NOW
+        // If 'PENDING' is not in ReminderStatus enum, we might need to use 'SCHEDULED' with now().
+        // Let's assume 'SCHEDULED' is fine if date is now.
+        
+        const scheduledAt = new Date(); // NOW
+
+        await this.prisma.customerReminder.create({
+          data: {
+            tenantId,
+            customerId,
+            triggerType: this.mapEventToReminderTrigger(automation.eventType),
+            triggerValue: entityId,
+            channel: 'WHATSAPP',
+            templateKey: automation.templateKey,
+            status: 'SCHEDULED', // Use SCHEDULED effectively as pending if time is past/now
+            scheduledAt, 
+          },
+        });
+
+        this.logger.log(
+          `✅ Queued immediate automation ${automation.templateKey} for customer ${customerId}`,
+        );
+
+      } else {
+        // 🕒 SCHEDULED REMINDER
+        const scheduledAt = getScheduledAtUTC({
+          offsetDays: automation.offsetDays || 0,
+          localHour: 9, // Default to 9 AM
+          localMinute: 0,
+        });
+
+        this.logger.log(
+          `[REMINDER] ScheduledAt UTC=${scheduledAt.toISOString()}`,
+        );
+
+        await this.prisma.customerReminder.create({
+          data: {
+            tenantId,
+            customerId,
+            triggerType: this.mapEventToReminderTrigger(automation.eventType),
+            triggerValue: entityId,
+            channel: 'WHATSAPP',
+            templateKey: automation.templateKey,
+            status: 'SCHEDULED',
+            scheduledAt,
+          },
+        });
+
+        this.logger.log(
+          `✅ Scheduled automation ${automation.templateKey} for customer ${customerId} (At: ${scheduledAt.toISOString()})`,
+        );
+      }
     }
   }
 }

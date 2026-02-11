@@ -8,6 +8,7 @@ import {
   type JobCard,
   type UpdateJobCardDto,
 } from "@/services/jobcard.api";
+import { listStaff, type Staff } from "@/services/staff.api";
 import {
   getCustomer,
   // searchCustomers,
@@ -38,6 +39,7 @@ type StepFormData = {
   advancePaid: string;
   billType: string;
   estimatedDelivery: string;
+  assignedToUserId: string;
 };
 
 export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
@@ -48,6 +50,11 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
 
   const [selectedParty, setSelectedParty] = useState<Party | null>(null);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+
+  useEffect(() => {
+    listStaff().then(setStaffList).catch(console.error);
+  }, []);
 
   const [formData, setFormData] = useState<StepFormData>({
     deviceType: jobCard?.deviceType || "",
@@ -64,6 +71,7 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
     estimatedDelivery: jobCard?.estimatedDelivery
       ? new Date(jobCard.estimatedDelivery).toISOString().split("T")[0]
       : "",
+    assignedToUserId: jobCard?.assignedToUserId || "",
   });
 
   const { selectedShop: shop } = useShop();
@@ -149,6 +157,7 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
           : undefined,
       billType: formData.billType,
       estimatedDelivery: formData.estimatedDelivery || undefined,
+      assignedToUserId: formData.assignedToUserId || undefined,
     };
 
     const payload: CreateJobCardDto | UpdateJobCardDto = {
@@ -515,6 +524,25 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
                     />
                   </div>
+                </div>
+
+                <div>
+                   <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Assign Technician
+                   </label>
+                   <select
+                      name="assignedToUserId"
+                      value={formData.assignedToUserId}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
+                   >
+                      <option value="">-- Unassigned --</option>
+                      {staffList.filter(s => s.status === 'ACTIVE').map((staff) => (
+                          <option key={staff.id} value={staff.id}>
+                              {staff.name || staff.email} ({staff.role})
+                          </option>
+                      ))}
+                   </select>
                 </div>
               </div>
             )}

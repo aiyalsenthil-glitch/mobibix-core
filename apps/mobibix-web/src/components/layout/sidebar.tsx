@@ -10,7 +10,6 @@ interface NavItem {
   label: string;
   href?: string;
   icon: string;
-  submenu?: Array<{ label: string; href: string }>;
 }
 
 const navItems: NavItem[] = [
@@ -18,52 +17,23 @@ const navItems: NavItem[] = [
   { label: "Sales", href: "/sales", icon: "💰" },
   { label: "Job Cards", href: "/jobcards", icon: "🔧" },
   { label: "Products", href: "/products", icon: "🏷️" },
-  {
-    label: "Inventory",
-    href: "/inventory",
-    icon: "📦",
-    submenu: [
-      { label: "Stock Management", href: "/inventory" },
-      { label: "Negative Stock Report", href: "/inventory/negative-stock" },
-      { label: "Stock Correction", href: "/inventory/stock-correction" },
-    ],
-  },
-  {
-    label: "Customers",
-    href: "/customers",
-    icon: "👥",
-    submenu: [
-      { label: "All Customers", href: "/customers" },
-      { label: "CRM Dashboard", href: "/crm" },
-      { label: "My Follow-ups", href: "/crm/follow-ups" },
-    ],
-  },
-  {
-    label: "WhatsApp",
-    href: "/whatsapp",
-    icon: "💬",
-    submenu: [
-      { label: "Dashboard", href: "/whatsapp" },
-      { label: "Retail Inbox", href: "/whatsapp-crm" },
-    ],
-  },
+  { label: "Inventory", href: "/inventory", icon: "📦" },
+  { label: "Stock Management", href: "/inventory", icon: "📦" },
+  { label: "Negative Stock Report", href: "/inventory/negative-stock", icon: "📦" },
+  { label: "Stock Correction", href: "/inventory/stock-correction", icon: "📦" },
+  { label: "Customers", href: "/customers", icon: "👥" },
+  { label: "All Customers", href: "/customers", icon: "👥" },
+  { label: "CRM Dashboard", href: "/crm", icon: "👥" },
+  { label: "My Follow-ups", href: "/crm/follow-ups", icon: "👥" },
+  { label: "WhatsApp", href: "/whatsapp", icon: "💬" },
   { label: "Suppliers", href: "/suppliers", icon: "🚚" },
   { label: "Purchases", href: "/purchases", icon: "📥" },
-  {
-    label: "Payments",
-    icon: "💳",
-    submenu: [
-      { label: "Receipts", href: "/receipts" },
-      { label: "Vouchers", href: "/vouchers" },
-    ],
-  },
+  { label: "Payments", href: "/receipts", icon: "💳" },
+  { label: "Receipts", href: "/receipts", icon: "💳" },
+  { label: "Vouchers", href: "/vouchers", icon: "💳" },
   { label: "Reports", href: "/reports", icon: "📈" },
   { label: "Shops", href: "/shops", icon: "🏪" },
-  {
-    label: "Settings",
-    icon: "⚙️",
-    submenu: [{ label: "General", href: "/settings" }],
-  },
+  { label: "Settings", href: "/settings", icon: "⚙️" },
 ];
 
 // ... imports
@@ -180,116 +150,42 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
-            const hasSubmenu = item.submenu && item.submenu.length > 0;
-            const isSubmenuActive =
-              hasSubmenu &&
-              item.submenu!.some((sub) => pathname.startsWith(sub.href));
-            const isExpanded = expandedSubmenus.includes(item.label);
-
-            const toggleSubmenu = () => {
-              setExpandedSubmenus((prev) =>
-                prev.includes(item.label)
-                  ? prev.filter((label) => label !== item.label)
-                  : [...prev, item.label],
-              );
-            };
-
             return (
-              <div key={item.label}>
-                {hasSubmenu ? (
-                  <button
-                    onClick={toggleSubmenu}
-                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${
-                      isSubmenuActive
-                        ? isDark
-                          ? "bg-teal-500/20 text-teal-300 border border-teal-500/30 shadow-md"
-                          : "bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/30 border border-teal-400 font-semibold"
-                        : isDark
-                          ? "text-gray-400 hover:bg-gray-800 hover:text-white"
-                          : "text-gray-700 hover:bg-teal-50 hover:text-teal-700 hover:shadow-sm font-medium"
-                    } ${effectiveCollapsed ? "justify-center" : ""}`}
-                    title={effectiveCollapsed ? item.label : ""}
-                  >
-                    <span className="text-lg flex-shrink-0">{item.icon}</span>
-                    {!effectiveCollapsed && (
-                      <>
-                        <span className="font-medium text-sm flex-1 text-left">
-                          {item.label}
+              <Link
+                key={item.label}
+                href={item.href!}
+                onClick={() => mobileOpen && onClose && onClose()}
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${
+                  isActive
+                    ? isDark
+                      ? "bg-teal-500/20 text-teal-300 border border-teal-500/30 shadow-md"
+                      : "bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/30 border border-teal-400 font-semibold"
+                    : isDark
+                      ? "text-gray-400 hover:bg-gray-800 hover:text-white"
+                      : "text-gray-700 hover:bg-teal-50 hover:text-teal-700 hover:shadow-sm font-medium"
+                } ${effectiveCollapsed ? "justify-center" : ""}`}
+                title={effectiveCollapsed ? item.label : ""}
+              >
+                <span className="text-lg flex-shrink-0">{item.icon}</span>
+                {!effectiveCollapsed && (
+                  <>
+                    <span className="font-medium text-sm flex-1">{item.label}</span>
+                    {item.label === "Customers" &&
+                      counts &&
+                      counts.total > 0 && (
+                        <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow-sm whitespace-nowrap">
+                          {counts.total}
                         </span>
-                        {item.label === "Customers" &&
-                          counts &&
-                          counts.total > 0 && (
-                            <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow-sm whitespace-nowrap">
-                              {counts.total}
-                            </span>
-                          )}
-                        <span className="text-xs">
-                          {isExpanded ? "▼" : "▶"}
-                        </span>
-                      </>
-                    )}
-
-                    {effectiveCollapsed && (
-                      <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                        {item.label}
-                      </div>
-                    )}
-                  </button>
-                ) : (
-                  <Link
-                    href={item.href!}
-                    onClick={() => mobileOpen && onClose && onClose()}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${
-                      isActive
-                        ? isDark
-                          ? "bg-teal-500/20 text-teal-300 border border-teal-500/30 shadow-md"
-                          : "bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/30 border border-teal-400 font-semibold"
-                        : isDark
-                          ? "text-gray-400 hover:bg-gray-800 hover:text-white"
-                          : "text-gray-700 hover:bg-teal-50 hover:text-teal-700 hover:shadow-sm font-medium"
-                    } ${effectiveCollapsed ? "justify-center" : ""}`}
-                    title={effectiveCollapsed ? item.label : ""}
-                  >
-                    <span className="text-lg flex-shrink-0">{item.icon}</span>
-                    {!effectiveCollapsed && (
-                      <span className="font-medium text-sm">{item.label}</span>
-                    )}
-
-                    {effectiveCollapsed && (
-                      <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                        {item.label}
-                      </div>
-                    )}
-                  </Link>
+                      )}
+                  </>
                 )}
 
-                {/* Submenu */}
-                {hasSubmenu && isExpanded && !effectiveCollapsed && (
-                  <div className="ml-4 mt-1 space-y-1 border-l-2 border-teal-200 dark:border-teal-800 pl-2">
-                    {item.submenu!.map((subitem) => {
-                      const isSubActive = pathname === subitem.href;
-                      return (
-                        <Link
-                          key={subitem.href}
-                          href={subitem.href}
-                          onClick={() => mobileOpen && onClose && onClose()}
-                          className={`block px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
-                            isSubActive
-                              ? isDark
-                                ? "bg-teal-500/30 text-teal-300"
-                                : "bg-teal-100 text-teal-700"
-                              : isDark
-                                ? "text-gray-400 hover:bg-gray-800/50 hover:text-white"
-                                : "text-gray-600 hover:bg-teal-50 hover:text-teal-700"
-                          }`}
-                        >
-                          {subitem.label}
-                        </Link>
-                      );
-                    })}
+                {effectiveCollapsed && (
+                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                    {item.label}
                   </div>
                 )}
-              </div>
+              </Link>
             );
           })}
         </nav>

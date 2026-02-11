@@ -54,9 +54,13 @@ export class StaffService {
         role: UserRole.STAFF,
       },
     });
+    const maxStaff = subscription.plan.maxStaff;
 
-    if (currentStaffCount >= capability.maxStaff) {
-      throw new ForbiddenException('Staff limit reached for your current plan');
+    // null means unlimited
+    if (maxStaff !== null && currentStaffCount >= maxStaff) {
+      throw new ForbiddenException(
+        `Staff limit reached (${currentStaffCount}/${maxStaff}) for your current plan`,
+      );
     }
 
     return subscription;

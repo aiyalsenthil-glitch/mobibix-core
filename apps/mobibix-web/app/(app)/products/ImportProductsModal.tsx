@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useTheme } from "@/context/ThemeContext";
+import { authenticatedFetch } from "@/services/auth.api";
 
 interface ImportResult {
   success: number;
@@ -127,10 +128,11 @@ export function ImportProductsModal({
       formData.append("shopId", shopId);
       formData.append("includeStock", includeStock.toString());
 
-      // TODO: Call backend API to import products
-      const response = await fetch("/api/products/import", {
+      // Call backend API to import products
+      const response = await authenticatedFetch("/mobileshop/products/import", {
         method: "POST",
         body: formData,
+        // Don't set Content-Type header - browser will set it with boundary for multipart/form-data
       });
 
       if (!response.ok) {

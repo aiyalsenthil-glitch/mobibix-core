@@ -53,6 +53,9 @@ const STATUS_COLORS: Record<JobStatus, string> = {
     "bg-pink-200 text-pink-900 border-pink-400 dark:bg-pink-500/20 dark:text-pink-200",
 };
 
+import { RepairBillingModal } from "@/components/repair/RepairBillingModal";
+import { generateRepairBill } from "@/services/jobcard.api";
+
 export default function JobCardDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -63,6 +66,8 @@ export default function JobCardDetailPage() {
   const [isReadyConfirmOpen, setIsReadyConfirmOpen] = useState(false);
   const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
   const [isWarrantyConfirmOpen, setIsWarrantyConfirmOpen] = useState(false);
+  const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+  
   // Advance Modals
   const [isAddAdvanceModalOpen, setIsAddAdvanceModalOpen] = useState(false);
   const [isRefundAdvanceModalOpen, setIsRefundAdvanceModalOpen] =
@@ -96,6 +101,15 @@ export default function JobCardDetailPage() {
       setIsReadyConfirmOpen(true);
       return;
     }
+    
+    // 🛡️ DELIVERED INTERCEPTION: Open Billing Modal
+    if (status === "DELIVERED") {
+        if (!job.invoices?.some(i => i.status !== "VOIDED")) {
+            setIsBillingModalOpen(true);
+            return;
+        }
+        // If invoice exists, allow marking delivered
+    }
 
     // 🛡️ CANCEL CONFIRMATION: Ask user to confirm cancellation
     if (status === "CANCELLED") {
@@ -108,12 +122,13 @@ export default function JobCardDetailPage() {
       }
     }
 
-    // Delivery Guard
+    // Delivery Guard logic continues...
     if (status === "DELIVERED") {
       const validInvoice = job.invoices?.find((i) => i.status !== "VOIDED");
 
       if (!validInvoice) {
-        alert("Cannot deliver: Job must be READY and have an invoice first.");
+        // Fallback if modal didn't trigger for some reason
+        setIsBillingModalOpen(true);
         return;
       }
 
@@ -122,9 +137,6 @@ export default function JobCardDetailPage() {
         router.push(`/sales/${validInvoice.id}?shopId=${selectedShopId}`);
         return;
       }
-
-      // Check balance (optional but good UX)
-      // Usually backend also checks, but we warn here.
     }
 
     try {
@@ -133,6 +145,18 @@ export default function JobCardDetailPage() {
     } catch (err: any) {
       alert(err.message || "Failed to update status");
     }
+  };
+  
+  const handleBillSubmit = async (dto: any) => {
+      if (!job || !selectedShopId) return;
+      try {
+          await generateRepairBill(selectedShopId, job.id, dto);
+          // Refresh to show invoice and new status
+           reload();
+           setIsBillingModalOpen(false);
+      } catch (err: any) {
+          alert(err.message || "Failed to generate bill");
+      }
   };
 
   const handleReadyConfirm = async () => {
@@ -262,10 +286,18 @@ export default function JobCardDetailPage() {
                     Change Status
                   </option>
                   <option value="READY">Mark READY</option>
-                  <option value="DELIVERED">Mark DELIVERED</option>
+                  <option value="DELIVERED">Mark DELIVERED & Bill</option>
                   <option value="CANCELLED">CANCEL Job</option>
                 </select>
               )}
+               {job.status === "READY" && !job.invoices?.some(i => i.status !== "VOIDED") && (
+                   <button
+                        onClick={() => setIsBillingModalOpen(true)}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition flex items-center gap-2"
+                   >
+                       <span>📜</span> Generate Bill
+                   </button>
+               )}
             </>
           )}
         </div>
@@ -707,6 +739,15 @@ export default function JobCardDetailPage() {
           </div>
         </div>
       )}
+      
+      {/* BILLING MODAL */}
+      <RepairBillingModal 
+        isOpen={isBillingModalOpen}
+        onClose={() => setIsBillingModalOpen(false)}
+        onSubmit={handleBillSubmit}
+        job={job}
+        shopId={selectedShopId!}
+      />
     </div>
   );
 }

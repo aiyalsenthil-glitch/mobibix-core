@@ -21,12 +21,16 @@ import { UpdatePurchaseDto, PurchaseStatus } from './dto/update-purchase.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { PurchaseResponseDto } from './dto/purchase.response.dto';
 import { UserRole } from '@prisma/client';
+import { PurchasePaymentService } from '../../modules/mobileshop/services/purchase-payment.service';
 
 @Controller('purchases')
 @UseGuards(JwtAuthGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class PurchasesController {
-  constructor(private readonly purchasesService: PurchasesService) {}
+  constructor(
+    private readonly purchasesService: PurchasesService,
+    private readonly purchasePaymentService: PurchasePaymentService,
+  ) {}
 
   /**
    * POST /api/purchases
@@ -165,6 +169,57 @@ export class PurchasesController {
     return this.purchasesService.getOutstandingBySupplier(
       req.user.tenantId,
       supplierId,
+    );
+  }
+
+  /**
+   * GET /api/purchases/pending
+   * Get all pending purchases (DRAFT, SUBMITTED, PARTIALLY_PAID)
+   * Query params: shopId, supplierId
+   */
+  @Get('pending')
+  async getPendingPurchases(
+    @Req() req: any,
+    @Query('shopId') shopId?: string,
+    @Query('supplierId') supplierId?: string,
+  ) {
+    return this.purchasePaymentService.getPendingPurchases(
+      req.user.tenantId,
+      shopId,
+      supplierId,
+    );
+  }
+
+  /**
+   * GET /api/purchases/:id/payment-status
+   * Get payment status with balance due, days overdue
+   */
+  @Get(':id/payment-status')
+  async getPaymentStatus(@Req() req: any, @Param('id') id: string) {
+    return this.purchasePaymentService.getPurchaseStatus(req.user.tenantId, id);
+  }
+
+  /**
+   * POST /api/purchases/:id/payments
+   * Record a new payment (uses PurchasePaymentService)
+   */
+  @Post(':id/payments')
+  async recordPaymentV2(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body()
+    dto: {
+      amount: number;
+      paymentMethod?: 'CASH' | 'CARD' | 'UPI' | 'BANK' | 'CREDIT';
+      paymentReference?: string;
+    },
+  ) {
+    return this.purchasePaymentService.recordPayment(
+      req.user.tenantId,
+      id,
+      dto.amount,
+      dto.paymentMethod || 'CASH',
+      dto.paymentReference,
     );
   }
 }

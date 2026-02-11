@@ -74,4 +74,8 @@ export class UpdateJobCardDto {
   @IsOptional()
   @IsDateString()
   estimatedDelivery?: Date;
+
+  @IsOptional()
+  @IsString()
+  assignedToUserId?: string;
 }

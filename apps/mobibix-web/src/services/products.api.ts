@@ -159,3 +159,110 @@ export async function updateProduct(
 
   return response.json();
 }
+
+/**
+ * Stock adjustment types
+ */
+export interface StockAdjustmentRequest {
+  quantity: number;
+  type: "IN" | "OUT" | "ADJUSTMENT";
+  reason: string;
+  reference?: string;
+}
+
+/**
+ * Adjust stock for a product
+ */
+export async function adjustStock(
+  shopId: string,
+  productId: string,
+  data: StockAdjustmentRequest,
+): Promise<{ success: boolean; newStock: number }> {
+  const response = await authenticatedFetch(
+    `/mobileshop/inventory/stock/adjust`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        shopId,
+        shopProductId: productId,
+        ...data,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to adjust stock");
+  }
+
+  return response.json();
+}
+
+/**
+ * Get stock levels for all products in a shop
+ */
+export async function getStockLevels(
+  shopId: string,
+): Promise<
+  | ShopProduct[]
+  | { data: ShopProduct[]; total: number; skip: number; take: number }
+> {
+  const response = await authenticatedFetch(
+    `/mobileshop/inventory/stock-levels?shopId=${shopId}`,
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch stock levels");
+  }
+
+  return response.json();
+}
+
+/**
+ * Get low stock products
+ */
+export async function getLowStockProducts(
+  shopId: string,
+): Promise<ShopProduct[]> {
+  const response = await authenticatedFetch(
+    `/mobileshop/inventory/low-stock?shopId=${shopId}`,
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch low stock products");
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data : data.data || [];
+}
+
+/**
+ * Get stock movement history for a product
+ */
+export async function getStockHistory(
+  productId: string,
+  options?: { skip?: number; take?: number },
+): Promise<any[]> {
+  const query = new URLSearchParams();
+  if (options?.skip !== undefined)
+    query.append("skip", options.skip.toString());
+  if (options?.take !== undefined)
+    query.append("take", options.take.toString());
+
+  const response = await authenticatedFetch(
+    `/mobileshop/inventory/stock-history/${productId}?${query}`,
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch stock history");
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data : data.data || [];
+}
