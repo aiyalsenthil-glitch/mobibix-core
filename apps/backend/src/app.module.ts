@@ -23,6 +23,7 @@ import { PurchasesModule } from './core/purchases/purchases.module';
 import { GlobalProductsModule } from './core/global-products/global-products.module';
 import { ShopProductsModule } from './core/shop-products/shop-products.module';
 import { CustomerTimelineModule } from './core/timeline/customer-timeline.module';
+import { LoyaltyModule } from './core/loyalty/loyalty.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -39,10 +40,12 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     }),
 
     // 🛡️ Rate Limiting
-    ThrottlerModule.forRoot([{
-      ttl: 60000, // 60 seconds
-      limit: 10, // 10 requests per TTL
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 60 seconds
+        limit: 100, // 100 requests per TTL
+      },
+    ]),
 
     // � Performance & Caching (Tier 4)
     CustomCacheModule,
@@ -52,7 +55,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     AuthModule,
     WhatsAppModule,
     CustomerTimelineModule,
-    // 🧩 Business modules
+    LoyaltyModule, // 🧩 Business modules
     GymModule,
     GymAppModule,
     SuppliersModule,

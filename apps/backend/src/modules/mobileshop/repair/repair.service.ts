@@ -156,6 +156,11 @@ export class RepairService {
           customerId: true,
           customerName: true,
           customerPhone: true,
+          parts: {
+            include: {
+              product: true,
+            },
+          },
         },
       });
 
@@ -163,15 +168,29 @@ export class RepairService {
         throw new BadRequestException('Job card not found');
       }
 
-      // Validate job status is READY
-      if (job.status !== 'READY') {
+      // Fetch shop details once to avoid redundant lookups in BillingService
+      const shop = await tx.shop.findFirst({
+        where: { id: dto.shopId, tenantId },
+        select: {
+          id: true,
+          gstEnabled: true,
+          state: true,
+          receiptPrintCounter: true,
+        },
+      });
+
+      if (!shop) {
         throw new BadRequestException(
-          `Job must be in READY status to bill. Current status: ${job.status}`,
+          'Invalid shop or shop does not belong to your organization',
         );
       }
 
-      // Validate shop access
-      await assertShopAccess(tx, dto.shopId, tenantId);
+      // Validate job status: Allow billing if not already closed
+      if (['DELIVERED', 'CANCELLED', 'RETURNED'].includes(job.status)) {
+        throw new BadRequestException(
+          `Cannot bill job in ${job.status} status`,
+        );
+      }
 
       // Ensure "Repair Services" product exists
       let serviceProductId: string;
@@ -222,15 +241,19 @@ export class RepairService {
         });
       });
 
-      // Parts
-      if (dto.parts && dto.parts.length > 0) {
-        dto.parts.forEach((p) => {
+      // Parts - Standardized: Pull from JobCard table (Snapshotted cost + current Sale price/GST)
+      if (job.parts && job.parts.length > 0) {
+        job.parts.forEach((p) => {
           billingItems.push({
             shopProductId: p.shopProductId,
             quantity: p.quantity,
-            rate: p.rate,
-            gstRate: p.gstRate,
-            hsnCode: '8517', // Parts HSN
+            rate: (p.product?.salePrice || 0) / 100,
+            gstRate:
+              dto.billingMode === BillingMode.WITH_GST
+                ? p.product?.gstRate || 0
+                : 0,
+            hsnCode: p.product?.hsnCode || '8517',
+            costPrice: p.costPrice || undefined,
           });
         });
       }
@@ -246,36 +269,40 @@ export class RepairService {
         pricesIncludeTax: !!dto.pricesIncludeTax,
         referenceType: 'JOB',
         referenceId: dto.jobCardId,
-        skipStockUpdate: true, // IMPORTANT: Stock already consumed during Repair Process
+        skipStockUpdate: false, // ERP-Correct: Stock now consumed ONLY on Invoice confirm
         skipReceipt: false,
+        shop, // Passing shop object to avoid redundant lookup
       };
 
       const invoice = await this.billingService.createInvoice(options, tx);
 
-      // Mark job as DELIVERED (atomic with billing)
-      await tx.jobCard.update({
-        where: { id: dto.jobCardId },
-        data: {
-          status: 'DELIVERED',
-          finalCost: invoice.totalAmount, // Storing in Paisa as per consistency rule
-          updatedAt: new Date(),
-        },
-      });
+    // [Interactive Flow] Determine next status
+    const nextStatus = dto.deliverImmediately ? 'DELIVERED' : 'READY';
 
-      return {
-        id: invoice.id,
-        invoiceNumber: invoice.invoiceNumber,
-        invoiceDate: invoice.invoiceDate,
-        customerName: invoice.customerName,
-        customerPhone: invoice.customerPhone,
-        items: invoice.items,
-        subTotal: invoice.subTotal,
-        gstAmount: invoice.gstAmount,
-        totalAmount: invoice.totalAmount,
-        paymentMode: invoice.paymentMode,
-        billingMode: dto.billingMode,
-        status: 'DELIVERED',
-      };
+    // Update job status and final cost (atomic with billing)
+    await tx.jobCard.update({
+      where: { id: dto.jobCardId },
+      data: {
+        status: nextStatus,
+        finalCost: invoice.totalAmount, // Paisa
+        updatedAt: new Date(),
+      },
+    });
+
+    return {
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      invoiceDate: invoice.invoiceDate,
+      customerName: invoice.customerName,
+      customerPhone: invoice.customerPhone,
+      items: invoice.items,
+      subTotal: invoice.subTotal,
+      gstAmount: invoice.gstAmount,
+      totalAmount: invoice.totalAmount,
+      paymentMode: invoice.paymentMode,
+      billingMode: dto.billingMode,
+      status: nextStatus,
+    };
     });
   }
 
@@ -302,32 +329,8 @@ export class RepairService {
         );
       }
 
-      // Find all parts used for this repair
-      const partsUsed = await tx.jobCardPart.findMany({
-        where: { jobCardId },
-        select: { shopProductId: true, quantity: true, costPrice: true },
-      });
-
-      if (partsUsed.length > 0) {
-        // Create reversal IN entries to restore stock
-        const reversalItems = partsUsed.map((part) => ({
-          productId: part.shopProductId,
-          quantity: part.quantity,
-          referenceType: 'REPAIR' as const,
-          referenceId: jobCardId,
-          costPerUnit: part.costPrice ?? undefined,
-          note: `Stock reversal: Job ${jobCardId} cancelled`,
-        }));
-
-        await this.stockService.recordStockInBatch(
-          tenantId,
-          shopId,
-          reversalItems,
-          'REPAIR',
-          jobCardId,
-          tx,
-        );
-      }
+      // Stock reversal is no longer needed here because stock is only deducted on invoice
+      // If an invoice was already generated, it should be voided (handled by separate logic if needed)
 
       // Update job status to CANCELLED
       await tx.jobCard.update({
@@ -335,7 +338,7 @@ export class RepairService {
         data: { status: 'CANCELLED', updatedAt: new Date() },
       });
 
-      return { success: true, partsReversed: partsUsed.length };
+      return { success: true };
     });
   }
 }

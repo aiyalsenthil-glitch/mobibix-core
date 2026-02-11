@@ -134,10 +134,10 @@ export class JobStatusValidator {
 
   /**
    * Check if a status should trigger auto-invoice creation
-   * CRITICAL: Only READY status creates invoice
+   * ERP-Correct: Auto-invoice disabled in favor of Interactive Billing Modal
    */
   shouldCreateInvoice(status: JobStatus): boolean {
-    return status === JobStatus.READY;
+    return false;
   }
 
   /**

@@ -10,6 +10,7 @@ export type PlanRules = {
   enabled: boolean;
   maxMembers: number | null; // null = unlimited
   maxStaff: number | null; // null = unlimited
+  maxShops: number | null; // null = unlimited
   whatsapp?: {
     messageQuota: number;
     isDaily?: boolean;
@@ -56,6 +57,7 @@ export class PlanRulesService {
       enabled: plan.isActive,
       maxMembers: plan.maxMembers, // null = unlimited
       maxStaff: plan.maxStaff, // null = unlimited
+      maxShops: plan.maxShops, // null = unlimited
       whatsapp: {
         messageQuota: (plan.whatsappUtilityQuota || 0) + (plan.whatsappMarketingQuota || 0),
         isDaily: false, // Monthly quotas
@@ -117,6 +119,7 @@ export class PlanRulesService {
       enabled: true,
       maxMembers: 0,
       maxStaff: 0,
+      maxShops: 0,
       whatsapp: {
         messageQuota: 0,
         isDaily: false,
@@ -139,6 +142,9 @@ export class PlanRulesService {
 
       if (plan.maxStaff === null) aggregatedRules.maxStaff = null;
       else if (aggregatedRules.maxStaff !== null) aggregatedRules.maxStaff = Math.max(aggregatedRules.maxStaff, plan.maxStaff);
+
+      if (plan.maxShops === null) aggregatedRules.maxShops = null;
+      else if (aggregatedRules.maxShops !== null) aggregatedRules.maxShops = Math.max(aggregatedRules.maxShops, plan.maxShops ?? 0);
 
       aggregatedRules.analyticsHistoryDays = Math.max(aggregatedRules.analyticsHistoryDays, plan.analyticsHistoryDays);
 

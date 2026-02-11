@@ -52,12 +52,14 @@ export default function CreateJobCardPage() {
     estimatedDelivery: "",
   });
 
-  // STRICT COMPLIANCE: Force WITH_GST if shop has GST enabled
-  // This prevents 'WITHOUT_GST' being sent even if UI is locked
+  // AUTOMATION: Automatically set billType based on shop's GST configuration
   useEffect(() => {
-     if (shop?.gstEnabled && formData.billType !== 'WITH_GST') {
-         setFormData(prev => ({ ...prev, billType: 'WITH_GST' }));
-     }
+    if (shop) {
+      const targetType = shop.gstEnabled ? "WITH_GST" : "WITHOUT_GST";
+      if (formData.billType !== targetType) {
+        setFormData((prev) => ({ ...prev, billType: targetType }));
+      }
+    }
   }, [shop?.gstEnabled]);
 
   const handleChange = (
@@ -394,28 +396,6 @@ export default function CreateJobCardPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Bill Type
-                    </label>
-                    {/* STRICT GST GUI ENFORCEMENT */}
-                    {shop?.gstEnabled ? (
-                       <div className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 cursor-not-allowed flex items-center justify-between">
-                          <span>Tax Invoice (GST)</span>
-                          <span className="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded">LOCKED</span>
-                       </div>
-                    ) : (
-                        <select
-                          name="billType"
-                          value={formData.billType}
-                          onChange={handleChange}
-                          className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition"
-                        >
-                          <option value="WITHOUT_GST">Without GST</option>
-                          <option value="WITH_GST">With GST (18%)</option>
-                        </select>
-                    )}
-                  </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                     Est. Delivery Date
@@ -428,6 +408,7 @@ export default function CreateJobCardPage() {
                     className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition"
                   />
                 </div>
+                {/* Bill Type is now automated and removed from UI to simplify flow */}
               </div>
 
               <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded-lg text-sm">

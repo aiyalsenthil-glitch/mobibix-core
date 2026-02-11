@@ -23,6 +23,7 @@ const isFirebaseConfigured = Object.values(REMOVED_AUTH_PROVIDERConfig).every(
 
 let app: any = null;
 let auth: any = null;
+let storage: any = null;
 let googleProvider: any = null;
 
 if (isFirebaseConfigured) {
@@ -43,6 +44,10 @@ if (isFirebaseConfigured) {
     googleProvider.addScope("profile");
     googleProvider.addScope("email");
 
+    // Initialize Storage
+    const { getStorage } = await import("REMOVED_AUTH_PROVIDER/storage");
+    storage = getStorage(app);
+
     console.log("Firebase initialized successfully");
   } catch (error) {
     console.warn("Failed to initialize Firebase:", error);
@@ -53,5 +58,5 @@ if (isFirebaseConfigured) {
   );
 }
 
-export { auth, googleProvider };
+export { auth, googleProvider, storage };
 export default app;

@@ -19,6 +19,26 @@ import { CancelInvoiceModal } from "@/components/sales/CancelInvoiceModal";
 import { CustomerTimelineDrawer } from "@/components/crm/CustomerTimelineDrawer";
 import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
 import { type FollowUpType } from "@/services/crm.api";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { 
+  MoreVertical, 
+  Eye, 
+  Printer, 
+  Trash2, 
+  Edit, 
+  Phone, 
+  Share2,
+  History,
+  Ban,
+  IndianRupee
+} from "lucide-react";
 
 const PAGE_SIZE = 50;
 
@@ -463,19 +483,8 @@ export default function SalesPage() {
                         {formatDate(inv.invoiceDate)}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {/* Collect Payment Button */}
-                          {inv.balanceAmount && inv.balanceAmount > 0 ? (
-                            <button
-                              onClick={() => handleCollectPayment(inv)}
-                              title="Collect Payment"
-                              className="px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-500/20 dark:text-green-300 dark:hover:bg-green-500/30 transition shadow-sm border border-green-200 dark:border-green-500/30"
-                            >
-                              Collect ₹
-                            </button>
-                          ) : null}
-
-                          {/* View Button */}
+                        <div className="flex items-center gap-2">
+                           {/* Primary Action: View */}
                           <button
                             onClick={() =>
                               router.push(
@@ -483,142 +492,104 @@ export default function SalesPage() {
                               )
                             }
                             title="View Invoice"
-                            className={`p-2 rounded ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-zinc-200"} transition`}
+                            className="px-3 py-1.5 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-md text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-500/30 transition flex items-center gap-2"
                           >
-                            <svg
-                              className={`w-4 h-4 ${theme === "dark" ? "text-blue-400" : "text-blue-600"}`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                              />
-                            </svg>
+                            <Eye className="w-4 h-4" />
+                            View
                           </button>
 
-                          {/* CRM Actions */}
-                          <button
-                            onClick={() => {
-                              setTimelineCustomerId(inv.customerId || "");
-                              setTimelineCustomerName(
-                                inv.customerName || "Customer",
-                              );
-                            }}
-                            title="View History"
-                            className={`p-2 rounded ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-zinc-200"} transition`}
-                          >
-                            🕒
-                          </button>
-                          <button
-                            onClick={() => {
-                              setFollowUpData({
-                                customerId: inv.customerId || "",
-                                customerName: inv.customerName || "Customer",
-                                defaultPurpose: `Follow up on invoice ${inv.invoiceNumber}`,
-                                defaultType: "PHONE_CALL",
-                              });
-                            }}
-                            title="Add Follow-up"
-                            className={`p-2 rounded ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-zinc-200"} transition`}
-                          >
-                            📋
-                          </button>
+                          {/* Secondary Action: Print (Inline) */}
+                           {inv.status !== "VOIDED" && (
+                             <button
+                               onClick={() =>
+                                 router.push(
+                                   `/print/invoice/${inv.id}?shopId=${selectedShopId}`,
+                                 )
+                               }
+                               title="Print Invoice"
+                               className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md transition text-gray-600 dark:text-stone-400"
+                             >
+                                <Printer className="w-4 h-4" />
+                             </button>
+                           )}
 
-                          {/* Print Button - Hidden for voided invoices */}
-                          {inv.status !== "VOIDED" && (
-                            <button
-                              onClick={() =>
-                                router.push(
-                                  `/print/invoice/${inv.id}?shopId=${selectedShopId}`,
-                                )
-                              }
-                              title="Print Invoice"
-                              className={`p-2 rounded ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-zinc-200"} transition`}
-                            >
-                              <svg
-                                className={`w-4 h-4 ${theme === "dark" ? "text-stone-400" : "text-zinc-600"}`}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                                />
-                              </svg>
-                            </button>
-                          )}
-
-                          {/* Share Button - Hidden for voided invoices */}
-                          {inv.status !== "VOIDED" && (
-                            <button
-                              onClick={() =>
-                                router.push(
-                                  `/sales/${inv.id}/share?shopId=${selectedShopId}`,
-                                )
-                              }
-                              title="Share Invoice"
-                              className={`p-2 rounded ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-zinc-200"} transition`}
-                            >
-                              <svg
-                                className={`w-4 h-4 ${theme === "dark" ? "text-stone-400" : "text-zinc-600"}`}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-                                />
-                              </svg>
-                            </button>
-                          )}
-                          {isOwner &&
-                            (inv.status === "PAID" ||
-                              inv.status === "CREDIT") && (
-                              <button
-                                onClick={() => handleEdit(inv.id)}
-                                title="Edit Invoice"
-                                className={`px-2 py-1 rounded text-sm transition ${
-                                  theme === "dark"
-                                    ? "text-amber-400 hover:bg-amber-500/20"
-                                    : "text-amber-600 hover:bg-amber-50"
-                                }`}
-                              >
-                                ✏️
+                           {/* More Options Dropdown */}
+                           <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md transition text-gray-500 dark:text-gray-400">
+                                <MoreVertical className="w-4 h-4" />
                               </button>
-                            )}
-                          {isOwner &&
-                            (inv.status === "PAID" ||
-                              inv.status === "CREDIT") && (
-                              <button
-                                onClick={() =>
-                                  handleCancel(inv.id, inv.invoiceNumber)
-                                }
-                                title="Cancel Invoice"
-                                className={`px-2 py-1 rounded text-sm transition ${
-                                  theme === "dark"
-                                    ? "text-red-400 hover:bg-red-500/20"
-                                    : "text-red-600 hover:bg-red-50"
-                                }`}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-stone-900 border-gray-200 dark:border-stone-800">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+
+                              {/* Collect Payment */}
+                              {inv.balanceAmount && inv.balanceAmount > 0 ? (
+                                <DropdownMenuItem 
+                                  onClick={() => handleCollectPayment(inv)}
+                                  className="text-green-600 dark:text-green-400 font-medium"
+                                >
+                                  <IndianRupee className="w-4 h-4 mr-2" />
+                                  Collect Payment
+                                </DropdownMenuItem>
+                              ) : null}
+
+                              {/* Share */}
+                              {inv.status !== "VOIDED" && (
+                                <DropdownMenuItem onClick={() => handleShare(inv.id, inv.invoiceNumber)}>
+                                  <Share2 className="w-4 h-4 mr-2" />
+                                  Share Invoice
+                                </DropdownMenuItem>
+                              )}
+
+                              <DropdownMenuSeparator />
+
+                              {/* CRM Actions */}
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  setTimelineCustomerId(inv.customerId || "");
+                                  setTimelineCustomerName(inv.customerName || "Customer");
+                                }}
                               >
-                                ❌
-                              </button>
-                            )}
+                                <History className="w-4 h-4 mr-2" />
+                                View History
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  setFollowUpData({
+                                    customerId: inv.customerId || "",
+                                    customerName: inv.customerName || "Customer",
+                                    defaultPurpose: `Follow up on invoice ${inv.invoiceNumber}`,
+                                    defaultType: "PHONE_CALL",
+                                  });
+                                }}
+                              >
+                                <Phone className="w-4 h-4 mr-2" />
+                                Add Follow-up
+                              </DropdownMenuItem>
+                              
+                              <DropdownMenuSeparator />
+
+                              {/* Admin Actions */}
+                              {isOwner && (inv.status === "PAID" || inv.status === "CREDIT") && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleEdit(inv.id)}>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Edit Invoice
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleCancel(inv.id, inv.invoiceNumber)}
+                                    className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 focus:bg-red-50 dark:focus:bg-red-500/10"
+                                  >
+                                    <Ban className="w-4 h-4 mr-2" />
+                                    Cancel Invoice
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                           </DropdownMenu>
                         </div>
                       </td>
                     </tr>

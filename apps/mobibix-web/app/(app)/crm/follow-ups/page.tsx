@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { MyFollowUpsWidget, AddFollowUpModal } from "@/components/crm";
+import { CustomerTabs } from "@/components/crm/CustomerTabs";
 
 export default function FollowUpsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
 
   return (
     <div className="space-y-6">
+      <CustomerTabs />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

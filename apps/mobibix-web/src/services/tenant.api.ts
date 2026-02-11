@@ -234,3 +234,41 @@ export async function createTenant(dto: CreateTenantDto): Promise<CreateTenantRe
   }
   return response.json();
 }
+export interface TenantUsageResponse {
+  hasTenant: boolean;
+  tenantId: string;
+  status: string | null;
+  isTrial: boolean;
+  trialExpired: boolean;
+  plan: {
+    name: string;
+    code: string;
+    level: number;
+    tagline: string | null;
+    description: string | null;
+    featuresJson: string[] | null;
+    features: string[];
+    memberLimit: number | null;
+    staffAllowed: boolean;
+    maxStaff: number | null;
+    maxShops: number | null;
+    whatsappAllowed: boolean;
+  } | null;
+  membersUsed: number;
+  membersLimit: number | null;
+  daysLeft: number | null;
+  whatsappUsage: {
+    marketing: number;
+    utility: number;
+    service: number;
+    startOfPeriod: string;
+  };
+}
+
+export async function getTenantUsage(): Promise<TenantUsageResponse> {
+    const response = await authenticatedFetch("/tenant/usage");
+    if (!response.ok) {
+        throw new Error("Failed to fetch tenant usage");
+    }
+    return response.json();
+}

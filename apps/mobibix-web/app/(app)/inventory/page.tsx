@@ -332,10 +332,12 @@ export default function InventoryPage() {
                               className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
                             >
                               Stock: {product.stockQty || 0} | Price: ₹
-                              {product.salePrice} | Cost: ₹
-                              {product.avgCost ||
-                                product.costPrice ||
-                                "Not Set"}
+                              {(product.salePrice / 100).toFixed(2)} | Cost: ₹
+                              {product.avgCost || product.costPrice
+                                ? (
+                                    (product.avgCost || product.costPrice || 0) / 100
+                                  ).toFixed(2)
+                                : "Not Set"}
                             </div>
                           </button>
                         ))}
@@ -574,7 +576,7 @@ export default function InventoryPage() {
                     <td
                       className={`px-6 py-4 font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
                     >
-                      ₹{product.salePrice.toFixed(2)}
+                      ₹{(product.salePrice / 100).toFixed(2)}
                     </td>
 
                     {/* Cost Price - Editable */}
@@ -632,8 +634,9 @@ export default function InventoryPage() {
                               <span className="font-semibold">
                                 ₹
                                 {(
-                                  product.avgCost || product.costPrice
-                                )?.toFixed(2)}
+                                  (product.avgCost || product.costPrice || 0) /
+                                  100
+                                ).toFixed(2)}
                               </span>
                               {product.avgCost ? (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300">
@@ -680,7 +683,8 @@ export default function InventoryPage() {
                             setEditingCostId(product.id);
                             setEditingCostValue(
                               (
-                                product.avgCost || product.costPrice
+                                (product.avgCost || product.costPrice || 0) /
+                                100
                               )?.toString() || "",
                             );
                           }}

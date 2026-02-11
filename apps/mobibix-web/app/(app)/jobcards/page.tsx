@@ -15,11 +15,33 @@ import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
 import { NoShopsAlert } from "../components/NoShopsAlert";
+import { RepairBillingModal } from "@/components/repair/RepairBillingModal";
+import { generateRepairBill } from "@/services/jobcard.api";
 import { CustomerTimelineDrawer } from "@/components/crm/CustomerTimelineDrawer";
 import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
 import { type FollowUpType } from "@/services/crm.api";
 import { JobCardsTabs } from "@/components/jobcards/JobCardsTabs";
 import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { 
+  MoreVertical, 
+  Eye, 
+  Printer, 
+  Trash2, 
+  Edit, 
+  Clock, 
+  Phone, 
+  ExternalLink,
+  History,
+  FileText
+} from "lucide-react";
 
 const STATUS_OPTIONS: JobStatus[] = [
   "RECEIVED",
@@ -130,6 +152,8 @@ export default function JobCardsPage() {
     balanceAmount: number;
   } | null>(null);
 
+  const [billingJob, setBillingJob] = useState<JobCard | null>(null);
+
   // Use modern hook for async data loading with built-in race condition prevention
   const {
     data: jobCards = [],
@@ -181,16 +205,26 @@ export default function JobCardsPage() {
   };
 
   const handlePaymentSuccess = async () => {
-     if (!deliveringJob) return;
-     
-     try {
-       // After payment, update status to DELIVERED
-       await updateJobCardStatus(selectedShopId, deliveringJob.job.id, 'DELIVERED');
-       setDeliveringJob(null);
-       reload();
-     } catch (err: any) {
-        alert("Payment collected, but failed to update status to DELIVERED: " + err.message);
-     }
+    if (!deliveringJob || !selectedShopId) return;
+
+    try {
+      await updateJobCardStatus(selectedShopId, deliveringJob.job.id, "DELIVERED");
+      setDeliveringJob(null);
+      reload();
+    } catch (err: any) {
+      alert("Payment collected, but failed to update status to DELIVERED: " + err.message);
+    }
+  };
+
+  const handleBillSubmit = async (dto: any) => {
+    if (!billingJob || !selectedShopId) return;
+    try {
+      await generateRepairBill(selectedShopId, billingJob.id, dto);
+      setBillingJob(null);
+      reload();
+    } catch (err: any) {
+      alert(err.message || "Failed to generate bill");
+    }
   };
 
   const handleDelete = async (jobCardId: string) => {
@@ -402,81 +436,124 @@ export default function JobCardsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 text-black dark:text-white">
-
+                        {/* Primary Action: View */}
                         <button
                           onClick={() => router.push(`/jobcards/${job.id}`)}
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition text-blue-600 dark:text-blue-400"
-                          title="Open Details & Parts"
+                          className="px-3 py-1.5 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-md text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-500/30 transition flex items-center gap-2"
+                          title="Open Details"
                         >
-                          👁️
+                          <Eye className="w-4 h-4" />
+                          View
                         </button>
-                        <button
-                          onClick={() => {
-                            setTimelineCustomerId(job.customerId || "");
-                            setTimelineCustomerName(job.customerName || "Customer");
-                          }}
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition"
-                          title="View History"
-                        >
-                          🕒
-                        </button>
-                        <button
-                          onClick={() => {
-                            setFollowUpData({
-                              customerId: job.customerId || "",
-                              customerName: job.customerName || "Customer",
-                              defaultPurpose: `Follow up on job card #${job.jobNumber} (${job.deviceBrand} ${job.deviceModel})`,
-                              defaultType: "PHONE_CALL",
-                            });
-                          }}
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition"
-                          title="Add Follow-up"
-                        >
-                          📋
-                        </button>
-                        <a
-                          href={`/track/${job.publicToken}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition"
-                          title="Public Track"
-                        >
-                          🔗
-                        </a>
-                        <a
-                          href={`/print/jobcard/${job.id}?shopId=${selectedShopId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition"
-                          title="Print"
-                        >
-                          🖨️
-                        </a>
-                        {/* New Print Invoice Button */}
-                        {(() => {
-                          const invoice = job.invoices?.find((i) => i.status !== "VOIDED");
-                          if (invoice) {
-                            return (
+
+                        {/* Quick Action: Mark Ready */}
+                        {![ "READY", "DELIVERED", "CANCELLED", "RETURNED" ].includes(job.status) && (
+                            <button
+                                onClick={() => setBillingJob(job)}
+                                className="px-2 py-1 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300 rounded-md text-xs font-bold hover:bg-green-200 dark:hover:bg-green-500/30 transition flex items-center gap-1"
+                                title="Mark Ready & Generate Bill"
+                            >
+                                <span>✅</span> Ready
+                            </button>
+                        )}
+
+                        {/* Secondary Actions: Dropdown */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md transition text-gray-500 dark:text-gray-400">
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-stone-900 border-gray-200 dark:border-stone-800">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            
+                            <DropdownMenuItem onClick={() => handleEdit(job)}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit Job
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setTimelineCustomerId(job.customerId || "");
+                                setTimelineCustomerName(job.customerName || "Customer");
+                              }}
+                            >
+                              <History className="w-4 h-4 mr-2" />
+                              View History
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setFollowUpData({
+                                  customerId: job.customerId || "",
+                                  customerName: job.customerName || "Customer",
+                                  defaultPurpose: `Follow up on job card #${job.jobNumber} (${job.deviceBrand} ${job.deviceModel})`,
+                                  defaultType: "PHONE_CALL",
+                                });
+                              }}
+                            >
+                              <Phone className="w-4 h-4 mr-2" />
+                              Add Follow-up
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+
+                            <DropdownMenuItem asChild>
                               <a
-                                href={`/print/invoice/${invoice.id}?noQr=true`}
+                                href={`/track/${job.publicToken}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition"
-                                title="Print Repair Invoice"
+                                className="flex items-center"
                               >
-                                🧾
+                                <ExternalLink className="w-4 h-4 mr-2" />
+                                Public Track
                               </a>
-                            );
-                          }
-                          return null;
-                        })()}
-                        <button
-                          onClick={() => handleDelete(job.id)}
-                          className="p-2 hover:bg-rose-50 dark:hover:bg-red-500/20 rounded-lg transition"
-                          title="Delete"
-                        >
-                          🗑️
-                        </button>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem asChild>
+                              <a
+                                href={`/print/jobcard/${job.id}?shopId=${selectedShopId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center"
+                              >
+                                <Printer className="w-4 h-4 mr-2" />
+                                Print Job Card
+                              </a>
+                            </DropdownMenuItem>
+
+                            {(() => {
+                              const invoice = job.invoices?.find((i) => i.status !== "VOIDED");
+                              if (invoice) {
+                                return (
+                                  <DropdownMenuItem asChild>
+                                    <a
+                                      href={`/print/invoice/${invoice.id}?noQr=true`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center"
+                                    >
+                                      <FileText className="w-4 h-4 mr-2" />
+                                      Print Invoice
+                                    </a>
+                                  </DropdownMenuItem>
+                                );
+                              }
+                              return null;
+                            })()}
+
+                            <DropdownMenuSeparator />
+                            
+                            <DropdownMenuItem 
+                              onClick={() => handleDelete(job.id)}
+                              className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 focus:bg-red-50 dark:focus:bg-red-500/10"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </td>
                   </tr>
@@ -541,6 +618,17 @@ export default function JobCardsPage() {
           onClose={() => setDeliveringJob(null)}
           onSuccess={handlePaymentSuccess}
         />
+      )}
+
+      {/* Interactive Billing Modal */}
+      {billingJob && (
+          <RepairBillingModal 
+            isOpen={!!billingJob}
+            onClose={() => setBillingJob(null)}
+            onSubmit={handleBillSubmit}
+            job={billingJob}
+            shopId={selectedShopId!}
+          />
       )}
     </div>
   );

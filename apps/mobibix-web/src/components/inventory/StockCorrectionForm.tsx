@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -58,7 +58,24 @@ export function StockCorrectionForm({
   const [selectedProductId, setSelectedProductId] = useState(
     preSelectedProductId || "",
   );
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
   const [quantity, setQuantity] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
   const [costPrice, setCostPrice] = useState(""); // Cost input for stock correction
   const [imeisText, setImeisText] = useState("");
   const [reason, setReason] = useState(
@@ -73,6 +90,13 @@ export function StockCorrectionForm({
   useEffect(() => {
     loadData();
   }, [shopId]);
+
+  useEffect(() => {
+    if (preSelectedProductId && products.length > 0) {
+      const p = products.find((prod) => prod.id === preSelectedProductId);
+      if (p) setSearchTerm(p.name);
+    }
+  }, [preSelectedProductId, products]);
 
   const loadData = async () => {
     try {
@@ -230,32 +254,72 @@ export function StockCorrectionForm({
           </div>
         )}
 
-        <div className="space-y-2">
+        <div className="space-y-2 relative" ref={dropdownRef}>
           <Label
             htmlFor="product"
             className="text-slate-700 dark:text-slate-300"
           >
             Product
           </Label>
-          <Select
-            value={selectedProductId}
-            onValueChange={setSelectedProductId}
-            disabled={!!preSelectedProductId}
-          >
-            <SelectTrigger
+          <div className="relative">
+            <Input
               id="product"
+              type="text"
+              placeholder="Search product..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setSelectedProductId("");
+                setShowDropdown(true);
+              }}
+              onFocus={() => !preSelectedProductId && setShowDropdown(true)}
+              disabled={!!preSelectedProductId}
               className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-50"
-            >
-              <SelectValue placeholder="Select a product" />
-            </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-              {products.map((product) => (
-                <SelectItem key={product.id} value={product.id}>
-                  {product.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            />
+            {!!preSelectedProductId && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                Locked
+              </div>
+            )}
+          </div>
+
+          {!preSelectedProductId &&
+            showDropdown &&
+            searchTerm.length > 0 &&
+            !selectedProductId && (
+              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                {products
+                  .filter((p) =>
+                    p.name.toLowerCase().includes(searchTerm.toLowerCase()),
+                  )
+                  .map((product) => (
+                    <div
+                      key={product.id}
+                      className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer text-sm"
+                      onClick={() => {
+                        setSelectedProductId(product.id);
+                        setSearchTerm(product.name);
+                        setShowDropdown(false);
+                      }}
+                    >
+                      <div className="font-medium text-slate-900 dark:text-slate-50">
+                        {product.name}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        Stock: {stockBalances[product.id]?.stockQty ?? 0}
+                        {product.isSerialized ? " • Serialized" : ""}
+                      </div>
+                    </div>
+                  ))}
+                {products.filter((p) =>
+                  p.name.toLowerCase().includes(searchTerm.toLowerCase()),
+                ).length === 0 && (
+                  <div className="px-4 py-3 text-sm text-slate-500 italic">
+                    No products found
+                  </div>
+                )}
+              </div>
+            )}
         </div>
 
         {selectedProduct && (

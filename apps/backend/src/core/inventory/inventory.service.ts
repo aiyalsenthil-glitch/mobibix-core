@@ -157,4 +157,14 @@ export class InventoryService {
     const balances = await this.stockService.getStockBalances(tenantId);
     return balances.filter((p) => p.stockQty <= threshold);
   }
+
+  async getStockLevels(tenantId: string, shopId: string): Promise<any[]> {
+    const balances = await this.stockService.getStockBalances(tenantId, shopId);
+    return balances.map((b) => ({
+      id: b.productId, // Frontend expects .id
+      name: b.name,
+      stockQty: b.stockQty,
+      isNegative: b.isNegative,
+    }));
+  }
 }

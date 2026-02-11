@@ -13,12 +13,115 @@ import { CustomerTimelineDrawer } from "@/components/crm/CustomerTimelineDrawer"
 import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
 import { type FollowUpType } from "@/services/crm.api";
 import { CustomerTabs } from "@/components/crm/CustomerTabs";
+import { CustomerLoyaltyBalance } from "./CustomerLoyaltyBalance";
 
 const PAGE_SIZE = 50;
 
 export default function CustomersPage() {
   const router = useRouter();
-  // ... existing hooks
+  const { theme } = useTheme();
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalCustomers, setTotalCustomers] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+
+  // CRM Modals State
+  const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(
+    null,
+  );
+  const [timelineCustomerName, setTimelineCustomerName] = useState<string>("");
+  const [followUpData, setFollowUpData] = useState<{
+    customerId: string;
+    customerName: string;
+    defaultPurpose: string;
+    defaultType: FollowUpType;
+  } | null>(null);
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(0); // Reset to first page on new search
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const loadCustomers = useCallback(async (page: number, search: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await listCustomersPaginated({
+        skip: page * PAGE_SIZE,
+        take: PAGE_SIZE,
+        search: search || undefined,
+      });
+
+      setCustomers(response.data);
+      setTotalCustomers(response.total);
+      setHasMore(
+        response.data.length === PAGE_SIZE &&
+          (page + 1) * PAGE_SIZE < response.total,
+      );
+    } catch (err: any) {
+      setError(err.message || "Failed to load customers");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCustomers(currentPage, debouncedSearch);
+  }, [currentPage, debouncedSearch, loadCustomers]);
+
+  const handleEdit = (customer: Customer) => {
+    setEditingCustomer(customer);
+  };
+
+  const handleDelete = async (customer: Customer) => {
+    if (
+      !confirm(
+        `Are you sure you want to delete customer "${customer.name}"? This will mark them as inactive.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await deleteCustomer(customer.id);
+      // Reload current page
+      loadCustomers(currentPage, debouncedSearch);
+    } catch (err: any) {
+      alert(err.message || "Failed to delete customer");
+    }
+  };
+
+  const handleFormClose = () => {
+    setIsAddModalOpen(false);
+    setEditingCustomer(null);
+    loadCustomers(currentPage, debouncedSearch);
+  };
+
+  const totalPages = Math.ceil(totalCustomers / PAGE_SIZE);
+
+  const handlePreviousPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-stone-950 p-6">
@@ -195,15 +298,7 @@ export default function CustomersPage() {
                         {customer.state}
                       </td>
                       <td className="px-6 py-4 text-sm">
-                        <span
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                            theme === "dark"
-                              ? "bg-purple-500/20 text-purple-300"
-                              : "bg-purple-100 text-purple-700"
-                          }`}
-                        >
-                          {customer.loyaltyPoints} pts
-                        </span>
+                        <CustomerLoyaltyBalance customerId={customer.id} />
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span

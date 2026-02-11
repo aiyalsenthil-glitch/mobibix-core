@@ -415,15 +415,17 @@ async function main() {
       features: FEATURES_STANDARD, // Mobibix STANDARD features
       isPublic: true,
       module: 'MOBILE_SHOP',
-      // Plan limits (Mobibix doesn't limit Parties - only GYM limits Members)
+      // Plan limits
       maxStaff: 3,
       maxMembers: null, // Unlimited parties for Mobibix
+      maxShops: 1, // Single Shop
       whatsappUtilityQuota: 0, // Disabled for Standard
       whatsappMarketingQuota: 0,
       analyticsHistoryDays: 90,
       tagline: 'Professional inventory & sales management.',
       description: 'Perfect for single-store retailers needing robust stock control.',
       featuresJson: [
+        'Single Shop',
         'Unlimited Products',
         'Sales Invoicing',
         'Basic Inventory Tracking',
@@ -438,9 +440,10 @@ async function main() {
       features: FEATURES_MOBIBIX_PRO, // Mobibix PRO features
       isPublic: true,
       module: 'MOBILE_SHOP',
-      // Plan limits (Mobibix doesn't limit Parties - only GYM limits Members)
+      // Plan limits
       maxStaff: null, // Unlimited
       maxMembers: null, // Unlimited parties for Mobibix
+      maxShops: null, // Unlimited Shops
       whatsappUtilityQuota: 1000,
       whatsappMarketingQuota: 200,
       analyticsHistoryDays: 365,

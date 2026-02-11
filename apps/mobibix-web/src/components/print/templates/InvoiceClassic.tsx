@@ -3,7 +3,8 @@ import { InvoiceHeader } from "@/components/print/headers/InvoiceHeader";
 import { QRCodeSVG } from "qrcode.react";
 
 export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
-  const { header, meta, customer, items, totals, footer, qrCode, config } = data;
+  const { header, meta, customer, items, totals, footer, qrCode, config, headerConfig } = data;
+  const accentColor = config.accentColor || headerConfig?.accentColor || "#000000";
   
   return (
     <div className="w-[210mm] min-h-[297mm] print:min-h-0 print:w-full mx-auto bg-white p-6 text-black">
@@ -26,7 +27,7 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
       <div className="flex justify-between mb-4 gap-8">
         <div className="flex-1">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Billed To</h3>
-            <div className="border-l-2 border-slate-200 pl-3">
+            <div className="border-l-2 pl-3" style={{ borderColor: accentColor }}>
                 <p className="font-bold text-lg text-slate-900">{customer.name}</p>
                 {customer.phone && <p className="text-sm text-slate-600">Phone: {customer.phone}</p>}
                 {customer.address && <p className="text-sm text-slate-600 max-w-[250px]">{customer.address}</p>}
@@ -60,16 +61,16 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
       <div className="mb-8 min-h-[300px] print:min-h-0">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="border-b-2 border-slate-800">
+            <tr className="border-b-2" style={{ borderColor: accentColor }}>
               <th className="py-2 text-left text-xs font-bold text-slate-500 uppercase w-12">#</th>
               <th className="py-2 text-left text-xs font-bold text-slate-500 uppercase">Item Description</th>
-              <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-24">HSN</th>
+              {(config as any).isIndianGSTInvoice && <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-24">HSN</th>}
               <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-16">Qty</th>
               <th className="py-2 text-right text-xs font-bold text-slate-500 uppercase w-28">
                   Rate
-                  {config.pricesInclusive && <span className="block text-[8px] text-slate-400 font-normal">(Incl. Tax)</span>}
+                  {config.pricesInclusive && (config as any).isIndianGSTInvoice && <span className="block text-[8px] text-slate-400 font-normal">(Incl. Tax)</span>}
               </th>
-              <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-20">Tax %</th>
+              {(config as any).isIndianGSTInvoice && <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-20">Tax %</th>}
               <th className="py-2 text-right text-xs font-bold text-slate-500 uppercase w-32">Total</th>
             </tr>
           </thead>
@@ -82,10 +83,10 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
                   {item.name}
                   {item.description && <div className="text-xs text-slate-400 font-normal">{item.description}</div>}
                 </td>
-                <td className="py-2 text-sm text-center text-slate-500">{item.hsn}</td>
+                {(config as any).isIndianGSTInvoice && <td className="py-2 text-sm text-center text-slate-500">{item.hsn}</td>}
                 <td className="py-2 text-sm text-center text-slate-900">{item.qty}</td>
                 <td className="py-2 text-sm text-right text-slate-900">₹{item.rate.toFixed(2)}</td>
-                <td className="py-2 text-sm text-center text-slate-500">{item.taxRate}%</td>
+                {(config as any).isIndianGSTInvoice && <td className="py-2 text-sm text-center text-slate-500">{item.taxRate}%</td>}
                 <td className="py-2 text-sm text-right font-bold text-slate-900">₹{item.total.toFixed(2)}</td>
               </tr>
             ))

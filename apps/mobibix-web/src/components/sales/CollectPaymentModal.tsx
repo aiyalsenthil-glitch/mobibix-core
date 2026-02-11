@@ -8,6 +8,7 @@ interface CollectPaymentModalProps {
   invoiceId: string;
   balanceAmount: number;
   customerName: string;
+  customerId?: string;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -22,6 +23,7 @@ export function CollectPaymentModal({
   invoiceId,
   balanceAmount,
   customerName,
+  customerId,
   isOpen,
   onClose,
   onSuccess,
@@ -76,7 +78,9 @@ export function CollectPaymentModal({
     }
     if (total > balanceAmount + 1) {
       // 1 Rupee tolerance for JS float issues
-      setError(`Total amount (₹${total}) exceeds due balance (₹${balanceAmount})`);
+      setError(
+        `Total amount (₹${total}) exceeds due balance (₹${balanceAmount})`,
+      );
       return;
     }
 
@@ -118,7 +122,9 @@ export function CollectPaymentModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div
         className={`w-full max-w-lg rounded-xl shadow-2xl overflow-hidden ${
-          theme === "dark" ? "bg-stone-900 text-white" : "bg-white text-gray-900"
+          theme === "dark"
+            ? "bg-stone-900 text-white"
+            : "bg-white text-gray-900"
         }`}
       >
         <div className="p-6 border-b border-gray-200 dark:border-white/10 flex justify-between items-center">
@@ -147,6 +153,11 @@ export function CollectPaymentModal({
                 ₹{balanceAmount.toLocaleString()}
               </span>
             </div>
+            {customerId && (
+              <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-500/30 text-sm text-blue-700 dark:text-blue-300">
+                💳 Loyalty points will be earned upon payment
+              </div>
+            )}
           </div>
 
           <div className="space-y-4 mb-6 max-h-60 overflow-y-auto pr-2">

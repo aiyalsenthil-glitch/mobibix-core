@@ -131,21 +131,23 @@ export class MobileShopReportsService {
     });
 
     // Fetch StockLedger Costs for these invoices
-    // We need to match: ReferenceType='SALE' AND ReferenceId IN (InvoiceItem.id)
-    const allItemIds = invoices.flatMap((inv) => inv.items.map((i) => i.id));
+    // Corrected: StockLedger ReferenceId is InvoiceId, so match ShopProductId too.
+    const allInvoiceIds = invoices.map((inv) => inv.id);
 
-    // Optimized: Only fetch if we have items
-    const costMap = new Map<string, number | null>();
-    if (allItemIds.length > 0) {
+    // Optimized: Only fetch if we have invoices
+    const costMap = new Map<string, number | null>(); // Key: invoiceId:shopProductId
+    if (allInvoiceIds.length > 0) {
       const costs = await this.prisma.stockLedger.findMany({
         where: {
           tenantId,
           referenceType: 'SALE',
-          referenceId: { in: allItemIds },
+          referenceId: { in: allInvoiceIds },
         },
-        select: { referenceId: true, costPerUnit: true },
+        select: { referenceId: true, costPerUnit: true, shopProductId: true },
       });
-      costs.forEach((c) => costMap.set(c.referenceId!, c.costPerUnit));
+      costs.forEach((c) =>
+        costMap.set(`${c.referenceId}:${c.shopProductId}`, c.costPerUnit),
+      );
     }
 
     return invoices.map((inv) => {
@@ -157,7 +159,7 @@ export class MobileShopReportsService {
       let isProfitValid = true;
 
       for (const item of inv.items) {
-        const cost = costMap.get(item.id);
+        const cost = costMap.get(`${inv.id}:${item.shopProductId}`);
         if (cost === undefined || cost === null) {
           isProfitValid = false;
           break; // One missing cost voids invoice profit (conservative)
@@ -402,14 +404,13 @@ export class MobileShopReportsService {
     // SIMPLE APPROACH (User confirmed "Modernized Approach", implied robust).
     // Let's iterate Invoices and summing costs? No, simplified aggregate.
 
-    // Cost SALE (Linked to InvoiceItem)
+    // Cost SALE (Linked to Invoice ID)
     const costSaleResult = await this.prisma.$queryRaw<
       { total_cost: bigint }[]
     >`
       SELECT SUM(sl."quantity" * sl."costPerUnit") as "total_cost"
       FROM "StockLedger" sl
-      JOIN "InvoiceItem" ii ON sl."referenceId" = ii."id"
-      JOIN "Invoice" i ON ii."invoiceId" = i."id"
+      JOIN "Invoice" i ON sl."referenceId" = i."id"
       WHERE sl."tenantId" = ${tenantId}
         AND sl."referenceType" = 'SALE'
         AND i."status" != 'VOIDED'

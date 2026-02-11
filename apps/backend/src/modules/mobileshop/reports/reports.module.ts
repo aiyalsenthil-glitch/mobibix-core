@@ -8,8 +8,10 @@ import { PurchasePaymentService } from '../services/purchase-payment.service';
 import { ReceivablesAgingService } from '../services/receivables-aging.service';
 import { WarrantyService } from '../services/warranty.service';
 import { DailySalesReportService } from '../services/daily-sales-report.service';
+import { LoyaltyModule } from '../../../core/loyalty/loyalty.module';
 
 @Module({
+  imports: [LoyaltyModule],
   controllers: [MobileShopReportsController],
   providers: [
     MobileShopReportsService,

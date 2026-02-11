@@ -24,11 +24,13 @@ export interface AddStaffDto {
 export async function listStaff(): Promise<Staff[]> {
   // 1. Fetch active staff
   const staffResponse = await authenticatedFetch("/staff");
-  const activeStaff = staffResponse.ok ? await staffResponse.json() : [];
+  const activeStaffData = staffResponse.ok ? await staffResponse.json() : [];
+  const activeStaff = Array.isArray(activeStaffData) ? activeStaffData : (activeStaffData.data || []);
 
   // 2. Fetch invited staff
   const invitesResponse = await authenticatedFetch("/staff/invites");
-  const invitedStaff = invitesResponse.ok ? await invitesResponse.json() : [];
+  const invitesData = invitesResponse.ok ? await invitesResponse.json() : [];
+  const invitedStaff = Array.isArray(invitesData) ? invitesData : (invitesData.data || []);
 
   // 3. Merge and Normalize
   const normalizedActive = activeStaff.map((s: any) => ({

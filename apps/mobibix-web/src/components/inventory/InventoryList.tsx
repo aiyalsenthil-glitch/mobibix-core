@@ -84,8 +84,10 @@ export function InventoryList({ shopId, onAdjustStock }: InventoryListProps) {
           bVal = b.reorderLevel || 0;
           break;
         case "stockValue":
-          const aValue = (a.stock || 0) * (a.costPrice || a.salePrice || 0);
-          const bValue = (b.stock || 0) * (b.costPrice || b.salePrice || 0);
+          const aPrice = (a.costPrice || a.salePrice || 0) / 100;
+          const bPrice = (b.costPrice || b.salePrice || 0) / 100;
+          const aValue = (a.stock || 0) * aPrice;
+          const bValue = (b.stock || 0) * bPrice;
           aVal = aValue;
           bVal = bValue;
           break;
@@ -101,7 +103,8 @@ export function InventoryList({ shopId, onAdjustStock }: InventoryListProps) {
   // Calculate totals
   const totalStock = products.reduce((sum, p) => sum + (p.stock || 0), 0);
   const totalValue = products.reduce(
-    (sum, p) => sum + (p.stock || 0) * (p.costPrice || p.salePrice || 0),
+    (sum, p) =>
+      sum + (p.stock || 0) * ((p.costPrice || p.salePrice || 0) / 100),
     0,
   );
 
@@ -254,7 +257,7 @@ export function InventoryList({ shopId, onAdjustStock }: InventoryListProps) {
                   const statusColor = getStockStatusColor(status);
                   const stockValue =
                     (product.stock || 0) *
-                    (product.costPrice || product.salePrice || 0);
+                    ((product.costPrice || product.salePrice || 0) / 100);
 
                   return (
                     <tr

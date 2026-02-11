@@ -89,4 +89,8 @@ export class RepairBillDto {
   @IsOptional()
   @Min(0)
   serviceGstRate?: number; // Default 18% if billingMode = WITH_GST
+
+  @IsBoolean()
+  @IsOptional()
+  deliverImmediately?: boolean;
 }

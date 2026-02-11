@@ -186,6 +186,39 @@ export class StockService {
 
     const productMap = new Map(products.map((p) => [p.id, p]));
 
+    // 🛡️ BATCHED VALIDATION for Non-Serialized Products
+    const nonSerializedIds = products
+      .filter((p) => !p.isSerialized)
+      .map((p) => p.id);
+    const allowNegativeBulk = !!this.config.get<boolean>(
+      'ALLOW_NEGATIVE_BULK_STOCK',
+    );
+    const stockMap = new Map<string, number>();
+
+    if (nonSerializedIds.length > 0 && !allowNegativeBulk) {
+      const aggregates = await prisma.stockLedger.groupBy({
+        by: ['shopProductId', 'type'],
+        where: {
+          shopProductId: { in: nonSerializedIds },
+          tenantId,
+        },
+        _sum: { quantity: true },
+      });
+
+      // Initialize with zeros
+      nonSerializedIds.forEach((id) => stockMap.set(id, 0));
+
+      // Merge (IN - OUT)
+      aggregates.forEach((agg) => {
+        const current = stockMap.get(agg.shopProductId) || 0;
+        const qty = agg._sum?.quantity || 0;
+        stockMap.set(
+          agg.shopProductId,
+          agg.type === 'IN' ? current + qty : current - qty,
+        );
+      });
+    }
+
     // Validation Phase
     for (const item of items) {
       const product = productMap.get(item.productId);
@@ -218,27 +251,13 @@ export class StockService {
             `Some IMEIs for "${product.name}" are not available.`,
           );
         }
-      } else {
-        // Bulk
-        const allowNegativeBulk = !!this.config.get<boolean>(
-          'ALLOW_NEGATIVE_BULK_STOCK',
-        );
-
-        if (!allowNegativeBulk) {
-          // Efficient batch check:
-          const entries = await prisma.stockLedger.findMany({
-            where: { shopProductId: item.productId, tenantId },
-            select: { type: true, quantity: true },
-          });
-          const currentStock = entries.reduce(
-            (sum, e) => (e.type === 'IN' ? sum + e.quantity : sum - e.quantity),
-            0,
+      } else if (!allowNegativeBulk) {
+        // Efficiently use batched results
+        const currentStock = stockMap.get(item.productId) || 0;
+        if (currentStock < item.quantity) {
+          throw new BadRequestException(
+            `Insufficient stock for ${product.name}. Available: ${currentStock}, Required: ${item.quantity}`,
           );
-          if (currentStock < item.quantity) {
-            throw new BadRequestException(
-              `Insufficient stock for ${product.name}. Available: ${currentStock}, Required: ${item.quantity}`,
-            );
-          }
         }
       }
     }

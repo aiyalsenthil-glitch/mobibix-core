@@ -5,17 +5,20 @@ import { InventoryList } from "@/components/inventory/InventoryList";
 import { LowStockAlerts } from "@/components/inventory/LowStockAlerts";
 import { StockAdjustmentModal } from "@/components/inventory/StockAdjustmentModal";
 
+import { useShop } from "@/context/ShopContext";
+import { type ShopProduct } from "@/services/products.api";
+
 export default function InventoryPage() {
+  const { selectedShopId } = useShop();
   const [activeTab, setActiveTab] = useState("stock-levels");
   const [adjustmentModalOpen, setAdjustmentModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ShopProduct | null>(
+    null,
+  );
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleOpenAdjustment = (productId: string, productName: string) => {
-    setSelectedProduct({ id: productId, name: productName });
+  const handleOpenAdjustment = (product: ShopProduct) => {
+    setSelectedProduct(product);
     setAdjustmentModalOpen(true);
   };
 
@@ -66,6 +69,7 @@ export default function InventoryPage() {
       {activeTab === "stock-levels" && (
         <InventoryList
           key={`stock-levels-${refreshKey}`}
+          shopId={selectedShopId || ""}
           onAdjustStock={handleOpenAdjustment}
         />
       )}
@@ -73,6 +77,7 @@ export default function InventoryPage() {
       {activeTab === "low-stock" && (
         <LowStockAlerts
           key={`low-stock-${refreshKey}`}
+          shopId={selectedShopId || ""}
           onAdjustStock={handleOpenAdjustment}
         />
       )}
@@ -80,8 +85,8 @@ export default function InventoryPage() {
       {/* Stock Adjustment Modal */}
       {selectedProduct && (
         <StockAdjustmentModal
-          productId={selectedProduct.id}
-          productName={selectedProduct.name}
+          product={selectedProduct}
+          shopId={selectedShopId || ""}
           isOpen={adjustmentModalOpen}
           onClose={() => {
             setAdjustmentModalOpen(false);

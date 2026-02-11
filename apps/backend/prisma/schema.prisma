@@ -51,6 +51,7 @@ model Tenant {
   ledgerCustomers       LedgerCustomer[]
   ledgerPayments        LedgerPayment[]
   supplierPayments      SupplierPayment[]    @relation("TenantSupplierPayments")
+  loyaltyConfig         LoyaltyConfig?
   loyaltyTransactions   LoyaltyTransaction[]
   members               Member[]             @relation("TenantMembers")
   payments              Payment[]
@@ -245,20 +246,68 @@ model CustomerReminder {
   @@index([scheduledAt])
 }
 
+model LoyaltyConfig {
+  id        String   @id @default(cuid())
+  tenantId  String   @unique
+
+  // Feature Toggle
+  isEnabled Boolean  @default(false)
+
+  // Earning Rules (amounts in paise)
+  earnAmountPerPoint Int      @default(10000) // ₹100 = 1 point
+  pointsPerEarnUnit  Int      @default(1)
+
+  // Redemption Rules
+  pointValueInRupees Float    @default(1.0) // 1 point = ₹1
+  maxRedeemPercent   Int      @default(50) // Max 50% of invoice
+
+  // Category Restrictions
+  allowOnRepairs     Boolean  @default(true)
+  allowOnAccessories Boolean  @default(true)
+  allowOnServices    Boolean  @default(false)
+
+  // Expiry
+  expiryDays         Int? // null = never expires
+
+  // Admin Controls
+  allowManualAdjustment Boolean @default(false)
+  minInvoiceForEarn     Int? // Minimum invoice amount (paise)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
 model LoyaltyTransaction {
-  id          String        @id @default(cuid())
-  tenantId    String
-  customerId  String
-  points      Int
-  source      LoyaltySource
-  referenceId String?
-  note        String?
-  createdAt   DateTime      @default(now())
-  customer    Party         @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  tenant      Tenant        @relation(fields: [tenantId], references: [id])
+  id         String                 @id @default(cuid())
+  tenantId   String
+  customerId String
+
+  // Transaction Details
+  points Int // Positive = earn, Negative = redeem/expire/reverse
+  type   LoyaltyTransactionType
+  source LoyaltySource
+
+  // Audit Trail
+  invoiceId  String? // Link to invoice (for earn/redeem)
+  reversalOf String? // Points to original transaction ID if reversal
+
+  // Metadata
+  note      String?
+  createdBy String? // User ID for manual adjustments
+  createdAt DateTime @default(now())
+
+  // Relations
+  customer Party  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
   @@index([customerId])
+  @@index([invoiceId])
+  @@index([reversalOf])
   @@index([createdAt])
 }
 
@@ -1787,6 +1836,14 @@ enum LoyaltySource {
   PROMOTION
   REFERRAL
   REDEMPTION
+}
+
+enum LoyaltyTransactionType {
+  EARN     // Points earned (invoice PAID)
+  REDEEM   // Points redeemed (invoice creation with loyalty discount)
+  EXPIRE   // Points expired (cron job)
+  MANUAL   // Manual adjustment by admin
+  REVERSAL // Reverse previous transaction (cancel/void)
 }
 
 enum AlertSeverity {

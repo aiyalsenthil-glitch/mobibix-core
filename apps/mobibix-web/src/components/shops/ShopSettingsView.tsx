@@ -10,6 +10,7 @@ import {
 } from "@/services/shops.api";
 import { ShopDocumentSettings } from "@/components/shops/ShopDocumentSettings";
 import { ShopPrintSettings } from "@/components/shops/ShopPrintSettings";
+import { ShopLoyaltySettings } from "@/components/shops/ShopLoyaltySettings";
 import { StaffList } from "@/components/staff/StaffList";
 import { useRouter } from "next/navigation";
 
@@ -19,9 +20,11 @@ interface ShopSettingsViewProps {
 
 export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"GENERAL" | "PRINT" | "BANK" | "DOCUMENT" | "STAFF">("GENERAL");
+  const [activeTab, setActiveTab] = useState<
+    "GENERAL" | "PRINT" | "BANK" | "DOCUMENT" | "STAFF" | "LOYALTY"
+  >("GENERAL");
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [shop, setShop] = useState<Shop | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,13 +44,13 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
     logoUrl: "",
     terms: "",
     currency: "INR",
-    
+
     // Bank Details
     bankName: "",
     accountNumber: "",
     ifscCode: "",
     branchName: "",
-    
+
     // Repair Config
     repairInvoiceNumberingMode: RepairInvoiceNumberingMode.SHARED,
     repairGstDefault: false,
@@ -60,30 +63,32 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
         const settings = await getShopSettings(shopId);
         setShop(settings);
         setFormData({
-            name: settings.name || "",
-            phone: settings.phone || "",
-            addressLine1: settings.addressLine1 || "",
-            addressLine2: settings.addressLine2 || "",
-            city: settings.city || "",
-            state: settings.state || "",
-            pincode: settings.pincode || "",
-            website: settings.website || "",
-            gstEnabled: settings.gstEnabled || false,
-            gstNumber: settings.gstNumber || "",
-            invoiceFooter: settings.invoiceFooter || "",
-            logoUrl: settings.logoUrl || "",
-            terms: settings.terms?.join("\n") || "",
-            currency: settings.currency || "INR",
+          name: settings.name || "",
+          phone: settings.phone || "",
+          addressLine1: settings.addressLine1 || "",
+          addressLine2: settings.addressLine2 || "",
+          city: settings.city || "",
+          state: settings.state || "",
+          pincode: settings.pincode || "",
+          website: settings.website || "",
+          gstEnabled: settings.gstEnabled || false,
+          gstNumber: settings.gstNumber || "",
+          invoiceFooter: settings.invoiceFooter || "",
+          logoUrl: settings.logoUrl || "",
+          terms: settings.terms?.join("\n") || "",
+          currency: settings.currency || "INR",
 
-            // Bank Details
-            bankName: settings.bankName || "",
-            accountNumber: settings.accountNumber || "",
-            ifscCode: settings.ifscCode || "",
-            branchName: settings.branchName || "",
-            
-            // Repair Config
-            repairInvoiceNumberingMode: settings.repairInvoiceNumberingMode || RepairInvoiceNumberingMode.SHARED,
-            repairGstDefault: settings.repairGstDefault || false,
+          // Bank Details
+          bankName: settings.bankName || "",
+          accountNumber: settings.accountNumber || "",
+          ifscCode: settings.ifscCode || "",
+          branchName: settings.branchName || "",
+
+          // Repair Config
+          repairInvoiceNumberingMode:
+            settings.repairInvoiceNumberingMode ||
+            RepairInvoiceNumberingMode.SHARED,
+          repairGstDefault: settings.repairGstDefault || false,
         });
       } catch (err: any) {
         setError(err.message || "Failed to load settings");
@@ -123,7 +128,7 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
         accountNumber: formData.accountNumber || undefined,
         ifscCode: formData.ifscCode || undefined,
         branchName: formData.branchName || undefined,
-        
+
         repairInvoiceNumberingMode: formData.repairInvoiceNumberingMode,
         repairGstDefault: formData.repairGstDefault,
       };
@@ -132,7 +137,7 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
 
       // Notify other components about shop update
       window.dispatchEvent(new CustomEvent("shopUpdated"));
-      
+
       alert("Settings updated successfully!");
     } catch (err: any) {
       setError(err.message || "Failed to save settings");
@@ -142,7 +147,9 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value, type } = e.target as HTMLInputElement;
     setFormData((prev) => ({
@@ -153,243 +160,487 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center text-stone-400">Loading settings...</div>;
+    return (
+      <div className="p-8 text-center text-stone-400">Loading settings...</div>
+    );
   }
 
   if (error || !shop) {
-    return <div className="p-8 text-center text-red-400">{error || "Shop not found"}</div>;
+    return (
+      <div className="p-8 text-center text-red-400">
+        {error || "Shop not found"}
+      </div>
+    );
   }
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4">
-        {/* Header with Back Button */}
-        <div className="flex items-center gap-4 mb-8">
-            <button 
+      {/* Header with Back Button */}
+      <div className="flex items-center gap-4 mb-8">
+        <button
+          onClick={() => router.back()}
+          className="p-2 bg-gray-100 dark:bg-white/5 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition"
+        >
+          ⬅️
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Shop Configuration
+          </h1>
+          <p className="text-gray-500 dark:text-stone-400 text-sm">
+            Manage settings for{" "}
+            <span className="text-gray-900 dark:text-white font-medium">
+              {shop.name}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="flex border-b border-gray-200 dark:border-white/10 mb-8 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab("GENERAL")}
+          className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+            activeTab === "GENERAL"
+              ? "border-teal-500 text-teal-600 dark:text-teal-400"
+              : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          }`}
+        >
+          General Information
+        </button>
+        <button
+          onClick={() => setActiveTab("BANK")}
+          className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+            activeTab === "BANK"
+              ? "border-teal-500 text-teal-600 dark:text-teal-400"
+              : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          }`}
+        >
+          Bank Details
+        </button>
+        <button
+          onClick={() => setActiveTab("PRINT")}
+          className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+            activeTab === "PRINT"
+              ? "border-teal-500 text-teal-600 dark:text-teal-400"
+              : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          }`}
+        >
+          Print Configuration
+        </button>
+        <button
+          onClick={() => setActiveTab("DOCUMENT")}
+          className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+            activeTab === "DOCUMENT"
+              ? "border-teal-500 text-teal-600 dark:text-teal-400"
+              : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          }`}
+        >
+          Document Numbering
+        </button>
+        <button
+          onClick={() => setActiveTab("STAFF")}
+          className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+            activeTab === "STAFF"
+              ? "border-teal-500 text-teal-600 dark:text-teal-400"
+              : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          }`}
+        >
+          Staff Management
+        </button>
+        <button
+          onClick={() => setActiveTab("LOYALTY")}
+          className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+            activeTab === "LOYALTY"
+              ? "border-teal-500 text-teal-600 dark:text-teal-400"
+              : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          }`}
+        >
+          Loyalty Points
+        </button>
+      </div>
+
+      {/* Content Area */}
+      {activeTab === "PRINT" ? (
+        <div className="animate-fade-in">
+          <ShopPrintSettings
+            shop={shop}
+            onUpdate={() =>
+              window.dispatchEvent(new CustomEvent("shopUpdated"))
+            }
+          />
+        </div>
+      ) : activeTab === "DOCUMENT" ? (
+        <ShopDocumentSettings shopId={shopId} />
+      ) : activeTab === "STAFF" ? (
+        <StaffList />
+      ) : activeTab === "LOYALTY" ? (
+        <ShopLoyaltySettings
+          shopId={shopId}
+          onUpdate={() => window.dispatchEvent(new CustomEvent("shopUpdated"))}
+        />
+      ) : activeTab === "BANK" ? (
+        <div className="bg-white dark:bg-stone-900/50 border border-gray-200 dark:border-white/5 rounded-xl p-8 animate-fade-in shadow-sm">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Section: Bank Info */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="md:col-span-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Banking Information
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-stone-400">
+                  Enter your bank details to be displayed on invoices.
+                </p>
+              </div>
+              <div className="md:col-span-2 space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                    Bank Name
+                  </label>
+                  <input
+                    type="text"
+                    name="bankName"
+                    value={formData.bankName}
+                    onChange={handleChange}
+                    placeholder="e.g. HDFC Bank"
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                    Account Number
+                  </label>
+                  <input
+                    type="text"
+                    name="accountNumber"
+                    value={formData.accountNumber}
+                    onChange={handleChange}
+                    placeholder="e.g. 1234567890"
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                      IFSC Code
+                    </label>
+                    <input
+                      type="text"
+                      name="ifscCode"
+                      value={formData.ifscCode}
+                      onChange={handleChange}
+                      placeholder="e.g. HDFC0001234"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                      Branch Name
+                    </label>
+                    <input
+                      type="text"
+                      name="branchName"
+                      value={formData.branchName}
+                      onChange={handleChange}
+                      placeholder="e.g. Koramangala"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-6 flex justify-end gap-4">
+              <button
+                type="button"
                 onClick={() => router.back()}
-                className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition"
-            >
-                ⬅️
-            </button>
-            <div>
-                <h1 className="text-2xl font-bold text-white">Shop Configuration</h1>
-                <p className="text-stone-400 text-sm">Manage settings for <span className="text-white font-medium">{shop.name}</span></p>
+                className="px-6 py-2 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-white rounded-lg transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-8 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition shadow-lg shadow-teal-500/20"
+              >
+                {isSubmitting ? "Saving Changes..." : "Save Bank Details"}
+              </button>
             </div>
+          </form>
         </div>
+      ) : (
+        <div className="bg-white dark:bg-stone-900/50 border border-gray-200 dark:border-white/5 rounded-xl p-8 animate-fade-in shadow-sm">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {error && (
+              <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-white/10 mb-8 overflow-x-auto">
-            <button
-                onClick={() => setActiveTab("GENERAL")}
-                className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
-                    activeTab === "GENERAL" 
-                    ? "border-teal-500 text-teal-400" 
-                    : "border-transparent text-gray-400 hover:text-white"
-                }`}
-            >
-                General Information
-            </button>
-            <button
-                onClick={() => setActiveTab("BANK")}
-                className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
-                    activeTab === "BANK" 
-                    ? "border-teal-500 text-teal-400" 
-                    : "border-transparent text-gray-400 hover:text-white"
-                }`}
-            >
-                Bank Details
-            </button>
-            <button
-                onClick={() => setActiveTab("PRINT")}
-                className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
-                    activeTab === "PRINT" 
-                    ? "border-teal-500 text-teal-400" 
-                    : "border-transparent text-gray-400 hover:text-white"
-                }`}
-            >
-                Print Configuration
-            </button>
-             <button
-                onClick={() => setActiveTab("DOCUMENT")}
-                className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
-                    activeTab === "DOCUMENT" 
-                    ? "border-teal-500 text-teal-400" 
-                    : "border-transparent text-gray-400 hover:text-white"
-                }`}
-            >
-                Document Numbering
-            </button>
-             <button
-                onClick={() => setActiveTab("STAFF")}
-                className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
-                    activeTab === "STAFF" 
-                    ? "border-teal-500 text-teal-400" 
-                    : "border-transparent text-gray-400 hover:text-white"
-                }`}
-            >
-                Staff Management
-            </button>
-        </div>
-
-        {/* Content Area */}
-        {activeTab === "PRINT" ? (
-            <div className="animate-fade-in">
-                <ShopPrintSettings shop={shop} onUpdate={() => window.dispatchEvent(new CustomEvent("shopUpdated"))} />
+            {/* Section: Basic Info */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="md:col-span-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Basic Details
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-stone-400">
+                  Essential contact information for your business.
+                </p>
+              </div>
+              <div className="md:col-span-2 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                      Shop Name{" "}
+                      <span className="text-red-500 dark:text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                      Phone{" "}
+                      <span className="text-red-500 dark:text-red-400">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                    Website
+                  </label>
+                  <input
+                    type="url"
+                    name="website"
+                    value={formData.website}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                  />
+                </div>
+              </div>
             </div>
-        ) : activeTab === "DOCUMENT" ? (
-            <ShopDocumentSettings shopId={shopId} />
-        ) : activeTab === "STAFF" ? (
-            <StaffList />
-        ) : activeTab === "BANK" ? (
-            <div className="bg-stone-900/50 border border-white/5 rounded-xl p-8 animate-fade-in">
-                 <form onSubmit={handleSubmit} className="space-y-8">
-                    {/* Section: Bank Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="md:col-span-1">
-                            <h3 className="text-lg font-semibold text-white mb-2">Banking Information</h3>
-                            <p className="text-sm text-stone-400">Enter your bank details to be displayed on invoices.</p>
-                        </div>
-                        <div className="md:col-span-2 space-y-4">
-                             <div>
-                                <label className="block text-sm text-stone-400 mb-1">Bank Name</label>
-                                <input type="text" name="bankName" value={formData.bankName} onChange={handleChange} placeholder="e.g. HDFC Bank" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                             </div>
-                             <div>
-                                <label className="block text-sm text-stone-400 mb-1">Account Number</label>
-                                <input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleChange} placeholder="e.g. 1234567890" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                             </div>
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm text-stone-400 mb-1">IFSC Code</label>
-                                    <input type="text" name="ifscCode" value={formData.ifscCode} onChange={handleChange} placeholder="e.g. HDFC0001234" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-stone-400 mb-1">Branch Name</label>
-                                    <input type="text" name="branchName" value={formData.branchName} onChange={handleChange} placeholder="e.g. Koramangala" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                                </div>
-                             </div>
-                        </div>
-                    </div>
 
-                    <div className="pt-6 flex justify-end gap-4">
-                        <button type="button" onClick={() => router.back()} className="px-6 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition">Cancel</button>
-                        <button type="submit" disabled={isSubmitting} className="px-8 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition shadow-lg shadow-teal-500/20">
-                            {isSubmitting ? "Saving Changes..." : "Save Bank Details"}
-                        </button>
-                    </div>
-                 </form>
+            <div className="border-t border-gray-200 dark:border-white/10 pt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="md:col-span-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Location
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-stone-400">
+                  Where is your shop located? This appears on invoices.
+                </p>
+              </div>
+              <div className="md:col-span-2 space-y-4">
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    name="addressLine1"
+                    value={formData.addressLine1}
+                    onChange={handleChange}
+                    required
+                    placeholder="Address Line 1"
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                  />
+                  <input
+                    type="text"
+                    name="addressLine2"
+                    value={formData.addressLine2}
+                    onChange={handleChange}
+                    placeholder="Address Line 2 (Optional)"
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                  />
+                  <div className="grid grid-cols-3 gap-3">
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      required
+                      placeholder="City"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                    />
+                    <input
+                      type="text"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleChange}
+                      required
+                      placeholder="State"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                    />
+                    <input
+                      type="text"
+                      name="pincode"
+                      value={formData.pincode}
+                      onChange={handleChange}
+                      required
+                      placeholder="Pincode"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-        ) : (
-        <div className="bg-stone-900/50 border border-white/5 rounded-xl p-8 animate-fade-in">
-             <form onSubmit={handleSubmit} className="space-y-8">
-                {error && (
-                    <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-lg">
-                    {error}
-                    </div>
-                )}
 
-                {/* Section: Basic Info */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="md:col-span-1">
-                        <h3 className="text-lg font-semibold text-white mb-2">Basic Details</h3>
-                        <p className="text-sm text-stone-400">Essential contact information for your business.</p>
-                    </div>
-                    <div className="md:col-span-2 space-y-4">
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm text-stone-400 mb-1">Shop Name <span className="text-red-400">*</span></label>
-                                <input type="text" name="name" value={formData.name} onChange={handleChange} required className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-stone-400 mb-1">Phone <span className="text-red-400">*</span></label>
-                                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                            </div>
-                         </div>
-                         <div>
-                            <label className="block text-sm text-stone-400 mb-1">Website</label>
-                            <input type="url" name="website" value={formData.website} onChange={handleChange} className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                         </div>
-                    </div>
+            <div className="border-t border-gray-200 dark:border-white/10 pt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="md:col-span-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Tax & Branding
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-stone-400">
+                  Configure GST details and invoice customization.
+                </p>
+              </div>
+              <div className="md:col-span-2 space-y-6">
+                {/* GST */}
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="gstEnabled"
+                      checked={formData.gstEnabled}
+                      onChange={handleChange}
+                      className="w-5 h-5 rounded bg-gray-100 dark:bg-white/10 border border-gray-300 dark:border-white/20"
+                    />
+                    <span className="text-gray-900 dark:text-white font-medium">
+                      Enable GST Billing
+                    </span>
+                  </label>
+                  {formData.gstEnabled && (
+                    <input
+                      type="text"
+                      name="gstNumber"
+                      value={formData.gstNumber}
+                      onChange={handleChange}
+                      placeholder="Enter GSTIN Number"
+                      required
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                    />
+                  )}
                 </div>
 
-                <div className="border-t border-white/10 pt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="md:col-span-1">
-                        <h3 className="text-lg font-semibold text-white mb-2">Location</h3>
-                        <p className="text-sm text-stone-400">Where is your shop located? This appears on invoices.</p>
-                    </div>
-                    <div className="md:col-span-2 space-y-4">
-                         <div className="space-y-3">
-                            <input type="text" name="addressLine1" value={formData.addressLine1} onChange={handleChange} required placeholder="Address Line 1" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                            <input type="text" name="addressLine2" value={formData.addressLine2} onChange={handleChange} placeholder="Address Line 2 (Optional)" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                            <div className="grid grid-cols-3 gap-3">
-                                <input type="text" name="city" value={formData.city} onChange={handleChange} required placeholder="City" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                                <input type="text" name="state" value={formData.state} onChange={handleChange} required placeholder="State" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                                <input type="text" name="pincode" value={formData.pincode} onChange={handleChange} required placeholder="Pincode" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                            </div>
-                         </div>
-                    </div>
+                {/* Branding */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                      Logo URL
+                    </label>
+                    <input
+                      type="url"
+                      name="logoUrl"
+                      value={formData.logoUrl}
+                      onChange={handleChange}
+                      placeholder="https://..."
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                      Invoice Footer Text
+                    </label>
+                    <input
+                      type="text"
+                      name="invoiceFooter"
+                      value={formData.invoiceFooter}
+                      onChange={handleChange}
+                      placeholder="Thank you for your business!"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                      Currency
+                    </label>
+                    <select
+                      name="currency"
+                      value={formData.currency}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none appearance-none"
+                    >
+                      <option
+                        value="INR"
+                        className="bg-white dark:bg-stone-900"
+                      >
+                        🇮🇳 INR (₹)
+                      </option>
+                      <option
+                        value="USD"
+                        className="bg-white dark:bg-stone-900"
+                      >
+                        🇺🇸 USD ($)
+                      </option>
+                      <option
+                        value="EUR"
+                        className="bg-white dark:bg-stone-900"
+                      >
+                        🇪🇺 EUR (€)
+                      </option>
+                      <option
+                        value="GBP"
+                        className="bg-white dark:bg-stone-900"
+                      >
+                        🇬🇧 GBP (£)
+                      </option>
+                      <option
+                        value="AED"
+                        className="bg-white dark:bg-stone-900"
+                      >
+                        🇦🇪 AED (د.إ)
+                      </option>
+                    </select>
+                    <p className="text-xs text-gray-500 dark:text-stone-500 mt-1">
+                      Currency symbol used for invoices and receipts.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                      Terms & Conditions
+                    </label>
+                    <textarea
+                      name="terms"
+                      value={formData.terms}
+                      onChange={handleChange}
+                      rows={4}
+                      placeholder="Terms..."
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none resize-none"
+                    />
+                  </div>
                 </div>
+              </div>
+            </div>
 
-                <div className="border-t border-white/10 pt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="md:col-span-1">
-                        <h3 className="text-lg font-semibold text-white mb-2">Tax & Branding</h3>
-                        <p className="text-sm text-stone-400">Configure GST details and invoice customization.</p>
-                    </div>
-                    <div className="md:col-span-2 space-y-6">
-                        {/* GST */}
-                        <div className="space-y-3">
-                            <label className="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" name="gstEnabled" checked={formData.gstEnabled} onChange={handleChange} className="w-5 h-5 rounded bg-white/10 border border-white/20" />
-                                <span className="text-white font-medium">Enable GST Billing</span>
-                            </label>
-                            {formData.gstEnabled && (
-                                <input type="text" name="gstNumber" value={formData.gstNumber} onChange={handleChange} placeholder="Enter GSTIN Number" required className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                            )}
-                        </div>
-
-                        {/* Branding */}
-                         <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm text-stone-400 mb-1">Logo URL</label>
-                                <input type="url" name="logoUrl" value={formData.logoUrl} onChange={handleChange} placeholder="https://..." className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-stone-400 mb-1">Invoice Footer Text</label>
-                                <input type="text" name="invoiceFooter" value={formData.invoiceFooter} onChange={handleChange} placeholder="Thank you for your business!" className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500" />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm text-stone-400 mb-1">Currency</label>
-                                <select 
-                                    name="currency" 
-                                    value={formData.currency} 
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500 appearance-none"
-                                >
-                                    <option value="INR" className="bg-stone-900">🇮🇳 INR (₹)</option>
-                                    <option value="USD" className="bg-stone-900">🇺🇸 USD ($)</option>
-                                    <option value="EUR" className="bg-stone-900">🇪🇺 EUR (€)</option>
-                                    <option value="GBP" className="bg-stone-900">🇬🇧 GBP (£)</option>
-                                    <option value="AED" className="bg-stone-900">🇦🇪 AED (د.إ)</option>
-                                </select>
-                                <p className="text-xs text-stone-500 mt-1">Currency symbol used for invoices and receipts.</p>
-                            </div>
-                            <div>
-                                <label className="block text-sm text-stone-400 mb-1">Terms & Conditions</label>
-                                <textarea name="terms" value={formData.terms} onChange={handleChange} rows={4} placeholder="Terms..." className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500 resize-none" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="pt-6 flex justify-end gap-4">
-                    <button type="button" onClick={() => router.back()} className="px-6 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition">Cancel</button>
-                    <button type="submit" disabled={isSubmitting} className="px-8 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition shadow-lg shadow-teal-500/20">
-                        {isSubmitting ? "Saving Changes..." : "Save Configuration"}
-                    </button>
-                </div>
-             </form>
+            <div className="pt-6 flex justify-end gap-4">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="px-6 py-2 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-white rounded-lg transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-8 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition shadow-lg shadow-teal-500/20"
+              >
+                {isSubmitting ? "Saving Changes..." : "Save Configuration"}
+              </button>
+            </div>
+          </form>
         </div>
-        )}
+      )}
     </div>
   );
 }

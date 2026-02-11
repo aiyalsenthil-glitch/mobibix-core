@@ -73,6 +73,7 @@ export interface CreatePurchaseDto {
   invoiceDate?: string;
   dueDate?: string;
   paymentMethod: PaymentMode;
+  status?: PurchaseStatus;
   items: PurchaseItemDto[];
 }
 

@@ -64,6 +64,12 @@ export class CustomerTimelineService {
         allActivities = allActivities.filter((a) => types.includes(a.type));
       }
 
+      // Apply source filters if specified
+      if (query.sources && query.sources.length > 0) {
+        const sources = query.sources;
+        allActivities = allActivities.filter((a) => sources.includes(a.source));
+      }
+
       // Sort by createdAt
       allActivities.sort((a, b) => {
         const dateA = new Date(a.createdAt).getTime();
@@ -600,7 +606,8 @@ export class CustomerTimelineService {
       metadata: {
         points: txn.points,
         source: txn.source,
-        referenceId: txn.referenceId,
+        invoiceId: txn.invoiceId,
+        reversalOf: txn.reversalOf,
         note: txn.note,
       },
     }));

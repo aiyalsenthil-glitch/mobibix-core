@@ -50,6 +50,8 @@ export interface CreateInvoiceOptions {
   // Behavior flags
   skipStockUpdate?: boolean; // For Repair (stock already consumed)
   skipReceipt?: boolean;     // If strictly credit?
+  
+  shop?: any;                // Optional: Pass already fetched shop to avoid redundant lookup
 }
 
 @Injectable()
@@ -79,8 +81,8 @@ export class BillingService {
     const prisma = tx || this.prisma;
     const { tenantId, shopId, items } = options;
 
-    // 1. Fetch Shop Details (for GST/State)
-    const shop = await prisma.shop.findFirst({
+    // 1. Fetch Shop Details (for GST/State) if not provided
+    const shop = options.shop || await prisma.shop.findFirst({
       where: { id: shopId, tenantId },
       select: { id: true, gstEnabled: true, state: true, receiptPrintCounter: true },
     });

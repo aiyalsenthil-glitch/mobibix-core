@@ -235,7 +235,7 @@ export async function getCustomerTimeline(
   customerId: string,
   source?: string, // Comma-separated: 'JOB,INVOICE,CRM,WHATSAPP'
 ): Promise<TimelineResponse> {
-  const params = source ? `?source=${source}` : "";
+  const params = source ? `?sources=${source}` : "";
 
   const response = await authenticatedFetch(
     `/mobileshop/crm/customer-timeline/${customerId}${params}`,

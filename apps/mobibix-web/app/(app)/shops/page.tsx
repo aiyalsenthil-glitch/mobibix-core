@@ -5,12 +5,12 @@ import { listShops, type Shop } from "@/services/shops.api";
 import { ShopFormModal } from "./ShopFormModal";
 import { useRouter } from "next/navigation";
 
-import { getCurrentTenant, type CurrentTenantResponse } from "@/services/tenant.api";
+import { getTenantUsage, type TenantUsageResponse } from "@/services/tenant.api";
 
   export default function ShopsPage() {
     const router = useRouter(); // Hook
     const [shops, setShops] = useState<Shop[]>([]);
-    const [tenant, setTenant] = useState<CurrentTenantResponse | null>(null);
+    const [usage, setUsage] = useState<TenantUsageResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -23,13 +23,13 @@ import { getCurrentTenant, type CurrentTenantResponse } from "@/services/tenant.
         setError(null);
         
         // Parallel fetch for speed
-        const [shopsData, tenantData] = await Promise.all([
+        const [shopsData, usageData] = await Promise.all([
             listShops(),
-            getCurrentTenant()
+            getTenantUsage()
         ]);
         
         setShops(shopsData);
-        setTenant(tenantData);
+        setUsage(usageData);
       } catch (err: any) {
         console.error("Error loading data:", err);
         setError(err.message || "Failed to load shops");
@@ -42,76 +42,106 @@ import { getCurrentTenant, type CurrentTenantResponse } from "@/services/tenant.
         loadData();
     }, []);
 
+    // Calculate Limits
+    console.log('--- SHOPS PAGE DEBUG ---');
+    console.log('Plan:', usage?.plan);
+    console.log('Max Shops (Raw):', usage?.plan?.maxShops);
+    console.log('------------------------');
+
+    const rawMaxShops = usage?.plan?.maxShops;
+    const maxShops = rawMaxShops === undefined ? 1 : rawMaxShops;
+    const isLimitReached = maxShops !== null && shops.length >= maxShops;
+
     const handleCreateShop = () => {
         if (isLimitReached) return;
         setSelectedShop(null);
         setIsFormModalOpen(true);
     };
-    
+
     const handleEditShop = (shop: Shop) => {
         setSelectedShop(shop);
         setIsFormModalOpen(true);
     };
 
     const handleOpenSettings = (shop: Shop) => {
-      // Navigate to new Settings Page
       router.push(`/shops/${shop.id}/settings`);
     };
 
     const handleFormModalClose = () => {
       setIsFormModalOpen(false);
       setSelectedShop(null);
-      loadData(); // Reload both to ensure counts are accurate
+      loadData(); 
     };
 
-    // Calculate Limits
-    const maxShops = tenant?.subscription?.plan?.maxShops ?? 1; // Default to 1 if unknown, though backend handles this
-    const isLimitReached = maxShops !== null && shops.length >= maxShops;
+    const handleDeleteShop = async (shopId: string) => {
+      if (!confirm("Are you sure you want to delete this shop?")) return;
+      try {
+        alert("Delete functionality coming soon");
+      } catch (err: any) {
+        alert(err.message || "Failed to delete shop");
+      }
+    };
 
-
-  const handleDeleteShop = async (shopId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this shop? This action cannot be undone.",
-      )
-    ) {
-      return;
-    }
-
-    try {
-      // Note: DELETE endpoint not yet implemented in backend
-      alert("Delete functionality coming soon");
-      // await deleteShop(shopId);
-      // await loadData();
-    } catch (err: any) {
-      alert(err.message || "Failed to delete shop");
-    }
-  };
+// ... (existing code)
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-            <h1 className="text-3xl font-bold text-white">Shops</h1>
-            {tenant?.subscription && (
-                <p className="text-stone-400 text-sm mt-1">
-                    Plan: <span className="text-teal-400 font-medium">{tenant.subscription.plan.name}</span> • 
-                    Shops: <span className={isLimitReached ? "text-red-400" : "text-white"}>{shops.length}</span> / {maxShops === null ? "Unlimited" : maxShops}
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Shops</h1>
+            {usage?.plan && (
+                <p className="text-gray-500 dark:text-stone-400 text-sm mt-1">
+                    Plan: <span className="text-teal-600 dark:text-teal-400 font-medium">{usage.plan.name}</span> • 
+                    Shops: <span className={isLimitReached ? "text-red-500 font-bold" : ""}>{shops.length}</span> / {maxShops === null ? "Unlimited" : maxShops}
                 </p>
             )}
         </div>
-        <button
-          onClick={handleCreateShop}
-          disabled={isLimitReached}
-          className={`px-4 py-2 rounded-lg font-medium transition ${
-            isLimitReached 
-                ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                : "bg-teal-500 hover:bg-teal-600 text-white"
-          }`}
-          title={isLimitReached ? "Shop limit reached. Upgrade your plan." : "Add new shop"}
-        >
-          {isLimitReached ? "Limit Reached" : "+ Add Shop"}
-        </button>
+        
+        {/* Banner for Limit Reached */}
+        {isLimitReached && (
+          <div className="flex-1 mx-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg p-3 flex items-center justify-between">
+             <div className="flex items-center gap-3">
+               <span className="text-xl">⚠️</span>
+               <div>
+                  <p className="text-amber-800 dark:text-amber-200 font-medium text-sm">Shop Limit Reached</p>
+                  <p className="text-amber-700 dark:text-amber-300/80 text-xs">
+                    Your {usage?.plan?.name} plan is limited to {maxShops} shops.
+                  </p>
+               </div>
+             </div>
+             <button 
+                onClick={() => router.push('/settings')}
+                className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 dark:bg-amber-800 dark:hover:bg-amber-700 text-amber-900 dark:text-amber-100 text-xs font-bold rounded uppercase tracking-wide transition"
+             >
+                Upgrade Plan
+             </button>
+          </div>
+        )}
+
+        <div className="relative group">
+          <button
+            onClick={handleCreateShop}
+            disabled={isLimitReached}
+            className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 ${
+              isLimitReached 
+                  ? "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600 cursor-not-allowed"
+                  : "bg-teal-500 hover:bg-teal-600 text-white"
+            }`}
+          >
+            {isLimitReached ? (
+                <>🔒 Limit Reached</>
+            ) : (
+                <>+ Add Shop</>
+            )}
+          </button>
+          
+          {/* Tooltip for disabled state */}
+          {isLimitReached && (
+             <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                Upgrade to add more shops.
+             </div>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -136,47 +166,47 @@ import { getCurrentTenant, type CurrentTenantResponse } from "@/services/tenant.
         <div className="bg-white/5 border border-white/10 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-white/5 border-b border-white/10">
+              <thead className="bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
                 <tr>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-500 dark:text-stone-300">
                     Shop Name
                   </th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-500 dark:text-stone-300">
                     Phone
                   </th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-500 dark:text-stone-300">
                     City
                   </th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-500 dark:text-stone-300">
                     GST
                   </th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-500 dark:text-stone-300">
                     Status
                   </th>
-                  <th className="text-left px-4 py-3 text-sm font-semibold text-stone-300">
+                  <th className="text-left px-4 py-3 text-sm font-semibold text-gray-500 dark:text-stone-300">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {Array.isArray(shops) && shops.map((shop) => (
-                  <tr key={shop.id} className="hover:bg-white/5 transition">
-                    <td className="px-4 py-3 text-sm text-white font-medium">
+                  <tr key={shop.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition">
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white font-medium">
                       {shop.name}
                     </td>
-                    <td className="px-4 py-3 text-sm text-stone-400">
+                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-stone-300">
                       {shop.phone || "-"}
                     </td>
-                    <td className="px-4 py-3 text-sm text-stone-400">
+                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-stone-300">
                       {shop.city || "-"}
                     </td>
-                    <td className="px-4 py-3 text-sm text-stone-400">
+                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-stone-300">
                       {shop.gstNumber ? (
                         <span className="px-2 py-1 bg-green-500/20 text-green-300 rounded text-xs">
                           {shop.gstNumber.slice(-6)}
                         </span>
                       ) : (
-                        <span className="text-stone-500">-</span>
+                        <span className="text-gray-700 dark:text-stone-500">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm">

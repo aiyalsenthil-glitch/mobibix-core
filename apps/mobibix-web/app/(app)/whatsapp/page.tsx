@@ -197,8 +197,10 @@ export default function WhatsAppPage() {
     );
   }
 
-  // Show promo if no subscription (and not retail demo)
-  if (showPromo || (crmStatus && !crmStatus.hasSubscription && crmStatus.moduleType !== 'MOBILE_SHOP')) {
+  // Show promo if no subscription AND not allowed via main plan (and not retail demo)
+  const hasAccess = crmStatus?.hasSubscription || crmStatus?.whatsappAllowed;
+  
+  if (showPromo || (crmStatus && !hasAccess && crmStatus.moduleType !== 'MOBILE_SHOP')) {
     return <WhatsAppCrmPromo />;
   }
   

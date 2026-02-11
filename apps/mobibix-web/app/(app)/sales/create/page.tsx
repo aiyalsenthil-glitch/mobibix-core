@@ -245,7 +245,7 @@ export default function CreateInvoicePage() {
     setItems((prevItems) =>
       prevItems.map((item) => {
         if (item.id === itemId) {
-          const rate = product.salePrice || 0;
+          const rate = (product.salePrice || 0) / 100;
           const gstRate = selectedShop?.gstEnabled ? product.gstRate || 18 : 0;
           const quantity = item.quantity;
           const baseAmount = quantity * rate;
@@ -338,7 +338,7 @@ export default function CreateInvoicePage() {
             const product = products.find((p) => p.id === value);
             if (product) {
               updated.productName = product.name;
-              updated.rate = product.salePrice;
+              updated.rate = (product.salePrice || 0) / 100;
               // Reset IMEIs when product changes
               (updated as any).imeis = [];
             }
@@ -814,7 +814,7 @@ export default function CreateInvoicePage() {
                                     </div>
                                   )}
                                   <div className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                                    ₹{p.salePrice}
+                                    ₹{((p.salePrice || 0) / 100).toFixed(2)}
                                   </div>
                                 </div>
                               </button>

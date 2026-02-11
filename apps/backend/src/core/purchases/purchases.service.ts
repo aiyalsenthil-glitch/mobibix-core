@@ -65,6 +65,8 @@ export class PurchasesService {
         );
       }
 
+      const status = dto.status || 'DRAFT';
+
       // Calculate totals from items
       let subTotal = 0;
       let totalGst = 0;
@@ -116,7 +118,7 @@ export class PurchasesService {
           upiAmount: dto.upiAmount,
           purchaseType: dto.purchaseType || 'Goods',
           taxInclusive: dto.taxInclusive || false,
-          status: 'DRAFT',
+          status,
           notes: dto.notes,
           createdBy: 'system',
           items: {
@@ -129,8 +131,31 @@ export class PurchasesService {
         },
       });
 
-      // 🛡️ REFACTOR: Stock entry moved to atomicPurchaseSubmit
-      // Draft purchases do NOT affect stock or cost price until submitted.
+      // 🛡️ AUTO-SUBMIT: Process stock and cost if status is SUBMITTED
+      if (status === 'SUBMITTED') {
+        for (const item of purchase.items) {
+          if (item.shopProductId) {
+            // 1. Record Consolidated Stock In
+            await this.stockService.recordStockIn(
+              tenantId,
+              purchase.shopId,
+              item.shopProductId,
+              item.quantity,
+              'PURCHASE',
+              purchase.id,
+              item.purchasePrice,
+              undefined,
+              tx,
+            );
+
+            // 2. Update Cost Price (LPP)
+            await tx.shopProduct.update({
+              where: { id: item.shopProductId },
+              data: { costPrice: item.purchasePrice },
+            });
+          }
+        }
+      }
 
       return this.mapToResponseDto(purchase);
     });

@@ -28,7 +28,7 @@ export function EditProductModal({
     name: product.name,
     type: (product.type as ProductType) || ProductType.GOODS,
     hsnSac: product.hsnCode || "",
-    salePrice: product.salePrice?.toString() || "0",
+    salePrice: ((product.salePrice || 0) / 100).toString(),
     gstRate: product.gstRate?.toString() || "18",
   });
 

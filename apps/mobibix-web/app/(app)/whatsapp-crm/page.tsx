@@ -92,9 +92,16 @@ export default function WhatsAppCrmPage() {
 
   // No subscription OR forced via query param → Show promotion
   // EXCEPTION: Allow MOBILE_SHOP (Retail Demo) to bypass this check
-  if (showPromo || (!status?.hasSubscription && status?.moduleType !== 'MOBILE_SHOP')) {
+  // ALSO: If whatsappAllowed is true (from main plan), allow access
+  const hasAccess = status?.hasSubscription || status?.whatsappAllowed;
+  
+  if (showPromo || (status && !hasAccess && status.moduleType !== 'MOBILE_SHOP')) {
     return <WhatsAppCrmPromo />;
   }
+
+  if (!status) return null;
+
+  if (!status) return null;
 
   // Has subscription but not enabled → Contact support
   if (!status.isEnabled) {

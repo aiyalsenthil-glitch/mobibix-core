@@ -14,7 +14,7 @@ export class RepairController {
 
   @Post('out')
   async stockOut(@Req() req: any, @Body() dto: RepairStockOutDto) {
-    const tenantId = req.user?.sub || req.user?.userId;
+    const tenantId = req.user.tenantId;
     return this.repairService.stockOutForRepair(tenantId, dto);
   }
 
@@ -24,7 +24,7 @@ export class RepairController {
     @Param('jobCardId') jobCardId: string,
     @Body() dto: RepairBillDto,
   ) {
-    const tenantId = req.user?.sub || req.user?.userId;
+    const tenantId = req.user.tenantId;
     const dtoWithJobId = { ...dto, jobCardId };
     return this.repairService.generateRepairBill(tenantId, dtoWithJobId);
   }

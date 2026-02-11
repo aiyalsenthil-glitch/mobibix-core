@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { listShops, type Shop } from "@/services/shops.api";
 import { listProducts, type ShopProduct } from "@/services/products.api";
+import { listCustomers, type Customer } from "@/services/customers.api";
 import {
   createInvoice,
   type CreateInvoiceDto,
@@ -14,6 +15,9 @@ import {
   type InvoiceFormInput,
   type InvoiceItemInput,
 } from "@/lib/invoice.schemas";
+import { CustomerLoyaltyInfo } from "../loyalty/CustomerLoyaltyInfo";
+import { LoyaltyRedemptionInput } from "../loyalty/LoyaltyRedemptionInput";
+import { getCustomerLoyaltyBalance } from "@/services/loyalty.api";
 
 interface InvoiceFormProps {
   onSuccess?: (invoiceId: string) => void;
@@ -34,6 +38,7 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
   // Dropdowns & API data
   const [shops, setShops] = useState<Shop[]>([]);
   const [products, setProducts] = useState<ShopProduct[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loadingShops, setLoadingShops] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
@@ -48,6 +53,12 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
   const [isGstApplicable, setIsGstApplicable] = useState(true);
   const [items, setItems] = useState<ItemRow[]>([]);
 
+  // Loyalty state
+  const [customerId, setCustomerId] = useState<string | undefined>();
+  const [loyaltyBalance, setLoyaltyBalance] = useState<number>(0);
+  const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState<number>(0);
+  const [loyaltyDiscountPaise, setLoyaltyDiscountPaise] = useState<number>(0);
+
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -55,11 +66,15 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
 
   // Load shops on mount
   useEffect(() => {
-    const loadShops = async () => {
+    const loadData = async () => {
       try {
         setLoadingShops(true);
-        const shopsData = await listShops();
+        const [shopsData, customersData] = await Promise.all([
+          listShops(),
+          listCustomers(),
+        ]);
         setShops(shopsData);
+        setCustomers(customersData);
         if (shopsData.length > 0) {
           const firstShop = shopsData[0];
           setShopId(firstShop.id);
@@ -67,13 +82,13 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
           setIsGstApplicable(firstShop.gstEnabled !== false);
         }
       } catch (err) {
-        console.error("Failed to load shops:", err);
-        setErrors(["Failed to load shops"]);
+        console.error("Failed to load shops or customers:", err);
+        setErrors(["Failed to load shops or customers"]);
       } finally {
         setLoadingShops(false);
       }
     };
-    loadShops();
+    loadData();
   }, []);
 
   // Update GST applicability when shop changes
@@ -109,6 +124,38 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
 
     loadProducts();
   }, [shopId]);
+
+  // Load loyalty balance when customer changes
+  useEffect(() => {
+    if (!customerId) {
+      setLoyaltyBalance(0);
+      return;
+    }
+
+    const loadBalance = async () => {
+      try {
+        const balance = await getCustomerLoyaltyBalance(customerId);
+        setLoyaltyBalance(balance);
+      } catch (err) {
+        console.error("Failed to load loyalty balance:", err);
+        setLoyaltyBalance(0);
+      }
+    };
+
+    loadBalance();
+  }, [customerId]);
+
+  // Handle customer selection
+  const handleCustomerSelect = (customerId: string) => {
+    const customer = customers.find((c) => c.id === customerId);
+    if (customer) {
+      setCustomerId(customer.id);
+      setCustomerName(customer.name);
+      setCustomerPhone(customer.phone);
+      setCustomerState(customer.state);
+      setCustomerGstin(customer.gstNumber || "");
+    }
+  };
 
   // Add new item row
   const addItem = useCallback(() => {
@@ -147,7 +194,7 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
               updated.productName = product.name;
               updated.hsnCode = product.hsnCode || "";
               updated.gstRate = product.gstRate || 18;
-              updated.rate = product.salePrice || 0;
+              updated.rate = (product.salePrice || 0) / 100;
             }
           }
 
@@ -170,8 +217,8 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
       ? shop.state.toLowerCase() === customerState.toLowerCase()
       : true;
 
-  // Calculate invoice totals
-  const invoiceTotals = calculateInvoiceTotals(
+  // Calculate invoice totals (with loyalty discount applied before GST)
+  const baseTotals = calculateInvoiceTotals(
     items.map((item) => ({
       quantity: item.quantity,
       rate: item.rate,
@@ -179,6 +226,15 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
       isIntraState,
     })),
   );
+
+  // Apply loyalty discount (reduces subtotal before GST was calculated)
+  // For Phase 1, we show the discount but the actual invoice creation on backend will handle it
+  const invoiceTotals = {
+    ...baseTotals,
+    subtotal: Math.max(0, baseTotals.subtotal - loyaltyDiscountPaise),
+    // GST rates don't change, only the subtotal changes due to discount
+    grandTotal: Math.max(0, baseTotals.grandTotal - loyaltyDiscountPaise),
+  };
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -341,6 +397,32 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
         </div>
       </div>
 
+      {/* Customer Selection (Optional) */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-700">
+          Select Existing Customer (Optional)
+        </label>
+        <select
+          value={customerId || ""}
+          onChange={(e) => {
+            if (e.target.value) {
+              handleCustomerSelect(e.target.value);
+            } else {
+              setCustomerId(undefined);
+              setLoyaltyBalance(0);
+            }
+          }}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">-- Or enter new customer details below --</option>
+          {customers.map((customer) => (
+            <option key={customer.id} value={customer.id}>
+              {customer.name} ({customer.phone})
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Customer Details */}
       <div className="space-y-4 rounded-lg bg-gray-50 p-4">
         <h3 className="font-medium text-gray-900">Customer Details</h3>
@@ -439,6 +521,21 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
           )}
         </>
       )}
+
+      {/* Loyalty Section - Show customer balance and redemption input */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium text-gray-900">Loyalty Points</h3>
+          <CustomerLoyaltyInfo customerId={customerId} />
+        </div>
+        <LoyaltyRedemptionInput
+          customerId={customerId}
+          balance={loyaltyBalance}
+          invoiceSubTotal={invoiceTotals.subtotal}
+          onRedemptionChange={setLoyaltyPointsToRedeem}
+          onDiscountChange={setLoyaltyDiscountPaise}
+        />
+      </div>
 
       {/* Items Section */}
       <div className="space-y-4 rounded-lg bg-gray-50 p-4">

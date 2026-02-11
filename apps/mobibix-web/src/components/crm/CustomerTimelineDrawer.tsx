@@ -34,7 +34,7 @@ export function CustomerTimelineDrawer({
           </p>
         </SheetHeader>
 
-        <CustomerTimeline customerId={customerId} />
+        {customerId && <CustomerTimeline customerId={customerId} />}
       </SheetContent>
     </Sheet>
   );

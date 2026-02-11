@@ -25,6 +25,7 @@ export function RepairBillingModal({
   const [serviceAmount, setServiceAmount] = useState<number>(0);
   const [serviceGstRate, setServiceGstRate] = useState<number>(18); // Default 18%
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false);
+  const [deliverImmediately, setDeliverImmediately] = useState(false);
 
   // Helper for currency format
   const formatCurrency = (amount: number) => {
@@ -36,19 +37,10 @@ export function RepairBillingModal({
 
   // Initialize service charge
   useEffect(() => {
-    if (isOpen && job) {
-        const partsCost = job.parts?.reduce((sum, p) => sum + (p.product?.salePrice || 0) * p.quantity, 0) || 0;
-        const partsTotalRupees = (partsCost / 100);
-        const estimatedTotal = job.estimatedCost || 0;
-        
-        // Ensure diagnosticCharge is treated as 0 if undefined
-        const diagCharge = job.diagnosticCharge || 0;
-
-        let initialService = Math.max(0, estimatedTotal - partsTotalRupees);
-        if (diagCharge > 0) {
-            initialService = Math.max(initialService, diagCharge);
-        }
-        
+      if (isOpen && job) {
+        // ERP-Correct: Service Amount is independent of Parts
+        // Default to estimatedCost or diagnosticCharge
+        const initialService = job.estimatedCost || job.diagnosticCharge || 0;
         setServiceAmount(initialService);
     }
   }, [isOpen, job]);
@@ -76,7 +68,8 @@ export function RepairBillingModal({
             quantity: p.quantity,
             rate: (p.product?.salePrice || 0) / 100,
             gstRate: billingMode === "WITH_GST" ? (p.product?.gstRate || 0) : 0
-        }))
+        })),
+        deliverImmediately
       };
 
       await onSubmit(dto);
@@ -141,6 +134,23 @@ export function RepairBillingModal({
                         <option value="CARD">Card</option>
                         <option value="BANK">Bank Transfer</option>
                     </select>
+                </div>
+
+                <div className="pt-2">
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                        <input 
+                            type="checkbox"
+                            checked={deliverImmediately}
+                            onChange={(e) => setDeliverImmediately(e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 transition-colors">
+                            Deliver job immediately
+                        </span>
+                    </label>
+                    <p className="text-[10px] text-gray-500 mt-1">
+                        If checked, status will be <strong>DELIVERED</strong>. Otherwise <strong>READY</strong>.
+                    </p>
                 </div>
             </div>
 

@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["http://localhost_REPLACED:3000", "http://localhost_REPLACED:3001", "https://gym-saas-prod.web.app"],
+    "method": ["GET", "PUT", "POST", "DELETE", "HEAD", "OPTIONS"],
+    "responseHeader": ["Content-Type", "Authorization", "Content-Length", "User-Agent", "x-goog-resumable"],
+    "maxAgeSeconds": 3600
+  }
+]

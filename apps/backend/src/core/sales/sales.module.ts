@@ -8,11 +8,18 @@ import { CommonModule } from '../../common/common.module';
 
 import { BillingService } from './billing.service';
 import { ReceiptsModule } from '../receipts/receipts.module';
+import { LoyaltyModule } from '../loyalty/loyalty.module';
 
 @Module({
-  imports: [CommonModule, ReceiptsModule],
+  imports: [CommonModule, ReceiptsModule, LoyaltyModule],
   controllers: [SalesController],
-  providers: [SalesService, PaymentService, PrismaService, StockService, BillingService],
+  providers: [
+    SalesService,
+    PaymentService,
+    PrismaService,
+    StockService,
+    BillingService,
+  ],
   exports: [SalesService, PaymentService, BillingService],
 })
 export class SalesModule {}

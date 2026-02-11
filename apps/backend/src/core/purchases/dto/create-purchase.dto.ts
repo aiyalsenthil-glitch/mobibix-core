@@ -99,6 +99,10 @@ export class CreatePurchaseDto {
   @IsString()
   notes?: string;
 
+  @IsOptional()
+  @IsEnum(['DRAFT', 'SUBMITTED'])
+  status?: 'DRAFT' | 'SUBMITTED';
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => PurchaseItemDto)

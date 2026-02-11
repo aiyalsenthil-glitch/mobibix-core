@@ -1,0 +1,40 @@
+rules_version = '2';
+service REMOVED_AUTH_PROVIDER.storage {
+  match /b/{bucket}/o {
+
+    // Member photos
+    match /tenants/{tenantId}/members/{fileName} {
+
+      // 🔓 Public read (no auth needed)
+      allow read: if true;
+
+      // 🔐 Restricted write
+      allow create, update: if request.auth != null
+        && request.auth.token.tenantId == tenantId
+        && (
+          request.auth.token.role == 'OWNER' ||
+          request.auth.token.role == 'STAFF'
+        )
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Gym logo
+    match /tenants/{tenantId}/branding/{fileName} {
+
+      allow read: if true;
+
+      allow create, update: if request.auth != null
+        && request.auth.token.tenantId == tenantId
+        && request.auth.token.role == 'OWNER'
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Shop branding (New)
+    match /shops/{shopId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

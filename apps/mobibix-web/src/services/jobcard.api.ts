@@ -409,6 +409,7 @@ export interface RepairBillDto {
   billingMode: 'WITH_GST' | 'WITHOUT_GST';
   paymentMode: string;
   pricesIncludeTax?: boolean;
+  deliverImmediately?: boolean;
 }
 
 /**

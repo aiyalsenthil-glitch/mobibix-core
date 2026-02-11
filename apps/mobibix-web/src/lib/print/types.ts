@@ -63,6 +63,8 @@ export interface PrintDocumentData {
     printDate: string;
     pricesInclusive: boolean; // Relevant for column headers
     isB2B: boolean;
+    accentColor?: string;
+    isIndianGSTInvoice?: boolean;
   };
 }
 

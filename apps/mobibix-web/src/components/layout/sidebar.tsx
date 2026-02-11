@@ -18,21 +18,14 @@ const navItems: NavItem[] = [
   { label: "Job Cards", href: "/jobcards", icon: "🔧" },
   { label: "Products", href: "/products", icon: "🏷️" },
   { label: "Inventory", href: "/inventory", icon: "📦" },
-  { label: "Stock Management", href: "/inventory", icon: "📦" },
-  { label: "Negative Stock Report", href: "/inventory/negative-stock", icon: "📦" },
-  { label: "Stock Correction", href: "/inventory/stock-correction", icon: "📦" },
   { label: "Customers", href: "/customers", icon: "👥" },
-  { label: "All Customers", href: "/customers", icon: "👥" },
-  { label: "CRM Dashboard", href: "/crm", icon: "👥" },
-  { label: "My Follow-ups", href: "/crm/follow-ups", icon: "👥" },
   { label: "WhatsApp", href: "/whatsapp", icon: "💬" },
   { label: "Suppliers", href: "/suppliers", icon: "🚚" },
   { label: "Purchases", href: "/purchases", icon: "📥" },
   { label: "Payments", href: "/receipts", icon: "💳" },
-  { label: "Receipts", href: "/receipts", icon: "💳" },
-  { label: "Vouchers", href: "/vouchers", icon: "💳" },
   { label: "Reports", href: "/reports", icon: "📈" },
   { label: "Shops", href: "/shops", icon: "🏪" },
+  { label: "Staff", href: "/staff", icon: "👥" },
   { label: "Settings", href: "/settings", icon: "⚙️" },
 ];
 
@@ -53,21 +46,21 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const isDark = mounted && theme === "dark";
 
   useEffect(() => {
+    async function loadCounts() {
+      try {
+        const data = await getFollowUpCounts();
+        setCounts(data);
+      } catch (err) {
+        console.error("Failed to load follow-up counts", err);
+      }
+    }
+
     if (mounted) {
       loadCounts();
       const interval = setInterval(loadCounts, 30000); // Poll every 30s
       return () => clearInterval(interval);
     }
   }, [mounted]);
-
-  async function loadCounts() {
-    try {
-      const data = await getFollowUpCounts();
-      setCounts(data);
-    } catch (err) {
-      console.error("Failed to load follow-up counts", err);
-    }
-  }
 
   useEffect(() => {
     setMounted(true);

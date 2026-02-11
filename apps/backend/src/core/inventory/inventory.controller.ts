@@ -64,4 +64,12 @@ export class InventoryController {
     const parsed = threshold ? Number(threshold) : 5;
     return await this.service.getLowStock(tenantId, parsed);
   }
+
+  @Get('stock-levels')
+  async getStockLevels(@Req() req: ReqWithUser, @Query('shopId') shopId: string) {
+    const tenantId: string | undefined = req.user?.tenantId;
+    if (!tenantId) throw new BadRequestException('Invalid tenant');
+    if (!shopId) throw new BadRequestException('shopId is required');
+    return await this.service.getStockLevels(tenantId, shopId);
+  }
 }

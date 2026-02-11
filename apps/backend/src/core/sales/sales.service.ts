@@ -27,15 +27,19 @@ import { DocumentType } from '@prisma/client';
 import { assertShopAccess } from '../../common/guards/shop-access.guard';
 
 import { BillingService, CreateInvoiceOptions } from './billing.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 
 @Injectable()
 export class SalesService {
+  private readonly logger = new Logger(SalesService.name);
+
   constructor(
     private prisma: PrismaService,
     private stockService: StockService,
     private eventEmitter: EventEmitter2,
     private documentNumberService: DocumentNumberService,
     private billingService: BillingService,
+    private loyaltyService: LoyaltyService,
   ) {}
 
   // ============================================
@@ -203,11 +207,15 @@ export class SalesService {
         if (product?.isSerialized && !item.imeis?.length)
           throw new BadRequestException(`Serialized product requires IMEI`);
         if (!product?.isSerialized && item.imeis?.length)
-          throw new BadRequestException(`Non-serialized product cannot have IMEI`);
-        
+          throw new BadRequestException(
+            `Non-serialized product cannot have IMEI`,
+          );
+
         if (product?.isSerialized && item.imeis) {
           if (item.quantity !== item.imeis.length)
-             throw new BadRequestException(`Quantity mismatch for ${product.name}`);
+            throw new BadRequestException(
+              `Quantity mismatch for ${product.name}`,
+            );
           allImeis.push(...item.imeis);
         }
       }
@@ -223,54 +231,56 @@ export class SalesService {
           throw new BadRequestException('One or more IMEIs not found');
         }
 
-        const imeiMap = new Map(imeiRecords.map(r => [r.imei, r]));
+        const imeiMap = new Map(imeiRecords.map((r) => [r.imei, r]));
         for (const item of dto.items) {
-             if (item.imeis) {
-                 for(const imei of item.imeis) {
-                     const record = imeiMap.get(imei);
-                     if (record?.shopProductId !== item.shopProductId) 
-                         throw new BadRequestException(`IMEI ${imei} does not belong to product`);
-                     if (record?.status !== 'IN_STOCK')
-                         throw new BadRequestException(`IMEI ${imei} is not available`);
-                 }
-             }
+          if (item.imeis) {
+            for (const imei of item.imeis) {
+              const record = imeiMap.get(imei);
+              if (record?.shopProductId !== item.shopProductId)
+                throw new BadRequestException(
+                  `IMEI ${imei} does not belong to product`,
+                );
+              if (record?.status !== 'IN_STOCK')
+                throw new BadRequestException(`IMEI ${imei} is not available`);
+            }
+          }
         }
       }
 
       // 4. Map to CreateInvoiceOptions
-      const billingItems = dto.items.map(item => {
-          const product = productMap.get(item.shopProductId);
-          return {
-              shopProductId: item.shopProductId,
-              name: product?.name,
-              quantity: item.quantity,
-              rate: item.rate,
-              gstRate: item.gstRate,
-              hsnCode: product?.hsnCode || undefined,
-              costPrice: product?.costPrice || 0,
-              productType: product?.type,
-              imeis: item.imeis,
-              isSerialized: product?.isSerialized
-          };
+      const billingItems = dto.items.map((item) => {
+        const product = productMap.get(item.shopProductId);
+        return {
+          shopProductId: item.shopProductId,
+          name: product?.name,
+          quantity: item.quantity,
+          rate: item.rate,
+          gstRate: item.gstRate,
+          hsnCode: product?.hsnCode || undefined,
+          costPrice: product?.costPrice || 0,
+          productType: product?.type,
+          imeis: item.imeis,
+          isSerialized: product?.isSerialized,
+        };
       });
 
       const options: CreateInvoiceOptions = {
-          tenantId,
-          shopId: dto.shopId,
-          customerId: dto.customerId,
-          customerName: dto.customerName,
-          customerPhone: dto.customerPhone,
-          customerState: dto.customerState,
-          customerGstin: dto.customerGstin,
-          items: billingItems,
-          paymentMode: (dto.paymentMode as PaymentMode) || PaymentMode.CASH,
-          paymentMethods: dto.paymentMethods?.map(pm => ({
-              mode: pm.mode as PaymentMode,
-              amount: pm.amount
-          })),
-          pricesIncludeTax: !!dto.pricesIncludeTax,
-          referenceType: 'SALE',
-          // skipStockUpdate: false, // Default
+        tenantId,
+        shopId: dto.shopId,
+        customerId: dto.customerId,
+        customerName: dto.customerName,
+        customerPhone: dto.customerPhone,
+        customerState: dto.customerState,
+        customerGstin: dto.customerGstin,
+        items: billingItems,
+        paymentMode: (dto.paymentMode as PaymentMode) || PaymentMode.CASH,
+        paymentMethods: dto.paymentMethods?.map((pm) => ({
+          mode: pm.mode as PaymentMode,
+          amount: pm.amount,
+        })),
+        pricesIncludeTax: !!dto.pricesIncludeTax,
+        referenceType: 'SALE',
+        // skipStockUpdate: false, // Default
       };
 
       // 5. Delegate to BillingService
@@ -294,6 +304,19 @@ export class SalesService {
           created.invoiceNumber,
         ),
       );
+
+      // 💳 AWARD LOYALTY POINTS (if invoice created with PAID status)
+      if (created.status === InvoiceStatus.PAID && created.customerId) {
+        try {
+          await this.loyaltyService.awardLoyaltyPoints(tenantId, created);
+        } catch (err) {
+          this.logger.error(
+            `Failed to award loyalty points for invoice ${created.invoiceNumber}`,
+            err as Error,
+          );
+          // Don't throw - invoice creation succeeded, loyalty is secondary
+        }
+      }
     }
 
     return this.getInvoiceDetails(tenantId, invoiceId);
@@ -745,6 +768,23 @@ export class SalesService {
           note: `Invoice Cancelled: ${reason || ''}`,
         },
       });
+
+      // 7. Reverse loyalty points (if any were earned on this invoice)
+      if (invoice.customerId && invoice.status === InvoiceStatus.PAID) {
+        try {
+          await this.loyaltyService.reversePointsOnCancel(
+            tenantId,
+            invoiceId,
+            invoice.invoiceNumber,
+          );
+        } catch (error) {
+          // Log but don't fail cancellation if loyalty reversal fails
+          console.error(
+            `Failed to reverse loyalty points for invoice ${invoiceId}`,
+            error,
+          );
+        }
+      }
 
       return { message: 'Invoice cancelled successfully' };
     });
@@ -1338,6 +1378,25 @@ export class SalesService {
           result.status === InvoiceStatus.PAID,
         ),
       );
+
+      // 💳 AWARD LOYALTY POINTS
+      // Only award points when invoice becomes PAID and has a customer
+      if (result.status === InvoiceStatus.PAID && result.customerId) {
+        try {
+          const invoiceData = await this.prisma.invoice.findUnique({
+            where: { id: result.invoiceId },
+          });
+          if (invoiceData) {
+            await this.loyaltyService.awardLoyaltyPoints(tenantId, invoiceData);
+          }
+        } catch (err) {
+          this.logger.error(
+            `Failed to award loyalty points for invoice ${result.invoiceId}`,
+            err as Error,
+          );
+          // Don't throw - payment collection succeeded, loyalty is secondary
+        }
+      }
     }
 
     return result;

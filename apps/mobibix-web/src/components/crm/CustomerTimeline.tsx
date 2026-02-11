@@ -26,7 +26,9 @@ export function CustomerTimeline({
   );
 
   useEffect(() => {
-    loadTimeline();
+    if (customerId) {
+      loadTimeline();
+    }
   }, [customerId, selectedSource]);
 
   async function loadTimeline() {

@@ -609,7 +609,7 @@ export class JobCardsService {
       dto.quantity,
     );
 
-    // Use transaction to ensure stock deduction happens with part usage
+    // Use transaction to ensure part entry is created
     return this.prisma.$transaction(async (tx) => {
       // 1. Upsert JobCardPart (accumulate quantity if already exists)
       const existing = await tx.jobCardPart.findFirst({
@@ -638,20 +638,7 @@ export class JobCardsService {
         });
       }
 
-      // 2. Deduct Stock via StockService (enforces availability, IMEI validation, etc.)
-      // This ensures all stock rules are applied consistently across the system
-      await this.stockService.recordStockOut(
-        user.tenantId,
-        shopId,
-        dto.productId,
-        dto.quantity,
-        'REPAIR',
-        jobId,
-        costSnapshot,
-        undefined, // IMEIs handled by StockService internally
-        tx,
-      );
-
+      // Stock deduction is now deferred to Invoice Generation phase
       return { success: true };
     });
   }
@@ -761,30 +748,9 @@ export class JobCardsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const part = await tx.jobCardPart.findUnique({
+      await tx.jobCardPart.delete({
         where: { id: partId },
-        include: { product: true },
       });
-
-      if (!part) throw new NotFoundException('Part not found');
-
-      // Restore Stock via StockService (consistent with addPart)
-      if (part.product.type !== ProductType.SERVICE) {
-        await this.stockService.recordStockIn(
-          user.tenantId,
-          shopId,
-          part.shopProductId,
-          part.quantity,
-          'REPAIR',
-          jobId,
-          part.costPrice ?? undefined,
-          undefined, // IMEIs
-          tx,
-        );
-      }
-
-      // Delete usage record
-      await tx.jobCardPart.delete({ where: { id: partId } });
 
       return { success: true };
     });
@@ -1039,10 +1005,14 @@ export class JobCardsService {
   ) {
     await this.assertAccess(user, shopId);
 
-    // 1️⃣ Fetch job with invoices
+    // 1️⃣ Fetch job with all nested relations needed for handlers
     const job = await this.prisma.jobCard.findUnique({
       where: { id },
-      include: { invoices: true, parts: { include: { product: true } } },
+      include: {
+        shop: true,
+        invoices: true,
+        parts: { include: { product: true } },
+      },
     });
 
     if (!job) {
@@ -1093,32 +1063,33 @@ export class JobCardsService {
             where: { id },
             data: { advancePaid: 0 },
           });
-
-          // C. Create Refund Receipt (Optional but good audit)
-          // Since we are forcing full refund, we can log it.
-          // Or rely on FinancialEntry.
         }
 
-        // [Risk S-01] Stock Reconciliation
+        // [Risk S-01] Stock Reconciliation (Optimized via Batching)
         if (job.parts.length > 0) {
-          for (const part of job.parts) {
-            // Restore stock if not a service
-            if (part.product.type !== ProductType.SERVICE) {
-              await this.stockService.recordStockIn(
-                user.tenantId,
-                shopId,
-                part.shopProductId,
-                part.quantity,
-                'REPAIR', // Reusing REPAIR type as it's a reversal of a repair usage
-                id,
-                part.costPrice ?? undefined,
-                undefined,
-                tx,
-              );
-            }
-            // Delete usage
-            await tx.jobCardPart.delete({ where: { id: part.id } });
+          const partsToRestore = job.parts.filter(
+            (p) => p.product.type !== ProductType.SERVICE,
+          );
+
+          if (partsToRestore.length > 0) {
+            await this.stockService.recordStockInBatch(
+              user.tenantId,
+              shopId,
+              partsToRestore.map((p) => ({
+                productId: p.shopProductId,
+                quantity: p.quantity,
+                costPerUnit: p.costPrice ?? undefined,
+              })),
+              'REPAIR',
+              id,
+              tx,
+            );
           }
+
+          // Delete all usages in one go
+          await tx.jobCardPart.deleteMany({
+            where: { id: { in: job.parts.map((p) => p.id) } },
+          });
         }
       }
 
@@ -1166,10 +1137,11 @@ export class JobCardsService {
         }
       }
 
+      // 🔄 HANDLE INVOICING (Pass current transaction tx)
       if (this.statusValidator.shouldCreateInvoice(newStatus)) {
-        await this.handleJobReady(job, user);
+        await this.handleJobReady(job, user, tx);
       } else if (this.statusValidator.shouldVoidInvoice(newStatus)) {
-        await this.handleJobTermination(job, newStatus);
+        await this.handleJobTermination(job, newStatus, tx);
       }
 
       // 5️⃣ Update status with history tracking
@@ -1194,7 +1166,8 @@ export class JobCardsService {
         },
       });
 
-      // 6️⃣ Emit WhatsApp event
+      // 6️⃣ Emit WhatsApp event (Async, don't wait if not critical - but Nest Event Emitter is sync by default unless specified)
+      // Note: eventEmitter.emit is technically synchronous unless configured otherwise.
       if (this.statusValidator.shouldTriggerWhatsApp(newStatus)) {
         this.eventEmitter.emit(
           'job.status.changed',
@@ -1220,9 +1193,16 @@ export class JobCardsService {
    * Creates exactly ONE DRAFT invoice (editable)
    * POPULATES ITEMS from JobCardParts + Service Charge
    */
-  private async handleJobReady(job: any, user?: any) {
+  /**
+   * 🚀 AUTO-INVOICE CREATION
+   * Triggered when job status becomes READY
+   * Creates exactly ONE DRAFT invoice (editable)
+   * POPULATES ITEMS from JobCardParts + Service Charge
+   */
+  private async handleJobReady(job: any, user?: any, tx?: any) {
+    const prisma = tx || this.prisma;
     // Prevent duplicate creation
-    const existingInvoice = await this.prisma.invoice.findFirst({
+    const existingInvoice = await prisma.invoice.findFirst({
       where: {
         jobCardId: job.id,
         status: { not: InvoiceStatus.VOIDED },
@@ -1236,8 +1216,8 @@ export class JobCardsService {
       return;
     }
 
-    // Get shop options
-    const shop = await this.prisma.shop.findUnique({
+    // Use pre-fetched shop options or fetch if missing (though updateStatus now pre-fetches)
+    const shop = job.shop || await prisma.shop.findUnique({
       where: { id: job.shopId },
       select: {
         invoicePrefix: true,
@@ -1321,12 +1301,12 @@ export class JobCardsService {
 
     if (serviceChargePaisa > 0) {
       // Find or create "Repair Service" product (standard SERVICE type)
-      let serviceProduct = await this.prisma.shopProduct.findFirst({
+      let serviceProduct = await prisma.shopProduct.findFirst({
         where: { shopId: job.shopId, name: 'Repair Service', type: 'SERVICE' },
       });
 
       if (!serviceProduct) {
-        serviceProduct = await this.prisma.shopProduct.create({
+        serviceProduct = await prisma.shopProduct.create({
           data: {
             tenantId: job.tenantId,
             shopId: job.shopId,
@@ -1370,110 +1350,111 @@ export class JobCardsService {
     const fy = getFinancialYear(new Date());
 
     // Create DRAFT invoice with correct totals
-    // Create DRAFT invoice with correct totals
-    await this.prisma.$transaction(async (tx) => {
-      const invoice = await tx.invoice.create({
-        data: {
-          tenantId: job.tenantId,
-          shopId: job.shopId,
-          jobCardId: job.id,
-          customerId: job.customerId,
-          invoiceNumber,
-          invoiceDate: new Date(),
-          financialYear: fy,
-          customerName: job.customerName,
-          customerPhone: job.customerPhone,
-          status: InvoiceStatus.UNPAID,
-          subTotal: invoiceSubtotalPaisa,
-          gstAmount: invoiceTaxPaisa,
-          totalAmount: invoiceGrandTotalPaisa,
-          paymentMode: 'CASH',
-          cashAmount: 0,
-          invoiceType,
-          isGstApplicable,
-          items: {
-            create: itemsData,
-          },
+    const invoice = await prisma.invoice.create({
+      data: {
+        tenantId: job.tenantId,
+        shopId: job.shopId,
+        jobCardId: job.id,
+        customerId: job.customerId,
+        invoiceNumber,
+        invoiceDate: new Date(),
+        financialYear: fy,
+        customerName: job.customerName,
+        customerPhone: job.customerPhone,
+        status: InvoiceStatus.UNPAID,
+        subTotal: invoiceSubtotalPaisa,
+        gstAmount: invoiceTaxPaisa,
+        totalAmount: invoiceGrandTotalPaisa,
+        paymentMode: 'CASH',
+        cashAmount: 0,
+        invoiceType,
+        isGstApplicable,
+        items: {
+          create: itemsData,
         },
-      });
+      },
+    });
 
-      // 4. 🛡️ LINK ADVANCE RECEIPTS & UPDATE BALANCE
-      // Fetch all advances linked to this JobCard
-      const advanceReceipts = await tx.receipt.findMany({
+    // 4. 🛡️ LINK ADVANCE RECEIPTS & UPDATE BALANCE
+    // Fetch all advances linked to this JobCard
+    const advanceReceipts = await prisma.receipt.findMany({
+      where: {
+        linkedJobCardId: job.id,
+        receiptType: 'JOB_ADVANCE', // Type remains JOB_ADVANCE in Receipt model
+        status: 'ACTIVE',
+      },
+    });
+
+    if (advanceReceipts.length > 0) {
+      const totalAdvancePaisa = advanceReceipts.reduce(
+        (sum, r) => sum + r.amount,
+        0,
+      );
+
+      // Link receipts to this new invoice
+      await prisma.receipt.updateMany({
         where: {
           linkedJobCardId: job.id,
-          receiptType: 'JOB_ADVANCE', // Type remains JOB_ADVANCE in Receipt model
-          // But we might want to filter by something?
-          // Wait, previous logic used receiptType: 'JOB_ADVANCE'.
-          // My new logic also creates receipt with receiptType: 'JOB_ADVANCE'.
-          // The referenceType 'JOBCARD_ADVANCE' is only for FinancialEntry.
-          // So this query is ACTUALLY CORRECT as is.
-          // BUT, creating the receipt in addAdvance used 'JOB_ADVANCE'.
-          // So I should just double check if I need to change anything here.
-          status: 'ACTIVE',
+          receiptType: 'JOB_ADVANCE',
+        },
+        data: {
+          linkedInvoiceId: invoice.id,
         },
       });
 
-      if (advanceReceipts.length > 0) {
-        const totalAdvancePaisa = advanceReceipts.reduce(
-          (sum, r) => sum + r.amount,
-          0,
-        );
-
-        // Link receipts to this new invoice
-        await tx.receipt.updateMany({
-          where: {
-            linkedJobCardId: job.id,
-            receiptType: 'JOB_ADVANCE',
-          },
+      // Check if fully paid by advance
+      if (totalAdvancePaisa >= invoiceGrandTotalPaisa) {
+        await prisma.invoice.update({
+          where: { id: invoice.id },
           data: {
-            linkedInvoiceId: invoice.id,
+            status: InvoiceStatus.PAID,
+            paymentMode: 'CASH', // Default or derived?
           },
         });
-
-        // Check if fully paid by advance
-        if (totalAdvancePaisa >= invoiceGrandTotalPaisa) {
-          await tx.invoice.update({
-            where: { id: invoice.id },
-            data: {
-              status: InvoiceStatus.PAID,
-              paymentMode: 'CASH', // Default or derived?
-            },
-          });
-        }
       }
+    }
 
-      console.log(
-        `✅ Auto-created DRAFT/PAID invoice ${invoice.invoiceNumber} (${invoiceType}) for job ${job.jobNumber}`,
-      );
-    });
+    console.log(
+      `✅ Auto-created DRAFT/PAID invoice ${invoice.invoiceNumber} (${invoiceType}) for job ${job.jobNumber}`,
+    );
   }
 
   /**
    * 🚫 INVOICE VOIDING
    */
-  private async handleJobTermination(job: any, reason: JobStatus) {
-    const invoices = await this.prisma.invoice.findMany({
+  private async handleJobTermination(job: any, reason: JobStatus, tx?: any) {
+    const prisma = tx || this.prisma;
+    const invoices = await prisma.invoice.findMany({
       where: {
         jobCardId: job.id,
-        status: { notIn: [InvoiceStatus.VOIDED, InvoiceStatus.PAID] },
+        status: { notIn: [InvoiceStatus.VOIDED] },
       },
     });
 
     for (const invoice of invoices) {
       if (invoice.status === InvoiceStatus.PAID) {
-        throw new BadRequestException(
-          `Cannot ${reason.toLowerCase()} job: Invoice ${invoice.invoiceNumber} is paid. Refund required.`,
+        // [Risk F-03] Avoid voiding paid invoices without explicit refund flow
+        // In updateStatus, we already handle advance refunds if cancelled/returned.
+        // If it's a full invoice, we should probably warn or skip.
+        console.log(
+          `⚠️ Skipping void for PAID invoice ${invoice.invoiceNumber}. Requires manual reversal or credit note.`,
         );
+        continue;
       }
 
-      await this.prisma.invoice.update({
+      await prisma.invoice.update({
         where: { id: invoice.id },
         data: {
           status: InvoiceStatus.VOIDED,
-          voidReason: `Job ${reason.toLowerCase()}`,
+          voidReason: `Job Card status changed to ${reason}`,
           voidedAt: new Date(),
         },
+      });
+
+      // Also unlink advance receipts if any
+      await prisma.receipt.updateMany({
+        where: { linkedInvoiceId: invoice.id },
+        data: { linkedInvoiceId: null },
       });
 
       console.log(

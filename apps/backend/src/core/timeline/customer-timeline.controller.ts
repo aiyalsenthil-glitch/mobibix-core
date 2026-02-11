@@ -6,6 +6,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Request,
 } from '@nestjs/common';
 import { CustomerTimelineService } from './customer-timeline.service';
 import {
@@ -13,25 +14,22 @@ import {
   GetCustomerTimelineDto,
 } from './dto/timeline.dto';
 import { TimelineSource, TimelineActivityType } from './timeline.enum';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
-// Assuming you have JWT auth guard
-// import { JwtAuthGuard } from 'src/core/auth/jwt-auth.guard';
-// import { GetUser } from 'src/core/auth/get-user.decorator';
-
-@Controller('api/crm/timeline')
-// @UseGuards(JwtAuthGuard) // Uncomment when auth is ready
+@Controller('core/customer-timeline')
+@UseGuards(JwtAuthGuard)
 export class CustomerTimelineController {
   constructor(private readonly timelineService: CustomerTimelineService) {}
 
   /**
    * Get customer timeline
-   * GET /api/crm/timeline/:customerId
+   * GET /api/core/customer-timeline/:customerId
    */
   @Get(':customerId')
   @HttpCode(HttpStatus.OK)
   async getCustomerTimeline(
+    @Request() req: any,
     @Param('customerId') customerId: string,
-    @Query('tenantId') tenantId: string, // TODO: Get from auth user
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('sources') sources?: string, // Comma-separated
@@ -41,6 +39,12 @@ export class CustomerTimelineController {
     @Query('shopId') shopId?: string,
     @Query('sortOrder') sortOrder?: 'ASC' | 'DESC',
   ): Promise<CustomerTimelineResponseDto> {
+    // Extract tenantId from JWT payload
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      throw new Error('Tenant ID not found in JWT token');
+    }
+
     const query: GetCustomerTimelineDto = {
       customerId,
       tenantId,
@@ -59,14 +63,18 @@ export class CustomerTimelineController {
 
   /**
    * Get timeline statistics
-   * GET /api/crm/timeline/:customerId/stats
+   * GET /api/core/customer-timeline/:customerId/stats
    */
   @Get(':customerId/stats')
   @HttpCode(HttpStatus.OK)
   async getTimelineStats(
+    @Request() req: any,
     @Param('customerId') customerId: string,
-    @Query('tenantId') tenantId: string, // TODO: Get from auth user
   ) {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      throw new Error('Tenant ID not found in JWT token');
+    }
     return this.timelineService.getTimelineStats(customerId, tenantId);
   }
 }

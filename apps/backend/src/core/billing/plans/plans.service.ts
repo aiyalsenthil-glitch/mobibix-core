@@ -48,6 +48,7 @@ export class PlansService {
         tagline: true,
         description: true,
         featuresJson: true,
+        maxShops: true, // Select maxShops
         planPrices: {
           where: { isActive: true },
           select: { billingCycle: true, price: true },
@@ -90,6 +91,7 @@ export class PlansService {
           features: (internalPlan as any).planFeatures.map(
             (f: any) => f.feature,
           ),
+          maxShops: (internalPlan as any).maxShops, // Include maxShops
           isCurrent: internalPlan.level === currentLevel,
           canUpgrade: internalPlan.level > currentLevel,
           canDowngrade: internalPlan.level < currentLevel,

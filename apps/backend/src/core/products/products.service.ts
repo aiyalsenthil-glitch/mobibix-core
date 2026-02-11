@@ -69,8 +69,8 @@ export class ProductsService {
         category: p.category,
         hsnCode: p.hsnCode || p.global?.hsn?.code,
         gstRate: p.gstRate || p.global?.hsn?.taxRate,
-        salePrice: this.fromPaisa(p.salePrice),
-        costPrice: this.fromPaisa(p.costPrice),
+        salePrice: p.salePrice,
+        costPrice: p.costPrice,
         isActive: p.isActive,
         stockQty,
       };
@@ -116,8 +116,8 @@ export class ProductsService {
       category: product.category,
       hsnCode: product.hsnCode || product.global?.hsn?.code,
       gstRate: product.gstRate || product.global?.hsn?.taxRate,
-      salePrice: this.fromPaisa(product.salePrice),
-      costPrice: this.fromPaisa(product.costPrice),
+      salePrice: product.salePrice,
+      costPrice: product.costPrice,
       isActive: product.isActive,
       stockQty,
     };
@@ -235,6 +235,21 @@ export class ProductsService {
           continue;
         }
 
+        // Auto-generate SKU if not provided
+        let sku = productData.sku?.trim() || null;
+        if (!sku) {
+          // Format: PROD-YYYYMMDD-XXXX (e.g., PROD-20260211-A1B2)
+          const datePart = new Date()
+            .toISOString()
+            .slice(0, 10)
+            .replace(/-/g, '');
+          const randomPart = Math.random()
+            .toString(36)
+            .substring(2, 6)
+            .toUpperCase();
+          sku = `PROD-${datePart}-${randomPart}`;
+        }
+
         // Create product
         const createdProduct = await this.prisma.shopProduct.create({
           data: {
@@ -249,16 +264,14 @@ export class ProductsService {
               : null,
             gstRate: productData.gstRate || 0,
             hsnCode: productData.hsnCode?.trim() || null,
-            sku: productData.sku?.trim() || null,
+            sku,
             isActive: true,
           },
         });
 
-        // Add to existing names set to prevent duplicates within the same import
+        // Add to existing names and SKUs set to prevent duplicates within the same import
         existingNames.add(normalizedName);
-        if (productData.sku) {
-          existingSkus.add(productData.sku.toLowerCase().trim());
-        }
+        existingSkus.add(sku.toLowerCase().trim());
 
         // If includeStock and openingStock provided, create stock entry
         if (

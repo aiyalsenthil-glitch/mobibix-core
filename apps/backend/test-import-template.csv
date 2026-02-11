@@ -1,4 +1,4 @@
-Product Name,Category,Product Type,Selling Price,Cost Price,GST Rate,HSN Code,SKU,Opening Stock
+Product Name,Category,Product Type,Selling Price,Cost Price,GST Rate,HSN Code,SKU (Optional - auto-generated if empty),Opening Stock
 iPhone 14,Electronics,GOODS,75000,65000,18,8517,IP14-128,10
 Samsung S23,Electronics,GOODS,60000,50000,18,8517,SS23-128,5
 Screen Protector,Accessories,GOODS,299,150,18,3919,SP-001,100

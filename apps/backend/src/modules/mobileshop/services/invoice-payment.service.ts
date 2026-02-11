@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
+import { LoyaltyService } from '../../../core/loyalty/loyalty.service';
 import { InvoiceStatus, PaymentMode } from '@prisma/client';
 
 /**
@@ -21,7 +22,10 @@ import { InvoiceStatus, PaymentMode } from '@prisma/client';
 export class InvoicePaymentService {
   private readonly logger = new Logger(InvoicePaymentService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private loyaltyService: LoyaltyService,
+  ) {}
 
   /**
    * Record a payment against an invoice
@@ -84,7 +88,20 @@ export class InvoicePaymentService {
       },
     });
 
-    // Step 6: Create Receipt entry (for accounting)
+    // Step 6: Award loyalty points if invoice is now PAID (idempotent)
+    if (newStatus === InvoiceStatus.PAID && invoice.customerId) {
+      try {
+        await this.loyaltyService.awardLoyaltyPoints(tenantId, updatedInvoice);
+      } catch (error) {
+        // Log but don't fail payment if loyalty service fails
+        this.logger.error(
+          `Failed to award loyalty points for invoice ${invoiceId}`,
+          error as Error,
+        );
+      }
+    }
+
+    // Step 7: Create Receipt entry (for accounting)
     const receipt = await this.prisma.receipt.create({
       data: {
         tenantId,

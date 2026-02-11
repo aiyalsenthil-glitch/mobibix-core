@@ -3,10 +3,11 @@ import { InvoiceHeader } from "@/components/print/headers/InvoiceHeader";
 import { QRCodeSVG } from "qrcode.react";
 
 export function InvoiceModern({ data }: { data: PrintDocumentData }) {
-  const { header, meta, customer, items, totals, footer, qrCode, config } = data;
+  const { header, meta, customer, items, totals, footer, qrCode, config, headerConfig } = data;
+  const accentColor = config.accentColor || headerConfig?.accentColor || "#000000";
 
   return (
-    <div className="w-[210mm] min-h-[297mm] mx-auto bg-white p-12 text-black font-sans">
+    <div className="w-[210mm] min-h-[297mm] mx-auto bg-white p-12 text-black font-sans relative">
       
       {/* Dynamic Header */}
       <InvoiceHeader data={data} />
@@ -43,13 +44,6 @@ export function InvoiceModern({ data }: { data: PrintDocumentData }) {
           </div>
       </div>
       
-       {/* QR Code Positioned Absolute or Flexible */}
-       {qrCode && (
-            <div className="absolute top-12 right-12 opacity-80">
-                 <QRCodeSVG value={verifyUrl(qrCode)} size={60} level="L" />
-            </div>
-        )}
-
       {/* 3. Items Table - Clean & Open */}
       <div className="mb-12">
           <table className="w-full text-left border-collapse">
@@ -92,7 +86,7 @@ export function InvoiceModern({ data }: { data: PrintDocumentData }) {
           <div className="w-1/2 pr-12">
               <div className="mb-8">
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Amount in Words</p>
-                  <p className="text-sm font-medium text-slate-800 capitalize leading-relaxed border-l-2 border-teal-500 pl-3">
+                  <p className="text-sm font-medium text-slate-800 capitalize leading-relaxed border-l-2 pl-3" style={{ borderColor: accentColor }}>
                       {totals?.amountInWords}
                   </p>
               </div>

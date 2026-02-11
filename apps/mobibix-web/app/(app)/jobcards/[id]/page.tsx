@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   getJobCard,
@@ -23,6 +23,7 @@ import {
   ShopProduct,
   createProduct,
   ProductType,
+  getStockLevels,
 } from "@/services/products.api";
 import { createPurchase } from "@/services/purchases.api";
 import { AdvanceModal } from "./AdvanceModal";
@@ -93,25 +94,29 @@ export default function JobCardDetailPage() {
     null,
   );
 
+  // FINANCIAL CALCULATIONS
+  const partsTotal =
+    (job?.parts?.reduce(
+      (sum, p) => sum + (p.product?.salePrice || 0) * p.quantity,
+      0,
+    ) || 0) / 100;
+
+  // Use finalCost (Invoice Total) if available, otherwise use Estimated + Parts
+  const totalRevenue = job?.finalCost
+    ? job.finalCost / 100
+    : (job?.estimatedCost || 0) + partsTotal;
+
+  // Derived Labor Cost: If billed, it's (Final - Parts), otherwise Estimated
+  const laborCost = job?.finalCost
+    ? totalRevenue - partsTotal
+    : job?.estimatedCost || 0;
+
+  const balanceDue = totalRevenue - (job?.advancePaid || 0);
+
   const handleStatusChange = async (status: JobStatus) => {
     if (!job || !selectedShopId) return;
 
-    // 🛡️ READY CONFIRMATION: Ask user if they need to add parts
-    if (status === "READY") {
-      setIsReadyConfirmOpen(true);
-      return;
-    }
-    
-    // 🛡️ DELIVERED INTERCEPTION: Open Billing Modal
-    if (status === "DELIVERED") {
-        if (!job.invoices?.some(i => i.status !== "VOIDED")) {
-            setIsBillingModalOpen(true);
-            return;
-        }
-        // If invoice exists, allow marking delivered
-    }
-
-    // 🛡️ CANCEL CONFIRMATION: Ask user to confirm cancellation
+    // 🛡️ CANCEL CONFIRMATION
     if (status === "CANCELLED") {
       if (
         !confirm(
@@ -122,18 +127,22 @@ export default function JobCardDetailPage() {
       }
     }
 
-    // Delivery Guard logic continues...
+    // 🛡️ READY INTERCEPTION: Show confirmation first (which then opens billing)
+    if (status === "READY") {
+      setIsReadyConfirmOpen(true);
+      return;
+    }
+
+    // 🛑 DELIVERY GUARD: Ensure invoice exists
     if (status === "DELIVERED") {
       const validInvoice = job.invoices?.find((i) => i.status !== "VOIDED");
 
       if (!validInvoice) {
-        // Fallback if modal didn't trigger for some reason
         setIsBillingModalOpen(true);
         return;
       }
 
-      if (validInvoice.status === "DRAFT") {
-        // Auto-redirect to Invoice for completion
+      if (validInvoice.status === "UNPAID") {
         router.push(`/sales/${validInvoice.id}?shopId=${selectedShopId}`);
         return;
       }
@@ -274,19 +283,41 @@ export default function JobCardDetailPage() {
                     🛡️ Warranty Job
                   </button>
                 )}
+              {job.status !== "READY" &&
+                job.status !== "DELIVERED" &&
+                job.status !== "RETURNED" && (
+                  <button
+                    onClick={() => setIsReadyConfirmOpen(true)}
+                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold transition flex items-center gap-1.5 text-sm"
+                  >
+                    <span>✅</span> Mark Ready
+                  </button>
+                )}
+
               {job.status !== "DELIVERED" && job.status !== "RETURNED" && (
                 <select
                   value={job.status}
                   onChange={(e) =>
                     handleStatusChange(e.target.value as JobStatus)
                   }
-                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold cursor-pointer outline-none"
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg font-bold cursor-pointer outline-none transition"
                 >
                   <option value={job.status} disabled>
                     Change Status
                   </option>
-                  <option value="READY">Mark READY</option>
-                  <option value="DELIVERED">Mark DELIVERED & Bill</option>
+                  {[
+                    "RECEIVED",
+                    "ASSIGNED",
+                    "DIAGNOSING",
+                    "WAITING_APPROVAL",
+                    "APPROVED",
+                    "WAITING_FOR_PARTS",
+                    "IN_PROGRESS",
+                  ].map((s) => (
+                    <option key={s} value={s}>
+                      {s.replace(/_/g, " ")}
+                    </option>
+                  ))}
                   <option value="CANCELLED">CANCEL Job</option>
                 </select>
               )}
@@ -513,9 +544,15 @@ export default function JobCardDetailPage() {
 
             <div className="space-y-4 mb-6">
               <div className="flex justify-between items-center text-gray-600 dark:text-gray-400">
-                <span>Estimated Cost</span>
+                <span>Labor Cost</span>
                 <span className="font-semibold dark:text-gray-200">
-                  ₹{job.estimatedCost?.toFixed(2) || "0.00"}
+                  ₹{laborCost.toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-gray-600 dark:text-gray-400">
+                <span>Parts Total</span>
+                <span className="font-semibold dark:text-gray-200">
+                  ₹{partsTotal.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center text-teal-600 dark:text-teal-400">
@@ -528,10 +565,7 @@ export default function JobCardDetailPage() {
               <div className="flex justify-between items-center text-lg font-bold text-gray-900 dark:text-white">
                 <span>Balance Due</span>
                 <span>
-                  ₹
-                  {((job.estimatedCost || 0) - (job.advancePaid || 0)).toFixed(
-                    2,
-                  )}
+                  ₹{balanceDue.toFixed(2)}
                 </span>
               </div>
             </div>
@@ -570,24 +604,33 @@ export default function JobCardDetailPage() {
                 <div className="flex justify-between items-center text-gray-300">
                   <span>Total Revenue</span>
                   <span className="font-medium text-white">
-                    ₹{job.revenue?.toFixed(2) || "0.00"}
+                    ₹{totalRevenue.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-gray-300">
                   <span>Parts Cost</span>
                   <span className="font-medium text-red-200">
-                    - ₹{job.jobCost?.toFixed(2) || "0.00"}
+                    - ₹
+                    {(
+                      (job.parts?.reduce(
+                        (sum, p) => sum + (p.costPrice || 0) * p.quantity,
+                        0,
+                      ) || 0) / 100
+                    ).toFixed(2)}
                   </span>
                 </div>
                 <div className="h-px bg-white/20 my-2"></div>
                 <div className="flex justify-between items-center text-xl font-bold">
                   <span>Net Profit</span>
-                  <span
-                    className={
-                      job.profit >= 0 ? "text-green-400" : "text-red-400"
-                    }
-                  >
-                    ₹{job.profit?.toFixed(2)}
+                  <span className="text-green-400">
+                    ₹
+                    {(
+                      totalRevenue -
+                      ((job.parts?.reduce(
+                        (sum, p) => sum + (p.costPrice || 0) * p.quantity,
+                        0,
+                      ) || 0) / 100)
+                    ).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -635,11 +678,12 @@ export default function JobCardDetailPage() {
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               Before marking READY, do you need to add any spare parts to this
-              job?
+              job? You can also review and edit the labor charges in the next
+              step.
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-500 mb-6 italic">
-              Once READY, parts cannot be added. The invoice will be created
-              automatically.
+              Once the bill is generated, the job will be marked as READY or
+              DELIVERED.
             </p>
 
             <div className="flex gap-3">
@@ -653,10 +697,13 @@ export default function JobCardDetailPage() {
                 + Add Parts
               </button>
               <button
-                onClick={handleReadyConfirm}
+                onClick={() => {
+                  setIsReadyConfirmOpen(false);
+                  setIsBillingModalOpen(true);
+                }}
                 className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
               >
-                Continue to READY
+                Proceed to Billing
               </button>
               <button
                 onClick={() => setIsReadyConfirmOpen(false)}
@@ -779,22 +826,67 @@ function AddPartModal({
   const [createPurchaseEntry, setCreatePurchaseEntry] = useState(false);
   const [supplierName, setSupplierName] = useState("");
 
+  const qtyInputRef = useRef<HTMLInputElement>(null);
+
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Click outside listener
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   useEffect(() => {
     if (searchTerm.length > 1 && !createMode) {
-      listProducts(shopId).then((response) => {
-        // Handle paginated response
-        const all = Array.isArray(response) ? response : response.data;
-        // Filter out SERVICE products - only physical parts allowed
-        setProducts(
-          all.filter(
-            (p) =>
-              p.type !== ProductType.SERVICE &&
-              p.name.toLowerCase().includes(searchTerm.toLowerCase()),
-          ),
-        );
-      });
+      // 🛡️ Fetch stock levels separately for accurate display
+      Promise.all([listProducts(shopId), getStockLevels(shopId)]).then(
+        ([prodResponse, stockResponse]: [any, any]) => {
+          const allProds = Array.isArray(prodResponse)
+            ? prodResponse
+            : (prodResponse as any).data;
+          const allStock = Array.isArray(stockResponse)
+            ? stockResponse
+            : (stockResponse as any).data;
+
+          const stockMap = new Map(
+            (allStock as any[]).map((s) => [s.id, s.stockQty || 0]),
+          );
+
+          setProducts(
+            (allProds as any[])
+              .filter(
+                (p) =>
+                  p.type !== ProductType.SERVICE &&
+                  p.name.toLowerCase().includes(searchTerm.toLowerCase()),
+              )
+              .map((p) => ({
+                ...p,
+                stock: stockMap.get(p.id) || 0,
+              })),
+          );
+          setShowDropdown(true);
+        },
+      );
+    } else {
+      setShowDropdown(false);
     }
   }, [searchTerm, shopId, createMode]);
+
+  // UX: Focus quantity when product is selected
+  useEffect(() => {
+    if (selectedProduct || createMode) {
+      setTimeout(() => qtyInputRef.current?.focus(), 100);
+    }
+  }, [selectedProduct, createMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -834,14 +926,15 @@ function AddPartModal({
           await createPurchase({
             shopId,
             supplierName: supplierName,
-            invoiceNumber: `JOB-AUTO-${Date.now().toString().slice(-6)}`, // Random Invoice
-            paymentMethod: "CASH",
+            invoiceNumber: `JOB-AUTO-${Date.now().toString().slice(-6)}`,
+            paymentMethod: "CASH" as any,
+            status: "SUBMITTED" as any, // 🛡️ CRITICAL FIX: Mark as submitted to update stock
             items: [
               {
                 shopProductId: productId,
                 description: newProductName,
                 quantity: quantity,
-                purchasePrice: newCostPrice,
+                purchasePrice: newCostPrice, // Purchase API expects Rupees (it converts to Paisa)
               },
             ],
           });
@@ -921,11 +1014,12 @@ function AddPartModal({
                   )}
                 </div>
 
-                {/* Dropdown Results */}
-                {!selectedProduct &&
-                  searchTerm.length > 1 &&
-                  products.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  {/* Dropdown Results */}
+                  {showDropdown && products.length > 0 && (
+                    <div
+                      ref={dropdownRef}
+                      className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                    >
                       {products.map((product) => (
                         <div
                           key={product.id}
@@ -933,6 +1027,7 @@ function AddPartModal({
                           onClick={() => {
                             setSelectedProduct(product);
                             setSearchTerm(product.name);
+                            setShowDropdown(false);
                           }}
                         >
                           <div className="font-semibold dark:text-white">
@@ -1069,6 +1164,7 @@ function AddPartModal({
               Quantity
             </label>
             <input
+              ref={qtyInputRef}
               type="number"
               min="1"
               required

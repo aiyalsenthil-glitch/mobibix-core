@@ -356,6 +356,14 @@ export class TenantService {
       },
     });
 
+    // DEBUG LOGS
+    console.log('----- TENANT USAGE DEBUG -----');
+    console.log('Tenant:', tenantId);
+    console.log('Plan Code:', plan.code);
+    console.log('Plan maxShops (DB):', plan.maxShops);
+    console.log('Rules maxShops (Aggregated):', rules?.maxShops);
+    console.log('------------------------------');
+
     // 7️⃣ Final response
     return {
       hasTenant: true,
@@ -375,6 +383,7 @@ export class TenantService {
         memberLimit: rules?.maxMembers ?? null,
         staffAllowed: (rules?.maxStaff ?? 0) !== 0,
         maxStaff: rules?.maxStaff ?? null,
+        maxShops: rules?.maxShops ?? null,
         whatsappAllowed:
           (rules?.whatsapp?.messageQuota || 0) > 0,
       },

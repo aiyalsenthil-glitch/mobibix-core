@@ -445,7 +445,7 @@ export default function ProductsPage() {
                       <td
                         className={`px-6 py-4 ${theme === "dark" ? "text-white" : "text-gray-900"} font-semibold`}
                       >
-                        ₹{product.salePrice?.toFixed(2) || "0.00"}
+                        ₹{(product.salePrice / 100).toFixed(2) || "0.00"}
                       </td>
                       {/* Cost Status Column */}
                       <td className="px-6 py-4">

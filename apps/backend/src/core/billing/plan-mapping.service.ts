@@ -24,6 +24,7 @@ export interface PublicPlan {
   displayName: string;
   level: number;
   isAddon: boolean; // Changed to boolean
+  maxShops?: number | null;
 }
 
 export interface PublicAddon {
@@ -121,18 +122,21 @@ export class PlanMappingService {
         displayName: 'Trial',
         level: 0,
         isAddon: false,
+        maxShops: 1,
       },
       {
         name: 'STANDARD',
         displayName: 'Standard',
         level: 1,
         isAddon: false,
+        maxShops: 1,
       },
       {
         name: 'PRO',
         displayName: 'Pro',
         level: 2,
         isAddon: false,
+        maxShops: null,
       },
     ];
   }

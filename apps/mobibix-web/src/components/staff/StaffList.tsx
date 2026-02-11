@@ -39,7 +39,7 @@ export function StaffList() {
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center text-stone-400">Loading staff list...</div>;
+    return <div className="p-8 text-center text-gray-500 dark:text-stone-400">Loading staff list...</div>;
   }
 
   return (
@@ -47,8 +47,8 @@ export function StaffList() {
       {/* Header Action */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold text-white">Staff Management</h3>
-          <p className="text-sm text-stone-400">Manage access to your shop.</p>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Staff Management</h3>
+          <p className="text-sm text-gray-500 dark:text-stone-400">Manage access to your shop.</p>
         </div>
         <button
           onClick={() => setIsInviteModalOpen(true)}
@@ -59,20 +59,20 @@ export function StaffList() {
       </div>
 
       {error && (
-        <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-lg">
+        <div className="bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/50 text-red-600 dark:text-red-300 px-4 py-3 rounded-lg">
           {error}
         </div>
       )}
 
       {/* Staff List */}
-      <div className="bg-stone-900/50 border border-white/5 rounded-xl overflow-hidden">
+      <div className="bg-white dark:bg-stone-900/50 border border-gray-200 dark:border-white/5 rounded-xl overflow-hidden shadow-sm">
         {staffList.length === 0 ? (
-          <div className="p-8 text-center text-stone-500">
+          <div className="p-8 text-center text-gray-500 dark:text-stone-500">
             No staff members found. Invite someone to get started.
           </div>
         ) : (
           <table className="w-full text-left">
-            <thead className="bg-white/5 text-stone-400 text-sm uppercase">
+            <thead className="bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-stone-400 text-sm uppercase">
               <tr>
                 <th className="px-6 py-3 font-medium">Name / Email</th>
                 <th className="px-6 py-3 font-medium">Role</th>
@@ -81,19 +81,19 @@ export function StaffList() {
                 <th className="px-6 py-3 font-medium text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-gray-100 dark:divide-white/5">
               {staffList.map((staff) => (
-                <tr key={staff.id} className="hover:bg-white/5 transition">
+                <tr key={staff.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition">
                   <td className="px-6 py-4">
-                    <div className="text-white font-medium">{staff.name || "Unknown"}</div>
-                    <div className="text-sm text-stone-500">{staff.email}</div>
+                    <div className="text-gray-900 dark:text-white font-medium">{staff.name || "Unknown"}</div>
+                    <div className="text-sm text-gray-500 dark:text-stone-500">{staff.email}</div>
                   </td>
                   <td className="px-6 py-4">
                     <span
                       className={`px-2 py-1 text-xs rounded-full font-medium ${
                         staff.role === "OWNER"
-                          ? "bg-purple-500/20 text-purple-300"
-                          : "bg-blue-500/20 text-blue-300"
+                          ? "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300"
+                          : "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300"
                       }`}
                     >
                       {staff.role}
@@ -103,21 +103,21 @@ export function StaffList() {
                     <span
                       className={`px-2 py-1 text-xs rounded-full font-medium ${
                         staff.status === "ACTIVE"
-                          ? "bg-emerald-500/20 text-emerald-300"
-                          : "bg-amber-500/20 text-amber-300"
+                          ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                          : "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300"
                       }`}
                     >
                       {staff.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-stone-400 text-sm">
+                  <td className="px-6 py-4 text-gray-500 dark:text-stone-400 text-sm">
                     {new Date(staff.joinDate).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-right">
                     {staff.role !== "OWNER" && (
                       <button
                         onClick={() => handleRemove(staff.id, staff.status)}
-                        className="text-stone-500 hover:text-red-400 transition"
+                        className="text-gray-500 dark:text-stone-500 hover:text-red-500 dark:hover:text-red-400 transition"
                         title={staff.status === "INVITED" ? "Revoke Invite" : "Remove Staff"}
                       >
                         {staff.status === "INVITED" ? "Revoke" : "Remove"}

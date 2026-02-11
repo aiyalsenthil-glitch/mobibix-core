@@ -114,7 +114,7 @@ export function InvoiceItemModal({
   const handleSelectProduct = (product: ShopProduct) => {
     setSelectedProduct(product);
     setSearch(product.name);
-    setRate(product.salePrice);
+    setRate(product.salePrice / 100);
     setGstRate(gstEnabled ? product.gstRate || 18 : 0);
     setShowDropdown(false);
   };
