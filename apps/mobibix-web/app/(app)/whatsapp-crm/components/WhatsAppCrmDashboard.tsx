@@ -1,21 +1,25 @@
 import { useState } from "react";
 import WhatsAppRetailInbox from "./WhatsAppRetailInbox";
-import WhatsAppPreviewBanner from "./WhatsAppPreviewBanner";
+import WhatsAppPremiumPromoBanner from "../../whatsapp/components/WhatsAppPremiumPromoBanner";
+import WhatsAppSettingsModal from "./WhatsAppSettingsModal";
 
 type WhatsAppCrmDashboardProps = {
   hasPhoneNumber: boolean;
   moduleType?: string; // ✅ Added
   whatsappAllowed?: boolean;
+  hasAddon?: boolean;
 };
 
 export default function WhatsAppCrmDashboard({
   hasPhoneNumber,
   moduleType,
   whatsappAllowed = true, // Default to true for backward compatibility if not passed
+  hasAddon = false,
 }: WhatsAppCrmDashboardProps) {
   const isRetailDemo = moduleType === 'MOBILE_SHOP';
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleConnect = async () => {
     try {
@@ -70,11 +74,24 @@ export default function WhatsAppCrmDashboard({
             {connectError && (
               <p className="mt-4 text-sm text-red-500 font-medium">{connectError}</p>
             )}
+            
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="mt-6 text-sm text-gray-500 font-bold hover:text-teal-600 transition-colors uppercase tracking-wider"
+            >
+              Advanced: Manual Sync
+            </button>
           </div>
 
           <p className="text-sm text-gray-500">
              Need help? <a href="mailto:support@mobibix.com" className="text-teal-600 font-semibold hover:underline">Contact Setup Team</a>
           </p>
+
+          <WhatsAppSettingsModal 
+            isOpen={isSettingsOpen} 
+            onClose={() => setIsSettingsOpen(false)}
+            onStatusChange={() => window.location.reload()}
+          />
         </div>
       </div>
     );
@@ -91,23 +108,35 @@ export default function WhatsAppCrmDashboard({
                Retail conversations & leads
              </p>
           </div>
-          {isRetailDemo && (
-             <div className="flex items-center gap-2">
-                <span className="flex h-2 w-2 relative">
-                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                   <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                </span>
-                <span className="inline-flex items-center px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-100 shadow-sm">
-                  Retail Demo Active
-                </span>
-             </div>
-          )}
+          <div className="flex items-center gap-4">
+            {isRetailDemo && (
+               <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 relative">
+                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                     <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-100 shadow-sm">
+                    Retail Demo Active
+                  </span>
+               </div>
+            )}
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 text-gray-400 hover:text-gray-900 transition-colors bg-gray-50 rounded-lg hover:bg-gray-100 border border-gray-100"
+              title="Settings"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Dashboard Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {!whatsappAllowed && <WhatsAppPreviewBanner />}
+        {!hasAddon && <WhatsAppPremiumPromoBanner />}
 
         {/* Stats Grid */}
         <div className={`grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 ${!whatsappAllowed ? 'opacity-75' : ''}`}>
@@ -202,6 +231,12 @@ export default function WhatsAppCrmDashboard({
           </div>
         )}
       </div>
+      
+      <WhatsAppSettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)}
+        onStatusChange={() => window.location.reload()}
+      />
     </div>
   );
 }

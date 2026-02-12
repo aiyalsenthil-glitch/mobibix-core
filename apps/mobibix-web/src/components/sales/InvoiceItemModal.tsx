@@ -245,15 +245,15 @@ export function InvoiceItemModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white dark:bg-stone-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="p-6 border-b border-slate-100 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-white/5">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white">
             {createMode ? "Create Item" : "Add Item"}
           </h3>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors"
           >
             ✕
           </button>
@@ -274,7 +274,7 @@ export function InvoiceItemModal({
                 <div className="relative">
                   <input
                     type="text"
-                    className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none"
+                    className="w-full px-4 py-2 border border-slate-200 dark:border-white/10 rounded-lg bg-slate-50 dark:bg-black/20 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none"
                     placeholder="Search product..."
                     value={search}
                     onChange={(e) => {

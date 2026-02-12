@@ -31,6 +31,20 @@ export interface WhatsAppDashboard {
   };
 }
 
+export interface WhatsAppStatus {
+  status: "ACTIVE" | "PENDING" | "FAILED" | "DISCONNECTED";
+  wabaId: string | null;
+  phoneNumberId: string | null;
+  phoneNumber: string | null;
+}
+
+export interface ManualSyncRequest {
+  wabaId: string;
+  phoneNumberId: string;
+  accessToken: string;
+  phoneNumber: string;
+}
+
 export interface SendWhatsAppMessageRequest {
   phone: string;
   templateId?: string;
@@ -146,6 +160,36 @@ export async function scheduleWhatsAppCampaign(
   return response.json();
 }
 
+
+export async function getWhatsAppStatus(): Promise<WhatsAppStatus> {
+  const response = await authenticatedFetch("/integrations/whatsapp/status");
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch WhatsApp status");
+  }
+  return response.json();
+}
+
+export async function manualSyncWhatsApp(data: ManualSyncRequest): Promise<void> {
+  const response = await authenticatedFetch("/integrations/whatsapp/manual-sync", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to perform manual sync");
+  }
+}
+
+export async function disconnectWhatsApp(): Promise<void> {
+  const response = await authenticatedFetch("/integrations/whatsapp/disconnect", {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to disconnect WhatsApp");
+  }
+}
 
 export async function connectWhatsApp(): Promise<{ url: string }> {
   const response = await authenticatedFetch("/integrations/whatsapp/connect");

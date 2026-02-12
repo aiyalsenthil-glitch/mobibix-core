@@ -11,12 +11,36 @@ export class WhatsAppCrmService {
   ) {}
 
   async getStatus(tenantId: string) {
-    // Check subscription
-    const subscription =
-      await this.subscriptionsService.getCurrentActiveSubscription(
+    // 1. Check for standalone WhatsApp CRM subscription
+    let subscription = await this.subscriptionsService.getCurrentActiveSubscription(
+      tenantId,
+      ModuleType.WHATSAPP_CRM,
+    );
+
+    // 2. If not found, check if primary subscription has WhatsApp addon
+    if (!subscription) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { tenantType: true },
+      });
+      const type = tenant?.tenantType?.toUpperCase();
+      const primaryModule = (type === 'BUSINESS' || type === 'MOBILE_SHOP') ? ModuleType.MOBILE_SHOP : ModuleType.GYM;
+      
+      const primarySub = await this.subscriptionsService.getCurrentActiveSubscription(
         tenantId,
-        ModuleType.WHATSAPP_CRM,
+        primaryModule,
       );
+
+      // Check if primary sub has a WhatsApp CRM addon
+      if (primarySub?.addons) {
+        const whatsappAddon = primarySub.addons.find(
+          a => a.addonPlan.module === ModuleType.WHATSAPP_CRM && a.status === 'ACTIVE'
+        );
+        if (whatsappAddon) {
+          subscription = primarySub; // Treat as having access
+        }
+      }
+    }
 
     const hasSubscription = !!subscription;
 
@@ -41,6 +65,7 @@ export class WhatsAppCrmService {
       hasPhoneNumber: !!activeNumber,
       moduleType: tenant?.tenantType?.toUpperCase(),
       canPreview: !hasSubscription,
+      whatsappAllowed: hasSubscription,
     };
   }
 }

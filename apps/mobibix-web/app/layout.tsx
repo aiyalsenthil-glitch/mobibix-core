@@ -2,6 +2,7 @@ import "./globals.css";
 import { Playfair_Display } from "next/font/google";
 import { Geist } from "next/font/google";
 import { Providers } from "./providers";
+import FacebookSDK from "../components/FacebookSDK";
 
 export const metadata = {
   title: "MobiBix – Digital Retail Platform",
@@ -24,7 +25,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased bg-background text-foreground transition-colors duration-200">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <FacebookSDK />
+        </Providers>
       </body>
     </html>
   );

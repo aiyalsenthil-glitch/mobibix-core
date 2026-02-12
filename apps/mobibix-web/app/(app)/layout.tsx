@@ -43,8 +43,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!isReady) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-white">Checking access...</p>
+      <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+        <p className="mt-4 text-slate-600 dark:text-slate-400 font-medium">Verifying access...</p>
       </div>
     );
   }

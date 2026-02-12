@@ -48,7 +48,7 @@ if (isFirebaseConfigured) {
     const { getStorage } = await import("REMOVED_AUTH_PROVIDER/storage");
     storage = getStorage(app);
 
-    console.log("Firebase initialized successfully");
+    // console.log("Firebase initialized successfully");
   } catch (error) {
     console.warn("Failed to initialize Firebase:", error);
   }

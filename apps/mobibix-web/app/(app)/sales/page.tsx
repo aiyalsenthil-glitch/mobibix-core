@@ -118,12 +118,14 @@ export default function SalesPage() {
       const token = getAccessToken();
       if (token) {
         const claims = decodeAccessToken(token);
-        console.log("🔍 JWT Token Claims:", {
-          userId: claims.sub,
-          tenantId: claims.tenantId,
-          role: claims.role,
-        });
-        console.log("📦 Selected Shop ID:", selectedShopId);
+      if (token) {
+        const claims = decodeAccessToken(token);
+        // console.log("🔍 JWT Token Claims:", {
+        //   userId: claims.sub,
+        //   tenantId: claims.tenantId,
+        //   role: claims.role,
+        // });
+        // console.log("📦 Selected Shop ID:", selectedShopId);
 
         if (!claims.tenantId) {
           throw new Error(

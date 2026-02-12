@@ -105,13 +105,17 @@ export class MobileShopCrmController {
   async getCustomerTimeline(
     @Request() req,
     @Param('customerId') customerId: string,
-    @Query('source') source?: string,
+    @Query('sources') sources?: string,
   ) {
     const headers = this.crmIntegration.buildAuthHeaders(
       req.headers.authorization?.replace('Bearer ', '') || '',
     );
 
-    return this.crmIntegration.getCustomerTimeline(headers, customerId, source);
+    return this.crmIntegration.getCustomerTimeline(
+      headers,
+      customerId,
+      sources,
+    );
   }
 
   /**

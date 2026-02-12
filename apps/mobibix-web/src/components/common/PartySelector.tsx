@@ -108,7 +108,7 @@ export function PartySelector({
   return (
     <div className={cn("relative", className)} ref={dropdownRef}>
       <div
-        className="flex items-center justify-between w-full px-3 py-2 text-sm bg-white dark:bg-gray-900 border rounded-md cursor-text hover:border-gray-400 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent"
+        className="flex items-center justify-between w-full px-3 py-2 text-sm bg-white dark:bg-stone-900 border border-slate-200 dark:border-white/10 rounded-md cursor-text hover:border-slate-400 dark:hover:border-white/20 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent transition-colors"
         onClick={() => setOpen(true)}
       >
         {selectedParty && !open ? (
@@ -137,14 +137,14 @@ export function PartySelector({
       </div>
 
       {open && (query.length > 0 || results.length > 0) && (
-        <div className="absolute z-50 w-full mt-1 overflow-hidden bg-white dark:bg-gray-800 border rounded-md shadow-md animate-in fade-in-0 zoom-in-95">
+        <div className="absolute z-50 w-full mt-1 overflow-hidden bg-white dark:bg-stone-900 border border-slate-200 dark:border-white/10 rounded-md shadow-md animate-in fade-in-0 zoom-in-95">
           <div className="max-h-[300px] overflow-y-auto p-1">
             {loading ? (
-              <div className="px-2 py-4 text-sm text-center text-muted-foreground">
+              <div className="px-2 py-4 text-sm text-center text-slate-500 dark:text-slate-400">
                 Loading...
               </div>
             ) : results.length === 0 ? (
-              <div className="px-2 py-4 text-sm text-center text-muted-foreground">
+              <div className="px-2 py-4 text-sm text-center text-slate-500 dark:text-slate-400">
                 No results found.
                 {onCreateNew && (
                   <button
@@ -153,7 +153,7 @@ export function PartySelector({
                       onCreateNew();
                       setOpen(false);
                     }}
-                    className="mt-2 text-teal-600 hover:underline font-medium block w-full"
+                    className="mt-2 text-teal-600 hover:text-teal-700 hover:underline font-medium block w-full transition-colors"
                   >
                     + Create New
                   </button>
@@ -164,26 +164,26 @@ export function PartySelector({
                 <div
                   key={party.id}
                   className={cn(
-                    "relative flex items-center w-full px-2 py-2 text-sm rounded-sm cursor-pointer select-none hover:bg-teal-50 dark:hover:bg-teal-900/20",
+                    "relative flex items-center w-full px-2 py-2 text-sm rounded-sm cursor-pointer select-none hover:bg-teal-50 dark:hover:bg-white/5 transition-colors",
                     selectedParty?.id === party.id &&
-                      "bg-teal-50 dark:bg-teal-900/20",
+                      "bg-teal-50 dark:bg-white/5",
                   )}
                   onClick={() => handleSelect(party)}
                 >
                   <div className="flex flex-col flex-1 gap-0.5">
                     <div className="flex items-center gap-2">
-                        <span className="font-medium">{party.name}</span>
+                        <span className="font-medium text-slate-900 dark:text-white">{party.name}</span>
                         {/* Role Badge */}
                         <span className={cn(
                             "text-[10px] px-1.5 py-0.5 rounded border font-mono uppercase",
-                            party.partyType === 'BOTH' ? "bg-purple-50 text-purple-600 border-purple-200" :
-                            party.partyType === 'CUSTOMER' ? "bg-blue-50 text-blue-600 border-blue-200" :
-                            "bg-orange-50 text-orange-600 border-orange-200"
+                            party.partyType === 'BOTH' ? "bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/30" :
+                            party.partyType === 'CUSTOMER' ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30" :
+                            "bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/30"
                         )}>
                             {party.partyType}
                         </span>
                     </div>
-                    <div className="flex items-center text-xs text-muted-foreground gap-2">
+                    <div className="flex items-center text-xs text-slate-500 dark:text-slate-400 gap-2">
                       <span className="flex items-center gap-1">
                         <Phone className="w-3 h-3" /> {party.phone}
                       </span>
@@ -207,12 +207,12 @@ export function PartySelector({
       {/* Upgrade Confirmation Modal */}
       {showUpgradeConfirm && pendingParty && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-2xl max-w-sm w-full mx-4 border border-teal-100 dark:border-gray-700 transform transition-all scale-100">
+          <div className="bg-white dark:bg-stone-900 p-6 rounded-xl shadow-2xl max-w-sm w-full mx-4 border border-slate-200 dark:border-white/10 transform transition-all scale-100">
             <div className="flex flex-col items-center text-center">
-              <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900/30 rounded-full flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-teal-50 dark:bg-teal-900/30 rounded-full flex items-center justify-center mb-4">
                 <User className="w-6 h-6 text-teal-600 dark:text-teal-400" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
                 {type === "CUSTOMER"
                   ? "Enable Customer Access?"
                   : "Enable Supplier Access?"}

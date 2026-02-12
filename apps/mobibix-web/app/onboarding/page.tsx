@@ -61,8 +61,10 @@ export default function OnboardingPage() {
 
       // Debug: Log the token payload
       const decoded = decodeAccessToken(token);
-      console.log("Token payload:", decoded);
-      console.log("User ID (sub):", decoded.sub);
+      // Debug: Log the token payload
+      const decoded = decodeAccessToken(token);
+      // console.log("Token payload:", decoded);
+      // console.log("User ID (sub):", decoded.sub);
 
       const response = await createTenant({
         name: businessName,

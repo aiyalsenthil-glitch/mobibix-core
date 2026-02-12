@@ -19,13 +19,12 @@ export class WhatsAppCrmSubscriptionGuard implements CanActivate {
       throw new ForbiddenException('TENANT_REQUIRED');
     }
 
-    const subscription =
-      await this.subscriptionsService.getCurrentActiveSubscription(
-        tenantId,
-        ModuleType.WHATSAPP_CRM,
-      );
+    const hasAccess = await this.subscriptionsService.hasModuleAccess(
+      tenantId,
+      ModuleType.WHATSAPP_CRM,
+    );
 
-    if (!subscription) {
+    if (!hasAccess) {
       throw new ForbiddenException('WHATSAPP_CRM_SUBSCRIPTION_REQUIRED');
     }
 

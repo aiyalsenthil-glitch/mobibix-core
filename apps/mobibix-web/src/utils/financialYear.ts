@@ -106,6 +106,6 @@ if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
   });
 
   if (allPassed) {
-    console.log("✅ All financial year tests passed");
+    // console.log("✅ All financial year tests passed");
   }
 }

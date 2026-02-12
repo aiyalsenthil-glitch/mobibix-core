@@ -43,10 +43,8 @@ import { getTenantUsage, type TenantUsageResponse } from "@/services/tenant.api"
     }, []);
 
     // Calculate Limits
-    console.log('--- SHOPS PAGE DEBUG ---');
-    console.log('Plan:', usage?.plan);
-    console.log('Max Shops (Raw):', usage?.plan?.maxShops);
-    console.log('------------------------');
+    // Calculate Limits
+    // console.log('--- SHOPS PAGE DEBUG ---');
 
     const rawMaxShops = usage?.plan?.maxShops;
     const maxShops = rawMaxShops === undefined ? 1 : rawMaxShops;

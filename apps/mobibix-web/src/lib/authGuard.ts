@@ -8,19 +8,26 @@ import {
 } from "@/services/auth.api";
 
 export function authGuard(router: ReturnType<typeof useRouter>): boolean {
+  if (typeof window === "undefined") return true; // Server-side check pass
+
   const token = getAccessToken();
 
   if (!token || !isAuthenticated()) {
-    router.replace("/signin");
+    // Prevent redirect loop if already on signin
+    if (window.location.pathname !== "/signin" && window.location.pathname !== "/signup") {
+      router.replace("/signin");
+    }
     return false;
   }
 
   const claims = decodeAccessToken(token) || {};
   const hasTenant =
-    !!claims.tenantId || !!(claims.tenants && claims.tenants.length);
+    !!claims.tenantId || (claims.tenants && claims.tenants.length > 0);
 
   if (!hasTenant) {
-    router.replace("/onboarding");
+    if (window.location.pathname !== "/onboarding" && window.location.pathname !== "/select-tenant") {
+      router.replace("/onboarding");
+    }
     return false;
   }
 

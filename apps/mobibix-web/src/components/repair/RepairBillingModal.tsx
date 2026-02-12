@@ -101,21 +101,21 @@ export function RepairBillingModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-stone-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit} className="p-6">
-          <h2 className="text-xl font-bold mb-6 dark:text-white">Generate Repair Bill</h2>
+          <h2 className="text-xl font-bold mb-6 text-slate-900 dark:text-white">Generate Repair Bill</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             {/* Billing Handling */}
             <div className="space-y-4">
-                <h3 className="font-semibold text-gray-700 dark:text-gray-300 border-b pb-2">Billing Details</h3>
+                <h3 className="font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-white/10 pb-2">Billing Details</h3>
                 
                 <div>
-                    <label className="block text-sm font-medium mb-1 dark:text-gray-400">Billing Mode</label>
+                    <label className="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Billing Mode</label>
                     <select 
                         value={billingMode}
                         onChange={(e) => setBillingMode(e.target.value as any)}
-                        className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                        className="w-full p-2 border border-slate-200 dark:border-white/10 rounded bg-white dark:bg-black/20 text-slate-900 dark:text-white"
                     >
                         <option value="WITHOUT_GST">Estimate / Non-GST</option>
                         <option value="WITH_GST">Tax Invoice (GST)</option>
@@ -123,11 +123,11 @@ export function RepairBillingModal({
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium mb-1 dark:text-gray-400">Payment Mode</label>
+                    <label className="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Payment Mode</label>
                     <select 
                         value={paymentMode}
                         onChange={(e) => setPaymentMode(e.target.value)}
-                        className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                        className="w-full p-2 border border-slate-200 dark:border-white/10 rounded bg-white dark:bg-black/20 text-slate-900 dark:text-white"
                     >
                         <option value="CASH">Cash</option>
                         <option value="UPI">UPI</option>
@@ -142,13 +142,13 @@ export function RepairBillingModal({
                             type="checkbox"
                             checked={deliverImmediately}
                             onChange={(e) => setDeliverImmediately(e.target.checked)}
-                            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                         />
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 transition-colors">
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-teal-600 transition-colors">
                             Deliver job immediately
                         </span>
                     </label>
-                    <p className="text-[10px] text-gray-500 mt-1">
+                    <p className="text-[10px] text-slate-500 mt-1">
                         If checked, status will be <strong>DELIVERED</strong>. Otherwise <strong>READY</strong>.
                     </p>
                 </div>
@@ -156,7 +156,7 @@ export function RepairBillingModal({
 
             {/* Service Charges */}
             <div className="space-y-4">
-                <h3 className="font-semibold text-gray-700 dark:text-gray-300 border-b pb-2">Labor / Service</h3>
+                <h3 className="font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-white/10 pb-2">Labor / Service</h3>
                 
                 <div>
                     <label className="block text-sm font-medium mb-1 dark:text-gray-400">Description</label>

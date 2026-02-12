@@ -138,11 +138,11 @@ export class CrmIntegrationService {
   async getCustomerTimeline(
     headers: Record<string, string>,
     customerId: string,
-    source?: string,
+    sources?: string,
   ) {
     try {
       const params: Record<string, string> = {};
-      if (source) params.source = source;
+      if (sources) params.sources = sources;
 
       const response = await firstValueFrom(
         this.http.get(`/api/core/customer-timeline/${customerId}`, {

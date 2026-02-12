@@ -1,4 +1,5 @@
 import { WhatsAppDashboard, WhatsAppLog } from "@/services/whatsapp.api";
+import WhatsAppPremiumPromoBanner from "./WhatsAppPremiumPromoBanner";
 
 type WhatsAppDashboardViewProps = {
   dashboard: WhatsAppDashboard;
@@ -15,6 +16,7 @@ type WhatsAppDashboardViewProps = {
   onSend: () => void;
   onCreateCampaign: () => void;
   onRefresh: () => void;
+  hasAddon?: boolean;
 };
 
 export default function WhatsAppDashboardView({
@@ -32,9 +34,11 @@ export default function WhatsAppDashboardView({
   onSend,
   onCreateCampaign,
   onRefresh,
+  hasAddon = false,
 }: WhatsAppDashboardViewProps) {
   return (
     <div className="space-y-8">
+      {!hasAddon && <WhatsAppPremiumPromoBanner />}
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold">WhatsApp Dashboard</h1>
         <p className="text-muted-foreground">
@@ -46,7 +50,7 @@ export default function WhatsAppDashboardView({
         <div className="rounded-xl border bg-card p-4 shadow-sm">
           <p className="text-xs uppercase text-muted-foreground">Sent Today</p>
           <p className="text-2xl font-semibold">
-            {dashboard.messagesSentToday}
+            {dashboard.whatsappNumberStatus === 'CONNECTED' ? dashboard.messagesSentToday : 0}
           </p>
         </div>
         <div className="rounded-xl border bg-card p-4 shadow-sm">
@@ -80,10 +84,39 @@ export default function WhatsAppDashboardView({
             <p className="text-xs uppercase text-muted-foreground">
               WhatsApp Status
             </p>
-            <p className="text-sm font-semibold">
-              {dashboard.whatsappNumberStatus}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className={`text-sm font-bold ${dashboard.whatsappNumberStatus === 'CONNECTED' ? 'text-emerald-600' : 'text-amber-500'}`}>
+                {dashboard.whatsappNumberStatus || 'DISCONNECTED'}
+              </p>
+              {dashboard.whatsappNumberStatus !== 'CONNECTED' && (
+                 <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                 </span>
+              )}
+            </div>
           </div>
+          {dashboard.whatsappNumberStatus !== 'CONNECTED' && (
+            <div className="pt-2">
+                <button 
+                  onClick={async () => {
+                    try {
+                      const { connectWhatsApp } = await import("@/services/whatsapp.api");
+                      const { url } = await connectWhatsApp();
+                      window.location.href = url;
+                    } catch (err: any) {
+                      alert(err.message || "Failed to initiate connection");
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 bg-[#1877F2] hover:bg-[#166fe5] text-white px-4 py-2 rounded-lg text-xs font-bold transition-transform active:scale-95 shadow-sm"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.791-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  Connect Facebook
+                </button>
+            </div>
+          )}
           <div>
             <p className="text-xs uppercase text-muted-foreground">
               Active Campaigns

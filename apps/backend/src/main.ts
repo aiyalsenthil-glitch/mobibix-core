@@ -74,6 +74,7 @@ async function bootstrap() {
         'https://www.mobibix.in',
         'https://gym-saas-cxg5.onrender.com',
         'http://10.0.2.2:3000',
+        'https://marlen-unarmed-subcentrally.ngrok-free.dev',
       ],
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],

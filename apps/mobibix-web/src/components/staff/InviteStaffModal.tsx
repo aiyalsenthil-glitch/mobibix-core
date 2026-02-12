@@ -39,55 +39,55 @@ export function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteStaffModa
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-stone-900 border border-white/10 rounded-xl w-full max-w-md p-6 shadow-2xl">
-        <h2 className="text-xl font-bold text-white mb-2">Invite Staff</h2>
-        <p className="text-stone-400 text-sm mb-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white dark:bg-stone-900 border border-slate-200 dark:border-white/10 rounded-xl w-full max-w-md p-6 shadow-2xl">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Invite Staff</h2>
+        <p className="text-slate-500 dark:text-stone-400 text-sm mb-6">
           Send an invitation email to add a new staff member.
         </p>
 
         {error && (
-          <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-lg mb-4 text-sm">
+          <div className="bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/50 text-red-600 dark:text-red-300 px-4 py-3 rounded-lg mb-4 text-sm">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-stone-400 mb-1">
-              Email Address <span className="text-red-400">*</span>
+            <label className="block text-sm text-slate-600 dark:text-stone-400 mb-1">
+              Email Address <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500"
+              className="w-full px-4 py-2 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-teal-500"
               placeholder="colleague@example.com"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-stone-400 mb-1">
-              Full Name <span className="text-red-400">*</span>
+            <label className="block text-sm text-slate-600 dark:text-stone-400 mb-1">
+              Full Name <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500"
+              className="w-full px-4 py-2 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-teal-500"
               placeholder="John Doe"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-stone-400 mb-1">Phone Number</label>
+            <label className="block text-sm text-slate-600 dark:text-stone-400 mb-1">Phone Number</label>
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white focus:border-teal-500"
+              className="w-full px-4 py-2 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-teal-500"
               placeholder="+91 98765 43210"
             />
           </div>
@@ -96,7 +96,7 @@ export function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteStaffModa
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-stone-400 hover:text-white transition"
+              className="px-4 py-2 text-slate-500 dark:text-stone-400 hover:text-slate-800 dark:hover:text-white transition"
             >
               Cancel
             </button>

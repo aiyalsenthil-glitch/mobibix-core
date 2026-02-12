@@ -26,7 +26,8 @@ export default function WhatsAppCrmPage() {
     const statusParam = searchParams.get("status");
     if (statusParam === "success") {
        // Optional: Show a toast or message
-       console.log("WhatsApp connected successfully!");
+       // Optional: Show a toast or message
+       // console.log("WhatsApp connected successfully!");
     } else if (statusParam === "error") {
        setError(searchParams.get("message") || "Connection failed");
     }
@@ -113,5 +114,6 @@ export default function WhatsAppCrmPage() {
     hasPhoneNumber={status.hasPhoneNumber} 
     moduleType={status.moduleType} 
     whatsappAllowed={status.whatsappAllowed} 
+    hasAddon={status.hasSubscription}
   />;
 }

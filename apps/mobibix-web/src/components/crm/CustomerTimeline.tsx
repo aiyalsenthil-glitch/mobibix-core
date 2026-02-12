@@ -67,8 +67,8 @@ export function CustomerTimeline({
           />
           <FilterButton
             label="Follow-ups"
-            active={selectedSource === "CRM"}
-            onClick={() => setSelectedSource("CRM")}
+            active={selectedSource === "FOLLOW_UP"}
+            onClick={() => setSelectedSource("FOLLOW_UP")}
           />
           <FilterButton
             label="WhatsApp"

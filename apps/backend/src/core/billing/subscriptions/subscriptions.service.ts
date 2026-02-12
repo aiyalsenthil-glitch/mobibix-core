@@ -228,6 +228,9 @@ export class SubscriptionsService {
       );
     }
 
+    // ⚡ Invalidate cache
+    this.cacheService.delete(`subscription:${tenantId}:${module}`);
+
     return subscription;
   }
 
@@ -301,6 +304,9 @@ export class SubscriptionsService {
         `${subscription.plan.name} → ${newPlan.name} (immediate). ` +
         `Next renewal will use ₹${nextPrice.price / 100} price.`,
     );
+
+    // ⚡ Invalidate cache
+    this.cacheService.delete(`subscription:${subscription.tenantId}:${subscription.module}`);
 
     return upgraded;
   }
@@ -389,6 +395,9 @@ export class SubscriptionsService {
         `${subscription.plan.name} → ${newPlan.name} at next renewal. ` +
         `(Scheduled price: ₹${nextPrice.price / 100})`,
     );
+
+    // ⚡ Invalidate cache
+    this.cacheService.delete(`subscription:${subscription.tenantId}:${subscription.module}`);
 
     return scheduled;
   }
@@ -482,6 +491,9 @@ export class SubscriptionsService {
         `@ ${nextBillingCycle} (₹${nextPriceSnapshot / 100})`,
     );
 
+    // ⚡ Invalidate cache
+    this.cacheService.delete(`subscription:${current.tenantId}:${current.module}`);
+
     return renewed;
   }
 
@@ -522,7 +534,7 @@ export class SubscriptionsService {
     );
 
     // 4. Upsert addon record
-    return this.prisma.subscriptionAddon.upsert({
+    const addon = await this.prisma.subscriptionAddon.upsert({
       where: {
         subscriptionId_addonPlanId: {
           subscriptionId,
@@ -545,6 +557,11 @@ export class SubscriptionsService {
         autoRenew: autoRenew ?? true,
       },
     });
+
+    // ⚡ Invalidate cache
+    this.cacheService.delete(`subscription:${parentSub!.tenantId}:${parentSub!.module}`);
+
+    return addon;
   }
 
 
@@ -616,6 +633,41 @@ export class SubscriptionsService {
     }
 
     return null;
+  }
+
+  /**
+   * Check if tenant has access to a specific module
+   * Checks:
+   * 1. Primary subscription for this module
+   * 2. Active add-on for this module in ANY active subscription
+   */
+  async hasModuleAccess(
+    tenantId: string,
+    module: ModuleType,
+  ): Promise<boolean> {
+    // 1. Check primary subscription
+    const primary = await this.getActiveSubscription(tenantId, module);
+    if (primary) return true;
+
+    // 2. Check for add-ons in OTHER active subscriptions
+    // Find any ACTIVE subscription that has an ACTIVE add-on for this module
+    const subscriptionWithAddon =
+      await this.prisma.tenantSubscription.findFirst({
+        where: {
+          tenantId,
+          status: SubscriptionStatus.ACTIVE,
+          endDate: { gt: new Date() },
+          addons: {
+            some: {
+              addonPlan: { module }, // Check if addon plan matches the requested module
+              status: SubscriptionStatus.ACTIVE,
+              endDate: { gt: new Date() },
+            },
+          },
+        },
+      });
+
+    return !!subscriptionWithAddon;
   }
 
   // =========================================================================

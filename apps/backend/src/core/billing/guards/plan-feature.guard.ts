@@ -67,6 +67,7 @@ export class PlanFeatureGuard implements CanActivate {
       REPORTS: 'Reports & analytics are available in PRO plan.',
       MULTI_SHOP: 'Multi-shop management is available in PRO plan.',
       CUSTOM_PRINT_LAYOUT: 'Custom print layouts are available in PRO plan.',
+      WHATSAPP_CRM: 'WhatsApp CRM is a premium add-on.',
     };
     return messages[feature] || 'This feature requires a plan upgrade.';
   }
@@ -80,6 +81,7 @@ export class PlanFeatureGuard implements CanActivate {
       REPORTS: 'Access analytics & reports',
       MULTI_SHOP: 'Manage multiple locations',
       CUSTOM_PRINT_LAYOUT: 'Customize invoice templates',
+      WHATSAPP_CRM: 'Enable WhatsApp CRM features',
     };
     return hints[feature] || 'Unlock premium features';
   }

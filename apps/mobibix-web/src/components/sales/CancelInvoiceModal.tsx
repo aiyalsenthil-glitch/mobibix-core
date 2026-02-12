@@ -22,7 +22,7 @@ export function CancelInvoiceModal({
   onClose,
   onSuccess,
 }: CancelInvoiceModalProps) {
-  const { theme } = useTheme();
+  // No changes needed here, just removing the line.
   const router = useRouter();
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -109,17 +109,13 @@ export function CancelInvoiceModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div
-        className={`w-full max-w-md rounded-xl shadow-2xl overflow-hidden ${
-          theme === "dark" ? "bg-stone-900 text-white" : "bg-white text-gray-900"
-        }`}
-      >
-        <div className="p-6 border-b border-gray-200 dark:border-white/10 flex justify-between items-center">
+      <div className="w-full max-w-md rounded-xl shadow-2xl overflow-hidden bg-white dark:bg-stone-900 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10">
+        <div className="p-6 border-b border-slate-200 dark:border-white/10 flex justify-between items-center">
           <h2 className="text-xl font-bold text-red-600 dark:text-red-400">Cancel Invoice</h2>
           <button
             onClick={onClose}
             disabled={cancellingAll || isSubmitting}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white disabled:opacity-50"
+            className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white disabled:opacity-50 transition-colors"
           >
             ✕
           </button>
@@ -147,11 +143,7 @@ export function CancelInvoiceModal({
               disabled={isSubmitting || cancellingAll}
               placeholder="e.g. Customer returned goods, Wrong entry..."
               rows={3}
-              className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-red-500 ${
-                theme === "dark"
-                  ? "bg-black/20 border-white/20"
-                  : "bg-white border-gray-300"
-              }`}
+              className="w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-black/20 border-slate-300 dark:border-white/20 text-slate-900 dark:text-white"
             />
           </div>
 
@@ -199,7 +191,7 @@ export function CancelInvoiceModal({
               type="button"
               onClick={onClose}
               disabled={isSubmitting || cancellingAll}
-              className="px-4 py-2 rounded-lg font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10 transition disabled:opacity-50"
+              className="px-4 py-2 rounded-lg font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10 transition disabled:opacity-50"
             >
               Close
             </button>

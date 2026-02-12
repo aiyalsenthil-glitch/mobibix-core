@@ -75,12 +75,12 @@ export function SupplierPaymentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-xl shadow-2xl overflow-hidden bg-white dark:bg-stone-900 text-gray-900 dark:text-white">
-        <div className="p-6 border-b border-gray-200 dark:border-white/10 flex justify-between items-center">
+      <div className="w-full max-w-md rounded-xl shadow-2xl overflow-hidden bg-white dark:bg-stone-900 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10">
+        <div className="p-6 border-b border-slate-200 dark:border-white/10 flex justify-between items-center">
           <h2 className="text-xl font-bold">Record Supplier Payment</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
+            className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors"
           >
             ✕
           </button>
@@ -89,13 +89,13 @@ export function SupplierPaymentModal({
         <form onSubmit={handleSubmit} className="p-6">
           <div className="mb-6 bg-blue-50 dark:bg-blue-500/10 p-4 rounded-lg">
             <div className="flex justify-between mb-1">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-sm text-slate-600 dark:text-slate-400">
                 Supplier
               </span>
               <span className="font-semibold">{supplierName}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-sm text-slate-600 dark:text-slate-400">
                 Balance Due
               </span>
               <span className="text-lg font-bold text-red-600 dark:text-red-400">
@@ -106,7 +106,7 @@ export function SupplierPaymentModal({
 
           <div className="space-y-4 mb-6">
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-1 opacity-70">
                 Payment Amount
               </label>
               <input
@@ -116,12 +116,12 @@ export function SupplierPaymentModal({
                 disabled={isSubmitting}
                 min="1"
                 step="0.01"
-                className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-black/20 border-gray-300 dark:border-white/20"
+                className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-black/20 border-slate-300 dark:border-white/20 text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-1 opacity-70">
                 Payment Method
               </label>
               <select
@@ -130,7 +130,7 @@ export function SupplierPaymentModal({
                   setPaymentMethod(e.target.value as PaymentMode)
                 }
                 disabled={isSubmitting}
-                className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-black/20 border-gray-300 dark:border-white/20"
+                className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-black/20 border-slate-300 dark:border-white/20 text-slate-900 dark:text-white"
               >
                 <option value="CASH">Cash</option>
                 <option value="UPI">UPI</option>
@@ -140,7 +140,7 @@ export function SupplierPaymentModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-1 opacity-70">
                 Payment Reference / Note
               </label>
               <input
@@ -149,12 +149,12 @@ export function SupplierPaymentModal({
                 onChange={(e) => setPaymentReference(e.target.value)}
                 placeholder="Check No, UPI Ref, etc."
                 disabled={isSubmitting}
-                className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-black/20 border-gray-300 dark:border-white/20"
+                className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-black/20 border-slate-300 dark:border-white/20 text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-1 opacity-70">
                 Additional Notes
               </label>
               <textarea
@@ -163,13 +163,13 @@ export function SupplierPaymentModal({
                 placeholder="Optional notes about this payment"
                 disabled={isSubmitting}
                 rows={3}
-                className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-black/20 border-gray-300 dark:border-white/20"
+                className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-black/20 border-slate-300 dark:border-white/20 text-slate-900 dark:text-white resize-none"
               />
             </div>
           </div>
 
           {error && (
-            <div className="bg-red-100 dark:bg-red-900/20 border border-red-400 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-4 text-sm">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-400 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-4 text-sm">
               {error}
             </div>
           )}
@@ -179,14 +179,14 @@ export function SupplierPaymentModal({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-lg font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10 transition"
+              className="px-4 py-2 rounded-lg font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10 transition disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || amount <= 0}
-              className="px-6 py-2 rounded-lg font-bold text-white bg-linear-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition"
+              className="px-6 py-2 rounded-lg font-bold text-white bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition"
             >
               {isSubmitting ? "Processing..." : "Confirm Payment"}
             </button>

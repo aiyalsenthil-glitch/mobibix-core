@@ -19,7 +19,7 @@ export function CancelPurchaseModal({
   onClose,
   onSuccess,
 }: CancelPurchaseModalProps) {
-  const { theme } = useTheme();
+  // No changes needed here, just removing the line.
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,16 +42,12 @@ export function CancelPurchaseModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div
-        className={`w-full max-w-md rounded-xl shadow-2xl overflow-hidden ${
-          theme === "dark" ? "bg-stone-900 text-white" : "bg-white text-gray-900"
-        }`}
-      >
-        <div className="p-6 border-b border-gray-200 dark:border-white/10 flex justify-between items-center">
+      <div className="w-full max-w-md rounded-xl shadow-2xl overflow-hidden bg-white dark:bg-stone-900 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10">
+        <div className="p-6 border-b border-slate-200 dark:border-white/10 flex justify-between items-center">
           <h2 className="text-xl font-bold text-red-600 dark:text-red-400">Cancel Purchase</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
+            className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors"
           >
             ✕
           </button>
@@ -73,7 +69,7 @@ export function CancelPurchaseModal({
           </div>
 
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-400 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-4 text-sm">
               {error}
             </div>
           )}
@@ -83,7 +79,7 @@ export function CancelPurchaseModal({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-lg font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10 transition"
+              className="px-4 py-2 rounded-lg font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10 transition disabled:opacity-50"
             >
               Keep Purchase
             </button>

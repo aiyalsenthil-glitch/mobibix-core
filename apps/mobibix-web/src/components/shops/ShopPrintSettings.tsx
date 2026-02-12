@@ -248,7 +248,7 @@ export function ShopPrintSettings({ shop, onUpdate }: ShopPrintSettingsProps) {
 
       // 2. Compress
       const compressedFile = await imageCompression(file, options);
-      console.log(`Original: ${file.size / 1024}KB, Compressed: ${compressedFile.size / 1024}KB`);
+      // console.log(`Original: ${file.size / 1024}KB, Compressed: ${compressedFile.size / 1024}KB`);
 
       if (compressedFile.size > 100 * 1024) { // Safety check: 100KB hard limit
           throw new Error("Image too large even after compression. Please try a simpler image.");

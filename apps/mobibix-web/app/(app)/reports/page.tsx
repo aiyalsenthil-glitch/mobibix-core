@@ -88,7 +88,9 @@ export default function ReportsPage() {
     try {
       setLoading(true);
       
-      console.log('[Reports] Fetching data for shopId:', selectedShopId);
+      setLoading(true);
+      
+      // console.log('[Reports] Fetching data for shopId:', selectedShopId);
       
       const endDate = new Date();
       endDate.setHours(23, 59, 59, 999); // End of day to include all transactions
@@ -100,7 +102,10 @@ export default function ReportsPage() {
       const startStr = startDate.toISOString();
       const endStr = endDate.toISOString();
 
-      console.log('[Reports] Date range:', startStr, 'to', endStr);
+      const startStr = startDate.toISOString();
+      const endStr = endDate.toISOString();
+
+      // console.log('[Reports] Date range:', startStr, 'to', endStr);
 
       const [sales, products, profit] = await Promise.all([
         getSalesReport({

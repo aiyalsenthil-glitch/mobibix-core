@@ -13,7 +13,9 @@ import {
 } from "@/services/whatsapp.api";
 import { authenticatedFetch } from "@/services/auth.api";
 import WhatsAppCrmPromo from "../whatsapp-crm/components/WhatsAppCrmPromo";
+import WhatsAppCrmContactSupport from "../whatsapp-crm/components/WhatsAppCrmContactSupport";
 import WhatsAppCrmDashboard from "../whatsapp-crm/components/WhatsAppCrmDashboard";
+import WhatsAppRetailInbox from "../whatsapp-crm/components/WhatsAppRetailInbox";
 import WhatsAppDashboardView from "./components/WhatsAppDashboardView";
 
 interface CrmStatus {
@@ -27,6 +29,7 @@ interface CrmStatus {
 export default function WhatsAppPage() {
   const searchParams = useSearchParams();
   const showPromo = searchParams.get("promo") === "true";
+  const isOnboarding = searchParams.get("onboarding") === "true";
   const [crmStatus, setCrmStatus] = useState<CrmStatus | null>(null);
   const [dashboard, setDashboard] = useState<WhatsAppDashboard | null>(null);
   const [logs, setLogs] = useState<WhatsAppLog[]>([]);
@@ -34,7 +37,16 @@ export default function WhatsAppPage() {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [campaigning, setCampaigning] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "inbox">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "inbox">(
+    "dashboard"
+  );
+
+  // Set default tab based on onboarding status
+  useEffect(() => {
+    if (isOnboarding) {
+       setActiveTab("inbox");
+    }
+  }, [isOnboarding]);
 
   const [sendForm, setSendForm] = useState({
     phone: "",
@@ -75,28 +87,7 @@ export default function WhatsAppPage() {
       }
 
       const statusData = await statusResponse.json();
-      
-      // Fetch separate subscription details for permissions if needed
-      let whatsappAllowed = false;
-      try {
-          const subRes = await authenticatedFetch("/billing/subscription/current");
-          if (subRes.ok) {
-              const subData = await subRes.json();
-              whatsappAllowed = subData.whatsappAllowed ?? false;
-          }
-      } catch (e) {
-          console.warn("Failed to fetch subscription details", e);
-      }
-      
-      const fullStatus: CrmStatus = { ...statusData, whatsappAllowed };
-      setCrmStatus(fullStatus);
-
-      // Redirect Retail Demo users to Inbox tab by default?
-      // Or maybe keep Dashboard as default?
-      // statusData.moduleType === "MOBILE_SHOP" might prefer Inbox.
-      if (statusData.moduleType === "MOBILE_SHOP") {
-          // setActiveTab("inbox"); // Optional: auto-switch
-      }
+      setCrmStatus(statusData);
 
       // If no subscription, stop here (promo will show)
       if (!statusData.hasSubscription && statusData.moduleType !== 'MOBILE_SHOP') {
@@ -200,9 +191,11 @@ export default function WhatsAppPage() {
   // Show promo if no subscription AND not allowed via main plan (and not retail demo)
   const hasAccess = crmStatus?.hasSubscription || crmStatus?.whatsappAllowed;
   
-  if (showPromo || (crmStatus && !hasAccess && crmStatus.moduleType !== 'MOBILE_SHOP')) {
+  if (showPromo || (crmStatus && !hasAccess)) {
     return <WhatsAppCrmPromo />;
   }
+
+  const isRetailDemo = crmStatus?.moduleType === 'MOBILE_SHOP';
   
   // Show error state
   if (error) {
@@ -237,7 +230,14 @@ export default function WhatsAppPage() {
 
        {/* Tab Content */}
        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-          {activeTab === 'dashboard' ? (
+          {!crmStatus?.hasPhoneNumber ? (
+              <WhatsAppCrmDashboard 
+                 hasPhoneNumber={false}
+                 moduleType={crmStatus?.moduleType}
+                 whatsappAllowed={crmStatus?.whatsappAllowed}
+                 hasAddon={crmStatus?.hasSubscription}
+              />
+          ) : activeTab === 'dashboard' ? (
               dashboard ? (
                   <WhatsAppDashboardView
                     dashboard={dashboard}
@@ -254,6 +254,7 @@ export default function WhatsAppPage() {
                     onSend={handleSend}
                     onCreateCampaign={handleCreateCampaign}
                     onRefresh={loadData}
+                    hasAddon={crmStatus?.hasSubscription}
                   />
               ) : (
                   <div className="p-8 text-center text-gray-500">
@@ -261,11 +262,18 @@ export default function WhatsAppPage() {
                   </div>
               )
           ) : (
-              <WhatsAppCrmDashboard 
-                 hasPhoneNumber={crmStatus?.hasPhoneNumber || false}
-                 moduleType={crmStatus?.moduleType}
-                 whatsappAllowed={crmStatus?.whatsappAllowed}
-              />
+              isRetailDemo ? (
+                  <WhatsAppRetailInbox disabled={!crmStatus?.whatsappAllowed && !crmStatus?.hasSubscription} />
+              ) : (!crmStatus?.isEnabled || isOnboarding) ? (
+                  <WhatsAppCrmContactSupport />
+              ) : (
+                  <WhatsAppCrmDashboard 
+                     hasPhoneNumber={crmStatus?.hasPhoneNumber || false}
+                     moduleType={crmStatus?.moduleType}
+                     whatsappAllowed={crmStatus?.whatsappAllowed}
+                     hasAddon={crmStatus?.hasSubscription}
+                  />
+              )
           )}
        </div>
     </div>

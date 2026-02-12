@@ -84,14 +84,16 @@ export function AddFollowUpModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-      <div className="bg-zinc-900 border border-white/10 rounded-xl p-6 w-full max-w-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70">
+      <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-xl p-6 w-full max-w-md">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold">Add Follow-up</h2>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+            Add Follow-up
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors"
           >
             ✕
           </button>
@@ -99,9 +101,11 @@ export function AddFollowUpModal({
 
         {/* Customer Info */}
         {customerName && (
-          <div className="bg-white/5 border border-white/10 rounded-lg p-3 mb-4">
-            <p className="text-xs text-gray-400">Customer</p>
-            <p className="text-sm font-medium">{customerName}</p>
+          <div className="bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-lg p-3 mb-4">
+            <p className="text-xs text-gray-600 dark:text-gray-400">Customer</p>
+            <p className="text-sm font-medium text-slate-900 dark:text-white">
+              {customerName}
+            </p>
           </div>
         )}
 
@@ -109,7 +113,9 @@ export function AddFollowUpModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Type */}
           <div>
-            <label className="block text-sm font-medium mb-2">Type *</label>
+            <label className="block text-sm font-medium mb-2 text-slate-900 dark:text-white">
+              Type *
+            </label>
             <select
               value={formData.type}
               onChange={(e) =>
@@ -118,7 +124,7 @@ export function AddFollowUpModal({
                   type: e.target.value as FollowUpType,
                 })
               }
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+              className="w-full bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-teal-400"
             >
               <option value="PHONE_CALL">📞 Phone Call</option>
               <option value="EMAIL">📧 Email</option>
@@ -130,7 +136,9 @@ export function AddFollowUpModal({
 
           {/* Purpose */}
           <div>
-            <label className="block text-sm font-medium mb-2">Purpose *</label>
+            <label className="block text-sm font-medium mb-2 text-slate-900 dark:text-white">
+              Purpose *
+            </label>
             <textarea
               value={formData.purpose}
               onChange={(e) =>
@@ -138,13 +146,13 @@ export function AddFollowUpModal({
               }
               placeholder="e.g., Follow up on repair completion"
               rows={3}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 resize-none"
+              className="w-full bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-teal-400 resize-none"
             />
           </div>
 
           {/* Date & Time */}
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label className="block text-sm font-medium mb-2 text-slate-900 dark:text-white">
               Follow-up Date & Time *
             </label>
             <input
@@ -153,14 +161,16 @@ export function AddFollowUpModal({
               onChange={(e) =>
                 setFormData({ ...formData, followUpAt: e.target.value })
               }
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400"
+              className="w-full bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-teal-400"
             />
           </div>
 
           {/* Error */}
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-              <p className="text-red-400 text-sm">⚠️ {error}</p>
+            <div className="bg-red-50 dark:bg-red-500/10 border border-red-300 dark:border-red-500/20 rounded-lg p-3">
+              <p className="text-red-600 dark:text-red-400 text-sm">
+                ⚠️ {error}
+              </p>
             </div>
           )}
 
@@ -170,7 +180,7 @@ export function AddFollowUpModal({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="flex-1 bg-white/5 border border-white/10 text-white px-4 py-2 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+              className="flex-1 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white px-4 py-2 rounded-lg hover:bg-slate-200 dark:hover:bg-white/10 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>

@@ -31,15 +31,15 @@ export default function PrintInvoicePage() {
         setIsLoading(true);
         setError(null);
 
-        console.log("Loading invoice:", params.invoiceId);
+        // console.log("Loading invoice:", params.invoiceId);
         // 1. Fetch Invoice
         const invoiceData = await getInvoice(params.invoiceId);
         setInvoice(invoiceData);
-        console.log("Invoice loaded:", invoiceData);
+        // console.log("Invoice loaded:", invoiceData);
 
         // 2. Fetch Shop Details & Products
         if (invoiceData.shopId) {
-          console.log("Fetching shop and products for:", invoiceData.shopId);
+          // console.log("Fetching shop and products for:", invoiceData.shopId);
           try {
             const [shopData, productsResponse] = await Promise.all([
               getShop(invoiceData.shopId),
@@ -50,8 +50,8 @@ export default function PrintInvoicePage() {
               ? productsResponse
               : productsResponse.data;
 
-            console.log("Shop loaded:", shopData);
-            console.log("Products loaded:", productsData?.length);
+            // console.log("Shop loaded:", shopData);
+            // console.log("Products loaded:", productsData?.length);
 
             setShop(shopData);
 

@@ -35,39 +35,14 @@ export default function WhatsAppCrmPromo() {
 
     try {
       const billingCycle = 'MONTHLY';
-      const order = await createOrder(plan.id, billingCycle);
-
-      await openPayment({
-        key: order.key,
-        amount: order.amount,
-        currency: order.currency,
-        name: `MobiBix ${plan.name}`,
-        description: `${plan.name} Add-on (${billingCycle})`,
-        order_id: order.orderId,
-        handler: async (response: any) => {
-          try {
-            await verifyPayment({
-              orderId: order.orderId,
-              paymentId: response.REMOVED_PAYMENT_INFRA_payment_id,
-              signature: response.REMOVED_PAYMENT_INFRA_signature,
-              planId: plan.id,
-              billingCycle,
-            });
-
-            router.push('/whatsapp?onboarding=true');
-          } catch (verifyError) {
-            console.error('Payment verification failed', verifyError);
-            alert('Payment successful but verification failed. Please contact support.');
-            setLoading(false);
-          }
-        },
-        theme: {
-          color: '#16a34a',
-        },
-      });
+      // BYPASS FOR TESTING: Skip Razorpay and activate directly
+      const { bypassPayment } = await import('@/services/payments.api');
+      await bypassPayment(plan.id, billingCycle);
+      
+      router.push('/whatsapp?onboarding=true');
     } catch (error: any) {
       console.error('Activation failed', error);
-      alert(error.message || 'Failed to initiate payment');
+      alert(error.message || 'Failed to activate plan');
     } finally {
       setLoading(false);
     }
@@ -170,27 +145,6 @@ export default function WhatsAppCrmPromo() {
                       )}
                     </button>
 
-                    {/* Temporary Bypass Button */}
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (!confirm(`BYPASS PAYMENT: Activate ${p.name} directly?`)) return;
-                        setLoading(true);
-                        try {
-                          const { bypassPayment } = await import('@/services/payments.api');
-                          await bypassPayment(p.id, 'MONTHLY');
-                          router.push('/whatsapp?onboarding=true');
-                        } catch (err: any) {
-                          alert(err.message || "Bypass failed");
-                        } finally {
-                          setLoading(false);
-                        }
-                      }}
-                      disabled={loading}
-                      className="w-full mt-2 py-2 text-xs font-semibold text-gray-400 hover:text-red-500 transition-colors uppercase tracking-widest"
-                    >
-                      Unlock for Testing (Bypass)
-                    </button>
                   </div>
                 </div>
               );

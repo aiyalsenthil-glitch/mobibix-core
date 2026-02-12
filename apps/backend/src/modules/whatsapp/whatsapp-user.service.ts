@@ -97,8 +97,9 @@ export class WhatsAppUserService {
     }
 
     const normalized = tenant.tenantType.toUpperCase();
-    if (normalized === 'MOBILE_SHOP') return ModuleType.WHATSAPP_CRM;
-    return ModuleType.GYM;
+    if (normalized === 'GYM') return ModuleType.GYM;
+    if (normalized === 'BUSINESS' || normalized === 'MOBILE_SHOP') return ModuleType.MOBILE_SHOP;
+    return ModuleType.MOBILE_SHOP; // Default
   }
 
   /**
@@ -125,8 +126,7 @@ export class WhatsAppUserService {
   }
 
   private async getSubscriptionContext(tenantId: string) {
-    // 1. Try to find an active WHATSAPP_CRM (Add-on) subscription first
-    // This allows Gyms/Shops to override their core plan limits if they purchased the add-on
+    // 1. Try to find an active WHATSAPP_CRM (Standalone) subscription first
     let subscription =
       await this.subscriptionsService.getCurrentActiveSubscription(
         tenantId,
@@ -135,28 +135,40 @@ export class WhatsAppUserService {
 
     let effectiveModule: ModuleType = ModuleType.WHATSAPP_CRM;
 
-    // 2. Fallback: If no active CRM add-on, resolve the Core Module (Gym/Shop)
+    // 2. Fallback: If no standalone CRM sub, resolve the Core Module (Gym/Shop)
     if (!subscription?.plan) {
       effectiveModule = await this.resolveTenantModule(tenantId);
-      subscription =
-        await this.subscriptionsService.getCurrentActiveSubscription(
-          tenantId,
-          effectiveModule,
+      const primarySub = await this.subscriptionsService.getCurrentActiveSubscription(
+        tenantId,
+        effectiveModule,
+      );
+
+      // 3. Check if primary sub has a WHATSAPP_CRM addon
+      if (primarySub?.addons) {
+        const whatsappAddon = primarySub.addons.find(
+          (a: any) =>
+            a.addonPlan.module === ModuleType.WHATSAPP_CRM &&
+            a.status === 'ACTIVE',
         );
+        if (whatsappAddon) {
+          subscription = primarySub;
+          effectiveModule = ModuleType.WHATSAPP_CRM; 
+        }
+      }
     }
 
     if (!subscription?.plan) {
       throw new ForbiddenException('PLAN_REQUIRED');
     }
 
-    // 3. Get Rules (using the DETECTED effective module)
-    // If it was CRM, we get CRM rules (Marketing allowed). If Core, we get Core rules.
+    // 4. Get Rules
+    // NOTE: This will fetch rules for the primary module (GYM/SHOP).
+    // The PlanRulesService should ideally merge addon features.
     const rules = await this.planRulesService.getPlanRulesForTenant(
       tenantId,
       effectiveModule,
     );
 
-    // Safe fallback if rules missing (shouldn't happen if subscription exists)
     const featureList = rules?.features || [];
     const features = this.deriveFeaturesFromRules(featureList);
 
@@ -320,14 +332,27 @@ export class WhatsAppUserService {
       select: { enabled: true },
     });
 
+    // If setting exists and is explicitly disabled, return DISABLED
     if (setting && setting.enabled === false) {
       return 'DISABLED';
+    }
+
+    // Check if tenant has crm enabled flag true
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { whatsappCrmEnabled: true },
+    });
+
+    if (tenant && !tenant.whatsappCrmEnabled) {
+      // If setup is not complete, we might still have a number but it's not "functionally connected" for CRM
+      // But for health check purposes, we check the actual number table.
     }
 
     try {
       await this.phoneNumbersService.getPhoneNumberForPurpose(
         tenantId,
         WhatsAppPhoneNumberPurpose.DEFAULT,
+        'TENANT_OWNED', // For CRM, we strict check for tenant-owned numbers
       );
       return 'CONNECTED';
     } catch {
@@ -630,7 +655,7 @@ export class WhatsAppUserService {
   }
 
   async getLogs(tenantId: string, query: WhatsAppLogsQueryDto) {
-    await this.ensureFeature(tenantId, 'reports');
+    await this.ensureFeature(tenantId, 'manualMessaging');
 
     const where: Prisma.WhatsAppLogWhereInput = {
       tenantId,

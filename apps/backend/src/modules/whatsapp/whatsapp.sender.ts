@@ -231,6 +231,15 @@ export class WhatsAppSender {
       );
     }
 
+    // 🔒 GUARDRAIL 3: Setup Status Check (Must be ACTIVE)
+    if (phoneNumberConfig.setupStatus !== 'ACTIVE') {
+        return logFailure(
+          `WhatsApp setup is pending or failed (Status: ${phoneNumberConfig.setupStatus})`,
+          true,
+          'Setup not active',
+        );
+    }
+
     // ─────────────────────────────
     // 3️⃣ Plan rules (DB-driven)
     // ─────────────────────────────
