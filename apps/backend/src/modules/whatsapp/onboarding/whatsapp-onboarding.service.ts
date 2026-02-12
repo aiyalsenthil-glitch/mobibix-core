@@ -211,17 +211,14 @@ export class WhatsAppOnboardingService {
     // 5. Update DB (Atomic Transaction)
     await this.prisma.$transaction([
       // A. Upsert Phone Number
-      (this.prisma.whatsAppPhoneNumber as any).upsert({
+      (this.prisma.whatsAppNumber as any).upsert({
         where: {
-          tenantId_phoneNumberId: {
-            tenantId,
-            phoneNumberId,
-          },
+          phoneNumberId,
         },
         update: {
           encryptedAccessToken,
           setupStatus: 'ACTIVE',
-          isActive: true,
+          isEnabled: true,
           wabaId,
           phoneNumber,
           updatedAt: new Date(),
@@ -322,8 +319,8 @@ export class WhatsAppOnboardingService {
    */
   async disconnect(tenantId: string) {
     // 1. Find active number
-    const activeNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
-      where: { tenantId, isActive: true },
+    const activeNumber = await this.prisma.whatsAppNumber.findFirst({
+      where: { tenantId, isEnabled: true },
     });
 
     if (!activeNumber) {
@@ -331,10 +328,10 @@ export class WhatsAppOnboardingService {
     }
 
     // 2. Mark as DISCONNECTED
-    await this.prisma.whatsAppPhoneNumber.update({
+    await this.prisma.whatsAppNumber.update({
       where: { id: activeNumber.id },
       data: {
-        isActive: false,
+        isEnabled: false,
         setupStatus: 'DISCONNECTED',
         encryptedAccessToken: null, // Clear token for security
       } as any,
@@ -357,17 +354,14 @@ export class WhatsAppOnboardingService {
 
     // Atomic Update for manual sync
     await this.prisma.$transaction([
-      (this.prisma.whatsAppPhoneNumber as any).upsert({
+      (this.prisma.whatsAppNumber as any).upsert({
         where: {
-          tenantId_phoneNumberId: {
-            tenantId,
-            phoneNumberId,
-          },
+          phoneNumberId,
         },
         update: {
           encryptedAccessToken,
           setupStatus: 'ACTIVE',
-          isActive: true,
+          isEnabled: true,
           wabaId,
           phoneNumber,
           updatedAt: new Date(),
@@ -418,8 +412,8 @@ export class WhatsAppOnboardingService {
    * Gets the current WhatsApp integration status for a tenant
    */
   async getStatus(tenantId: string) {
-    const config = await this.prisma.whatsAppPhoneNumber.findFirst({
-      where: { tenantId, isActive: true },
+    const config = await this.prisma.whatsAppNumber.findFirst({
+      where: { tenantId, isEnabled: true },
     });
 
     if (!config) {

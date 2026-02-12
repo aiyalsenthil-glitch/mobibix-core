@@ -100,17 +100,38 @@ export async function sendWhatsAppMessage(
   return response.json();
 }
 
+export interface WhatsAppNumber {
+  id: string;
+  phoneNumber: string;
+  displayNumber?: string;
+  label?: string;
+  isEnabled: boolean;
+  isDefault: boolean;
+  qualityRating?: string;
+}
+
+export async function getPhoneNumbers(tenantId: string): Promise<WhatsAppNumber[]> {
+  const response = await authenticatedFetch(`/whatsapp/phone-numbers/${tenantId}`);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch phone numbers");
+  }
+  return response.json();
+}
+
 export async function getWhatsAppLogs(params?: {
   startDate?: string;
   endDate?: string;
   campaignId?: string;
   status?: string;
+  whatsAppNumberId?: string;
 }): Promise<WhatsAppLog[]> {
   const search = new URLSearchParams();
   if (params?.startDate) search.set("startDate", params.startDate);
   if (params?.endDate) search.set("endDate", params.endDate);
   if (params?.campaignId) search.set("campaignId", params.campaignId);
   if (params?.status) search.set("status", params.status);
+  if (params?.whatsAppNumberId) search.set("whatsAppNumberId", params.whatsAppNumberId);
 
   const response = await authenticatedFetch(
     `/user/whatsapp/logs${search.toString() ? `?${search.toString()}` : ""}`,

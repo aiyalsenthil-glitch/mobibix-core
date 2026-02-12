@@ -102,7 +102,7 @@ export class WhatsAppTokenService {
     plainToken: string,
   ): Promise<void> {
     const encrypted = encrypt(plainToken);
-    await this.prisma.whatsAppPhoneNumber.update({
+    await this.prisma.whatsAppNumber.update({
       where: { id: phoneNumberId },
       data: { encryptedAccessToken: encrypted },
     });

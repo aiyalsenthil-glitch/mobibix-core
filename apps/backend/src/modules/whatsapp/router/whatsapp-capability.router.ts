@@ -14,24 +14,43 @@ export class WhatsAppCapabilityRouter {
 
   async routeMessage(
     tenantId: string,
+    whatsAppNumberId: string,
     phone: string,
     text: string,
   ): Promise<void> {
-    // 1. Resolve Tenant Type
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { tenantType: true },
+    // 1. Load WhatsApp Number Config
+    const waNumber = await this.prisma.whatsAppNumber.findUnique({
+      where: { id: whatsAppNumberId },
     });
 
-    // 2. Determine Capability
-    let capability = WhatsAppCapability.GYM_PILOT; // Default Safe Fallback
+    if (!waNumber) {
+      this.logger.warn(`Routing failed: Number ${whatsAppNumberId} not found`);
+      return;
+    }
 
-    if (tenant?.tenantType === 'MOBILE_SHOP') {
+    // 2. Determine Capability
+    let capability = WhatsAppCapability.GYM_PILOT; // Default to Tenant CRM/Automation
+
+    if (waNumber.isSystem) {
+      // System numbers are for the Retail Demo / Shared Service
       capability = WhatsAppCapability.RETAIL_DEMO;
+    } else {
+      // Tenant numbers get CRM/Automation features
+      // Fallback for Mobile Shop specific logic if needed, but generally correct
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { tenantType: true },
+      });
+      if (tenant?.tenantType === 'MOBILE_SHOP') {
+         // Even on their own number, Mobile Shop might want the bot?
+         // For now, let's assume Tenant Number = Full Control = CRM (Gym Pilot behavior)
+         // But preserving legacy check just in case:
+         // capability = WhatsAppCapability.RETAIL_DEMO; // UNCOMMENT IF THEY NEED BOT ON OWN NUMBER
+      }
     }
 
     this.logger.debug(
-      `Routing message from ${phone} [Tenant: ${tenantId}, Type: ${tenant?.tenantType}] -> ${capability}`,
+      `Routing message from ${phone} [Tenant: ${tenantId}, Number: ${waNumber.displayNumber}, System: ${waNumber.isSystem}] -> ${capability}`,
     );
 
     // 3. Dispatch

@@ -69,6 +69,7 @@ export class WhatsAppSender {
     options?: {
       skipPlanCheck?: boolean;
       logId?: string;
+      whatsAppNumberId?: string;
       metadata?: Record<string, any> | null;
     },
   ): Promise<{
@@ -81,7 +82,11 @@ export class WhatsAppSender {
     const skipPlanCheck = options?.skipPlanCheck ?? false;
     const logId = options?.logId;
     const metadata = options?.metadata ?? undefined;
+    const forceWhatsAppNumberId = options?.whatsAppNumberId;
     const feature = notificationType as WhatsAppFeature;
+    
+    // Declare early for closure access in logFailure
+    let phoneNumberConfig: any;
 
     const updateLogStatus = async (
       status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'SKIPPED',
@@ -110,6 +115,7 @@ export class WhatsAppSender {
       } else {
         await this.logger.log({
           tenantId,
+          whatsAppNumberId: phoneNumberConfig?.id,
           memberId: null,
           phone,
           type: feature,
@@ -191,43 +197,51 @@ export class WhatsAppSender {
     // 2️⃣ Get Dynamic Phone Number from DB
     // ─────────────────────────────
     
-    // 2a. Dual-Track Routing Check
-    // For manual text, we treat the type as 'MANUAL' which is NOT in TRACK_A_ALLOWED_TYPES
-    const routing = await this.routingService.resolveTrack(tenantId, 'MANUAL');
-    
-    if (!routing.allowed) {
-        return logFailure(
-            'Free-text messaging requires WHATSAPP_CRM add-on and a tenant-owned phone number.',
-            true,
-            'Free-text blocked by routing (Track A)',
-        );
-    }
-
-    // 2b. Resolve phone number
-    const purpose = this.mapFeatureToPurpose(feature);
-    let phoneNumberConfig;
-
+    // 2a. Resolve phone number
+    // PRIORITY: Use forced ID if provided (e.g. reply to specific number)
     try {
-      // Pass routing track to ensure we don't fallback to system default if on Track B
-      phoneNumberConfig =
-        await this.phoneNumbersService.getPhoneNumberForPurpose(
-          tenantId,
-          purpose,
-          routing.track,
-        );
+        if (forceWhatsAppNumberId) {
+            phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberById(forceWhatsAppNumberId);
+            if (!phoneNumberConfig) {
+                 return logFailure(`Provided WhatsApp Number ID ${forceWhatsAppNumberId} not found or disabled.`);
+            }
+        } else {
+            // FALLBACK: Use Purpose & Routing Logic
+            const purpose = this.mapFeatureToPurpose(feature);
+            
+            // 2b. Dual-Track Routing Check (Only relevant if not forcing ID)
+             // For manual text, we treat the type as 'MANUAL' which is NOT in TRACK_A_ALLOWED_TYPES
+            const routing = await this.routingService.resolveTrack(tenantId, 'MANUAL');
+            
+            if (!routing.allowed) {
+                return logFailure(
+                    'Free-text messaging requires WHATSAPP_CRM add-on and a tenant-owned phone number.',
+                    true,
+                    'Free-text blocked by routing (Track A)',
+                );
+            }
+
+            // Pass routing track to ensure we don't fallback to system default if on Track B
+            phoneNumberConfig =
+                await this.phoneNumbersService.getPhoneNumberForPurpose(
+                tenantId,
+                purpose,
+                routing.track,
+                );
+        }
     } catch (error) {
       return logFailure(
-        `No active phone number found for purpose ${purpose}: ${error.message}`,
+        `No active phone number found: ${error.message}`,
         true,
         `No active phone number: ${error.message}`,
       );
     }
 
-    if (!phoneNumberConfig.isActive) {
+    if (!phoneNumberConfig.isEnabled) {
       return logFailure(
-        'Phone number is inactive',
+        'Phone number is disabled',
         true,
-        'Phone number inactive',
+        'Phone number disabled',
       );
     }
 
@@ -319,6 +333,7 @@ export class WhatsAppSender {
       } else {
         await this.logger.log({
           tenantId,
+          whatsAppNumberId: phoneNumberConfig.id,
           memberId: null, // pass memberId later if needed
           phone: whatsappFormattedPhone,
           type: feature,
@@ -355,6 +370,7 @@ export class WhatsAppSender {
       } else {
         await this.logger.log({
           tenantId,
+          whatsAppNumberId: phoneNumberConfig?.id,
           memberId: null,
           phone: whatsappFormattedPhone || phone,
           type: feature,
@@ -415,6 +431,7 @@ export class WhatsAppSender {
     tenantId: string,
     phone: string,
     text: string,
+    whatsAppNumberId?: string,
   ): Promise<{ success: boolean; messageId?: string; error?: any }> {
     // 1. Basic Plan/Settings Check (Minimal)
     const module = await this.resolveTenantModule(tenantId);
@@ -430,11 +447,18 @@ export class WhatsAppSender {
     // 2. Resolve Phone Number (DEFAULT purpose for manual replies)
     let phoneNumberConfig;
     try {
-      phoneNumberConfig =
-        await this.phoneNumbersService.getPhoneNumberForPurpose(
-          tenantId,
-          'DEFAULT',
-        );
+        if (whatsAppNumberId) {
+            phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberById(whatsAppNumberId);
+             if (!phoneNumberConfig) {
+                 throw new Error(`Provided WhatsApp Number ID ${whatsAppNumberId} not found or disabled.`);
+            }
+        } else {
+             phoneNumberConfig =
+                await this.phoneNumbersService.getPhoneNumberForPurpose(
+                tenantId,
+                'DEFAULT',
+                );
+        }
     } catch (e) {
       this.logger.log({
         tenantId,
@@ -443,12 +467,13 @@ export class WhatsAppSender {
         type: 'MANUAL',
         status: 'FAILED',
         error: 'No phone number config',
+        whatsAppNumberId, // Log the requested ID if any
       });
       return { success: false, error: 'No phone number provided' };
     }
 
-    if (!phoneNumberConfig?.isActive) {
-      return { success: false, error: 'Phone number inactive' };
+    if (!phoneNumberConfig?.isEnabled) {
+      return { success: false, error: 'Phone number inactive/disabled' };
     }
 
     // 3. Prepare & Send
@@ -487,6 +512,7 @@ export class WhatsAppSender {
       await this.prisma.whatsAppLog.create({
         data: {
           tenantId,
+          whatsAppNumberId: phoneNumberConfig.id,
           phone: whatsappFormattedPhone,
           type: 'MANUAL', // Explicit type for staff replies
           status: 'SENT',
@@ -507,6 +533,7 @@ export class WhatsAppSender {
       await this.prisma.whatsAppLog.create({
         data: {
           tenantId,
+          whatsAppNumberId: phoneNumberConfig?.id,
           phone: whatsappFormattedPhone,
           type: 'MANUAL',
           status: 'FAILED',

@@ -83,14 +83,23 @@ export class SubscriptionsController {
     // No active subscription → trial fallback
     if (!sub) {
       return {
-        plan: resolvedModule === 'GYM' ? 'GYM_TRIAL' : 'MOBIBIX_TRIAL',
-        planLevel: 0,
-        daysLeft: 0,
-        isTrial: true,
-        subscriptionStatus: 'TRIAL',
-        canUpgrade: true,
-        autoRenew: false,
-        subscriptionId: null,
+        current: {
+          plan: resolvedModule === 'GYM' ? 'GYM_TRIAL' : 'MOBIBIX_TRIAL',
+          planCode: resolvedModule === 'GYM' ? 'GYM_TRIAL' : 'MOBIBIX_TRIAL',
+          level: 0,
+          daysLeft: 0,
+          isTrial: true,
+          subscriptionStatus: 'TRIAL',
+          canUpgrade: true,
+          autoRenew: false,
+          subscriptionId: null,
+          memberLimit: 100, // Default Trial Limits
+          maxStaff: 5,
+          whatsappAllowed: true,
+          staffAllowed: true,
+          attendanceAllowed: resolvedModule === 'GYM',
+        },
+        upcoming: null,
       };
     }
 
@@ -269,20 +278,38 @@ export class SubscriptionsController {
       }
     }
 
-    // 1️⃣ Get current active subscription
+    // 1️⃣ Get current active subscription (or valid Trial)
     const currentSub =
       await this.subscriptionsService.getCurrentActiveSubscription(
         req.user.tenantId,
         resolvedModule,
       );
 
-    if (!currentSub) {
-      throw new BadRequestException(
-        'No active subscription to upgrade. Please buy a plan first.',
-      );
+    // If no active/valid-trial subscription found, OR it's a TRIAL
+    // We treat this as a "BUY" operation (converting to paid)
+    if (!currentSub || currentSub.status === SubscriptionStatus.TRIAL) {
+        const bought = await this.subscriptionsService.buyPlanPhase1({
+            tenantId: req.user.tenantId,
+            planId: newPlanId,
+            module: resolvedModule,
+            billingCycle: newBillingCycle || BillingCycle.MONTHLY,
+            autoRenew: true,
+        });
+
+        this.logger.log(
+            `✅ Buy/Activate API: tenantId=${req.user.tenantId}, ` +
+            `subscriptionId=${bought.id}, planId=${bought.planId}`,
+        );
+
+        return {
+            success: true,
+            subscriptionId: bought.id,
+            planId: bought.planId,
+            message: 'Plan activated successfully.',
+        };
     }
 
-    // 2️⃣ Call upgradePlan service
+    // 2️⃣ Call upgradePlan service (Active -> Active)
     const upgraded = await this.subscriptionsService.upgradePlan({
       subscriptionId: currentSub.id,
       newPlanId,

@@ -14,6 +14,7 @@ export class WhatsAppLogger {
     status: 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'SKIPPED';
     error?: string | null;
     messageId?: string | null;
+    whatsAppNumberId?: string | null;
     metadata?: Record<string, any> | null;
   }) {
     let resolvedCustomerId = data.customerId;
@@ -35,6 +36,7 @@ export class WhatsAppLogger {
     await this.prisma.whatsAppLog.create({
       data: {
         tenantId: data.tenantId,
+        whatsAppNumberId: data.whatsAppNumberId || undefined,
         memberId: data.memberId,
         customerId: resolvedCustomerId,
         phone: data.phone,

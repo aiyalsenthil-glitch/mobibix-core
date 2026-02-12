@@ -14,6 +14,7 @@ export type PlanRules = {
   whatsapp?: {
     messageQuota: number;
     isDaily?: boolean;
+    maxNumbers?: number;
   };
   analyticsHistoryDays: number;
   features: WhatsAppFeature[];
@@ -61,6 +62,7 @@ export class PlanRulesService {
       whatsapp: {
         messageQuota: (plan.whatsappUtilityQuota || 0) + (plan.whatsappMarketingQuota || 0),
         isDaily: false, // Monthly quotas
+        maxNumbers: 1, // Default to 1 (add DB field later if needed)
       },
       analyticsHistoryDays: plan.analyticsHistoryDays,
       features: plan.planFeatures
@@ -123,6 +125,7 @@ export class PlanRulesService {
       whatsapp: {
         messageQuota: 0,
         isDaily: false,
+        maxNumbers: 0,
       },
       analyticsHistoryDays: 0,
       features: [],
@@ -151,6 +154,8 @@ export class PlanRulesService {
       // Add WhatsApp Quotas (Additive)
       if (aggregatedRules.whatsapp) {
         aggregatedRules.whatsapp.messageQuota += (plan.whatsappUtilityQuota || 0) + (plan.whatsappMarketingQuota || 0);
+        // Default to 1 if not defined in plan (assumed 1 per plan generally)
+        aggregatedRules.whatsapp.maxNumbers = Math.max(aggregatedRules.whatsapp.maxNumbers ?? 0, 1); 
       }
 
       // Merge features

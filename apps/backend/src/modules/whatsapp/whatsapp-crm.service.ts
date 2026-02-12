@@ -53,16 +53,17 @@ export class WhatsAppCrmService {
       },
     });
 
-    // ── FIX: Check WhatsAppPhoneNumber table instead of deprecated field ──
-    const activeNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
-      where: { tenantId, isActive: true },
-      select: { id: true },
+    // ── FIX: Check WhatsAppNumber table instead of deprecated field ──
+    const activeNumber = await this.prisma.whatsAppNumber.findFirst({
+      where: { tenantId, isEnabled: true },
+      select: { id: true, phoneNumber: true },
     });
 
     return {
       hasSubscription,
       isEnabled: tenant?.whatsappCrmEnabled ?? false,
       hasPhoneNumber: !!activeNumber,
+      phoneNumber: activeNumber?.phoneNumber ?? null,
       moduleType: tenant?.tenantType?.toUpperCase(),
       canPreview: !hasSubscription,
       whatsappAllowed: hasSubscription,

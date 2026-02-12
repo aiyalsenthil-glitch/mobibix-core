@@ -71,8 +71,8 @@ export class WhatsAppRoutingService {
     }
 
     // 2. Check if tenant has their own phone number
-    const ownNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
-      where: { tenantId, isActive: true },
+    const ownNumber = await this.prisma.whatsAppNumber.findFirst({
+      where: { tenantId, isEnabled: true },
       select: { id: true },
     });
 

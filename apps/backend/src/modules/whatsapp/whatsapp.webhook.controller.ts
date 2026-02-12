@@ -130,9 +130,14 @@ export class WhatsAppWebhookController {
 
     try {
       // 1. Resolve Tenant from per-tenant phone numbers
-      const waNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
+      const waNumber = await this.prisma.whatsAppNumber.findFirst({
         where: { phoneNumberId },
-        select: { tenantId: true },
+        select: {
+            id: true,
+            tenantId: true,
+            isSystem: true,
+            displayNumber: true
+        },
       });
 
       console.log(
@@ -163,6 +168,11 @@ export class WhatsAppWebhookController {
       }
 
       const tenantId = waNumber.tenantId;
+
+      if (!tenantId) {
+        this.logger.warn(`[Webhook] Message on number ${waNumber.id} has no Tenant ID mapping.`);
+        return; 
+      }
 
       for (const message of messages) {
         const messageId = message.id; // wamid.HBgLM...
@@ -208,6 +218,7 @@ export class WhatsAppWebhookController {
           await this.prisma.whatsAppLog.create({
             data: {
               tenantId,
+              whatsAppNumberId: waNumber.id,
               phone: senderPhone,
               type: 'INCOMING',
               status: 'RECEIVED',
@@ -220,7 +231,7 @@ export class WhatsAppWebhookController {
           console.log(
             `[Webhook] Routing to automation for Tenant ${tenantId}...`,
           );
-          await this.router.routeMessage(tenantId, senderPhone, text);
+          await this.router.routeMessage(tenantId, waNumber.id, senderPhone, text);
         } else {
           console.log('[Webhook] No text content found in message.');
         }

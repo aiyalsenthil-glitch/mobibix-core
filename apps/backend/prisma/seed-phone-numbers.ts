@@ -45,7 +45,7 @@ async function seedPhoneNumbers() {
 
   for (const tenant of tenants) {
     // Check if tenant already has a default phone number
-    const existingPhone = await prisma.whatsAppPhoneNumber.findFirst({
+    const existingPhone = await prisma.whatsAppNumber.findFirst({
       where: { tenantId: tenant.id },
     });
 
@@ -56,7 +56,7 @@ async function seedPhoneNumbers() {
     }
 
     // Create default phone number
-    await prisma.whatsAppPhoneNumber.create({
+    await prisma.whatsAppNumber.create({
       data: {
         tenantId: tenant.id,
         phoneNumber: DEFAULT_PHONE_NUMBER,
@@ -64,7 +64,7 @@ async function seedPhoneNumbers() {
         wabaId: DEFAULT_WABA_ID,
         purpose: 'DEFAULT',
         isDefault: true,
-        isActive: true,
+        isEnabled: true,
       },
     });
 

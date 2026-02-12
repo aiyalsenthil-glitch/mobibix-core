@@ -17,7 +17,7 @@ async function main() {
   if (!tenant) return;
 
   // 2. Check Tenant Phone Numbers
-  const tenantPhones = await prisma.whatsAppPhoneNumber.findMany({
+  const tenantPhones = await prisma.whatsAppNumber.findMany({
     where: { tenantId },
   });
   console.log('Tenant Phone Numbers:', tenantPhones);
@@ -41,13 +41,13 @@ async function main() {
 
   // A. Tenant Specific (REMINDER)
   const tSpecific = tenantPhones.find(
-    (p) => p.purpose === 'REMINDER' && p.isActive,
+    (p) => p.purpose === 'REMINDER' && p.isEnabled,
   );
   console.log('Tenant Specific (REMINDER):', tSpecific ? 'FOUND' : 'NOT FOUND');
 
   // B. Tenant Default
   const tDefault = tenantPhones.find(
-    (p) => (p.isDefault || p.purpose === 'DEFAULT') && p.isActive,
+    (p) => (p.isDefault || p.purpose === 'DEFAULT') && p.isEnabled,
   );
   console.log('Tenant Default:', tDefault ? 'FOUND' : 'NOT FOUND');
 

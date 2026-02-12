@@ -82,6 +82,7 @@ export class WhatsAppRemindersService {
               id: true,
               name: true,
               tenantType: true,
+              whatsappReminderNumberId: true, // Fetch configured reminder number
               subscription: {
                 where: { status: 'ACTIVE' },
                 orderBy: { startDate: 'desc' },
@@ -514,6 +515,9 @@ export class WhatsAppRemindersService {
         whatsAppPhone,
         template?.metaTemplateName || templateKey,
         parameters,
+        {
+            whatsAppNumberId: reminder.tenant?.whatsappReminderNumberId,
+        }
       );
 
       // 6️⃣ Handle result and update status

@@ -25,15 +25,12 @@ async function fixWhatsAppNumber() {
 
   console.log(`🛠 Upserting WhatsAppPhoneNumber for ${phoneNumberId}...`);
 
-  await prisma.whatsAppPhoneNumber.upsert({
+  await prisma.whatsAppNumber.upsert({
     where: {
-      tenantId_phoneNumberId: {
-        tenantId: tenant.id,
-        phoneNumberId: phoneNumberId,
-      },
+      phoneNumberId,
     },
     update: {
-      isActive: true,
+      isEnabled: true,
       purpose: 'DEFAULT',
       wabaId: process.env.WHATSAPP_WABA_ID || '725808986859936',
     },
@@ -42,7 +39,7 @@ async function fixWhatsAppNumber() {
       phoneNumberId: phoneNumberId,
       phoneNumber: '918797545226', // Mock/Placeholder if not known
       wabaId: process.env.WHATSAPP_WABA_ID || '725808986859936',
-      isActive: true,
+      isEnabled: true,
       purpose: 'DEFAULT',
     },
   });

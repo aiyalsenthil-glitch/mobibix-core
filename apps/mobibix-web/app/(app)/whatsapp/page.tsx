@@ -22,6 +22,7 @@ interface CrmStatus {
   hasSubscription: boolean;
   isEnabled: boolean;
   hasPhoneNumber: boolean;
+  phoneNumber?: string | null; // ✅ Added
   moduleType?: string;
   whatsappAllowed?: boolean;
 }
@@ -263,7 +264,10 @@ export default function WhatsAppPage() {
               )
           ) : (
               isRetailDemo ? (
-                  <WhatsAppRetailInbox disabled={!crmStatus?.whatsappAllowed && !crmStatus?.hasSubscription} />
+                  <WhatsAppRetailInbox 
+                     disabled={!crmStatus?.whatsappAllowed} 
+                     sendingNumber={crmStatus?.phoneNumber}
+                  />
               ) : (!crmStatus?.isEnabled || isOnboarding) ? (
                   <WhatsAppCrmContactSupport />
               ) : (

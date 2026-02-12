@@ -38,6 +38,10 @@ model Tenant {
   whatsappEnabled       Boolean              @default(true)
   whatsappCrmEnabled    Boolean              @default(false)
   whatsappPhoneNumberId String?
+  whatsappBusinessId    String?
+  whatsappWabaId        String?
+  whatsappReminderNumberId String? // Added for Phase 1
+  whatsappReminderNumber   WhatsAppNumber? @relation("TenantReminderNumber", fields: [whatsappReminderNumberId], references: [id])
   auditLogs             AuditLog[]
   parties               Party[]              @relation("TenantParties")
   customerAlerts        CustomerAlert[]      @relation("TenantCustomerAlerts")
@@ -644,28 +648,39 @@ enum WhatsAppSetupStatus {
   DISCONNECTED
 }
 
-model WhatsAppPhoneNumber {
-  id                   String                     @id @default(uuid())
-  tenantId             String
-  phoneNumber          String
-  phoneNumberId        String
-  wabaId               String
-  purpose              WhatsAppPhoneNumberPurpose @default(DEFAULT)
-  qualityRating        String?
-  encryptedAccessToken String? /// AES-256-GCM encrypted Meta API token (per-tenant isolation)
-  isDefault            Boolean                    @default(false)
-  isActive             Boolean                    @default(true)
+/// PHASE 1 REFACTOR: Multi-Number Support
+model WhatsAppNumber {
+  id                String   @id @default(uuid())
+  tenantId          String?  // Optional to support system numbers (or explicit system tenant)
+  phoneNumberId     String   @unique
+  phoneNumber       String   // E.164 format (used for sending)
+  displayNumber     String?  // Formatted for UI (e.g. "+1 (555) 123-4567") - Optional for now to avoid fill issues
+  wabaId            String
+  label             String?  // e.g. "Marketing", "Support"
   
-  // OAuth & Setup Fields
-  setupStatus          WhatsAppSetupStatus        @default(ACTIVE) // Default ACTIVE for backward compat
-  metadata             Json?                      // Store raw WABA info/identifiers
+  isSystem          Boolean  @default(false)
+  isEnabled         Boolean  @default(true) @map("isActive") // Map to existing column
+  isDefault         Boolean  @default(false) 
 
-  createdAt            DateTime                   @default(now())
-  updatedAt            DateTime                   @updatedAt
+  // Legacy fields preserved to avoid data loss
+  purpose           WhatsAppPhoneNumberPurpose @default(DEFAULT)
 
-  @@unique([tenantId, phoneNumberId])
-  @@index([tenantId, isActive])
-  @@index([tenantId, purpose])
+  // Config & Status
+  qualityRating        String?
+  encryptedAccessToken String? 
+  setupStatus          WhatsAppSetupStatus @default(ACTIVE)
+  metadata             Json?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  logs              WhatsAppLog[]
+  reminderForTenants Tenant[] @relation("TenantReminderNumber")
+
+  @@index([tenantId, isEnabled])
+  @@index([phoneNumberId])
+  @@map("WhatsAppPhoneNumber") // Map to existing table name
 }
 
 model WhatsAppLog {
@@ -684,11 +699,14 @@ model WhatsAppLog {
   deliveredAt DateTime?
   readAt      DateTime?
 
+  whatsAppNumberId String?  // Added for Phase 1
+  whatsAppNumber   WhatsAppNumber? @relation(fields: [whatsAppNumberId], references: [id])
   customer Party? @relation(fields: [customerId], references: [id])
 
   @@index([tenantId, sentAt])
   @@index([tenantId, status])
   @@index([messageId])
+  @@index([whatsAppNumberId])
 }
 
 model WhatsAppTemplate {

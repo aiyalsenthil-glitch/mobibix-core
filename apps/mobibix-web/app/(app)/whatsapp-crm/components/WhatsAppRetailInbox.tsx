@@ -1,31 +1,43 @@
 import { useEffect, useState, useRef } from "react";
-import { getWhatsAppLogs, WhatsAppLog, sendWhatsAppMessage } from "@/services/whatsapp.api";
+import { getWhatsAppLogs, WhatsAppLog, sendWhatsAppMessage, getPhoneNumbers, WhatsAppNumber } from "@/services/whatsapp.api";
 
 type InboxProps = {
   tenantId?: string;
-  disabled?: boolean; // ✅ Added
+  disabled?: boolean;
+  sendingNumber?: string | null;
 };
 
-export default function WhatsAppRetailInbox({ disabled = false }: InboxProps) {
+export default function WhatsAppRetailInbox({ disabled = false, sendingNumber, tenantId }: InboxProps) {
   const [conversations, setConversations] = useState<Record<string, WhatsAppLog[]>>({});
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 1. Fetch Logs
+  const [phoneNumbers, setPhoneNumbers] = useState<WhatsAppNumber[]>([]);
+  const [filterNumberId, setFilterNumberId] = useState<string>('ALL');
+
+  // 0. Fetch Phone Numbers
+  useEffect(() => {
+    if (disabled || !tenantId) return;
+    getPhoneNumbers(tenantId).then(setPhoneNumbers).catch(console.error);
+  }, [disabled, tenantId]);
+
   // 1. Fetch Logs
   useEffect(() => {
     if (disabled) return;
     loadLogs();
-    const interval = setInterval(loadLogs, 10000); // Poll every 10s for demo
+    const interval = setInterval(loadLogs, 10000); // Poll every 10s
     return () => clearInterval(interval);
-  }, [disabled]); // ✅ Re-run if disabled changes
+  }, [disabled, filterNumberId]); // Reload when filter changes
 
   async function loadLogs() {
-    if (disabled) return; // ✅ Block if disabled
+    if (disabled) return; 
     try {
-      const logs = await getWhatsAppLogs();
+      // Pass filterNumberId if specific number selected
+      const query = filterNumberId !== 'ALL' ? { whatsAppNumberId: filterNumberId } : {};
+      const logs = await getWhatsAppLogs(query);
+
       // Group by phone
       const grouped: Record<string, WhatsAppLog[]> = {};
       logs.forEach((log) => {
@@ -51,9 +63,6 @@ export default function WhatsAppRetailInbox({ disabled = false }: InboxProps) {
     } catch (err: any) {
       if (err.message && (err.message.includes("PLAN_REQUIRED") || err.message.includes("upgrade"))) {
           console.warn("WhatsApp logs access restricted:", err.message);
-          // Set a flag or just silent fail for logs, optionally show a banner
-          // For now, we just don't set conversations, so it shows empty state.
-          // But we could add a toast or specific UI state.
       } else {
           console.error("Failed to load WhatsApp logs", err);
       }
@@ -66,13 +75,15 @@ export default function WhatsAppRetailInbox({ disabled = false }: InboxProps) {
   }, [selectedPhone, conversations]);
 
   async function handleSend() {
-    if (!selectedPhone || !replyText.trim() || disabled) return; // Block validation
+    if (!selectedPhone || !replyText.trim() || disabled) return; 
     setSending(true);
     try {
-      // For demo, we use 'bot_text_response' to simulate a generic message if no specific staff template exists
       await sendWhatsAppMessage({
         phone: selectedPhone,
         text: replyText,
+        // TODO: Pass sending number ID if we want to enforce sending from specific number
+        // For now, backend infers or uses default.
+        // Future: Add `whatsAppNumberId: filterNumberId !== 'ALL' ? filterNumberId : undefined`
       });
       
       setReplyText("");
@@ -98,8 +109,28 @@ export default function WhatsAppRetailInbox({ disabled = false }: InboxProps) {
       {/* LEFT: Conversation List */}
       <div className={`border-r border-gray-200 flex-col bg-white h-full overflow-hidden ${selectedPhone ? 'hidden lg:flex' : 'flex'}`}>
         <div className="p-4 border-b border-gray-100 bg-gray-50/50 backdrop-blur">
-          <h2 className="font-semibold text-gray-800">Active Conversations</h2>
-          <p className="text-xs text-gray-500 mt-1">{sortedPhones.length} customers active</p>
+            <div className="flex justify-between items-center mb-2">
+                <h2 className="font-semibold text-gray-800">Inbox</h2>
+                {/* Number Selector */}
+                {phoneNumbers.length > 1 && (
+                    <select 
+                        className="text-xs border-gray-200 rounded-md py-1 pr-6 pl-2 bg-white focus:ring-teal-500 focus:border-teal-500"
+                        value={filterNumberId}
+                        onChange={(e) => {
+                            setFilterNumberId(e.target.value);
+                            setSelectedPhone(null); // Clear selection on switch
+                        }}
+                    >
+                        <option value="ALL">All Numbers</option>
+                        {phoneNumbers.map(num => (
+                            <option key={num.id} value={num.id}>
+                                {num.label || num.displayNumber || num.phoneNumber}
+                            </option>
+                        ))}
+                    </select>
+                )}
+            </div>
+          <p className="text-xs text-gray-500">{sortedPhones.length} active conversations</p>
         </div>
         <div className="overflow-y-auto flex-1">
           {sortedPhones.length === 0 ? (
@@ -138,7 +169,6 @@ export default function WhatsAppRetailInbox({ disabled = false }: InboxProps) {
                        <p className="text-xs text-gray-500 truncate flex-1 leading-snug">
                          {getLogDescription(lastLog)}
                        </p>
-                       {/* INTENT BADGE */}
                        {getIntentBadge(deriveCustomerIntent(logs))}
                     </div>
                   </div>
@@ -283,8 +313,10 @@ export default function WhatsAppRetailInbox({ disabled = false }: InboxProps) {
                  </div>
                  <div className="mt-3 flex justify-between items-center px-1">
                     <div className="flex items-center gap-1.5">
-                       <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
-                       <span className="text-[10px] font-medium text-gray-500">Retail Demo Mode Active</span>
+                       <span className={`w-1.5 h-1.5 rounded-full ${sendingNumber ? 'bg-green-500' : 'bg-teal-500 animate-pulse'}`}></span>
+                       <span className="text-[10px] font-medium text-gray-500">
+                          {sendingNumber ? `Sending as: ${sendingNumber}` : 'Retail Demo Mode Active'}
+                       </span>
                     </div>
                     <span className="text-[10px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded border border-gray-100 italic">Enter to send • Shift+Enter for new line</span>
                  </div>
@@ -296,13 +328,9 @@ export default function WhatsAppRetailInbox({ disabled = false }: InboxProps) {
     );
   }
 
-// --- Helpers ---
-
 // --- Helpers & Logic ---
 
 function deriveCustomerIntent(logs: WhatsAppLog[]): 'PRODUCT' | 'BULK' | 'STAFF' | null {
-  // Scan recent logs (newest last)
-  // We look for the *latest* relevant incoming message
   for (let i = logs.length - 1; i >= 0; i--) {
     const log = logs[i];
     if (log.type === 'INCOMING') {

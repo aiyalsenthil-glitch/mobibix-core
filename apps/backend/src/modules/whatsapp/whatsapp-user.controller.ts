@@ -42,6 +42,12 @@ export class WhatsAppUserController {
     return this.whatsappUserService.getDashboard(tenantId);
   }
 
+  @Get('numbers')
+  async getNumbers(@Req() req: Request & { user?: { tenantId?: string } }) {
+    const tenantId = this.getTenantId(req);
+    return this.whatsappUserService.getNumbers(tenantId);
+  }
+
   @Post('send')
   @RequirePlanFeature('WHATSAPP_UTILITY') // Block STANDARD users
   async sendMessage(

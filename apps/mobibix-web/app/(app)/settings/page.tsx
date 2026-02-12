@@ -12,6 +12,7 @@ import {
   type SubscriptionDetails,
   type Plan,
 } from "@/services/tenant.api";
+import { bypassPayment } from "@/services/payments.api";
 import DowngradeBlockerModal from "./DowngradeBlockerModal";
 import { Check, AlertCircle, Loader2, Zap, Shield, Crown } from "lucide-react";
 
@@ -148,6 +149,7 @@ export default function SettingsPage() {
 
       await loadData();
     } catch (err: any) {
+      console.error('Plan change failed:', err);
       setError(err.message || "Plan change failed");
     } finally {
       setProcessingPlanId(null);
@@ -390,12 +392,14 @@ export default function SettingsPage() {
                         if (!confirm(`BYPASS PAYMENT: Activate ${plan.displayName} directly?`)) return;
                         setProcessingPlanId(plan.id);
                         try {
-                            const { bypassPayment } = await import('@/services/payments.api');
-                            await bypassPayment(plan.id, selectedCycle);
+                            console.log(`[TEST BYPASS] Starting bypass for ${plan.displayName} (${plan.id}) with cycle ${selectedCycle}`);
+                            const res = await bypassPayment(plan.id, selectedCycle);
+                            console.log('[TEST BYPASS] Success:', res);
                             alert(`Successfully activated ${plan.displayName} via test bypass!`);
                             window.location.reload();
                         } catch (err: any) {
-                          alert(err.message || "Bypass failed");
+                          console.error('[TEST BYPASS] Failed:', err);
+                          alert("Bypass Failed: " + (err.message || "Unknown error"));
                         } finally {
                           setProcessingPlanId(null);
                         }

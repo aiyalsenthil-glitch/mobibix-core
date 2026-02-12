@@ -25,7 +25,13 @@ export class SendWhatsAppMessageDto {
 
   @IsOptional()
   @IsString()
+  @IsOptional()
+  @IsString()
   campaignId?: string;
+
+  @IsOptional()
+  @IsString()
+  whatsAppNumberId?: string;
 }
 
 export class CreateWhatsAppCampaignDto {
@@ -61,4 +67,8 @@ export class WhatsAppLogsQueryDto {
   @IsOptional()
   @IsIn(['QUEUED', 'PENDING', 'SENT', 'DELIVERED', 'READ', 'FAILED', 'SKIPPED'])
   status?: string;
+
+  @IsOptional()
+  @IsString()
+  whatsAppNumberId?: string;
 }

@@ -681,7 +681,7 @@ async function main() {
     let skipped = 0;
 
     for (const t of tenantsList) {
-      const existing = await prisma.whatsAppPhoneNumber.findFirst({
+      const existing = await prisma.whatsAppNumber.findFirst({
         where: { tenantId: t.id },
       });
       if (existing) {
@@ -701,7 +701,7 @@ async function main() {
       }));
 
       try {
-        const res = await prisma.whatsAppPhoneNumber.createMany({
+        const res = await prisma.whatsAppNumber.createMany({
           data,
           skipDuplicates: true,
         });

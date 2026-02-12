@@ -20,11 +20,11 @@ export class WhatsAppCrmPhoneNumberGuard implements CanActivate {
 
     // ── FIX: Query WhatsAppPhoneNumber table directly ──────────
     // Previously checked deprecated Tenant.whatsappPhoneNumberId field.
-    // Now checks for any active phone number in the WhatsAppPhoneNumber table.
-    const activeNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
+    // Now checks for any active phone number in the WhatsAppNumber table.
+    const activeNumber = await this.prisma.whatsAppNumber.findFirst({
       where: {
         tenantId,
-        isActive: true,
+        isEnabled: true,
       },
       select: { id: true },
     });

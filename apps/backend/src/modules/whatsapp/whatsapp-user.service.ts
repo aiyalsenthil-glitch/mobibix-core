@@ -352,12 +352,16 @@ export class WhatsAppUserService {
       await this.phoneNumbersService.getPhoneNumberForPurpose(
         tenantId,
         WhatsAppPhoneNumberPurpose.DEFAULT,
-        'TENANT_OWNED', // For CRM, we strict check for tenant-owned numbers
+        'TENANT_OWNED',
       );
       return 'CONNECTED';
     } catch {
       return 'DISCONNECTED';
     }
+  }
+
+  async getNumbers(tenantId: string) {
+    return this.phoneNumbersService.getNumbers(tenantId);
   }
 
   async getDashboard(tenantId: string) {
@@ -680,6 +684,10 @@ export class WhatsAppUserService {
         path: ['campaignId'],
         equals: query.campaignId,
       } as Prisma.JsonFilter;
+    }
+
+    if (query.whatsAppNumberId) {
+      where.whatsAppNumberId = query.whatsAppNumberId;
     }
 
     return this.prisma.whatsAppLog.findMany({

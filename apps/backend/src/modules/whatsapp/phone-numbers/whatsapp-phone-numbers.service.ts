@@ -4,11 +4,39 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
-import { UserRole, WhatsAppPhoneNumberPurpose } from '@prisma/client';
+import { UserRole, WhatsAppPhoneNumberPurpose, ModuleType } from '@prisma/client';
+import { PlanRulesService } from '../../../core/billing/plan-rules.service';
+// import { WhatsAppPhoneNumber } from '@prisma/client'; // Now WhatsAppNumber
 
 @Injectable()
 export class WhatsAppPhoneNumbersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly planRulesService: PlanRulesService,
+  ) {}
+
+  /**
+   * Get all phone numbers for a tenant
+   */
+  async getNumbers(tenantId: string) {
+    const numbers = await this.prisma.whatsAppNumber.findMany({
+      where: { tenantId },
+      orderBy: [
+        { isDefault: 'desc' },
+        { createdAt: 'desc' },
+      ],
+    });
+
+    return numbers.map(num => ({
+        id: num.id,
+        phoneNumber: num.phoneNumber,
+        displayNumber: num.displayNumber || this.maskPhoneNumber(num.phoneNumber),
+        label: num.label,
+        isDefault: num.isDefault,
+        isEnabled: num.isEnabled,
+        qualityRating: num.qualityRating,
+    }));
+  }
 
   /**
    * Mask phone number (e.g. +91 ******4321)
@@ -33,7 +61,7 @@ export class WhatsAppPhoneNumbersService {
       maskedPhone: this.maskPhoneNumber(phone.phoneNumber),
       purpose: phone.purpose,
       isDefault: phone.isDefault,
-      isActive: phone.isActive,
+      isEnabled: phone.isEnabled ?? phone.isActive ?? true, // Standardize on isEnabled
       isInherited: phone.isInherited || false,
       source: phone.source,
     };
@@ -49,11 +77,11 @@ export class WhatsAppPhoneNumbersService {
     routingTrack?: 'SYSTEM_DEFAULT' | 'TENANT_OWNED',
   ) {
     // 1. Try to find specific phone number for this tenant
-    let phoneNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
+    let phoneNumber = await this.prisma.whatsAppNumber.findFirst({
       where: {
         tenantId,
-        purpose,
-        isActive: true,
+        purpose, // Note: purpose is now legacy/mapped, but still queryable if I kept it in schema
+        isEnabled: true, // was isActive
       },
     });
 
@@ -63,11 +91,11 @@ export class WhatsAppPhoneNumbersService {
 
     // Fallback to tenant default if no purpose-specific found
     if (!phoneNumber) {
-      phoneNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
+      phoneNumber = await this.prisma.whatsAppNumber.findFirst({
         where: {
           tenantId,
           isDefault: true,
-          isActive: true,
+          isEnabled: true,
         },
       });
     }
@@ -131,7 +159,7 @@ export class WhatsAppPhoneNumbersService {
           qualityRating: null, // Module phone might not have this in schema or we ignore it
           encryptedAccessToken: (modulePhone as any).encryptedAccessToken,
           isDefault: false, // It is a default, but treated as specific here
-          isActive: modulePhone.isActive,
+          isEnabled: modulePhone.isActive, // Map to isEnabled
           createdAt: modulePhone.createdAt,
           updatedAt: modulePhone.updatedAt,
         } as any; // Cast to any to match return type if needed, or matched type
@@ -152,7 +180,7 @@ export class WhatsAppPhoneNumbersService {
    */
   async listPhoneNumbers(tenantId: string) {
     // 1. Fetch tenant-scoped phone numbers
-    const tenantPhones = await this.prisma.whatsAppPhoneNumber.findMany({
+    const tenantPhones = await this.prisma.whatsAppNumber.findMany({
       where: { tenantId },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     });
@@ -194,7 +222,7 @@ export class WhatsAppPhoneNumbersService {
       purpose: m.purpose,
       qualityRating: m.qualityRating ?? null,
       isDefault: m.isDefault,
-      isActive: m.isActive,
+      isEnabled: m.isActive, // Map to isEnabled
       createdAt: m.createdAt,
       updatedAt: m.updatedAt,
       source: 'MODULE' as const,
@@ -272,7 +300,7 @@ export class WhatsAppPhoneNumbersService {
 
     // If setting as default, unset other defaults for this tenant
     if (data.isDefault) {
-      await this.prisma.whatsAppPhoneNumber.updateMany({
+      await this.prisma.whatsAppNumber.updateMany({
         where: {
           tenantId: data.tenantId,
           isDefault: true,
@@ -283,7 +311,30 @@ export class WhatsAppPhoneNumbersService {
       });
     }
 
-    return this.prisma.whatsAppPhoneNumber.create({
+    // ─────────────────────────────────────────────────────────────
+    // 🔒 GUARDRAIL: Plan Limits
+    // ─────────────────────────────────────────────────────────────
+    // Resolve module type (default GYM if not found, though tenant likely exists)
+    const tenant = await this.prisma.tenant.findUnique({
+        where: { id: data.tenantId },
+        select: { tenantType: true },
+    });
+    const module = (tenant?.tenantType as ModuleType) ?? ModuleType.GYM;
+
+    const planRules = await this.planRulesService.getPlanRulesForTenant(data.tenantId, module);
+    const maxNumbers = planRules?.whatsapp?.maxNumbers ?? 1; // Default to 1 if not specified
+
+    const currentCount = await this.prisma.whatsAppNumber.count({
+        where: { tenantId: data.tenantId, isEnabled: true },
+    });
+
+    if (currentCount >= maxNumbers) {
+        throw new BadRequestException(
+            `Plan limit reached. Your plan allows ${maxNumbers} WhatsApp number(s). Upgrade to add more.`,
+        );
+    }
+
+    return this.prisma.whatsAppNumber.create({
       data: {
         tenantId: data.tenantId,
         phoneNumber: data.phoneNumber,
@@ -291,7 +342,8 @@ export class WhatsAppPhoneNumbersService {
         wabaId: data.wabaId,
         purpose: data.purpose,
         isDefault: data.isDefault || false,
-        isActive: true,
+        isEnabled: true, // was isActive
+        displayNumber: data.phoneNumber, // Default fill
       },
     });
   }
@@ -309,14 +361,14 @@ export class WhatsAppPhoneNumbersService {
     },
   ) {
     // 1. Try to find in Tenant table
-    const storedTenantPhone = await this.prisma.whatsAppPhoneNumber.findUnique({
+    const storedTenantPhone = await this.prisma.whatsAppNumber.findUnique({
       where: { id },
     });
 
     if (storedTenantPhone) {
       // Found in Tenant table -> Update Tenant Phone
       if (data.isDefault) {
-        await this.prisma.whatsAppPhoneNumber.updateMany({
+        await this.prisma.whatsAppNumber.updateMany({
           where: {
             tenantId: storedTenantPhone.tenantId,
             isDefault: true,
@@ -325,12 +377,12 @@ export class WhatsAppPhoneNumbersService {
           data: { isDefault: false },
         });
       }
-      return this.prisma.whatsAppPhoneNumber.update({
+      return this.prisma.whatsAppNumber.update({
         where: { id },
         data: {
           purpose: data.purpose,
           isDefault: data.isDefault,
-          isActive: data.isActive,
+          isEnabled: data.isActive, // Map isActive input to isEnabled
           qualityRating: data.qualityRating,
           updatedAt: new Date(),
         },
@@ -370,6 +422,7 @@ export class WhatsAppPhoneNumbersService {
         ...updated,
         tenantId: updated.moduleType,
         source: 'MODULE',
+        isEnabled: updated.isActive, // Map to isEnabled
       };
     }
 
@@ -384,13 +437,13 @@ export class WhatsAppPhoneNumbersService {
    */
   async deletePhoneNumber(id: string) {
     // 1. Try to find in Tenant table
-    const tenantPhone = await this.prisma.whatsAppPhoneNumber.findUnique({
+    const tenantPhone = await this.prisma.whatsAppNumber.findUnique({
       where: { id },
     });
 
     if (tenantPhone) {
       if (tenantPhone.isDefault) {
-        const count = await this.prisma.whatsAppPhoneNumber.count({
+        const count = await this.prisma.whatsAppNumber.count({
           where: { tenantId: tenantPhone.tenantId },
         });
 
@@ -401,11 +454,11 @@ export class WhatsAppPhoneNumbersService {
         }
 
         // Check if there's another active phone number to set as default
-        const anotherActive = await this.prisma.whatsAppPhoneNumber.findFirst({
+        const anotherActive = await this.prisma.whatsAppNumber.findFirst({
           where: {
             tenantId: tenantPhone.tenantId,
             id: { not: id },
-            isActive: true,
+            isEnabled: true,
           },
         });
 
@@ -416,13 +469,13 @@ export class WhatsAppPhoneNumbersService {
         }
 
         // Set the other phone as default
-        await this.prisma.whatsAppPhoneNumber.update({
+        await this.prisma.whatsAppNumber.update({
           where: { id: anotherActive.id },
           data: { isDefault: true },
         });
       }
 
-      return this.prisma.whatsAppPhoneNumber.delete({
+      return this.prisma.whatsAppNumber.delete({
         where: { id },
       });
     }
@@ -473,6 +526,7 @@ export class WhatsAppPhoneNumbersService {
         ...deleted,
         tenantId: deleted.moduleType,
         source: 'MODULE',
+        isEnabled: deleted.isActive, // Map to isEnabled
       };
     }
 
@@ -484,7 +538,7 @@ export class WhatsAppPhoneNumbersService {
    */
   async getPhoneNumberById(id: string) {
     // 1. Check Tenant Table
-    const tenantPhone = await this.prisma.whatsAppPhoneNumber.findUnique({
+    const tenantPhone = await this.prisma.whatsAppNumber.findUnique({
       where: { id },
     });
     if (tenantPhone) return tenantPhone;
@@ -508,11 +562,11 @@ export class WhatsAppPhoneNumbersService {
    * Ensure tenant has at least one default phone number
    */
   async ensureDefaultExists(tenantId: string): Promise<boolean> {
-    const defaultPhone = await this.prisma.whatsAppPhoneNumber.findFirst({
+    const defaultPhone = await this.prisma.whatsAppNumber.findFirst({
       where: {
         tenantId,
         isDefault: true,
-        isActive: true,
+        isEnabled: true,
       },
     });
 
