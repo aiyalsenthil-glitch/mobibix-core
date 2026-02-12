@@ -71,7 +71,7 @@ export class WhatsAppDebugController {
 
     // 4. Check Member Count
     const memberCount = await this.prisma.member.count({
-      where: { tenantId, isActive: true }, // Using 'isActive' instead of 'status' if status field differs
+      where: { tenantId, isActive: true },
     });
 
     // 5. Simulate Check Logic (Mirroring WhatsAppSender)

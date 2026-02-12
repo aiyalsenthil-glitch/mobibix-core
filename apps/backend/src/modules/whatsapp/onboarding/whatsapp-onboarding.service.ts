@@ -232,7 +232,7 @@ export class WhatsAppOnboardingService {
           setupStatus: 'ACTIVE',
           purpose: 'DEFAULT',
           isDefault: true,
-          isActive: true,
+          isEnabled: true,
         } as any,
       }),
       // B. Enable WhatsApp CRM on Tenant
@@ -375,7 +375,7 @@ export class WhatsAppOnboardingService {
           setupStatus: 'ACTIVE',
           purpose: 'DEFAULT',
           isDefault: true,
-          isActive: true,
+          isEnabled: true,
         } as any,
       }),
       this.prisma.tenant.update({

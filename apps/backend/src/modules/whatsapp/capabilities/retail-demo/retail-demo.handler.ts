@@ -206,7 +206,7 @@ export class RetailDemoHandler {
 
   private async sendWelcomeFlow(tenantId: string, phone: string) {
     const shop = await this.prisma.shop.findFirst({
-      where: { tenantId, isActive: true },
+      where: { tenantId },
       select: { name: true },
     });
     const shopName = shop?.name || 'Our Store';
