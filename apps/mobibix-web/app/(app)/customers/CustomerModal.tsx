@@ -12,6 +12,7 @@ import { useTheme } from "@/context/ThemeContext";
 interface CustomerModalProps {
   customer?: Customer | null;
   onClose: () => void;
+  onSuccess?: (customer: Customer) => void;
 }
 
 const INDIAN_STATES = [
@@ -53,7 +54,11 @@ const INDIAN_STATES = [
   "Puducherry",
 ];
 
-export function CustomerModal({ customer, onClose }: CustomerModalProps) {
+export function CustomerModal({
+  customer,
+  onClose,
+  onSuccess,
+}: CustomerModalProps) {
   const { theme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -115,12 +120,14 @@ export function CustomerModal({ customer, onClose }: CustomerModalProps) {
         partyType: formData.partyType,
       };
 
+      let result: Customer;
       if (customer) {
-        await updateCustomer(customer.id, dto);
+        result = await updateCustomer(customer.id, dto);
       } else {
-        await createCustomer(dto);
+        result = await createCustomer(dto);
       }
 
+      onSuccess?.(result);
       onClose();
     } catch (err: any) {
       alert(err.message || "Failed to save customer");

@@ -96,8 +96,7 @@ export function useInvoiceForm({ shopGstEnabled = false }: UseInvoiceFormProps =
               field === "quantity" ||
               field === "rate" ||
               field === "gstRate" ||
-              field === "shopProductId" ||
-              field === "pricesIncludeTax" // Not a field on item, but affects calc
+              field === "shopProductId"
             ) {
               const baseAmount = updated.quantity * updated.rate;
               

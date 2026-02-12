@@ -15,17 +15,23 @@ export class WhatsAppOnboardingService {
   private readonly appId: string;
   private readonly appSecret: string;
   private readonly callbackUrl: string;
+  private readonly isConfigured: boolean;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {
-    this.appId = this.configService.getOrThrow('WHATSAPP_APP_ID');
-    this.appSecret = this.configService.getOrThrow('WHATSAPP_APP_SECRET');
-    // Callback URL must allow embedded signup flow return
-    this.callbackUrl = `${this.configService.getOrThrow(
-      'BACKEND_URL',
-    )}/api/integrations/whatsapp/callback`;
+    this.appId = this.configService.get<string>('WHATSAPP_APP_ID') || '';
+    this.appSecret = this.configService.get<string>('WHATSAPP_APP_SECRET') || '';
+    const backendUrl = this.configService.get<string>('BACKEND_URL') || 'http://localhost_REPLACED:3000';
+    this.callbackUrl = `${backendUrl}/api/integrations/whatsapp/callback`;
+    
+    // Check if WhatsApp is properly configured
+    this.isConfigured = !!(this.appId && this.appSecret);
+    
+    if (!this.isConfigured) {
+      this.logger.warn('WhatsApp onboarding service is not fully configured. Some features may be disabled.');
+    }
   }
 
   /**
@@ -45,7 +51,7 @@ export class WhatsAppOnboardingService {
 
     // 3. Construct URL
     const scopes = 'whatsapp_business_management,whatsapp_business_messaging';
-    const configId = this.configService.getOrThrow('WHATSAPP_CONFIG_ID');
+    const configId = this.configService.get<string>('WHATSAPP_CONFIG_ID') || '';
     
     // 4. Embedded Signup "extras" parameter
     const extras = JSON.stringify({

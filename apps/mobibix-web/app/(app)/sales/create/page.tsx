@@ -506,26 +506,28 @@ export default function CreateInvoicePage() {
       </div>
 
       {/* Modals */}
-      <CustomerModal
-        isOpen={isCustomerModalOpen}
-        onClose={handleCustomerModalClose}
-        onSuccess={(customer) => {
-             // In a clearer flow, we might want to auto-select this customer.
-             // But the party selector might not have this in its local list unless we refresh/search.
-             // Usually PartySelector will find it immediately by search.
-             // We can also auto-select if we passed a callback to CustomerModal but it just takes onSuccess mostly for reload.
-             // Let's just close it.
-             handleCustomerModalClose();
-             setSelectedCustomer(customer); // Optimistic select
-        }}
-      />
+      {isCustomerModalOpen && (
+        <CustomerModal
+          onClose={handleCustomerModalClose}
+          onSuccess={(customer) => {
+               // In a clearer flow, we might want to auto-select this customer.
+               // But the party selector might not have this in its local list unless we refresh/search.
+               // Usually PartySelector will find it immediately by search.
+               // We can also auto-select if we passed a callback to CustomerModal but it just takes onSuccess mostly for reload.
+               // Let's just close it.
+               handleCustomerModalClose();
+               setSelectedCustomer(customer); // Optimistic select
+          }}
+        />
+      )}
       
-      <ProductModal
-        isOpen={isProductModalOpen}
-        onClose={handleProductModalClose}
-        onSuccess={handleProductCreated}
-        shopId={selectedShop.id}
-      />
+      {isProductModalOpen && (
+        <ProductModal
+          onClose={handleProductModalClose}
+          onProductCreated={handleProductCreated}
+          shopId={selectedShop.id}
+        />
+      )}
     </div>
   );
 }
