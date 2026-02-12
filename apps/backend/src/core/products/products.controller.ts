@@ -72,7 +72,7 @@ export class ProductsController {
   @UseInterceptors(FileInterceptor('file'))
   async importProducts(
     @Req() req,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: any,
     @Body() body: { shopId: string; includeStock: string },
   ) {
     const tenantId = req.user?.tenantId;
