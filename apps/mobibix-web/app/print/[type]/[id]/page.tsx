@@ -74,7 +74,6 @@ function GenericPrintContent() {
         if (docType === "INVOICE") {
           // 1. Fetch raw data
           const invoice = await getInvoice(docId);
-          const invoice = await getInvoice(docId);
           // console.log("📄 Raw Invoice Data:", invoice);
           if (!invoice) throw new Error("Invoice not found");
 

@@ -61,8 +61,6 @@ export default function OnboardingPage() {
 
       // Debug: Log the token payload
       const decoded = decodeAccessToken(token);
-      // Debug: Log the token payload
-      const decoded = decodeAccessToken(token);
       // console.log("Token payload:", decoded);
       // console.log("User ID (sub):", decoded.sub);
 

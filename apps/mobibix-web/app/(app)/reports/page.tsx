@@ -88,8 +88,6 @@ export default function ReportsPage() {
     try {
       setLoading(true);
       
-      setLoading(true);
-      
       // console.log('[Reports] Fetching data for shopId:', selectedShopId);
       
       const endDate = new Date();
@@ -98,9 +96,6 @@ export default function ReportsPage() {
       const startDate = new Date();
       startDate.setDate(endDate.getDate() - dateRange);
       startDate.setHours(0, 0, 0, 0); // Start of day
-
-      const startStr = startDate.toISOString();
-      const endStr = endDate.toISOString();
 
       const startStr = startDate.toISOString();
       const endStr = endDate.toISOString();

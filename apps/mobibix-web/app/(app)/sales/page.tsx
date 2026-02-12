@@ -118,8 +118,6 @@ export default function SalesPage() {
       const token = getAccessToken();
       if (token) {
         const claims = decodeAccessToken(token);
-      if (token) {
-        const claims = decodeAccessToken(token);
         // console.log("🔍 JWT Token Claims:", {
         //   userId: claims.sub,
         //   tenantId: claims.tenantId,

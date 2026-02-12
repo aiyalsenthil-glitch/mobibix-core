@@ -91,8 +91,6 @@ export default function PurchasesPage() {
     const loadSuppliers = async () => {
       try {
         setError(null);
-      try {
-        setError(null);
         // console.log("Loading suppliers...");
 
         const suppliersData = await listSuppliers();
