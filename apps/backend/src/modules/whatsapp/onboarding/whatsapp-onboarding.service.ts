@@ -22,22 +22,29 @@ export class WhatsAppOnboardingService {
     private readonly configService: ConfigService,
   ) {
     this.appId = this.configService.get<string>('WHATSAPP_APP_ID') || '';
-    this.appSecret = this.configService.get<string>('WHATSAPP_APP_SECRET') || '';
-    const backendUrl = this.configService.get<string>('BACKEND_URL') || 'http://localhost_REPLACED:3000';
+    this.appSecret =
+      this.configService.get<string>('WHATSAPP_APP_SECRET') || '';
+    const backendUrl =
+      this.configService.get<string>('BACKEND_URL') || 'http://localhost_REPLACED:3000';
     this.callbackUrl = `${backendUrl}/api/integrations/whatsapp/callback`;
-    
+
     // Check if WhatsApp is properly configured
     this.isConfigured = !!(this.appId && this.appSecret);
-    
+
     if (!this.isConfigured) {
-      this.logger.warn('WhatsApp onboarding service is not fully configured. Some features may be disabled.');
+      this.logger.warn(
+        'WhatsApp onboarding service is not fully configured. Some features may be disabled.',
+      );
     }
   }
 
   /**
    * Generates the Meta Business Login URL with encrypted state
    */
-  async generateConnectUrl(tenantId: string, returnUrl?: string): Promise<string> {
+  async generateConnectUrl(
+    tenantId: string,
+    returnUrl?: string,
+  ): Promise<string> {
     // 1. Create State Object (Tenant + Timestamp)
     const statePayload = JSON.stringify({
       tenantId,
@@ -52,7 +59,7 @@ export class WhatsAppOnboardingService {
     // 3. Construct URL
     const scopes = 'whatsapp_business_management,whatsapp_business_messaging';
     const configId = this.configService.get<string>('WHATSAPP_CONFIG_ID') || '';
-    
+
     // 4. Embedded Signup "extras" parameter
     const extras = JSON.stringify({
       setup: {}, // Pre-fill data can go here
@@ -73,14 +80,19 @@ export class WhatsAppOnboardingService {
   /**
    * Handles the OAuth callback, exchanges code for token, and saves WABA
    */
-  async handleCallback(code: string, state: string, selectedWabaId?: string, selectedPhoneNumberId?: string) {
+  async handleCallback(
+    code: string,
+    state: string,
+    selectedWabaId?: string,
+    selectedPhoneNumberId?: string,
+  ) {
     // 1. Decrypt & Validate State
     let tenantId: string;
     let payload: any;
     try {
       const decodedState = decrypt(state);
       payload = JSON.parse(decodedState);
-      
+
       // Expire state after 15 mins
       if (Date.now() - payload.ts > 15 * 60 * 1000) {
         throw new BadRequestException('State expired. Please try again.');
@@ -96,7 +108,7 @@ export class WhatsAppOnboardingService {
     try {
       // Use v22.0 as per user request/documentation for this flow
       const tokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token`;
-      
+
       const { data } = await axios.post(tokenUrl, {
         client_id: this.appId,
         client_secret: this.appSecret,
@@ -106,7 +118,7 @@ export class WhatsAppOnboardingService {
       });
 
       accessToken = data.access_token;
-      
+
       this.logger.log(`Token exchanged successfully for tenant ${tenantId}`);
     } catch (error) {
       this.logger.error(
@@ -123,31 +135,37 @@ export class WhatsAppOnboardingService {
     try {
       // Step A: Get WABAs associated with the token (Owned and Client)
       // We look for accounts where the user has management permissions
-      const wabaFields = 'id,name,currency,timezone,message_template_namespace,owner_business_info';
+      const wabaFields =
+        'id,name,currency,timezone,message_template_namespace,owner_business_info';
       const wabaUrl = `https://graph.facebook.com/v22.0/me/whatsapp_business_accounts?access_token=${accessToken}&fields=${wabaFields}`;
       const { data: wabaData } = await axios.get(wabaUrl);
-      
+
       if (!wabaData.data || wabaData.data.length === 0) {
         throw new Error('No WhatsApp Business Account found for this user');
       }
 
       // If wabaId is provided by Embedded Signup response, use it. Otherwise pick first.
       let selectedWaba = wabaData.data[0];
-      
+
       if (selectedWabaId) {
         const found = wabaData.data.find((w: any) => w.id === selectedWabaId);
         if (found) {
-            selectedWaba = found;
+          selectedWaba = found;
         } else {
-            this.logger.warn(`Provided WABA ID ${selectedWabaId} not found in token's access list. Using default.`);
+          this.logger.warn(
+            `Provided WABA ID ${selectedWabaId} not found in token's access list. Using default.`,
+          );
         }
       }
-      
+
       wabaId = selectedWaba.id;
-      this.logger.log(`Found WABA: ${selectedWaba.name} (ID: ${wabaId}) for tenant ${tenantId}`);
+      this.logger.log(
+        `Found WABA: ${selectedWaba.name} (ID: ${wabaId}) for tenant ${tenantId}`,
+      );
 
       // Step B: Get Phone Numbers for that WABA
-      const phoneFields = 'id,display_phone_number,name_status,code_verification_status,quality_rating';
+      const phoneFields =
+        'id,display_phone_number,name_status,code_verification_status,quality_rating';
       const phoneUrl = `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers?access_token=${accessToken}&fields=${phoneFields}`;
       const { data: phoneData } = await axios.get(phoneUrl);
 
@@ -159,18 +177,24 @@ export class WhatsAppOnboardingService {
       let phone = phoneData.data[0];
 
       if (selectedPhoneNumberId) {
-        const foundPhone = phoneData.data.find((p: any) => p.id === selectedPhoneNumberId);
+        const foundPhone = phoneData.data.find(
+          (p: any) => p.id === selectedPhoneNumberId,
+        );
         if (foundPhone) {
-            phone = foundPhone;
+          phone = foundPhone;
         } else {
-            this.logger.warn(`Provided Phone ID ${selectedPhoneNumberId} not found in WABA. Using default.`);
+          this.logger.warn(
+            `Provided Phone ID ${selectedPhoneNumberId} not found in WABA. Using default.`,
+          );
         }
       }
 
       phoneNumberId = phone.id;
       phoneNumber = phone.display_phone_number.replace(/\D/g, ''); // Clean number
-      
-      this.logger.log(`Found Phone: ${phone.display_phone_number} (ID: ${phoneNumberId}) Status: ${phone.name_status}`);
+
+      this.logger.log(
+        `Found Phone: ${phone.display_phone_number} (ID: ${phoneNumberId}) Status: ${phone.name_status}`,
+      );
     } catch (error) {
       this.logger.error(
         `Failed to fetch Meta assets for ${tenantId}. Error: ${error.message}`,
@@ -234,18 +258,24 @@ export class WhatsAppOnboardingService {
 
     // 6. Register Phone Number (MANDATORY for SaaS)
     try {
-        await this.registerPhoneNumber(phoneNumberId, accessToken);
-        this.logger.log(`Phone number registered successfully for tenant ${tenantId}`);
+      await this.registerPhoneNumber(phoneNumberId, accessToken);
+      this.logger.log(
+        `Phone number registered successfully for tenant ${tenantId}`,
+      );
     } catch (e) {
-        this.logger.warn(`Failed to auto-register phone number: ${e.message}. User might need to do it manually or it's already registered.`);
+      this.logger.warn(
+        `Failed to auto-register phone number: ${e.message}. User might need to do it manually or it's already registered.`,
+      );
     }
 
     // 7. Subscribe App to WABA Webhooks (MANDATORY for receiving messages)
     try {
-        await this.subscribeApp(wabaId, accessToken);
-        this.logger.log(`App subscribed to WABA webhooks successfully for tenant ${tenantId}`);
+      await this.subscribeApp(wabaId, accessToken);
+      this.logger.log(
+        `App subscribed to WABA webhooks successfully for tenant ${tenantId}`,
+      );
     } catch (e) {
-        this.logger.warn(`Failed to subscribe app to WABA: ${e.message}`);
+      this.logger.warn(`Failed to subscribe app to WABA: ${e.message}`);
     }
 
     return { success: true, returnUrl: payload.returnUrl };
@@ -259,15 +289,15 @@ export class WhatsAppOnboardingService {
     await axios.post(
       url,
       {
-        messaging_product: "whatsapp",
-        pin: "123456", // Default PIN for auto-registration
+        messaging_product: 'whatsapp',
+        pin: '123456', // Default PIN for auto-registration
       },
       {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-      }
+      },
     );
   }
 
@@ -283,7 +313,7 @@ export class WhatsAppOnboardingService {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
   }
 
@@ -297,7 +327,7 @@ export class WhatsAppOnboardingService {
     });
 
     if (!activeNumber) {
-        return; // Already disconnected
+      return; // Already disconnected
     }
 
     // 2. Mark as DISCONNECTED
@@ -309,7 +339,7 @@ export class WhatsAppOnboardingService {
         encryptedAccessToken: null, // Clear token for security
       } as any,
     });
-    
+
     this.logger.log(`WhatsApp integration disconnected for tenant ${tenantId}`);
     return { success: true };
   }
@@ -372,15 +402,15 @@ export class WhatsAppOnboardingService {
 
     // Attempt to register/subscribe even for manual syncs to ensure connectivity
     try {
-        await this.registerPhoneNumber(phoneNumberId, accessToken);
+      await this.registerPhoneNumber(phoneNumberId, accessToken);
     } catch (e) {
-        this.logger.warn(`Manual sync registration warning: ${e.message}`);
+      this.logger.warn(`Manual sync registration warning: ${e.message}`);
     }
 
     try {
-        await this.subscribeApp(wabaId, accessToken);
+      await this.subscribeApp(wabaId, accessToken);
     } catch (e) {
-         this.logger.warn(`Manual sync subscription warning: ${e.message}`);
+      this.logger.warn(`Manual sync subscription warning: ${e.message}`);
     }
   }
 
