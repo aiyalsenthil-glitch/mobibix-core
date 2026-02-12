@@ -1,4 +1,4 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Head, Req, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
 import { JwtAuthGuard } from './core/auth/guards/jwt-auth.guard';
 import { Roles } from './core/auth/decorators/roles.decorator';
@@ -9,6 +9,7 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
+  @Head()
   root() {
     return { status: 'Backend is running' };
   }
