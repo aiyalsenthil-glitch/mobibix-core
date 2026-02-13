@@ -49,15 +49,13 @@ export class PartiesService {
     id: string,
     newRole: 'CUSTOMER' | 'VENDOR',
   ) {
-    const party = await this.prisma.party.findUnique({
-      where: { id },
+    const party = await this.prisma.party.findFirst({
+      where: { id, tenantId },
     });
 
     if (!party || party.tenantId !== tenantId) {
       return null;
     }
-
-    // Role Promotion Logic
     let updatedType = party.partyType;
 
     if (party.partyType === 'BOTH') {

@@ -9,11 +9,14 @@ import { PurchasePaymentService } from '../services/purchase-payment.service';
 import { ReceivablesAgingService } from '../services/receivables-aging.service';
 import { WarrantyService } from '../services/warranty.service';
 import { DailySalesReportService } from '../services/daily-sales-report.service';
+import { RolesGuard } from '../../../core/auth/guards/roles.guard';
+import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
+import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
 
 @Controller('api/mobileshop/reports')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
-export class MobileShopReportsController {
+export class MobileShopReportsController extends TenantScopedController {
   constructor(
     private readonly reportsService: MobileShopReportsService,
     private readonly gstReports: GSTReportsService,
@@ -22,11 +25,13 @@ export class MobileShopReportsController {
     private readonly receivablesAging: ReceivablesAgingService,
     private readonly warranty: WarrantyService,
     private readonly dailySales: DailySalesReportService,
-  ) {}
+  ) {
+    super();
+  }
 
   @Get('dashboard')
   async getDashboard(@Request() req, @Query('shopId') shopId?: string) {
-    const tenantId = req.user.tenantId;
+    const tenantId = this.getTenantId(req);
     return this.reportsService.getOwnerDashboard(tenantId, shopId);
   }
 
@@ -38,7 +43,7 @@ export class MobileShopReportsController {
     @Query('shopId') shopId?: string,
     @Query('partyId') partyId?: string,
   ) {
-    const tenantId = req.user.tenantId;
+    const tenantId = this.getTenantId(req);
     return this.reportsService.getSalesReport(
       tenantId,
       startDate ? new Date(startDate) : undefined,
@@ -56,7 +61,7 @@ export class MobileShopReportsController {
     @Query('shopId') shopId?: string,
     @Query('partyId') partyId?: string,
   ) {
-    const tenantId = req.user.tenantId;
+    const tenantId = this.getTenantId(req);
     return this.reportsService.getPurchaseReport(
       tenantId,
       startDate ? new Date(startDate) : undefined,
@@ -68,7 +73,7 @@ export class MobileShopReportsController {
 
   @Get('inventory')
   async getInventoryReport(@Request() req, @Query('shopId') shopId?: string) {
-    const tenantId = req.user.tenantId;
+    const tenantId = this.getTenantId(req);
     return this.reportsService.getInventoryReport(tenantId, shopId);
   }
 
@@ -80,7 +85,7 @@ export class MobileShopReportsController {
     @Query('shopId') shopId?: string,
     @Query('partyId') partyId?: string,
   ) {
-    const tenantId = req.user.tenantId;
+    const tenantId = this.getTenantId(req);
     return this.reportsService.getProfitSummary(
       tenantId,
       startDate ? new Date(startDate) : undefined,
@@ -97,7 +102,7 @@ export class MobileShopReportsController {
     @Query('endDate') endDate?: string,
     @Query('shopId') shopId?: string,
   ) {
-    const tenantId = req.user.tenantId;
+    const tenantId = this.getTenantId(req);
     return this.reportsService.getTopSellingProducts(
       tenantId,
       startDate ? new Date(startDate) : undefined,
@@ -116,7 +121,7 @@ export class MobileShopReportsController {
     @Query('shopId') shopId?: string,
   ) {
     return this.gstReports.getGSTR1B2B(
-      req.user.tenantId,
+      this.getTenantId(req),
       new Date(fromDate),
       new Date(toDate),
       shopId,
@@ -131,7 +136,7 @@ export class MobileShopReportsController {
     @Query('shopId') shopId?: string,
   ) {
     return this.gstReports.getGSTR1B2C(
-      req.user.tenantId,
+      this.getTenantId(req),
       new Date(fromDate),
       new Date(toDate),
       shopId,
@@ -146,7 +151,7 @@ export class MobileShopReportsController {
     @Query('shopId') shopId?: string,
   ) {
     return this.gstReports.getGSTR2(
-      req.user.tenantId,
+      this.getTenantId(req),
       new Date(fromDate),
       new Date(toDate),
       shopId,
@@ -161,7 +166,7 @@ export class MobileShopReportsController {
     @Query('shopId') shopId?: string,
   ) {
     const csv = await this.gstReports.exportGSTR1AsCSV(
-      req.user.tenantId,
+      this.getTenantId(req),
       new Date(fromDate),
       new Date(toDate),
       shopId,
@@ -177,7 +182,7 @@ export class MobileShopReportsController {
     @Query('shopId') shopId?: string,
   ) {
     const csv = await this.gstReports.exportGSTR2AsCSV(
-      req.user.tenantId,
+      this.getTenantId(req),
       new Date(fromDate),
       new Date(toDate),
       shopId,
@@ -189,12 +194,12 @@ export class MobileShopReportsController {
 
   @Get('payables-aging')
   async getPayablesAging(@Request() req, @Query('shopId') shopId?: string) {
-    return this.purchasePayment.getPayablesAging(req.user.tenantId, shopId);
+    return this.purchasePayment.getPayablesAging(this.getTenantId(req), shopId);
   }
 
   @Get('receivables-aging')
   async getReceivablesAging(@Request() req, @Query('shopId') shopId?: string) {
-    return this.receivablesAging.getAgingReport(req.user.tenantId, shopId);
+    return this.receivablesAging.getAgingReport(this.getTenantId(req), shopId);
   }
 
   @Get('receivables-aging/export')

@@ -3,12 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { ArrowRight, Building2, AlertCircle } from "lucide-react";
-import {
-  getAccessToken,
-  isAuthenticated,
-  decodeAccessToken,
-  clearAccessToken,
-} from "@/services/auth.api";
+import { hasSessionHint } from "@/services/auth.api";
 import { createTenant } from "@/services/tenant.api";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -34,7 +29,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     // Check if user is authenticated; if not, redirect to signin
-    if (!isAuthenticated()) {
+    if (!hasSessionHint()) {
       router.push("/signin");
     } else {
       setCheckingAuth(false);
@@ -53,31 +48,19 @@ export default function OnboardingPage() {
       setLoading(true);
       setError(null);
 
-      const token = getAccessToken();
-      if (!token) {
+      if (!hasSessionHint()) {
         router.push("/signin");
         return;
       }
-
-      // Debug: Log the token payload
-      const decoded = decodeAccessToken(token);
-      // console.log("Token payload:", decoded);
-      // console.log("User ID (sub):", decoded.sub);
 
       const response = await createTenant({
         name: businessName,
         tenantType: "MOBILE_SHOP",
       });
 
-      // Store new access token if provided
-      if (response.accessToken) {
-        localStorage.setItem("accessToken", response.accessToken);
-        sessionStorage.setItem("accessToken", response.accessToken);
-
-        // Use full page reload to ensure auth context reinitializes with new token
-        // This ensures the dashboard gets the updated permissions
-        window.location.href = "/dashboard";
-        return;
+      // Full page reload to ensure auth context reinitializes with new tenant context
+      window.location.href = "/dashboard";
+      return;
       }
 
       // Fallback navigation

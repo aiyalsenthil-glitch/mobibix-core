@@ -33,20 +33,38 @@ export class WhatsAppLogger {
       }
     }
 
-    await this.prisma.whatsAppLog.create({
-      data: {
-        tenantId: data.tenantId,
-        whatsAppNumberId: data.whatsAppNumberId || undefined,
-        memberId: data.memberId,
-        customerId: resolvedCustomerId,
-        phone: data.phone,
-        type: data.type,
-        status: data.status,
-        error: data.error || undefined,
-        messageId: data.messageId || undefined,
-        metadata: data.metadata || undefined,
-      },
-    });
+    const createData: any = {
+      tenantId: data.tenantId,
+      phone: data.phone,
+      type: data.type,
+      status: data.status,
+    };
+
+    if (data.whatsAppNumberId) {
+      createData.whatsAppNumberId = data.whatsAppNumberId;
+    }
+
+    if (data.memberId) {
+      createData.memberId = data.memberId;
+    }
+
+    if (resolvedCustomerId) {
+      createData.customerId = resolvedCustomerId;
+    }
+
+    if (data.error) {
+      createData.error = data.error;
+    }
+
+    if (data.messageId) {
+      createData.messageId = data.messageId;
+    }
+
+    if (data.metadata) {
+      createData.metadata = data.metadata;
+    }
+
+    await this.prisma.whatsAppLog.create({ data: createData });
   }
 
   async updateStatus(

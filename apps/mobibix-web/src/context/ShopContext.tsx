@@ -8,7 +8,7 @@ import React, {
   useCallback,
 } from "react";
 import { listShops, type Shop } from "@/services/shops.api";
-import { getAccessToken } from "@/services/auth.api";
+import { hasSessionHint } from "@/services/auth.api";
 
 interface ShopContextType {
   shops: Shop[];
@@ -62,10 +62,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize shops after login (only once)
   useEffect(() => {
-    const token = getAccessToken();
-    if (token && !isInitialized) {
+    const hasSession = hasSessionHint();
+    if (hasSession && !isInitialized) {
       initializeShops();
-    } else if (!token) {
+    } else if (!hasSession) {
       setIsLoadingShops(false);
       setIsInitialized(true);
     }
@@ -79,7 +79,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const storedShopId = localStorage.getItem(SELECTED_SHOP_KEY);
 
       // Validate shopId format (CUID should be alphanumeric, ~25 chars)
-      const isValidShopId = storedShopId && 
+      const isValidShopId =
+        storedShopId &&
         /^[a-z0-9]{20,30}$/i.test(storedShopId) &&
         data.find((s) => s.id === storedShopId);
 
@@ -88,10 +89,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       } else {
         // Invalid or missing shopId - auto-select first shop or clear
         if (storedShopId) {
-          console.warn('[ShopContext] Invalid shopId in localStorage, clearing:', storedShopId);
+          console.warn(
+            "[ShopContext] Invalid shopId in localStorage, clearing:",
+            storedShopId,
+          );
           localStorage.removeItem(SELECTED_SHOP_KEY);
         }
-        
+
         if (data.length === 1) {
           // Auto-select if only one shop
           setSelectedShopId(data[0].id);
@@ -153,8 +157,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refreshShops]);
 
-  const selectedShop = Array.isArray(shops) 
-    ? shops.find((s) => s.id === selectedShopId) || null 
+  const selectedShop = Array.isArray(shops)
+    ? shops.find((s) => s.id === selectedShopId) || null
     : null;
   const hasMultipleShops = Array.isArray(shops) && shops.length > 1;
 

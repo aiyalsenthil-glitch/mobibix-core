@@ -69,25 +69,25 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
             📊 Dashboard
           </Link>
           <Link
-            href="/dashboard/sales"
+            href="/sales"
             className={`block px-4 py-3 rounded-lg transition-all ${
-              isActive("/dashboard/sales") ? navItemActive : navItemInactive
+              isActive("/sales") ? navItemActive : navItemInactive
             }`}
           >
             💰 Sales
           </Link>
           <Link
-            href="/dashboard/jobcards"
+            href="/jobcards"
             className={`block px-4 py-3 rounded-lg transition-all ${
-              isActive("/dashboard/jobcards") ? navItemActive : navItemInactive
+              isActive("/jobcards") ? navItemActive : navItemInactive
             }`}
           >
             🔧 Job Cards
           </Link>
           <Link
-            href="/dashboard/inventory"
+            href="/inventory"
             className={`block px-4 py-3 rounded-lg transition-all ${
-              isActive("/dashboard/inventory") ? navItemActive : navItemInactive
+              isActive("/inventory") ? navItemActive : navItemInactive
             }`}
           >
             📦 Inventory
@@ -113,41 +113,33 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 <Link
-                  href="/dashboard/customers"
+                  href="/customers"
                   className={`block px-4 py-2 rounded-lg transition-all text-sm ${
-                    isActive("/dashboard/customers")
-                      ? navItemActive
-                      : navItemInactive
+                    isActive("/customers") ? navItemActive : navItemInactive
                   }`}
                 >
                   👥 Customers
                 </Link>
                 <Link
-                  href="/dashboard/reports"
+                  href="/reports"
                   className={`block px-4 py-2 rounded-lg transition-all text-sm ${
-                    isActive("/dashboard/reports")
-                      ? navItemActive
-                      : navItemInactive
+                    isActive("/reports") ? navItemActive : navItemInactive
                   }`}
                 >
                   📊 Reports
                 </Link>
                 <Link
-                  href="/dashboard/shops"
+                  href="/shops"
                   className={`block px-4 py-2 rounded-lg transition-all text-sm ${
-                    isActive("/dashboard/shops")
-                      ? navItemActive
-                      : navItemInactive
+                    isActive("/shops") ? navItemActive : navItemInactive
                   }`}
                 >
                   🏪 Shops
                 </Link>
                 <Link
-                  href="/dashboard/settings"
+                  href="/settings"
                   className={`block px-4 py-2 rounded-lg transition-all text-sm ${
-                    isActive("/dashboard/settings")
-                      ? navItemActive
-                      : navItemInactive
+                    isActive("/settings") ? navItemActive : navItemInactive
                   }`}
                 >
                   ⚙️ Settings

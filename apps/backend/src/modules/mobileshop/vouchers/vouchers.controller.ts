@@ -14,12 +14,17 @@ import { CreateVoucherDto } from './dto/create-voucher.dto';
 import { VoucherEntity } from './entities/voucher.entity';
 import { PaymentMode, VoucherStatus, UserRole } from '@prisma/client';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
+import { RolesGuard } from '../../../core/auth/guards/roles.guard';
+import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
+import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
 
 @Controller('vouchers')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
-export class VouchersController {
-  constructor(private readonly vouchersService: VouchersService) {}
+export class VouchersController extends TenantScopedController {
+  constructor(private readonly vouchersService: VouchersService) {
+    super();
+  }
 
   /**
    * Create a voucher for money paid out

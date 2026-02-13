@@ -14,9 +14,11 @@ import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { WhatsAppPhoneNumbersService } from './whatsapp-phone-numbers.service';
 import { UserRole, WhatsAppPhoneNumberPurpose } from '@prisma/client';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
+import { RolesGuard } from '../../../core/auth/guards/roles.guard';
+import { VirtualTenantGuard } from '../guards/virtual-tenant.guard';
 
 @Controller('whatsapp/phone-numbers')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, VirtualTenantGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppPhoneNumbersController {
   constructor(
@@ -108,11 +110,13 @@ export class WhatsAppPhoneNumbersController {
     // Validate ownership for OWNER role
     const user = req.user;
     const role = (user?.role?.toUpperCase() as UserRole) || UserRole.USER;
-    
+
     if (role === UserRole.OWNER) {
       const phoneNumber = await this.phoneNumbersService.getPhoneNumberById(id);
       if (!phoneNumber || phoneNumber.tenantId !== user.tenantId) {
-        throw new BadRequestException('Unauthorized - Can only update own tenant numbers');
+        throw new BadRequestException(
+          'Unauthorized - Can only update own tenant numbers',
+        );
       }
     }
 

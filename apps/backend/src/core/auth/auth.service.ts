@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
@@ -11,6 +12,9 @@ import { GoogleExchangeDto } from './dto/google-exchange.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly refreshTokenTtlMs = 30 * 24 * 60 * 60 * 1000;
+  private readonly accessTokenTtlMs = 7 * 24 * 60 * 60 * 1000;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -32,6 +36,81 @@ export class AuthService {
         : undefined;
 
     return this.loginWithFirebase(dto.idToken, tenantCode);
+  }
+
+  /**
+   * 🔁 Refresh access token using a stored refresh token
+   */
+  async refreshAccessToken(refreshToken: string) {
+    if (!refreshToken || refreshToken.trim() === '') {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    const tokenRecord = await this.prisma.refreshToken.findUnique({
+      where: { token: refreshToken },
+      include: { user: true },
+    });
+
+    if (!tokenRecord) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (tokenRecord.revokedAt) {
+      throw new UnauthorizedException('Refresh token revoked');
+    }
+
+    if (tokenRecord.expiresAt.getTime() <= Date.now()) {
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    const user = tokenRecord.user;
+
+    const userTenant = await this.prisma.userTenant.findFirst({
+      where: { userId: user.id },
+      select: {
+        id: true,
+        tenantId: true,
+        role: true,
+      },
+    });
+
+    const tenantId = userTenant?.tenantId ?? user.tenantId ?? null;
+    const role = userTenant?.role ?? user.role;
+
+    const accessToken = this.jwtService.sign({
+      sub: user.id,
+      tenantId,
+      userTenantId: userTenant?.id ?? null,
+      role,
+    });
+
+    return { accessToken, accessTokenExpiresIn: this.accessTokenTtlMs };
+  }
+
+  private async createRefreshToken(userId: string) {
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + this.refreshTokenTtlMs);
+
+    await this.prisma.refreshToken.create({
+      data: {
+        userId,
+        token,
+        expiresAt,
+      },
+    });
+
+    return token;
+  }
+
+  async revokeRefreshToken(token: string) {
+    if (!token || token.trim() === '') {
+      return;
+    }
+
+    await this.prisma.refreshToken.updateMany({
+      where: { token },
+      data: { revokedAt: new Date() },
+    });
   }
 
   /**
@@ -145,8 +224,13 @@ export class AuthService {
           role: user.role,
         });
 
+        const refreshToken = await this.createRefreshToken(user.id);
+
         return {
           accessToken: token,
+          accessTokenExpiresIn: this.accessTokenTtlMs,
+          refreshToken,
+          refreshTokenExpiresIn: this.refreshTokenTtlMs,
           user: {
             id: user.id,
             email: user.email,
@@ -170,6 +254,8 @@ export class AuthService {
         userTenantId: resolvedUserTenant.id,
         role: resolvedUserTenant.role,
       });
+
+      const refreshToken = await this.createRefreshToken(user.id);
 
       // ─────────────────────────────
       // 6️⃣ Handle staff invite acceptance (fire-and-forget)
@@ -221,6 +307,9 @@ export class AuthService {
 
       return {
         accessToken: token,
+        accessTokenExpiresIn: this.accessTokenTtlMs,
+        refreshToken,
+        refreshTokenExpiresIn: this.refreshTokenTtlMs,
         user: {
           id: user.id,
           tenantId: activeUserTenant?.tenantId ?? null,

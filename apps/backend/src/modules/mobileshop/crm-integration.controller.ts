@@ -12,6 +12,9 @@ import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { CrmIntegrationService } from './services/crm-integration.service';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { RolesGuard } from '../../core/auth/guards/roles.guard';
+import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
+import { TenantScopedController } from '../../core/auth/tenant-scoped.controller';
 
 /**
  * Example Controller: MobileShop CRM Dashboard Integration
@@ -20,10 +23,24 @@ import { UserRole } from '@prisma/client';
  * This is NOT a CORE CRM controller - it's a MobileShop consumer
  */
 @Controller('mobileshop/crm')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
-export class MobileShopCrmController {
-  constructor(private readonly crmIntegration: CrmIntegrationService) {}
+export class MobileShopCrmController extends TenantScopedController {
+  constructor(private readonly crmIntegration: CrmIntegrationService) {
+    super();
+  }
+
+  /**
+   * Extract JWT from cookies (httpOnly) or Authorization header (fallback)
+   * Supports both cookie-based and bearer token auth
+   */
+  private getAccessToken(req: any): string {
+    return (
+      req.cookies?.accessToken ||
+      req.headers.authorization?.replace('Bearer ', '') ||
+      ''
+    );
+  }
 
   /**
    * GET /mobileshop/crm/dashboard
@@ -37,7 +54,7 @@ export class MobileShopCrmController {
     @Query('shopId') shopId?: string,
   ) {
     const headers = this.crmIntegration.buildAuthHeaders(
-      req.headers.authorization?.replace('Bearer ', '') || '',
+      this.getAccessToken(req),
     );
 
     return this.crmIntegration.getDashboardMetrics(headers, preset, shopId);
@@ -51,7 +68,7 @@ export class MobileShopCrmController {
   @Get('follow-ups')
   async getMyFollowUps(@Request() req) {
     const headers = this.crmIntegration.buildAuthHeaders(
-      req.headers.authorization?.replace('Bearer ', '') || '',
+      this.getAccessToken(req),
     );
 
     return this.crmIntegration.getMyFollowUps(headers);
@@ -65,7 +82,7 @@ export class MobileShopCrmController {
   @Get('follow-ups/counts')
   async getFollowUpCounts(@Request() req) {
     const headers = this.crmIntegration.buildAuthHeaders(
-      req.headers.authorization?.replace('Bearer ', '') || '',
+      this.getAccessToken(req),
     );
 
     return this.crmIntegration.getFollowUpCounts(headers);
@@ -90,7 +107,7 @@ export class MobileShopCrmController {
     },
   ) {
     const headers = this.crmIntegration.buildAuthHeaders(
-      req.headers.authorization?.replace('Bearer ', '') || '',
+      this.getAccessToken(req),
     );
 
     return this.crmIntegration.createFollowUp(headers, data);
@@ -108,7 +125,7 @@ export class MobileShopCrmController {
     @Query('sources') sources?: string,
   ) {
     const headers = this.crmIntegration.buildAuthHeaders(
-      req.headers.authorization?.replace('Bearer ', '') || '',
+      this.getAccessToken(req),
     );
 
     return this.crmIntegration.getCustomerTimeline(
@@ -136,7 +153,7 @@ export class MobileShopCrmController {
     },
   ) {
     const headers = this.crmIntegration.buildAuthHeaders(
-      req.headers.authorization?.replace('Bearer ', '') || '',
+      this.getAccessToken(req),
     );
 
     return this.crmIntegration.sendWhatsAppMessage(headers, data);
@@ -149,7 +166,7 @@ export class MobileShopCrmController {
   @Get('health')
   async health(@Request() req) {
     const headers = this.crmIntegration.buildAuthHeaders(
-      req.headers.authorization?.replace('Bearer ', '') || '',
+      this.getAccessToken(req),
     );
 
     const isHealthy = await this.crmIntegration.healthCheck(headers);

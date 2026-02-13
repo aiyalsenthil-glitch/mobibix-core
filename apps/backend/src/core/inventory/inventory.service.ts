@@ -1,4 +1,9 @@
-import { Injectable, ConflictException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  InternalServerErrorException,
+  BadRequestException,
+} from '@nestjs/common';
 import { ProductType as PrismaProductType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StockService, type StockBalance } from '../stock/stock.service';
@@ -19,7 +24,10 @@ export class InventoryService {
   }
 
   async createProduct(tenantId: string, dto: CreateProductDto) {
-    console.log(`[InvService] createProduct called for tenant ${tenantId}`, JSON.stringify(dto));
+    console.log(
+      `[InvService] createProduct called for tenant ${tenantId}`,
+      JSON.stringify(dto),
+    );
     // Name is required for creation
     if (!dto.name || !dto.shopId) {
       throw new Error('Name and shopId are required for creating a product');
@@ -57,7 +65,6 @@ export class InventoryService {
       );
     }
 
-
     try {
       return await this.prisma.shopProduct.create({
         data: {
@@ -75,16 +82,18 @@ export class InventoryService {
         },
       });
     } catch (error) {
-        console.error('Error creating product:', error);
-        throw new BadRequestException(`Failed to create product: ${error.message}`);
+      console.error('Error creating product:', error);
+      throw new BadRequestException(
+        `Failed to create product: ${error.message}`,
+      );
     }
   }
 
   async updateProduct(tenantId: string, id: string, dto: CreateProductDto) {
     // Fetch existing product to merge updates
     console.log(`[DEBUG] Updating Product: ID=${id}, Tenant=${tenantId}`);
-    const existing = await this.prisma.shopProduct.findUnique({
-      where: { id },
+    const existing = await this.prisma.shopProduct.findFirst({
+      where: { id, tenantId },
       select: {
         name: true,
         type: true,

@@ -142,18 +142,63 @@ export class GSTVerificationService {
   }
 
   /**
-   * Check if GST rates are within standard ranges
+   * Check if GST rates are within standard ranges [0, 5, 9, 18]
+   * AND follow the business rule: If IGST > 0, then CGST=SGST=0 (interstate)
+   * If IGST = 0, then CGST=SGST (same-state)
+   *
+   * Valid combinations:
+   * - (0, 0, 0): No tax
+   * - (5, 5, 0), (9, 9, 0), (18, 18, 0): Same-state with equal CGST+SGST
+   * - (0, 0, 5), (0, 0, 9), (0, 0, 18): Interstate (IGST only)
+   * - (5, 5, 10), (9, 9, 18): Same-state combined rate (CGST+SGST = IGST for display)
+   * - (18, 18, 36): Invalid because 36% is not a standard rate
    */
   validateGSTRates(
     cgstRate: number,
     sgstRate: number,
     igstRate: number,
   ): boolean {
-    const validRates = [0, 5, 9, 18];
-    return (
-      validRates.includes(cgstRate) &&
-      validRates.includes(sgstRate) &&
-      validRates.includes(igstRate)
-    );
+    const validStandardRates = [0, 5, 9, 18];
+    // Valid combined rates: 0, 5, 9, 10 (5+5), 12 (6+6 hypothetical), 18 (9+9 or standalone), 28 (14+14 hypothetical), 36 (18+18)
+    // BUT: 36 is NOT in standard rates, so (18,18,36) should fail
+    const validCombinedRates = [0, 5, 9, 10, 12, 18, 28]; // Exclude 36
+
+    // Step 1: CGST and SGST must be from standard rates
+    if (
+      !validStandardRates.includes(cgstRate) ||
+      !validStandardRates.includes(sgstRate)
+    ) {
+      return false;
+    }
+
+    // Step 2: If CGST and SGST are both non-zero, they must be equal (same-state transaction)
+    if (cgstRate > 0 && sgstRate > 0 && cgstRate !== sgstRate) {
+      return false;
+    }
+
+    // Step 3: Special case - no tax (0, 0, 0)
+    if (cgstRate === 0 && sgstRate === 0 && igstRate === 0) {
+      return true;
+    }
+
+    // Step 4: Interstate transaction (0, 0, X) - IGST must be standard rate
+    if (cgstRate === 0 && sgstRate === 0) {
+      return validStandardRates.includes(igstRate);
+    }
+
+    // Step 5: Same-state transaction (X, X, Y)
+    // IGST can be:
+    // a) 0 (no IGST in same-state)
+    // b) CGST+SGST (combined display, e.g., 5+5=10, 9+9=18)
+    const combined = cgstRate + sgstRate;
+    if (igstRate === 0) {
+      return true; // (5,5,0), (9,9,0), (18,18,0) valid
+    }
+    if (igstRate === combined) {
+      // Combined display: must be in valid combined rates (excludes 36)
+      return validCombinedRates.includes(combined);
+    }
+
+    return false; // IGST doesn't match expected pattern
   }
 }

@@ -5,31 +5,36 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
-import { getAccessToken } from "@/services/auth.api";
-import { 
-  getProfitSummary, 
-  getSalesReport,
-} from "@/services/reports.api";
+import { getProfitSummary, getSalesReport } from "@/services/reports.api";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { getUsageHistory, UsageSnapshot } from "@/services/tenant.api";
 import { UsageTrendsChart } from "@/components/dashboard/UsageTrendsChart";
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, Legend, PieChart, Pie, Cell 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
-import { 
-  TrendingUp, 
-  DollarSign, 
-  Wallet, 
-  CreditCard, 
-  Box, 
-  AlertTriangle, 
+import {
+  TrendingUp,
+  DollarSign,
+  Wallet,
+  CreditCard,
+  Box,
+  AlertTriangle,
   Search,
   Zap,
   Clock,
   CheckCircle2,
   Settings,
-  ArrowRight
+  ArrowRight,
 } from "lucide-react";
 
 interface DashboardData {
@@ -68,12 +73,16 @@ export default function DashboardPage() {
   // Derived state from data or fallback
   const paymentStats = useMemo(() => data.paymentStats || [], [data]);
   const salesTrend = useMemo(() => data.salesTrend || [], [data]);
-  
+
   const [usageHistory, setUsageHistory] = useState<UsageSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
 
   const userRole = authUser?.role?.toLowerCase();
-  const isOwner = userRole === "owner" || userRole === "admin" || userRole === "manager" || userRole === "member";
+  const isOwner =
+    userRole === "owner" ||
+    userRole === "admin" ||
+    userRole === "manager" ||
+    userRole === "member";
   const isAllShops = !selectedShopId && isOwner;
 
   const fetchDashboard = async () => {
@@ -90,9 +99,11 @@ export default function DashboardPage() {
 
     try {
       setLoading(true);
-      const token = getAccessToken();
-      const endpoint = (userRole === "owner" || userRole === "admin" || userRole === "manager") ? "owner" : "staff";
-      
+      const endpoint =
+        userRole === "owner" || userRole === "admin" || userRole === "manager"
+          ? "owner"
+          : "staff";
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const startStr = today.toISOString();
@@ -105,14 +116,19 @@ export default function DashboardPage() {
 
       // Optimized: Reduced from 5 to 3 calls. Sales/Trend data now comes from main dashboard API.
       const [dashRes, profitRes, usageRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api"}/mobileshop/dashboard/${endpoint}${shopQuery ? '?' + shopQuery.substring(1) : ''}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).catch(() => null),
-        (isOwner && userRole !== "member") ? getProfitSummary({
-          ...reportParams,
-          startDate: startStr,
-          endDate: endStr,
-        }).catch(() => ({ metrics: { grossProfit: 0 } })) : Promise.resolve({ metrics: { grossProfit: 0 } }),
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api"}/mobileshop/dashboard/${endpoint}${shopQuery ? "?" + shopQuery.substring(1) : ""}`,
+          {
+            credentials: "include",
+          },
+        ).catch(() => null),
+        isOwner && userRole !== "member"
+          ? getProfitSummary({
+              ...reportParams,
+              startDate: startStr,
+              endDate: endStr,
+            }).catch(() => ({ metrics: { grossProfit: 0 } }))
+          : Promise.resolve({ metrics: { grossProfit: 0 } }),
         isOwner ? getUsageHistory(30).catch(() => []) : Promise.resolve([]),
       ]);
 
@@ -126,7 +142,6 @@ export default function DashboardPage() {
       if (Array.isArray(usageRes)) {
         setUsageHistory(usageRes);
       }
-
     } catch (error) {
       console.error("Dashboard Fetch Error:", error);
     } finally {
@@ -139,19 +154,24 @@ export default function DashboardPage() {
   }, [selectedShopId, authUser?.id]);
 
   // Memoize chart colors to prevent recreation on every render
-  const COLORS = useMemo(() => ["#0ea5e9", "#10b981", "#f59e0b", "##ef4444", "#8b5cf6"], []);
+  const COLORS = useMemo(
+    () => ["#0ea5e9", "#10b981", "#f59e0b", "##ef4444", "#8b5cf6"],
+    [],
+  );
 
   // Memoize computed payment values for better performance
-  const cashCollection = useMemo(() => 
-    paymentStats.find(p => p.name === 'CASH')?.value ?? 0,
-    [paymentStats]
+  const cashCollection = useMemo(
+    () => paymentStats.find((p) => p.name === "CASH")?.value ?? 0,
+    [paymentStats],
   );
 
-  const digitalPayments = useMemo(() => 
-    paymentStats.filter(p => p.name !== 'CASH').reduce((s, p) => s + p.value, 0),
-    [paymentStats]
+  const digitalPayments = useMemo(
+    () =>
+      paymentStats
+        .filter((p) => p.name !== "CASH")
+        .reduce((s, p) => s + p.value, 0),
+    [paymentStats],
   );
-
 
   return (
     <div className="space-y-8 pb-10">
@@ -162,18 +182,18 @@ export default function DashboardPage() {
             {isAllShops ? "Enterprise Overview" : "Dashboard Overview"}
           </h1>
           <p className="text-muted-foreground">
-            {isAllShops 
-              ? "Consolidated metrics across all shops." 
+            {isAllShops
+              ? "Consolidated metrics across all shops."
               : "Monitor your business performance in real-time."}
           </p>
         </div>
         <div className="flex items-center gap-2">
-           <button 
-             onClick={() => router.push("/reports")}
-             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all shadow-sm"
-           >
-             Detailed Reports <ArrowRight className="w-4 h-4" />
-           </button>
+          <button
+            onClick={() => router.push("/reports")}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all shadow-sm"
+          >
+            Detailed Reports <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -181,17 +201,25 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label={isAllShops ? "Total Revenue" : "Today Revenue"}
-          value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(data.today?.salesAmount ?? 0)}
+          value={new Intl.NumberFormat("en-IN", {
+            style: "currency",
+            currency: "INR",
+            maximumFractionDigits: 0,
+          }).format(data.today?.salesAmount ?? 0)}
           icon={<DollarSign />}
           subtext={isAllShops ? "All shops today" : "Net sales today"}
           accentColor="emerald"
           isLoading={loading}
           onClick={() => router.push("/reports/sales")}
         />
-        {(isOwner && userRole !== "member") && (
+        {isOwner && userRole !== "member" && (
           <MetricCard
             label={isAllShops ? "Total Profit" : "Today Profit"}
-            value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(todayProfit)}
+            value={new Intl.NumberFormat("en-IN", {
+              style: "currency",
+              currency: "INR",
+              maximumFractionDigits: 0,
+            }).format(todayProfit)}
             icon={<TrendingUp />}
             subtext={isAllShops ? "All shops combined" : "Revenue minus cost"}
             accentColor="blue"
@@ -201,7 +229,11 @@ export default function DashboardPage() {
         )}
         <MetricCard
           label="Cash Collection"
-          value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(cashCollection)}
+          value={new Intl.NumberFormat("en-IN", {
+            style: "currency",
+            currency: "INR",
+            maximumFractionDigits: 0,
+          }).format(cashCollection)}
           icon={<Wallet />}
           subtext="Physical cash in hand"
           accentColor="amber"
@@ -209,7 +241,11 @@ export default function DashboardPage() {
         />
         <MetricCard
           label="Digital Payments"
-          value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(digitalPayments)}
+          value={new Intl.NumberFormat("en-IN", {
+            style: "currency",
+            currency: "INR",
+            maximumFractionDigits: 0,
+          }).format(digitalPayments)}
           icon={<CreditCard />}
           subtext="UPI, Card, Bank"
           accentColor="purple"
@@ -221,7 +257,9 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 glass-card p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-base font-semibold text-foreground">7-Day Sales Trend</h3>
+            <h3 className="text-base font-semibold text-foreground">
+              7-Day Sales Trend
+            </h3>
             <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded-full font-medium">
               {isAllShops ? "Consolidated" : "Single Shop"}
             </span>
@@ -232,25 +270,56 @@ export default function DashboardPage() {
             ) : salesTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={salesTrend}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "#334155" : "#e2e8f0"} />
-                  <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v/1000}k`} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: isDark ? "#1e293b" : "#fff" }}
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke={isDark ? "#334155" : "#e2e8f0"}
                   />
-                  <Line type="monotone" dataKey="sales" name="Sales" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4, fill: "#0ea5e9" }} activeDot={{ r: 6 }} />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#94a3b8"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#94a3b8"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `₹${v / 1000}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: "8px",
+                      border: "none",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                      backgroundColor: isDark ? "#1e293b" : "#fff",
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="sales"
+                    name="Sales"
+                    stroke="#0ea5e9"
+                    strokeWidth={3}
+                    dot={{ r: 4, fill: "#0ea5e9" }}
+                    activeDot={{ r: 6 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground opacity-50 text-sm">
-                    No sales data available for this range
-                </div>
+              <div className="flex items-center justify-center h-full text-muted-foreground opacity-50 text-sm">
+                No sales data available for this range
+              </div>
             )}
           </div>
         </div>
 
         <div className="glass-card p-6">
-          <h3 className="text-base font-semibold text-foreground mb-6">Payment Distribution</h3>
+          <h3 className="text-base font-semibold text-foreground mb-6">
+            Payment Distribution
+          </h3>
           <div className="h-64 w-full text-xs">
             {loading ? (
               <div className="w-1/2 h-1/2 mx-auto mt-10 rounded-full border-8 border-muted/20 border-t-muted/80 animate-spin" />
@@ -265,7 +334,10 @@ export default function DashboardPage() {
                     dataKey="value"
                   >
                     {paymentStats.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -302,81 +374,91 @@ export default function DashboardPage() {
           onClick={() => router.push("/inventory?filter=low-stock")}
         />
         <div className="md:col-span-2 glass-card p-5 flex items-center justify-between bg-primary/5">
-            <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    <Zap className="w-6 h-6" />
-                </div>
-                <div>
-                   <p className="font-semibold text-foreground">Need a hand?</p>
-                   <p className="text-xs text-muted-foreground">Quickly create a bill or check stock.</p>
-                </div>
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+              <Zap className="w-6 h-6" />
             </div>
-            <div className="flex gap-2">
-                <button 
-                  onClick={() => router.push("/sales/create")}
-                   className="p-2 rounded-lg bg-background border border-border hover:bg-muted transition-colors" title="Quick Sale"
-                >
-                    <DollarSign className="w-5 h-5 text-emerald-500" />
-                </button>
-                <button 
-                  onClick={() => router.push("/inventory")}
-                  className="p-2 rounded-lg bg-background border border-border hover:bg-muted transition-colors" title="Check Stock"
-                >
-                    <Search className="w-5 h-5 text-blue-500" />
-                </button>
+            <div>
+              <p className="font-semibold text-foreground">Need a hand?</p>
+              <p className="text-xs text-muted-foreground">
+                Quickly create a bill or check stock.
+              </p>
             </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push("/sales/create")}
+              className="p-2 rounded-lg bg-background border border-border hover:bg-muted transition-colors"
+              title="Quick Sale"
+            >
+              <DollarSign className="w-5 h-5 text-emerald-500" />
+            </button>
+            <button
+              onClick={() => router.push("/inventory")}
+              className="p-2 rounded-lg bg-background border border-border hover:bg-muted transition-colors"
+              title="Check Stock"
+            >
+              <Search className="w-5 h-5 text-blue-500" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Row 3: Repairs (Secondary) */}
       <div>
         <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                Repair Pipeline {isAllShops && "(Combined)"}
-            </h2>
-            <button 
-              onClick={() => router.push("/jobcards")}
-              className="text-sm text-primary hover:underline font-medium"
-            >
-                View Repair List
-            </button>
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            Repair Pipeline {isAllShops && "(Combined)"}
+          </h2>
+          <button
+            onClick={() => router.push("/jobcards")}
+            className="text-sm text-primary hover:underline font-medium"
+          >
+            View Repair List
+          </button>
         </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <div className="p-4 rounded-xl border border-border bg-card/50 hover:bg-card/80 transition-colors flex items-center gap-4">
-             <div className="h-10 w-10 rounded-lg bg-teal-50 dark:bg-teal-900/20 text-teal-600 flex items-center justify-center">
-                <Clock className="w-5 h-5" />
-             </div>
-             <div>
-                <p className="text-2xl font-bold">{data.repairs?.inProgress ?? 0}</p>
-                <p className="text-xs text-muted-foreground">In Progress</p>
-             </div>
+            <div className="h-10 w-10 rounded-lg bg-teal-50 dark:bg-teal-900/20 text-teal-600 flex items-center justify-center">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">
+                {data.repairs?.inProgress ?? 0}
+              </p>
+              <p className="text-xs text-muted-foreground">In Progress</p>
+            </div>
           </div>
           <div className="p-4 rounded-xl border border-border bg-card/50 hover:bg-card/80 transition-colors flex items-center gap-4">
-             <div className="h-10 w-10 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 flex items-center justify-center">
-                <Settings className="w-5 h-5" />
-             </div>
-             <div>
-                <p className="text-2xl font-bold">{data.repairs?.waitingForParts ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Await Parts</p>
-             </div>
+            <div className="h-10 w-10 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 flex items-center justify-center">
+              <Settings className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">
+                {data.repairs?.waitingForParts ?? 0}
+              </p>
+              <p className="text-xs text-muted-foreground">Await Parts</p>
+            </div>
           </div>
           <div className="p-4 rounded-xl border border-border bg-card/50 hover:bg-card/80 transition-colors flex items-center gap-4">
-             <div className="h-10 w-10 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5" />
-             </div>
-             <div>
-                <p className="text-2xl font-bold">{data.repairs?.ready ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Ready</p>
-             </div>
+            <div className="h-10 w-10 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{data.repairs?.ready ?? 0}</p>
+              <p className="text-xs text-muted-foreground">Ready</p>
+            </div>
           </div>
           <div className="p-4 rounded-xl border border-border bg-card/50 hover:bg-card/80 transition-colors flex items-center gap-4">
-             <div className="h-10 w-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5" />
-             </div>
-             <div>
-                <p className="text-2xl font-bold">{data.repairs?.deliveredToday ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Delivered Today</p>
-             </div>
+            <div className="h-10 w-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">
+                {data.repairs?.deliveredToday ?? 0}
+              </p>
+              <p className="text-xs text-muted-foreground">Delivered Today</p>
+            </div>
           </div>
         </div>
       </div>
@@ -384,7 +466,9 @@ export default function DashboardPage() {
       {isOwner && (
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-base font-semibold text-foreground">Growth Trends (Last 30 Days)</h3>
+            <h3 className="text-base font-semibold text-foreground">
+              Growth Trends (Last 30 Days)
+            </h3>
             <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded-full font-medium">
               Members • Staff • Shops
             </span>

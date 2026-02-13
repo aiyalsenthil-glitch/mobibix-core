@@ -5,16 +5,21 @@ import { RepairStockOutDto } from './dto/repair-stock-out.dto';
 import { RepairBillDto } from './dto/repair-bill.dto';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { RolesGuard } from '../../../core/auth/guards/roles.guard';
+import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
+import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
 
 @Controller('mobileshop/repairs')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
-export class RepairController {
-  constructor(private repairService: RepairService) {}
+export class RepairController extends TenantScopedController {
+  constructor(private repairService: RepairService) {
+    super();
+  }
 
   @Post('out')
   async stockOut(@Req() req: any, @Body() dto: RepairStockOutDto) {
-    const tenantId = req.user.tenantId;
+    const tenantId = this.getTenantId(req);
     return this.repairService.stockOutForRepair(tenantId, dto);
   }
 
@@ -24,7 +29,7 @@ export class RepairController {
     @Param('jobCardId') jobCardId: string,
     @Body() dto: RepairBillDto,
   ) {
-    const tenantId = req.user.tenantId;
+    const tenantId = this.getTenantId(req);
     const dtoWithJobId = { ...dto, jobCardId };
     return this.repairService.generateRepairBill(tenantId, dtoWithJobId);
   }

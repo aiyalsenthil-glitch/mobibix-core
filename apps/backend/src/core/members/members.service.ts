@@ -18,10 +18,10 @@ import { normalizePhone } from '../../common/utils/phone.util';
 import { WhatsAppSender } from '../../modules/whatsapp/whatsapp.sender';
 import { WhatsAppTemplates } from '../../modules/whatsapp/whatsapp.templates';
 import { WhatsAppFeature } from '../billing/whatsapp-rules';
-import { PLAN_LIMITS } from '../billing/plan-limits';
 import { TenantService } from '../tenant/tenant.service';
 import { PlanRulesService } from '../billing/plan-rules.service';
 import { getCreateAudit, getUpdateAudit } from '../audit/audit.helper';
+import { softDeleteData } from '../soft-delete/soft-delete.helper';
 
 // ─────────────────────────────
 // ✅ Membership duration resolver
@@ -143,13 +143,14 @@ export class MembersService {
       throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
     }
 
-    const planCode = (
-      subscription.plan.code ?? subscription.plan.name
-    ).toUpperCase();
-    const limit = PLAN_LIMITS[planCode]?.maxMembers ?? 0;
-    if (limit > 0) {
+    const rules = await this.planRulesService.getPlanRulesForTenant(
+      tenantId,
+      subscription.module,
+    );
+    const limit = rules?.maxMembers ?? subscription.plan.maxMembers;
+    if (limit !== null && limit !== undefined) {
       const count = await this.prisma.member.count({ where: { tenantId } });
-      if (count >= limit) {
+      if (limit <= 0 || count >= limit) {
         throw new ForbiddenException(
           `Member limit reached for ${subscription.plan.name} plan. Please upgrade.`,
         );
@@ -899,6 +900,7 @@ export class MembersService {
       },
       data: {
         isActive: false,
+        ...softDeleteData(user.sub ?? user.id ?? user.userId ?? 'system'),
       },
     });
 

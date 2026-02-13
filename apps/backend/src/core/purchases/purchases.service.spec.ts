@@ -1,7 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PurchasesService } from './purchases.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { StockService } from '../../core/stock/stock.service';
+import { PartiesService } from '../parties/parties.service';
 
 describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
   let service: PurchasesService;
@@ -23,9 +29,25 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
     sgst: 900,
     igst: 0,
     totalGst: 1800,
-    invoiceDate: new Date('2024-12-01'),
+    invoiceDate: new Date('2025-08-20'),
     isLegacyGstApproximation: false,
     outstanding: 10000,
+    items: [
+      {
+        id: 'item-1',
+        purchaseId: mockPurchaseId,
+        itemName: 'Item 1',
+        quantity: 10,
+        purchasePrice: 100,
+        hsnCode: '8701',
+        cgstRate: 9,
+        sgstRate: 9,
+        igstRate: 0,
+        cgstAmount: 90,
+        sgstAmount: 90,
+        igstAmount: 0,
+      },
+    ],
   };
 
   const mockItems = [
@@ -65,6 +87,18 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
             $transaction: jest.fn(),
           },
         },
+        {
+          provide: StockService,
+          useValue: {
+            log: jest.fn(),
+          },
+        },
+        {
+          provide: PartiesService,
+          useValue: {
+            get: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -100,7 +134,7 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
 
       await expect(
         service.atomicPurchaseSubmit(mockTenantId, mockPurchaseId),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should reject submission if purchase not in DRAFT status', async () => {
@@ -111,14 +145,14 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
 
       await expect(
         service.atomicPurchaseSubmit(mockTenantId, mockPurchaseId),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(ConflictException);
     });
 
     it('should reject submission if purchase has no items', async () => {
+      const purchaseNoItems = { ...mockPurchase, items: [] };
       jest
         .spyOn(prisma.purchase, 'findUnique')
-        .mockResolvedValueOnce(mockPurchase);
-      jest.spyOn(prisma.purchaseItem, 'findMany').mockResolvedValueOnce([]);
+        .mockResolvedValueOnce(purchaseNoItems);
 
       await expect(
         service.atomicPurchaseSubmit(mockTenantId, mockPurchaseId),

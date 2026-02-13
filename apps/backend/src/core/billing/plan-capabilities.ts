@@ -12,7 +12,8 @@
  * - canUseCustomPrintLayout ← PlanFeature.CUSTOM_PRINT_LAYOUT
  * - canUseWhatsAppAutomation ← PlanFeature.WHATSAPP_ALERTS_AUTOMATION
  *
- * NOTE: Limits (maxStaff, reminder quotas, etc.) are in PlanLimits.
+ * NOTE: Limits (maxStaff, reminder quotas, etc.) are stored on Plan records
+ *       and resolved via PlanRulesService.
  *       Member/customer counts are NOT limited by plan.
  */
 export const PLAN_CAPABILITIES = {

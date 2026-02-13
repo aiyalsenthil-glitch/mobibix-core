@@ -43,16 +43,12 @@ export class InvoicePaymentService {
     _reference?: string, // Reserved for future use
   ) {
     // Step 1: Validate invoice exists and belongs to tenant
-    const invoice = await this.prisma.invoice.findUnique({
-      where: { id: invoiceId },
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, tenantId },
     });
 
     if (!invoice) {
       throw new NotFoundException('Invoice not found');
-    }
-
-    if (invoice.tenantId !== tenantId) {
-      throw new BadRequestException('Unauthorized');
     }
 
     // Step 2: Check if invoice can accept payment
@@ -131,16 +127,12 @@ export class InvoicePaymentService {
    * Get detailed invoice payment status
    */
   async getInvoiceStatus(tenantId: string, invoiceId: string) {
-    const invoice = await this.prisma.invoice.findUnique({
-      where: { id: invoiceId },
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, tenantId },
     });
 
     if (!invoice) {
       throw new NotFoundException('Invoice not found');
-    }
-
-    if (invoice.tenantId !== tenantId) {
-      throw new BadRequestException('Unauthorized');
     }
 
     const balanceDue = invoice.totalAmount - invoice.paidAmount;
@@ -171,8 +163,8 @@ export class InvoicePaymentService {
     tenantId: string,
     invoiceId: string,
   ): Promise<boolean> {
-    const invoice = await this.prisma.invoice.findUnique({
-      where: { id: invoiceId },
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, tenantId },
     });
 
     if (!invoice) return true; // Already deleted

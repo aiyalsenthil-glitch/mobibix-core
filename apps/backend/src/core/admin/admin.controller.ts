@@ -157,10 +157,16 @@ export class AdminController {
   // TENANT SUBSCRIPTION
   // ─────────────────────────────────────────────
   @Get('tenants/:tenantId/subscription')
+  @UseGuards(JwtAuthGuard)
   async getTenantSubscription(
     @Param('tenantId') tenantId: string,
     @Query('module') module?: ModuleType,
+    @Req() req?: any,
   ) {
+    // Verify requester is authorized (admin/owner can access)
+    if (req?.user?.role !== 'owner' && req?.user?.role !== 'admin') {
+      throw new ForbiddenException('Only admins can access tenant subscription');
+    }
     let resolvedModule = module;
     if (!resolvedModule) {
       const tenant = await this.prisma.tenant.findUnique({

@@ -9,7 +9,7 @@ import {
   type JobCard,
   type JobStatus,
 } from "@/services/jobcard.api";
-import { getAccessToken } from "@/services/auth.api";
+import { hasSessionHint } from "@/services/auth.api";
 import { JobCardModal } from "./JobCardModal";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
@@ -30,17 +30,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { 
-  MoreVertical, 
-  Eye, 
-  Printer, 
-  Trash2, 
-  Edit, 
-  Clock, 
-  Phone, 
+import {
+  MoreVertical,
+  Eye,
+  Printer,
+  Trash2,
+  Edit,
+  Clock,
+  Phone,
   ExternalLink,
   History,
-  FileText
+  FileText,
 } from "lucide-react";
 
 const STATUS_OPTIONS: JobStatus[] = [
@@ -54,7 +54,7 @@ const STATUS_OPTIONS: JobStatus[] = [
   "READY",
   "DELIVERED",
   "CANCELLED",
-"RETURNED",
+  "RETURNED",
 ];
 
 const STATUS_COLORS: Record<JobStatus, string> = {
@@ -89,7 +89,12 @@ const STATUS_COLORS: Record<JobStatus, string> = {
 const VALID_TRANSITIONS: Record<JobStatus, JobStatus[]> = {
   RECEIVED: ["ASSIGNED", "DIAGNOSING", "CANCELLED"],
   ASSIGNED: ["DIAGNOSING", "CANCELLED"],
-  DIAGNOSING: ["WAITING_APPROVAL", "WAITING_FOR_PARTS", "IN_PROGRESS", "CANCELLED"],
+  DIAGNOSING: [
+    "WAITING_APPROVAL",
+    "WAITING_FOR_PARTS",
+    "IN_PROGRESS",
+    "CANCELLED",
+  ],
   WAITING_APPROVAL: ["APPROVED", "CANCELLED"],
   APPROVED: ["WAITING_FOR_PARTS", "IN_PROGRESS", "CANCELLED"],
   WAITING_FOR_PARTS: ["IN_PROGRESS", "CANCELLED"],
@@ -124,7 +129,7 @@ export default function JobCardsPage() {
   // Retry loading shops exactly once if empty (race condition fix)
   const hasRetried = useRef(false);
   useEffect(() => {
-    if (!isLoadingShops && shops.length === 0 && getAccessToken()) {
+    if (!isLoadingShops && shops.length === 0 && hasSessionHint()) {
       if (!hasRetried.current) {
         hasRetried.current = true;
         refreshShops();
@@ -136,7 +141,9 @@ export default function JobCardsPage() {
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
 
   // CRM Modals State
-  const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(null);
+  const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(
+    null,
+  );
   const [timelineCustomerName, setTimelineCustomerName] = useState<string>("");
   const [followUpData, setFollowUpData] = useState<{
     customerId: string;
@@ -172,25 +179,27 @@ export default function JobCardsPage() {
 
   const handleStatusChange = async (job: JobCard, status: JobStatus) => {
     // 🚨 CRITICAL VALIDATION
-    if (status === 'READY') {
+    if (status === "READY") {
       if (!job.finalCost && !job.estimatedCost) {
-        alert("Cannot mark job READY without cost.\n\nPlease edit the job card and add Final Cost or Estimated Cost first.");
+        alert(
+          "Cannot mark job READY without cost.\n\nPlease edit the job card and add Final Cost or Estimated Cost first.",
+        );
         return;
       }
     }
 
     // 💰 INTERCEPT DELIVERED STATUS FOR PAYMENT
-    if (status === 'DELIVERED') {
+    if (status === "DELIVERED") {
       // Find valid invoice (not voided)
       // Note: Backend returns invoices array due to our recent change
       const invoice = job.invoices?.find(
-        (i) => i.status !== 'VOIDED' && i.status !== 'PAID'
+        (i) => i.status !== "VOIDED" && i.status !== "PAID",
       );
 
       if (invoice) {
         // Redirect to Invoice Page for Billing/Payment
         router.push(`/sales/${invoice.id}?shopId=${selectedShopId}`);
-        return; 
+        return;
       }
       // If no valid invoice found (shouldn't happen if READY), proceed or let backend block
     }
@@ -208,11 +217,18 @@ export default function JobCardsPage() {
     if (!deliveringJob || !selectedShopId) return;
 
     try {
-      await updateJobCardStatus(selectedShopId, deliveringJob.job.id, "DELIVERED");
+      await updateJobCardStatus(
+        selectedShopId,
+        deliveringJob.job.id,
+        "DELIVERED",
+      );
       setDeliveringJob(null);
       reload();
     } catch (err: any) {
-      alert("Payment collected, but failed to update status to DELIVERED: " + err.message);
+      alert(
+        "Payment collected, but failed to update status to DELIVERED: " +
+          err.message,
+      );
     }
   };
 
@@ -396,9 +412,11 @@ export default function JobCardsPage() {
                     </td>
                     <td className="px-4 py-3">
                       {(() => {
-                        const allowedTransitions = getAllowedTransitions(job.status);
+                        const allowedTransitions = getAllowedTransitions(
+                          job.status,
+                        );
                         const isTerminal = allowedTransitions.length === 0;
-                        
+
                         return (
                           <select
                             value={job.status}
@@ -408,9 +426,13 @@ export default function JobCardsPage() {
                                 e.target.value as JobStatus,
                               )
                             }
-                            className={`px-3 py-1 rounded-lg text-xs font-semibold border ${STATUS_COLORS[job.status]} focus:outline-none ${isTerminal ? 'cursor-not-allowed' : 'cursor-pointer'} appearance-none`}
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold border ${STATUS_COLORS[job.status]} focus:outline-none ${isTerminal ? "cursor-not-allowed" : "cursor-pointer"} appearance-none`}
                             disabled={isTerminal}
-                            title={isTerminal ? 'Terminal state - no further changes allowed' : 'Change status'}
+                            title={
+                              isTerminal
+                                ? "Terminal state - no further changes allowed"
+                                : "Change status"
+                            }
                           >
                             {/* Current status always shown */}
                             <option
@@ -419,7 +441,7 @@ export default function JobCardsPage() {
                             >
                               {job.status.replace(/_/g, " ")}
                             </option>
-                            
+
                             {/* Only show allowed transitions */}
                             {allowedTransitions.map((status) => (
                               <option
@@ -447,14 +469,19 @@ export default function JobCardsPage() {
                         </button>
 
                         {/* Quick Action: Mark Ready */}
-                        {![ "READY", "DELIVERED", "CANCELLED", "RETURNED" ].includes(job.status) && (
-                            <button
-                                onClick={() => setBillingJob(job)}
-                                className="px-2 py-1 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300 rounded-md text-xs font-bold hover:bg-green-200 dark:hover:bg-green-500/30 transition flex items-center gap-1"
-                                title="Mark Ready & Generate Bill"
-                            >
-                                <span>✅</span> Ready
-                            </button>
+                        {![
+                          "READY",
+                          "DELIVERED",
+                          "CANCELLED",
+                          "RETURNED",
+                        ].includes(job.status) && (
+                          <button
+                            onClick={() => setBillingJob(job)}
+                            className="px-2 py-1 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300 rounded-md text-xs font-bold hover:bg-green-200 dark:hover:bg-green-500/30 transition flex items-center gap-1"
+                            title="Mark Ready & Generate Bill"
+                          >
+                            <span>✅</span> Ready
+                          </button>
                         )}
 
                         {/* Secondary Actions: Dropdown */}
@@ -464,26 +491,31 @@ export default function JobCardsPage() {
                               <MoreVertical className="w-4 h-4" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-stone-900 border-gray-200 dark:border-stone-800">
+                          <DropdownMenuContent
+                            align="end"
+                            className="w-48 bg-white dark:bg-stone-900 border-gray-200 dark:border-stone-800"
+                          >
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            
+
                             <DropdownMenuItem onClick={() => handleEdit(job)}>
                               <Edit className="w-4 h-4 mr-2" />
                               Edit Job
                             </DropdownMenuItem>
-                            
-                            <DropdownMenuItem 
+
+                            <DropdownMenuItem
                               onClick={() => {
                                 setTimelineCustomerId(job.customerId || "");
-                                setTimelineCustomerName(job.customerName || "Customer");
+                                setTimelineCustomerName(
+                                  job.customerName || "Customer",
+                                );
                               }}
                             >
                               <History className="w-4 h-4 mr-2" />
                               View History
                             </DropdownMenuItem>
-                            
-                            <DropdownMenuItem 
+
+                            <DropdownMenuItem
                               onClick={() => {
                                 setFollowUpData({
                                   customerId: job.customerId || "",
@@ -524,7 +556,9 @@ export default function JobCardsPage() {
                             </DropdownMenuItem>
 
                             {(() => {
-                              const invoice = job.invoices?.find((i) => i.status !== "VOIDED");
+                              const invoice = job.invoices?.find(
+                                (i) => i.status !== "VOIDED",
+                              );
                               if (invoice) {
                                 return (
                                   <DropdownMenuItem asChild>
@@ -544,8 +578,8 @@ export default function JobCardsPage() {
                             })()}
 
                             <DropdownMenuSeparator />
-                            
-                            <DropdownMenuItem 
+
+                            <DropdownMenuItem
                               onClick={() => handleDelete(job.id)}
                               className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 focus:bg-red-50 dark:focus:bg-red-500/10"
                             >
@@ -622,13 +656,13 @@ export default function JobCardsPage() {
 
       {/* Interactive Billing Modal */}
       {billingJob && (
-          <RepairBillingModal 
-            isOpen={!!billingJob}
-            onClose={() => setBillingJob(null)}
-            onSubmit={handleBillSubmit}
-            job={billingJob}
-            shopId={selectedShopId!}
-          />
+        <RepairBillingModal
+          isOpen={!!billingJob}
+          onClose={() => setBillingJob(null)}
+          onSubmit={handleBillSubmit}
+          job={billingJob}
+          shopId={selectedShopId!}
+        />
       )}
     </div>
   );

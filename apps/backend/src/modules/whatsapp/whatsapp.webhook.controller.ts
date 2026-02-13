@@ -44,10 +44,10 @@ export class WhatsAppWebhookController {
   @Post()
   @Public()
   async handleWebhook(@Req() req, @Res() res) {
-    // 1. Validations (Signature)
+    // 1. Validations (Signature) - CRITICAL: Reject unsigned webhooks
     const signature = req.headers['x-hub-signature-256'];
     if (!signature) {
-      this.logger.warn('Missing signature');
+      this.logger.error('SECURITY: Webhook received without X-Hub-Signature-256');
       return res.status(403).json({ message: 'Missing signature' });
     }
 

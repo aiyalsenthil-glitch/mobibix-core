@@ -40,6 +40,7 @@ export class PublicCheckinService {
     const activeAttendance = await this.prisma.gymAttendance.findFirst({
       where: {
         memberId: member.id,
+        tenantId: tenant.id,
         checkOutTime: null,
       },
     });
@@ -65,12 +66,9 @@ export class PublicCheckinService {
       throw new BadRequestException('Invalid gym');
     }
 
-    // 2️⃣ Find member
-    const member = await this.prisma.member.findFirst({
-      where: {
-        id: memberId,
-        tenantId: tenant.id,
-      },
+    // 2️⃣ Find member with composite key
+    const member = await this.prisma.member.findUnique({
+      where: { id_tenantId: { id: memberId, tenantId: tenant.id } },
     });
 
     if (!member) {
@@ -95,6 +93,7 @@ export class PublicCheckinService {
     const activeAttendance = await this.prisma.gymAttendance.findFirst({
       where: {
         memberId: member.id,
+        tenantId: tenant.id,
         checkOutTime: null,
       },
     });

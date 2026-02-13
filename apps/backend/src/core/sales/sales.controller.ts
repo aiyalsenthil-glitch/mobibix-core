@@ -18,9 +18,11 @@ import { PaymentService } from './payment.service';
 import { SalesInvoiceDto } from './dto/sales-invoice.dto';
 import { CollectPaymentDto } from './dto/collect-payment.dto';
 import { UserRole } from '@prisma/client';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 
 @Controller('mobileshop/sales')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class SalesController {
   constructor(
@@ -61,16 +63,23 @@ export class SalesController {
     @Req() req: any,
     @Query('shopId') shopId: string,
     @Query('fromJobCard') fromJobCard?: string,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
   ) {
     const tenantId = req.user?.tenantId;
     if (!shopId) {
       throw new BadRequestException('shopId is required');
     }
+
+    // Parse pagination with defaults
+    const skipNum = skip ? Math.max(0, parseInt(skip, 10)) : 0;
+    const takeNum = take ? Math.min(100, parseInt(take, 10)) : 20;
+
     return this.service.listInvoices(
       tenantId,
       shopId,
-      1,
-      20,
+      skipNum,
+      takeNum,
       undefined,
       fromJobCard === 'true',
     );

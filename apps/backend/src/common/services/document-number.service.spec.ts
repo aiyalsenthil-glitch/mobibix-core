@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DocumentNumberService } from './document-number.service';
 import { DocumentType, YearFormat, ResetPolicy } from '@prisma/client';
+import { PrismaService } from '../../core/prisma/prisma.service';
 
 /**
  * Test suite for DocumentNumberService
@@ -26,7 +27,19 @@ describe('DocumentNumberService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DocumentNumberService],
+      providers: [
+        DocumentNumberService,
+        {
+          provide: PrismaService,
+          useValue: {
+            $transaction: jest.fn(),
+            shopDocumentSetting: {
+              findUnique: jest.fn(),
+              update: jest.fn(),
+            },
+          },
+        },
+      ],
     }).compile();
 
     service = module.get<DocumentNumberService>(DocumentNumberService);

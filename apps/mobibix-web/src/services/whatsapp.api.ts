@@ -51,6 +51,7 @@ export interface SendWhatsAppMessageRequest {
   text?: string;
   parameters?: string[];
   campaignId?: string;
+  whatsAppNumberId?: string;
 }
 
 export interface CreateWhatsAppCampaignRequest {
@@ -110,8 +111,12 @@ export interface WhatsAppNumber {
   qualityRating?: string;
 }
 
-export async function getPhoneNumbers(tenantId: string): Promise<WhatsAppNumber[]> {
-  const response = await authenticatedFetch(`/whatsapp/phone-numbers/${tenantId}`);
+export async function getPhoneNumbers(
+  tenantId: string,
+): Promise<WhatsAppNumber[]> {
+  const response = await authenticatedFetch(
+    `/whatsapp/phone-numbers/${tenantId}`,
+  );
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || "Failed to fetch phone numbers");
@@ -131,7 +136,8 @@ export async function getWhatsAppLogs(params?: {
   if (params?.endDate) search.set("endDate", params.endDate);
   if (params?.campaignId) search.set("campaignId", params.campaignId);
   if (params?.status) search.set("status", params.status);
-  if (params?.whatsAppNumberId) search.set("whatsAppNumberId", params.whatsAppNumberId);
+  if (params?.whatsAppNumberId)
+    search.set("whatsAppNumberId", params.whatsAppNumberId);
 
   const response = await authenticatedFetch(
     `/user/whatsapp/logs${search.toString() ? `?${search.toString()}` : ""}`,
@@ -181,7 +187,6 @@ export async function scheduleWhatsAppCampaign(
   return response.json();
 }
 
-
 export async function getWhatsAppStatus(): Promise<WhatsAppStatus> {
   const response = await authenticatedFetch("/integrations/whatsapp/status");
   if (!response.ok) {
@@ -191,11 +196,16 @@ export async function getWhatsAppStatus(): Promise<WhatsAppStatus> {
   return response.json();
 }
 
-export async function manualSyncWhatsApp(data: ManualSyncRequest): Promise<void> {
-  const response = await authenticatedFetch("/integrations/whatsapp/manual-sync", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+export async function manualSyncWhatsApp(
+  data: ManualSyncRequest,
+): Promise<void> {
+  const response = await authenticatedFetch(
+    "/integrations/whatsapp/manual-sync",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || "Failed to perform manual sync");
@@ -203,9 +213,12 @@ export async function manualSyncWhatsApp(data: ManualSyncRequest): Promise<void>
 }
 
 export async function disconnectWhatsApp(): Promise<void> {
-  const response = await authenticatedFetch("/integrations/whatsapp/disconnect", {
-    method: "POST",
-  });
+  const response = await authenticatedFetch(
+    "/integrations/whatsapp/disconnect",
+    {
+      method: "POST",
+    },
+  );
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || "Failed to disconnect WhatsApp");

@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { getCtx, setCtx } from '../cls/async-context';
+import { withSoftDeleteFilter } from '../soft-delete/soft-delete.helper';
 
 @Injectable()
 export class PrismaService
@@ -17,6 +18,135 @@ export class PrismaService
     const adapter = new PrismaPg({ connectionString });
 
     super({ adapter });
+
+    const softDeleteModels = new Set([
+      'Tenant',
+      'User',
+      'Member',
+      'Party',
+      'Shop',
+      'Invoice',
+    ]);
+
+    const baseClient = this;
+    const extendedClient = this.$extends({
+      query: {
+        $allModels: {
+          async findUnique({ model, args, query }: any) {
+            if (!model || !softDeleteModels.has(model)) {
+              return query(args);
+            }
+
+            const where = args?.where ?? {};
+            const filteredWhere = withSoftDeleteFilter(where);
+            const hasDeletedAtFilter = Object.prototype.hasOwnProperty.call(
+              where,
+              'deletedAt',
+            );
+
+            if (!hasDeletedAtFilter) {
+              const delegateName =
+                model.charAt(0).toLowerCase() + model.slice(1);
+              const delegate = (baseClient as any)[delegateName];
+              return delegate.findFirst({
+                ...args,
+                where: filteredWhere,
+              });
+            }
+
+            return query(args);
+          },
+          async findUniqueOrThrow({ model, args, query }: any) {
+            if (!model || !softDeleteModels.has(model)) {
+              return query(args);
+            }
+
+            const where = args?.where ?? {};
+            const filteredWhere = withSoftDeleteFilter(where);
+            const hasDeletedAtFilter = Object.prototype.hasOwnProperty.call(
+              where,
+              'deletedAt',
+            );
+
+            if (!hasDeletedAtFilter) {
+              const delegateName =
+                model.charAt(0).toLowerCase() + model.slice(1);
+              const delegate = (baseClient as any)[delegateName];
+              return delegate.findFirstOrThrow({
+                ...args,
+                where: filteredWhere,
+              });
+            }
+
+            return query(args);
+          },
+          async findFirst({ model, args, query }: any) {
+            if (!model || !softDeleteModels.has(model)) {
+              return query(args);
+            }
+
+            args.where = withSoftDeleteFilter(args?.where);
+
+            return query(args);
+          },
+          async findFirstOrThrow({ model, args, query }: any) {
+            if (!model || !softDeleteModels.has(model)) {
+              return query(args);
+            }
+
+            args.where = withSoftDeleteFilter(args?.where);
+
+            return query(args);
+          },
+          async findMany({ model, args, query }: any) {
+            if (!model || !softDeleteModels.has(model)) {
+              return query(args);
+            }
+
+            args.where = withSoftDeleteFilter(args?.where);
+
+            return query(args);
+          },
+          async count({ model, args, query }: any) {
+            if (!model || !softDeleteModels.has(model)) {
+              return query(args);
+            }
+
+            args.where = withSoftDeleteFilter(args?.where);
+
+            return query(args);
+          },
+          async aggregate({ model, args, query }: any) {
+            if (!model || !softDeleteModels.has(model)) {
+              return query(args);
+            }
+
+            args.where = withSoftDeleteFilter(args?.where);
+
+            return query(args);
+          },
+          async groupBy({ model, args, query }: any) {
+            if (!model || !softDeleteModels.has(model)) {
+              return query(args);
+            }
+
+            const where = args?.where ?? {};
+            const hasDeletedAtFilter = Object.prototype.hasOwnProperty.call(
+              where,
+              'deletedAt',
+            );
+
+            if (!hasDeletedAtFilter) {
+              args.where = { ...where, deletedAt: null };
+            }
+
+            return query(args);
+          },
+        },
+      },
+    });
+
+    Object.assign(this, extendedClient);
   }
 
   async onModuleInit() {

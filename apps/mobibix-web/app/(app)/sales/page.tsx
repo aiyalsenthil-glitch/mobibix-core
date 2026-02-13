@@ -9,7 +9,8 @@ import {
   type PaymentMode,
   type PaymentStatus,
 } from "@/services/sales.api";
-import { getAccessToken, decodeAccessToken } from "@/services/auth.api";
+import { hasSessionHint } from "@/services/auth.api";
+import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
@@ -27,17 +28,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { 
-  MoreVertical, 
-  Eye, 
-  Printer, 
-  Trash2, 
-  Edit, 
-  Phone, 
+import {
+  MoreVertical,
+  Eye,
+  Printer,
+  Trash2,
+  Edit,
+  Phone,
   Share2,
   History,
   Ban,
-  IndianRupee
+  IndianRupee,
 } from "lucide-react";
 
 const PAGE_SIZE = 50;
@@ -71,6 +72,7 @@ const PAYMENT_BADGES: Record<PaymentMode, string> = {
 export default function SalesPage() {
   const router = useRouter();
   const { theme } = useTheme();
+  const { authUser } = useAuth();
   const {
     shops,
     selectedShopId,
@@ -85,7 +87,7 @@ export default function SalesPage() {
   // Retry loading shops exactly once if empty (race condition fix)
   const hasRetried = useRef(false);
   useEffect(() => {
-    if (!isLoadingShops && shops.length === 0 && getAccessToken()) {
+    if (!isLoadingShops && shops.length === 0 && hasSessionHint()) {
       if (!hasRetried.current) {
         hasRetried.current = true;
         refreshShops();
@@ -94,8 +96,7 @@ export default function SalesPage() {
   }, [isLoadingShops, shops.length, refreshShops]);
 
   // Get user role for permission checks
-  const token = getAccessToken();
-  const userRole = token ? decodeAccessToken(token).role : null;
+  const userRole = authUser?.role;
   const isOwner = userRole === "OWNER";
 
   // Pagination state
@@ -114,24 +115,10 @@ export default function SalesPage() {
         return { data: [], total: 0 };
       }
 
-      // Debug: Check JWT token claims
-      const token = getAccessToken();
-      if (token) {
-        const claims = decodeAccessToken(token);
-        // console.log("🔍 JWT Token Claims:", {
-        //   userId: claims.sub,
-        //   tenantId: claims.tenantId,
-        //   role: claims.role,
-        // });
-        // console.log("📦 Selected Shop ID:", selectedShopId);
-
-        if (!claims.tenantId) {
-          throw new Error(
-            "Your account is not associated with any tenant/shop. Please contact support or set up your business profile first.",
-          );
-        }
-      } else {
-        throw new Error("Authentication required. Please log in again.");
+      if (!authUser?.tenantId) {
+        throw new Error(
+          "Your account is not associated with any tenant/shop. Please contact support or set up your business profile first.",
+        );
       }
 
       const result = await listInvoices(selectedShopId, undefined, {
@@ -144,8 +131,8 @@ export default function SalesPage() {
         return { data: result, total: result.length };
       }
       return result;
-    }, [selectedShopId, currentPage]),
-    [selectedShopId, currentPage],
+    }, [selectedShopId, currentPage, authUser]),
+    [selectedShopId, currentPage, authUser],
     { data: [], total: 0 }, // Initial data
   );
 
@@ -484,7 +471,7 @@ export default function SalesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                           {/* Primary Action: View */}
+                          {/* Primary Action: View */}
                           <button
                             onClick={() =>
                               router.push(
@@ -499,34 +486,37 @@ export default function SalesPage() {
                           </button>
 
                           {/* Secondary Action: Print (Inline) */}
-                           {inv.status !== "VOIDED" && (
-                             <button
-                               onClick={() =>
-                                 router.push(
-                                   `/print/invoice/${inv.id}?shopId=${selectedShopId}`,
-                                 )
-                               }
-                               title="Print Invoice"
-                               className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md transition text-gray-600 dark:text-stone-400"
-                             >
-                                <Printer className="w-4 h-4" />
-                             </button>
-                           )}
+                          {inv.status !== "VOIDED" && (
+                            <button
+                              onClick={() =>
+                                router.push(
+                                  `/print/invoice/${inv.id}?shopId=${selectedShopId}`,
+                                )
+                              }
+                              title="Print Invoice"
+                              className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md transition text-gray-600 dark:text-stone-400"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
+                          )}
 
-                           {/* More Options Dropdown */}
-                           <DropdownMenu>
+                          {/* More Options Dropdown */}
+                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-md transition text-gray-500 dark:text-gray-400">
                                 <MoreVertical className="w-4 h-4" />
                               </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-stone-900 border-gray-200 dark:border-stone-800">
+                            <DropdownMenuContent
+                              align="end"
+                              className="w-48 bg-white dark:bg-stone-900 border-gray-200 dark:border-stone-800"
+                            >
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuSeparator />
 
                               {/* Collect Payment */}
                               {inv.balanceAmount && inv.balanceAmount > 0 ? (
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   onClick={() => handleCollectPayment(inv)}
                                   className="text-green-600 dark:text-green-400 font-medium"
                                 >
@@ -537,7 +527,11 @@ export default function SalesPage() {
 
                               {/* Share */}
                               {inv.status !== "VOIDED" && (
-                                <DropdownMenuItem onClick={() => handleShare(inv.id, inv.invoiceNumber)}>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleShare(inv.id, inv.invoiceNumber)
+                                  }
+                                >
                                   <Share2 className="w-4 h-4 mr-2" />
                                   Share Invoice
                                 </DropdownMenuItem>
@@ -546,21 +540,24 @@ export default function SalesPage() {
                               <DropdownMenuSeparator />
 
                               {/* CRM Actions */}
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => {
                                   setTimelineCustomerId(inv.customerId || "");
-                                  setTimelineCustomerName(inv.customerName || "Customer");
+                                  setTimelineCustomerName(
+                                    inv.customerName || "Customer",
+                                  );
                                 }}
                               >
                                 <History className="w-4 h-4 mr-2" />
                                 View History
                               </DropdownMenuItem>
 
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => {
                                   setFollowUpData({
                                     customerId: inv.customerId || "",
-                                    customerName: inv.customerName || "Customer",
+                                    customerName:
+                                      inv.customerName || "Customer",
                                     defaultPurpose: `Follow up on invoice ${inv.invoiceNumber}`,
                                     defaultType: "PHONE_CALL",
                                   });
@@ -569,27 +566,33 @@ export default function SalesPage() {
                                 <Phone className="w-4 h-4 mr-2" />
                                 Add Follow-up
                               </DropdownMenuItem>
-                              
+
                               <DropdownMenuSeparator />
 
                               {/* Admin Actions */}
-                              {isOwner && (inv.status === "PAID" || inv.status === "CREDIT") && (
-                                <>
-                                  <DropdownMenuItem onClick={() => handleEdit(inv.id)}>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Edit Invoice
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleCancel(inv.id, inv.invoiceNumber)}
-                                    className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 focus:bg-red-50 dark:focus:bg-red-500/10"
-                                  >
-                                    <Ban className="w-4 h-4 mr-2" />
-                                    Cancel Invoice
-                                  </DropdownMenuItem>
-                                </>
-                              )}
+                              {isOwner &&
+                                (inv.status === "PAID" ||
+                                  inv.status === "CREDIT") && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() => handleEdit(inv.id)}
+                                    >
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      Edit Invoice
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleCancel(inv.id, inv.invoiceNumber)
+                                      }
+                                      className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 focus:bg-red-50 dark:focus:bg-red-500/10"
+                                    >
+                                      <Ban className="w-4 h-4 mr-2" />
+                                      Cancel Invoice
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                             </DropdownMenuContent>
-                           </DropdownMenu>
+                          </DropdownMenu>
                         </div>
                       </td>
                     </tr>

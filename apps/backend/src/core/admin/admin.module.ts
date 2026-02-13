@@ -5,7 +5,7 @@ import { BillingModule } from '../billing/billing.module';
 import { AuthModule } from '../auth/auth.module';
 import { PlansModule } from '../billing/plans/plans.module';
 import { AdminWebhooksController } from './admin-webhooks.controller';
-import { PlatformController } from './platform.controller';
+// import { PlatformController } from './platform.controller';
 import { AuditModule } from '../audit/audit.module';
 
 import { AdminAnalyticsController } from './analytics/admin-analytics.controller';
@@ -18,7 +18,8 @@ import { AdminSystemController } from './system/admin-system.controller';
   controllers: [
     AdminController, 
     AdminWebhooksController, 
-    PlatformController,
+    // PlatformController, // ❌ Removed to avoid conflict with PlatformModule
+
     AdminAnalyticsController,
     AdminTenantController,
     AdminMdmController,

@@ -26,6 +26,10 @@ import {
   ToggleAutoRenewDto,
   AddSubscriptionAddonDto,
 } from '../dto/phase1-subscriptions.dto';
+import {
+  DowngradeCheckQueryDto,
+  DowngradeSubscriptionDto,
+} from './dto/downgrade.dto';
 import { Roles } from '../../auth/decorators/roles.decorator';
 
 @UseGuards(JwtAuthGuard)
@@ -139,7 +143,6 @@ export class SubscriptionsController {
     const allFeatures = Array.from(
       new Set([...planFeatures, ...addonFeatures, ...legacyFeatures]),
     );
-
 
     // 🚀 NEW: Database-driven plan details
 
@@ -288,25 +291,25 @@ export class SubscriptionsController {
     // If no active/valid-trial subscription found, OR it's a TRIAL
     // We treat this as a "BUY" operation (converting to paid)
     if (!currentSub || currentSub.status === SubscriptionStatus.TRIAL) {
-        const bought = await this.subscriptionsService.buyPlanPhase1({
-            tenantId: req.user.tenantId,
-            planId: newPlanId,
-            module: resolvedModule,
-            billingCycle: newBillingCycle || BillingCycle.MONTHLY,
-            autoRenew: true,
-        });
+      const bought = await this.subscriptionsService.buyPlanPhase1({
+        tenantId: req.user.tenantId,
+        planId: newPlanId,
+        module: resolvedModule,
+        billingCycle: newBillingCycle || BillingCycle.MONTHLY,
+        autoRenew: true,
+      });
 
-        this.logger.log(
-            `✅ Buy/Activate API: tenantId=${req.user.tenantId}, ` +
-            `subscriptionId=${bought.id}, planId=${bought.planId}`,
-        );
+      this.logger.log(
+        `✅ Buy/Activate API: tenantId=${req.user.tenantId}, ` +
+          `subscriptionId=${bought.id}, planId=${bought.planId}`,
+      );
 
-        return {
-            success: true,
-            subscriptionId: bought.id,
-            planId: bought.planId,
-            message: 'Plan activated successfully.',
-        };
+      return {
+        success: true,
+        subscriptionId: bought.id,
+        planId: bought.planId,
+        message: 'Plan activated successfully.',
+      };
     }
 
     // 2️⃣ Call upgradePlan service (Active -> Active)
@@ -336,11 +339,7 @@ export class SubscriptionsController {
   @Patch('downgrade')
   async downgradeSubscription(
     @Req() req: any,
-    @Body()
-    body: {
-      newPlanId: string;
-      newBillingCycle?: BillingCycle;
-    },
+    @Body() body: DowngradeSubscriptionDto,
     @Query('module') module?: ModuleType,
   ) {
     if (!req.user || !req.user.tenantId) {
@@ -446,7 +445,6 @@ export class SubscriptionsController {
     });
   }
 
-
   /**
    * Pre-check if downgrade is allowed
    * TODO: Implement after downgradeSubscription method is added
@@ -454,19 +452,16 @@ export class SubscriptionsController {
   @Get('downgrade-check')
   async checkDowngrade(
     @Req() req: any,
-    @Query('targetPlan') targetPlanId: string,
-    @Query('module') module?: ModuleType,
+    @Query() query: DowngradeCheckQueryDto,
   ) {
     if (!req.user || !req.user.tenantId) {
       throw new UnauthorizedException('Authentication required');
     }
 
-    if (!targetPlanId) {
-      throw new BadRequestException('targetPlan query parameter is required');
-    }
+    const targetPlanId = query.targetPlan;
 
     // Resolve module
-    let resolvedModule = module;
+    let resolvedModule = query.module;
     if (!resolvedModule) {
       const tenant = await this.prisma.tenant.findUnique({
         where: { id: req.user.tenantId },
@@ -475,7 +470,7 @@ export class SubscriptionsController {
       resolvedModule = tenant?.tenantType === 'GYM' ? 'GYM' : 'MOBILE_SHOP';
     }
 
-    return this.subscriptionsService.checkDowngradeEligibility(
+    return this.subscriptionsService.downgradePreCheck(
       req.user.tenantId,
       targetPlanId,
       resolvedModule,
@@ -497,7 +492,9 @@ export class SubscriptionsController {
     const { planId, billingCycle = BillingCycle.MONTHLY } = body;
     if (!planId) throw new BadRequestException('planId is required');
 
-    this.logger.warn(`🛑 [TEST BYPASS] Activating plan ${planId} for tenant ${req.user.tenantId}`);
+    this.logger.warn(
+      `🛑 [TEST BYPASS] Activating plan ${planId} for tenant ${req.user.tenantId}`,
+    );
 
     // Fetch plan to determine module
     const plan = await this.prisma.plan.findUnique({ where: { id: planId } });
@@ -512,10 +509,11 @@ export class SubscriptionsController {
       );
     } else {
       // Find current sub for this module
-      const currentSub = await this.subscriptionsService.getCurrentActiveSubscription(
-        req.user.tenantId,
-        plan.module,
-      );
+      const currentSub =
+        await this.subscriptionsService.getCurrentActiveSubscription(
+          req.user.tenantId,
+          plan.module,
+        );
 
       if (currentSub) {
         return this.subscriptionsService.upgradePlan({
@@ -532,7 +530,9 @@ export class SubscriptionsController {
             module: plan.module,
             status: SubscriptionStatus.ACTIVE,
             startDate: new Date(),
-            endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+            endDate: new Date(
+              new Date().setFullYear(new Date().getFullYear() + 1),
+            ),
             autoRenew: true,
             billingCycle,
           },

@@ -18,10 +18,8 @@ import {
 import { auth } from "@/lib/REMOVED_AUTH_PROVIDER";
 import {
   exchangeFirebaseToken,
-  clearAccessToken,
-  isAuthenticated,
-  decodeAccessToken,
-  getAccessToken,
+  getCurrentUser,
+  logout as apiLogout,
   type ExchangeTokenResponse,
   type AuthRole,
 } from "@/services/auth.api";
@@ -80,38 +78,31 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       if (user) {
         setFirebaseUser(user);
 
-        // If we already have a valid JWT but no authUser, derive it from token claims
-        if (isAuthenticated() && !authUser) {
-          const token = getAccessToken();
-          if (token) {
-            const claims = decodeAccessToken(token);
-            if (claims?.role) {
-              setAuthUser({
-                id: claims.sub || user.uid,
-                email: user.email || "",
-                name: user.displayName || undefined,
-                REMOVED_AUTH_PROVIDERUid: user.uid,
-                role: claims.role,
-                tenantId: claims.tenantId,
-                planCode: claims.planCode,
-              });
-              setIsLoading(false);
-              return;
-            }
+        try {
+          const currentUser = await getCurrentUser();
+          if (currentUser) {
+            setAuthUser({
+              id: currentUser.id,
+              email: currentUser.email || user.email || "",
+              name: currentUser.fullName || user.displayName || undefined,
+              REMOVED_AUTH_PROVIDERUid: user.uid,
+              role: currentUser.role,
+              tenantId: currentUser.tenantId ?? undefined,
+            });
+            setIsLoading(false);
+            return;
           }
+        } catch (err) {
+          console.warn("Failed to load current user session:", err);
         }
 
-        if (!isAuthenticated()) {
-          try {
-            const response = await exchangeFirebaseToken(
-              await user.getIdToken(),
-            );
-            setAuthUser(response.user);
-          } catch (err: any) {
-            console.error("Auth exchange error:", err);
-            setError(err.message || "Authentication failed");
-            setFirebaseUser(null);
-          }
+        try {
+          const response = await exchangeFirebaseToken(await user.getIdToken());
+          setAuthUser(response.user);
+        } catch (err: any) {
+          console.error("Auth exchange error:", err);
+          setError(err.message || "Authentication failed");
+          setFirebaseUser(null);
         }
       } else {
         setFirebaseUser(null);
@@ -154,14 +145,41 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   // Redirect if authUser already resolved (e.g., page reload with valid token)
   useEffect(() => {
     if (!authUser) return;
-    
-    // Don't redirect if we are already on a dashboard or print page
-    if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/print")) return;
+
+    // Don't redirect if we are already on an app or print page
+    if (!pathname) return;
+    const appRoutePrefixes = [
+      "/dashboard",
+      "/sales",
+      "/jobcards",
+      "/products",
+      "/inventory",
+      "/customers",
+      "/whatsapp",
+      "/whatsapp-crm",
+      "/suppliers",
+      "/purchases",
+      "/receipts",
+      "/vouchers",
+      "/reports",
+      "/shops",
+      "/staff",
+      "/settings",
+      "/print",
+    ];
+
+    if (appRoutePrefixes.some((prefix) => pathname.startsWith(prefix))) {
+      return;
+    }
 
     // Only redirect from public/auth pages
-    if (pathname === "/" || pathname?.startsWith("/signin") || pathname?.startsWith("/signup")) {
-        const path = getRoleRedirect(authUser);
-        router.replace(path);
+    if (
+      pathname === "/" ||
+      pathname?.startsWith("/signin") ||
+      pathname?.startsWith("/signup")
+    ) {
+      const path = getRoleRedirect(authUser);
+      router.replace(path);
     }
   }, [authUser, router, pathname]);
 
@@ -171,7 +189,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       if (auth) {
         await signOut(auth);
       }
-      clearAccessToken();
+      await apiLogout();
       setFirebaseUser(null);
       setAuthUser(null);
       setError(null);

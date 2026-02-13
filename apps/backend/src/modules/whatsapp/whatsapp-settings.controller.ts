@@ -14,6 +14,8 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { RolesGuard } from '../../core/auth/guards/roles.guard';
+import { VirtualTenantGuard } from './guards/virtual-tenant.guard';
 
 interface CreateWhatsAppSettingDto {
   enabled: boolean;
@@ -24,7 +26,7 @@ interface CreateWhatsAppSettingDto {
 }
 
 @Controller('whatsapp/settings')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, VirtualTenantGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppSettingsController {
   constructor(private readonly prisma: PrismaService) {}

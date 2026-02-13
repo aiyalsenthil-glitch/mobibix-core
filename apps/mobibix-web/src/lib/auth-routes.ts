@@ -8,17 +8,13 @@ import type {
 export function getRoleRedirect(user: AuthUserPayload): string {
   switch (user.role as AuthRole) {
     case "owner":
-      return user.tenantId
-        ? `/dashboard/owner/${user.tenantId}`
-        : "/setup-business";
+      return user.tenantId ? "/dashboard" : "/setup-business";
     case "staff":
-      return user.tenantId
-        ? `/dashboard/staff/${user.tenantId}`
-        : "/setup-business";
+      return user.tenantId ? "/dashboard" : "/setup-business";
     case "member":
-      return "/dashboard/member";
+      return "/dashboard";
     case "admin":
-      return "/dashboard/admin";
+      return "/dashboard";
     default:
       return "/dashboard";
   }
@@ -38,11 +34,9 @@ export function getPostLoginRedirect(response: ExchangeTokenResponse): string {
   // Single tenant: prefer returned tenant, fallback to user.tenantId
   const tenantId = tenant?.id ?? tenants?.[0]?.id ?? user.tenantId;
 
-  if (user.role === "owner")
-    return tenantId ? `/dashboard/owner/${tenantId}` : "/dashboard";
-  if (user.role === "staff")
-    return tenantId ? `/dashboard/staff/${tenantId}` : "/dashboard";
-  if (user.role === "member") return "/dashboard/member";
-  if (user.role === "admin") return "/dashboard/admin";
+  if (user.role === "owner") return tenantId ? "/dashboard" : "/dashboard";
+  if (user.role === "staff") return tenantId ? "/dashboard" : "/dashboard";
+  if (user.role === "member") return "/dashboard";
+  if (user.role === "admin") return "/dashboard";
   return "/dashboard";
 }

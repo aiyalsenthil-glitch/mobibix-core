@@ -166,12 +166,12 @@ export class GymMembersController {
     return this.membersService.getMemberPayments(req.user.tenantId, id);
   }
 
-  // @Permissions(Permission.MEMBER_VIEW)
-  //@Roles(UserRole.OWNER, UserRole.STAFF)
-  //@Get('expired-today')
-  //expiredToday(@Req() req: any) {
-  //return this.membersService.findExpiredToday(req.user.tenantId);
-  //}
+  @Permissions(Permission.MEMBER_VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Get('expired-today')
+  expiredToday(@Req() req: any) {
+    return this.membersService.countExpiredToday(req.user.tenantId);
+  }
 
   // ======================
   // PAYMENT PENDING

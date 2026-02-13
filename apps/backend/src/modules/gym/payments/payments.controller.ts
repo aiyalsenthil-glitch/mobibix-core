@@ -10,10 +10,11 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { TenantStatusGuard } from '../../../core/tenant/guards/tenant-status.guard';
+import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
-@UseGuards(JwtAuthGuard, TenantStatusGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantStatusGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('gym/payments')
 export class PaymentsController {

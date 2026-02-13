@@ -1,4 +1,3 @@
-
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
 import { WhatsAppUserService } from '../modules/whatsapp/whatsapp-user.service';
@@ -71,33 +70,41 @@ async function bootstrap() {
   // 2. Verify getNumbers
   console.log('\n--- Test 1: getNumbers ---');
   const numbers = await userService.getNumbers(tenant.id);
-  console.table(numbers.map(n => ({ id: n.id, label: n.label, isDefault: n.isDefault })));
-  
+  console.table(
+    numbers.map((n) => ({ id: n.id, label: n.label, isDefault: n.isDefault })),
+  );
+
   if (numbers.length !== 2) throw new Error('Expected 2 numbers');
-  if (numbers[0].id !== num1.id) throw new Error('Expected default number first');
+  if (numbers[0].id !== num1.id)
+    throw new Error('Expected default number first');
   console.log('✅ getNumbers passed');
 
   // 3. Verify getLogs filtering
   console.log('\n--- Test 2: getLogs Filtering ---');
-  
+
   const logsAll = await userService.getLogs(tenant.id, {});
-  console.log(`All Logs: ${logsAll.length}`);
-  if (logsAll.length !== 2) throw new Error('Expected 2 logs total');
+  console.log(`All Logs: ${logsAll.data.length}`);
+  if (logsAll.data.length !== 2) throw new Error('Expected 2 logs total');
 
-  const logsNum1 = await userService.getLogs(tenant.id, { whatsAppNumberId: num1.id });
-  console.log(`Logs for Num 1: ${logsNum1.length}`);
-  if (logsNum1.length !== 1) throw new Error('Expected 1 log for Num 1');
-  if (logsNum1[0].whatsAppNumberId !== num1.id) throw new Error('Log mismatch');
+  const logsNum1 = await userService.getLogs(tenant.id, {
+    whatsAppNumberId: num1.id,
+  });
+  console.log(`Logs for Num 1: ${logsNum1.data.length}`);
+  if (logsNum1.data.length !== 1) throw new Error('Expected 1 log for Num 1');
+  if (logsNum1.data[0].whatsAppNumberId !== num1.id)
+    throw new Error('Log mismatch');
 
-  const logsNum2 = await userService.getLogs(tenant.id, { whatsAppNumberId: num2.id });
-  console.log(`Logs for Num 2: ${logsNum2.length}`);
-  if (logsNum2.length !== 1) throw new Error('Expected 1 log for Num 2');
+  const logsNum2 = await userService.getLogs(tenant.id, {
+    whatsAppNumberId: num2.id,
+  });
+  console.log(`Logs for Num 2: ${logsNum2.data.length}`);
+  if (logsNum2.data.length !== 1) throw new Error('Expected 1 log for Num 2');
 
   console.log('✅ getLogs filtering passed');
 
   // Cleanup
   await prisma.tenant.delete({ where: { id: tenant.id } });
-  
+
   await app.close();
   console.log('Done.');
 }

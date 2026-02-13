@@ -173,8 +173,8 @@ export class WhatsAppVariableResolver {
     switch (tableName) {
       case 'Member':
         if (!memberId) throw new Error('Member context required');
-        const member = await this.prisma.member.findUnique({
-          where: { id: memberId },
+        const member = await this.prisma.member.findFirst({
+          where: { id: memberId, tenantId },
         });
         return member?.[fieldName] ?? null;
 
@@ -186,43 +186,43 @@ export class WhatsAppVariableResolver {
 
       case 'Invoice':
         if (!invoiceId) throw new Error('Invoice context required');
-        const invoice = await this.prisma.invoice.findUnique({
-          where: { id: invoiceId },
+        const invoice = await this.prisma.invoice.findFirst({
+          where: { id: invoiceId, tenantId },
         });
         return invoice?.[fieldName] ?? null;
 
       case 'JobCard':
         if (!jobCardId) throw new Error('JobCard context required');
-        const jobCard = await this.prisma.jobCard.findUnique({
-          where: { id: jobCardId },
+        const jobCard = await this.prisma.jobCard.findFirst({
+          where: { id: jobCardId, tenantId },
         });
         return jobCard?.[fieldName] ?? null;
 
       case 'Shop':
         if (!shopId) throw new Error('Shop context required');
-        const shop = await this.prisma.shop.findUnique({
-          where: { id: shopId },
+        const shop = await this.prisma.shop.findFirst({
+          where: { id: shopId, tenantId },
         });
         return shop?.[fieldName] ?? null;
       case 'Party':
         // Resolve Party via Follow-up, Invoice, or JobCard
         if (followUpId) {
-          const followUp = await this.prisma.customerFollowUp.findUnique({
-            where: { id: followUpId },
+          const followUp = await this.prisma.customerFollowUp.findFirst({
+            where: { id: followUpId, tenantId },
             include: { customer: true },
           });
           return (followUp?.customer as any)?.[fieldName] ?? null;
         }
         if (invoiceId) {
-          const invoice = await this.prisma.invoice.findUnique({
-            where: { id: invoiceId },
+          const invoice = await this.prisma.invoice.findFirst({
+            where: { id: invoiceId, tenantId },
             include: { customer: true },
           });
           return (invoice?.customer as any)?.[fieldName] ?? null;
         }
         if (jobCardId) {
-          const jobCard = await this.prisma.jobCard.findUnique({
-            where: { id: jobCardId },
+          const jobCard = await this.prisma.jobCard.findFirst({
+            where: { id: jobCardId, tenantId },
             include: { customer: true },
           });
           return (jobCard?.customer as any)?.[fieldName] ?? null;
@@ -230,15 +230,15 @@ export class WhatsAppVariableResolver {
         return null;
       case 'CustomerFollowUp':
         if (!followUpId) throw new Error('Follow-up context required');
-        const followUp = await this.prisma.customerFollowUp.findUnique({
-          where: { id: followUpId },
+        const followUp = await this.prisma.customerFollowUp.findFirst({
+          where: { id: followUpId, tenantId },
         });
         return followUp?.[fieldName] ?? null;
       case 'User':
         // Assignee Name for Follow-ups
         if (followUpId) {
-          const followUp = await this.prisma.customerFollowUp.findUnique({
-            where: { id: followUpId },
+          const followUp = await this.prisma.customerFollowUp.findFirst({
+            where: { id: followUpId, tenantId },
             include: { assignedToUser: true },
           });
           // Support both fullName and name
@@ -270,8 +270,8 @@ export class WhatsAppVariableResolver {
       // GYM computed variables
       case 'dueAmount': {
         if (!memberId) throw new Error('Member context required');
-        const member = await this.prisma.member.findUnique({
-          where: { id: memberId },
+        const member = await this.prisma.member.findFirst({
+          where: { id: memberId, tenantId },
           select: { feeAmount: true, paidAmount: true },
         });
         if (!member) return null;

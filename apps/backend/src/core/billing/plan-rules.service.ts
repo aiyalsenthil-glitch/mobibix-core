@@ -60,7 +60,8 @@ export class PlanRulesService {
       maxStaff: plan.maxStaff, // null = unlimited
       maxShops: plan.maxShops, // null = unlimited
       whatsapp: {
-        messageQuota: (plan.whatsappUtilityQuota || 0) + (plan.whatsappMarketingQuota || 0),
+        messageQuota:
+          (plan.whatsappUtilityQuota || 0) + (plan.whatsappMarketingQuota || 0),
         isDaily: false, // Monthly quotas
         maxNumbers: 1, // Default to 1 (add DB field later if needed)
       },
@@ -82,17 +83,18 @@ export class PlanRulesService {
     tenantId: string,
     module?: ModuleType,
   ): Promise<PlanRules | null> {
+    // Check cache first by tenantId
+    const cacheKey = `tenant_${tenantId}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value;
+    }
+
     // 1. Fetch ALL Active Subscriptions
     const subscriptions = await this.prisma.tenantSubscription.findMany({
       where: {
         tenantId,
         status: { in: ['ACTIVE', 'TRIAL'] },
-        // If module is specified, we STILL need to check if there are add-on subscriptions
-        // But for now, let's aggregate EVERYTHING to be safe, or filter if strict
-        // proper behavior: If module is GYM, we want GYM features + global add-ons
-        // If module is WHATSAPP, we want WHATSAPP features
-        // BUT: WhatsApp features might be accessed from a generic context.
-        // SAFE BET: Aggregate all active subscriptions for the tenant.
       },
       include: {
         plan: {
@@ -113,7 +115,45 @@ export class PlanRulesService {
       return null;
     }
 
-    // 2. Initialize aggregated rules with defaults
+    // SINGLE PLAN OPTIMIZATION: If only 1 subscription and no add-ons, return actual plan code
+    let resultRules: PlanRules;
+    if (
+      subscriptions.length === 1 &&
+      (!subscriptions[0].addons || subscriptions[0].addons.length === 0)
+    ) {
+      const singleSub = subscriptions[0];
+      const plan = singleSub.plan;
+      if (plan) {
+        resultRules = {
+          planId: plan.id,
+          code: plan.code || 'UNKNOWN',
+          name: plan.name,
+          enabled: plan.isActive,
+          maxMembers: plan.maxMembers,
+          maxStaff: plan.maxStaff,
+          maxShops: plan.maxShops,
+          whatsapp: {
+            messageQuota:
+              (plan.whatsappUtilityQuota || 0) +
+              (plan.whatsappMarketingQuota || 0),
+            isDaily: false,
+            maxNumbers: 1,
+          },
+          analyticsHistoryDays: plan.analyticsHistoryDays,
+          features: plan.planFeatures
+            .filter((f) => f.enabled)
+            .map((f) => f.feature as WhatsAppFeature),
+        };
+        // Cache and return
+        this.cache.set(cacheKey, {
+          value: resultRules,
+          expiresAt: Date.now() + this.ttlMs,
+        });
+        return resultRules;
+      }
+    }
+
+    // 2. MULTIPLE PLANS: Initialize aggregated rules with defaults
     const aggregatedRules: PlanRules = {
       planId: 'aggregated',
       code: 'AGGREGATED',
@@ -140,22 +180,42 @@ export class PlanRulesService {
       const plan = sub.plan;
 
       // Merge Limits (Take MAX for non-additive, SUM for quotas)
-      if (plan.maxMembers === null) aggregatedRules.maxMembers = null; // Unlim wins
-      else if (aggregatedRules.maxMembers !== null) aggregatedRules.maxMembers = Math.max(aggregatedRules.maxMembers, plan.maxMembers);
+      if (plan.maxMembers === null)
+        aggregatedRules.maxMembers = null; // Unlim wins
+      else if (aggregatedRules.maxMembers !== null)
+        aggregatedRules.maxMembers = Math.max(
+          aggregatedRules.maxMembers,
+          plan.maxMembers,
+        );
 
       if (plan.maxStaff === null) aggregatedRules.maxStaff = null;
-      else if (aggregatedRules.maxStaff !== null) aggregatedRules.maxStaff = Math.max(aggregatedRules.maxStaff, plan.maxStaff);
+      else if (aggregatedRules.maxStaff !== null)
+        aggregatedRules.maxStaff = Math.max(
+          aggregatedRules.maxStaff,
+          plan.maxStaff,
+        );
 
       if (plan.maxShops === null) aggregatedRules.maxShops = null;
-      else if (aggregatedRules.maxShops !== null) aggregatedRules.maxShops = Math.max(aggregatedRules.maxShops, plan.maxShops ?? 0);
+      else if (aggregatedRules.maxShops !== null)
+        aggregatedRules.maxShops = Math.max(
+          aggregatedRules.maxShops,
+          plan.maxShops ?? 0,
+        );
 
-      aggregatedRules.analyticsHistoryDays = Math.max(aggregatedRules.analyticsHistoryDays, plan.analyticsHistoryDays);
+      aggregatedRules.analyticsHistoryDays = Math.max(
+        aggregatedRules.analyticsHistoryDays,
+        plan.analyticsHistoryDays,
+      );
 
       // Add WhatsApp Quotas (Additive)
       if (aggregatedRules.whatsapp) {
-        aggregatedRules.whatsapp.messageQuota += (plan.whatsappUtilityQuota || 0) + (plan.whatsappMarketingQuota || 0);
+        aggregatedRules.whatsapp.messageQuota +=
+          (plan.whatsappUtilityQuota || 0) + (plan.whatsappMarketingQuota || 0);
         // Default to 1 if not defined in plan (assumed 1 per plan generally)
-        aggregatedRules.whatsapp.maxNumbers = Math.max(aggregatedRules.whatsapp.maxNumbers ?? 0, 1); 
+        aggregatedRules.whatsapp.maxNumbers = Math.max(
+          aggregatedRules.whatsapp.maxNumbers ?? 0,
+          1,
+        );
       }
 
       // Merge features
@@ -167,7 +227,9 @@ export class PlanRulesService {
       if (sub.addons) {
         for (const addon of sub.addons) {
           if (aggregatedRules.whatsapp) {
-            aggregatedRules.whatsapp.messageQuota += (addon.addonPlan.whatsappUtilityQuota || 0) + (addon.addonPlan.whatsappMarketingQuota || 0);
+            aggregatedRules.whatsapp.messageQuota +=
+              (addon.addonPlan.whatsappUtilityQuota || 0) +
+              (addon.addonPlan.whatsappMarketingQuota || 0);
           }
           addon.addonPlan.planFeatures
             .filter((f) => f.enabled)
@@ -177,11 +239,15 @@ export class PlanRulesService {
     }
 
     aggregatedRules.features = Array.from(featuresSet);
+    resultRules = aggregatedRules;
 
-    // If a specific module was requested, we might want to ensure that module is actually present
-    // but typically feature checks are "does tenant have X feature", regardless of which sub provided it.
-    
-    return aggregatedRules;
+    // Cache the result before returning
+    this.cache.set(cacheKey, {
+      value: resultRules,
+      expiresAt: Date.now() + this.ttlMs,
+    });
+
+    return resultRules;
   }
 
   async isFeatureEnabledForTenant(

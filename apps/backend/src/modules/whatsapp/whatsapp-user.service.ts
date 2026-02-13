@@ -17,7 +17,6 @@ import {
   WhatsAppLogsQueryDto,
 } from './dto/whatsapp-user.dto';
 import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
-import { PLAN_LIMITS } from '../../core/billing/plan-limits'; // ⚠️ DEPRECATED: Fallback only — DB-driven PlanRulesService is primary
 
 type WhatsAppTemplateCategory = 'UTILITY' | 'MARKETING';
 
@@ -98,7 +97,8 @@ export class WhatsAppUserService {
 
     const normalized = tenant.tenantType.toUpperCase();
     if (normalized === 'GYM') return ModuleType.GYM;
-    if (normalized === 'BUSINESS' || normalized === 'MOBILE_SHOP') return ModuleType.MOBILE_SHOP;
+    if (normalized === 'BUSINESS' || normalized === 'MOBILE_SHOP')
+      return ModuleType.MOBILE_SHOP;
     return ModuleType.MOBILE_SHOP; // Default
   }
 
@@ -138,10 +138,11 @@ export class WhatsAppUserService {
     // 2. Fallback: If no standalone CRM sub, resolve the Core Module (Gym/Shop)
     if (!subscription?.plan) {
       effectiveModule = await this.resolveTenantModule(tenantId);
-      const primarySub = await this.subscriptionsService.getCurrentActiveSubscription(
-        tenantId,
-        effectiveModule,
-      );
+      const primarySub =
+        await this.subscriptionsService.getCurrentActiveSubscription(
+          tenantId,
+          effectiveModule,
+        );
 
       // 3. Check if primary sub has a WHATSAPP_CRM addon
       if (primarySub?.addons) {
@@ -152,7 +153,7 @@ export class WhatsAppUserService {
         );
         if (whatsappAddon) {
           subscription = primarySub;
-          effectiveModule = ModuleType.WHATSAPP_CRM; 
+          effectiveModule = ModuleType.WHATSAPP_CRM;
         }
       }
     }
@@ -287,13 +288,16 @@ export class WhatsAppUserService {
   ) {
     // ── PRIMARY: DB-driven plan rules (includes add-on merging) ──
     const module = await this.resolveTenantModule(tenantId);
-    const planRules = await this.planRulesService.getPlanRulesForTenant(tenantId, module);
-    const limits = planRules?.whatsapp ?? PLAN_LIMITS[planCode]?.whatsapp;
+    const planRules = await this.planRulesService.getPlanRulesForTenant(
+      tenantId,
+      module,
+    );
+    const limits = planRules?.whatsapp;
     if (!limits) return;
 
     const baseLimit = limits.messageQuota ?? 0;
 
-    // Fetch Add-on Quotas (Sum of all categories if they are category-specific in DB, 
+    // Fetch Add-on Quotas (Sum of all categories if they are category-specific in DB,
     // but effectively they add to the global pool in this new model)
     const [utilityAddon, marketingAddon] = await Promise.all([
       this.getAddonQuota(tenantId, 'UTILITY'),
@@ -310,7 +314,7 @@ export class WhatsAppUserService {
     }
 
     const isDaily = limits.isDaily ?? false;
-    
+
     // Check TOTAL usage (Shared Pool)
     const [utilityUsed, marketingUsed] = await Promise.all([
       this.getCategoryUsage(tenantId, 'UTILITY', isDaily),
@@ -493,10 +497,21 @@ export class WhatsAppUserService {
     if (dto.text) {
       await this.ensureQuotaAvailable(tenantId, planCode, 'UTILITY');
 
+      // Get default WhatsAppNumber for tenant
+      const defaultNumber = await this.prisma.whatsAppNumber.findFirst({
+        where: { tenantId, isDefault: true },
+        select: { id: true },
+      });
+
+      if (!defaultNumber) {
+        throw new BadRequestException('No default WhatsApp number configured');
+      }
+
       // 1. Create Log Entry (MANUAL)
       const log = await this.prisma.whatsAppLog.create({
         data: {
           tenantId,
+          whatsAppNumberId: defaultNumber.id,
           phone: dto.phone,
           type: 'MANUAL',
           status: 'QUEUED',
@@ -533,7 +548,9 @@ export class WhatsAppUserService {
         });
       }
 
-      return this.prisma.whatsAppLog.findUnique({ where: { id: log.id } });
+      return this.prisma.whatsAppLog.findFirst({
+        where: { id: log.id, tenantId },
+      });
     }
 
     // ---------------------------------------------------------
@@ -562,9 +579,20 @@ export class WhatsAppUserService {
 
     await this.ensureQuotaAvailable(tenantId, planCode, templateCategory);
 
+    // Get default WhatsAppNumber for tenant
+    const defaultNumber = await this.prisma.whatsAppNumber.findFirst({
+      where: { tenantId, isDefault: true },
+      select: { id: true },
+    });
+
+    if (!defaultNumber) {
+      throw new BadRequestException('No default WhatsApp number configured');
+    }
+
     const log = await this.prisma.whatsAppLog.create({
       data: {
         tenantId,
+        whatsAppNumberId: defaultNumber.id,
         phone: dto.phone,
         type: 'MANUAL',
         status: 'QUEUED',
@@ -603,7 +631,9 @@ export class WhatsAppUserService {
       });
     }
 
-    return this.prisma.whatsAppLog.findUnique({ where: { id: log.id } });
+    return this.prisma.whatsAppLog.findFirst({
+      where: { id: log.id, tenantId },
+    });
   }
 
   async createCampaign(
@@ -690,11 +720,40 @@ export class WhatsAppUserService {
       where.whatsAppNumberId = query.whatsAppNumberId;
     }
 
-    return this.prisma.whatsAppLog.findMany({
+    // 🔥 Build sort order
+    const orderBy: Prisma.WhatsAppLogOrderByWithRelationInput = {};
+    const sortField = query.sortBy || 'sentAt';
+    const sortOrder = query.sortOrder || 'desc';
+
+    if (sortField === 'sentAt' || sortField === 'readAt') {
+      orderBy[sortField] = sortOrder;
+    } else {
+      orderBy.sentAt = sortOrder;
+    }
+
+    // 🔥 Get total count for pagination
+    const total = await this.prisma.whatsAppLog.count({ where });
+
+    // 🔥 Fetch paginated data
+    const data = await this.prisma.whatsAppLog.findMany({
       where,
-      orderBy: { sentAt: 'desc' },
-      take: 200,
+      orderBy,
+      skip: query.skip || 0,
+      take: query.take || 50,
     });
+
+    // 🔥 Return paginated response
+    return {
+      data,
+      pagination: {
+        total,
+        page: Math.floor((query.skip || 0) / (query.take || 50)) + 1,
+        limit: query.take || 50,
+        totalPages: Math.ceil(total / (query.take || 50)),
+        hasNext: (query.skip || 0) + (query.take || 50) < total,
+        hasPrevious: (query.skip || 0) > 0,
+      },
+    };
   }
   async getUsageSummary(tenantId: string) {
     const { subscription, features } =
@@ -704,10 +763,11 @@ export class WhatsAppUserService {
 
     // ── PRIMARY: DB-driven plan rules ──
     const module = await this.resolveTenantModule(tenantId);
-    const planRules = await this.planRulesService.getPlanRulesForTenant(tenantId, module);
-    const limits = planRules?.whatsapp ?? PLAN_LIMITS[planCode]?.whatsapp ?? {
-      messageQuota: 0,
-    };
+    const planRules = await this.planRulesService.getPlanRulesForTenant(
+      tenantId,
+      module,
+    );
+    const limits = planRules?.whatsapp ?? { messageQuota: 0 };
     const isDaily = limits.isDaily ?? false;
 
     // Get Usage
@@ -725,7 +785,7 @@ export class WhatsAppUserService {
     // Calculate Reset Date
     const { end } = this.getQuotaDateRange(isDaily);
     const resetAt = new Date(end.getTime() + 1); // Start of next period
-    
+
     const sharedBaseLimit = limits.messageQuota ?? 0;
 
     return {

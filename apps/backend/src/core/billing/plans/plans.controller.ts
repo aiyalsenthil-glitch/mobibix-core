@@ -11,9 +11,11 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { ModuleType, UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { TenantRequiredGuard } from '../../auth/guards/tenant.guard';
 
 @Controller('plans')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class PlansController {
   constructor(
@@ -25,7 +27,6 @@ export class PlansController {
   async listPlans() {
     return this.plansService.getActivePlans();
   }
-  @UseGuards(JwtAuthGuard)
   @Get('available')
   async getAvailablePlans(
     @Req() req: any,

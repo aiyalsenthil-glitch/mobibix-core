@@ -892,7 +892,20 @@ export class SalesService {
       };
     });
 
-    return { invoices: enrichedInvoices, total, page, limit };
+    // Return standardized paginated format
+    const skip = (page - 1) * limit;
+    return {
+      data: enrichedInvoices,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrevious: page > 1,
+        offset: skip,
+      },
+    };
   }
 
   async getInvoiceDetails(tenantId: string, invoiceId: string) {

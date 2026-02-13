@@ -42,15 +42,15 @@ export class VouchersService {
 
     // ✅ VALIDATION: If linkedPurchaseId provided, verify it exists
     if (createVoucherDto.linkedPurchaseId) {
-      const purchase = await this.prisma.purchase.findUnique({
-        where: { id: createVoucherDto.linkedPurchaseId },
+      const purchase = await this.prisma.purchase.findFirst({
+        where: { id: createVoucherDto.linkedPurchaseId, tenantId },
       });
       if (!purchase) {
         throw new BadRequestException('Linked purchase does not exist');
       }
-      if (purchase.tenantId !== tenantId || purchase.shopId !== shopId) {
+      if (purchase.shopId !== shopId) {
         throw new BadRequestException(
-          'Linked purchase does not belong to this tenant/shop',
+          'Linked purchase does not belong to this shop',
         );
       }
     }
@@ -132,7 +132,7 @@ export class VouchersService {
       skip?: number;
       take?: number;
     },
-  ): Promise<{ data: VoucherEntity[]; total: number }> {
+  ): Promise<{ data: VoucherEntity[]; total: number; pagination: any }> {
     const skip = filters?.skip || 0;
     const take = filters?.take || 50;
 
@@ -173,9 +173,20 @@ export class VouchersService {
       this.prisma.paymentVoucher.count({ where }),
     ]);
 
+    // Return standardized paginated format
+    const page = Math.floor(skip / take) + 1;
     return {
       data: vouchers,
       total,
+      pagination: {
+        total,
+        page,
+        limit: take,
+        totalPages: Math.ceil(total / take),
+        hasNext: page < Math.ceil(total / take),
+        hasPrevious: page > 1,
+        offset: skip,
+      },
     };
   }
 
@@ -212,18 +223,16 @@ export class VouchersService {
     voucherId: string,
     reason: string,
   ): Promise<VoucherEntity> {
-    const voucher = await this.prisma.paymentVoucher.findUnique({
-      where: { id: voucherId },
+    const voucher = await this.prisma.paymentVoucher.findFirst({
+      where: { id: voucherId, tenantId },
     });
 
     if (!voucher) {
       throw new BadRequestException('Voucher not found');
     }
 
-    if (voucher.tenantId !== tenantId || voucher.shopId !== shopId) {
-      throw new BadRequestException(
-        'Voucher does not belong to this tenant/shop',
-      );
+    if (voucher.shopId !== shopId) {
+      throw new BadRequestException('Voucher does not belong to this shop');
     }
 
     if (voucher.status === VoucherStatus.CANCELLED) {
@@ -365,8 +374,6 @@ export class VouchersService {
       if (!purchase || purchase.tenantId !== tenantId) {
         throw new BadRequestException('Purchase not found');
       }
-
-      // Only SETTLEMENT vouchers reduce outstanding
       if (voucherSubType !== 'SETTLEMENT') {
         this.logger.debug(
           `Purchase ${purchase.invoiceNumber}: ADVANCE voucher (not reducing outstanding)`,

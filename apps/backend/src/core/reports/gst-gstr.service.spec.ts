@@ -211,6 +211,18 @@ describe('GSTR2Service - ITC Tracking & Legacy Exclusion', () => {
     isLegacyGstApproximation: false,
     verifiedAt: new Date('2024-12-01'),
     status: 'SUBMITTED',
+    items: [
+      {
+        id: 'item-1',
+        purchaseId: 'purchase-verified',
+        productId: 'prod-1',
+        quantity: 100,
+        purchasePrice: 100,
+        cgstAmount: 900,
+        sgstAmount: 900,
+        igstAmount: 0,
+      },
+    ],
   };
 
   const mockUnverifiedLegacyPurchase = {
@@ -227,6 +239,18 @@ describe('GSTR2Service - ITC Tracking & Legacy Exclusion', () => {
     isLegacyGstApproximation: true,
     verifiedAt: null,
     status: 'SUBMITTED',
+    items: [
+      {
+        id: 'item-2',
+        purchaseId: 'purchase-legacy-unverified',
+        productId: 'prod-2',
+        quantity: 50,
+        purchasePrice: 100,
+        cgstAmount: 450,
+        sgstAmount: 450,
+        igstAmount: 0,
+      },
+    ],
   };
 
   beforeEach(async () => {
@@ -280,10 +304,10 @@ describe('GSTR2Service - ITC Tracking & Legacy Exclusion', () => {
         new Date('2024-12-31'),
       );
 
-      expect(result.records[0].itcEligible).toBe(false);
-      expect(result.records[0].itcCgstAmount).toBe(0); // ITC not allowed
-      expect(result.records[0].itcSgstAmount).toBe(0);
-      expect(result.records[0].itcIgstAmount).toBe(0);
+      // Unverified legacy purchases are SKIPPED from records (not included at all)
+      expect(result.records.length).toBe(0); // No records returned
+      expect(result.legacyUnverifiedCount).toBe(1); // But counted in metadata
+      expect(result.totalITC).toBe(0); // No ITC from unverified legacy
     });
   });
 

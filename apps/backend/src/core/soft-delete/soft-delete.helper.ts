@@ -14,6 +14,26 @@ export function excludeDeleted() {
 }
 
 /**
+ * Apply default soft-delete filter if deletedAt is not explicitly provided.
+ */
+export function withSoftDeleteFilter(where?: Record<string, unknown>) {
+  const normalizedWhere = where ?? {};
+  const hasDeletedAtFilter = Object.prototype.hasOwnProperty.call(
+    normalizedWhere,
+    'deletedAt',
+  );
+
+  if (hasDeletedAtFilter) {
+    return normalizedWhere;
+  }
+
+  return {
+    ...normalizedWhere,
+    deletedAt: null,
+  };
+}
+
+/**
  * Get WHERE clause to include deleted records
  * Usage: For recovery/restore operations
  */

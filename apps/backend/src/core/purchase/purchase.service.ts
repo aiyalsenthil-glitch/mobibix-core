@@ -116,7 +116,7 @@ export class PurchaseService {
         }
 
         const existing = await tx.iMEI.findFirst({
-          where: { imei: { in: allImeis } },
+          where: { imei: { in: allImeis }, tenantId },
           select: { imei: true },
         });
 

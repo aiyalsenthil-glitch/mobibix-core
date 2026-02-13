@@ -22,8 +22,8 @@ export class AdvanceApplicationService {
     appliedAmount: number,
   ): Promise<void> {
     // Validate advance exists and belongs to tenant
-    const advance = await this.prisma.paymentVoucher.findUnique({
-      where: { id: advanceVoucherId },
+    const advance = await this.prisma.paymentVoucher.findFirst({
+      where: { id: advanceVoucherId, tenantId },
     });
 
     if (!advance || advance.tenantId !== tenantId) {
@@ -37,8 +37,8 @@ export class AdvanceApplicationService {
     }
 
     // Validate purchase exists
-    const purchase = await this.prisma.purchase.findUnique({
-      where: { id: purchaseId },
+    const purchase = await this.prisma.purchase.findFirst({
+      where: { id: purchaseId, tenantId },
     });
 
     if (!purchase || purchase.tenantId !== tenantId) {
@@ -105,8 +105,8 @@ export class AdvanceApplicationService {
     tenantId: string,
     advanceVoucherId: string,
   ): Promise<AdvanceBalance> {
-    const advance = await this.prisma.paymentVoucher.findUnique({
-      where: { id: advanceVoucherId },
+    const advance = await this.prisma.paymentVoucher.findFirst({
+      where: { id: advanceVoucherId, tenantId },
       include: {
         advanceApplications: true,
       },
@@ -172,7 +172,10 @@ export class AdvanceApplicationService {
     }>
   > {
     const applications = await this.prisma.advanceApplication.findMany({
-      where: { purchaseId },
+      where: {
+        purchaseId,
+        purchase: { tenantId },
+      },
     });
 
     // Would need to join with PaymentVoucher separately
@@ -191,8 +194,11 @@ export class AdvanceApplicationService {
     tenantId: string,
     applicationId: string,
   ): Promise<void> {
-    const application = await this.prisma.advanceApplication.findUnique({
-      where: { id: applicationId },
+    const application = await this.prisma.advanceApplication.findFirst({
+      where: {
+        id: applicationId,
+        purchase: { tenantId },
+      },
     });
 
     if (!application) {
@@ -200,8 +206,8 @@ export class AdvanceApplicationService {
     }
 
     // Fetch purchase and voucher separately
-    const purchase = await this.prisma.purchase.findUnique({
-      where: { id: application.purchaseId },
+    const purchase = await this.prisma.purchase.findFirst({
+      where: { id: application.purchaseId, tenantId },
     });
 
     if (!purchase || purchase.tenantId !== tenantId) {

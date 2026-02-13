@@ -306,7 +306,9 @@ export class SubscriptionsService {
     );
 
     // ⚡ Invalidate cache
-    this.cacheService.delete(`subscription:${subscription.tenantId}:${subscription.module}`);
+    this.cacheService.delete(
+      `subscription:${subscription.tenantId}:${subscription.module}`,
+    );
 
     return upgraded;
   }
@@ -397,7 +399,9 @@ export class SubscriptionsService {
     );
 
     // ⚡ Invalidate cache
-    this.cacheService.delete(`subscription:${subscription.tenantId}:${subscription.module}`);
+    this.cacheService.delete(
+      `subscription:${subscription.tenantId}:${subscription.module}`,
+    );
 
     return scheduled;
   }
@@ -492,7 +496,9 @@ export class SubscriptionsService {
     );
 
     // ⚡ Invalidate cache
-    this.cacheService.delete(`subscription:${current.tenantId}:${current.module}`);
+    this.cacheService.delete(
+      `subscription:${current.tenantId}:${current.module}`,
+    );
 
     return renewed;
   }
@@ -559,11 +565,12 @@ export class SubscriptionsService {
     });
 
     // ⚡ Invalidate cache
-    this.cacheService.delete(`subscription:${parentSub!.tenantId}:${parentSub!.module}`);
+    this.cacheService.delete(
+      `subscription:${parentSub!.tenantId}:${parentSub!.module}`,
+    );
 
     return addon;
   }
-
 
   /**
    * TOGGLE AUTO-RENEW
@@ -1018,6 +1025,17 @@ export class SubscriptionsService {
     };
   }
 
+  /**
+   * DOWNGRADE PRE-CHECK (alias for eligibility check)
+   */
+  async downgradePreCheck(
+    tenantId: string,
+    targetPlanId: string,
+    module: ModuleType,
+  ) {
+    return this.checkDowngradeEligibility(tenantId, targetPlanId, module);
+  }
+
   async manageAddon(
     tenantId: string,
     action: 'ENABLE' | 'DISABLE',
@@ -1067,8 +1085,14 @@ export class SubscriptionsService {
             whatsappCrmEnabled: true,
             // Only set default if not already set
             whatsappPhoneNumberId: {
-              set: (await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { whatsappPhoneNumberId: true } }))?.whatsappPhoneNumberId || '100609346426084'
-            }
+              set:
+                (
+                  await this.prisma.tenant.findUnique({
+                    where: { id: tenantId },
+                    select: { whatsappPhoneNumberId: true },
+                  })
+                )?.whatsappPhoneNumberId || '100609346426084',
+            },
           },
         });
       }
@@ -1103,4 +1127,3 @@ export class SubscriptionsService {
     }
   }
 }
-

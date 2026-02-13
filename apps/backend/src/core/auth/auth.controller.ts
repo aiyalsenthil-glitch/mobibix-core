@@ -6,15 +6,19 @@ import {
   Get,
   Req,
   UseGuards,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
 import { GoogleExchangeDto } from './dto/google-exchange.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { FirebaseAdminService } from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { Roles } from './decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import type { Response, Request } from 'express';
+import { randomBytes } from 'crypto';
 
 @Controller('auth')
 export class AuthController {
@@ -24,22 +28,165 @@ export class AuthController {
     private readonly prisma: PrismaService,
   ) {}
 
+  private buildCookieOptions(maxAge: number) {
+    const isProd = process.env.NODE_ENV === 'production';
+
+    return {
+      httpOnly: true,
+      sameSite: isProd ? 'none' : 'lax',
+      secure: isProd,
+      maxAge,
+      path: '/',
+    } as const;
+  }
+
+  private buildCsrfCookieOptions(maxAge: number) {
+    const baseOptions = this.buildCookieOptions(maxAge);
+    return {
+      ...baseOptions,
+      httpOnly: false,
+      path: '/',
+    } as const;
+  }
+
+  private generateCsrfToken() {
+    return randomBytes(32).toString('hex');
+  }
+
+  private clearAuthCookies(res: Response) {
+    const isProd = process.env.NODE_ENV === 'production';
+    const baseOptions = {
+      sameSite: isProd ? 'none' : 'lax',
+      secure: isProd,
+      path: '/',
+    } as const;
+
+    res.clearCookie('accessToken', baseOptions);
+    res.clearCookie('refreshToken', baseOptions);
+    res.clearCookie('csrfToken', baseOptions);
+  }
+
   @Public()
   @Post('REMOVED_AUTH_PROVIDER')
   async loginWithFirebase(
     @Body() body: { idToken?: string; tenantCode?: string },
+    @Res({ passthrough: true }) res: Response,
   ) {
     if (!body?.idToken) {
       throw new UnauthorizedException('Missing idToken');
     }
 
     // Pass tenantCode to AuthService to ensure correct tenant context
-    return this.authService.loginWithFirebase(body.idToken, body.tenantCode);
+    const result = await this.authService.loginWithFirebase(
+      body.idToken,
+      body.tenantCode,
+    );
+
+    if (result?.accessToken) {
+      res.cookie(
+        'accessToken',
+        result.accessToken,
+        this.buildCookieOptions(result.accessTokenExpiresIn),
+      );
+    }
+
+    if (result?.refreshToken) {
+      res.cookie(
+        'refreshToken',
+        result.refreshToken,
+        this.buildCookieOptions(result.refreshTokenExpiresIn),
+      );
+    }
+
+    const csrfToken = this.generateCsrfToken();
+    res.cookie(
+      'csrfToken',
+      csrfToken,
+      this.buildCsrfCookieOptions(result.accessTokenExpiresIn),
+    );
+
+    return { ...result, csrfToken };
   }
   @Public()
   @Post('google/exchange')
-  exchangeToken(@Body() dto: GoogleExchangeDto) {
-    return this.authService.exchangeGoogleToken(dto);
+  async exchangeToken(
+    @Body() dto: GoogleExchangeDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.exchangeGoogleToken(dto);
+
+    if (result?.accessToken) {
+      res.cookie(
+        'accessToken',
+        result.accessToken,
+        this.buildCookieOptions(result.accessTokenExpiresIn),
+      );
+    }
+
+    if (result?.refreshToken) {
+      res.cookie(
+        'refreshToken',
+        result.refreshToken,
+        this.buildCookieOptions(result.refreshTokenExpiresIn),
+      );
+    }
+
+    const csrfToken = this.generateCsrfToken();
+    res.cookie(
+      'csrfToken',
+      csrfToken,
+      this.buildCsrfCookieOptions(result.accessTokenExpiresIn),
+    );
+
+    return { ...result, csrfToken };
+  }
+
+  @Public()
+  @Post('refresh')
+  async refreshToken(
+    @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const cookieToken = req.cookies?.refreshToken as string | undefined;
+    const refreshToken = dto.refreshToken || cookieToken;
+
+    if (!refreshToken) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    const result = await this.authService.refreshAccessToken(refreshToken);
+
+    if (result?.accessToken) {
+      res.cookie(
+        'accessToken',
+        result.accessToken,
+        this.buildCookieOptions(result.accessTokenExpiresIn),
+      );
+    }
+
+    const csrfToken = this.generateCsrfToken();
+    res.cookie(
+      'csrfToken',
+      csrfToken,
+      this.buildCsrfCookieOptions(result.accessTokenExpiresIn),
+    );
+
+    return { ...result, csrfToken };
+  }
+
+  @Public()
+  @Post('logout')
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies?.refreshToken as string | undefined;
+
+    if (refreshToken) {
+      await this.authService.revokeRefreshToken(refreshToken);
+    }
+
+    this.clearAuthCookies(res);
+
+    return { success: true };
   }
   @Public()
   @Get('debug/REMOVED_AUTH_PROVIDER-claims')

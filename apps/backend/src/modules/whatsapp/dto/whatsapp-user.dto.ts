@@ -5,7 +5,11 @@ import {
   IsDateString,
   IsIn,
   IsObject,
+  IsInt,
+  Min,
+  Max,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class SendWhatsAppMessageDto {
   @IsString()
@@ -71,4 +75,26 @@ export class WhatsAppLogsQueryDto {
   @IsOptional()
   @IsString()
   whatsAppNumberId?: string;
+
+  // 🔥 Pagination fields
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  skip?: number = 0;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  take?: number = 50;
+
+  @IsOptional()
+  @IsString()
+  sortBy?: string = 'createdAt';
+
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sortOrder?: 'asc' | 'desc' = 'desc';
 }

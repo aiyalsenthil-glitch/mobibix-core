@@ -10,7 +10,6 @@ import {
   VariableResolutionContext,
 } from './variable-resolver.service';
 import { WhatsAppModule } from './variable-registry';
-import { PLAN_LIMITS } from '../../core/billing/plan-limits';
 
 interface ReminderTemplateParams {
   [key: string]: string | number;
@@ -89,7 +88,7 @@ export class WhatsAppRemindersService {
                 take: 1,
                 select: {
                   plan: {
-                    select: { code: true },
+                    select: { code: true, meta: true },
                   },
                 },
               },
@@ -178,18 +177,18 @@ export class WhatsAppRemindersService {
         where: { tenantId },
       });
 
+      // Extract whatsAppNumberId early for logging
+      const whatsAppNumberId = reminder.tenant?.whatsappReminderNumberId;
+
       // 🛡️ QUOTA CHECK: Daily Reminder Limit
       const activeSub = reminder.tenant?.subscription?.[0];
-      const planCode = activeSub?.plan?.code ?? 'MOBIBIX_TRIAL';
+      const planMeta =
+        (activeSub?.plan?.meta as {
+          reminderQuotaPerDay?: number | null;
+        } | null) ?? null;
+      const reminderQuotaPerDay = planMeta?.reminderQuotaPerDay ?? null;
 
-      const limits =
-        PLAN_LIMITS[planCode as keyof typeof PLAN_LIMITS] ??
-        PLAN_LIMITS.MOBIBIX_TRIAL;
-
-      if (
-        limits.reminderQuotaPerDay !== null &&
-        limits.reminderQuotaPerDay !== undefined
-      ) {
+      if (reminderQuotaPerDay !== null && reminderQuotaPerDay !== undefined) {
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
 
@@ -202,8 +201,8 @@ export class WhatsAppRemindersService {
           },
         });
 
-        if (sentToday >= limits.reminderQuotaPerDay) {
-          const reason = `Daily quota reached (${sentToday}/${limits.reminderQuotaPerDay})`;
+        if (sentToday >= reminderQuotaPerDay) {
+          const reason = `Daily quota reached (${sentToday}/${reminderQuotaPerDay})`;
           await this.updateReminderStatus(
             reminderId,
             ReminderStatus.SKIPPED,
@@ -262,6 +261,7 @@ export class WhatsAppRemindersService {
           phone,
           'FAILED',
           'Invalid phone number format',
+          whatsAppNumberId,
         );
         return;
       }
@@ -516,8 +516,8 @@ export class WhatsAppRemindersService {
         template?.metaTemplateName || templateKey,
         parameters,
         {
-            whatsAppNumberId: reminder.tenant?.whatsappReminderNumberId,
-        }
+          whatsAppNumberId: reminder.tenant?.whatsappReminderNumberId,
+        },
       );
 
       // 6️⃣ Handle result and update status
@@ -535,6 +535,7 @@ export class WhatsAppRemindersService {
           whatsAppPhone,
           'SKIPPED',
           reason,
+          whatsAppNumberId,
         );
         return;
       }
@@ -542,7 +543,14 @@ export class WhatsAppRemindersService {
       if (result.success) {
         // ✅ Already marked as SENT by the Atomic Lock.
         // Just log the success attempt.
-        await this.logAttempt(tenantId, customer.id, whatsAppPhone, 'SUCCESS');
+        await this.logAttempt(
+          tenantId,
+          customer.id,
+          whatsAppPhone,
+          'SUCCESS',
+          undefined,
+          whatsAppNumberId,
+        );
       } else {
         // ❌ Revert status to FAILED
         await this.updateReminderStatus(
@@ -556,6 +564,7 @@ export class WhatsAppRemindersService {
           whatsAppPhone,
           'FAILED',
           result.error?.message || 'Unknown error',
+          whatsAppNumberId,
         );
       }
     } catch (err) {
@@ -566,12 +575,14 @@ export class WhatsAppRemindersService {
         ReminderStatus.FAILED,
         errorMsg,
       );
+      const whatsAppNumberId = reminder.tenant?.whatsappReminderNumberId;
       await this.logAttempt(
         tenantId,
         customer.id,
         customer.phone || 'UNKNOWN',
         'FAILED',
         errorMsg,
+        whatsAppNumberId,
       );
     }
   }
@@ -627,6 +638,7 @@ export class WhatsAppRemindersService {
     phone: string,
     status: 'SUCCESS' | 'FAILED' | 'SKIPPED',
     error?: string,
+    whatsAppNumberId?: string | null,
   ): Promise<void> {
     try {
       // Map reminder statuses to WhatsAppLog statuses
@@ -642,6 +654,7 @@ export class WhatsAppRemindersService {
         type: 'REMINDER',
         status: logStatus,
         error: error || null,
+        whatsAppNumberId: whatsAppNumberId || null,
       });
     } catch (err) {
       // Logging should not crash the process

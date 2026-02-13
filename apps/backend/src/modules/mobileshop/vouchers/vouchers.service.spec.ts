@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
-import { VouchersService } from '../../modules/mobileshop/vouchers/vouchers.service';
-import { PrismaService } from '../../core/prisma/prisma.service';
-import { DocumentNumberService } from '../../common/services/document-number.service';
+import { VouchersService } from './vouchers.service';
+import { PrismaService } from '../../../core/prisma/prisma.service';
+import { DocumentNumberService } from '../../../common/services/document-number.service';
 
 describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)', () => {
   let service: VouchersService;
@@ -72,12 +72,16 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
       const mockVoucher = { ...voucherDto, id: 'voucher-1', amount: 500000 };
       jest.spyOn(service, 'createVoucher').mockResolvedValueOnce(mockVoucher);
 
-      jest.spyOn(prisma.purchase, 'findUnique').mockResolvedValueOnce(mockPurchase);
+      jest
+        .spyOn(prisma.purchase, 'findUnique')
+        .mockResolvedValueOnce(mockPurchase);
 
       // Mock transaction
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback) => {
-        return callback(prisma);
-      });
+      jest
+        .spyOn(prisma, '$transaction')
+        .mockImplementation(async (callback) => {
+          return callback(prisma);
+        });
 
       await service.createVoucherWithPurchaseUpdate(
         mockTenantId,
@@ -109,14 +113,18 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
 
       jest.spyOn(service, 'createVoucher').mockResolvedValueOnce({});
 
-      jest.spyOn(prisma.purchase, 'findUnique').mockResolvedValueOnce(mockPurchase);
+      jest
+        .spyOn(prisma.purchase, 'findUnique')
+        .mockResolvedValueOnce(mockPurchase);
 
       // Mock transaction throwing over-payment error
-      jest.spyOn(prisma, '$transaction').mockRejectedValueOnce(
-        new BadRequestException(
-          'Over-payment prevented: voucher (150.00) exceeds outstanding. Balance: 100.00',
-        ),
-      );
+      jest
+        .spyOn(prisma, '$transaction')
+        .mockRejectedValueOnce(
+          new BadRequestException(
+            'Over-payment prevented: voucher (150.00) exceeds outstanding. Balance: 100.00',
+          ),
+        );
 
       await expect(
         service.createVoucherWithPurchaseUpdate(
@@ -142,20 +150,24 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
       };
 
       jest.spyOn(service, 'createVoucher').mockResolvedValueOnce({});
-      jest.spyOn(prisma.purchase, 'findUnique').mockResolvedValueOnce(mockPurchase);
+      jest
+        .spyOn(prisma.purchase, 'findUnique')
+        .mockResolvedValueOnce(mockPurchase);
 
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback) => {
-        const mockTx = {
-          purchase: {
-            findUnique: jest.fn().mockResolvedValueOnce(mockPurchase),
-            update: jest.fn().mockResolvedValueOnce({
-              ...mockPurchase,
-              outstanding: 5000,
-            }),
-          },
-        };
-        return callback(mockTx);
-      });
+      jest
+        .spyOn(prisma, '$transaction')
+        .mockImplementation(async (callback) => {
+          const mockTx = {
+            purchase: {
+              findUnique: jest.fn().mockResolvedValueOnce(mockPurchase),
+              update: jest.fn().mockResolvedValueOnce({
+                ...mockPurchase,
+                outstanding: 5000,
+              }),
+            },
+          };
+          return callback(mockTx);
+        });
 
       await service.createVoucherWithPurchaseUpdate(
         mockTenantId,
@@ -181,16 +193,21 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
       };
 
       jest.spyOn(service, 'createVoucher').mockResolvedValueOnce({});
-      jest.spyOn(prisma.purchase, 'findUnique').mockResolvedValueOnce(mockPurchase);
+      jest
+        .spyOn(prisma.purchase, 'findUnique')
+        .mockResolvedValueOnce(mockPurchase);
 
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback) => {
-        const mockTx = {
-          purchase: {
-            findUnique: jest.fn().mockResolvedValueOnce(mockPurchase),
-            // ADVANCE vouchers should NOT trigger update
+      jest
+        .spyOn(prisma, '$transaction')
+        .mockImplementation(async (callback) => {
+          const mockTx = {
+            purchase: {
+              findUnique: jest.fn().mockResolvedValueOnce(mockPurchase),
+              // ADVANCE vouchers should NOT trigger update
+            },
           };
-        return callback(mockTx);
-      });
+          return callback(mockTx);
+        });
 
       await service.createVoucherWithPurchaseUpdate(
         mockTenantId,
@@ -217,20 +234,24 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
       };
 
       jest.spyOn(service, 'createVoucher').mockResolvedValueOnce({});
-      jest.spyOn(prisma.purchase, 'findUnique').mockResolvedValueOnce(mockPurchase);
+      jest
+        .spyOn(prisma.purchase, 'findUnique')
+        .mockResolvedValueOnce(mockPurchase);
 
-      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback) => {
-        const mockTx = {
-          purchase: {
-            findUnique: jest.fn().mockResolvedValueOnce(mockPurchase),
-            update: jest.fn().mockResolvedValueOnce({
-              ...mockPurchase,
-              outstanding: 0,
-            }),
-          },
-        };
-        return callback(mockTx);
-      });
+      jest
+        .spyOn(prisma, '$transaction')
+        .mockImplementation(async (callback) => {
+          const mockTx = {
+            purchase: {
+              findUnique: jest.fn().mockResolvedValueOnce(mockPurchase),
+              update: jest.fn().mockResolvedValueOnce({
+                ...mockPurchase,
+                outstanding: 0,
+              }),
+            },
+          };
+          return callback(mockTx);
+        });
 
       await service.createVoucherWithPurchaseUpdate(
         mockTenantId,

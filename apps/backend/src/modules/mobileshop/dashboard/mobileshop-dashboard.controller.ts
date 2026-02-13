@@ -7,17 +7,26 @@ import { Permission } from '../../../core/auth/permissions.enum';
 import { MobileShopDashboardService } from './mobileshop-dashboard.service';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { RolesGuard } from '../../../core/auth/guards/roles.guard';
+import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
 
 @Controller('mobileshop/dashboard')
-@UseGuards(JwtAuthGuard, TenantStatusGuard, TenantRequiredGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantStatusGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
-export class MobileShopDashboardController {
-  constructor(private readonly dashboardService: MobileShopDashboardService) {}
+export class MobileShopDashboardController extends TenantScopedController {
+  constructor(private readonly dashboardService: MobileShopDashboardService) {
+    super();
+  }
 
   @Permissions(Permission.DASHBOARD_VIEW)
   @Get('owner')
-  getOwnerDashboard(@Req() req: any, @Query('shopId') shopId?: string, @Query('cache') cache?: string) {
+  getOwnerDashboard(
+    @Req() req: any,
+    @Query('shopId') shopId?: string,
+    @Query('cache') cache?: string,
+  ) {
     const skipCache = cache === 'skip';
-    return this.dashboardService.getOwnerDashboard(req.user.tenantId, shopId, skipCache);
+    const tenantId = this.getTenantId(req);
+    return this.dashboardService.getOwnerDashboard(tenantId, shopId, skipCache);
   }
 }

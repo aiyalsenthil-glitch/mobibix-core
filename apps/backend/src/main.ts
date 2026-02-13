@@ -6,6 +6,7 @@ import express from 'express';
 import cors from 'cors';
 import * as bodyParser from 'body-parser';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import { join } from 'path';
 import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
 
@@ -30,6 +31,9 @@ async function bootstrap() {
       },
     }),
   );
+
+  // Parse cookies for httpOnly auth
+  server.use(cookieParser());
 
   /**
    * 🚀 3️⃣ Enable response compression (Tier 4 Performance)
@@ -77,7 +81,12 @@ async function bootstrap() {
         'https://marlen-unarmed-subcentrally.ngrok-free.dev',
       ],
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
+      allowedHeaders: [
+        'Authorization',
+        'Content-Type',
+        'Accept',
+        'X-CSRF-Token',
+      ],
       credentials: true,
     }),
   );
@@ -151,6 +160,7 @@ async function bootstrap() {
       'Content-Type',
       'Accept',
       'X-Requested-With',
+      'X-CSRF-Token',
     ],
     credentials: true,
   });

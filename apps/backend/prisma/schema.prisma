@@ -115,9 +115,22 @@ model User {
   tenant            Tenant?            @relation(fields: [tenantId], references: [id])
   userTenants       UserTenant[]
   assignedJobs      JobCard[]          @relation("JobCardAssignment")
+  refreshTokens     RefreshToken[]
 
   @@index([REMOVED_AUTH_PROVIDERUid])
   @@index([email])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model Member {
@@ -181,6 +194,8 @@ model Party {
   createdBy           String?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
+  deletedAt           DateTime?
+  deletedBy           String?
   tenant              Tenant               @relation("TenantParties", fields: [tenantId], references: [id])
   alerts              CustomerAlert[]
   followUps           CustomerFollowUp[]
@@ -244,10 +259,12 @@ model CustomerReminder {
   customer      Party               @relation(fields: [customerId], references: [id], onDelete: Cascade)
   tenant        Tenant              @relation("TenantCustomerReminders", fields: [tenantId], references: [id])
 
+  // 🔥 Indexes for common queries
   @@index([tenantId])
   @@index([customerId])
   @@index([status])
   @@index([scheduledAt])
+  @@index([tenantId, status, scheduledAt]) // Composite for fetching pending reminders by time
 }
 
 model LoyaltyConfig {
@@ -699,8 +716,8 @@ model WhatsAppLog {
   deliveredAt DateTime?
   readAt      DateTime?
 
-  whatsAppNumberId String?  // Added for Phase 1
-  whatsAppNumber   WhatsAppNumber? @relation(fields: [whatsAppNumberId], references: [id])
+  whatsAppNumberId String?  // Added for Phase 1 - nullable for backward compatibility
+  whatsAppNumber   WhatsAppNumber? @relation(fields: [whatsAppNumberId], references: [id], onDelete: Cascade)
   customer Party? @relation(fields: [customerId], references: [id])
 
   @@index([tenantId, sentAt])
@@ -746,6 +763,9 @@ model WhatsAppAutomation {
 
   @@unique([moduleType, eventType])
   @@index([moduleType])
+  @@index([eventType])
+  @@index([enabled])
+  @@index([moduleType, eventType, enabled]) // Composite for common query pattern
 }
 
 model WhatsAppDailyUsage {

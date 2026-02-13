@@ -17,10 +17,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { StockService } from '../stock/stock.service';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 
 type ReqWithUser = { user?: { tenantId?: string } };
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('mobileshop/inventory')
 export class InventoryController {
@@ -66,7 +68,10 @@ export class InventoryController {
   }
 
   @Get('stock-levels')
-  async getStockLevels(@Req() req: ReqWithUser, @Query('shopId') shopId: string) {
+  async getStockLevels(
+    @Req() req: ReqWithUser,
+    @Query('shopId') shopId: string,
+  ) {
     const tenantId: string | undefined = req.user?.tenantId;
     if (!tenantId) throw new BadRequestException('Invalid tenant');
     if (!shopId) throw new BadRequestException('shopId is required');

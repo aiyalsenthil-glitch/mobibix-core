@@ -8,7 +8,7 @@ import {
   type SalesInvoice,
   type PaymentMode,
 } from "@/services/sales.api";
-import { getAccessToken, decodeAccessToken } from "@/services/auth.api";
+import { useAuth } from "@/hooks/useAuth";
 import {
   listProducts,
   type ShopProduct,
@@ -34,9 +34,9 @@ export default function EditInvoicePage() {
   const invoiceId = params.invoiceId as string;
   const shopId = searchParams.get("shopId");
 
+  const { authUser } = useAuth();
   const { selectedShop } = useShop();
-  const token = getAccessToken();
-  const userRole = token ? decodeAccessToken(token).role : null;
+  const userRole = authUser?.role;
   const isOwner = userRole === "OWNER";
 
   const [invoice, setInvoice] = useState<EditableInvoice | null>(null);

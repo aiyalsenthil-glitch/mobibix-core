@@ -9,7 +9,7 @@ import {
   type PaymentMode,
   type PaymentStatus,
 } from "@/services/sales.api";
-import { getAccessToken, decodeAccessToken } from "@/services/auth.api";
+import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
@@ -48,6 +48,7 @@ const PAYMENT_BADGES: Record<PaymentMode, string> = {
 export default function JobCardBillsPage() {
   const router = useRouter();
   const { theme } = useTheme();
+  const { authUser } = useAuth();
   const {
     shops,
     selectedShopId,
@@ -58,8 +59,7 @@ export default function JobCardBillsPage() {
   } = useShop();
 
   // Get user role for permission checks
-  const token = getAccessToken();
-  const userRole = token ? decodeAccessToken(token).role : null;
+  const userRole = authUser?.role;
   const isOwner = userRole === "OWNER";
 
   const {

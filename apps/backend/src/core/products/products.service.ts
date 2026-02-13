@@ -84,8 +84,8 @@ export class ProductsService {
     };
   }
   async findOne(tenantId: string, shopId: string, productId: string) {
-    const product = await this.prisma.shopProduct.findUnique({
-      where: { id: productId },
+    const product = await this.prisma.shopProduct.findFirst({
+      where: { id: productId, tenantId, shopId },
       include: {
         global: {
           select: {
@@ -98,11 +98,7 @@ export class ProductsService {
       },
     });
 
-    if (
-      !product ||
-      product.shopId !== shopId ||
-      product.tenantId !== tenantId
-    ) {
+    if (!product) {
       return null;
     }
 

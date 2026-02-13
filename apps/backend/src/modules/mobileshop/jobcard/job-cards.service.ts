@@ -1217,15 +1217,17 @@ export class JobCardsService {
     }
 
     // Use pre-fetched shop options or fetch if missing (though updateStatus now pre-fetches)
-    const shop = job.shop || await prisma.shop.findUnique({
-      where: { id: job.shopId },
-      select: {
-        invoicePrefix: true,
-        repairInvoiceNumberingMode: true,
-        repairGstDefault: true,
-        gstEnabled: true,
-      },
-    });
+    const shop =
+      job.shop ||
+      (await prisma.shop.findUnique({
+        where: { id: job.shopId },
+        select: {
+          invoicePrefix: true,
+          repairInvoiceNumberingMode: true,
+          repairGstDefault: true,
+          gstEnabled: true,
+        },
+      }));
 
     if (!shop) throw new BadRequestException('Shop not found');
 
@@ -1712,7 +1714,9 @@ export class JobCardsService {
   ) {
     await this.assertAccess(user, shopId);
 
-    const job = await this.prisma.jobCard.findUnique({ where: { id: jobId } });
+    const job = await this.prisma.jobCard.findFirst({
+      where: { id: jobId, tenantId: user.tenantId },
+    });
 
     if (!job) {
       throw new NotFoundException('Job not found');

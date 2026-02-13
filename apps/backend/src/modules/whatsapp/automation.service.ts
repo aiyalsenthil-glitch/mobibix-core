@@ -392,6 +392,18 @@ export class AutomationService {
       return;
     }
 
+    // 🔥 OPTIMIZATION: Fetch customer ONCE before loop (prevents N+1 query)
+    const customer = await this.prisma.party.findUnique({
+      where: { id: customerId },
+    });
+
+    if (!customer?.phone) {
+      this.logger.warn(
+        `Skipping automations: Customer ${customerId} has no phone`,
+      );
+      return;
+    }
+
     // 3️⃣ EXECUTION STRATEGY: Transactional vs Scheduled
     // Transactional events (Utility/Auth) must be sent IMMEDIATELY.
     // Marketing/Reminders are scheduled.
@@ -413,20 +425,10 @@ export class AutomationService {
           `[INSTANT] Firing transactional automation ${automation.templateKey} for ${customerId}`,
         );
 
-        // Resolve customer phone
-        const customer = await this.prisma.party.findUnique({
-          where: { id: customerId },
-        });
-
-        if (!customer?.phone) {
-          this.logger.warn(`Skipping instant message: Customer ${customerId} has no phone`);
-          continue;
-        }
-
         // BETTER APPROACH: scheduledAt = NOW
         // If 'PENDING' is not in ReminderStatus enum, we might need to use 'SCHEDULED' with now().
         // Let's assume 'SCHEDULED' is fine if date is now.
-        
+
         const scheduledAt = new Date(); // NOW
 
         await this.prisma.customerReminder.create({
@@ -438,14 +440,13 @@ export class AutomationService {
             channel: 'WHATSAPP',
             templateKey: automation.templateKey,
             status: 'SCHEDULED', // Use SCHEDULED effectively as pending if time is past/now
-            scheduledAt, 
+            scheduledAt,
           },
         });
 
         this.logger.log(
           `✅ Queued immediate automation ${automation.templateKey} for customer ${customerId}`,
         );
-
       } else {
         // 🕒 SCHEDULED REMINDER
         const scheduledAt = getScheduledAtUTC({

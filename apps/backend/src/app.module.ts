@@ -10,6 +10,7 @@ import { rawBodyMiddleware } from './common/middleware/raw-body.middleware';
 import { AuthModule } from './core/auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './core/auth/guards/jwt-auth.guard';
+import { CsrfGuard } from './core/auth/guards/csrf.guard';
 import { RolesGuard } from './core/auth/guards/roles.guard';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -78,6 +79,10 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: CsrfGuard,
     },
     {
       provide: APP_GUARD,

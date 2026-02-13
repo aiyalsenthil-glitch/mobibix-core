@@ -1,7 +1,7 @@
 /**
  * Backend Auth API Service
  * Handles all communication with the backend auth endpoints
- * Stores and manages JWT tokens
+ * Cookie-based auth (httpOnly) + CSRF token header
  */
 
 const API_BASE_URL =
@@ -19,8 +19,19 @@ export interface AuthUserPayload {
   planCode?: string; // e.g., 'MOBIBIX_TRIAL', 'MOBIBIX_STANDARD'
 }
 
+export interface CurrentUserResponse {
+  id: string;
+  email: string;
+  fullName?: string | null;
+  role: AuthRole;
+  tenantId?: string | null;
+  tenantType?: string | null;
+  tenantName?: string | null;
+}
+
 export interface ExchangeTokenResponse {
   accessToken: string;
+  refreshToken?: string;
   user: AuthUserPayload;
   tenant?: {
     id: string;
@@ -55,6 +66,7 @@ export async function exchangeFirebaseToken(
   try {
     const response = await fetch(`${API_BASE_URL}/auth/google/exchange`, {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
@@ -96,19 +108,17 @@ export async function exchangeFirebaseToken(
 
     const data: ExchangeTokenResponse = await response.json();
 
-    // Store the access token
-    storeAccessToken(data.accessToken);
-
     return data;
   } catch (error: any) {
     console.error("Token exchange error:", error);
-    
+
     // Handle network errors (Connection refused / Server down)
     if (error instanceof TypeError && error.message === "Failed to fetch") {
       throw {
         code: "NETWORK_ERROR",
-        message: "Unable to connect to server. Please check your internet connection or try again later.",
-        details: { originalError: error.message }
+        message:
+          "Unable to connect to server. Please check your internet connection or try again later.",
+        details: { originalError: error.message },
       } as AuthError;
     }
 
@@ -116,105 +126,135 @@ export async function exchangeFirebaseToken(
   }
 }
 
-/**
- * Store JWT access token in localStorage
- * In production, consider using httpOnly cookies instead
- */
-export function storeAccessToken(token: string): void {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("accessToken", token);
-    // Set token in memory for current session
-    sessionStorage.setItem("accessToken", token);
-  }
+function getCookieValue(name: string): string | null {
+  if (typeof document === "undefined") return null;
+
+  const match = document.cookie.match(
+    new RegExp(
+      `(?:^|; )${name.replace(/([.$?*|{}()\[\]\\/\+^])/g, "\\$1")}=([^;]*)`,
+    ),
+  );
+
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
-/**
- * Retrieve stored access token
- */
-export function getAccessToken(): string | null {
-  if (typeof window !== "undefined") {
-    return (
-      localStorage.getItem("accessToken") ||
-      sessionStorage.getItem("accessToken")
-    );
-  }
-  return null;
+export function getCsrfToken(): string | null {
+  return getCookieValue("csrfToken");
 }
 
-/**
- * Clear stored access token (logout)
- */
-export function clearAccessToken(): void {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem("accessToken");
-    sessionStorage.removeItem("accessToken");
-  }
+export function hasSessionHint(): boolean {
+  return !!getCsrfToken();
 }
 
-/**
- * Decode JWT to get user data (client-side only, don't trust claims)
- */
-export function decodeAccessToken(token: string): Record<string, any> {
+export async function logout(): Promise<void> {
   try {
-    const parts = token.split(".");
-    if (parts.length !== 3) throw new Error("Invalid token format");
-
-    const decoded = JSON.parse(
-      Buffer.from(parts[1], "base64").toString("utf-8"),
-    );
-    return decoded;
-  } catch (error) {
-    console.error("Token decode error:", error);
-    return {};
-  }
-}
-
-/**
- * Get authorization header for API requests
- */
-export function getAuthHeader(): Record<string, string> {
-  const token = getAccessToken();
-  if (!token) return {};
-
-  return {
-    Authorization: `Bearer ${token}`,
-  };
-}
-
-/**
- * Check if token exists and is not expired
- */
-export function isAuthenticated(): boolean {
-  const token = getAccessToken();
-  if (!token) return false;
-
-  try {
-    const decoded = decodeAccessToken(token);
-    const exp = decoded.exp;
-
-    if (!exp) return true; // No expiration claim
-
-    return exp * 1000 > Date.now(); // exp is in seconds
+    await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...getCsrfHeader(),
+      },
+    });
   } catch {
-    return false;
+    // Ignore network failures during logout
+  } finally {
+    if (typeof document !== "undefined") {
+      document.cookie = "csrfToken=; Max-Age=0; path=/";
+    }
   }
+}
+
+export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
+  const response = await fetch(`${API_BASE_URL}/users/me`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return (await response.json()) as CurrentUserResponse;
+}
+
+function getCsrfHeader(): Record<string, string> {
+  const csrfToken = getCsrfToken();
+  if (!csrfToken) return {};
+
+  return { "X-CSRF-Token": csrfToken };
 }
 
 /**
  * Make authenticated API request to backend
  */
+let refreshInFlight: Promise<"ok" | null> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            ...getCsrfHeader(),
+          },
+        });
+
+        if (!response.ok) {
+          await logout();
+          return false;
+        }
+
+        return true;
+      } catch {
+        await logout();
+        return false;
+      } finally {
+        refreshInFlight = null;
+      }
+    })().then((result) => (result ? "ok" : null));
+  }
+
+  return (await refreshInFlight) === "ok";
+}
+
 export async function authenticatedFetch(
   endpoint: string,
   options: RequestInit = {},
+  allowRetry = true,
 ): Promise<Response> {
   const headers = {
     "Content-Type": "application/json",
-    ...getAuthHeader(),
+    ...getCsrfHeader(),
     ...options.headers,
   };
 
-  return fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
+    credentials: "include",
   });
+
+  if (response.status === 401 && allowRetry && !endpoint.startsWith("/auth/")) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      const retryHeaders = {
+        ...headers,
+        ...getCsrfHeader(),
+      };
+      return fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers: retryHeaders,
+        credentials: "include",
+      });
+    }
+  }
+
+  return response;
 }

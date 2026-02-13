@@ -17,12 +17,17 @@ import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { JobCardsService } from '../jobcard/job-cards.service';
 import { CreateJobCardDto } from '../jobcard/dto/create-job-card.dto';
 import { UpdateJobCardDto } from './dto/update-job-card.dto';
+import { RolesGuard } from '../../../core/auth/guards/roles.guard';
+import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
+import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
 
 @Controller('mobileshop/shops/:shopId/job-cards')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
-export class JobCardsController {
-  constructor(private readonly service: JobCardsService) {}
+export class JobCardsController extends TenantScopedController {
+  constructor(private readonly service: JobCardsService) {
+    super();
+  }
 
   @Post()
   create(

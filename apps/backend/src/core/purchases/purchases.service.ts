@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePurchaseDto } from './dto/create-purchase.dto';
@@ -552,6 +553,13 @@ export class PurchasesService {
     if (purchase.totalGst > 0 && !(purchase as any).supplierGstin) {
       throw new BadRequestException(
         'Supplier GSTIN required for GST purchases (ITC eligibility)',
+      );
+    }
+
+    // Defensive check: Ensure items is not undefined for further operations
+    if (!purchase.items) {
+      throw new InternalServerErrorException(
+        'Invalid state: purchase items missing after validation',
       );
     }
 

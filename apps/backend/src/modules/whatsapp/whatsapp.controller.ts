@@ -541,10 +541,21 @@ export class WhatsAppController {
       const textBody = dto.text.trim();
       if (!textBody) return { success: true, skipped: true }; // Empty text check
 
+      // Get default WhatsAppNumber for tenant
+      const defaultNumber = await this.prisma.whatsAppNumber.findFirst({
+        where: { tenantId: dto.tenantId, isDefault: true },
+        select: { id: true },
+      });
+
+      if (!defaultNumber) {
+        throw new BadRequestException('No default WhatsApp number configured');
+      }
+
       // Create log entry
       const log = await this.prisma.whatsAppLog.create({
         data: {
           tenantId: dto.tenantId,
+          whatsAppNumberId: defaultNumber.id,
           phone: dto.phone,
           type: 'MANUAL',
           status: 'PENDING',
@@ -577,7 +588,9 @@ export class WhatsAppController {
           },
         });
       }
-      return this.prisma.whatsAppLog.findUnique({ where: { id: log.id } });
+      return this.prisma.whatsAppLog.findFirst({
+        where: { id: log.id, tenantId: dto.tenantId },
+      });
     }
 
     // ---------------------------------------------------------
@@ -592,10 +605,21 @@ export class WhatsAppController {
         throw new BadRequestException('Template not found');
       }
 
+      // Get default WhatsAppNumber for tenant
+      const defaultNumber = await this.prisma.whatsAppNumber.findFirst({
+        where: { tenantId: dto.tenantId, isDefault: true },
+        select: { id: true },
+      });
+
+      if (!defaultNumber) {
+        throw new BadRequestException('No default WhatsApp number configured');
+      }
+
       // Create log entry with PENDING status first
       const log = await this.prisma.whatsAppLog.create({
         data: {
           tenantId: dto.tenantId,
+          whatsAppNumberId: defaultNumber.id,
           phone: dto.phone,
           type: template.feature,
           status: 'PENDING',
@@ -615,7 +639,9 @@ export class WhatsAppController {
 
       // Note: sendTemplateMessage already updates the log if logId is passed.
       // But we return the fresh log.
-      return this.prisma.whatsAppLog.findUnique({ where: { id: log.id } });
+      return this.prisma.whatsAppLog.findFirst({
+        where: { id: log.id, tenantId: dto.tenantId },
+      });
     }
   }
 
