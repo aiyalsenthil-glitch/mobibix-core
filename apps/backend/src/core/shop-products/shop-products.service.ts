@@ -66,21 +66,41 @@ export class ShopProductsService {
     });
   }
 
-  async listCatalog(tenantId: string, shopId: string) {
-    const [linked, globalActive] = await Promise.all([
-      this.prisma.shopProduct.findMany({
-        where: { tenantId, shopId, isActive: true },
-        select: {
-          id: true,
-          name: true,
-          globalProductId: true,
-        },
-      }),
+  async listCatalog(
+    tenantId: string,
+    shopId: string,
+    options?: { skip?: number; take?: number; search?: string },
+  ) {
+    const whereGlobal: any = { isActive: true };
+    if (options?.search) {
+      whereGlobal.name = { contains: options.search, mode: 'insensitive' };
+    }
+
+    const [globalActive, total] = await Promise.all([
       this.prisma.globalProduct.findMany({
-        where: { isActive: true },
+        where: whereGlobal,
         select: { id: true, name: true },
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        orderBy: { name: 'asc' },
       }),
+      this.prisma.globalProduct.count({ where: whereGlobal }),
     ]);
+
+    const globalIds = globalActive.map((p) => p.id);
+
+    // Optimized: Only fetch check-status for the visible page
+    const linked = await this.prisma.shopProduct.findMany({
+      where: {
+        tenantId,
+        shopId,
+        isActive: true,
+        globalProductId: { in: globalIds },
+      },
+      select: {
+        globalProductId: true,
+      },
+    });
 
     const linkedGlobalIds = new Set(
       linked
@@ -95,6 +115,13 @@ export class ShopProductsService {
       isLinked: linkedGlobalIds.has(p.id),
     }));
 
-    return { data: catalog };
+    return {
+      data: catalog,
+      pagination: {
+        total,
+        page: Math.floor((options?.skip ?? 0) / (options?.take ?? 50)) + 1,
+        limit: options?.take ?? 50,
+      },
+    };
   }
 }

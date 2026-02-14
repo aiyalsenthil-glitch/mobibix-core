@@ -97,8 +97,12 @@ async function seedModulePhoneNumbers(): Promise<{
   let skipped = 0;
 
   for (const moduleType of moduleTypes) {
-    const existing = await prisma.whatsAppPhoneNumberModule.findFirst({
-      where: { moduleType, phoneNumberId: DEFAULT_PHONE_NUMBER_ID },
+    const existing = await prisma.whatsAppNumber.findFirst({
+      where: {
+        tenantId: null,
+        moduleType: moduleType as any,
+        phoneNumberId: DEFAULT_PHONE_NUMBER_ID,
+      },
     });
 
     if (existing) {
@@ -106,15 +110,18 @@ async function seedModulePhoneNumbers(): Promise<{
       continue;
     }
 
-    await prisma.whatsAppPhoneNumberModule.create({
+    await prisma.whatsAppNumber.create({
       data: {
-        moduleType,
+        tenantId: null,
+        moduleType: moduleType as any,
         phoneNumber: DEFAULT_PHONE_NUMBER,
         phoneNumberId: DEFAULT_PHONE_NUMBER_ID,
         wabaId: DEFAULT_WABA_ID,
         purpose: 'DEFAULT',
         isDefault: true,
-        isActive: true,
+        isEnabled: true,
+        isSystem: true,
+        displayNumber: DEFAULT_PHONE_NUMBER,
       },
     });
 
@@ -669,8 +676,8 @@ async function main() {
     created: number;
     skipped: number;
   }> {
-    const modules = await prisma.whatsAppPhoneNumberModule.findMany({
-      where: { isActive: true },
+    const modules = await prisma.whatsAppNumber.findMany({
+      where: { tenantId: null, isEnabled: true },
     });
     if (!modules.length) return { created: 0, skipped: 0 };
 
@@ -691,13 +698,15 @@ async function main() {
 
       const data = modules.map((m) => ({
         tenantId: t.id,
+        moduleType: m.moduleType,
         phoneNumber: m.phoneNumber,
         phoneNumberId: m.phoneNumberId,
         wabaId: m.wabaId,
         purpose: m.purpose,
         qualityRating: m.qualityRating,
         isDefault: m.isDefault,
-        isActive: m.isActive,
+        isEnabled: m.isEnabled,
+        displayNumber: m.displayNumber || m.phoneNumber,
       }));
 
       try {

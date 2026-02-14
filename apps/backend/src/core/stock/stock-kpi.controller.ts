@@ -5,12 +5,20 @@ import {
   Req,
   BadRequestException,
   Inject,
+  UseGuards,
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { StockKpiService } from './stock-kpi.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('mobileshop/stock/kpi')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class StockKpiController {
   constructor(
     private readonly service: StockKpiService,
@@ -24,10 +32,7 @@ export class StockKpiController {
     @Query('period') period?: 'DAY' | 'WEEK' | 'MONTH',
     @Query('days') days?: string,
   ) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Invalid tenant');
-    }
+    const tenantId = req.user.tenantId;
     if (!shopId) {
       throw new BadRequestException('shopId required');
     }

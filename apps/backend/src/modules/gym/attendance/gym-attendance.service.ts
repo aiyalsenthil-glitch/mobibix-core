@@ -2,6 +2,7 @@ import {
   Injectable,
   ForbiddenException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { TenantService } from '../../../core/tenant/tenant.service';
@@ -15,6 +16,34 @@ export class GymAttendanceService {
   private normalizePhone(phone: string): string {
     return phone.replace(/\D/g, '').slice(-10);
   }
+
+  /**
+   * SECURITY: QR Code Check-In via Tenant Code
+   *
+   * QR codes encode the tenant code (user-friendly), not the tenantId (internal).
+   * This method looks up the tenant by code, then performs check-in/out.
+   *
+   * ✅ SECURITY: Prevents QR holder from spoofing arbitrary tenantId
+   */
+  async checkInOrOutByPhoneByTenantCode(tenantCode: string, phone: string) {
+    if (!tenantCode) {
+      throw new BadRequestException('tenantCode required');
+    }
+
+    // Look up tenant by code
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { code: tenantCode },
+      select: { id: true, code: true },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant code invalid or gym not found');
+    }
+
+    // ✅ Use resolved tenantId from DB (not user input)
+    return this.checkInOrOutByPhone(tenant.id, phone);
+  }
+
   /**
    * CHECK-IN
    */

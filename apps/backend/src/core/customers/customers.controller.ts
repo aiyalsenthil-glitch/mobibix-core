@@ -9,22 +9,25 @@ import {
   Param,
   Put,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
-
+import { Roles } from '../auth/decorators/roles.decorator';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { UserRole } from '@prisma/client';
 
+@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('core/customers')
 export class CustomersController {
   constructor(private readonly service: CustomersService) {}
 
   @Post()
   async create(@Req() req, @Body() dto: CreateCustomerDto) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Invalid tenant');
-    }
+    const tenantId = req.user.tenantId;
 
     return this.service.createCustomer(tenantId, dto);
   }
@@ -34,27 +37,21 @@ export class CustomersController {
     @Param('customerId') customerId: string,
     @Body() dto: UpdateCustomerDto,
   ) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Invalid tenant');
-    }
+    const tenantId = req.user.tenantId;
 
     return this.service.updateCustomer(tenantId, customerId, dto);
   }
   @Delete(':customerId')
   async delete(@Req() req, @Param('customerId') customerId: string) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Invalid tenant');
-    }
+    const tenantId = req.user.tenantId;
 
     return this.service.deleteCustomer(tenantId, customerId);
   }
 
   @Get('by-phone')
   async getByPhone(@Req() req, @Query('phone') phone: string) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId || !phone) {
+    const tenantId = req.user.tenantId;
+    if (!phone) {
       throw new BadRequestException('Invalid request');
     }
 
@@ -67,8 +64,8 @@ export class CustomersController {
     @Query('query') query: string,
     @Query('limit') limit?: string,
   ) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId || !query) {
+    const tenantId = req.user.tenantId;
+    if (!query) {
       throw new BadRequestException('Invalid request');
     }
 
@@ -83,10 +80,7 @@ export class CustomersController {
     @Query('take') take?: string,
     @Query('search') search?: string,
   ) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Invalid tenant');
-    }
+    const tenantId = req.user.tenantId;
 
     return this.service.listCustomers(tenantId, {
       skip: skip ? parseInt(skip, 10) : undefined,
@@ -97,10 +91,7 @@ export class CustomersController {
 
   @Get(':customerId')
   async getOne(@Req() req, @Param('customerId') customerId: string) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Invalid tenant');
-    }
+    const tenantId = req.user.tenantId;
 
     return this.service.getCustomer(tenantId, customerId);
   }

@@ -8,7 +8,9 @@ import {
   Param,
   Delete,
   Query,
+  ForbiddenException,
 } from '@nestjs/common';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -23,7 +25,7 @@ import {
 } from '../billing/guards/plan-feature.guard';
 
 @Controller('staff')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 export class StaffController {
   constructor(
     private readonly staffService: StaffService, // ✅ inject
@@ -39,7 +41,8 @@ export class StaffController {
     @Query('take') take?: string,
     @Query('search') search?: string,
   ) {
-    return this.staffService.listStaff(req.user.tenantId, {
+    const tenantId = req.user.tenantId;
+    return this.staffService.listStaff(tenantId, {
       skip: skip ? parseInt(skip, 10) : undefined,
       take: take ? parseInt(take, 10) : undefined,
       search,

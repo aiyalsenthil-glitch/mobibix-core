@@ -1,10 +1,11 @@
 import { Controller, Get, UseGuards, Req, Query } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
 import { PlanRulesService } from '../billing/plan-rules.service';
 import { ModuleType, BillingCycle, UserRole } from '@prisma/client';
-import { SkipSubscriptionCheck } from '../billing/guards/subscription.guard';
+import { SkipSubscriptionCheck } from '../auth/decorators/skip-subscription-check.decorator';
 import { subMonths, subYears, startOfMonth } from 'date-fns';
 import { Roles } from '../auth/decorators/roles.decorator';
 
@@ -12,9 +13,24 @@ interface UsageSummary {
   members: { used: number; limit: number | null };
   staff: { used: number; limit: number | null };
   whatsapp: {
-    utility: { used: number; limit: number; remaining: number; friendlyText: string };
-    marketing: { used: number; limit: number; remaining: number; friendlyText: string };
-    service: { used: number; limit: number; remaining: number; friendlyText: string };
+    utility: {
+      used: number;
+      limit: number;
+      remaining: number;
+      friendlyText: string;
+    };
+    marketing: {
+      used: number;
+      limit: number;
+      remaining: number;
+      friendlyText: string;
+    };
+    service: {
+      used: number;
+      limit: number;
+      remaining: number;
+      friendlyText: string;
+    };
   };
   plan: { code: string; name: string; level: number };
   nextBillingDate: Date | null;
@@ -22,7 +38,7 @@ interface UsageSummary {
 }
 
 @Controller('tenant')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class TenantUsageController {
   constructor(
@@ -54,8 +70,11 @@ export class TenantUsageController {
 
     const planCode = subscription?.plan?.code || 'TRIAL';
 
-    // Get plan rules
-    const rules = await this.planRulesService.getPlanRulesForTenant(tenantId);
+    // Get plan rules for the specific module
+    const rules = await this.planRulesService.getPlanRulesForTenant(
+      tenantId,
+      module, // 🔥 Pass module
+    );
 
     // Count members
     const memberCount = await this.prisma.member.count({
@@ -138,20 +157,26 @@ export class TenantUsageController {
         utility: {
           limit: totalQuota,
           used: whatsappUtilityUsed,
-          remaining: Math.max(0, totalQuota - whatsappUtilityUsed - whatsappMarketingUsed),
+          remaining: Math.max(
+            0,
+            totalQuota - whatsappUtilityUsed - whatsappMarketingUsed,
+          ),
           friendlyText: translateQuota(totalQuota, false),
         },
         marketing: {
           limit: totalQuota,
           used: whatsappMarketingUsed,
-          remaining: Math.max(0, totalQuota - whatsappUtilityUsed - whatsappMarketingUsed),
+          remaining: Math.max(
+            0,
+            totalQuota - whatsappUtilityUsed - whatsappMarketingUsed,
+          ),
           friendlyText: translateQuota(totalQuota, false),
         },
         service: {
-            limit: -1, // Service is usually unlimited 24h window
-            used: (usageAggregation._sum.service || 0),
-            remaining: -1,
-            friendlyText: 'Unlimited',
+          limit: -1, // Service is usually unlimited 24h window
+          used: usageAggregation._sum.service || 0,
+          remaining: -1,
+          friendlyText: 'Unlimited',
         },
       },
       plan: {

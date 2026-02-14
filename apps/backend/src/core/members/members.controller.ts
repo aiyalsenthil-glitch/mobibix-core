@@ -16,14 +16,23 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permissions.enum';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { MembersService } from './members.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { TenantStatusGuard } from '../tenant/guards/tenant-status.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('members')
-@UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
+@UseGuards(
+  JwtAuthGuard,
+  TenantRequiredGuard,
+  PermissionsGuard,
+  TenantStatusGuard,
+)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
@@ -45,9 +54,7 @@ export class MembersController {
   @Permissions(Permission.MEMBER_CREATE)
   @Post()
   create(@Req() req: any, @Body() dto: CreateMemberDto) {
-    if (!req.user.tenantId) {
-      throw new ForbiddenException('Tenant not initialized');
-    }
+    // tenantId guaranteed by TenantRequiredGuard
 
     return this.membersService.createMember(
       req.user.tenantId,

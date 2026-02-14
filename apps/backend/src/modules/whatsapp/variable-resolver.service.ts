@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import {
   WhatsAppModule,
@@ -104,7 +104,9 @@ export class WhatsAppVariableResolver {
           variable.required &&
           (value === null || value === undefined || value === '')
         ) {
-          throw new Error(`Required variable '${key}' resolved to empty value`);
+          throw new BadRequestException(
+            `Required variable '${key}' resolved to empty value`,
+          );
         }
 
         resolved.set(key, {
@@ -146,7 +148,9 @@ export class WhatsAppVariableResolver {
         return this.resolveManualVariable(variable, context);
 
       default:
-        throw new Error(`Unknown source type: ${variable.sourceType}`);
+        throw new BadRequestException(
+          `Unknown source type: ${variable.sourceType}`,
+        );
     }
   }
 
@@ -172,7 +176,7 @@ export class WhatsAppVariableResolver {
 
     switch (tableName) {
       case 'Member':
-        if (!memberId) throw new Error('Member context required');
+        if (!memberId) throw new BadRequestException('Member context required');
         const member = await this.prisma.member.findFirst({
           where: { id: memberId, tenantId },
         });
@@ -185,21 +189,23 @@ export class WhatsAppVariableResolver {
         return tenant?.[fieldName] ?? null;
 
       case 'Invoice':
-        if (!invoiceId) throw new Error('Invoice context required');
+        if (!invoiceId)
+          throw new BadRequestException('Invoice context required');
         const invoice = await this.prisma.invoice.findFirst({
           where: { id: invoiceId, tenantId },
         });
         return invoice?.[fieldName] ?? null;
 
       case 'JobCard':
-        if (!jobCardId) throw new Error('JobCard context required');
+        if (!jobCardId)
+          throw new BadRequestException('JobCard context required');
         const jobCard = await this.prisma.jobCard.findFirst({
           where: { id: jobCardId, tenantId },
         });
         return jobCard?.[fieldName] ?? null;
 
       case 'Shop':
-        if (!shopId) throw new Error('Shop context required');
+        if (!shopId) throw new BadRequestException('Shop context required');
         const shop = await this.prisma.shop.findFirst({
           where: { id: shopId, tenantId },
         });
@@ -229,7 +235,8 @@ export class WhatsAppVariableResolver {
         }
         return null;
       case 'CustomerFollowUp':
-        if (!followUpId) throw new Error('Follow-up context required');
+        if (!followUpId)
+          throw new BadRequestException('Follow-up context required');
         const followUp = await this.prisma.customerFollowUp.findFirst({
           where: { id: followUpId, tenantId },
         });
@@ -251,7 +258,7 @@ export class WhatsAppVariableResolver {
         return null;
 
       default:
-        throw new Error(`Unknown table: ${tableName}`);
+        throw new BadRequestException(`Unknown table: ${tableName}`);
     }
   }
 
@@ -269,7 +276,7 @@ export class WhatsAppVariableResolver {
     switch (variable.key) {
       // GYM computed variables
       case 'dueAmount': {
-        if (!memberId) throw new Error('Member context required');
+        if (!memberId) throw new BadRequestException('Member context required');
         const member = await this.prisma.member.findFirst({
           where: { id: memberId, tenantId },
           select: { feeAmount: true, paidAmount: true },
@@ -280,22 +287,24 @@ export class WhatsAppVariableResolver {
 
       // MOBILE_SALES computed variables
       case 'invoicePaidAmount': {
-        if (!invoiceId) throw new Error('Invoice context required');
+        if (!invoiceId)
+          throw new BadRequestException('Invoice context required');
         const receipts = await this.prisma.receipt.findMany({
-          where: { linkedInvoiceId: invoiceId },
+          where: { linkedInvoiceId: invoiceId, tenantId },
           select: { amount: true },
         });
         return receipts.reduce((sum, r) => sum + r.amount, 0);
       }
 
       case 'invoicePendingAmount': {
-        if (!invoiceId) throw new Error('Invoice context required');
-        const invoice = await this.prisma.invoice.findUnique({
-          where: { id: invoiceId },
+        if (!invoiceId)
+          throw new BadRequestException('Invoice context required');
+        const invoice = await this.prisma.invoice.findFirst({
+          where: { id: invoiceId, tenantId },
           select: { totalAmount: true },
         });
         const receipts = await this.prisma.receipt.findMany({
-          where: { linkedInvoiceId: invoiceId },
+          where: { linkedInvoiceId: invoiceId, tenantId },
           select: { amount: true },
         });
         const paid = receipts.reduce((sum, r) => sum + r.amount, 0);
@@ -303,9 +312,9 @@ export class WhatsAppVariableResolver {
       }
 
       case 'shopAddress': {
-        if (!shopId) throw new Error('Shop context required');
-        const shop = await this.prisma.shop.findUnique({
-          where: { id: shopId },
+        if (!shopId) throw new BadRequestException('Shop context required');
+        const shop = await this.prisma.shop.findFirst({
+          where: { id: shopId, tenantId },
           select: { addressLine1: true, city: true },
         });
         if (!shop) return null;
@@ -314,9 +323,10 @@ export class WhatsAppVariableResolver {
 
       // MOBILE_REPAIR computed variables
       case 'deviceFullName': {
-        if (!jobCardId) throw new Error('JobCard context required');
-        const jobCard = await this.prisma.jobCard.findUnique({
-          where: { id: jobCardId },
+        if (!jobCardId)
+          throw new BadRequestException('JobCard context required');
+        const jobCard = await this.prisma.jobCard.findFirst({
+          where: { id: jobCardId, tenantId },
           select: { deviceBrand: true, deviceModel: true },
         });
         if (!jobCard) return null;
@@ -324,9 +334,10 @@ export class WhatsAppVariableResolver {
       }
 
       case 'balanceAmount': {
-        if (!jobCardId) throw new Error('JobCard context required');
-        const jobCard = await this.prisma.jobCard.findUnique({
-          where: { id: jobCardId },
+        if (!jobCardId)
+          throw new BadRequestException('JobCard context required');
+        const jobCard = await this.prisma.jobCard.findFirst({
+          where: { id: jobCardId, tenantId },
           select: {
             finalCost: true,
             estimatedCost: true,
@@ -339,7 +350,7 @@ export class WhatsAppVariableResolver {
       }
 
       default:
-        throw new Error(
+        throw new BadRequestException(
           `Computed variable ${variable.key} not implemented in resolver`,
         );
     }
@@ -354,7 +365,7 @@ export class WhatsAppVariableResolver {
   ): any {
     if (!context.manualInputs) {
       if (variable.required) {
-        throw new Error(
+        throw new BadRequestException(
           `Required manual variable ${variable.key} not provided`,
         );
       }
@@ -364,7 +375,9 @@ export class WhatsAppVariableResolver {
     const value = context.manualInputs[variable.key];
 
     if (variable.required && !value) {
-      throw new Error(`Required manual variable ${variable.key} is empty`);
+      throw new BadRequestException(
+        `Required manual variable ${variable.key} is empty`,
+      );
     }
 
     // Validate against rules
@@ -376,7 +389,7 @@ export class WhatsAppVariableResolver {
         rules.maxLength &&
         value.length > rules.maxLength
       ) {
-        throw new Error(
+        throw new BadRequestException(
           `${variable.key} exceeds max length of ${rules.maxLength}`,
         );
       }
@@ -386,7 +399,9 @@ export class WhatsAppVariableResolver {
         rules.min !== undefined &&
         value < rules.min
       ) {
-        throw new Error(`${variable.key} must be at least ${rules.min}`);
+        throw new BadRequestException(
+          `${variable.key} must be at least ${rules.min}`,
+        );
       }
 
       if (
@@ -394,7 +409,9 @@ export class WhatsAppVariableResolver {
         rules.max !== undefined &&
         value > rules.max
       ) {
-        throw new Error(`${variable.key} must be at most ${rules.max}`);
+        throw new BadRequestException(
+          `${variable.key} must be at most ${rules.max}`,
+        );
       }
     }
 

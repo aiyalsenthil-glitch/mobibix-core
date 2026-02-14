@@ -16,13 +16,15 @@ import { StockInDto } from './dto/stock-in.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { StockService } from '../stock/stock.service';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
 
-type ReqWithUser = { user?: { tenantId?: string } };
+type ReqWithUser = { user: { tenantId: string } };
 
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.MOBILE_SHOP)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('mobileshop/inventory')
 export class InventoryController {
@@ -33,8 +35,7 @@ export class InventoryController {
 
   @Post('product')
   async createProduct(@Req() req: ReqWithUser, @Body() dto: CreateProductDto) {
-    const tenantId: string | undefined = req.user?.tenantId;
-    if (!tenantId) throw new BadRequestException('Invalid tenant');
+    const tenantId = req.user.tenantId;
     return await this.service.createProduct(tenantId, dto);
   }
 
@@ -44,15 +45,13 @@ export class InventoryController {
     @Param('id') id: string,
     @Body() dto: CreateProductDto,
   ) {
-    const tenantId: string | undefined = req.user?.tenantId;
-    if (!tenantId) throw new BadRequestException('Invalid tenant');
+    const tenantId = req.user.tenantId;
     return await this.service.updateProduct(tenantId, id, dto);
   }
 
   @Post('stock-in')
   async stockIn(@Req() req: ReqWithUser, @Body() dto: StockInDto) {
-    const tenantId: string | undefined = req.user?.tenantId;
-    if (!tenantId) throw new BadRequestException('Invalid tenant');
+    const tenantId = req.user.tenantId;
     return await this.stockService.stockInSingleProduct(tenantId, dto);
   }
 
@@ -61,8 +60,7 @@ export class InventoryController {
     @Req() req: ReqWithUser,
     @Query('threshold') threshold?: string,
   ) {
-    const tenantId: string | undefined = req.user?.tenantId;
-    if (!tenantId) throw new BadRequestException('Invalid tenant');
+    const tenantId = req.user.tenantId;
     const parsed = threshold ? Number(threshold) : 5;
     return await this.service.getLowStock(tenantId, parsed);
   }
@@ -72,8 +70,7 @@ export class InventoryController {
     @Req() req: ReqWithUser,
     @Query('shopId') shopId: string,
   ) {
-    const tenantId: string | undefined = req.user?.tenantId;
-    if (!tenantId) throw new BadRequestException('Invalid tenant');
+    const tenantId = req.user.tenantId;
     if (!shopId) throw new BadRequestException('shopId is required');
     return await this.service.getStockLevels(tenantId, shopId);
   }

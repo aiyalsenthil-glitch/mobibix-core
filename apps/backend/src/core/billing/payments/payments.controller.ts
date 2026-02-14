@@ -14,11 +14,12 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../../auth/guards/tenant.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModuleType, UserRole } from '@prisma/client';
 import { Roles } from '../../auth/decorators/roles.decorator';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('payments')
 export class PaymentsController {

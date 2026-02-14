@@ -19,16 +19,20 @@ import type { Response } from 'express';
 
 @Controller('integrations/whatsapp')
 export class WhatsAppOnboardingController {
-  constructor(
-    private readonly onboardingService: WhatsAppOnboardingService,
-  ) {}
+  constructor(private readonly onboardingService: WhatsAppOnboardingService) {}
 
   @Post('manual-sync')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER)
   async manualSync(
     @Req() req,
-    @Body() body: { wabaId: string; phoneNumberId: string; accessToken: string; phoneNumber: string },
+    @Body()
+    body: {
+      wabaId: string;
+      phoneNumberId: string;
+      accessToken: string;
+      phoneNumber: string;
+    },
   ) {
     const tenantId = req.user.tenantId;
     await this.onboardingService.manualSync(
@@ -52,9 +56,16 @@ export class WhatsAppOnboardingController {
   @Get('connect')
   @UseGuards(JwtAuthGuard, RolesGuard, WhatsAppCrmSubscriptionGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER)
-  async connect(@Req() req, @Res() res: Response, @Query('returnUrl') returnUrl?: string) {
+  async connect(
+    @Req() req,
+    @Res() res: Response,
+    @Query('returnUrl') returnUrl?: string,
+  ) {
     const tenantId = req.user.tenantId;
-    const url = await this.onboardingService.generateConnectUrl(tenantId, returnUrl);
+    const url = await this.onboardingService.generateConnectUrl(
+      tenantId,
+      returnUrl,
+    );
     return res.json({ url });
   }
 
@@ -71,21 +82,30 @@ export class WhatsAppOnboardingController {
     const defaultSuccessRedirect = '/whatsapp?status=success';
 
     if (error) {
-      return res.redirect(defaultErrorRedirect + '&message=' + encodeURIComponent(error));
+      return res.redirect(
+        defaultErrorRedirect + '&message=' + encodeURIComponent(error),
+      );
     }
 
     try {
-      const result = await this.onboardingService.handleCallback(code, state, wabaId, phoneNumberId);
+      const result = await this.onboardingService.handleCallback(
+        code,
+        state,
+        wabaId,
+        phoneNumberId,
+      );
       const redirectUrl = result.returnUrl || defaultSuccessRedirect;
-      
+
       // Ensure the redirect URL has the success status
-      const finalUrl = redirectUrl.includes('?') 
-        ? `${redirectUrl}&status=success` 
+      const finalUrl = redirectUrl.includes('?')
+        ? `${redirectUrl}&status=success`
         : `${redirectUrl}?status=success`;
 
       return res.redirect(finalUrl);
     } catch (err) {
-      return res.redirect(defaultErrorRedirect + '&message=' + encodeURIComponent(err.message));
+      return res.redirect(
+        defaultErrorRedirect + '&message=' + encodeURIComponent(err.message),
+      );
     }
   }
 

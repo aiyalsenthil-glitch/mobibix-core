@@ -16,14 +16,14 @@ import { AdminSystemController } from './system/admin-system.controller';
 @Module({
   imports: [AuthModule, TenantModule, BillingModule, PlansModule, AuditModule],
   controllers: [
-    AdminController, 
-    AdminWebhooksController, 
+    AdminController,
+    AdminWebhooksController,
     // PlatformController, // ❌ Removed to avoid conflict with PlatformModule
 
     AdminAnalyticsController,
     AdminTenantController,
     AdminMdmController,
-    AdminSystemController
+    AdminSystemController,
   ],
 })
 export class AdminModule {}

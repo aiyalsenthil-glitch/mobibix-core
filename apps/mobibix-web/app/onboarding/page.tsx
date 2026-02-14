@@ -61,10 +61,6 @@ export default function OnboardingPage() {
       // Full page reload to ensure auth context reinitializes with new tenant context
       window.location.href = "/dashboard";
       return;
-      }
-
-      // Fallback navigation
-      router.push("/dashboard");
     } catch (e: any) {
       console.error("Create tenant error:", e);
 

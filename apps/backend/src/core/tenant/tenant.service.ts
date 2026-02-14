@@ -305,8 +305,20 @@ export class TenantService {
 
     const plan = subscription.plan;
 
-    // 3️⃣ Resolve capabilities
-    const rules = await this.planRulesService.getPlanRulesForTenant(tenantId);
+    // 3️⃣ Determine module from tenant type
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { tenantType: true },
+    });
+
+    const module =
+      tenant?.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
+
+    // 4️⃣ Resolve capabilities
+    const rules = await this.planRulesService.getPlanRulesForTenant(
+      tenantId,
+      module, // 🔥 Pass module
+    );
 
     // 4️⃣ Count members
     const membersUsed = await this.prisma.member.count({
@@ -384,8 +396,7 @@ export class TenantService {
         staffAllowed: (rules?.maxStaff ?? 0) !== 0,
         maxStaff: rules?.maxStaff ?? null,
         maxShops: rules?.maxShops ?? null,
-        whatsappAllowed:
-          (rules?.whatsapp?.messageQuota || 0) > 0,
+        whatsappAllowed: (rules?.whatsapp?.messageQuota || 0) > 0,
       },
 
       membersUsed,
@@ -447,17 +458,26 @@ export class TenantService {
       where: { id: userId },
     });
   }
-  issueJwt(payload: {
-    userId: string;
-    tenantId: string | null;
-    userTenantId: string | null;
-    role: UserRole;
-  }) {
-    return this.jwtService.sign({
+  issueJwt(
+    payload: {
+      userId: string;
+      tenantId: string | null;
+      userTenantId: string | null;
+      role: UserRole;
+    },
+    expiresIn?: string | number,
+  ) {
+    const jwtPayload = {
       sub: payload.userId,
       tenantId: payload.tenantId,
       userTenantId: payload.userTenantId,
       role: payload.role,
-    });
+    };
+
+    if (expiresIn) {
+      return this.jwtService.sign(jwtPayload, { expiresIn: expiresIn as any });
+    }
+
+    return this.jwtService.sign(jwtPayload);
   }
 }

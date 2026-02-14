@@ -4,6 +4,7 @@ import { PaymentsController } from './payments.controller';
 import { PaymentsVerifyController } from './payments.verify.controller';
 import { PaymentsWebhookController } from './payments.webhook.controller';
 import { PaymentCleanupCron } from './payment-cleanup.cron';
+import { PaymentActivationService } from './payment-activation.service';
 import { AuthModule } from '../../auth/auth.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
@@ -16,6 +17,7 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
   ],
   providers: [
     PaymentsService,
+    PaymentActivationService,
     PaymentCleanupCron, // 🆕 Cron job for cleanup
   ],
   controllers: [
@@ -23,5 +25,6 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
     PaymentsVerifyController,
     PaymentsWebhookController,
   ],
+  exports: [PaymentActivationService],
 })
 export class PaymentsModule {}

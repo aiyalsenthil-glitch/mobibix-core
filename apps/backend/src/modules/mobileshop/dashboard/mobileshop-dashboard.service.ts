@@ -12,7 +12,11 @@ export class MobileShopDashboardService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  async getOwnerDashboard(tenantId: string, shopId?: string, skipCache = false) {
+  async getOwnerDashboard(
+    tenantId: string,
+    shopId?: string,
+    skipCache = false,
+  ) {
     // 🔴 CHECK CACHE FIRST
     const cacheKey = `dashboard:owner:${tenantId}:${shopId || 'all'}`;
     if (!skipCache) {
@@ -152,14 +156,14 @@ export class MobileShopDashboardService {
         tenantId,
         shopId: { in: shopIds },
         createdAt: { gte: today }, // Stats for TODAY only? Or Month? Frontend was using same date range as sales report context.
-                                   // Frontend call: getSalesReport({ startDate: startStr, endDate: endStr }) -> Today!
+        // Frontend call: getSalesReport({ startDate: startStr, endDate: endStr }) -> Today!
       },
       _sum: { totalAmount: true },
     });
 
-    const paymentStats = paymentStatsRaw.map(stat => ({
+    const paymentStats = paymentStatsRaw.map((stat) => ({
       name: stat.paymentMode,
-      value: (stat._sum.totalAmount ?? 0) / 100
+      value: (stat._sum.totalAmount ?? 0) / 100,
     }));
 
     // 🔹 NEW: SALES TREND (Last 7 days)
@@ -179,10 +183,10 @@ export class MobileShopDashboardService {
 
     // Group by Date (YYYY-MM-DD) manually since Prisma groupBy by date part isn't direct
     // Actually, fetching raw data might be better for trend if volume is low, or using raw query.
-    // For now, let's stick to a simpler approach: 
-    // Since we need daily sums, we can use a raw query or just fetch essential fields and aggregate in memory 
+    // For now, let's stick to a simpler approach:
+    // Since we need daily sums, we can use a raw query or just fetch essential fields and aggregate in memory
     // (efficient enough for 7 days).
-    
+
     // Better: Use `findMany` and aggregate in memory for last 7 days (usually < 1000 invoices)
     const trendInvoices = await this.prisma.invoice.findMany({
       where: {
@@ -194,7 +198,7 @@ export class MobileShopDashboardService {
     });
 
     const trendMap = new Map<string, number>();
-    trendInvoices.forEach(inv => {
+    trendInvoices.forEach((inv) => {
       const date = inv.createdAt.toISOString().split('T')[0];
       const amount = (inv.totalAmount ?? 0) / 100;
       trendMap.set(date, (trendMap.get(date) ?? 0) + amount);
@@ -203,14 +207,17 @@ export class MobileShopDashboardService {
     // Format for chart (last 7 days filled)
     const salesTrend: { date: string; sales: number }[] = [];
     for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dateKey = d.toISOString().split('T')[0];
-        const displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        salesTrend.push({
-            date: displayDate,
-            sales: trendMap.get(dateKey) ?? 0
-        });
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateKey = d.toISOString().split('T')[0];
+      const displayDate = d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      });
+      salesTrend.push({
+        date: displayDate,
+        sales: trendMap.get(dateKey) ?? 0,
+      });
     }
 
     // =========================
@@ -250,7 +257,6 @@ export class MobileShopDashboardService {
       paymentStats,
       salesTrend,
     };
-
 
     // 📦 CACHE RESPONSE for 60 seconds
     await this.cacheManager.set(cacheKey, response, 60000); // 60 seconds TTL

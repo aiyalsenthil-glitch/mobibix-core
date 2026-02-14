@@ -16,30 +16,18 @@
  * ```
  */
 
+import { getFinancialYearShort } from './financial-year.util';
+
 /**
- * Calculate financial year from a date
+ * Calculate financial year from a date (SHORT FORMAT for document numbering)
  * Financial year runs from April to March
  * e.g., April 2025 to March 2026 = 2526
  *
- * This function is used by DocumentNumberService for year formatting.
+ * @deprecated Use getFinancialYearShort from './financial-year.util' instead.
+ * This function is maintained for backward compatibility.
  */
 export function getFinancialYear(date: Date = new Date()): string {
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1; // 0-indexed, so add 1
-
-  // If before April (month < 4), FY is previous year to current year
-  // If April or later (month >= 4), FY is current year to next year
-  if (month < 4) {
-    const prevYear = year - 1;
-    const prevYearShort = String(prevYear).slice(-2);
-    const yearShort = String(year).slice(-2);
-    return `${prevYearShort}${yearShort}`;
-  } else {
-    const nextYear = year + 1;
-    const yearShort = String(year).slice(-2);
-    const nextYearShort = String(nextYear).slice(-2);
-    return `${yearShort}${nextYearShort}`;
-  }
+  return getFinancialYearShort(date);
 }
 
 /**

@@ -295,6 +295,7 @@ export class AutomationService {
     const featureCheck = await this.safetyService.validateFeatureSafety(
       dto.tenantId,
       feature,
+      dto.moduleType, // 🔥 Pass moduleType
     );
 
     const errors: string[] = [];

@@ -1,6 +1,6 @@
 /**
  * Security Fixes Test Script
- * 
+ *
  * Tests:
  * 1. Payment Idempotency - Double-click prevention
  * 2. Rate Limiting - Throttle enforcement
@@ -107,7 +107,9 @@ async function testRateLimiting() {
     if (throttledCount > 0) {
       console.log('✅ PASS: Rate limiting is active');
     } else {
-      console.log('⚠️  WARNING: No throttling detected (limit might be too high)');
+      console.log(
+        '⚠️  WARNING: No throttling detected (limit might be too high)',
+      );
     }
   } catch (error) {
     const err = error as AxiosError;
@@ -129,15 +131,20 @@ async function testDowngradeValidation() {
     const currentSub = subResponse.data;
 
     console.log(`   Current Plan: ${currentSub.plan?.name}`);
-    console.log(`   Member Limit: ${currentSub.plan?.maxMembers || 'Unlimited'}`);
+    console.log(
+      `   Member Limit: ${currentSub.plan?.maxMembers || 'Unlimited'}`,
+    );
 
     // Try to check downgrade eligibility
     console.log('\n📤 Checking downgrade eligibility...');
-    const checkResponse = await api.get('/billing/subscription/downgrade-check', {
-      params: {
-        targetPlanId: 'basic-plan-id', // Replace with actual lower-tier plan ID
+    const checkResponse = await api.get(
+      '/billing/subscription/downgrade-check',
+      {
+        params: {
+          targetPlanId: 'basic-plan-id', // Replace with actual lower-tier plan ID
+        },
       },
-    });
+    );
 
     const eligibility = checkResponse.data;
     console.log(`   Eligible: ${eligibility.isEligible}`);

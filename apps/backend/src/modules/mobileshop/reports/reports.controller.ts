@@ -2,7 +2,7 @@ import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
 import { MobileShopReportsService } from './reports.service';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { GSTReportsService } from '../services/gst-reports.service';
 import { InvoicePaymentService } from '../services/invoice-payment.service';
 import { PurchasePaymentService } from '../services/purchase-payment.service';
@@ -12,8 +12,10 @@ import { DailySalesReportService } from '../services/daily-sales-report.service'
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
+import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
 
 @Controller('api/mobileshop/reports')
+@ModuleScope(ModuleType.MOBILE_SHOP)
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class MobileShopReportsController extends TenantScopedController {

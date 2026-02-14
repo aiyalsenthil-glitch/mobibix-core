@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 interface ReceiptIntegrityCheck {
@@ -32,7 +32,7 @@ export class ReceiptsIntegrityService {
     });
 
     if (!invoice || invoice.tenantId !== tenantId) {
-      throw new Error('Invoice not found');
+      throw new NotFoundException('Invoice not found');
     }
 
     // Sum all receipts (using status instead of type)

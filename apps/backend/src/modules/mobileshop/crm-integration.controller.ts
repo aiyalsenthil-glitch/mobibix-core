@@ -11,10 +11,11 @@ import {
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { CrmIntegrationService } from './services/crm-integration.service';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
 import { TenantScopedController } from '../../core/auth/tenant-scoped.controller';
+import { ModuleScope } from '../../core/auth/decorators/module-scope.decorator';
 
 /**
  * Example Controller: MobileShop CRM Dashboard Integration
@@ -23,6 +24,7 @@ import { TenantScopedController } from '../../core/auth/tenant-scoped.controller
  * This is NOT a CORE CRM controller - it's a MobileShop consumer
  */
 @Controller('mobileshop/crm')
+@ModuleScope(ModuleType.MOBILE_SHOP)
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class MobileShopCrmController extends TenantScopedController {

@@ -9,7 +9,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { PaymentMode, UserRole } from '@prisma/client';
+import { PaymentMode, UserRole, ModuleType } from '@prisma/client';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
 
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
@@ -20,8 +20,10 @@ import { UpdateJobCardDto } from './dto/update-job-card.dto';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
+import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
 
 @Controller('mobileshop/shops/:shopId/job-cards')
+@ModuleScope(ModuleType.MOBILE_SHOP)
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class JobCardsController extends TenantScopedController {

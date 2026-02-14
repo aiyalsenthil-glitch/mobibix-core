@@ -6,11 +6,13 @@ import { Permissions } from '../../../core/auth/decorators/permissions.decorator
 import { Permission } from '../../../core/auth/permissions.enum';
 import { MobileShopDashboardService } from './mobileshop-dashboard.service';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
+import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
 
 @Controller('mobileshop/dashboard')
+@ModuleScope(ModuleType.MOBILE_SHOP)
 @UseGuards(JwtAuthGuard, RolesGuard, TenantStatusGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class MobileShopDashboardController extends TenantScopedController {

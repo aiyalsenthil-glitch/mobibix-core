@@ -6,16 +6,19 @@ import {
   UseGuards,
   Req,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import * as crypto from 'crypto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../../auth/guards/tenant.guard';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PaymentStatus, UserRole, ModuleType } from '@prisma/client';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { PaymentActivationService } from './payment-activation.service';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('payments')
 export class PaymentsVerifyController {
@@ -24,6 +27,7 @@ export class PaymentsVerifyController {
   constructor(
     private readonly subscriptionsService: SubscriptionsService,
     private readonly prisma: PrismaService,
+    private readonly paymentActivationService: PaymentActivationService,
   ) {}
 
   // Rate limited to 10 requests per 60 seconds (higher than createOrder to allow retries)
@@ -81,62 +85,34 @@ export class PaymentsVerifyController {
       );
     }
 
-    // 3️⃣ Idempotency: if already verified, skip subscription creation
-    if (existingPayment.status === PaymentStatus.SUCCESS) {
-      return { success: true, alreadyVerified: true };
+    // ✅ VERIFY TENANTID MATCHES (defensive check)
+    if (existingPayment.tenantId !== req.user.tenantId) {
+      throw new ForbiddenException('Payment does not belong to this tenant');
     }
 
-    // 4️⃣ Update payment to SUCCESS
-    await this.prisma.payment.update({
-      where: { id: existingPayment.id },
-      data: {
-        status: PaymentStatus.SUCCESS,
-        providerPaymentId: paymentId,
-        providerSignature: signature,
-      },
-    });
+    // ✅ 3️⃣ Trigger unified activation service (idempotent)
+    const result =
+      await this.paymentActivationService.activateSubscriptionFromPayment(
+        existingPayment.id,
+      );
 
-    // 5️⃣ 🔥 CREATE/ACTIVATE SUBSCRIPTION
-    // 🔒 SECURITY FIX: Fetch PLAN to determine target module (WHATSAPP_CRM vs GYM vs MOBILE_SHOP)
-    const paymentRecord = await this.prisma.payment.findUnique({
-      where: { id: existingPayment.id },
-    });
-
-    if (!paymentRecord) {
-      throw new BadRequestException('Payment record not found');
-    }
-
-    const plan = await this.prisma.plan.findUnique({
-      where: { id: paymentRecord.planId },
-      select: { module: true },
-    });
-
-    if (!plan) {
-      throw new BadRequestException('Plan not found for payment');
-    }
-
-    // Use plan's module (e.g., WHATSAPP_CRM) instead of deriving from tenant type
-    const module = plan.module;
-
-    this.logger.log(
-      `Using module from plan: ${module} for tenant ${req.user.tenantId}`,
-    );
-
-    // Call buyPlanPhase1 with correct module
-    await this.subscriptionsService.buyPlanPhase1({
-      tenantId: req.user.tenantId,
-      planId: existingPayment.planId,
-      module: module, // ✅ CORRECT MODULE
-      billingCycle: existingPayment.billingCycle,
-    });
-
-    return { success: true, subscriptionCreated: true };
+    return {
+      success: true,
+      status: result.status,
+      subscriptionId: result.subscriptionId,
+      message:
+        result.status === 'already_processed'
+          ? 'Subscription already activated'
+          : 'Subscription activated successfully',
+    };
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🔄 FALLBACK: Retry subscription creation if webhook/verify failed
-  // Call this if user sees "SUBSCRIPTION_EXPIRED" after successful payment
-  // ═══════════════════════════════════════════════════════════════════════════
+  /**
+   * FALLBACK: Retry subscription activation if webhook/verify failed
+   * Call this if user sees "SUBSCRIPTION_EXPIRED" after successful payment
+   *
+   * Uses unified PaymentActivationService (idempotent)
+   */
   @Post('retry-subscription')
   async retrySubscriptionCreation(
     @Req() req: any,
@@ -154,7 +130,7 @@ export class PaymentsVerifyController {
       );
     }
 
-    // 1️⃣ Find the successful payment by orderId
+    // Find the successful payment by orderId
     const payment = await this.prisma.payment.findFirst({
       where: {
         provider: 'RAZORPAY',
@@ -170,33 +146,24 @@ export class PaymentsVerifyController {
       );
     }
 
-    // 2️⃣ Call buyPlanPhase1 with correct module from plan
-    const plan = await this.prisma.plan.findUnique({
-      where: { id: payment.planId },
-      select: { module: true },
-    });
-
-    if (!plan) {
-      throw new BadRequestException('Plan not found for successful payment');
-    }
-
-    const subscription = await this.subscriptionsService.buyPlanPhase1({
-      tenantId: req.user.tenantId,
-      planId: payment.planId,
-      module: plan.module, // ✅ Use plan's module
-      billingCycle,
-    });
+    // ✅ Use unified activation service (idempotent)
+    const result =
+      await this.paymentActivationService.activateSubscriptionFromPayment(
+        payment.id,
+      );
 
     this.logger.log(
-      `✅ Retry-subscription: paymentId=${payment.id}, ` +
-        `subscriptionId=${subscription.id}, planId=${payment.planId}`,
+      `[RETRY] Subscription: paymentId=${payment.id}, status=${result.status}`,
     );
 
     return {
       success: true,
-      subscriptionCreated: true,
-      subscriptionId: subscription.id,
-      message: 'Subscription created/upgraded successfully',
+      status: result.status,
+      subscriptionId: result.subscriptionId,
+      message:
+        result.status === 'already_processed'
+          ? 'Subscription already activated'
+          : 'Subscription activated successfully',
     };
   }
 }

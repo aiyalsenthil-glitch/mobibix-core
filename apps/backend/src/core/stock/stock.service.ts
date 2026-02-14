@@ -3,6 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { ProductType, IMEIStatus } from '@prisma/client';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { StockInDto } from '../inventory/dto/stock-in.dto';
+import {
+  validateIMEIs,
+  validateIMEIQuantity,
+} from './stock-serialization.validation';
 
 export type StockBalance = {
   productId: string;
@@ -399,12 +403,41 @@ export class StockService {
 
     // For serialized products, if IMEIs are provided ensure count matches
     if (product.isSerialized) {
-      if (imeis && imeis.length !== quantity) {
-        throw new BadRequestException(
-          'Serialized products require IMEI list matching quantity',
-        );
+      // 🛡️ VALIDATION: IMEI Quantity, Format, and Duplicates
+      validateIMEIQuantity(imeis, quantity, product.name);
+
+      if (imeis && imeis.length > 0) {
+        // Validate formats and duplicates within request
+        validateIMEIs(imeis);
+
+        // Check if any IMEI already exists in database (global uniqueness per tenant)
+        const trimmedIMEIs = imeis.map((i) => i.trim());
+        const existingIMEIs = await prisma.iMEI.findMany({
+          where: {
+            tenantId,
+            imei: { in: trimmedIMEIs },
+          },
+          select: { imei: true, shopProductId: true },
+        });
+
+        if (existingIMEIs.length > 0) {
+          const duplicates = existingIMEIs.map((i) => i.imei).join(', ');
+          throw new BadRequestException(
+            `IMEI(s) already exist in system: ${duplicates}. Cannot add duplicate IMEI.`,
+          );
+        }
+
+        // Create IMEI records with IN_STOCK status
+        await prisma.iMEI.createMany({
+          data: trimmedIMEIs.map((imei) => ({
+            tenantId,
+            shopId,
+            shopProductId: productId,
+            imei: imei,
+            status: IMEIStatus.IN_STOCK,
+          })),
+        });
       }
-      // IMEI status updates (e.g., to IN_STOCK) are handled by calling services
     }
 
     // 🛡️ FIX 2: COST DISCIPLINE FOR ADJUSTMENTS

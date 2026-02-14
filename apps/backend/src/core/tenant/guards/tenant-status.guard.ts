@@ -5,7 +5,11 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ModuleType, UserRole } from '@prisma/client';
+import { ModuleType, UserRole, SubscriptionStatus } from '@prisma/client';
+import {
+  GRACE_PERIOD_DAYS,
+  SOFT_GRACE_PERIOD_DAYS,
+} from '../../billing/grace-period.constants';
 
 @Injectable()
 export class TenantStatusGuard implements CanActivate {
@@ -49,72 +53,80 @@ export class TenantStatusGuard implements CanActivate {
     }
 
     const now = new Date();
-    const gracePeriodDays = 7;
-    const gracePeriodEnd = new Date(now);
-    gracePeriodEnd.setDate(gracePeriodEnd.getDate() - gracePeriodDays);
 
-    /**
-     * 1️⃣ ACTIVE always wins (including grace period)
-     */
-    const active = await this.prisma.tenantSubscription.findFirst({
+    // 1️⃣ Fetch subscription for module
+    const subscription = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
         module,
-        status: 'ACTIVE',
-        endDate: { gt: gracePeriodEnd }, // Allow grace period
+        status: {
+          in: [
+            SubscriptionStatus.ACTIVE,
+            SubscriptionStatus.TRIAL,
+            SubscriptionStatus.PAST_DUE,
+          ],
+        },
       },
+      orderBy: [
+        { status: 'asc' }, // ACTIVE > PAST_DUE > TRIAL
+        { startDate: 'desc' },
+      ],
     });
 
-    if (active) {
-      // If subscription expired but within grace period, attach warning
-      if (active.endDate < now) {
-        const daysRemaining = Math.ceil(
-          (active.endDate.getTime() - gracePeriodEnd.getTime()) /
-            (1000 * 60 * 60 * 24),
+    if (!subscription) {
+      // Check for strictly SCHEDULED to give better error
+      const scheduled = await this.prisma.tenantSubscription.findFirst({
+        where: { tenantId, module, status: SubscriptionStatus.SCHEDULED },
+      });
+      if (scheduled) throw new ForbiddenException('SUBSCRIPTION_NOT_STARTED');
+
+      throw new ForbiddenException('SUBSCRIPTION_REQUIRED');
+    }
+
+    const gracePeriodEnd = new Date(subscription.endDate || now);
+    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + GRACE_PERIOD_DAYS);
+
+    const softGracePeriodEnd = new Date(subscription.endDate || now);
+    softGracePeriodEnd.setDate(
+      softGracePeriodEnd.getDate() + SOFT_GRACE_PERIOD_DAYS,
+    );
+
+    const isExpired = subscription.endDate && now > gracePeriodEnd;
+    const isSoftExpired = subscription.endDate && now > softGracePeriodEnd;
+    const isPastDue = subscription.status === SubscriptionStatus.PAST_DUE;
+
+    // 2️⃣ Hard Block: EXPIRED or beyond Soft Grace Period
+    if (subscription.status === SubscriptionStatus.EXPIRED || isSoftExpired) {
+      throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
+    }
+
+    // 3️⃣ Soft Block: Read-Only for PAST_DUE or during Soft Grace Period
+    if (isExpired || isPastDue) {
+      const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+      if (isMutation) {
+        throw new ForbiddenException(
+          isPastDue
+            ? 'PAYMENT_PAST_DUE_READ_ONLY'
+            : 'SUBSCRIPTION_EXPIRED_READ_ONLY',
         );
-        request.gracePeriodWarning = {
-          daysRemaining,
-          expiryDate: active.endDate,
-          message: `Subscription expired. ${daysRemaining} days remaining in grace period.`,
-        };
       }
-      return true;
+
+      const daysRemaining = subscription.endDate
+        ? Math.ceil(
+            (softGracePeriodEnd.getTime() - now.getTime()) /
+              (1000 * 60 * 60 * 24),
+          )
+        : 0;
+
+      request.gracePeriodWarning = {
+        daysRemaining,
+        expiryDate: subscription.endDate,
+        message: isPastDue
+          ? `Payment past due. Read-only mode active.`
+          : `Subscription expired. ${daysRemaining} days remaining in read-only grace period.`,
+      };
     }
 
-    /**
-     * 2️⃣ Valid TRIAL is treated as ACTIVE
-     */
-    const trial = await this.prisma.tenantSubscription.findFirst({
-      where: {
-        tenantId,
-        module,
-        status: 'TRIAL',
-        endDate: { gt: now },
-      },
-    });
-
-    if (trial) {
-      return true;
-    }
-
-    /**
-     * 3️⃣ If only SCHEDULED exists → deny
-     */
-    const scheduled = await this.prisma.tenantSubscription.findFirst({
-      where: {
-        tenantId,
-        module,
-        status: 'SCHEDULED',
-      },
-    });
-
-    if (scheduled) {
-      throw new ForbiddenException('SUBSCRIPTION_NOT_STARTED');
-    }
-
-    /**
-     * 4️⃣ Everything else → expired
-     */
-    throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
+    return true;
   }
 }

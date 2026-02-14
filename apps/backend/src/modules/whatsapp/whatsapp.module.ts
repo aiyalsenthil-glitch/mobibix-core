@@ -9,10 +9,8 @@ import { WhatsAppRemindersService } from './whatsapp-reminders.service'; // ✅ 
 import { WhatsAppLogger } from './whatsapp.logger';
 import { WhatsAppWebhookController } from './whatsapp.webhook.controller';
 import { WhatsAppSettingsController } from './whatsapp-settings.controller';
-import { WhatsAppTenantsController } from './whatsapp-tenants.controller';
 import { WhatsAppController } from './whatsapp.controller';
 import { WhatsAppDebugController } from './whatsapp-debug.controller';
-import { WhatsAppPlansController } from './whatsapp-plans.controller';
 import { WhatsAppPhoneNumbersController } from './phone-numbers/whatsapp-phone-numbers.controller';
 import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
 import { WhatsAppVariableResolver } from './variable-resolver.service';
@@ -45,9 +43,7 @@ import { WhatsAppOnboardingService } from './onboarding/whatsapp-onboarding.serv
     WhatsAppController,
     WhatsAppPhoneNumbersController,
     AutomationController,
-    WhatsAppTenantsController,
     WhatsAppDebugController,
-    WhatsAppPlansController,
     WhatsAppUserController,
     WhatsAppCrmController,
     WhatsAppOnboardingController, // ✅ Added

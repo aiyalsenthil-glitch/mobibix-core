@@ -21,11 +21,14 @@ import { PermissionsGuard } from '../../core/auth/guards/permissions.guard';
 import { Permissions } from '../../core/auth/decorators/permissions.decorator';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { Permission } from '../../core/auth/permissions.enum';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { TenantStatusGuard } from '../../core/tenant/guards/tenant-status.guard';
 import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
+import { ModuleScope } from '../../core/auth/decorators/module-scope.decorator';
 
 @Controller('gym/members')
+@ModuleScope(ModuleType.GYM)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 @UseGuards(
   JwtAuthGuard,
   PermissionsGuard,
@@ -90,8 +93,17 @@ export class GymMembersController {
   @Permissions(Permission.MEMBER_VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get()
-  list(@Req() req: any) {
-    return this.membersService.listMembers(req.user.tenantId);
+  list(
+    @Req() req: any,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.membersService.listMembers(req.user.tenantId, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+      search,
+    });
   }
 
   @Patch(':id/owner-edit')

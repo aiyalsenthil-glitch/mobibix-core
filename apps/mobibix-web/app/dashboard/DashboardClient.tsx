@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useTheme } from "@/context/ThemeContext";
 import { Topbar } from "@/components/layout/topbar";
+import { SubscriptionAlert } from "@/components/subscription/SubscriptionAlert";
 
 export function DashboardClient({ children }: { children: React.ReactNode }) {
   const [openMore, setOpenMore] = useState(false);
@@ -165,8 +166,13 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <main className="flex-1 ml-64 overflow-y-auto transition-colors duration-200">
         {/* Fixed Topbar across dashboard */}
-        <Topbar isCollapsed={false} />
-        <div className={`min-h-screen pt-20 ${mainBg}`}>{children}</div>
+        <div className="fixed top-0 right-0 left-64 z-20">
+            <SubscriptionAlert />
+            <Topbar isCollapsed={false} />
+        </div>
+        <div className="pt-28 min-h-screen bg-white dark:bg-black">
+          {children}
+        </div>
       </main>
     </div>
   );

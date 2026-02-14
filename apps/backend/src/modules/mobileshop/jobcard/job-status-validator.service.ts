@@ -71,16 +71,17 @@ export class JobStatusValidator {
       JobStatus.IN_PROGRESS, // Re-repair if issue found
     ],
 
-    // Terminal states
+    // Terminal state - no further transitions
     [JobStatus.DELIVERED]: [],
 
-    // Cancelled - Can Reopen
+    // Cancelled - Can Reopen to resume work
     [JobStatus.CANCELLED]: [
       JobStatus.RECEIVED,
       JobStatus.DIAGNOSING,
       JobStatus.IN_PROGRESS,
     ],
 
+    // Terminal state - no further transitions
     [JobStatus.RETURNED]: [],
   };
 

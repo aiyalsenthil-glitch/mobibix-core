@@ -524,8 +524,9 @@ export class CustomerTimelineService {
     }
 
     // Get customer phone to match WhatsApp logs
-    const customer = await prisma.party.findUnique({
-      where: { id: customerId },
+    // SECURITY FIX: Use composite key to prevent cross-tenant access
+    const customer = await prisma.party.findFirst({
+      where: { id: customerId, tenantId },
       select: { phone: true },
     });
 

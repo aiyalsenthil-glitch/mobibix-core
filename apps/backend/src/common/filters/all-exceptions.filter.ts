@@ -54,7 +54,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
             errors = resp.message.reduce(
               (acc: Record<string, string[]>, err: any) => {
                 const field = err.property || 'unknown';
-                acc[field] = Object.values(err.constraints || {}) as string[];
+                acc[field] = Object.values(err.constraints || {});
                 return acc;
               },
               {},

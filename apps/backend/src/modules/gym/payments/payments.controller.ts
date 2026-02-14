@@ -9,12 +9,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { TenantStatusGuard } from '../../../core/tenant/guards/tenant-status.guard';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
 
-@UseGuards(JwtAuthGuard, RolesGuard, TenantStatusGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, TenantStatusGuard)
+@ModuleScope(ModuleType.GYM)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('gym/payments')
 export class PaymentsController {

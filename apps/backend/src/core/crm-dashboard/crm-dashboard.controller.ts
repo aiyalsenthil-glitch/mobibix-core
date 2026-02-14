@@ -12,9 +12,11 @@ import { DashboardQueryDto } from './dto/dashboard-query.dto';
 import { CrmDashboardResponse } from './dto/dashboard-response.dto';
 import { UserRole } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Controller('core/crm-dashboard')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.STAFF)
 export class CrmDashboardController {
   constructor(private readonly dashboardService: CrmDashboardService) {}

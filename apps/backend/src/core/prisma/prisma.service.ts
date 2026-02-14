@@ -1,4 +1,10 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  InternalServerErrorException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { getCtx, setCtx } from '../cls/async-context';
@@ -12,20 +18,24 @@ export class PrismaService
   constructor() {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
-      throw new Error('DATABASE_URL environment variable is not set');
+      throw new InternalServerErrorException(
+        'DATABASE_URL environment variable is not set',
+      );
     }
 
     const adapter = new PrismaPg({ connectionString });
 
     super({ adapter });
 
-    const softDeleteModels = new Set([
+    const softDeleteModels = new Set<string>([
       'Tenant',
       'User',
       'Member',
       'Party',
       'Shop',
       'Invoice',
+      'Payment', // SECURITY FIX: Enable soft-delete for payments
+      'SupplierPayment', // SECURITY FIX: Enable soft-delete for supplier payments
     ]);
 
     const baseClient = this;
@@ -146,7 +156,29 @@ export class PrismaService
       },
     });
 
+    const performanceClient = this.$extends({
+      query: {
+        $allModels: {
+          async $allOperations({ model, operation, args, query }) {
+            const start = Date.now();
+            try {
+              return await query(args);
+            } finally {
+              const duration = Date.now() - start;
+              if (duration > 500) {
+                console.warn(
+                  `⚠️  Slow DB Query: ${model}.${operation} took ${duration}ms`,
+                  JSON.stringify(args).slice(0, 200),
+                );
+              }
+            }
+          },
+        },
+      },
+    });
+
     Object.assign(this, extendedClient);
+    Object.assign(this, performanceClient);
   }
 
   async onModuleInit() {
@@ -161,7 +193,7 @@ export class PrismaService
   tenantWhere<T extends object>(where?: T): T {
     const tenantId = getCtx('tenantId');
     if (!tenantId) {
-      throw new Error('Tenant context is missing');
+      throw new BadRequestException('Tenant context is missing');
     }
 
     return {

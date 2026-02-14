@@ -4,12 +4,14 @@ import { RepairService } from './repair.service';
 import { RepairStockOutDto } from './dto/repair-stock-out.dto';
 import { RepairBillDto } from './dto/repair-bill.dto';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
+import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
 
 @Controller('mobileshop/repairs')
+@ModuleScope(ModuleType.MOBILE_SHOP)
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class RepairController extends TenantScopedController {

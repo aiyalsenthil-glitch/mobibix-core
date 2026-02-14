@@ -184,7 +184,7 @@ export class JobCardsService {
 
     return this.prisma.$transaction(async (tx) => {
       const job = await tx.jobCard.findUnique({
-        where: { id: jobId },
+        where: { id: jobId, tenantId: user.tenantId },
       });
 
       if (!job) throw new NotFoundException('Job not found');
@@ -266,7 +266,7 @@ export class JobCardsService {
 
     return this.prisma.$transaction(async (tx) => {
       const job = await tx.jobCard.findUnique({
-        where: { id: jobId },
+        where: { id: jobId, tenantId: user.tenantId },
       });
 
       if (!job) throw new NotFoundException('Job not found');
@@ -445,7 +445,7 @@ export class JobCardsService {
 
     // 1. Fetch Original Job & Shop Settings
     const originalJob = await this.prisma.jobCard.findUnique({
-      where: { id: originalJobId, shopId },
+      where: { id: originalJobId, shopId, tenantId: user.tenantId },
       include: { shop: true },
     });
 
@@ -653,7 +653,7 @@ export class JobCardsService {
     await this.assertAccess(user, shopId);
 
     const job = await this.prisma.jobCard.findUnique({
-      where: { id: jobId, shopId },
+      where: { id: jobId, shopId, tenantId: user.tenantId },
       include: {
         parts: {
           include: { product: true },
@@ -736,7 +736,7 @@ export class JobCardsService {
     await this.assertAccess(user, shopId);
 
     const job = await this.prisma.jobCard.findUnique({
-      where: { id: jobId, shopId },
+      where: { id: jobId, shopId, tenantId: user.tenantId },
     });
     if (!job) throw new NotFoundException('Job not found');
 
@@ -1007,7 +1007,7 @@ export class JobCardsService {
 
     // 1️⃣ Fetch job with all nested relations needed for handlers
     const job = await this.prisma.jobCard.findUnique({
-      where: { id },
+      where: { id, tenantId: user.tenantId },
       include: {
         shop: true,
         invoices: true,
@@ -1751,7 +1751,13 @@ export class JobCardsService {
   async delete(user: any, shopId: string, id: string) {
     await this.assertAccess(user, shopId);
 
-    const job = await this.prisma.jobCard.findUnique({ where: { id } });
+    // SECURITY FIX: Use tenantId filter to prevent cross-tenant deletion
+    const job = await this.prisma.jobCard.findFirst({
+      where: {
+        id,
+        tenantId: user.tenantId,
+      },
+    });
 
     if (!job) {
       throw new BadRequestException('Job not found');
@@ -1761,6 +1767,9 @@ export class JobCardsService {
       throw new BadRequestException('Cannot delete locked job');
     }
 
-    return this.prisma.jobCard.delete({ where: { id } });
+    // SECURITY FIX: Verify tenant ownership before deletion
+    return this.prisma.jobCard.delete({
+      where: { id },
+    });
   }
 }

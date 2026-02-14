@@ -8,8 +8,10 @@ import {
   UseGuards,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
   Query,
   Put,
+  Req,
 } from '@nestjs/common';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -19,7 +21,12 @@ import { TenantService } from '../tenant/tenant.service';
 import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
 import { PlansService } from '../billing/plans/plans.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserRole, ModuleType, SubscriptionStatus, BillingCycle } from '@prisma/client';
+import {
+  UserRole,
+  ModuleType,
+  SubscriptionStatus,
+  BillingCycle,
+} from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
 
 import { subDays } from 'date-fns';
@@ -74,9 +81,7 @@ export class AdminController {
   // INJECT SUBSCRIPTION (ADMIN)
   // ─────────────────────────────────────────────
   @Post('inject-sub')
-  async injectSubscription(
-    @Body() body: { tenantId: string; planId: string },
-  ) {
+  async injectSubscription(@Body() body: { tenantId: string; planId: string }) {
     const { tenantId, planId } = body;
     if (!tenantId || !planId) {
       throw new BadRequestException('tenantId and planId are required');
@@ -124,8 +129,14 @@ export class AdminController {
           whatsappCrmEnabled: true,
           // Only set default if not already set
           whatsappPhoneNumberId: {
-            set: (await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { whatsappPhoneNumberId: true } }))?.whatsappPhoneNumberId || '100609346426084'
-          }
+            set:
+              (
+                await this.prisma.tenant.findUnique({
+                  where: { id: tenantId },
+                  select: { whatsappPhoneNumberId: true },
+                })
+              )?.whatsappPhoneNumberId || '100609346426084',
+          },
         },
       });
     }
@@ -165,7 +176,9 @@ export class AdminController {
   ) {
     // Verify requester is authorized (admin/owner can access)
     if (req?.user?.role !== 'owner' && req?.user?.role !== 'admin') {
-      throw new ForbiddenException('Only admins can access tenant subscription');
+      throw new ForbiddenException(
+        'Only admins can access tenant subscription',
+      );
     }
     let resolvedModule = module;
     if (!resolvedModule) {
@@ -356,7 +369,9 @@ export class AdminController {
 
     const churnRate =
       activeCount + cancelledRecently > 0
-        ? Math.round((cancelledRecently / (activeCount + cancelledRecently)) * 100)
+        ? Math.round(
+            (cancelledRecently / (activeCount + cancelledRecently)) * 100,
+          )
         : 0;
 
     return {
@@ -379,8 +394,6 @@ export class AdminController {
               { code: { contains: search, mode: 'insensitive' as any } },
               { description: { contains: search, mode: 'insensitive' as any } },
             ],
-
-
           }
         : {},
       orderBy: { code: 'asc' },
@@ -442,7 +455,6 @@ export class AdminController {
     return { data: items, total, page: parseInt(page), limit: parseInt(limit) };
   }
 
-
   @Post('mdm/products')
   async createGlobalProduct(@Body() body: any) {
     const { name, category: catName, hsnCode, taxRate } = body;
@@ -458,7 +470,9 @@ export class AdminController {
     }
 
     // 2. Resolve HSN
-    let hsn = await this.prisma.hSNCode.findUnique({ where: { code: hsnCode } });
+    let hsn = await this.prisma.hSNCode.findUnique({
+      where: { code: hsnCode },
+    });
     if (!hsn) {
       hsn = await this.prisma.hSNCode.create({
         data: { code: hsnCode, taxRate: parseFloat(taxRate) || 18 },
@@ -491,7 +505,9 @@ export class AdminController {
     }
 
     // 2. Resolve HSN
-    let hsn = await this.prisma.hSNCode.findUnique({ where: { code: hsnCode } });
+    let hsn = await this.prisma.hSNCode.findUnique({
+      where: { code: hsnCode },
+    });
     if (!hsn) {
       hsn = await this.prisma.hSNCode.create({
         data: { code: hsnCode, taxRate: parseFloat(taxRate) || 18 },
@@ -514,8 +530,6 @@ export class AdminController {
       include: { category: true, hsn: true },
     });
   }
-
-
 
   // ─────────────────────────────────────────────
   // USER LOOKUP (ADMIN)
@@ -653,7 +667,7 @@ export class AdminController {
       userId: ownerRecord.userId,
       tenantId: ownerRecord.tenantId,
       userTenantId: ownerRecord.id,
-      role: ownerRecord.role as UserRole,
+      role: ownerRecord.role,
     });
 
     // 3. Log the action (Platform Audit)

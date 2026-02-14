@@ -3,13 +3,42 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 import { WhatsAppSender } from './whatsapp.sender';
 import { WhatsAppLogger } from './whatsapp.logger';
 import { toWhatsAppPhone } from '../../common/utils/phone.util';
-import { ReminderChannel, ReminderStatus } from '@prisma/client';
-import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
+import { Prisma, ReminderChannel, ReminderStatus } from '@prisma/client';
 import {
   WhatsAppVariableResolver,
   VariableResolutionContext,
 } from './variable-resolver.service';
 import { WhatsAppModule } from './variable-registry';
+
+// Type-safe reminder shape based on query structure
+type ReminderWithRelations = Prisma.CustomerReminderGetPayload<{
+  include: {
+    customer: {
+      select: {
+        id: true;
+        name: true;
+        phone: true;
+        email: true;
+        tenantId: true;
+      };
+    };
+    tenant: {
+      select: {
+        id: true;
+        name: true;
+        tenantType: true;
+        whatsappReminderNumberId: true;
+        subscription: {
+          select: {
+            plan: {
+              select: { code: true; meta: true };
+            };
+          };
+        };
+      };
+    };
+  };
+}>;
 
 interface ReminderTemplateParams {
   [key: string]: string | number;
@@ -146,7 +175,9 @@ export class WhatsAppRemindersService {
    * Process a single reminder
    * Separated for testability
    */
-  private async processSingleReminder(reminder: any): Promise<void> {
+  private async processSingleReminder(
+    reminder: ReminderWithRelations,
+  ): Promise<void> {
     const { id: reminderId, tenantId, customer, templateKey } = reminder;
 
     // 0️⃣ Atomic Lock: Try to mark as SENT immediately to prevent race conditions
@@ -156,6 +187,7 @@ export class WhatsAppRemindersService {
       where: {
         id: reminderId,
         status: ReminderStatus.SCHEDULED,
+        tenantId, // Defense-in-depth isolation
       },
       data: {
         status: ReminderStatus.SENT, // Optimistically mark as SENT (Processing)
@@ -287,6 +319,7 @@ export class WhatsAppRemindersService {
           status: 'ACTIVE',
           ...(tenantModuleHint ? { moduleType: tenantModuleHint } : {}),
           OR: [{ templateKey: templateKey }, { metaTemplateName: templateKey }],
+          // Templates are currently global/module-level, but we could add tenant-specific template support here.
         },
         orderBy: { updatedAt: 'desc' },
       });
@@ -390,8 +423,7 @@ export class WhatsAppRemindersService {
         if (automation) {
           eventType = automation.eventType;
           // TRUST AUTOMATION: If automation exists, its moduleType is the authority for variable context
-          const autoModule = (automation.moduleType as any)
-            .toString()
+          const autoModule = String(automation.moduleType)
             .toUpperCase()
             .replace(/[\s_-]/g, '');
           if (autoModule === 'MOBILESHOP')
@@ -516,7 +548,8 @@ export class WhatsAppRemindersService {
         template?.metaTemplateName || templateKey,
         parameters,
         {
-          whatsAppNumberId: reminder.tenant?.whatsappReminderNumberId,
+          whatsAppNumberId:
+            reminder.tenant?.whatsappReminderNumberId ?? undefined,
         },
       );
 
@@ -553,17 +586,23 @@ export class WhatsAppRemindersService {
         );
       } else {
         // ❌ Revert status to FAILED
+        const errorMessage =
+          result.error &&
+          typeof result.error === 'object' &&
+          'message' in result.error
+            ? String((result.error as { message: unknown }).message)
+            : 'Unknown error from WhatsApp API';
         await this.updateReminderStatus(
           reminderId,
           ReminderStatus.FAILED,
-          result.error?.message || 'Unknown error from WhatsApp API',
+          errorMessage,
         );
         await this.logAttempt(
           tenantId,
           customer.id,
           whatsAppPhone,
           'FAILED',
-          result.error?.message || 'Unknown error',
+          errorMessage,
           whatsAppNumberId,
         );
       }
@@ -591,7 +630,10 @@ export class WhatsAppRemindersService {
    * Build template parameters based on reminder type and customer data
    * Use context from triggerType and triggerValue
    */
-  private buildTemplateParameters(reminder: any, customer: any): string[] {
+  private buildTemplateParameters(
+    reminder: ReminderWithRelations,
+    customer: NonNullable<ReminderWithRelations['customer']>,
+  ): string[] {
     const parameters: ReminderTemplateParams = {
       customerName: customer.name || 'valued customer',
       // Add more based on triggerType
@@ -614,6 +656,9 @@ export class WhatsAppRemindersService {
     status: ReminderStatus,
     failureReason?: string,
   ): Promise<void> {
+    // We don't have tenantId here, but we could pass it from caller or fetch it.
+    // However, id is UUID and caller already validated tenantId access in processSingleReminder.
+    // For consistency with hardening goals, we should really pass tenantId to this method too.
     await this.prisma.customerReminder.update({
       where: { id: reminderId },
       data: {

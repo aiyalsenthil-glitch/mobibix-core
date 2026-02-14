@@ -4,10 +4,12 @@ import {
   Post,
   Body,
   Param,
+  Patch,
   Query,
   UseGuards,
   NotFoundException,
   ForbiddenException,
+  Req,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -15,6 +17,7 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TenantService } from '../../tenant/tenant.service';
+import { UpdateTenantSettingsDto } from '../../tenant/dto/tenant.dto';
 
 @Controller('admin/tenants')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -100,7 +103,10 @@ export class AdminTenantController {
   }
 
   @Post(':id/impersonate')
-  async impersonateTenant(@Param('id') tenantId: string) {
+  async impersonateTenant(@Param('id') tenantId: string, @Req() req: any) {
+    const adminUserId = req.user.sub;
+    const adminEmail = req.user.email || 'Unknown';
+
     // 1. Find Owner
     const userTenant = await this.prisma.userTenant.findFirst({
       where: {
@@ -114,29 +120,42 @@ export class AdminTenantController {
       throw new NotFoundException('Tenant has no owner');
     }
 
-    // 2. Generate Token
-    const token = await this.tenantService.issueJwt({
-      userId: userTenant.userId,
-      tenantId: userTenant.tenantId,
-      userTenantId: userTenant.id,
-      role: UserRole.OWNER,
-    }); // NOTE: we might need to expose issueJwt or duplicate it.
-    // TenantService.issueJwt is public in the class, so we can use it.
-    // Wait, check TenantService definition. Yes, it looks public.
-    // But issueJwt method signature in previous file view:
-    // issueJwt(payload: { userId: string; tenantId: string | null; userTenantId: string | null; role: UserRole; })
+    // 2. Log impersonation event (PHASE 3: Admin Audit Trail)
+    await this.prisma.platformAuditLog.create({
+      data: {
+        userId: adminUserId,
+        action: 'ADMIN_IMPERSONATE',
+        entity: 'Tenant',
+        entityId: tenantId,
+        meta: {
+          adminEmail,
+          targetTenantId: tenantId,
+          targetTenantName: userTenant.tenant.name,
+          targetUserId: userTenant.userId,
+          targetUserEmail: userTenant.user.email,
+          timestamp: new Date().toISOString(),
+          ipAddress: req.ip || req.connection?.remoteAddress,
+        },
+      },
+    });
 
-    // We need planCode in payload? check AuthService.loginWithFirebase
-    // AuthService puts planCode. TenantService.issueJwt does NOT put planCode in the payload in the file I viewed?
-    // Let's re-read TenantService.issueJwt
-    // It signs: sub, tenantId, userTenantId, role.
-    // It does NOT sign planCode.
-    // If frontend depends on planCode in JWT for feature gating, using TenantService.issueJwt might be incomplete compared to AuthService.
-    // But for a quick "Login As", it might suffice if the frontend refreshes or fetches plan separately.
-    // Let's stick to TenantService.issueJwt for now.
+    // 3. Generate short-lived token (1 hour expiry for security)
+    const token = await this.tenantService.issueJwt(
+      {
+        userId: userTenant.userId,
+        tenantId: userTenant.tenantId,
+        userTenantId: userTenant.id,
+        role: UserRole.OWNER,
+        // Note: impersonatedBy would go here if TenantService.issueJwt supported it
+        // Consider adding impersonatedBy: adminUserId to JWT payload in future
+      },
+      '1h',
+    ); // Short-lived: 1 hour
 
     return {
       accessToken: token,
+      expiresIn: 3600, // 1 hour in seconds
+      impersonatedBy: adminEmail,
       redirectUrl:
         userTenant.tenant.tenantType === 'GYM'
           ? 'http://localhost_REPLACED:3001/login/impersonate' // Gym Pilot
@@ -169,5 +188,85 @@ export class AdminTenantController {
       success: true,
       message: `Tenant ${status ? 'Activated' : 'Suspended'}`,
     };
+  }
+
+  @Get(':id/settings')
+  async getTenantSettings(@Param('id') tenantId: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        legalName: true,
+        contactPhone: true,
+        contactEmail: true,
+        website: true,
+        logoUrl: true,
+        addressLine1: true,
+        addressLine2: true,
+        city: true,
+        state: true,
+        pincode: true,
+        country: true,
+        gstNumber: true,
+        taxId: true,
+        businessType: true,
+        currency: true,
+        timezone: true,
+        whatsappEnabled: true,
+        whatsappCrmEnabled: true,
+      },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant with ID ${tenantId} not found`);
+    }
+
+    return tenant;
+  }
+
+  @Patch(':id/settings')
+  async updateTenantSettings(
+    @Param('id') tenantId: string,
+    @Body() updateDto: UpdateTenantSettingsDto,
+  ) {
+    // Verify tenant exists
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant with ID ${tenantId} not found`);
+    }
+
+    // Update tenant settings
+    const updated = await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: updateDto,
+      select: {
+        id: true,
+        name: true,
+        legalName: true,
+        contactPhone: true,
+        contactEmail: true,
+        website: true,
+        logoUrl: true,
+        addressLine1: true,
+        addressLine2: true,
+        city: true,
+        state: true,
+        pincode: true,
+        country: true,
+        gstNumber: true,
+        taxId: true,
+        businessType: true,
+        currency: true,
+        timezone: true,
+        whatsappEnabled: true,
+        whatsappCrmEnabled: true,
+      },
+    });
+
+    return updated;
   }
 }

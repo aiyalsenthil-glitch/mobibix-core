@@ -18,13 +18,17 @@ async function verifyServiceLogic() {
 
     // 1. Find a test tenant
     const tenant = await prisma.tenant.findFirst({
-      where: { deletedAt: null },
+      where: {},
       include: {
         subscription: {
-          where: { status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL] } },
-          take: 1
-        }
-      }
+          where: {
+            status: {
+              in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL],
+            },
+          },
+          take: 1,
+        },
+      },
     });
 
     if (!tenant || tenant.subscription.length === 0) {
@@ -33,11 +37,13 @@ async function verifyServiceLogic() {
     }
 
     const sub = tenant.subscription[0];
-    console.log(`✅ Tenant: ${tenant.name}, Sub: ${sub.id}, EndDate: ${sub.endDate}`);
+    console.log(
+      `✅ Tenant: ${tenant.name}, Sub: ${sub.id}, EndDate: ${sub.endDate}`,
+    );
 
     // 2. Find an addon plan
     const addonPlan = await prisma.plan.findFirst({
-      where: { isAddon: true, isActive: true }
+      where: { isAddon: true, isActive: true },
     });
 
     if (!addonPlan) {
@@ -51,28 +57,38 @@ async function verifyServiceLogic() {
       subscriptionId: sub.id,
       addonPlanId: addonPlan.id,
       billingCycle: BillingCycle.MONTHLY,
-      autoRenew: true
+      autoRenew: true,
     });
 
     console.log('✅ buyAddon result:', result);
 
     if (result.endDate.getTime() === sub.endDate.getTime()) {
-      console.log('✅ Co-terminus logic verified: Addon expiry matches parent.');
+      console.log(
+        '✅ Co-terminus logic verified: Addon expiry matches parent.',
+      );
     } else {
       console.error('❌ Co-terminus logic failed! Dates do not match.');
     }
 
     // 4. Test manageAddon (ENABLE) - legacy flag check
     console.log('🚀 Testing manageAddon (ENABLE) legacy flags...');
-    const whatsappAddon = await prisma.plan.findFirst({ where: { code: 'WHATSAPP_CRM' } });
+    const whatsappAddon = await prisma.plan.findFirst({
+      where: { code: 'WHATSAPP_CRM' },
+    });
     if (whatsappAddon) {
-        await subscriptionsService.manageAddon(tenant.id, 'ENABLE', whatsappAddon.id);
-        const updatedTenant = await prisma.tenant.findUnique({ where: { id: tenant.id } });
-        if (updatedTenant?.whatsappCrmEnabled) {
-            console.log('✅ Legacy whatsappCrmEnabled flag verified.');
-        } else {
-            console.error('❌ Legacy flag NOT set!');
-        }
+      await subscriptionsService.manageAddon(
+        tenant.id,
+        'ENABLE',
+        whatsappAddon.id,
+      );
+      const updatedTenant = await prisma.tenant.findUnique({
+        where: { id: tenant.id },
+      });
+      if (updatedTenant?.whatsappCrmEnabled) {
+        console.log('✅ Legacy whatsappCrmEnabled flag verified.');
+      } else {
+        console.error('❌ Legacy flag NOT set!');
+      }
     }
 
     // 5. Test manageAddon (DISABLE)
@@ -82,9 +98,9 @@ async function verifyServiceLogic() {
       where: {
         subscriptionId_addonPlanId: {
           subscriptionId: sub.id,
-          addonPlanId: addonPlan.id
-        }
-      }
+          addonPlanId: addonPlan.id,
+        },
+      },
     });
 
     if (disabledAddon?.status === SubscriptionStatus.CANCELLED) {
@@ -92,7 +108,6 @@ async function verifyServiceLogic() {
     } else {
       console.error('❌ DISABLE failed! Status:', disabledAddon?.status);
     }
-
   } catch (e: any) {
     console.error('❌ Error during verification:', e.message);
   } finally {

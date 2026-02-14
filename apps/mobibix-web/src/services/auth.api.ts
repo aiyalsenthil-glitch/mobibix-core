@@ -1,7 +1,38 @@
 /**
- * Backend Auth API Service
+ * = Backend Auth API Service - MobiBix (Next.js with SSR)
+ * =
+ * = Purpose: Handle authentication with backend + manage tokens
+ * =
+ * = Auth Strategy: Cookie + Middleware (SSR-Safe)
+ * =
+ * = Token Storage:
+ * =  ✅ accessToken: HttpOnly cookie (backend-set, not readable by JS)
+ * =  ✅ Verified by: Middleware (src/middleware.ts) on protected routes
+ * =  ✅ Validation: Server-side before rendering (no flash)
+ * =
+ * = Key Features:
+ * =  • credentials: "include" → Browser auto-includes cookies in all requests
+ * =  • Middleware enforces auth before page load (server-side redirect)
+ * =  • HttpOnly flag: Protected against XSS (JS cannot read token)
+ * =  • Works with SSR/SSG: Middleware validates on each request
+ * =
+ * = Flow:
+ * =   1. Client auth (Firebase) → exchangeFirebaseToken()
+ * =   2. Backend validates Firebase token + creates JWT
+ * =   3. Backend sets accessToken cookie (HttpOnly)
+ * =   4. Browser stores cookie automatically
+ * =   5. Middleware checks cookie on next navigation
+ * =   6. Authenticated fetch() includes cookie automatically
+ * =
+ * = Related Files:
+ * =   • src/middleware.ts: Route protection + cookie validation
+ * =   • src/hooks/useAuth.ts: Client-side auth state
+ * =   • src/context/AuthContext.tsx: Global auth context
+ */
+
+/**
  * Handles all communication with the backend auth endpoints
- * Cookie-based auth (httpOnly) + CSRF token header
+ * Cookie-based auth (httpOnly) + automatic credential inclusion
  */
 
 const API_BASE_URL =

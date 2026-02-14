@@ -10,6 +10,7 @@ import { rawBodyMiddleware } from './common/middleware/raw-body.middleware';
 import { AuthModule } from './core/auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './core/auth/guards/jwt-auth.guard';
+import { SubscriptionGuard } from './core/auth/guards/subscription.guard';
 import { CsrfGuard } from './core/auth/guards/csrf.guard';
 import { RolesGuard } from './core/auth/guards/roles.guard';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
@@ -76,21 +77,31 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
   controllers: [AppController],
   providers: [
     AppService,
+    // ════════════════════════════════════════════════════
+    // ✅ SECURITY: APP-LEVEL GUARDS (Applied to ALL endpoints)
+    // ════════════════════════════════════════════════════
+    // Phase 1 Production Blocker #4: Global guard enforcement
+    // All endpoints are protected by default
+    // Use @Public() decorator to opt-out (auth, webhooks, etc.)
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard,
+      useClass: JwtAuthGuard, // ← Validates JWT on all endpoints
     },
     {
       provide: APP_GUARD,
-      useClass: CsrfGuard,
+      useClass: SubscriptionGuard, // ← Enforces subscription limits
     },
     {
       provide: APP_GUARD,
-      useClass: RolesGuard,
+      useClass: CsrfGuard, // ← CSRF protection
     },
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: RolesGuard, // ← Role-based access control
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard, // ← Rate limiting
     },
   ],
 })

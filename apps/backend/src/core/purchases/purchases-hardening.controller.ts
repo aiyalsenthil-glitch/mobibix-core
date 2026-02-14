@@ -14,9 +14,11 @@ import { GSTVerificationService } from './gst-verification.service';
 import { PurchaseAuditService } from './purchase-audit.service';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 
 @Controller('purchases')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class PurchasesHardeningController {
   constructor(

@@ -6,8 +6,10 @@ import {
   SetMetadata,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { ModuleType } from '@prisma/client';
 import { PlanRulesService } from '../plan-rules.service';
 import { WhatsAppFeature } from '../whatsapp-rules';
+import { MODULE_SCOPE_KEY } from '../../auth/decorators/module-scope.decorator';
 
 export const PLAN_FEATURE_KEY = 'plan_feature';
 export const RequirePlanFeature = (feature: string) =>
@@ -33,11 +35,22 @@ export class PlanFeatureGuard implements CanActivate {
 
     if (!tenantId) return true;
 
+    // 🔥 Read module from @ModuleScope decorator
+    const module = this.reflector.getAllAndOverride<ModuleType>(
+      MODULE_SCOPE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (!module) {
+      // If no module scope, skip feature check (backward compatibility)
+      return true;
+    }
+
     // Use centralized Plan Rules Service (Source of Truth: DB)
-    // This handles caching, active subscription checks, and trial restrictions correctly.
     const isEnabled = await this.planRulesService.isFeatureEnabledForTenant(
       tenantId,
       feature as WhatsAppFeature,
+      module, // 🔥 Pass module
     );
 
     if (!isEnabled) {

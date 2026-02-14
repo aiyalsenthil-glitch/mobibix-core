@@ -279,6 +279,23 @@ export class MobileShopReportsService {
     // BUT `getCurrentStock` is single product. We need Bulk.
     // Efficient Approach: Raw Query.
 
+    // ════════════════════════════════════════════════════════════════════
+    // ✅ APPROVED RAW SQL: Stock balance calculation
+    // ════════════════════════════════════════════════════════════════════
+    // Why raw SQL is acceptable here:
+    // 1. Requires conditional SUM with CASE WHEN (not supported by Prisma)
+    // 2. Performance-critical reporting query (needs to be fast)
+    // 3. Properly parameterized with $queryRaw template literals (SQL injection safe)
+    // 4. Type-safe: TypeScript types defined for result
+    //
+    // Alternative would require:
+    // - Fetching all StockLedger entries (potentially millions of rows)
+    // - Computing balances in application code (slow, memory intensive)
+    // - OR making 2 separate Prisma queries (one for IN, one for OUT) then merging
+    //
+    // Decision: Keep raw SQL for performance and simplicity
+    // ════════════════════════════════════════════════════════════════════
+
     const shopFilter = shopId
       ? Prisma.sql`AND "shopId" = ${shopId}`
       : Prisma.empty;
@@ -403,6 +420,24 @@ export class MobileShopReportsService {
 
     // SIMPLE APPROACH (User confirmed "Modernized Approach", implied robust).
     // Let's iterate Invoices and summing costs? No, simplified aggregate.
+
+    // ════════════════════════════════════════════════════════════════════
+    // ✅ APPROVED RAW SQL: Profit calculation with multi-table JOINs
+    // ════════════════════════════════════════════════════════════════════
+    // Why raw SQL is acceptable here:
+    // 1. Requires complex JOINs across 3 tables (StockLedger -> Invoice -> JobCard)
+    // 2. Filters must apply consistently across all tables
+    // 3. Performance-critical reporting query (profit calculations)
+    // 4. Properly parameterized with $queryRaw template literals (SQL injection safe)
+    // 5. Type-safe: TypeScript types defined for result
+    //
+    // Alternative would require:
+    // - Multiple separate Prisma queries with manual JOIN logic
+    // - Loading all records into memory (slow, memory intensive)
+    // - Complex nested includes with filtering
+    //
+    // Decision: Keep raw SQL for accuracy, performance, and maintainability
+    // ════════════════════════════════════════════════════════════════════
 
     // Cost SALE (Linked to Invoice ID)
     const costSaleResult = await this.prisma.$queryRaw<

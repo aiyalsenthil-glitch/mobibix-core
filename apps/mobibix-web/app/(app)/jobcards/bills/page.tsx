@@ -60,7 +60,8 @@ export default function JobCardBillsPage() {
 
   // Get user role for permission checks
   const userRole = authUser?.role;
-  const isOwner = userRole === "OWNER";
+  const isOwner = userRole === "owner";
+
 
   const {
     data: invoicesData,

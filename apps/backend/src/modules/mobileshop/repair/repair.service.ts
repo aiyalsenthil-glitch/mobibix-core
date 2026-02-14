@@ -226,7 +226,7 @@ export class RepairService {
       // Services
       const effectiveServiceGstRate =
         dto.billingMode === BillingMode.WITH_GST
-          ? dto.serviceGstRate ?? 18
+          ? (dto.serviceGstRate ?? 18)
           : 0;
 
       dto.services.forEach((s) => {
@@ -276,33 +276,33 @@ export class RepairService {
 
       const invoice = await this.billingService.createInvoice(options, tx);
 
-    // [Interactive Flow] Determine next status
-    const nextStatus = dto.deliverImmediately ? 'DELIVERED' : 'READY';
+      // [Interactive Flow] Determine next status
+      const nextStatus = dto.deliverImmediately ? 'DELIVERED' : 'READY';
 
-    // Update job status and final cost (atomic with billing)
-    await tx.jobCard.update({
-      where: { id: dto.jobCardId },
-      data: {
+      // Update job status and final cost (atomic with billing)
+      await tx.jobCard.update({
+        where: { id: dto.jobCardId },
+        data: {
+          status: nextStatus,
+          finalCost: invoice.totalAmount, // Paisa
+          updatedAt: new Date(),
+        },
+      });
+
+      return {
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceDate: invoice.invoiceDate,
+        customerName: invoice.customerName,
+        customerPhone: invoice.customerPhone,
+        items: invoice.items,
+        subTotal: invoice.subTotal,
+        gstAmount: invoice.gstAmount,
+        totalAmount: invoice.totalAmount,
+        paymentMode: invoice.paymentMode,
+        billingMode: dto.billingMode,
         status: nextStatus,
-        finalCost: invoice.totalAmount, // Paisa
-        updatedAt: new Date(),
-      },
-    });
-
-    return {
-      id: invoice.id,
-      invoiceNumber: invoice.invoiceNumber,
-      invoiceDate: invoice.invoiceDate,
-      customerName: invoice.customerName,
-      customerPhone: invoice.customerPhone,
-      items: invoice.items,
-      subTotal: invoice.subTotal,
-      gstAmount: invoice.gstAmount,
-      totalAmount: invoice.totalAmount,
-      paymentMode: invoice.paymentMode,
-      billingMode: dto.billingMode,
-      status: nextStatus,
-    };
+      };
     });
   }
 

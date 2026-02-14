@@ -207,7 +207,7 @@ export class WarrantyService {
           jobId: job.id,
           jobNumber: job.jobNumber,
           customerName: job.customerName,
-          warrantyType: (job.warrantyType as string | null) || 'BOTH',
+          warrantyType: job.warrantyType || 'BOTH',
           expiryDate,
           daysRemaining,
           status: warrantyStatus.status,
@@ -230,11 +230,11 @@ export class WarrantyService {
     valid: boolean;
     message: string;
   }> {
-    const job = await this.prisma.jobCard.findUnique({
-      where: { id: jobId },
+    const job = await this.prisma.jobCard.findFirst({
+      where: { id: jobId, tenantId },
     });
 
-    if (!job || job.tenantId !== tenantId) {
+    if (!job) {
       throw new BadRequestException('Job not found');
     }
 
@@ -265,7 +265,7 @@ export class WarrantyService {
     }
 
     // Check warranty type coverage
-    const jobWarrantyType = (job.warrantyType as string | null) || 'BOTH';
+    const jobWarrantyType = job.warrantyType || 'BOTH';
     if (jobWarrantyType === 'PARTS' && claimType === 'LABOR') {
       return {
         valid: false,

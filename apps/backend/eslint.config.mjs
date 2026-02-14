@@ -30,6 +30,20 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
       'prettier/prettier': ['error', { endOfLine: 'auto' }],
+      // ✅ SECURITY FIX: Ban unsafe SQL queries (Phase 1 Production Blocker #1)
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.property.name='$executeRawUnsafe']",
+          message:
+            '❌ SECURITY: $executeRawUnsafe is banned due to SQL injection risk. Use $executeRaw with template literals instead: prisma.$executeRaw`...`',
+        },
+        {
+          selector: "CallExpression[callee.property.name='$queryRawUnsafe']",
+          message:
+            '⚠️  SECURITY: $queryRawUnsafe is banned due to SQL injection risk. Use $queryRaw with template literals instead: prisma.$queryRaw`...`',
+        },
+      ],
     },
   },
 );

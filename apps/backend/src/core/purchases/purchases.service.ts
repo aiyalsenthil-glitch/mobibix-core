@@ -244,9 +244,12 @@ export class PurchasesService {
     id: string,
     dto: UpdatePurchaseDto,
   ): Promise<PurchaseResponseDto> {
-    const purchase = await this.prisma.purchase.findUnique({ where: { id } });
+    // SECURITY FIX: Use composite key to prevent cross-tenant access
+    const purchase = await this.prisma.purchase.findFirst({
+      where: { id, tenantId },
+    });
 
-    if (!purchase || purchase.tenantId !== tenantId) {
+    if (!purchase) {
       throw new NotFoundException(`Purchase with ID "${id}" not found`);
     }
 
@@ -289,9 +292,12 @@ export class PurchasesService {
    * Cancel a purchase (soft delete)
    */
   async remove(tenantId: string, id: string): Promise<PurchaseResponseDto> {
-    const purchase = await this.prisma.purchase.findUnique({ where: { id } });
+    // SECURITY FIX: Use composite key to prevent cross-tenant access
+    const purchase = await this.prisma.purchase.findFirst({
+      where: { id, tenantId },
+    });
 
-    if (!purchase || purchase.tenantId !== tenantId) {
+    if (!purchase) {
       throw new NotFoundException(`Purchase with ID "${id}" not found`);
     }
 

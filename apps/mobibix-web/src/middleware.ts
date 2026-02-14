@@ -1,35 +1,68 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+/**
+ * = MIDDLEWARE: Authentication & Route Protection
+ * =
+ * = Purpose: Enforce authentication on protected routes (server-side)
+ * = Strategy: Check for accessToken cookie (set by backend on auth success)
+ * =
+ * = Benefits:
+ * =  ✅ Server-side validation: No flash of wrong content
+ * =  ✅ HttpOnly cookies: More secure than localStorage
+ * =  ✅ Works with SSR/SSG: Frontend can render auth-dependent content
+ * =  ✅ Middleware runs before page loads: Faster redirects
+ */
 
 // 1. Specify protected and public routes
-const protectedRoutes = ['/dashboard', '/inventory', '/crm', '/settings'];
-const publicRoutes = ['/signin', '/signup', '/', '/onboarding'];
+const protectedRoutes = [
+  "/dashboard",
+  "/inventory",
+  "/crm",
+  "/sales",
+  "/purchases",
+  "/settings",
+  "/profile",
+  "/reports",
+  "/shops",
+  "/staff",
+  "/customers",
+  "/products",
+];
+const publicRoutes = ["/signin", "/signup", "/", "/onboarding"];
 
 export function middleware(request: NextRequest) {
   // 2. Check if the current route is protected or public
   const path = request.nextUrl.pathname;
-  const isProtectedRoute = protectedRoutes.some((route) => path.startsWith(route));
+  const isProtectedRoute = protectedRoutes.some((route) =>
+    path.startsWith(route),
+  );
   const isPublicRoute = publicRoutes.includes(path);
 
-  // 3. Decrypt the session from the cookie
-  // NOTE: Currently tokens are in localStorage, so this middleware 
-  // cannot fully validate auth. This is a placeholder for future cookie migration.
-  // The client-side 'authGuard' and 'layout.tsx' handle the actual protection.
-  // const cookie = cookies().get('session')?.value;
-  // const session = await decrypt(cookie);
-
-  // 4. Redirect based on session (Future implementation)
-  /*
-  if (isProtectedRoute && !session?.userId) {
-    return NextResponse.redirect(new URL('/signin', request.nextUrl));
+  // 3. If public route, allow access without auth
+  if (isPublicRoute) {
+    return NextResponse.next();
   }
-  */
 
-  // 5. Allow access
+  // 4. Protected route: Check for accessToken cookie
+  //    ✅ Cookie is set by backend on successful auth exchange
+  //    ✅ Backend sets HttpOnly flag = cannot be read by JavaScript
+  //    ✅ Browser automatically includes in all same-origin requests
+  const accessToken = request.cookies.get("accessToken")?.value;
+
+  if (isProtectedRoute && !accessToken) {
+    // 5. Redirect to signin (server-side, prevents flash of authenticated content)
+    const url = request.nextUrl.clone();
+    url.pathname = "/signin";
+    url.searchParams.set("returnUrl", path); // For post-login redirect
+    return NextResponse.redirect(url);
+  }
+
+  // 6. Allow access
   return NextResponse.next();
 }
 
 // Routes Middleware should not run on
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|.*\\.png$).*)'],
+  matcher: ["/((?!api|_next/static|_next/image|.*\\.png$).*)"],
 };

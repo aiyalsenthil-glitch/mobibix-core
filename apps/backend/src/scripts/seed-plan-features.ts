@@ -37,15 +37,16 @@ async function main() {
   };
 
   console.log('--- Removing duplicate PlanFeature rows (if any) ---');
-  await prisma.$executeRawUnsafe(`
+  // ✅ SECURITY FIX: Use $executeRaw with template literal (safe)
+  await prisma.$executeRaw`
     WITH ranked AS (
       SELECT id,
              ROW_NUMBER() OVER (PARTITION BY "planId", "feature" ORDER BY id) AS rn
       FROM "PlanFeature"
     )
     DELETE FROM "PlanFeature"
-    WHERE id IN (SELECT id FROM ranked WHERE rn > 1);
-  `);
+    WHERE id IN (SELECT id FROM ranked WHERE rn > 1)
+  `;
 
   const plans = await prisma.plan.findMany({
     where: {

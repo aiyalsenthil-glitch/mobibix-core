@@ -8,8 +8,10 @@ import {
   UseGuards,
   Res,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
+import { SkipSubscriptionCheck } from './decorators/skip-subscription-check.decorator';
 import { GoogleExchangeDto } from './dto/google-exchange.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { FirebaseAdminService } from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
@@ -21,6 +23,7 @@ import type { Response, Request } from 'express';
 import { randomBytes } from 'crypto';
 
 @Controller('auth')
+@SkipSubscriptionCheck() // Auth endpoints should not check subscription
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -67,6 +70,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute - prevent brute force
   @Post('REMOVED_AUTH_PROVIDER')
   async loginWithFirebase(
     @Body() body: { idToken?: string; tenantCode?: string },
@@ -108,6 +112,7 @@ export class AuthController {
     return { ...result, csrfToken };
   }
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute - prevent brute force
   @Post('google/exchange')
   async exchangeToken(
     @Body() dto: GoogleExchangeDto,
@@ -142,6 +147,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute - allow more for token refresh
   @Post('refresh')
   async refreshToken(
     @Body() dto: RefreshTokenDto,

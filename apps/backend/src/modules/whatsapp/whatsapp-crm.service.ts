@@ -12,10 +12,11 @@ export class WhatsAppCrmService {
 
   async getStatus(tenantId: string) {
     // 1. Check for standalone WhatsApp CRM subscription
-    let subscription = await this.subscriptionsService.getCurrentActiveSubscription(
-      tenantId,
-      ModuleType.WHATSAPP_CRM,
-    );
+    let subscription =
+      await this.subscriptionsService.getCurrentActiveSubscription(
+        tenantId,
+        ModuleType.WHATSAPP_CRM,
+      );
 
     // 2. If not found, check if primary subscription has WhatsApp addon
     if (!subscription) {
@@ -24,17 +25,23 @@ export class WhatsAppCrmService {
         select: { tenantType: true },
       });
       const type = tenant?.tenantType?.toUpperCase();
-      const primaryModule = (type === 'BUSINESS' || type === 'MOBILE_SHOP') ? ModuleType.MOBILE_SHOP : ModuleType.GYM;
-      
-      const primarySub = await this.subscriptionsService.getCurrentActiveSubscription(
-        tenantId,
-        primaryModule,
-      );
+      const primaryModule =
+        type === 'BUSINESS' || type === 'MOBILE_SHOP'
+          ? ModuleType.MOBILE_SHOP
+          : ModuleType.GYM;
+
+      const primarySub =
+        await this.subscriptionsService.getCurrentActiveSubscription(
+          tenantId,
+          primaryModule,
+        );
 
       // Check if primary sub has a WhatsApp CRM addon
       if (primarySub?.addons) {
         const whatsappAddon = primarySub.addons.find(
-          a => a.addonPlan.module === ModuleType.WHATSAPP_CRM && a.status === 'ACTIVE'
+          (a) =>
+            a.addonPlan.module === ModuleType.WHATSAPP_CRM &&
+            a.status === 'ACTIVE',
         );
         if (whatsappAddon) {
           subscription = primarySub; // Treat as having access

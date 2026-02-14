@@ -26,6 +26,7 @@ import {
 } from '@prisma/client';
 import { PlanPriceService } from '../plan-price.service';
 import { addMonths, addYears } from 'date-fns';
+import { SOFT_GRACE_PERIOD_DAYS } from '../grace-period.constants';
 
 // ============================================================================
 // PHASE 1 INTERFACES
@@ -566,7 +567,7 @@ export class SubscriptionsService {
 
     // ⚡ Invalidate cache
     this.cacheService.delete(
-      `subscription:${parentSub!.tenantId}:${parentSub!.module}`,
+      `subscription:${parentSub.tenantId}:${parentSub.module}`,
     );
 
     return addon;
@@ -720,26 +721,47 @@ export class SubscriptionsService {
       });
     }
 
-    // 2️⃣ Prefer ACTIVE over TRIAL
-    const active = await this.prisma.tenantSubscription.findFirst({
+    // 2️⃣ Priority 1: ACTIVE (including grace period) or PAST_DUE
+    const activeOrPastDue = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
         module,
-        status: SubscriptionStatus.ACTIVE,
-        startDate: { lte: now },
-        endDate: { gt: now },
+        OR: [
+          {
+            status: SubscriptionStatus.ACTIVE,
+            startDate: { lte: now },
+            // endDate check removed here to allow guards to handle grace period logic
+            // but we'll filter for reasonable historical range to avoid ancient expired subs
+            endDate: {
+              gt: new Date(
+                now.getTime() - SOFT_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000,
+              ),
+            },
+          },
+          {
+            status: SubscriptionStatus.PAST_DUE,
+            startDate: { lte: now },
+          },
+        ],
       },
       include: {
         plan: { include: { planFeatures: true } },
         addons: {
-          where: { status: SubscriptionStatus.ACTIVE },
+          where: {
+            status: {
+              in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE],
+            },
+          },
           include: { addonPlan: { include: { planFeatures: true } } },
         },
       },
-      orderBy: { startDate: 'desc' },
+      orderBy: [
+        { status: 'asc' }, // ACTIVE before PAST_DUE
+        { startDate: 'desc' },
+      ],
     });
 
-    if (active) return active;
+    if (activeOrPastDue) return activeOrPastDue;
 
     // 3️⃣ Fallback to TRIAL
     return this.prisma.tenantSubscription.findFirst({

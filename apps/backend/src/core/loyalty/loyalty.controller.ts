@@ -10,6 +10,10 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { LoyaltyService } from './loyalty.service';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 interface ValidateRedemptionDto {
   customerId: string;
@@ -38,7 +42,8 @@ interface UpdateLoyaltyConfigDto {
 }
 
 @Controller('loyalty')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class LoyaltyController {
   constructor(private loyaltyService: LoyaltyService) {}
 

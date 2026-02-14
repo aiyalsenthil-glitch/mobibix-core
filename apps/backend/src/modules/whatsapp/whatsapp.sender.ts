@@ -84,7 +84,7 @@ export class WhatsAppSender {
     const metadata = options?.metadata ?? undefined;
     const forceWhatsAppNumberId = options?.whatsAppNumberId;
     const feature = notificationType as WhatsAppFeature;
-    
+
     // Declare early for closure access in logFailure
     let phoneNumberConfig: any;
 
@@ -95,7 +95,7 @@ export class WhatsAppSender {
       if (!logId) return;
 
       await this.prisma.whatsAppLog.update({
-        where: { id: logId },
+        where: { id: logId, tenantId },
         data: {
           status,
           error: data?.error ?? undefined,
@@ -196,39 +196,46 @@ export class WhatsAppSender {
     // ─────────────────────────────
     // 2️⃣ Get Dynamic Phone Number from DB
     // ─────────────────────────────
-    
+
     // 2a. Resolve phone number
     // PRIORITY: Use forced ID if provided (e.g. reply to specific number)
     try {
-        if (forceWhatsAppNumberId) {
-            phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberById(forceWhatsAppNumberId);
-            if (!phoneNumberConfig) {
-                 return logFailure(`Provided WhatsApp Number ID ${forceWhatsAppNumberId} not found or disabled.`);
-            }
-        } else {
-            // FALLBACK: Use Purpose & Routing Logic
-            const purpose = this.mapFeatureToPurpose(feature);
-            
-            // 2b. Dual-Track Routing Check (Only relevant if not forcing ID)
-             // For manual text, we treat the type as 'MANUAL' which is NOT in TRACK_A_ALLOWED_TYPES
-            const routing = await this.routingService.resolveTrack(tenantId, 'MANUAL');
-            
-            if (!routing.allowed) {
-                return logFailure(
-                    'Free-text messaging requires WHATSAPP_CRM add-on and a tenant-owned phone number.',
-                    true,
-                    'Free-text blocked by routing (Track A)',
-                );
-            }
-
-            // Pass routing track to ensure we don't fallback to system default if on Track B
-            phoneNumberConfig =
-                await this.phoneNumbersService.getPhoneNumberForPurpose(
-                tenantId,
-                purpose,
-                routing.track,
-                );
+      if (forceWhatsAppNumberId) {
+        phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberById(
+          forceWhatsAppNumberId,
+        );
+        if (!phoneNumberConfig) {
+          return logFailure(
+            `Provided WhatsApp Number ID ${forceWhatsAppNumberId} not found or disabled.`,
+          );
         }
+      } else {
+        // FALLBACK: Use Purpose & Routing Logic
+        const purpose = this.mapFeatureToPurpose(feature);
+
+        // 2b. Dual-Track Routing Check (Only relevant if not forcing ID)
+        // For manual text, we treat the type as 'MANUAL' which is NOT in TRACK_A_ALLOWED_TYPES
+        const routing = await this.routingService.resolveTrack(
+          tenantId,
+          'MANUAL',
+        );
+
+        if (!routing.allowed) {
+          return logFailure(
+            'Free-text messaging requires WHATSAPP_CRM add-on and a tenant-owned phone number.',
+            true,
+            'Free-text blocked by routing (Track A)',
+          );
+        }
+
+        // Pass routing track to ensure we don't fallback to system default if on Track B
+        phoneNumberConfig =
+          await this.phoneNumbersService.getPhoneNumberForPurpose(
+            tenantId,
+            purpose,
+            routing.track,
+          );
+      }
     } catch (error) {
       return logFailure(
         `No active phone number found: ${error.message}`,
@@ -247,11 +254,11 @@ export class WhatsAppSender {
 
     // 🔒 GUARDRAIL 3: Setup Status Check (Must be ACTIVE)
     if (phoneNumberConfig.setupStatus !== 'ACTIVE') {
-        return logFailure(
-          `WhatsApp setup is pending or failed (Status: ${phoneNumberConfig.setupStatus})`,
-          true,
-          'Setup not active',
-        );
+      return logFailure(
+        `WhatsApp setup is pending or failed (Status: ${phoneNumberConfig.setupStatus})`,
+        true,
+        'Setup not active',
+      );
     }
 
     // ─────────────────────────────
@@ -294,7 +301,8 @@ export class WhatsAppSender {
     // 7️⃣ SEND WHATSAPP (Cloud API) - Using Dynamic Phone Number ID + Isolated Token
     // ─────────────────────────────
     const url = `https://graph.facebook.com/${this.apiVersion}/${phoneNumberConfig.phoneNumberId}/messages`;
-    const resolvedToken = await this.tokenService.resolveToken(phoneNumberConfig);
+    const resolvedToken =
+      await this.tokenService.resolveToken(phoneNumberConfig);
 
     try {
       const response = await axios.post(
@@ -447,18 +455,21 @@ export class WhatsAppSender {
     // 2. Resolve Phone Number (DEFAULT purpose for manual replies)
     let phoneNumberConfig;
     try {
-        if (whatsAppNumberId) {
-            phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberById(whatsAppNumberId);
-             if (!phoneNumberConfig) {
-                 throw new Error(`Provided WhatsApp Number ID ${whatsAppNumberId} not found or disabled.`);
-            }
-        } else {
-             phoneNumberConfig =
-                await this.phoneNumbersService.getPhoneNumberForPurpose(
-                tenantId,
-                'DEFAULT',
-                );
+      if (whatsAppNumberId) {
+        phoneNumberConfig =
+          await this.phoneNumbersService.getPhoneNumberById(whatsAppNumberId);
+        if (!phoneNumberConfig) {
+          throw new Error(
+            `Provided WhatsApp Number ID ${whatsAppNumberId} not found or disabled.`,
+          );
         }
+      } else {
+        phoneNumberConfig =
+          await this.phoneNumbersService.getPhoneNumberForPurpose(
+            tenantId,
+            'DEFAULT',
+          );
+      }
     } catch (e) {
       this.logger.log({
         tenantId,
@@ -486,7 +497,8 @@ export class WhatsAppSender {
     }
 
     const url = `https://graph.facebook.com/${this.apiVersion}/${phoneNumberConfig.phoneNumberId}/messages`;
-    const resolvedToken = await this.tokenService.resolveToken(phoneNumberConfig);
+    const resolvedToken =
+      await this.tokenService.resolveToken(phoneNumberConfig);
 
     try {
       const response = await axios.post(

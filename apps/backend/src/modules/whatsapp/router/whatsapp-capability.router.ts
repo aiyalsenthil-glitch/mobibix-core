@@ -42,10 +42,10 @@ export class WhatsAppCapabilityRouter {
         select: { tenantType: true },
       });
       if (tenant?.tenantType === 'MOBILE_SHOP') {
-         // Even on their own number, Mobile Shop might want the bot?
-         // For now, let's assume Tenant Number = Full Control = CRM (Gym Pilot behavior)
-         // But preserving legacy check just in case:
-         // capability = WhatsAppCapability.RETAIL_DEMO; // UNCOMMENT IF THEY NEED BOT ON OWN NUMBER
+        // Even on their own number, Mobile Shop might want the bot?
+        // For now, let's assume Tenant Number = Full Control = CRM (Gym Pilot behavior)
+        // But preserving legacy check just in case:
+        // capability = WhatsAppCapability.RETAIL_DEMO; // UNCOMMENT IF THEY NEED BOT ON OWN NUMBER
       }
     }
 

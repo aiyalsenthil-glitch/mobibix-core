@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, ModuleType } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const connectionString = process.env.DATABASE_URL;
@@ -63,12 +63,13 @@ async function resolveModuleSystemReminderNumberId(tenantId: string) {
     select: { tenantType: true },
   });
 
-  const moduleType = tenant?.tenantType ?? 'GYM';
+  const moduleType = (tenant?.tenantType as ModuleType) ?? ModuleType.GYM;
 
-  const modulePhone = await prisma.whatsAppPhoneNumberModule.findFirst({
+  const sharedPhone = await prisma.whatsAppNumber.findFirst({
     where: {
+      tenantId: null,
       moduleType,
-      isActive: true,
+      isEnabled: true,
       OR: [
         { purpose: 'REMINDER' },
         { isDefault: true },
@@ -76,36 +77,10 @@ async function resolveModuleSystemReminderNumberId(tenantId: string) {
       ],
     },
     orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
-  });
-
-  if (!modulePhone) return null;
-
-  const systemNumber = await prisma.whatsAppNumber.upsert({
-    where: { phoneNumberId: modulePhone.phoneNumberId },
-    update: {
-      isSystem: true,
-      isEnabled: true,
-      phoneNumber: modulePhone.phoneNumber,
-      displayNumber: modulePhone.phoneNumber,
-      wabaId: modulePhone.wabaId,
-      purpose: modulePhone.purpose,
-      isDefault: true,
-    },
-    create: {
-      tenantId: null,
-      isSystem: true,
-      isEnabled: true,
-      phoneNumberId: modulePhone.phoneNumberId,
-      phoneNumber: modulePhone.phoneNumber,
-      displayNumber: modulePhone.phoneNumber,
-      wabaId: modulePhone.wabaId,
-      purpose: modulePhone.purpose,
-      isDefault: true,
-    },
     select: { id: true },
   });
 
-  return systemNumber.id;
+  return sharedPhone?.id ?? null;
 }
 
 async function backfillTenantReminderNumbers() {

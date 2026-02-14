@@ -14,6 +14,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../../auth/guards/tenant.guard';
 import { SubscriptionsService } from './subscriptions.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -32,7 +33,7 @@ import {
 } from './dto/downgrade.dto';
 import { Roles } from '../../auth/decorators/roles.decorator';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 @Controller('billing/subscription')
 export class SubscriptionsController {
@@ -44,9 +45,7 @@ export class SubscriptionsController {
   ) {}
   @Get('current')
   async getCurrent(@Req() req: any, @Query('module') module?: ModuleType) {
-    if (!req.user || !req.user.tenantId) {
-      throw new UnauthorizedException('Authentication required');
-    }
+    const tenantId = req.user.tenantId;
 
     // 1️⃣ Resolve module and fetch initial data in parallel
     const [tenant, legacyWhatsappSub] = await Promise.all([
@@ -76,11 +75,11 @@ export class SubscriptionsController {
     const [sub, upcoming] = await Promise.all([
       this.subscriptionsService.getCurrentActiveSubscription(
         req.user.tenantId,
-        resolvedModule as ModuleType,
+        resolvedModule,
       ),
       this.subscriptionsService.getUpcomingSubscription(
         req.user.tenantId,
-        resolvedModule as ModuleType,
+        resolvedModule,
       ),
     ]);
 
@@ -204,9 +203,7 @@ export class SubscriptionsController {
     @Body() dto: ToggleAutoRenewDto,
     @Query('module') module?: ModuleType,
   ) {
-    if (!req.user || !req.user.tenantId) {
-      throw new UnauthorizedException('Authentication required');
-    }
+    const tenantId = req.user.tenantId;
 
     let resolvedModule = module;
     if (!resolvedModule) {
@@ -255,9 +252,7 @@ export class SubscriptionsController {
     },
     @Query('module') module?: ModuleType,
   ) {
-    if (!req.user || !req.user.tenantId) {
-      throw new UnauthorizedException('Authentication required');
-    }
+    const tenantId = req.user.tenantId;
 
     const { newPlanId, newBillingCycle } = body;
 
@@ -342,9 +337,7 @@ export class SubscriptionsController {
     @Body() body: DowngradeSubscriptionDto,
     @Query('module') module?: ModuleType,
   ) {
-    if (!req.user || !req.user.tenantId) {
-      throw new UnauthorizedException('Authentication required');
-    }
+    const tenantId = req.user.tenantId;
 
     const { newPlanId, newBillingCycle } = body;
 
@@ -408,9 +401,7 @@ export class SubscriptionsController {
     @Body() dto: AddSubscriptionAddonDto,
     @Query('module') module?: ModuleType,
   ) {
-    if (!req.user || !req.user.tenantId) {
-      throw new UnauthorizedException('Authentication required');
-    }
+    const tenantId = req.user.tenantId;
 
     // 1. Resolve module
     let resolvedModule = module;
@@ -454,9 +445,7 @@ export class SubscriptionsController {
     @Req() req: any,
     @Query() query: DowngradeCheckQueryDto,
   ) {
-    if (!req.user || !req.user.tenantId) {
-      throw new UnauthorizedException('Authentication required');
-    }
+    const tenantId = req.user.tenantId;
 
     const targetPlanId = query.targetPlan;
 
@@ -485,9 +474,7 @@ export class SubscriptionsController {
     @Req() req: any,
     @Body() body: { planId: string; billingCycle?: BillingCycle },
   ) {
-    if (!req.user || !req.user.tenantId) {
-      throw new UnauthorizedException('Authentication required');
-    }
+    const tenantId = req.user.tenantId;
 
     const { planId, billingCycle = BillingCycle.MONTHLY } = body;
     if (!planId) throw new BadRequestException('planId is required');

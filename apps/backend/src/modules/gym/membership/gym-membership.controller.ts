@@ -5,9 +5,11 @@ import { Permission } from '../../../core/auth/permissions.enum';
 import { GymMembershipService } from './gym-membership.service';
 import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
 
 @Controller('gym/memberships')
+@ModuleScope(ModuleType.GYM)
 @UseGuards(JwtAuthGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class GymMembershipController {

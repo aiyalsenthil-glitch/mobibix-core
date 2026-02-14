@@ -43,7 +43,7 @@ export class ReceiptsService {
     // ✅ VALIDATION: If linkedInvoiceId provided, verify it exists
     if (createReceiptDto.linkedInvoiceId) {
       const invoice = await this.prisma.invoice.findUnique({
-        where: { id: createReceiptDto.linkedInvoiceId },
+        where: { id: createReceiptDto.linkedInvoiceId, tenantId },
       });
       if (!invoice) {
         throw new BadRequestException('Linked invoice does not exist');
@@ -58,7 +58,7 @@ export class ReceiptsService {
     // ✅ VALIDATION: If linkedJobId provided, verify it exists
     if (createReceiptDto.linkedJobId) {
       const job = await this.prisma.jobCard.findUnique({
-        where: { id: createReceiptDto.linkedJobId },
+        where: { id: createReceiptDto.linkedJobId, tenantId },
       });
       if (!job) {
         throw new BadRequestException('Linked job does not exist');
@@ -230,7 +230,7 @@ export class ReceiptsService {
     reason: string,
   ): Promise<ReceiptEntity> {
     const receipt = await this.prisma.receipt.findUnique({
-      where: { id: receiptId },
+      where: { id: receiptId, tenantId },
     });
 
     if (!receipt) {
@@ -364,7 +364,7 @@ export class ReceiptsService {
     await this.prisma.$transaction(async (tx) => {
       // Get current invoice
       const invoice = await tx.invoice.findUnique({
-        where: { id: invoiceId },
+        where: { id: invoiceId, tenantId },
       });
 
       if (!invoice || invoice.tenantId !== tenantId) {

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -154,7 +154,7 @@ export class ProductsService {
     });
 
     if (!shop) {
-      throw new Error('Shop not found or access denied');
+      throw new NotFoundException('Shop not found');
     }
 
     const results = {
@@ -319,7 +319,7 @@ export class ProductsService {
     });
 
     if (!shop) {
-      throw new Error('Shop not found or access denied');
+      throw new NotFoundException('Shop not found');
     }
 
     // Fetch products with stock entries if needed

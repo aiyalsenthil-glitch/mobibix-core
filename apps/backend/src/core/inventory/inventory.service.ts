@@ -3,6 +3,7 @@ import {
   ConflictException,
   InternalServerErrorException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ProductType as PrismaProductType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -30,7 +31,9 @@ export class InventoryService {
     );
     // Name is required for creation
     if (!dto.name || !dto.shopId) {
-      throw new Error('Name and shopId are required for creating a product');
+      throw new BadRequestException(
+        'Name and shopId are required for creating a product',
+      );
     }
 
     const normalizedType: PrismaProductType = (() => {
@@ -104,7 +107,7 @@ export class InventoryService {
     console.log(`[DEBUG] Found product: ${JSON.stringify(existing)}`);
 
     if (!existing) {
-      throw new Error('Product not found');
+      throw new NotFoundException('Product not found');
     }
 
     const normalizedType: PrismaProductType | undefined = dto.type

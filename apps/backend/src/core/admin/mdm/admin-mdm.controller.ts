@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -42,21 +54,21 @@ export class AdminMdmController {
         take: limitNum,
         orderBy: { createdAt: 'desc' },
         include: {
-            category: true,
-            hsn: true
-        }
+          category: true,
+          hsn: true,
+        },
       }),
     ]);
 
     return {
-      data: products.map(p => ({
-          id: p.id,
-          name: p.name,
-          category: p.category.name,
-          categoryId: p.categoryId,
-          hsnCode: p.hsn.code,
-          taxRate: p.hsn.taxRate,
-          isActive: p.isActive,
+      data: products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category.name,
+        categoryId: p.categoryId,
+        hsnCode: p.hsn.code,
+        taxRate: p.hsn.taxRate,
+        isActive: p.isActive,
       })),
       meta: {
         total,
@@ -75,26 +87,29 @@ export class AdminMdmController {
     // 1. Find/Create Category
     // @ts-ignore
     const category = await this.prisma.productCategory.upsert({
-        where: { name: dto.category },
-        update: {},
-        create: { name: dto.category }
+      where: { name: dto.category },
+      update: {},
+      create: { name: dto.category },
     });
 
     // 2. Find HSN
     // @ts-ignore
     const hsn = await this.prisma.hSNCode.findUnique({
-        where: { code: dto.hsnCode }
+      where: { code: dto.hsnCode },
     });
-    if (!hsn) throw new NotFoundException(`HSN Code ${dto.hsnCode} not found. Please create it first.`);
+    if (!hsn)
+      throw new NotFoundException(
+        `HSN Code ${dto.hsnCode} not found. Please create it first.`,
+      );
 
     // 3. Upsert Product
     // @ts-ignore
     return this.prisma.globalProduct.upsert({
       where: {
         name_categoryId: {
-            name: dto.name,
-            categoryId: category.id
-        }
+          name: dto.name,
+          categoryId: category.id,
+        },
       },
       update: {
         hsnId: hsn.id,
@@ -106,41 +121,42 @@ export class AdminMdmController {
         hsnId: hsn.id,
         isActive: dto.isActive ?? true,
       },
-      include: { category: true, hsn: true }
+      include: { category: true, hsn: true },
     });
   }
 
   @Put('products/:id')
   async updateProduct(@Param('id') id: string, @Body() dto: any) {
     const data: any = {
-        name: dto.name,
-        isActive: dto.isActive,
+      name: dto.name,
+      isActive: dto.isActive,
     };
 
     if (dto.category) {
-        // @ts-ignore
-        const category = await this.prisma.productCategory.upsert({
-            where: { name: dto.category },
-            update: {},
-            create: { name: dto.category }
-        });
-        data.categoryId = category.id;
+      // @ts-ignore
+      const category = await this.prisma.productCategory.upsert({
+        where: { name: dto.category },
+        update: {},
+        create: { name: dto.category },
+      });
+      data.categoryId = category.id;
     }
 
     if (dto.hsnCode) {
-        // @ts-ignore
-        const hsn = await this.prisma.hSNCode.findUnique({
-            where: { code: dto.hsnCode }
-        });
-        if (!hsn) throw new NotFoundException(`HSN Code ${dto.hsnCode} not found`);
-        data.hsnId = hsn.id;
+      // @ts-ignore
+      const hsn = await this.prisma.hSNCode.findUnique({
+        where: { code: dto.hsnCode },
+      });
+      if (!hsn)
+        throw new NotFoundException(`HSN Code ${dto.hsnCode} not found`);
+      data.hsnId = hsn.id;
     }
 
     // @ts-ignore
     return this.prisma.globalProduct.update({
       where: { id },
       data,
-      include: { category: true, hsn: true }
+      include: { category: true, hsn: true },
     });
   }
 
@@ -149,9 +165,7 @@ export class AdminMdmController {
   // ===============================
 
   @Get('hsn')
-  async listHSN(
-    @Query('search') search?: string,
-  ) {
+  async listHSN(@Query('search') search?: string) {
     const where: any = {};
     if (search) {
       where.OR = [
@@ -170,7 +184,8 @@ export class AdminMdmController {
 
   @Post('hsn')
   async upsertHSN(@Body() dto: any) {
-    if (!dto.code || dto.taxRate === undefined) throw new BadRequestException('Code and Tax Rate required');
+    if (!dto.code || dto.taxRate === undefined)
+      throw new BadRequestException('Code and Tax Rate required');
 
     // @ts-ignore
     return this.prisma.hSNCode.upsert({

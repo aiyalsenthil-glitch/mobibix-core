@@ -60,7 +60,9 @@ export function decrypt(encryptedData: string): string {
   const parts = encryptedData.split(':');
 
   if (parts.length !== 3) {
-    throw new Error('Invalid encrypted data format. Expected iv:authTag:ciphertext');
+    throw new Error(
+      'Invalid encrypted data format. Expected iv:authTag:ciphertext',
+    );
   }
 
   const iv = Buffer.from(parts[0], 'hex');
@@ -71,7 +73,9 @@ export function decrypt(encryptedData: string): string {
     throw new Error(`Invalid IV length: ${iv.length}, expected ${IV_LENGTH}`);
   }
   if (authTag.length !== AUTH_TAG_LENGTH) {
-    throw new Error(`Invalid auth tag length: ${authTag.length}, expected ${AUTH_TAG_LENGTH}`);
+    throw new Error(
+      `Invalid auth tag length: ${authTag.length}, expected ${AUTH_TAG_LENGTH}`,
+    );
   }
 
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);

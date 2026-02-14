@@ -13,8 +13,15 @@ import { PerformanceInterceptor } from './common/interceptors/performance.interc
 import { WhatsAppConfigValidator } from './modules/whatsapp/whatsapp.config-validator';
 import { PrismaService } from './core/prisma/prisma.service';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { validateEnv } from './config/env.validation';
 
 async function bootstrap() {
+  /**
+   * 0️⃣ SECURITY FIX: Validate environment variables FIRST
+   * ✅ Phase 1 Production Blocker #3
+   * Fail fast if critical env vars are missing
+   */
+  validateEnv();
   /**
    * 1️⃣ Create raw Express server
    */

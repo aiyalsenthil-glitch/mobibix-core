@@ -12,13 +12,20 @@ import { CurrentUser } from '../../../core/auth/decorators/current-user.decorato
 import { ReceiptsService } from '../../../core/receipts/receipts.service';
 import { CreateReceiptDto } from '../../../core/receipts/dto/create-receipt.dto';
 import { ReceiptEntity } from '../../../core/receipts/entities/receipt.entity';
-import { PaymentMode, ReceiptStatus, UserRole } from '@prisma/client';
+import {
+  PaymentMode,
+  ReceiptStatus,
+  UserRole,
+  ModuleType,
+} from '@prisma/client';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
+import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
 
 @Controller('receipts')
+@ModuleScope(ModuleType.MOBILE_SHOP)
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class ReceiptsController extends TenantScopedController {

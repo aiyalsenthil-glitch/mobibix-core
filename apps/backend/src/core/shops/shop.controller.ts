@@ -21,10 +21,11 @@ import {
   DocumentType,
 } from './dto/update-document-setting.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { UserRole } from '@prisma/client';
 
 @Controller('mobileshop/shops')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class ShopController {
   constructor(private readonly shopService: ShopService) {}

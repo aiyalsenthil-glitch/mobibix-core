@@ -6,9 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export class UsageSnapshotService {
   private readonly logger = new Logger(UsageSnapshotService.name);
 
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * Run daily at 1:00 AM

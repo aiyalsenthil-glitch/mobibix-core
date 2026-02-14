@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, ModuleType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -16,50 +16,61 @@ async function main() {
 
   if (!tenant) return;
 
-  // 2. Check Tenant Phone Numbers
-  const tenantPhones = await prisma.whatsAppNumber.findMany({
-    where: { tenantId },
-  });
-  console.log('Tenant Phone Numbers:', tenantPhones);
-
-  // 3. Check Module Phone Numbers
-  const moduleType =
-    tenant.tenantType === 'MOBILE_SHOP'
-      ? 'MOBILE_SHOP'
-      : tenant.tenantType || 'GYM';
+  // 2. Check All Relevant Phone Numbers (Tenant-specific OR Module-shared)
+  const moduleType = (tenant.tenantType as ModuleType) ?? ModuleType.GYM;
   console.log(
-    `Checking Module Type: ${moduleType} (Raw: ${tenant.tenantType})`,
+    `Checking All Numbers for Tenant: ${tenantId} and Module: ${moduleType}`,
   );
 
-  const modulePhones = await prisma.whatsAppPhoneNumberModule.findMany({
-    where: { moduleType: moduleType as any },
+  const allPhones = await prisma.whatsAppNumber.findMany({
+    where: {
+      OR: [{ tenantId }, { tenantId: null, moduleType: moduleType }],
+    },
   });
-  console.log('Module Phone Numbers:', modulePhones);
+  console.log(
+    'Phone Numbers Found:',
+    allPhones.map((p) => ({
+      id: p.id,
+      tenant: p.tenantId ? 'SPECIFIC' : 'SHARED',
+      phone: p.phoneNumber,
+      purpose: p.purpose,
+      isDefault: p.isDefault,
+      isEnabled: p.isEnabled,
+    })),
+  );
 
-  // 4. Simulate Resolution Logic
+  // 3. Simulate Resolution Logic
   console.log('--- Resolution Simulation ---');
 
   // A. Tenant Specific (REMINDER)
-  const tSpecific = tenantPhones.find(
-    (p) => p.purpose === 'REMINDER' && p.isEnabled,
+  const tSpecific = allPhones.find(
+    (p) => p.tenantId === tenantId && p.purpose === 'REMINDER' && p.isEnabled,
   );
   console.log('Tenant Specific (REMINDER):', tSpecific ? 'FOUND' : 'NOT FOUND');
 
   // B. Tenant Default
-  const tDefault = tenantPhones.find(
-    (p) => (p.isDefault || p.purpose === 'DEFAULT') && p.isEnabled,
+  const tDefault = allPhones.find(
+    (p) => p.tenantId === tenantId && p.isDefault && p.isEnabled,
   );
   console.log('Tenant Default:', tDefault ? 'FOUND' : 'NOT FOUND');
 
   // C. Module Specific (REMINDER)
-  const mSpecific = modulePhones.find(
-    (p) => p.purpose === 'REMINDER' && p.isActive,
+  const mSpecific = allPhones.find(
+    (p) =>
+      p.tenantId === null &&
+      p.moduleType === moduleType &&
+      p.purpose === 'REMINDER' &&
+      p.isEnabled,
   );
   console.log('Module Specific (REMINDER):', mSpecific ? 'FOUND' : 'NOT FOUND');
 
   // D. Module Default
-  const mDefault = modulePhones.find(
-    (p) => (p.isDefault || p.purpose === 'DEFAULT') && p.isActive,
+  const mDefault = allPhones.find(
+    (p) =>
+      p.tenantId === null &&
+      p.moduleType === moduleType &&
+      p.isDefault &&
+      p.isEnabled,
   );
   console.log('Module Default:', mDefault ? 'FOUND' : 'NOT FOUND');
 }

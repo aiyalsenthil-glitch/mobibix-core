@@ -3,6 +3,7 @@ import {
   Logger,
   BadRequestException,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -141,7 +142,9 @@ export class WhatsAppOnboardingService {
       const { data: wabaData } = await axios.get(wabaUrl);
 
       if (!wabaData.data || wabaData.data.length === 0) {
-        throw new Error('No WhatsApp Business Account found for this user');
+        throw new NotFoundException(
+          'No WhatsApp Business Account found for this user',
+        );
       }
 
       // If wabaId is provided by Embedded Signup response, use it. Otherwise pick first.
@@ -170,7 +173,9 @@ export class WhatsAppOnboardingService {
       const { data: phoneData } = await axios.get(phoneUrl);
 
       if (!phoneData.data || phoneData.data.length === 0) {
-        throw new Error('No phone numbers found in the selected WABA');
+        throw new NotFoundException(
+          'No phone numbers found in the selected WABA',
+        );
       }
 
       // If phoneNumberId is provided, use it.
@@ -206,7 +211,7 @@ export class WhatsAppOnboardingService {
     }
 
     // 4. Encrypt Access Token
-    const encryptedAccessToken = encrypt(accessToken);
+    const accessTokenValue = encrypt(accessToken);
 
     // 5. Update DB (Atomic Transaction)
     await this.prisma.$transaction([
@@ -216,7 +221,7 @@ export class WhatsAppOnboardingService {
           phoneNumberId,
         },
         update: {
-          encryptedAccessToken,
+          accessToken: accessTokenValue,
           setupStatus: 'ACTIVE',
           isEnabled: true,
           wabaId,
@@ -228,7 +233,7 @@ export class WhatsAppOnboardingService {
           phoneNumberId,
           wabaId,
           phoneNumber,
-          encryptedAccessToken,
+          accessToken: accessTokenValue,
           setupStatus: 'ACTIVE',
           purpose: 'DEFAULT',
           isDefault: true,
@@ -333,7 +338,7 @@ export class WhatsAppOnboardingService {
       data: {
         isEnabled: false,
         setupStatus: 'DISCONNECTED',
-        encryptedAccessToken: null, // Clear token for security
+        accessToken: null, // Clear token for security
       } as any,
     });
 
@@ -350,7 +355,7 @@ export class WhatsAppOnboardingService {
     accessToken: string,
     phoneNumber: string,
   ) {
-    const encryptedAccessToken = encrypt(accessToken);
+    const accessTokenValue = encrypt(accessToken);
 
     // Atomic Update for manual sync
     await this.prisma.$transaction([
@@ -359,7 +364,7 @@ export class WhatsAppOnboardingService {
           phoneNumberId,
         },
         update: {
-          encryptedAccessToken,
+          accessToken: accessTokenValue,
           setupStatus: 'ACTIVE',
           isEnabled: true,
           wabaId,
@@ -371,7 +376,7 @@ export class WhatsAppOnboardingService {
           phoneNumberId,
           wabaId,
           phoneNumber,
-          encryptedAccessToken,
+          accessToken: accessTokenValue,
           setupStatus: 'ACTIVE',
           purpose: 'DEFAULT',
           isDefault: true,

@@ -10,12 +10,24 @@ import {
   BadRequestException,
   UseInterceptors,
   UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
+import { ModuleType, UserRole } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { ProductsService } from './products.service';
 import { ImportProductDto } from './dto/import-product.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
 
+@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
+@ModuleScope(ModuleType.MOBILE_SHOP)
 @Controller('mobileshop/products')
 export class ProductsController {
   constructor(private readonly service: ProductsService) {}
@@ -32,10 +44,7 @@ export class ProductsController {
     }
 
     // TEMP: tenantId from request (same pattern as jobcard)
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Invalid tenant');
-    }
+    const tenantId = req.user.tenantId;
 
     return this.service.listByShop(tenantId, shopId, {
       skip: skip ? parseInt(skip, 10) : undefined,
@@ -52,10 +61,7 @@ export class ProductsController {
     if (!shopId) {
       throw new BadRequestException('shopId is required');
     }
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Invalid tenant');
-    }
+    const tenantId = req.user.tenantId;
     return this.service.findOne(tenantId, shopId, id);
   }
 
@@ -67,37 +73,46 @@ export class ProductsController {
    * - file: CSV/Excel file
    * - shopId: Shop ID
    * - includeStock: "true" or "false" (whether to include opening stock)
+   *
+   * PHASE 3 SECURITY: File upload validation with ParseFilePipe
+   * - Max file size: 5MB
+   * - Allowed types: CSV and Excel files only
    */
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))
   async importProducts(
     @Req() req,
-    @UploadedFile() file: any,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
+          new FileTypeValidator({
+            fileType:
+              /(text\/csv|application\/vnd\.ms-excel|application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet)/,
+          }),
+        ],
+        fileIsRequired: true,
+      }),
+    )
+    file: Express.Multer.File,
     @Body() body: { shopId: string; includeStock: string },
   ) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Invalid tenant');
-    }
-
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
-    }
+    const tenantId = req.user.tenantId;
 
     if (!body.shopId) {
       throw new BadRequestException('shopId is required');
     }
 
-    // Validate file type
-    const allowedMimes = [
-      'text/csv',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    ];
+    // Additional security: Validate file extension matches content
+    const filename = file.originalname.toLowerCase();
+    const hasValidExtension =
+      filename.endsWith('.csv') ||
+      filename.endsWith('.xls') ||
+      filename.endsWith('.xlsx');
 
-    if (!allowedMimes.includes(file.mimetype)) {
+    if (!hasValidExtension) {
       throw new BadRequestException(
-        'Invalid file type. Only CSV and Excel files are allowed',
+        'Invalid file extension. Only .csv, .xls, and .xlsx files are allowed',
       );
     }
 
@@ -141,10 +156,7 @@ export class ProductsController {
     @Query('includeStock') includeStock: string,
     @Res() res: Response,
   ) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Invalid tenant');
-    }
+    const tenantId = req.user.tenantId;
 
     if (!shopId) {
       throw new BadRequestException('shopId is required');

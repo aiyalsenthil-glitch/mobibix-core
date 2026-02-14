@@ -97,7 +97,8 @@ export default function SalesPage() {
 
   // Get user role for permission checks
   const userRole = authUser?.role;
-  const isOwner = userRole === "OWNER";
+  const isOwner = userRole === "owner";
+
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);

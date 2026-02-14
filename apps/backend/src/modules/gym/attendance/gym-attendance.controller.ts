@@ -14,10 +14,19 @@ import { Permission } from '../../../core/auth/permissions.enum';
 import { GymAttendanceService } from './gym-attendance.service';
 import { PermissionsGuard } from '../../../core/auth/guards/permissions.guard';
 import { TenantStatusGuard } from '../../../core/tenant/guards/tenant-status.guard';
+import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
 
+@UseGuards(
+  JwtAuthGuard,
+  TenantRequiredGuard,
+  PermissionsGuard,
+  TenantStatusGuard,
+)
 @Controller('gym/attendance')
+@ModuleScope(ModuleType.GYM)
 export class GymAttendanceController {
   constructor(private readonly attendanceService: GymAttendanceService) {}
 
@@ -25,7 +34,6 @@ export class GymAttendanceController {
   // AUTHENTICATED (STAFF / OWNER)
   // ========================
 
-  @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_MARK)
   @Post('check-in')
@@ -33,7 +41,6 @@ export class GymAttendanceController {
     return this.attendanceService.checkIn(req.user.tenantId, memberId);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_MARK)
   @Post('check-out')
@@ -41,7 +48,6 @@ export class GymAttendanceController {
     return this.attendanceService.checkOut(req.user.tenantId, memberId);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('today')
@@ -58,7 +64,6 @@ export class GymAttendanceController {
   // ========================
   // STATUS BY PHONE
   // ========================
-  @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('status-by-phone/:phone')
@@ -73,17 +78,26 @@ export class GymAttendanceController {
   // KIOSK / QR (NO JWT)
   // ========================
 
+  /**
+   * POST /gym/attendance/qr/check
+   * QR code check-in: Accept tenantCode (user-friendly)
+   * Look up tenant by code, then use resolved tenantId
+   *
+   * ✅ SECURITY: Prevents QR holder from spoofing arbitrary tenantId
+   */
   @Post('qr/check')
-  checkByQr(@Body() body: { tenantId: string; phone: string }) {
-    return this.attendanceService.checkInOrOutByPhone(
-      body.tenantId,
+  checkByQr(
+    @Req() req: any,
+    @Body() body: { tenantCode: string; phone: string },
+  ) {
+    return this.attendanceService.checkInOrOutByPhoneByTenantCode(
+      body.tenantCode,
       body.phone,
     );
   }
   // ========================
   // CHECKIN CHEKOUT BY STAFF
   // ========================
-  @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_MARK)
   @Post('staff/check')
@@ -92,7 +106,6 @@ export class GymAttendanceController {
   }
 
   //Today attendance count
-  @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('today-count')
@@ -100,7 +113,6 @@ export class GymAttendanceController {
     return this.attendanceService.countTodayAttendance(req.user.tenantId);
   }
   //Currently inside count
-  @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('inside-count')
@@ -109,7 +121,6 @@ export class GymAttendanceController {
       req.user.tenantId,
     );
   }
-  @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('member/:memberId/recent')
@@ -121,7 +132,6 @@ export class GymAttendanceController {
     );
   }
 
-  @UseGuards(JwtAuthGuard, PermissionsGuard, TenantStatusGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.ATTENDANCE_VIEW)
   @Get('inside-members')

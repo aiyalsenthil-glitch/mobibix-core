@@ -24,6 +24,7 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permissions.enum';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { TenantStatusGuard } from './guards/tenant-status.guard';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('tenant')
@@ -33,7 +34,7 @@ export class TenantController {
     private readonly usageSnapshotService: UsageSnapshotService,
   ) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, TenantRequiredGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
   @Get('usage-history')
   async getUsageHistory(
@@ -43,11 +44,11 @@ export class TenantController {
     return this.usageSnapshotService.getHistory(req.user.tenantId, days);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, TenantRequiredGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
   @Get('current')
   async getCurrentTenant(@Req() req: any) {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user.tenantId;
     if (!tenantId) {
       // 404 or { tenant: null } as per requirement
       throw new NotFoundException('No active tenant');

@@ -20,6 +20,7 @@ import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { WhatsAppSender } from './whatsapp.sender';
 import { WhatsAppUserService } from './whatsapp-user.service';
+import { VirtualTenantGuard } from './guards/virtual-tenant.guard';
 
 import {
   WhatsAppModule,
@@ -28,7 +29,7 @@ import {
 } from './variable-registry';
 
 @Controller('whatsapp')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, VirtualTenantGuard)
 @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
 export class WhatsAppController {
   constructor(
@@ -663,7 +664,7 @@ export class WhatsAppController {
       throw new BadRequestException('Unauthorized to view all logs');
     }
 
-    if (req.user?.tenantId !== tenantId) {
+    if (req.user.tenantId !== tenantId) {
       throw new BadRequestException('Unauthorized');
     }
   }

@@ -25,8 +25,6 @@ import { CommonModule } from '../common/common.module';
 import { PlatformModule } from './platform/platform.module';
 import { ReportsHardeningModule } from './reports/reports-hardening.module';
 
-
-
 @Module({
   imports: [
     CommonModule,

@@ -33,6 +33,7 @@ model Tenant {
   updatedBy             String?
   deletedAt             DateTime?
   deletedBy             String?
+
   kioskToken            String?              @unique
   maxMembers            Int                  @default(50)
   whatsappEnabled       Boolean              @default(true)
@@ -75,6 +76,7 @@ model Tenant {
   whatsAppCampaigns     WhatsAppCampaign[]
   whatsAppUsage         WhatsAppDailyUsage[]
   usageSnapshots        UsageSnapshot[]
+  featureFlags          FeatureFlag[]        @relation("TenantFeatureFlags")
 }
 
 model UserTenant {
@@ -105,6 +107,7 @@ model User {
   updatedBy         String?
   deletedAt         DateTime?
   deletedBy         String?
+
   phone             String?
   welcomeEmailSent  Boolean            @default(false)
   auditLogs         AuditLog[]
@@ -119,6 +122,7 @@ model User {
 
   @@index([REMOVED_AUTH_PROVIDERUid])
   @@index([email])
+  @@index([tenantId, deletedAt])
 }
 
 model RefreshToken {
@@ -153,6 +157,7 @@ model Member {
   updatedBy           String?
   deletedAt           DateTime?
   deletedBy           String?
+
   paidAmount          Int                 @default(0)
   monthlyFee          Int
   paymentDueDate      DateTime
@@ -171,6 +176,8 @@ model Member {
   @@unique([id, tenantId])
   @@unique([tenantId, phone])
   @@index([tenantId])
+  @@index([tenantId, deletedAt]) // Soft Delete Optimization
+  @@index([fullName]) // Search Optimization
 }
 
 model Party {
@@ -196,6 +203,7 @@ model Party {
   updatedAt           DateTime             @updatedAt
   deletedAt           DateTime?
   deletedBy           String?
+
   tenant              Tenant               @relation("TenantParties", fields: [tenantId], references: [id])
   alerts              CustomerAlert[]
   followUps           CustomerFollowUp[]
@@ -214,6 +222,8 @@ model Party {
 
   @@unique([tenantId, phone])
   @@index([tenantId])
+  @@index([tenantId, deletedAt])
+  @@index([name])
 }
 
 model CustomerFollowUp {
@@ -264,6 +274,7 @@ model CustomerReminder {
   @@index([customerId])
   @@index([status])
   @@index([scheduledAt])
+  @@index([status, channel, scheduledAt]) // Optimized for cron reminder fetch
   @@index([tenantId, status, scheduledAt]) // Composite for fetching pending reminders by time
 }
 
@@ -668,7 +679,8 @@ enum WhatsAppSetupStatus {
 /// PHASE 1 REFACTOR: Multi-Number Support
 model WhatsAppNumber {
   id                String   @id @default(uuid())
-  tenantId          String?  // Optional to support system numbers (or explicit system tenant)
+  tenantId          String?  // Nullable for system/module numbers
+  moduleType        ModuleType? // NEW: For shared module numbers (GYM/MOBILE_SHOP)
   phoneNumberId     String   @unique
   phoneNumber       String   // E.164 format (used for sending)
   displayNumber     String?  // Formatted for UI (e.g. "+1 (555) 123-4567") - Optional for now to avoid fill issues
@@ -684,7 +696,7 @@ model WhatsAppNumber {
 
   // Config & Status
   qualityRating        String?
-  encryptedAccessToken String? 
+  accessToken        String? @map("encryptedAccessToken")
   setupStatus          WhatsAppSetupStatus @default(ACTIVE)
   metadata             Json?
 
@@ -905,6 +917,7 @@ model Shop {
   updatedBy                  String?
   deletedAt                  DateTime?
   deletedBy                  String?
+
   receiptPrintCounter        Int                        @default(0)
   followUps                  CustomerFollowUp[]
   financialEntries           FinancialEntry[]
@@ -922,9 +935,11 @@ model Shop {
   staff                      ShopStaff[]
   stockCorrections           StockCorrection[]
   stockEntries               StockLedger[]
+  featureFlags               FeatureFlag[]              @relation("ShopFeatureFlags")
 
   @@unique([tenantId, invoicePrefix])
   @@index([tenantId])
+  @@index([tenantId, deletedAt])
 }
 
 model ShopDocumentSetting {
@@ -1200,6 +1215,7 @@ model Invoice {
   updatedBy       String?
   deletedAt       DateTime?
   deletedBy       String?
+
   imeis           IMEI[]
   customer        Party?        @relation(fields: [customerId], references: [id])
   shop            Shop          @relation(fields: [shopId], references: [id])
@@ -1208,10 +1224,12 @@ model Invoice {
   items           InvoiceItem[]
   receipts        Receipt[]
 
+  @@unique([tenantId, invoiceNumber])
   @@index([tenantId])
   @@index([shopId])
   @@index([customerId])
   @@index([tenantId, shopId, createdAt])
+  @@index([tenantId, deletedAt])
 }
 
 model InvoiceItem {
@@ -1309,7 +1327,7 @@ model Purchase {
   payments                 SupplierPayment[]
   supplierAdvances         AdvanceApplication[]
 
-  @@unique([shopId, invoiceNumber])
+  @@unique([tenantId, invoiceNumber])
   @@index([tenantId])
   @@index([shopId])
   @@index([globalSupplierId])
@@ -1512,26 +1530,6 @@ model PurchaseOrderItem {
   @@index([poId])
 }
 
-/// POLICY: Module-level numbers are OUTBOUND-ONLY. No inbound message processing.
-/// See: implementation_plan.md — Condition 2 (Shared Number Policy)
-model WhatsAppPhoneNumberModule {
-  id                   String                     @id @default(uuid())
-  moduleType           String
-  phoneNumber          String
-  phoneNumberId        String
-  wabaId               String
-  purpose              WhatsAppPhoneNumberPurpose @default(DEFAULT)
-  qualityRating        String?
-  encryptedAccessToken String? /// AES-256-GCM encrypted Meta API token (module-level)
-  isDefault            Boolean                    @default(false)
-  isActive             Boolean                    @default(true)
-  createdAt            DateTime                   @default(now())
-  updatedAt            DateTime                   @updatedAt
-
-  @@unique([moduleType, phoneNumberId])
-  @@index([moduleType, isActive])
-  @@index([moduleType, purpose])
-}
 
 enum ProductType {
   GOODS
@@ -1681,6 +1679,7 @@ enum PaymentStatus {
 enum SubscriptionStatus {
   TRIAL
   ACTIVE
+  PAST_DUE    // Grace period - payment failed but not yet expired
   EXPIRED
   CANCELLED
   SCHEDULED
@@ -1903,4 +1902,29 @@ enum LedgerPaymentMethod {
   CASH
   UPI
   BANK
+}
+
+enum FeatureFlagScope {
+  GLOBAL
+  TENANT
+  SHOP
+}
+
+model FeatureFlag {
+  id                 String            @id @default(cuid())
+  flag               String            // FeatureFlag enum value
+  enabled            Boolean           @default(true)
+  scope              FeatureFlagScope
+  tenantId           String?
+  tenant             Tenant?           @relation("TenantFeatureFlags", fields: [tenantId], references: [id])
+  shopId             String?
+  shop               Shop?             @relation("ShopFeatureFlags", fields: [shopId], references: [id])
+  rolloutPercentage  Int?              // 0-100 for gradual rollouts
+  metadata           Json?             // Additional configuration
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@unique([flag, scope, tenantId, shopId], name: "flag_scope_tenantId_shopId")
+  @@index([tenantId])
+  @@index([shopId])
 }

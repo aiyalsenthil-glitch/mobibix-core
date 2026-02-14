@@ -33,7 +33,17 @@ export class ShopProductsController {
   }
 
   @Get('catalog')
-  async catalog(@Req() req: any, @Query('shopId') shopId: string) {
-    return await this.service.listCatalog(req.user.tenantId, shopId);
+  async catalog(
+    @Req() req: any,
+    @Query('shopId') shopId: string,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+    @Query('search') search?: string,
+  ) {
+    return await this.service.listCatalog(req.user.tenantId, shopId, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+      search,
+    });
   }
 }

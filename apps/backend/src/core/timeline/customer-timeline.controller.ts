@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Request,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CustomerTimelineService } from './customer-timeline.service';
 import {
@@ -15,9 +16,14 @@ import {
 } from './dto/timeline.dto';
 import { TimelineSource, TimelineActivityType } from './timeline.enum';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @Controller('core/customer-timeline')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class CustomerTimelineController {
   constructor(private readonly timelineService: CustomerTimelineService) {}
 
@@ -40,10 +46,7 @@ export class CustomerTimelineController {
     @Query('sortOrder') sortOrder?: 'ASC' | 'DESC',
   ): Promise<CustomerTimelineResponseDto> {
     // Extract tenantId from JWT payload
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new Error('Tenant ID not found in JWT token');
-    }
+    const tenantId = req.user.tenantId;
 
     const query: GetCustomerTimelineDto = {
       customerId,
@@ -71,10 +74,7 @@ export class CustomerTimelineController {
     @Request() req: any,
     @Param('customerId') customerId: string,
   ) {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      throw new Error('Tenant ID not found in JWT token');
-    }
+    const tenantId = req.user.tenantId;
     return this.timelineService.getTimelineStats(customerId, tenantId);
   }
 }

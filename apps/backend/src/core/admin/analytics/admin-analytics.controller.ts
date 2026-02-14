@@ -37,23 +37,26 @@ export class AdminAnalyticsController {
       // Schema doesn't have direct price on Plan, assuming it's in Plan or we use a static map for now
       // TODO: Fetch actual price from PriceSnapshot or Plan
       // Fallback to 0 if no price found (Plan model might need price field update or check schema)
-      return sum + (sub.priceSnapshot ? (sub.priceSnapshot as any).price || 0 : 0);
+      return (
+        sum + (sub.priceSnapshot ? (sub.priceSnapshot as any).price || 0 : 0)
+      );
     }, 0);
 
     // 4. Churn Rate (Tenants cancelled this month / Total Tenants at start of month)
     const now = new Date();
     const firstDayOfMonth = startOfMonth(now);
-    
+
     const cancelledThisMonth = await this.prisma.tenantSubscription.count({
-        where: {
-            status: 'CANCELLED',
-            updatedAt: {
-                gte: firstDayOfMonth
-            }
-        }
+      where: {
+        status: 'CANCELLED',
+        updatedAt: {
+          gte: firstDayOfMonth,
+        },
+      },
     });
 
-    const churnRate = totalTenants > 0 ? (cancelledThisMonth / totalTenants) * 100 : 0;
+    const churnRate =
+      totalTenants > 0 ? (cancelledThisMonth / totalTenants) * 100 : 0;
 
     return {
       totalTenants,
@@ -68,23 +71,23 @@ export class AdminAnalyticsController {
     // Get new tenants per month for last 6 months
     const growth: { month: string; tenants: number }[] = [];
     for (let i = 5; i >= 0; i--) {
-        const date = subMonths(new Date(), i);
-        const start = startOfMonth(date);
-        const nextMonth = startOfMonth(subMonths(new Date(), i - 1));
+      const date = subMonths(new Date(), i);
+      const start = startOfMonth(date);
+      const nextMonth = startOfMonth(subMonths(new Date(), i - 1));
 
-        const count = await this.prisma.tenant.count({
-            where: {
-                createdAt: {
-                    gte: start,
-                    lt: nextMonth
-                }
-            }
-        });
+      const count = await this.prisma.tenant.count({
+        where: {
+          createdAt: {
+            gte: start,
+            lt: nextMonth,
+          },
+        },
+      });
 
-        growth.push({
-            month: format(start, 'MMM yyyy'),
-            tenants: count
-        });
+      growth.push({
+        month: format(start, 'MMM yyyy'),
+        tenants: count,
+      });
     }
     return growth;
   }

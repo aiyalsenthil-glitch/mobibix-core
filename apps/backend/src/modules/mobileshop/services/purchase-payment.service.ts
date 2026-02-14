@@ -31,25 +31,17 @@ export class PurchasePaymentService {
       throw new BadRequestException('Invalid tenantId, purchaseId, or amount');
     }
 
-    // Fetch purchase
-    const purchase = await this.prisma.purchase.findUnique({
-      where: { id: purchaseId },
+    // Fetch purchase with tenant isolation
+    const purchase = await this.prisma.purchase.findFirst({
+      where: { id: purchaseId, tenantId },
       include: { party: { select: { name: true } } },
     });
 
     if (!purchase) {
       this.logger.warn(
-        `Purchase not found: tenantId=${tenantId}, purchaseId=${purchaseId}`,
+        `Purchase not found or unauthorized: tenantId=${tenantId}, purchaseId=${purchaseId}`,
       );
       throw new NotFoundException('Purchase not found');
-    }
-
-    // Verify tenant ownership
-    if (purchase.tenantId !== tenantId) {
-      this.logger.warn(
-        `Unauthorized payment attempt: user=${tenantId}, purchaseId=${purchaseId}, owner=${purchase.tenantId}`,
-      );
-      throw new BadRequestException('Unauthorized');
     }
 
     // Check balance due
@@ -120,7 +112,7 @@ export class PurchasePaymentService {
     isOverdue: boolean;
   }> {
     const purchase = await this.prisma.purchase.findUnique({
-      where: { id: purchaseId },
+      where: { id: purchaseId, tenantId },
       include: { party: { select: { name: true } } },
     });
 
@@ -226,7 +218,7 @@ export class PurchasePaymentService {
     purchaseId: string,
   ): Promise<void> {
     const purchase = await this.prisma.purchase.findUnique({
-      where: { id: purchaseId },
+      where: { id: purchaseId, tenantId },
     });
 
     if (!purchase || purchase.tenantId !== tenantId) {

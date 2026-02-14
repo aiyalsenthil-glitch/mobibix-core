@@ -9,7 +9,6 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
 import {
@@ -24,67 +23,57 @@ import {
   WhatsAppLogsQueryDto,
 } from './dto/whatsapp-user.dto';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { ModuleScope } from '../../core/auth/decorators/module-scope.decorator';
+import { ModuleType, UserRole } from '@prisma/client';
 
-@Controller('user/whatsapp')
+@Controller('whatsapp/user')
+@ModuleScope(ModuleType.WHATSAPP_CRM)
 @UseGuards(JwtAuthGuard, TenantRequiredGuard, PlanFeatureGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppUserController {
   constructor(private readonly whatsappUserService: WhatsAppUserService) {}
 
-  private getTenantId(req: Request & { user?: { tenantId?: string } }) {
-    return req.user?.tenantId ?? '';
-  }
-
   @Get('dashboard')
-  async getDashboard(@Req() req: Request & { user?: { tenantId?: string } }) {
-    const tenantId = this.getTenantId(req);
-    return this.whatsappUserService.getDashboard(tenantId);
+  async getDashboard(@Req() req: any) {
+    return this.whatsappUserService.getDashboard(req.user.tenantId);
   }
 
   @Get('numbers')
-  async getNumbers(@Req() req: Request & { user?: { tenantId?: string } }) {
-    const tenantId = this.getTenantId(req);
-    return this.whatsappUserService.getNumbers(tenantId);
+  async getNumbers(@Req() req: any) {
+    return this.whatsappUserService.getNumbers(req.user.tenantId);
   }
 
   @Post('send')
-  @RequirePlanFeature('WHATSAPP_UTILITY') // Block STANDARD users
-  async sendMessage(
-    @Req() req: Request & { user?: { tenantId?: string } },
-    @Body() dto: SendWhatsAppMessageDto,
-  ) {
-    const tenantId = this.getTenantId(req);
-    return this.whatsappUserService.sendMessage(tenantId, dto);
+  @RequirePlanFeature('WHATSAPP_UTILITY')
+  async sendMessage(@Req() req: any, @Body() dto: SendWhatsAppMessageDto) {
+    return this.whatsappUserService.sendMessage(req.user.tenantId, dto);
   }
 
   @Get('logs')
-  async getLogs(
-    @Req() req: Request & { user?: { tenantId?: string } },
-    @Query() query: WhatsAppLogsQueryDto,
-  ) {
-    const tenantId = this.getTenantId(req);
-    return this.whatsappUserService.getLogs(tenantId, query);
+  async getLogs(@Req() req: any, @Query() query: WhatsAppLogsQueryDto) {
+    return this.whatsappUserService.getLogs(req.user.tenantId, query);
   }
 
   @Post('campaigns')
-  @RequirePlanFeature('WHATSAPP_MARKETING') // Block STANDARD users
+  @RequirePlanFeature('WHATSAPP_MARKETING')
   async createCampaign(
-    @Req() req: Request & { user?: { tenantId?: string } },
+    @Req() req: any,
     @Body() dto: CreateWhatsAppCampaignDto,
   ) {
-    const tenantId = this.getTenantId(req);
-    return this.whatsappUserService.createCampaign(tenantId, dto);
+    return this.whatsappUserService.createCampaign(req.user.tenantId, dto);
   }
 
   @Patch('campaigns/:id/schedule')
-  @RequirePlanFeature('WHATSAPP_MARKETING') // Block STANDARD users
+  @RequirePlanFeature('WHATSAPP_MARKETING')
   async scheduleCampaign(
-    @Req() req: Request & { user?: { tenantId?: string } },
+    @Req() req: any,
     @Param('id') campaignId: string,
     @Body() dto: ScheduleWhatsAppCampaignDto,
   ) {
-    const tenantId = this.getTenantId(req);
-    return this.whatsappUserService.scheduleCampaign(tenantId, campaignId, dto);
+    return this.whatsappUserService.scheduleCampaign(
+      req.user.tenantId,
+      campaignId,
+      dto,
+    );
   }
 }

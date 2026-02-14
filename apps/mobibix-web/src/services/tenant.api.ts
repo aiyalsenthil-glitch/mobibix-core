@@ -36,7 +36,8 @@ export interface SubscriptionDetails {
   attendanceAllowed: boolean;
   daysLeft: number;
   isTrial: boolean;
-  subscriptionStatus: 'ACTIVE' | 'TRIAL' | 'EXPIRED';
+  subscriptionStatus: 'ACTIVE' | 'TRIAL' | 'PAST_DUE' | 'EXPIRED';
+
   autoRenew: boolean;
   subscriptionId: string;
   price?: number;

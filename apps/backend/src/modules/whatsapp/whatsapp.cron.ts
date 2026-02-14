@@ -218,6 +218,7 @@ export class WhatsAppCron {
       const featureCheck = await this.safetyService.validateFeatureSafety(
         tenantId,
         feature,
+        automation.moduleType as ModuleType, // 🔥 Pass moduleType
       );
 
       if (!featureCheck.allowed) {

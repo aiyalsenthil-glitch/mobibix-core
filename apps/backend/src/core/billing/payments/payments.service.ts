@@ -1,5 +1,9 @@
 import Razorpay from 'REMOVED_PAYMENT_INFRA';
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common';
 
 @Injectable()
 export class PaymentsService {
@@ -36,7 +40,7 @@ export class PaymentsService {
     planId: string;
   }): Promise<{ order: any; expiresAt: Date }> {
     if (!this.REMOVED_PAYMENT_INFRA) {
-      throw new Error(
+      throw new InternalServerErrorException(
         'Razorpay is not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.',
       );
     }

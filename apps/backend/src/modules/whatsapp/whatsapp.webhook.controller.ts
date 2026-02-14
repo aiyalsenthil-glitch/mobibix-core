@@ -10,11 +10,15 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../core/auth/decorators/public.decorator';
+import { SkipSubscriptionCheck } from '../../core/auth/decorators/skip-subscription-check.decorator';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { WhatsAppCapabilityRouter } from './router/whatsapp-capability.router';
 
 @Public()
+@SkipSubscriptionCheck()
+@Throttle({ default: { limit: 100, ttl: 60000 } }) // SECURITY: 100 webhook events per minute
 @Controller('webhook/whatsapp')
 export class WhatsAppWebhookController {
   private readonly logger = new Logger(WhatsAppWebhookController.name);
@@ -47,29 +51,42 @@ export class WhatsAppWebhookController {
     // 1. Validations (Signature) - CRITICAL: Reject unsigned webhooks
     const signature = req.headers['x-hub-signature-256'];
     if (!signature) {
-      this.logger.error('SECURITY: Webhook received without X-Hub-Signature-256');
+      this.logger.error(
+        'SECURITY: Webhook received without X-Hub-Signature-256',
+      );
       return res.status(403).json({ message: 'Missing signature' });
     }
 
-    const appSecret = process.env.WHATSAPP_APP_SECRET; // Ensure this env is set
-    if (appSecret) {
-      // Basic HMAC verification if secret exists
-      const crypto = require('crypto');
-      const hmac = crypto.createHmac('sha256', appSecret);
-      const digest = Buffer.from(
-        'sha256=' +
-          hmac.update(req.rawBody || JSON.stringify(req.body)).digest('hex'),
-        'utf8',
+    // ✅ SECURITY FIX: WHATSAPP_APP_SECRET is now REQUIRED
+    const appSecret = process.env.WHATSAPP_APP_SECRET;
+    if (!appSecret) {
+      this.logger.error(
+        'CRITICAL: WHATSAPP_APP_SECRET not configured! Webhook validation disabled.',
       );
-      const checksum = Buffer.from(signature, 'utf8');
+      return res
+        .status(500)
+        .json({ message: 'Webhook validation misconfigured' });
+    }
 
-      if (
-        digest.length !== checksum.length ||
-        !crypto.timingSafeEqual(digest, checksum)
-      ) {
-        this.logger.warn('Invalid signature');
-        return res.status(403).json({ message: 'Invalid signature' });
-      }
+    // HMAC signature verification
+    const crypto = require('crypto');
+    const hmac = crypto.createHmac('sha256', appSecret);
+
+    // 🚨 SECURITY FIX: Prefer req.rawBody if available (requires configuration in main.ts)
+    // Fallback to JSON.stringify(req.body) if rawBody is missing
+    const bodyPayload = req.rawBody || Buffer.from(JSON.stringify(req.body));
+    const digest = Buffer.from(
+      'sha256=' + hmac.update(bodyPayload).digest('hex'),
+      'utf8',
+    );
+    const checksum = Buffer.from(signature, 'utf8');
+
+    if (
+      digest.length !== checksum.length ||
+      !crypto.timingSafeEqual(digest, checksum)
+    ) {
+      this.logger.warn('Invalid signature - payload mismatch');
+      return res.status(403).json({ message: 'Invalid signature' });
     }
 
     // 2. Fast ACK
@@ -129,49 +146,60 @@ export class WhatsAppWebhookController {
     }
 
     try {
-      // 1. Resolve Tenant from per-tenant phone numbers
-      const waNumber = await this.prisma.whatsAppNumber.findFirst({
+      // 1. Resolve Number from unified WhatsAppNumber table
+      const waNumber = await this.prisma.whatsAppNumber.findUnique({
         where: { phoneNumberId },
         select: {
-            id: true,
-            tenantId: true,
-            isSystem: true,
-            displayNumber: true
+          id: true,
+          tenantId: true,
+          moduleType: true,
+          isSystem: true,
         },
       });
 
       console.log(
-        `[Webhook] Tenant lookup result: ${JSON.stringify(waNumber)}`,
+        `[Webhook] Number lookup result: ${JSON.stringify(waNumber)}`,
       );
 
-      // ── OUTBOUND-ONLY POLICY ──────────────────────────────────
-      // If phoneNumberId is NOT found in per-tenant numbers, check
-      // if it's a module-level (shared) number. Module-level numbers
-      // are OUTBOUND-ONLY: do NOT process inbound messages to avoid
-      // routing ambiguity (many tenants share this number).
       if (!waNumber) {
-        const modulePhone =
-          await this.prisma.whatsAppPhoneNumberModule.findFirst({
-            where: { phoneNumberId, isActive: true },
-            select: { id: true },
-          });
-
-        if (modulePhone) {
-          this.logger.log(
-            `[OUTBOUND-ONLY] Dropping inbound message on module-level number ${phoneNumberId}. Policy: shared numbers are outbound-only.`,
-          );
-          return; // Silently drop — this is by design
-        }
-
         this.logger.warn(`Unknown WhatsApp Number ID: ${phoneNumberId}`);
         return;
+      }
+
+      // ── OUTBOUND-ONLY POLICY ──────────────────────────────────────────────
+      // ⚠️ CRITICAL: Shared numbers (where tenantId is NULL) are OUTBOUND-ONLY.
+      // We do NOT process inbound messages for them to avoid routing ambiguity.
+      //
+      // Rationale:
+      // - Shared numbers are owned by the PLATFORM, not individual tenants
+      // - Multiple tenants could theoretically receive inbound → NO CLEAR ROUTING TARGET
+      // - Solution: Each tenant must configure their OWN tenant-scoped phone numbers
+      // - Shared numbers suitable ONLY for outbound (notifications, broadcasts, announcements)
+      //
+      // Customer Guidance:
+      // - INBOUND flows (auto-reply, customer service): Use tenant-specific numbers
+      // - OUTBOUND only: Use shared/platform numbers for blast campaigns
+      // - HYBRID: Mix tenant-specific (inbound) + shared (outbound) for optimal coverage
+      //
+      // Documentation: https://docs.yourcompany.com/whatsapp-setup
+      // ──────────────────────────────────────────────────────────────────────
+      if (!waNumber.tenantId) {
+        this.logger.warn(
+          `[OUTBOUND-ONLY POLICY] Inbound message dropped on shared number +${metadata?.display_phone_number || phoneNumberId} ` +
+            `(Module: ${waNumber.moduleType}, MessageID: ${messages[0]?.id}). ` +
+            `If you need inbound support for this module, configure a tenant-scoped phone number. ` +
+            `See: https://docs.yourcompany.com/whatsapp-setup`,
+        );
+        return; // Silently drop — this is by design and expected behavior
       }
 
       const tenantId = waNumber.tenantId;
 
       if (!tenantId) {
-        this.logger.warn(`[Webhook] Message on number ${waNumber.id} has no Tenant ID mapping.`);
-        return; 
+        this.logger.warn(
+          `[Webhook] Message on number ${waNumber.id} has no Tenant ID mapping.`,
+        );
+        return;
       }
 
       for (const message of messages) {
@@ -231,7 +259,12 @@ export class WhatsAppWebhookController {
           console.log(
             `[Webhook] Routing to automation for Tenant ${tenantId}...`,
           );
-          await this.router.routeMessage(tenantId, waNumber.id, senderPhone, text);
+          await this.router.routeMessage(
+            tenantId,
+            waNumber.id,
+            senderPhone,
+            text,
+          );
         } else {
           console.log('[Webhook] No text content found in message.');
         }

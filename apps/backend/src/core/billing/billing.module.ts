@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PlansModule } from './plans/plans.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
-import { SubscriptionGuard } from './guards/subscription.guard';
+import { SubscriptionGuard } from '../auth/guards/subscription.guard';
 import { PaymentsModule } from './payments/payments.module';
 import { SubscriptionExpiryCron } from './subscriptions/subscription-expiry.cron';
 import { MailModule } from '../../common/email/mail.module';

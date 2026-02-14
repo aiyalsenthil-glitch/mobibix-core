@@ -13,9 +13,11 @@ import {
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
+import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
 import { VirtualTenantGuard } from './guards/virtual-tenant.guard';
+import { ModuleScope } from '../../core/auth/decorators/module-scope.decorator';
 
 interface CreateWhatsAppSettingDto {
   enabled: boolean;
@@ -26,8 +28,8 @@ interface CreateWhatsAppSettingDto {
 }
 
 @Controller('whatsapp/settings')
-@UseGuards(JwtAuthGuard, RolesGuard, VirtualTenantGuard)
-@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
+@ModuleScope(ModuleType.WHATSAPP_CRM)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, VirtualTenantGuard)
 export class WhatsAppSettingsController {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -35,27 +37,13 @@ export class WhatsAppSettingsController {
    * GET /whatsapp/settings/:moduleType
    * Get module-level WhatsApp settings
    * moduleType: "GYM" or "MOBILE_SHOP"
+   * Accessible by: ADMIN, OWNER, STAFF (read-only for STAFF)
    */
   @Get(':moduleType')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
   async getSettings(@Param('moduleType') moduleType: string, @Req() req: any) {
-    const user = req.user;
-    const userRole = (user?.role?.toUpperCase() as string) || 'USER';
-
-    // Owners can only access their own tenant settings
-    if (userRole === 'OWNER' && moduleType !== user.tenantId) {
-      throw new BadRequestException(
-        'Unauthorized - Can only access own tenant settings',
-      );
-    }
-
-    // Role is uppercase from UserTenant (ADMIN, STAFF, etc.)
-    if (
-      userRole !== 'ADMIN' &&
-      userRole !== 'SUPER_ADMIN' &&
-      userRole !== 'OWNER'
-    ) {
-      throw new BadRequestException('Unauthorized - Insufficient permissions');
-    }
+    // Role validation is handled by RolesGuard
+    // Tenant isolation for OWNER is handled by VirtualTenantGuard
 
     // Use moduleType as the tenantId for module-level settings
     const setting = await this.prisma.whatsAppSetting.findUnique({
@@ -83,31 +71,18 @@ export class WhatsAppSettingsController {
   /**
    * POST /whatsapp/settings/:moduleType
    * Create module-level WhatsApp settings
+   * Accessible by: ADMIN, OWNER only (STAFF cannot create)
    */
   @Post(':moduleType')
+  @Roles(UserRole.ADMIN, UserRole.OWNER)
   async createSettings(
     @Param('moduleType') moduleType: string,
     @Body() dto: CreateWhatsAppSettingDto,
     @Req() req: any,
   ) {
     const user = req.user;
-    const userRole = (user?.role?.toUpperCase() as string) || 'USER';
 
-    // Owners can only access their own tenant settings
-    if (userRole === 'OWNER' && moduleType !== user.tenantId) {
-      throw new BadRequestException(
-        'Unauthorized - Can only create own tenant settings',
-      );
-    }
-
-    // Role is uppercase from UserTenant (ADMIN, STAFF, etc.)
-    if (
-      userRole !== 'ADMIN' &&
-      userRole !== 'SUPER_ADMIN' &&
-      userRole !== 'OWNER'
-    ) {
-      throw new BadRequestException('Unauthorized - Insufficient permissions');
-    }
+    // Tenant isolation: Handled by VirtualTenantGuard + RolesGuard
 
     const setting = await this.prisma.whatsAppSetting.create({
       data: {
@@ -126,31 +101,18 @@ export class WhatsAppSettingsController {
   /**
    * PATCH /whatsapp/settings/:moduleType
    * Update module-level WhatsApp settings
+   * Accessible by: ADMIN, OWNER only (STAFF cannot update)
    */
   @Patch(':moduleType')
+  @Roles(UserRole.ADMIN, UserRole.OWNER)
   async updateSettings(
     @Param('moduleType') moduleType: string,
     @Body() dto: Partial<CreateWhatsAppSettingDto>,
     @Req() req: any,
   ) {
     const user = req.user;
-    const userRole = (user?.role?.toUpperCase() as string) || 'USER';
 
-    // Owners can only access their own tenant settings
-    if (userRole === 'OWNER' && moduleType !== user.tenantId) {
-      throw new BadRequestException(
-        'Unauthorized - Can only update own tenant settings',
-      );
-    }
-
-    // Role is uppercase from UserTenant (ADMIN, STAFF, etc.)
-    if (
-      userRole !== 'ADMIN' &&
-      userRole !== 'SUPER_ADMIN' &&
-      userRole !== 'OWNER'
-    ) {
-      throw new BadRequestException('Unauthorized - Insufficient permissions');
-    }
+    // Tenant isolation: Handled by VirtualTenantGuard
 
     // Check if setting exists
     const existing = await this.prisma.whatsAppSetting.findUnique({
@@ -189,25 +151,16 @@ export class WhatsAppSettingsController {
   /**
    * DELETE /whatsapp/settings/:moduleType
    * Delete module-level WhatsApp settings
+   * Accessible by: ADMIN only (OWNER and STAFF cannot delete)
    */
   @Delete(':moduleType')
+  @Roles(UserRole.ADMIN)
   async deleteSettings(
     @Param('moduleType') moduleType: string,
     @Req() req: any,
   ) {
-    const user = req.user;
-    const userRole = (user?.role?.toUpperCase() as string) || 'USER';
-
-    // Restricted for OWNER
-    if (userRole === 'OWNER') {
-      throw new BadRequestException(
-        'Unauthorized - Owners cannot delete WhatsApp settings',
-      );
-    }
-
-    if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
-      throw new BadRequestException('Unauthorized - Admin access required');
-    }
+    // Only ADMIN can delete (enforced by @Roles decorator)
+    // No additional checks needed
 
     await this.prisma.whatsAppSetting.delete({
       where: { tenantId: moduleType },

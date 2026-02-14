@@ -37,7 +37,8 @@ export default function EditInvoicePage() {
   const { authUser } = useAuth();
   const { selectedShop } = useShop();
   const userRole = authUser?.role;
-  const isOwner = userRole === "OWNER";
+  const isOwner = userRole === "owner";
+
 
   const [invoice, setInvoice] = useState<EditableInvoice | null>(null);
   const [loading, setLoading] = useState(true);

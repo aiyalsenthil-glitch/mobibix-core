@@ -9,18 +9,23 @@ import {
   UseGuards,
   Req,
   BadRequestException,
+  ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { WhatsAppPhoneNumbersService } from './whatsapp-phone-numbers.service';
 import { UserRole, WhatsAppPhoneNumberPurpose } from '@prisma/client';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
+import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { VirtualTenantGuard } from '../guards/virtual-tenant.guard';
 
 @Controller('whatsapp/phone-numbers')
-@UseGuards(JwtAuthGuard, RolesGuard, VirtualTenantGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, VirtualTenantGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppPhoneNumbersController {
+  private readonly logger = new Logger(WhatsAppPhoneNumbersController.name);
+
   constructor(
     private readonly phoneNumbersService: WhatsAppPhoneNumbersService,
   ) {}
@@ -34,21 +39,8 @@ export class WhatsAppPhoneNumbersController {
     @Param('moduleType') moduleType: string,
     @Req() req: any,
   ) {
-    const user = req.user;
-    const role = (user?.role?.toUpperCase() as UserRole) || UserRole.USER;
-
-    // Owners can only view numbers for their own tenant
-    if (role === UserRole.OWNER && moduleType !== user.tenantId) {
-      throw new BadRequestException(
-        'Unauthorized - Can only view own tenant numbers',
-      );
-    }
-
-    this.validateAccess(req, [
-      UserRole.ADMIN,
-      UserRole.SUPER_ADMIN,
-      UserRole.OWNER,
-    ]);
+    // Role and Tenant validation handled by Guards
+    const role = (req.user?.role?.toUpperCase() as UserRole) || UserRole.USER;
 
     const phones = await this.phoneNumbersService.listPhoneNumbers(moduleType);
     return phones.map((p) =>
@@ -59,6 +51,9 @@ export class WhatsAppPhoneNumbersController {
   /**
    * POST /whatsapp/phone-numbers/:moduleType
    * Create a new phone number for a module (ADMIN ONLY)
+   *
+   * ⚠️ ADMIN-ONLY ENFORCEMENT: Only ADMIN and SUPER_ADMIN roles can create
+   * shared/platform-level phone numbers. Prevents unauthorized phone number provisioning.
    */
   @Post(':moduleType')
   async createPhoneNumber(
@@ -73,7 +68,17 @@ export class WhatsAppPhoneNumbersController {
     },
     @Req() req: any,
   ) {
-    this.validateAccess(req, [UserRole.ADMIN, UserRole.SUPER_ADMIN]);
+    // ✅ ENFORCE ADMIN-ONLY ACCESS
+    const userRole = (req.user?.role as UserRole) || UserRole.USER;
+    if (userRole !== UserRole.ADMIN && userRole !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException(
+        'Only platform admins (ADMIN role) can create WhatsApp phone numbers',
+      );
+    }
+
+    this.logger.log(
+      `[ADMIN] Creating phone number for module ${moduleType} by ${userRole}`,
+    );
 
     return this.phoneNumbersService.createPhoneNumber({
       tenantId: moduleType,
@@ -101,19 +106,11 @@ export class WhatsAppPhoneNumbersController {
     },
     @Req() req: any,
   ) {
-    this.validateAccess(req, [
-      UserRole.ADMIN,
-      UserRole.SUPER_ADMIN,
-      UserRole.OWNER,
-    ]);
-
-    // Validate ownership for OWNER role
-    const user = req.user;
-    const role = (user?.role?.toUpperCase() as UserRole) || UserRole.USER;
+    const role = (req.user?.role?.toUpperCase() as UserRole) || UserRole.USER;
 
     if (role === UserRole.OWNER) {
       const phoneNumber = await this.phoneNumbersService.getPhoneNumberById(id);
-      if (!phoneNumber || phoneNumber.tenantId !== user.tenantId) {
+      if (!phoneNumber || phoneNumber.tenantId !== req.user.tenantId) {
         throw new BadRequestException(
           'Unauthorized - Can only update own tenant numbers',
         );
@@ -126,24 +123,22 @@ export class WhatsAppPhoneNumbersController {
   /**
    * DELETE /whatsapp/phone-numbers/:id
    * Delete a phone number (ADMIN ONLY)
+   *
+   * ⚠️ ADMIN-ONLY ENFORCEMENT: Only ADMIN and SUPER_ADMIN roles can delete
+   * phone numbers. Prevents unauthorized removal of communication channels.
    */
   @Delete(':id')
   async deletePhoneNumber(@Param('id') id: string, @Req() req: any) {
-    this.validateAccess(req, [UserRole.ADMIN, UserRole.SUPER_ADMIN]);
-    return this.phoneNumbersService.deletePhoneNumber(id);
-  }
-
-  /**
-   * Validate user has access
-   */
-  private validateAccess(req: any, allowedRoles: UserRole[]) {
-    const user = req.user;
-    const userRole = (user?.role?.toUpperCase() as UserRole) || UserRole.USER;
-
-    if (!allowedRoles.includes(userRole)) {
-      throw new BadRequestException(
-        `Unauthorized - Required roles: ${allowedRoles.join(', ')}`,
+    // ✅ ENFORCE ADMIN-ONLY ACCESS
+    const userRole = (req.user?.role as UserRole) || UserRole.USER;
+    if (userRole !== UserRole.ADMIN && userRole !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException(
+        'Only platform admins (ADMIN role) can delete WhatsApp phone numbers',
       );
     }
+
+    this.logger.log(`[ADMIN] Deleting phone number ${id} by ${userRole}`);
+
+    return this.phoneNumbersService.deletePhoneNumber(id);
   }
 }

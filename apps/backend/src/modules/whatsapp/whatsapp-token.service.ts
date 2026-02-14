@@ -7,14 +7,18 @@
  * for a given tenant and phone number configuration.
  *
  * RESOLUTION ORDER:
- * 1. Per-tenant token (from WhatsAppPhoneNumber.encryptedAccessToken)
- * 2. Module-level token (from WhatsAppPhoneNumberModule.encryptedAccessToken)
+ * 1. Per-tenant token (from WhatsAppPhoneNumber.accessToken)
+ * 2. Database record fallback (from WhatsAppNumber.accessToken)
  * 3. Global fallback (from process.env.WHATSAPP_ACCESS_TOKEN)
  *
  * ENCRYPTION: AES-256-GCM via crypto.util.ts
  * MASTER KEY: process.env.ENCRYPTION_MASTER_KEY
  */
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { encrypt, decrypt } from '../../common/utils/crypto.util';
 
@@ -34,12 +38,12 @@ export class WhatsAppTokenService {
     id: string;
     tenantId: string;
     phoneNumberId: string;
-    encryptedAccessToken?: string | null;
+    accessToken?: string | null;
   }): Promise<string> {
     // 1. Try per-tenant/per-number token
-    if (phoneNumberConfig.encryptedAccessToken) {
+    if (phoneNumberConfig.accessToken) {
       try {
-        const token = decrypt(phoneNumberConfig.encryptedAccessToken);
+        const token = decrypt(phoneNumberConfig.accessToken);
         this.logger.debug(
           `Using per-number token for phoneNumberId=${phoneNumberConfig.phoneNumberId}`,
         );
@@ -52,38 +56,32 @@ export class WhatsAppTokenService {
       }
     }
 
-    // 2. Try module-level token
+    // 2. Try to fetch from database if not in config
     try {
-      const modulePhone =
-        await this.prisma.whatsAppPhoneNumberModule.findFirst({
-          where: {
-            phoneNumberId: phoneNumberConfig.phoneNumberId,
-            isActive: true,
-          },
-          select: { encryptedAccessToken: true },
-        });
+      const dbPhone = await this.prisma.whatsAppNumber.findUnique({
+        where: { phoneNumberId: phoneNumberConfig.phoneNumberId },
+        select: { accessToken: true },
+      });
 
-      if (modulePhone?.encryptedAccessToken) {
+      if (dbPhone?.accessToken) {
         try {
-          const token = decrypt(modulePhone.encryptedAccessToken);
+          const token = decrypt(dbPhone.accessToken);
           this.logger.debug(
-            `Using module-level token for phoneNumberId=${phoneNumberConfig.phoneNumberId}`,
+            `Using resolved token from DB for phoneNumberId=${phoneNumberConfig.phoneNumberId}`,
           );
           return token;
         } catch (err) {
-          this.logger.error(
-            `Failed to decrypt module token: ${err.message}`,
-          );
+          this.logger.error(`Failed to decrypt token from DB: ${err.message}`);
         }
       }
     } catch (err) {
-      this.logger.warn(`Module phone lookup failed: ${err.message}`);
+      this.logger.warn(`WhatsAppNumber lookup failed: ${err.message}`);
     }
 
     // 3. Global fallback
     const globalToken = process.env.WHATSAPP_ACCESS_TOKEN;
     if (!globalToken) {
-      throw new Error(
+      throw new InternalServerErrorException(
         'No WhatsApp access token available. Set per-tenant token, module token, or WHATSAPP_ACCESS_TOKEN env.',
       );
     }
@@ -97,16 +95,13 @@ export class WhatsAppTokenService {
   /**
    * Store an encrypted access token for a tenant phone number.
    */
-  async setTokenForPhoneNumber(
-    phoneNumberId: string,
-    plainToken: string,
-  ): Promise<void> {
+  async setTokenForPhoneNumber(id: string, plainToken: string): Promise<void> {
     const encrypted = encrypt(plainToken);
     await this.prisma.whatsAppNumber.update({
-      where: { id: phoneNumberId },
-      data: { encryptedAccessToken: encrypted },
+      where: { id },
+      data: { accessToken: encrypted },
     });
-    this.logger.log(`Token updated for phone number ${phoneNumberId}`);
+    this.logger.log(`Token updated for phone number record ${id}`);
   }
 
   /**
@@ -116,13 +111,7 @@ export class WhatsAppTokenService {
     modulePhoneNumberId: string,
     plainToken: string,
   ): Promise<void> {
-    const encrypted = encrypt(plainToken);
-    await this.prisma.whatsAppPhoneNumberModule.update({
-      where: { id: modulePhoneNumberId },
-      data: { encryptedAccessToken: encrypted },
-    });
-    this.logger.log(
-      `Token updated for module phone number ${modulePhoneNumberId}`,
-    );
+    // Both are consolidated now - use the record ID
+    return this.setTokenForPhoneNumber(modulePhoneNumberId, plainToken);
   }
 }
