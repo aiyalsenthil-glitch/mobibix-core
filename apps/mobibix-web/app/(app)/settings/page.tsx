@@ -12,15 +12,6 @@ import {
   toggleAutoRenew,
   type SubscriptionDetails,
   type Plan,
-import {
-  getSubscription,
-  getAvailablePlans,
-  upgradeSubscription,
-  downgradeSubscription,
-  checkDowngradeEligibility,
-  toggleAutoRenew,
-  type SubscriptionDetails,
-  type Plan,
 } from "@/services/tenant.api";
 import DowngradeBlockerModal from "./DowngradeBlockerModal";
 import { Check, AlertCircle, Loader2, Zap, Shield, Crown, CreditCard, RefreshCw } from "lucide-react";
