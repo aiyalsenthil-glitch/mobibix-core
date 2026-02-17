@@ -17,11 +17,10 @@ import { WhatsAppPhoneNumbersService } from './whatsapp-phone-numbers.service';
 import { UserRole, WhatsAppPhoneNumberPurpose } from '@prisma/client';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
-import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { VirtualTenantGuard } from '../guards/virtual-tenant.guard';
 
 @Controller('whatsapp/phone-numbers')
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, VirtualTenantGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppPhoneNumbersController {
   private readonly logger = new Logger(WhatsAppPhoneNumbersController.name);
@@ -35,6 +34,7 @@ export class WhatsAppPhoneNumbersController {
    * List all phone numbers for a module (module-level defaults)
    */
   @Get(':moduleType')
+  @UseGuards(VirtualTenantGuard)
   async listPhoneNumbers(
     @Param('moduleType') moduleType: string,
     @Req() req: any,
@@ -56,6 +56,7 @@ export class WhatsAppPhoneNumbersController {
    * shared/platform-level phone numbers. Prevents unauthorized phone number provisioning.
    */
   @Post(':moduleType')
+  @UseGuards(VirtualTenantGuard)
   async createPhoneNumber(
     @Param('moduleType') moduleType: string,
     @Body()

@@ -95,6 +95,10 @@ export class WhatsAppRemindersService {
           channel: ReminderChannel.WHATSAPP,
           scheduledAt: { lte: now },
         },
+        take: 50, // Process in batches of 50 to avoid slow queries
+        orderBy: {
+          scheduledAt: 'asc', // Process oldest first, utilizing index
+        },
         include: {
           customer: {
             select: {
@@ -124,7 +128,7 @@ export class WhatsAppRemindersService {
             },
           },
         },
-        take: 100, // Batch limit to avoid overwhelming DB
+
       });
 
       if (pendingReminders.length === 0) {
@@ -463,7 +467,7 @@ export class WhatsAppRemindersService {
           }
         }
 
-        this.logger.error(
+        this.logger.debug(
           `[WhatsAppReminders] TRACE: REMINDER_ID=${reminderId} MOD=${context.module} EVT=${eventType} T_TYPE='${reminder.tenant?.tenantType}'`,
         );
 

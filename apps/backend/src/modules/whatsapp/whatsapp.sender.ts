@@ -83,10 +83,23 @@ export class WhatsAppSender {
     const logId = options?.logId;
     const metadata = options?.metadata ?? undefined;
     const forceWhatsAppNumberId = options?.whatsAppNumberId;
-    const feature = notificationType as WhatsAppFeature;
+    
+    // 🛡️ SANITIZE FEATURE:
+    // If 'notificationType' is just a random string (like a template name 'invoice_created...'),
+    // it won't match any enum. We must map it to a valid Feature or Core Type.
+    let feature = notificationType as WhatsAppFeature;
+
+    const validFeatures = Object.values(WhatsAppFeature);
+    const coreTypes = ['WELCOME', 'BILLING', 'REMINDER', 'PAYMENT_DUE', 'OTP'];
+
+    if (!validFeatures.includes(feature) && !coreTypes.includes(notificationType)) {
+        // Fallback: If it looks like a template key (not a feature), treat as UTILITY
+        feature = WhatsAppFeature.WHATSAPP_UTILITY;
+    }
 
     // Declare early for closure access in logFailure
     let phoneNumberConfig: any;
+
 
     const updateLogStatus = async (
       status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'SKIPPED',
@@ -144,41 +157,103 @@ export class WhatsAppSender {
     const isLegacyOrTrial =
       !planRules || !planRules.features || planRules.features.length === 0;
 
+    // List of Core Notifications that are ALWAYS allowed (subject to quotas)
+    // regardless of strict feature gating.
+    const CORE_NOTIFICATIONS = [
+      'WELCOME',
+      'BILLING',
+      'REMINDER',
+      'PAYMENT_DUE',
+    ];
+
     if (!isLegacyOrTrial && !skipPlanCheck) {
       // 🔒 GATE: Check if tenant has the specific feature entitlement
+      // EXCEPTION: Core notifications remain available to all active plans
+      // Check both original notificationType AND sanitized feature
+      if (CORE_NOTIFICATIONS.includes(notificationType) || CORE_NOTIFICATIONS.includes(feature)) {
+         // Allow core notification to proceed to quota checks
+      } else {
+        const hasEntitlement = planRules.features.includes(feature);
 
-      const hasEntitlement = planRules.features.includes(feature);
-
-      if (!hasEntitlement) {
-        return logFailure(
-          `Plan missing feature: ${feature}`,
-          true,
-          'Plan missing feature',
-        );
+        if (!hasEntitlement) {
+          return logFailure(
+            `Plan missing feature: ${feature}`,
+            true,
+            'Plan missing feature',
+          );
+        }
       }
     }
 
-    // 🔍 GUARDRAIL 2: DAILY QUOTA FOR TRIAL PLAN
-    // Max 10 messages per day per tenant
-    if (planRules?.code === 'TRIAL') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+    // 🔍 GUARDRAIL 2: QUOTA ENFORCEMENT (Generic)
+    // Supports Daily (Trial) and Monthly (Pro/Standard) limits
+    // Supports separated Utility vs Marketing quotas
 
-      const count = await this.prisma.whatsAppLog.count({
+    // Determine category and relevant quota
+    let categoryLimit = 0;
+    let categoryName = 'utility'; // Default for counting
+
+    if (notificationType === 'WHATSAPP_CAMPAIGN_MARKETING') {
+      categoryLimit = planRules?.whatsapp?.marketingQuota ?? 0;
+      categoryName = 'marketing';
+    } else {
+      // All other types (REMINDER, OTP, BILLING, WELCOME) count as UTILITY
+      categoryLimit = planRules?.whatsapp?.utilityQuota ?? 0;
+      categoryName = 'utility';
+    }
+
+    // fallback: if specific quotas are 0/undefined but total > 0, use total (legacy/fallback)
+    if (
+      categoryLimit === 0 &&
+      (planRules?.whatsapp?.messageQuota ?? 0) > 0 &&
+      categoryName === 'utility'
+    ) {
+      categoryLimit = planRules!.whatsapp!.messageQuota;
+    }
+
+    if (categoryLimit > 0) {
+      const isDaily = planRules?.whatsapp?.isDaily ?? false;
+      const now = new Date();
+      const periodStart = new Date(now);
+
+      if (isDaily) {
+        periodStart.setHours(0, 0, 0, 0); // Start of today
+      } else {
+        periodStart.setDate(1); // Start of this month
+        periodStart.setHours(0, 0, 0, 0);
+      }
+
+      // Count usage for this category in the period
+      // We need to query WhatsAppDailyUsage table for aggregated stats
+      // OR WhatsAppLog for granular count. DailyUsage is better for performance.
+      const aggregate = await this.prisma.whatsAppDailyUsage.aggregate({
         where: {
           tenantId,
-          sentAt: { gte: today },
-          status: { in: ['SENT', 'DELIVERED'] },
+          date: { gte: periodStart },
+        },
+        _sum: {
+          [categoryName]: true,
         },
       });
 
-      if (count >= 10) {
+      const used = aggregate._sum[categoryName] ?? 0;
+
+      if (used >= categoryLimit) {
+        const periodName = isDaily ? 'daily' : 'monthly';
         return logFailure(
-          'Daily WhatsApp quota exceeded for TRIAL plan (Max 10)',
+          `${categoryName.toUpperCase()} quota exceeded (${used}/${categoryLimit} ${periodName})`,
           true,
-          'Daily WhatsApp quota exceeded for TRIAL plan',
+          `${categoryName} quota exceeded`,
         );
       }
+    } else if (planRules && !skipPlanCheck && !isLegacyOrTrial) {
+      // If quota is 0 and it's a restricted plan, block.
+      // (Trial/Legacy are handled by isLegacyOrTrial check above, but here we cover explicit 0 limits)
+      return logFailure(
+        `No ${categoryName} quota available for this plan`,
+        true,
+        `No ${categoryName} quota`,
+      );
     }
 
     // ✅ NORMALIZE PHONE: Convert any format to 10 digits, then to 91XXXXXXXXXX
@@ -214,17 +289,17 @@ export class WhatsAppSender {
         const purpose = this.mapFeatureToPurpose(feature);
 
         // 2b. Dual-Track Routing Check (Only relevant if not forcing ID)
-        // For manual text, we treat the type as 'MANUAL' which is NOT in TRACK_A_ALLOWED_TYPES
+        // Use the actual notification type for routing, not hardcoded 'MANUAL'
         const routing = await this.routingService.resolveTrack(
           tenantId,
-          'MANUAL',
+          notificationType,
         );
 
         if (!routing.allowed) {
           return logFailure(
-            'Free-text messaging requires WHATSAPP_CRM add-on and a tenant-owned phone number.',
+            `Message type '${notificationType}' blocked by routing (${routing.track})`,
             true,
-            'Free-text blocked by routing (Track A)',
+            `Blocked by routing (${routing.track})`,
           );
         }
 

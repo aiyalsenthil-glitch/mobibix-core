@@ -6,6 +6,18 @@ datasource db {
   provider = "postgresql"
 }
 
+enum BillingType {
+  MANUAL
+  AUTOPAY
+}
+
+enum AutopayStatus {
+  ACTIVE
+  HALTED
+  CANCELLED
+  PAST_DUE
+}
+
 model Tenant {
   id                    String               @id @default(cuid())
   name                  String
@@ -60,6 +72,7 @@ model Tenant {
   loyaltyTransactions   LoyaltyTransaction[]
   members               Member[]             @relation("TenantMembers")
   payments              Payment[]
+  subscriptionInvoices  SubscriptionInvoice[] @relation("TenantToSubscriptionInvoice")
   paymentVouchers       PaymentVoucher[]     @relation("TenantPaymentVouchers")
   purchases             Purchase[]           @relation("TenantPurchases")
   purchaseOrders        PurchaseOrder[]      @relation("TenantPurchaseOrders")
@@ -514,6 +527,7 @@ model PlanPrice {
   planId       String
   billingCycle BillingCycle
   price        Int // Price in paise (₹0.01 units)
+  REMOVED_PAYMENT_INFRAPlanId String? // For AutoPay (Razorpay Subscription Plan ID)
   isActive     Boolean      @default(true)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
@@ -554,6 +568,13 @@ model TenantSubscription {
   nextBillingCycle  BillingCycle? // For scheduled duration changes
   nextPriceSnapshot Int? // Price for next cycle (when upgrading)
   lastRenewedAt     DateTime? // Track when last renewed (for audit)
+
+  // Hybrid Billing Fields
+  billingType            BillingType   @default(MANUAL)
+  paymentStatus          PaymentStatus @default(PENDING)
+  autopayStatus          AutopayStatus?
+  providerSubscriptionId String?       // For AutoPay (sub_...)
+  providerPaymentLinkId  String?       // For Manual (plink_...)
 
   plan   Plan                @relation(fields: [planId], references: [id])
   tenant Tenant              @relation(fields: [tenantId], references: [id])
@@ -608,12 +629,90 @@ model Payment {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   tenant            Tenant        @relation(fields: [tenantId], references: [id])
+  subscriptionInvoice SubscriptionInvoice? @relation("PaymentToSubscriptionInvoice")
 
   @@unique([provider, providerPaymentId, providerOrderId])
   @@index([tenantId])
   @@index([status])
   @@index([expiresAt])
+  retries           PaymentRetry[]
 }
+
+model PaymentRetry {
+  id            String            @id @default(cuid())
+  paymentId     String
+  retryCount    Int               @default(0) // 1, 2, 3
+  status        PaymentRetryStatus @default(PENDING)
+  scheduledAt   DateTime
+  executedAt    DateTime?
+  failureReason String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  payment       Payment           @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([status])
+  @@index([scheduledAt]) // For cron polling
+}
+
+enum PaymentRetryStatus {
+  PENDING
+  PROCESSED
+  FAILED
+  CANCELLED
+}
+
+model SubscriptionInvoice {
+  id                String        @id @default(cuid())
+  invoiceNumber     String        @unique // Sequential invoice number
+  tenantId          String
+  paymentId         String        @unique
+  
+  // GST Compliance Fields
+  gstin             String?       // Business GSTIN (from config)
+  customerGstin     String?       // Customer GSTIN (optional)
+  sacCode           String        @default("998314") // SAC for subscription services
+  
+  // Invoice Details
+  invoiceDate       DateTime      @default(now())
+  dueDate           DateTime?
+  amount            Int           // Base amount in paise
+  cgst              Int           @default(0) // Central GST (9%)
+  sgst              Int           @default(0) // State GST (9%)
+  igst              Int           @default(0) // Integrated GST (18% for interstate)
+  total             Int           // Total including taxes
+  
+  // Line Items
+  description       String        // Plan name + billing cycle
+  planSnapshot      Json          // Store plan details at time of invoice
+  
+  // Status
+  status            SubscriptionInvoiceStatus @default(DRAFT)
+  pdfUrl            String?       // URL to generated PDF
+  emailSent         Boolean       @default(false)
+  emailSentAt       DateTime?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  tenant            Tenant        @relation("TenantToSubscriptionInvoice", fields: [tenantId], references: [id])
+  payment           Payment       @relation("PaymentToSubscriptionInvoice", fields: [paymentId], references: [id])
+  
+  @@index([tenantId])
+  @@index([invoiceNumber])
+  @@index([invoiceDate])
+  @@index([status])
+}
+
+enum SubscriptionInvoiceStatus {
+  DRAFT
+  FINALIZED
+  SENT
+  PAID
+  CANCELLED
+}
+
 
 model AuditLog {
   id        String   @id @default(uuid())
@@ -840,14 +939,7 @@ model WhatsAppCampaign {
   @@index([scheduledAt])
 }
 
-model WebhookEvent {
-  id          String   @id @default(cuid())
-  provider    String
-  eventType   String
-  referenceId String?
-  payload     Json
-  receivedAt  DateTime @default(now())
-}
+
 
 model WebhookLog {
   id        String   @id @default(uuid())
@@ -1679,6 +1771,7 @@ enum PaymentStatus {
 enum SubscriptionStatus {
   TRIAL
   ACTIVE
+  PENDING     // Awaiting payment confirmation
   PAST_DUE    // Grace period - payment failed but not yet expired
   EXPIRED
   CANCELLED
@@ -1928,3 +2021,34 @@ model FeatureFlag {
   @@index([tenantId])
   @@index([shopId])
 }
+
+model WebhookEvent {
+  id          String  @id @default(cuid())
+  provider    String
+  eventType   String
+  referenceId String?
+  payload     Json
+
+  // Phase 4: Observability Fields
+  status      WebhookStatus @default(PENDING)
+  error       String?
+  retryCount  Int           @default(0)
+  processedAt DateTime?
+
+  receivedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([provider, eventType])
+  @@index([status])
+  @@index([receivedAt])
+  @@index([referenceId])
+}
+
+enum WebhookStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  IGNORED
+}
+

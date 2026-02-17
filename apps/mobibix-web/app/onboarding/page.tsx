@@ -3,38 +3,46 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { ArrowRight, Building2, AlertCircle } from "lucide-react";
-import { hasSessionHint } from "@/services/auth.api";
-import { createTenant } from "@/services/tenant.api";
+import {
+  exchangeFirebaseToken,
+  hasSessionHint,
+  setAccessToken,
+} from "@/services/auth.api";
+import { createTenantWithToken } from "@/services/tenant.api";
 import { useAuth } from "@/hooks/useAuth";
 
 // Assumes user is authenticated and holds a backend JWT
 export default function OnboardingPage() {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, authUser, REMOVED_AUTH_PROVIDERUser } = useAuth();
   const [businessName, setBusinessName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
+  useEffect(() => {
+    // Check if user is authenticated; if not, redirect to signin
+    if (!hasSessionHint()) {
+      router.push("/signin");
+    } else if (authUser?.tenantId) {
+      // 🔒 User already has a tenant → redirect to dashboard
+      console.log("ℹ️ User already has tenant, redirecting to dashboard...");
+      router.push("/dashboard");
+    } else {
+      setCheckingAuth(false);
+    }
+  }, [authUser?.tenantId]);
+
   const handleSignOut = async () => {
     try {
       await logout();
-      router.push('/signin');
+      router.push("/signin");
       setError(null);
       setBusinessName("");
     } catch (err) {
       console.error("Logout error:", err);
     }
   };
-
-  useEffect(() => {
-    // Check if user is authenticated; if not, redirect to signin
-    if (!hasSessionHint()) {
-      router.push("/signin");
-    } else {
-      setCheckingAuth(false);
-    }
-  }, []);
 
   async function handleCreateBusiness(e: React.FormEvent) {
     e.preventDefault();
@@ -53,10 +61,25 @@ export default function OnboardingPage() {
         return;
       }
 
-      const response = await createTenant({
-        name: businessName,
-        tenantType: "MOBILE_SHOP",
-      });
+      if (!REMOVED_AUTH_PROVIDERUser) {
+        setError(
+          "Your session is invalid. Please sign out and sign in again to create a new account.",
+        );
+        return;
+      }
+
+      // Refresh backend session to avoid stale access token cookies.
+      const exchange = await exchangeFirebaseToken(
+        await REMOVED_AUTH_PROVIDERUser.getIdToken(),
+      );
+
+      const response = await createTenantWithToken(
+        {
+          name: businessName,
+          tenantType: "MOBILE_SHOP",
+        },
+        exchange.accessToken,
+      );
 
       // Full page reload to ensure auth context reinitializes with new tenant context
       window.location.href = "/dashboard";
@@ -72,6 +95,7 @@ export default function OnboardingPage() {
         // Clear auth tokens so user is forced to re-authenticate
         localStorage.removeItem("accessToken");
         sessionStorage.removeItem("accessToken");
+        setAccessToken(null);
       } else {
         setError(e.message || "Something went wrong");
       }

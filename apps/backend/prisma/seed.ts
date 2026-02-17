@@ -28,7 +28,7 @@ async function seedWhatsAppSettingsForTenant(tenantId: string): Promise<{
     await prisma.whatsAppSetting.create({
       data: {
         tenantId,
-        enabled: false,
+        enabled: true,
         provider: 'META',
         defaultLanguage: 'en',
         dailyLimit: 100,
@@ -189,24 +189,21 @@ async function main() {
   }
   // Plans
   // V1 CLEAN STRUCTURE - ALL FEATURES IN DATABASE
-  
+
   // STANDARD plans: Only core features, no premium features
   const FEATURES_STANDARD = [
     'STAFF', // Staff management allowed
   ];
 
   // PRO plans: All premium features enabled
-  const FEATURES_PRO = [
-    'STAFF',
-    'REPORTS',
-  ];
-  
+  const FEATURES_PRO = ['STAFF', 'REPORTS'];
+
   // GYM-specific features
   const FEATURES_GYM_STANDARD = [
     'STAFF',
     'ATTENDANCE', // GYM has attendance tracking
   ];
-  
+
   const FEATURES_GYM_PRO = [
     'STAFF',
     'ATTENDANCE',
@@ -234,7 +231,7 @@ async function main() {
   ];
 
   const FEATURES_WHATSAPP_GROWTH = [
-    'WHATSAPP_UTILITY', 
+    'WHATSAPP_UTILITY',
     'WHATSAPP_MARKETING',
     'WHATSAPP_ALERTS_AUTOMATION', // Basic
     'WHATSAPP_TEAM_INBOX',
@@ -263,7 +260,7 @@ async function main() {
       // Plan limits
       maxStaff: 3,
       maxMembers: 50,
-      whatsappUtilityQuota: 0, // Disabled for Trial
+      whatsappUtilityQuota: 10, // 10/day
       whatsappMarketingQuota: 0,
       analyticsHistoryDays: 30,
       tagline: 'Experience the full power of GymPilot.',
@@ -290,7 +287,8 @@ async function main() {
       whatsappMarketingQuota: 0,
       analyticsHistoryDays: 90,
       tagline: 'Essential management for single-location gyms.',
-      description: 'Manage your gym efficiently with attendance and basic staff roles.',
+      description:
+        'Manage your gym efficiently with attendance and basic staff roles.',
       featuresJson: [
         'Up to 200 Members',
         '3 Staff Accounts',
@@ -309,15 +307,16 @@ async function main() {
       // Plan limits
       maxStaff: null, // Unlimited
       maxMembers: null, // Unlimited
-      whatsappUtilityQuota: 1000,
-      whatsappMarketingQuota: 200,
+      whatsappUtilityQuota: 500, // 500/month
+      whatsappMarketingQuota: 100, // 100/month
       analyticsHistoryDays: 365,
       tagline: 'Advanced growth tools for high-performance gyms.',
-      description: 'Everything in Standard plus premium WhatsApp automations and unlimited growth.',
+      description:
+        'Everything in Standard plus premium WhatsApp automations and unlimited growth.',
       featuresJson: [
         'Unlimited Members',
         'Unlimited Staff',
-        'WhatsApp Marketing (200/mo)',
+        'WhatsApp Marketing (100/mo)',
         'Advanced Analytics',
       ],
     },
@@ -336,7 +335,8 @@ async function main() {
       whatsappMarketingQuota: 0,
       analyticsHistoryDays: 30,
       tagline: 'Essential alerts for growing businesses.',
-      description: 'Start engaging customers with automated alerts and basic notifications.',
+      description:
+        'Start engaging customers with automated alerts and basic notifications.',
       featuresJson: [
         '1,000 Messages/mo',
         'Automated Alerts',
@@ -382,7 +382,8 @@ async function main() {
       whatsappMarketingQuota: 0,
       analyticsHistoryDays: 365,
       tagline: 'Full power for high-volume teams.',
-      description: 'Unlimited possibilities with full API access and advanced automation.',
+      description:
+        'Unlimited possibilities with full API access and advanced automation.',
       featuresJson: [
         'Unlimited Quota*',
         'Full API Access',
@@ -402,15 +403,16 @@ async function main() {
       // Plan limits (Mobibix doesn't limit Parties - only GYM limits Members)
       maxStaff: 3,
       maxMembers: null, // Unlimited parties for Mobibix
-      whatsappUtilityQuota: 0, // Disabled for Trial
+      whatsappUtilityQuota: 10, // 10/day
       whatsappMarketingQuota: 0,
       analyticsHistoryDays: 30,
       tagline: 'Experience the full power of Mobibix.',
-      description: '14-day free trial with access to all premium retail features.',
+      description:
+        '14-day free trial with access to all premium retail features.',
       featuresJson: [
         'Inventory Management',
         'Sales & Billing',
-        'WhatsApp Alerts (Trial)',
+        'WhatsApp Automations (Trial)',
         '3 Staff Accounts',
       ],
     },
@@ -430,7 +432,8 @@ async function main() {
       whatsappMarketingQuota: 0,
       analyticsHistoryDays: 90,
       tagline: 'Professional inventory & sales management.',
-      description: 'Perfect for single-store retailers needing robust stock control.',
+      description:
+        'Perfect for single-store retailers needing robust stock control.',
       featuresJson: [
         'Single Shop',
         'Unlimited Products',
@@ -451,11 +454,12 @@ async function main() {
       maxStaff: null, // Unlimited
       maxMembers: null, // Unlimited parties for Mobibix
       maxShops: null, // Unlimited Shops
-      whatsappUtilityQuota: 1000,
-      whatsappMarketingQuota: 200,
+      whatsappUtilityQuota: 500, // 500/month
+      whatsappMarketingQuota: 100, // 100/month
       analyticsHistoryDays: 365,
       tagline: 'Scale your retail empire with multi-store power.',
-      description: 'The ultimate retail solution with multi-shop support and premium WhatsApp CRM.',
+      description:
+        'The ultimate retail solution with multi-shop support and premium WhatsApp CRM.',
       featuresJson: [
         'Multi-Store Support',
         'Unlimited Staff',
@@ -482,7 +486,7 @@ async function main() {
     },
     WHATSAPP_STARTER: {
       MONTHLY: 79900,
-      QUARTERLY: 239700, 
+      QUARTERLY: 239700,
       YEARLY: 799900,
     },
     WHATSAPP_GROWTH: {
@@ -499,14 +503,14 @@ async function main() {
       MONTHLY: 0, // Free trial
     },
     MOBIBIX_STANDARD: {
-      MONTHLY: 29900,  // ₹299/month
+      MONTHLY: 29900, // ₹299/month
       QUARTERLY: 79900, // ₹799/quarter
-      YEARLY: 299900,   // ₹2,999/year
+      YEARLY: 299900, // ₹2,999/year
     },
     MOBIBIX_PRO: {
-      MONTHLY: 49900,   // ₹499/month
+      MONTHLY: 49900, // ₹499/month
       QUARTERLY: 139900, // ₹1,399/quarter
-      YEARLY: 499900,    // ₹4,999/year
+      YEARLY: 499900, // ₹4,999/year
     },
   };
 
@@ -536,6 +540,7 @@ async function main() {
           tagline: p.tagline,
           description: p.description,
           featuresJson: p.featuresJson,
+          meta: {}, // Clear legacy meta (e.g. reminderQuotaPerDay)
         },
       });
       console.log(`✅ Updated Plan: ${p.name}`);
@@ -558,6 +563,7 @@ async function main() {
           tagline: p.tagline,
           description: p.description,
           featuresJson: p.featuresJson,
+          meta: {}, // Clear legacy meta
         },
       });
       planId = created.id;

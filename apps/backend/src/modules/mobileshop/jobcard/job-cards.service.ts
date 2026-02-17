@@ -101,6 +101,13 @@ export class JobCardsService {
           );
         }
 
+        console.error(`[JobCardsService] Shop Access Failed for OWNER. ShopId: ${shopId}, UserTenant: ${user.tenantId}`);
+        const actualShop = await this.prisma.shop.findUnique({ where: { id: shopId } });
+        if (actualShop) {
+           console.error(`[JobCardsService] Shop Found but tenant mismatch. ShopTenant: ${actualShop.tenantId}`);
+        } else {
+           console.error(`[JobCardsService] Shop NOT FOUND in DB.`);
+        }
         throw new BadRequestException('Shop not accessible');
       }
 
@@ -952,7 +959,11 @@ export class JobCardsService {
     });
   }
 
-  async list(user, shopId: string) {
+  async list(
+    user,
+    shopId: string,
+    filters?: { status?: JobStatus; customerName?: string },
+  ) {
     try {
       await this.assertAccess(user, shopId);
     } catch (e) {
@@ -968,14 +979,25 @@ export class JobCardsService {
       throw e;
     }
 
+    const where: Prisma.JobCardWhereInput = { shopId };
+
+    if (filters?.status) {
+      where.status = filters.status;
+    }
+
+    if (filters?.customerName) {
+      where.customerName = {
+        contains: filters.customerName,
+        mode: 'insensitive',
+      };
+    }
+
     const jobCards = await this.prisma.jobCard.findMany({
-      where: { shopId },
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
         invoices: true,
-        parts: user.role === 'OWNER' ? { include: { product: true } } : false, // Only fetch parts logic for owner if needed for list view?
-        // Optimization: List view might not need parts details unless showing profit column.
-        // Assuming list view needs basic info.
+        parts: user.role === 'OWNER' ? { include: { product: true } } : false,
       },
     });
 
@@ -1473,8 +1495,14 @@ export class JobCardsService {
         status: true,
         deviceBrand: true,
         deviceModel: true,
+        deviceType: true,
         estimatedDelivery: true,
         updatedAt: true,
+        shop: {
+          select: {
+            name: true,
+          },
+        },
       },
     });
   }

@@ -1,6 +1,7 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 
 import { CoreModule } from './core/core.module';
 import { GymModule } from './modules/gym/gym.module';
@@ -41,11 +42,17 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
       envFilePath: '.env',
     }),
 
-    // 🛡️ Rate Limiting
+    // 🛡️ Rate Limiting (Multi-Tier)
     ThrottlerModule.forRoot([
       {
+        name: 'default', // Global: 100 requests per minute per IP
         ttl: 60000, // 60 seconds
-        limit: 100, // 100 requests per TTL
+        limit: 100,
+      },
+      {
+        name: 'user', // Authenticated users: 1000 requests per hour
+        ttl: 3600000, // 1 hour
+        limit: 1000,
       },
     ]),
 
@@ -101,7 +108,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     },
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard, // ← Rate limiting
+      useClass: CustomThrottlerGuard, // ← Rate limiting with user tracking
     },
   ],
 })

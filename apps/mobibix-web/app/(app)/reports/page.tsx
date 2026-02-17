@@ -13,6 +13,7 @@ import {
   BarChart3,
   PieChart as PieChartIcon,
   Lock,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useShop } from "@/context/ShopContext";
@@ -206,6 +207,30 @@ export default function ReportsPage() {
       href: "/reports/profit",
       color: "text-emerald-600 dark:text-emerald-400",
       bg: "bg-emerald-50 dark:bg-emerald-900/20",
+    },
+    {
+      title: "Repair Report",
+      description: "Service revenue & part costs",
+      icon: <Settings className="w-5 h-5" />,
+      href: "/reports/repair",
+      color: "text-teal-600 dark:text-teal-400",
+      bg: "bg-teal-50 dark:bg-teal-900/20",
+    },
+    {
+      title: "GSTR-1 Report",
+      description: "Sales register & HSN summary",
+      icon: <FileText className="w-5 h-5" />,
+      href: "/reports/gstr-1",
+      color: "text-indigo-600 dark:text-indigo-400",
+      bg: "bg-indigo-50 dark:bg-indigo-900/20",
+    },
+    {
+      title: "GSTR-2 Report",
+      description: "Purchase register & ITC claims",
+      icon: <CreditCard className="w-5 h-5" />,
+      href: "/reports/gstr-2",
+      color: "text-pink-600 dark:text-pink-400",
+      bg: "bg-pink-50 dark:bg-pink-900/20",
     },
   ];
 

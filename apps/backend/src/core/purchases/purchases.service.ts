@@ -25,6 +25,10 @@ export class PurchasesService {
     return Math.round(amount * 100);
   }
 
+  private fromPaisa(amount: number): number {
+    return amount / 100;
+  }
+
   /**
    * Create a new purchase invoice
    */
@@ -448,7 +452,7 @@ export class PurchasesService {
 
     return {
       supplierId,
-      totalOutstanding,
+      totalOutstanding: this.fromPaisa(totalOutstanding),
       purchases: purchases.map((p) => this.mapToResponseDto(p)),
     };
   }
@@ -491,15 +495,15 @@ export class PurchasesService {
       supplierName: purchase.supplierName,
       invoiceDate: purchase.invoiceDate,
       dueDate: purchase.dueDate,
-      subTotal: purchase.subTotal,
-      totalGst: purchase.totalGst,
-      grandTotal: purchase.grandTotal,
-      paidAmount: purchase.paidAmount,
-      outstandingAmount: purchase.grandTotal - purchase.paidAmount,
+      subTotal: this.fromPaisa(purchase.subTotal),
+      totalGst: this.fromPaisa(purchase.totalGst),
+      grandTotal: this.fromPaisa(purchase.grandTotal),
+      paidAmount: this.fromPaisa(purchase.paidAmount),
+      outstandingAmount: this.fromPaisa(purchase.grandTotal - purchase.paidAmount),
       paymentMethod: purchase.paymentMethod,
       paymentReference: purchase.paymentReference,
-      cashAmount: purchase.cashAmount,
-      upiAmount: purchase.upiAmount,
+      cashAmount: purchase.cashAmount ? this.fromPaisa(purchase.cashAmount) : undefined,
+      upiAmount: purchase.upiAmount ? this.fromPaisa(purchase.upiAmount) : undefined,
       purchaseType: purchase.purchaseType,
       taxInclusive: purchase.taxInclusive,
       status: purchase.status,
@@ -510,14 +514,14 @@ export class PurchasesService {
         description: item.description,
         hsnSac: item.hsnSac,
         quantity: item.quantity,
-        purchasePrice: item.purchasePrice,
+        purchasePrice: this.fromPaisa(item.purchasePrice),
         gstRate: item.gstRate,
-        taxAmount: item.taxAmount,
-        totalAmount: item.totalAmount,
+        taxAmount: this.fromPaisa(item.taxAmount),
+        totalAmount: this.fromPaisa(item.totalAmount),
       })),
       payments: purchase.payments?.map((payment: any) => ({
         id: payment.id,
-        amount: payment.amount,
+        amount: this.fromPaisa(payment.amount),
         paymentMethod: payment.paymentMethod,
         paymentReference: payment.paymentReference,
         paymentDate: payment.paymentDate,

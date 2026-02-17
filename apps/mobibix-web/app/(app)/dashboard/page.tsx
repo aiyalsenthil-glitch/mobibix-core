@@ -8,6 +8,7 @@ import { useShop } from "@/context/ShopContext";
 import { getProfitSummary, getSalesReport } from "@/services/reports.api";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { getUsageHistory, UsageSnapshot } from "@/services/tenant.api";
+import { authenticatedFetch } from "@/services/auth.api";
 import { UsageTrendsChart } from "@/components/dashboard/UsageTrendsChart";
 import {
   LineChart,
@@ -86,7 +87,7 @@ export default function DashboardPage() {
   const isAllShops = !selectedShopId && isOwner;
 
   const fetchDashboard = async () => {
-    if (!authUser) {
+    if (!authUser || !authUser.tenantId) {
       setLoading(false);
       return;
     }
@@ -116,11 +117,8 @@ export default function DashboardPage() {
 
       // Optimized: Reduced from 5 to 3 calls. Sales/Trend data now comes from main dashboard API.
       const [dashRes, profitRes, usageRes] = await Promise.all([
-        fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api"}/mobileshop/dashboard/${endpoint}${shopQuery ? "?" + shopQuery.substring(1) : ""}`,
-          {
-            credentials: "include",
-          },
+        authenticatedFetch(
+          `/mobileshop/dashboard/${endpoint}${shopQuery ? "?" + shopQuery.substring(1) : ""}`,
         ).catch(() => null),
         isOwner && userRole !== "member"
           ? getProfitSummary({

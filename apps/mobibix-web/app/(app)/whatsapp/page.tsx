@@ -38,12 +38,12 @@ export default function WhatsAppPage() {
 
   return (
     <WhatsAppNumberProvider tenantId={authUser?.tenantId}>
-      <WhatsAppPageContent />
+      <WhatsAppPageContent authUser={authUser} />
     </WhatsAppNumberProvider>
   );
 }
 
-function WhatsAppPageContent() {
+function WhatsAppPageContent({ authUser }: { authUser: any }) {
   const searchParams = useSearchParams();
   const showPromo = searchParams.get("promo") === "true";
   const isOnboarding = searchParams.get("onboarding") === "true";
@@ -216,6 +216,7 @@ function WhatsAppPageContent() {
 
   // Show promo if no subscription AND not allowed via main plan (and not retail demo)
   const hasAccess = crmStatus?.hasSubscription || crmStatus?.whatsappAllowed;
+  const isPro = authUser?.planCode === "MOBIBIX_PRO" || authUser?.planCode === "GYM_PRO";
 
   if (showPromo || (crmStatus && !hasAccess)) {
     return <WhatsAppCrmPromo />;
@@ -291,15 +292,16 @@ function WhatsAppPageContent() {
               onCreateCampaign={handleCreateCampaign}
               onRefresh={loadData}
               hasAddon={crmStatus?.hasSubscription}
+              isPro={isPro}
             />
           ) : (
             <div className="p-8 text-center text-gray-500">
               Failed to load dashboard statistics.
             </div>
           )
-        ) : isRetailDemo ? (
+        ) : activeTab === "inbox" ? (
           <WhatsAppRetailInbox
-            disabled={!crmStatus?.whatsappAllowed}
+            disabled={!crmStatus?.whatsappAllowed || !isPro}
             sendingNumber={crmStatus?.phoneNumber}
           />
         ) : !crmStatus?.isEnabled || isOnboarding ? (

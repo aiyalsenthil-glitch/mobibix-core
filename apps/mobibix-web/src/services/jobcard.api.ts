@@ -82,6 +82,10 @@ export interface JobCard {
   jobCost?: number;
   profit?: number;
   revenue?: number;
+
+  // Additional UI fields
+  whatsappSent?: boolean;
+  shopName?: string;
 }
 
 export interface CreateJobCardDto {
@@ -135,10 +139,16 @@ export interface UpdateJobCardDto {
 /**
  * List all job cards for a shop
  */
-export async function listJobCards(shopId: string): Promise<JobCard[]> {
-  const response = await authenticatedFetch(
-    `/mobileshop/shops/${shopId}/job-cards`,
-  );
+export async function listJobCards(
+  shopId: string,
+  filters?: { status?: string; customerName?: string },
+): Promise<JobCard[]> {
+  const query = new URLSearchParams();
+  if (filters?.status) query.append("status", filters.status);
+  if (filters?.customerName) query.append("customerName", filters.customerName);
+
+  const url = `/mobileshop/shops/${shopId}/job-cards${query.toString() ? `?${query.toString()}` : ""}`;
+  const response = await authenticatedFetch(url);
 
   if (!response.ok) {
     const error = await response.json();

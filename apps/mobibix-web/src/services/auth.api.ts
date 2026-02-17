@@ -38,6 +38,33 @@
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
 
+const ACCESS_TOKEN_KEY = "accessToken";
+let inMemoryAccessToken: string | null = null;
+
+export function setAccessToken(token: string | null) {
+  inMemoryAccessToken = token;
+  if (typeof sessionStorage === "undefined") return;
+
+  if (token) {
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+  } else {
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  }
+}
+
+export function getAccessToken(): string | null {
+  if (inMemoryAccessToken) return inMemoryAccessToken;
+  if (typeof sessionStorage === "undefined") return null;
+
+  const stored = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  if (stored) {
+    inMemoryAccessToken = stored;
+    return stored;
+  }
+
+  return null;
+}
+
 export type AuthRole = "owner" | "staff" | "member" | "admin";
 
 export interface AuthUserPayload {
@@ -139,6 +166,10 @@ export async function exchangeFirebaseToken(
 
     const data: ExchangeTokenResponse = await response.json();
 
+    if (data?.accessToken) {
+      setAccessToken(data.accessToken);
+    }
+
     return data;
   } catch (error: any) {
     console.error("Token exchange error:", error);
@@ -193,6 +224,7 @@ export async function logout(): Promise<void> {
     if (typeof document !== "undefined") {
       document.cookie = "csrfToken=; Max-Age=0; path=/";
     }
+    setAccessToken(null);
   }
 }
 
@@ -204,6 +236,16 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
       "Content-Type": "application/json",
     },
   });
+
+  if (response.status === 404 || response.status === 401) {
+    // Stale or invalid session cookie; clear it so auth exchange can proceed.
+    try {
+      await logout();
+    } catch {
+      // Ignore logout failures; we still want to continue login flow.
+    }
+    return null;
+  }
 
   if (!response.ok) {
     return null;
@@ -242,6 +284,15 @@ async function refreshAccessToken(): Promise<boolean> {
           return false;
         }
 
+        try {
+          const data = await response.json();
+          if (data?.accessToken) {
+            setAccessToken(data.accessToken);
+          }
+        } catch {
+          // Ignore JSON parsing failures.
+        }
+
         return true;
       } catch {
         await logout();
@@ -260,9 +311,11 @@ export async function authenticatedFetch(
   options: RequestInit = {},
   allowRetry = true,
 ): Promise<Response> {
+  const accessToken = getAccessToken();
   const headers = {
     "Content-Type": "application/json",
     ...getCsrfHeader(),
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     ...options.headers,
   };
 

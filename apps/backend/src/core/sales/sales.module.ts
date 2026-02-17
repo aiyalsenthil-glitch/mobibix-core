@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { SalesController } from './sales.controller';
+import { SalesPublicController } from './sales.public.controller';
 import { SalesService } from './sales.service';
 import { PaymentService } from './payment.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -12,7 +13,7 @@ import { LoyaltyModule } from '../loyalty/loyalty.module';
 
 @Module({
   imports: [CommonModule, ReceiptsModule, LoyaltyModule],
-  controllers: [SalesController],
+  controllers: [SalesController, SalesPublicController],
   providers: [
     SalesService,
     PaymentService,

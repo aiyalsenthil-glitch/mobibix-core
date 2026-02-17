@@ -26,6 +26,7 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { TenantStatusGuard } from './guards/tenant-status.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { SkipSubscriptionCheck } from '../auth/decorators/skip-subscription-check.decorator';
 
 @Controller('tenant')
 export class TenantController {
@@ -76,6 +77,7 @@ export class TenantController {
    */
   @UseGuards(JwtAuthGuard, TenantStatusGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.USER) // Allow USER role for first-time tenant creation
+  @SkipSubscriptionCheck()
   @Post()
   async createTenant(@Req() req: any, @Body() dto: CreateTenantDto) {
     const userId = req.user.sub;

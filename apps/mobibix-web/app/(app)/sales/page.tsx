@@ -39,7 +39,17 @@ import {
   History,
   Ban,
   IndianRupee,
+  Search,
+  X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const PAGE_SIZE = 50;
 
@@ -47,8 +57,9 @@ const STATUS_COLORS: Record<InvoiceStatus, string> = {
   DRAFT: "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-400",
   FINAL: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
   PAID: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400",
+  PARTIALLY_PAID: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
   CREDIT:
-    "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400", // Changed from blue to amber for credit
+    "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400", // Changed from amber to indigo for credit to differentiate from partial
   VOIDED: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400",
 };
 
@@ -72,7 +83,7 @@ const PAYMENT_BADGES: Record<PaymentMode, string> = {
 export default function SalesPage() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { authUser } = useAuth();
+  const { authUser, isLoading: isAuthLoading } = useAuth();
   const {
     shops,
     selectedShopId,
@@ -99,12 +110,27 @@ export default function SalesPage() {
   const userRole = authUser?.role;
   const isOwner = userRole === "owner";
 
+  // Filters State
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
   const [totalInvoices, setTotalInvoices] = useState(0);
 
+  // Simple debounce for search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Use modern hook for async data loading with built-in race condition prevention
+  // memoize initial data to prevent re-render loops
+  const initialData = useRef({ data: [], total: 0 }).current;
+
   const {
     data: invoicesData,
     isLoading,
@@ -112,19 +138,16 @@ export default function SalesPage() {
     reload,
   } = useDeferredAsyncData(
     useCallback(async () => {
-      if (!selectedShopId) {
+      // Fetch as soon as we have the required data (don't wait for loading flags)
+      if (!authUser?.tenantId || !selectedShopId) {
         return { data: [], total: 0 };
-      }
-
-      if (!authUser?.tenantId) {
-        throw new Error(
-          "Your account is not associated with any tenant/shop. Please contact support or set up your business profile first.",
-        );
       }
 
       const result = await listInvoices(selectedShopId, undefined, {
         skip: currentPage * PAGE_SIZE,
         take: PAGE_SIZE,
+        status: statusFilter === "ALL" ? undefined : statusFilter,
+        customerName: debouncedSearchQuery || undefined,
       });
 
       // Handle both paginated and non-paginated responses
@@ -132,9 +155,9 @@ export default function SalesPage() {
         return { data: result, total: result.length };
       }
       return result;
-    }, [selectedShopId, currentPage, authUser]),
-    [selectedShopId, currentPage, authUser],
-    { data: [], total: 0 }, // Initial data
+    }, [selectedShopId, currentPage, authUser?.tenantId, statusFilter, debouncedSearchQuery]),
+    [selectedShopId, currentPage, authUser?.tenantId, statusFilter, debouncedSearchQuery],
+    initialData,
   );
 
   const invoices = invoicesData?.data || [];
@@ -144,6 +167,29 @@ export default function SalesPage() {
       setTotalInvoices(invoicesData.total);
     }
   }, [invoicesData]);
+
+  // Reload invoices when page becomes visible (e.g., after creating an invoice)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && selectedShopId && authUser?.tenantId) {
+        reload();
+      }
+    };
+
+    const handleFocus = () => {
+      if (selectedShopId && authUser?.tenantId) {
+        reload();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [selectedShopId, authUser?.tenantId, reload]);
 
   // Transform error messages for better UX
   const displayError = error
@@ -242,63 +288,102 @@ export default function SalesPage() {
         </button>
       </div>
 
-      {/* Shop Filter Section - Only show if multiple shops */}
-      {isLoadingShops ? (
-        <div
-          className={`${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"} border rounded-lg p-4 mb-6 shadow-sm`}
-        >
-          <div className="text-stone-400">Loading shops...</div>
-        </div>
-      ) : shops.length === 0 ? null : (
-        hasMultipleShops && (
-          <div
-            className={`${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"} border rounded-lg p-4 mb-6 shadow-sm`}
-          >
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <label
-                  className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-stone-300" : "text-black"}`}
-                >
-                  Select Shop
-                </label>
-                <select
-                  value={selectedShopId}
-                  onChange={(e) => selectShop(e.target.value)}
-                  className={`w-full px-4 py-2 rounded-lg font-medium focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 border ${
-                    theme === "dark"
-                      ? "bg-stone-900 border-white/20 text-white"
-                      : "bg-white border-gray-300 text-black"
-                  }`}
-                >
-                  <option
-                    value=""
-                    className={
-                      theme === "dark"
-                        ? "bg-stone-900 text-white"
-                        : "bg-white text-black"
-                    }
-                  >
-                    -- Select a shop --
+      {/* Filters Section */}
+      <div
+        className={`${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"} border rounded-xl p-4 mb-6 shadow-sm`}
+      >
+        <div className="flex flex-col md:flex-row gap-4 items-end">
+          {/* Shop Selector (Only if multiple) */}
+          {hasMultipleShops && (
+            <div className="flex-1 w-full">
+              <label
+                className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${theme === "dark" ? "text-stone-400" : "text-gray-500"}`}
+              >
+                Shop
+              </label>
+              <select
+                value={selectedShopId}
+                onChange={(e) => selectShop(e.target.value)}
+                className={`w-full px-4 py-2 rounded-lg font-medium focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 border ${
+                  theme === "dark"
+                    ? "bg-stone-900 border-white/10 text-white"
+                    : "bg-gray-50 border-gray-300 text-black"
+                }`}
+              >
+                <option value="">-- Select Shop --</option>
+                {shops.map((shop) => (
+                  <option key={shop.id} value={shop.id}>
+                    {shop.name}
                   </option>
-                  {shops.map((shop) => (
-                    <option
-                      key={shop.id}
-                      value={shop.id}
-                      className={
-                        theme === "dark"
-                          ? "bg-stone-900 text-white"
-                          : "bg-white text-black"
-                      }
-                    >
-                      {shop.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Status Filter */}
+          <div className="w-full md:w-48">
+            <label
+              className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${theme === "dark" ? "text-stone-400" : "text-gray-500"}`}
+            >
+              Status
+            </label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger
+                className={`${theme === "dark" ? "bg-stone-900 border-white/10 text-white" : "bg-gray-50 border-gray-300 text-black"}`}
+              >
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Status</SelectItem>
+                <SelectItem value="PAID">Paid</SelectItem>
+                <SelectItem value="PARTIALLY_PAID">Partially Paid</SelectItem>
+                <SelectItem value="CREDIT">Credit</SelectItem>
+                <SelectItem value="DRAFT">Draft</SelectItem>
+                <SelectItem value="FINAL">Final</SelectItem>
+                <SelectItem value="VOIDED">Voided</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Search Input */}
+          <div className="flex-[2] w-full relative">
+            <label
+              className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${theme === "dark" ? "text-stone-400" : "text-gray-500"}`}
+            >
+              Search
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
+              <Input
+                placeholder="Search Invoice # or Customer..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={`pl-10 pr-10 ${theme === "dark" ? "bg-stone-900 border-white/10 text-white placeholder:text-stone-600" : "bg-gray-50 border-gray-300 text-black"}`}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
-        )
-      )}
+
+          {(statusFilter !== "ALL" || searchQuery) && (
+            <button
+              onClick={() => {
+                setStatusFilter("ALL");
+                setSearchQuery("");
+              }}
+              className="px-4 py-2 text-sm font-medium text-teal-500 hover:text-teal-400 transition-colors whitespace-nowrap mb-1"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      </div>
 
       {error && (
         <div

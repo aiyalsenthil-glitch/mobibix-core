@@ -64,9 +64,18 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
     devicePassword: jobCard?.devicePassword || "",
     customerComplaint: jobCard?.customerComplaint || "",
     physicalCondition: jobCard?.physicalCondition || "",
-    estimatedCost: jobCard?.estimatedCost?.toString() || "",
-    diagnosticCharge: jobCard?.diagnosticCharge?.toString() || "",
-    advancePaid: jobCard?.advancePaid?.toString() || "",
+    estimatedCost:
+      jobCard?.estimatedCost !== undefined && !isNaN(jobCard.estimatedCost)
+        ? jobCard.estimatedCost.toString()
+        : "",
+    diagnosticCharge:
+      jobCard?.diagnosticCharge !== undefined && !isNaN(jobCard.diagnosticCharge)
+        ? jobCard.diagnosticCharge.toString()
+        : "",
+    advancePaid:
+      jobCard?.advancePaid !== undefined && !isNaN(jobCard.advancePaid)
+        ? jobCard.advancePaid.toString()
+        : "",
     billType: jobCard?.billType || "WITHOUT_GST",
     estimatedDelivery: jobCard?.estimatedDelivery
       ? new Date(jobCard.estimatedDelivery).toISOString().split("T")[0]

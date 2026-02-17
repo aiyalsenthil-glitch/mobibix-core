@@ -36,6 +36,7 @@ export class PrismaService
       'Invoice',
       'Payment', // SECURITY FIX: Enable soft-delete for payments
       'SupplierPayment', // SECURITY FIX: Enable soft-delete for supplier payments
+      'SubscriptionInvoice', // Added for GST invoice generation
     ]);
 
     const baseClient = this;

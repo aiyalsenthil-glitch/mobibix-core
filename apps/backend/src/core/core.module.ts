@@ -24,6 +24,7 @@ import { CrmDashboardModule } from './crm-dashboard/crm-dashboard.module';
 import { CommonModule } from '../common/common.module';
 import { PlatformModule } from './platform/platform.module';
 import { ReportsHardeningModule } from './reports/reports-hardening.module';
+import { SystemModule } from './system/system.module';
 
 @Module({
   imports: [
@@ -50,7 +51,9 @@ import { ReportsHardeningModule } from './reports/reports-hardening.module';
     FollowUpsModule,
     CrmDashboardModule,
     PlatformModule,
+    PlatformModule,
     ReportsHardeningModule,
+    SystemModule,
   ],
   exports: [
     AuthModule,

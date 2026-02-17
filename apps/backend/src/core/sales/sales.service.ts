@@ -143,6 +143,46 @@ export class SalesService {
     );
   }
 
+  async getPublicInvoiceDetails(invoiceId: string) {
+    // 1. Find invoice to get tenantId (Public access check)
+    const invoiceMeta = await this.prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      select: { tenantId: true },
+    });
+
+    if (!invoiceMeta) {
+      throw new BadRequestException('Invoice not found');
+    }
+
+    // 2. Fetch full invoice details with relations
+    const invoice = await this.getInvoiceDetails(invoiceMeta.tenantId, invoiceId);
+    
+    // 3. Fetch Shop Details (Sanitized)
+    const shop = await this.prisma.shop.findUnique({
+      where: { id: invoice.shopId },
+    });
+
+    // 4. Fetch Product Details (for names, etc since InvoiceItem doesn't store name)
+    const productIds = invoice.items?.map(i => i.shopProductId) || [];
+    const products = await this.prisma.shopProduct.findMany({
+      where: { id: { in: productIds } },
+      select: { 
+        id: true, 
+        name: true, 
+        type: true, 
+        hsnCode: true, 
+        gstRate: true,
+        isSerialized: true 
+      }
+    });
+
+    return {
+      invoice,
+      shop,
+      products: products, // Return array, frontend can map
+    };
+  }
+
   async createInvoice(tenantId: string, dto: SalesInvoiceDto) {
     if (!dto.items?.length) {
       throw new BadRequestException('At least one item required');
@@ -279,6 +319,7 @@ export class SalesService {
           amount: pm.amount,
         })),
         pricesIncludeTax: !!dto.pricesIncludeTax,
+        invoiceDate: dto.invoiceDate ? new Date(dto.invoiceDate) : undefined,
         referenceType: 'SALE',
         // skipStockUpdate: false, // Default
       };
@@ -804,16 +845,34 @@ export class SalesService {
   async listInvoices(
     tenantId: string,
     shopId: string,
-    page = 1,
-    limit = 20,
+    skip = 0,
+    take = 20,
     search?: string,
     fromJobCard?: boolean,
+    status?: InvoiceStatus,
   ) {
+    const startTime = Date.now();
+    this.logger.log(
+      `[listInvoices] Called with tenantId: ${tenantId}, shopId: ${shopId}, skip: ${skip}, take: ${take}`,
+    );
+
     const where: any = { tenantId, shopId };
 
     // Filter for invoices linked to job cards
     if (fromJobCard) {
       where.jobCardId = { not: null };
+    }
+
+    if (status) {
+      if (status.toString() === 'CREDIT') {
+        where.paymentMode = PaymentMode.CREDIT;
+      } else if (status.toString() === 'DRAFT') {
+        where.status = InvoiceStatus.UNPAID; // Draft in UI = Unpaid in DB
+      } else if (status.toString() === 'FINAL') {
+        where.status = InvoiceStatus.PAID; // Final in UI = Paid in DB
+      } else if (Object.values(InvoiceStatus).includes(status as any)) {
+        where.status = status as InvoiceStatus;
+      }
     }
 
     if (search) {
@@ -824,12 +883,15 @@ export class SalesService {
       ];
     }
 
+    this.logger.log(`[listInvoices] Query where:`, JSON.stringify(where));
+
     // Optimized: Get invoices without full receipts, then aggregate separately
+    const queryStart = Date.now();
     const [invoices, total] = await Promise.all([
       this.prisma.invoice.findMany({
         where,
-        take: limit,
-        skip: (page - 1) * limit,
+        take,
+        skip,
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -844,6 +906,10 @@ export class SalesService {
       }),
       this.prisma.invoice.count({ where }),
     ]);
+
+    this.logger.log(
+      `[listInvoices] DB query took ${Date.now() - queryStart}ms. Found ${invoices.length} invoices, total count: ${total}`,
+    );
 
     // Get receipt summaries (aggregated at DB level)
     const invoiceIds = invoices.map((i) => i.id);
@@ -893,15 +959,21 @@ export class SalesService {
     });
 
     // Return standardized paginated format
-    const skip = (page - 1) * limit;
+    const safeTake = take > 0 ? take : 1;
+    const page = Math.floor(skip / safeTake) + 1;
+    const totalPages = Math.ceil(total / safeTake);
+
+    const totalTime = Date.now() - startTime;
+    this.logger.log(`[listInvoices] Total execution time: ${totalTime}ms`);
+
     return {
       data: enrichedInvoices,
       pagination: {
         total,
         page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-        hasNext: page < Math.ceil(total / limit),
+        limit: safeTake,
+        totalPages,
+        hasNext: page < totalPages,
         hasPrevious: page > 1,
         offset: skip,
       },

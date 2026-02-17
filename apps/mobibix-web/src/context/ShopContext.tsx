@@ -157,10 +157,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refreshShops]);
 
-  const selectedShop = Array.isArray(shops)
-    ? shops.find((s) => s.id === selectedShopId) || null
-    : null;
-  const hasMultipleShops = Array.isArray(shops) && shops.length > 1;
+  const selectedShop = React.useMemo(() => {
+    if (!isInitialized || !Array.isArray(shops)) return null;
+    return shops.find((s) => s.id === selectedShopId) || (shops.length > 0 ? shops[0] : null);
+  }, [shops, selectedShopId, isInitialized]);
+
+  const hasMultipleShops = React.useMemo(() => {
+    return Array.isArray(shops) && shops.length > 1;
+  }, [shops]);
 
   const value: ShopContextType = {
     shops,

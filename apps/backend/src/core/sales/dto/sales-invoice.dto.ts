@@ -56,6 +56,10 @@ export class SalesInvoiceDto {
 
   @IsOptional()
   @IsString()
+  invoiceDate?: string; // ISO date string
+
+  @IsOptional()
+  @IsString()
   customerId?: string;
 
   @IsString()

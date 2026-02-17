@@ -8,9 +8,15 @@ interface InvoiceProductTableProps {
   products: ShopProduct[];
   pricesIncludeTax: boolean;
   onPricesIncludeTaxChange: (checked: boolean) => void;
-  onUpdateItem: (id: string, field: keyof ProductItem | "imeisText", value: any, products: ShopProduct[]) => void;
+  onUpdateItem: (
+    id: string,
+    field: keyof ProductItem | "imeisText",
+    value: any,
+    products: ShopProduct[],
+  ) => void;
   onAddItem: () => void;
   onRemoveItem: (id: string) => void;
+  onNewProduct: () => void;
   imeiHighlight?: boolean;
 }
 
@@ -22,26 +28,33 @@ export function InvoiceProductTable({
   onUpdateItem,
   onAddItem,
   onRemoveItem,
+  onNewProduct,
   imeiHighlight = false,
 }: InvoiceProductTableProps) {
   const { selectedShop } = useShop();
-  
+
   // Product Search State
-  const [productSearches, setProductSearches] = useState<{ [key: string]: string }>({});
-  const [productDropdowns, setProductDropdowns] = useState<{ [key: string]: boolean }>({});
+  const [productSearches, setProductSearches] = useState<{
+    [key: string]: string;
+  }>({});
+  const [productDropdowns, setProductDropdowns] = useState<{
+    [key: string]: boolean;
+  }>({});
   const [productDropdownPositions, setProductDropdownPositions] = useState<{
     [key: string]: { top: number; left: number; width: number };
   }>({});
-  const productInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const productInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>(
+    {},
+  );
 
   // Sync searches with items on mount/update (fill in product names)
   useEffect(() => {
     const newSearches: { [key: string]: string } = {};
-    items.forEach(item => {
-      // Only set if not already set or if it matches the product name exactly 
+    items.forEach((item) => {
+      // Only set if not already set or if it matches the product name exactly
       // (to avoid overwriting user typing, but ensuring names are shown)
       // Actually, we just want to set it if it's not being typed in currently
-      // Simplification: just rely on the prop for display? 
+      // Simplification: just rely on the prop for display?
       // No, we need a separate search state for the input field.
       // Let's initialize it if empty and item has a product name
       if (!productSearches[item.id] && item.productName) {
@@ -49,38 +62,38 @@ export function InvoiceProductTable({
       }
     });
     if (Object.keys(newSearches).length > 0) {
-      setProductSearches(prev => ({ ...prev, ...newSearches }));
+      setProductSearches((prev) => ({ ...prev, ...newSearches }));
     }
   }, [items]);
 
   // Handle Scroll/Resize for Dropdowns
   useEffect(() => {
-      if (Object.values(productDropdowns).some((isOpen) => isOpen)) {
-        const handleScroll = () => {
-          Object.keys(productDropdowns).forEach((itemId) => {
-            if (productDropdowns[itemId]) {
-              updateDropdownPosition(itemId);
-            }
-          });
-        };
-  
-        const handleResize = () => {
-          Object.keys(productDropdowns).forEach((itemId) => {
-            if (productDropdowns[itemId]) {
-              updateDropdownPosition(itemId);
-            }
-          });
-        };
-  
-        window.addEventListener("scroll", handleScroll, true);
-        window.addEventListener("resize", handleResize);
-  
-        return () => {
-          window.removeEventListener("scroll", handleScroll, true);
-          window.removeEventListener("resize", handleResize);
-        };
-      }
-    }, [productDropdowns]);
+    if (Object.values(productDropdowns).some((isOpen) => isOpen)) {
+      const handleScroll = () => {
+        Object.keys(productDropdowns).forEach((itemId) => {
+          if (productDropdowns[itemId]) {
+            updateDropdownPosition(itemId);
+          }
+        });
+      };
+
+      const handleResize = () => {
+        Object.keys(productDropdowns).forEach((itemId) => {
+          if (productDropdowns[itemId]) {
+            updateDropdownPosition(itemId);
+          }
+        });
+      };
+
+      window.addEventListener("scroll", handleScroll, true);
+      window.addEventListener("resize", handleResize);
+
+      return () => {
+        window.removeEventListener("scroll", handleScroll, true);
+        window.removeEventListener("resize", handleResize);
+      };
+    }
+  }, [productDropdowns]);
 
   const updateDropdownPosition = (itemId: string) => {
     const inputElement = productInputRefs.current[itemId];
@@ -118,7 +131,7 @@ export function InvoiceProductTable({
     const searchTerm = productSearches[itemId] || "";
     if (!searchTerm) return [];
     return products.filter((p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase())
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()),
     );
   };
 
@@ -182,10 +195,12 @@ export function InvoiceProductTable({
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {items.map((item, index) => {
-              const product = products.find(p => p.id === item.shopProductId);
+              const product = products.find((p) => p.id === item.shopProductId);
               const isSerialized = product?.isSerialized;
-              const hasIMEMismatch = isSerialized && (!item.imeis || item.imeis.length !== item.quantity);
-              
+              const hasIMEMismatch =
+                isSerialized &&
+                (!item.imeis || item.imeis.length !== item.quantity);
+
               return (
                 <tr
                   key={item.id}
@@ -203,18 +218,26 @@ export function InvoiceProductTable({
                       type="text"
                       placeholder="Search product..."
                       value={productSearches[item.id] || ""}
-                      onChange={(e) => handleProductSearch(item.id, e.target.value)}
+                      onChange={(e) =>
+                        handleProductSearch(item.id, e.target.value)
+                      }
                       onFocus={() => {
                         const searchTerm = productSearches[item.id] || "";
                         if (searchTerm.length > 0) {
-                          setProductDropdowns((prev) => ({ ...prev, [item.id]: true }));
+                          setProductDropdowns((prev) => ({
+                            ...prev,
+                            [item.id]: true,
+                          }));
                           setTimeout(() => updateDropdownPosition(item.id), 0);
                         }
                       }}
                       onBlur={() => {
                         // Delay closing to allow click event on dropdown item
                         setTimeout(() => {
-                           setProductDropdowns((prev) => ({ ...prev, [item.id]: false }));
+                          setProductDropdowns((prev) => ({
+                            ...prev,
+                            [item.id]: false,
+                          }));
                         }, 200);
                       }}
                       className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 focus:border-teal-500 outline-none py-1.5 text-gray-900 dark:text-white placeholder-gray-400 transition"
@@ -238,13 +261,22 @@ export function InvoiceProductTable({
                                   <div className="font-medium text-gray-900 dark:text-white text-sm group-hover:text-teal-700 dark:group-hover:text-teal-300">
                                     {p.name}
                                   </div>
-                                  {p.costPrice !== undefined && p.costPrice <= 0 && (
-                                     <span className="text-[10px] bg-red-100 text-red-600 px-1.5 rounded">No Cost</span>
-                                  )}
+                                  {p.costPrice !== undefined &&
+                                    p.costPrice <= 0 && (
+                                      <span className="text-[10px] bg-red-100 text-red-600 px-1.5 rounded">
+                                        No Cost
+                                      </span>
+                                    )}
                                 </div>
                                 <div className="text-xs text-gray-500 mt-1 flex justify-between">
                                   <span>₹{(p.salePrice || 0) / 100}</span>
-                                  <span className={p.isNegative ? "text-red-500 font-medium" : "text-gray-400"}>
+                                  <span
+                                    className={
+                                      p.isNegative
+                                        ? "text-red-500 font-medium"
+                                        : "text-gray-400"
+                                    }
+                                  >
                                     Qty: {p.stockQty}
                                   </span>
                                 </div>
@@ -260,36 +292,47 @@ export function InvoiceProductTable({
                     )}
 
                     {/* Cost Warning */}
-                    {item.costPrice === null || item.costPrice <= 0 ? (
-                         product?.id && (
-                             <div className="text-[10px] text-red-500 mt-1">
-                                 ⚠️ Missing cost price
-                             </div>
-                         )
-                    ) : null}
+                    {item.costPrice === null || item.costPrice <= 0
+                      ? product?.id && (
+                          <div className="text-[10px] text-red-500 mt-1">
+                            ⚠️ Missing cost price
+                          </div>
+                        )
+                      : null}
 
                     {/* IMEI Input for Serialized Products */}
                     {isSerialized && (
                       <div className="mt-2">
-                         <label className={`text-[10px] font-bold uppercase tracking-wider mb-1 block ${hasIMEMismatch && imeiHighlight ? "text-red-600" : "text-gray-500"}`}>
-                           Serial Numbers / IMEIs (Enter {item.quantity})
-                         </label>
-                         <textarea 
-                           className={`w-full text-xs p-2 rounded border focus:outline-none focus:ring-1 ${
-                               hasIMEMismatch && imeiHighlight 
-                               ? "border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-200" 
-                               : "border-gray-200 bg-gray-50 focus:border-blue-500 focus:ring-blue-200"
-                           }`}
-                           rows={Math.min(item.quantity, 4) || 2}
-                           placeholder="Enter/Scan IMEIs (one per line or comma separated)"
-                           value={item.imeis?.join('\n') || ''}
-                           onChange={(e) => onUpdateItem(item.id, "imeisText", e.target.value, products)}
-                         />
-                         <div className="flex justify-between mt-1">
-                             <span className={`text-[10px] ${item.imeis?.length === item.quantity ? "text-green-600" : "text-orange-500"}`}>
-                                 Count: {item.imeis?.length || 0} / {item.quantity}
-                             </span>
-                         </div>
+                        <label
+                          className={`text-[10px] font-bold uppercase tracking-wider mb-1 block ${hasIMEMismatch && imeiHighlight ? "text-red-600" : "text-gray-500"}`}
+                        >
+                          Serial Numbers / IMEIs (Enter {item.quantity})
+                        </label>
+                        <textarea
+                          className={`w-full text-xs p-2 rounded border focus:outline-none focus:ring-1 ${
+                            hasIMEMismatch && imeiHighlight
+                              ? "border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-200"
+                              : "border-gray-200 bg-gray-50 focus:border-blue-500 focus:ring-blue-200"
+                          }`}
+                          rows={Math.min(item.quantity, 4) || 2}
+                          placeholder="Enter/Scan IMEIs (one per line or comma separated)"
+                          value={item.imeis?.join("\n") || ""}
+                          onChange={(e) =>
+                            onUpdateItem(
+                              item.id,
+                              "imeisText",
+                              e.target.value,
+                              products,
+                            )
+                          }
+                        />
+                        <div className="flex justify-between mt-1">
+                          <span
+                            className={`text-[10px] ${item.imeis?.length === item.quantity ? "text-green-600" : "text-orange-500"}`}
+                          >
+                            Count: {item.imeis?.length || 0} / {item.quantity}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </td>
@@ -297,7 +340,14 @@ export function InvoiceProductTable({
                     <input
                       type="text"
                       value={item.hsnSac}
-                      onChange={(e) => onUpdateItem(item.id, "hsnSac", e.target.value, products)}
+                      onChange={(e) =>
+                        onUpdateItem(
+                          item.id,
+                          "hsnSac",
+                          e.target.value,
+                          products,
+                        )
+                      }
                       className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 outline-none text-sm py-1"
                     />
                   </td>
@@ -307,7 +357,12 @@ export function InvoiceProductTable({
                       min="1"
                       value={item.quantity}
                       onChange={(e) =>
-                        onUpdateItem(item.id, "quantity", parseFloat(e.target.value) || 0, products)
+                        onUpdateItem(
+                          item.id,
+                          "quantity",
+                          parseFloat(e.target.value) || 0,
+                          products,
+                        )
                       }
                       className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 outline-none text-sm py-1"
                     />
@@ -318,7 +373,12 @@ export function InvoiceProductTable({
                       min="0"
                       value={item.rate}
                       onChange={(e) =>
-                        onUpdateItem(item.id, "rate", parseFloat(e.target.value) || 0, products)
+                        onUpdateItem(
+                          item.id,
+                          "rate",
+                          parseFloat(e.target.value) || 0,
+                          products,
+                        )
                       }
                       className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 outline-none text-sm py-1"
                     />
@@ -328,7 +388,12 @@ export function InvoiceProductTable({
                       <select
                         value={item.gstRate}
                         onChange={(e) =>
-                          onUpdateItem(item.id, "gstRate", parseFloat(e.target.value) || 0, products)
+                          onUpdateItem(
+                            item.id,
+                            "gstRate",
+                            parseFloat(e.target.value) || 0,
+                            products,
+                          )
                         }
                         className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 outline-none text-sm py-1"
                       >
@@ -358,19 +423,33 @@ export function InvoiceProductTable({
         </table>
       </div>
 
-      <button
-        onClick={onAddItem}
-        className="text-teal-600 hover:text-teal-700 text-sm font-semibold flex items-center gap-2 transition"
-      >
-        <span>+</span> Add Another Product
-      </button>
-      
+      <div className="flex items-center gap-4">
+        <button
+          onClick={onAddItem}
+          className="text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 text-sm font-semibold flex items-center gap-2 transition"
+        >
+          <span>+</span> Add Another Product
+        </button>
+        <button
+          onClick={onNewProduct}
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-semibold flex items-center gap-2 transition"
+        >
+          <span>+</span> New Product
+        </button>
+      </div>
+
       {/* Missing IMEI Alert */}
-      {imeiHighlight && items.some(i => products.find(p => p.id === i.shopProductId)?.isSerialized && (!i.imeis || i.imeis.length !== i.quantity)) && (
+      {imeiHighlight &&
+        items.some(
+          (i) =>
+            products.find((p) => p.id === i.shopProductId)?.isSerialized &&
+            (!i.imeis || i.imeis.length !== i.quantity),
+        ) && (
           <div className="mt-4 bg-amber-50 text-amber-800 text-xs px-3 py-2 rounded">
-              ⚠️ Please ensure all serialized products have the correct number of IMEIs entered.
+            ⚠️ Please ensure all serialized products have the correct number of
+            IMEIs entered.
           </div>
-      )}
+        )}
     </div>
   );
 }

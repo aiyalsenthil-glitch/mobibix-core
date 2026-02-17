@@ -26,7 +26,9 @@ import {
   getStockLevels,
 } from "@/services/products.api";
 import { createPurchase } from "@/services/purchases.api";
+import { sendWhatsAppMessage } from "@/services/whatsapp.api";
 import { AdvanceModal } from "./AdvanceModal";
+import { AddPartModal } from "../AddPartModal";
 
 // Helper for status colors (reused)
 const STATUS_COLORS: Record<JobStatus, string> = {
@@ -68,13 +70,14 @@ export default function JobCardDetailPage() {
   const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
   const [isWarrantyConfirmOpen, setIsWarrantyConfirmOpen] = useState(false);
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
-  
+
   // Advance Modals
   const [isAddAdvanceModalOpen, setIsAddAdvanceModalOpen] = useState(false);
   const [isRefundAdvanceModalOpen, setIsRefundAdvanceModalOpen] =
     useState(false);
 
   const isOwner = user?.role?.toLowerCase() === "owner";
+  const isPro = user?.planCode === "MOBIBIX_PRO" || user?.planCode === "GYM_PRO";
 
   // Load Job Details
   const {
@@ -155,17 +158,17 @@ export default function JobCardDetailPage() {
       alert(err.message || "Failed to update status");
     }
   };
-  
+
   const handleBillSubmit = async (dto: any) => {
-      if (!job || !selectedShopId) return;
-      try {
-          await generateRepairBill(selectedShopId, job.id, dto);
-          // Refresh to show invoice and new status
-           reload();
-           setIsBillingModalOpen(false);
-      } catch (err: any) {
-          alert(err.message || "Failed to generate bill");
-      }
+    if (!job || !selectedShopId) return;
+    try {
+      await generateRepairBill(selectedShopId, job.id, dto);
+      // Refresh to show invoice and new status
+      reload();
+      setIsBillingModalOpen(false);
+    } catch (err: any) {
+      alert(err.message || "Failed to generate bill");
+    }
   };
 
   const handleReadyConfirm = async () => {
@@ -264,6 +267,33 @@ export default function JobCardDetailPage() {
           >
             Print Job Card
           </a>
+          {/* WhatsApp Send Button - Only allow for PRO users if status is READY and not already sent */}
+          {isPro && job.status === "READY" && !job.whatsappSent && (
+            <button
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
+              onClick={async () => {
+                const variables = [
+                  job.customerName,
+                  job.shopName ?? "",
+                  job.jobNumber,
+                  job.deviceModel,
+                ];
+                try {
+                  await sendWhatsAppMessage({
+                    phone: job.customerPhone,
+                    templateId: "job_status_ready_v1", // Assuming this is the ID for the templateKey
+                    parameters: variables,
+                  });
+                  alert("WhatsApp alert sent!");
+                  reload();
+                } catch (err: any) {
+                  alert(err.message || "Failed to send WhatsApp alert");
+                }
+              }}
+            >
+              📲 Send WhatsApp
+            </button>
+          )}
           {job.status === "CANCELLED" ? (
             <button
               onClick={() => setIsReopenConfirmOpen(true)}
@@ -321,14 +351,15 @@ export default function JobCardDetailPage() {
                   <option value="CANCELLED">CANCEL Job</option>
                 </select>
               )}
-               {job.status === "READY" && !job.invoices?.some(i => i.status !== "VOIDED") && (
-                   <button
-                        onClick={() => setIsBillingModalOpen(true)}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition flex items-center gap-2"
-                   >
-                       <span>📜</span> Generate Bill
-                   </button>
-               )}
+              {job.status === "READY" &&
+                !job.invoices?.some((i) => i.status !== "VOIDED") && (
+                  <button
+                    onClick={() => setIsBillingModalOpen(true)}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition flex items-center gap-2"
+                  >
+                    <span>📜</span> Generate Bill
+                  </button>
+                )}
             </>
           )}
         </div>
@@ -526,13 +557,15 @@ export default function JobCardDetailPage() {
               >
                 Start Call
               </a>
-              <a
-                href={`https://wa.me/91${job.customerPhone}?text=Hi ${job.customerName}, regarding job #${job.jobNumber}`}
-                target="_blank"
-                className="block w-full text-center py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition"
-              >
-                WhatsApp
-              </a>
+              {isPro && (
+                <a
+                  href={`https://wa.me/91${job.customerPhone}?text=Hi ${job.customerName}, regarding job #${job.jobNumber}`}
+                  target="_blank"
+                  className="block w-full text-center py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition"
+                >
+                  WhatsApp
+                </a>
+              )}
             </div>
           </div>
 
@@ -564,9 +597,7 @@ export default function JobCardDetailPage() {
               <div className="h-px bg-gray-100 dark:bg-gray-800"></div>
               <div className="flex justify-between items-center text-lg font-bold text-gray-900 dark:text-white">
                 <span>Balance Due</span>
-                <span>
-                  ₹{balanceDue.toFixed(2)}
-                </span>
+                <span>₹{balanceDue.toFixed(2)}</span>
               </div>
             </div>
 
@@ -626,10 +657,11 @@ export default function JobCardDetailPage() {
                     ₹
                     {(
                       totalRevenue -
-                      ((job.parts?.reduce(
+                      (job.parts?.reduce(
                         (sum, p) => sum + (p.costPrice || 0) * p.quantity,
                         0,
-                      ) || 0) / 100)
+                      ) || 0) /
+                        100
                     ).toFixed(2)}
                   </span>
                 </div>
@@ -786,9 +818,8 @@ export default function JobCardDetailPage() {
           </div>
         </div>
       )}
-      
       {/* BILLING MODAL */}
-      <RepairBillingModal 
+      <RepairBillingModal
         isOpen={isBillingModalOpen}
         onClose={() => setIsBillingModalOpen(false)}
         onSubmit={handleBillSubmit}
@@ -799,403 +830,4 @@ export default function JobCardDetailPage() {
   );
 }
 
-function AddPartModal({
-  shopId,
-  jobId,
-  onClose,
-  onSuccess,
-}: {
-  shopId: string;
-  jobId: string;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [products, setProducts] = useState<ShopProduct[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<ShopProduct | null>(
-    null,
-  );
-  const [quantity, setQuantity] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Creation Mode State
-  const [createMode, setCreateMode] = useState(false);
-  const [newProductName, setNewProductName] = useState("");
-  const [newSalePrice, setNewSalePrice] = useState(0);
-  const [newCostPrice, setNewCostPrice] = useState(0);
-  const [createPurchaseEntry, setCreatePurchaseEntry] = useState(false);
-  const [supplierName, setSupplierName] = useState("");
-
-  const qtyInputRef = useRef<HTMLInputElement>(null);
-
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Click outside listener
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setShowDropdown(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (searchTerm.length > 1 && !createMode) {
-      // 🛡️ Fetch stock levels separately for accurate display
-      Promise.all([listProducts(shopId), getStockLevels(shopId)]).then(
-        ([prodResponse, stockResponse]: [any, any]) => {
-          const allProds = Array.isArray(prodResponse)
-            ? prodResponse
-            : (prodResponse as any).data;
-          const allStock = Array.isArray(stockResponse)
-            ? stockResponse
-            : (stockResponse as any).data;
-
-          const stockMap = new Map(
-            (allStock as any[]).map((s) => [s.id, s.stockQty || 0]),
-          );
-
-          setProducts(
-            (allProds as any[])
-              .filter(
-                (p) =>
-                  p.type !== ProductType.SERVICE &&
-                  p.name.toLowerCase().includes(searchTerm.toLowerCase()),
-              )
-              .map((p) => ({
-                ...p,
-                stock: stockMap.get(p.id) || 0,
-              })),
-          );
-          setShowDropdown(true);
-        },
-      );
-    } else {
-      setShowDropdown(false);
-    }
-  }, [searchTerm, shopId, createMode]);
-
-  // UX: Focus quantity when product is selected
-  useEffect(() => {
-    if (selectedProduct || createMode) {
-      setTimeout(() => qtyInputRef.current?.focus(), 100);
-    }
-  }, [selectedProduct, createMode]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      let productId = selectedProduct?.id;
-
-      if (createMode) {
-        if (!newProductName || newSalePrice <= 0) {
-          alert("Name and Selling Price are required.");
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (createPurchaseEntry) {
-          if (newCostPrice <= 0 || !supplierName) {
-            alert(
-              "Cost Price and Supplier Name are required for Purchase Entry.",
-            );
-            setIsSubmitting(false);
-            return;
-          }
-        }
-
-        // 1. Create Product
-        const newProduct = await createProduct(shopId, {
-          name: newProductName,
-          type: ProductType.SPARE, // Default to SPARE for Job Cards
-          salePrice: newSalePrice,
-          costPrice: newCostPrice > 0 ? newCostPrice : undefined,
-          isSerialized: false,
-        });
-        productId = newProduct.id;
-
-        // 2. Create Purchase Entry (Optional)
-        if (createPurchaseEntry) {
-          await createPurchase({
-            shopId,
-            supplierName: supplierName,
-            invoiceNumber: `JOB-AUTO-${Date.now().toString().slice(-6)}`,
-            paymentMethod: "CASH" as any,
-            status: "SUBMITTED" as any, // 🛡️ CRITICAL FIX: Mark as submitted to update stock
-            items: [
-              {
-                shopProductId: productId,
-                description: newProductName,
-                quantity: quantity,
-                purchasePrice: newCostPrice, // Purchase API expects Rupees (it converts to Paisa)
-              },
-            ],
-          });
-        }
-      }
-
-      if (!productId) {
-        alert("Please select or create a product.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      await addJobCardPart(shopId, jobId, productId, quantity);
-      onSuccess();
-      onClose();
-    } catch (err: any) {
-      alert(err.message || "Failed to add part");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <h3 className="text-xl font-bold mb-4 dark:text-white">
-          {createMode ? "Create Part" : "Add Part"}
-        </h3>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!createMode ? (
-            <>
-              {/* SEARCH MODE */}
-              <div>
-                <label className="block text-sm font-semibold mb-2 dark:text-gray-300">
-                  Search Product
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                  Only physical parts shown. Service charges are calculated
-                  separately.
-                </p>
-                <div className="relative">
-                  <input
-                    autoFocus
-                    type="text"
-                    className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder="Type product name..."
-                    value={selectedProduct ? selectedProduct.name : searchTerm}
-                    onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      setSelectedProduct(null);
-                    }}
-                  />
-                  {searchTerm.length > 0 && !selectedProduct && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCreateMode(true);
-                        setNewProductName(searchTerm);
-                      }}
-                      className="absolute right-2 top-2 text-xs bg-teal-100 text-teal-700 px-2 py-1 rounded hover:bg-teal-200"
-                    >
-                      + Create New
-                    </button>
-                  )}
-                  {selectedProduct && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedProduct(null);
-                        setSearchTerm("");
-                      }}
-                      className="absolute right-12 top-2 text-gray-500 hover:text-red-500 px-2"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-
-                  {/* Dropdown Results */}
-                  {showDropdown && products.length > 0 && (
-                    <div
-                      ref={dropdownRef}
-                      className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto"
-                    >
-                      {products.map((product) => (
-                        <div
-                          key={product.id}
-                          className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
-                          onClick={() => {
-                            setSelectedProduct(product);
-                            setSearchTerm(product.name);
-                            setShowDropdown(false);
-                          }}
-                        >
-                          <div className="font-semibold dark:text-white">
-                            {product.name}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            Stock: {product.stock || 0} • Price: ₹
-                            {(product.salePrice / 100).toFixed(2)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                {/* Create New Prompt (if no results) */}
-                {!selectedProduct &&
-                  searchTerm.length > 1 &&
-                  products.length === 0 && (
-                    <div className="mt-2 text-center p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                      <p className="text-sm text-gray-500 mb-2">
-                        Item not found.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCreateMode(true);
-                          setNewProductName(searchTerm);
-                        }}
-                        className="text-teal-600 hover:text-teal-700 font-bold text-sm"
-                      >
-                        Create "{searchTerm}"
-                      </button>
-                    </div>
-                  )}
-              </div>
-            </>
-          ) : (
-            <>
-              {/* CREATE MODE */}
-              <div className="bg-teal-50 dark:bg-teal-900/20 p-4 rounded-lg border border-teal-100 dark:border-teal-800">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-sm font-bold text-teal-800 dark:text-teal-300">
-                    New Product Details
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setCreateMode(false)}
-                    className="text-xs text-blue-600 hover:underline"
-                  >
-                    Back to Search
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold block mb-1">
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-1.5 text-sm border rounded dark:bg-gray-700 dark:border-gray-600"
-                      value={newProductName}
-                      onChange={(e) => setNewProductName(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold block mb-1">
-                        Sale Price
-                      </label>
-                      <input
-                        type="number"
-                        className="w-full px-3 py-1.5 text-sm border rounded dark:bg-gray-700 dark:border-gray-600"
-                        value={newSalePrice}
-                        onChange={(e) =>
-                          setNewSalePrice(parseFloat(e.target.value))
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold block mb-1">
-                        Cost Price
-                      </label>
-                      <input
-                        type="number"
-                        className="w-full px-3 py-1.5 text-sm border rounded dark:bg-gray-700 dark:border-gray-600"
-                        value={newCostPrice}
-                        onChange={(e) =>
-                          setNewCostPrice(parseFloat(e.target.value))
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* INTEGRATED PURCHASE ENTRY */}
-              <div className="flex items-center gap-2 mt-4 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="createPurchase"
-                  checked={createPurchaseEntry}
-                  onChange={(e) => setCreatePurchaseEntry(e.target.checked)}
-                  className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-                />
-                <label
-                  htmlFor="createPurchase"
-                  className="text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  Create Purchase Entry (Add Stock)
-                </label>
-              </div>
-
-              {createPurchaseEntry && (
-                <div className="animate-in slide-in-from-top-2">
-                  <label className="block text-sm font-semibold mb-1 dark:text-gray-300">
-                    Supplier Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                    placeholder="e.g. Local Market"
-                    value={supplierName}
-                    onChange={(e) => setSupplierName(e.target.value)}
-                  />
-                </div>
-              )}
-            </>
-          )}
-
-          {/* QUANTITY (Common) */}
-          <div>
-            <label className="block text-sm font-semibold mb-2 dark:text-gray-300">
-              Quantity
-            </label>
-            <input
-              ref={qtyInputRef}
-              type="number"
-              min="1"
-              required
-              className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              value={quantity}
-              onChange={(e) => setQuantity(parseInt(e.target.value))}
-            />
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold transition disabled:opacity-50"
-            >
-              {isSubmitting
-                ? "Adding..."
-                : createMode
-                  ? "Create & Add"
-                  : "Add Part"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}

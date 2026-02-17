@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useTheme } from "@/context/ThemeContext";
+import { useShop } from "@/context/ShopContext";
 
 interface TopbarProps {
   isCollapsed?: boolean;
@@ -14,6 +15,7 @@ export function Topbar({ isCollapsed = false, onMenuClick }: TopbarProps) {
   const { authUser, logout } = useAuth();
   const router = useRouter();
   const { theme } = useTheme();
+  const { selectedShop } = useShop();
   const isDark = theme === "dark";
 
   const handleLogout = async () => {
@@ -55,7 +57,7 @@ export function Topbar({ isCollapsed = false, onMenuClick }: TopbarProps) {
                 : "from-teal-700 to-teal-600 bg-clip-text text-transparent"
             } whitespace-nowrap truncate`}
           >
-            {authUser?.name || "Shop Name"}
+            {selectedShop?.name || authUser?.name || "Shop Name"}
           </p>
         </div>
       </div>

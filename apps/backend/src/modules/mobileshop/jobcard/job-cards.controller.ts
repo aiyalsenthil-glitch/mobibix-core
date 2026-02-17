@@ -6,10 +6,11 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { PaymentMode, UserRole, ModuleType } from '@prisma/client';
+import { PaymentMode, UserRole, ModuleType, JobStatus } from '@prisma/client';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
 
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
@@ -41,8 +42,13 @@ export class JobCardsController extends TenantScopedController {
   }
 
   @Get()
-  list(@Param('shopId') shopId: string, @Req() req: any) {
-    return this.service.list(req.user, shopId);
+  list(
+    @Param('shopId') shopId: string,
+    @Req() req: any,
+    @Query('status') status?: JobStatus,
+    @Query('customerName') customerName?: string,
+  ) {
+    return this.service.list(req.user, shopId, { status, customerName });
   }
   @Get(':id')
   getOne(

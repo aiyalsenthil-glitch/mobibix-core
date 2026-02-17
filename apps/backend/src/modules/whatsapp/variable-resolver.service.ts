@@ -349,6 +349,25 @@ export class WhatsAppVariableResolver {
         return cost - jobCard.advancePaid;
       }
 
+      case 'invoiceLink':
+      case 'invoice_link': {
+        if (!invoiceId) return null;
+        const baseUrl = process.env.FRONTEND_URL || 'https://mobibix.in';
+        return `${baseUrl}/print/invoice/${invoiceId}`;
+      }
+
+      case 'jobTrackingLink':
+      case 'job_tracking_link': {
+        if (!jobCardId) return null;
+        const jobCard = await this.prisma.jobCard.findUnique({
+          where: { id: jobCardId },
+          select: { publicToken: true },
+        });
+        if (!jobCard?.publicToken) return null;
+        const baseUrl = process.env.FRONTEND_URL || 'https://mobibix.in';
+        return `${baseUrl}/track/${jobCard.publicToken}`;
+      }
+
       default:
         throw new BadRequestException(
           `Computed variable ${variable.key} not implemented in resolver`,

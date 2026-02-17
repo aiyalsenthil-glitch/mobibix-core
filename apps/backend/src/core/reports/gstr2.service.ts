@@ -69,17 +69,18 @@ export class GSTR2Service {
     let totalITC = 0;
 
     for (const purchase of purchases) {
-      // Check if ITC eligible (not legacy or legacy verified)
+      // Check if ITC eligible (not legacy or legacy verified, AND supplier must be registered)
       const isLegacy = purchase.isLegacyGstApproximation;
       const isVerified = purchase.verifiedAt !== null;
-      const itcEligible = !isLegacy || (isLegacy && isVerified);
+      const hasGstin = !!purchase.supplierGstin && purchase.supplierGstin.trim() !== "";
+      const itcEligible = (!isLegacy || (isLegacy && isVerified)) && hasGstin;
 
       if (isLegacy && !isVerified) {
         legacyUnverifiedCount++;
         continue; // Skip unverified legacy data
       }
 
-      const baseAmount = 0; // Calculate from items if needed
+      const baseAmount = purchase.subTotal || 0;
 
       // Calculate ITC (only eligible amounts)
       const itcCgst = itcEligible ? purchase.cgst || 0 : 0;
@@ -92,7 +93,7 @@ export class GSTR2Service {
         invoiceDate: purchase.invoiceDate,
         supplierName: purchase.supplierName,
         supplierGstin: purchase.supplierGstin || '',
-        invoiceAmount: baseAmount + purchase.totalGst,
+        invoiceAmount: purchase.grandTotal || (baseAmount + purchase.totalGst),
         taxableAmount: baseAmount,
         cgstAmount: purchase.cgst || 0,
         sgstAmount: purchase.sgst || 0,
@@ -162,6 +163,7 @@ export class GSTR2Service {
           select: {
             isLegacyGstApproximation: true,
             verifiedAt: true,
+            supplierGstin: true,
           },
         },
       },
@@ -187,7 +189,8 @@ export class GSTR2Service {
       // Check ITC eligibility
       const isLegacy = item.purchase.isLegacyGstApproximation;
       const isVerified = item.purchase.verifiedAt !== null;
-      const itcEligible = !isLegacy || (isLegacy && isVerified);
+      const hasGstin = !!item.purchase.supplierGstin && item.purchase.supplierGstin.trim() !== "";
+      const itcEligible = (!isLegacy || (isLegacy && isVerified)) && hasGstin;
 
       const key = item.hsnSac || 'UNKNOWN';
       const existing = hsnMap.get(key) || {
@@ -264,13 +267,15 @@ export class GSTR2Service {
     let legacyUnverifiedIgst = 0;
 
     for (const purchase of purchases) {
+      const hasGstin = !!purchase.supplierGstin && purchase.supplierGstin.trim() !== "";
+      
       if (purchase.isLegacyGstApproximation && !purchase.verifiedAt) {
         // Unverified legacy - not included in ITC
         legacyUnverifiedCgst += purchase.cgst || 0;
         legacyUnverifiedSgst += purchase.sgst || 0;
         legacyUnverifiedIgst += purchase.igst || 0;
-      } else {
-        // Verified or current - included in ITC
+      } else if (hasGstin) {
+        // Verified/Current AND has GSTIN - included in ITC
         totalCgst += purchase.cgst || 0;
         totalSgst += purchase.sgst || 0;
         totalIgst += purchase.igst || 0;

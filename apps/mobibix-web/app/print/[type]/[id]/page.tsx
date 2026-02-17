@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { getInvoice } from "@/services/sales.api";
+import { getInvoice, getPublicInvoice } from "@/services/sales.api";
 import { getReceipt } from "@/services/receipts.api"; // New
 import { getVoucher } from "@/services/vouchers.api"; // New
 import { getShop } from "@/services/shops.api";
@@ -72,26 +72,22 @@ function GenericPrintContent() {
 
         // Routing logic based on type
         if (docType === "INVOICE") {
-          // 1. Fetch raw data
-          const invoice = await getInvoice(docId);
-          // console.log("📄 Raw Invoice Data:", invoice);
-          if (!invoice) throw new Error("Invoice not found");
+          // 1. Fetch data (Public API returns invoice + shop + products)
+          const result: any = await getPublicInvoice(docId);
+          // Cast as any initially to handle the type change smoothly or import the type if exported
+          
+          if (!result || !result.invoice) throw new Error("Invoice not found");
 
-          // 2. Fetch Dependencies (Shop, Products)
-          if (!invoice.shopId) throw new Error("Invoice has no shop ID");
-          const [shop, productsResponse] = await Promise.all([
-            getShop(invoice.shopId),
-            listProducts(invoice.shopId), // Optimization: Should ideally fetch only used products if list is huge
-          ]);
-          // Handle paginated response
-          const products = Array.isArray(productsResponse)
-            ? productsResponse
-            : productsResponse.data;
+          const invoice = result.invoice;
+          const shop = result.shop;
+          const products = result.products || [];
+
+          if (!shop) throw new Error("Invoice shop details missing");
 
           // Resolve Invoice Variant
           defaultVariant = shop.invoiceTemplate || "CLASSIC";
 
-          const productsMap = products.reduce((acc, p) => {
+          const productsMap = products.reduce((acc: any, p: any) => {
             acc[p.id] = p;
             return acc;
           }, {} as any);

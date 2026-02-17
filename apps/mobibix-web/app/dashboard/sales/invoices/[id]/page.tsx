@@ -302,7 +302,7 @@ export default function InvoiceDetailsPage() {
         )}
 
         {/* Actions */}
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-4">
           {!isPaid && (
             <button
               onClick={() => setPaymentModalOpen(true)}
@@ -311,6 +311,37 @@ export default function InvoiceDetailsPage() {
               💳 Record Payment
             </button>
           )}
+          {/* WhatsApp Send Button - Only allow if not already sent */}
+          <button
+            className="rounded-lg bg-green-600 px-6 py-3 font-semibold text-white hover:bg-green-700 transition"
+            disabled={isPaid || invoice.whatsappSent}
+            onClick={async () => {
+              // Prepare template variables
+              const variables = [
+                invoice.customerName,
+                invoice.shopName,
+                invoice.invoiceNumber,
+                invoice.totalAmount,
+              ];
+              try {
+                await fetch("/api/whatsapp/send", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    tenantId: invoice.tenantId,
+                    phone: invoice.customerPhone,
+                    templateKey: "invoice_created_confirmation_v1",
+                    parameters: variables,
+                  }),
+                });
+                alert("WhatsApp alert sent!");
+              } catch (err) {
+                alert("Failed to send WhatsApp alert");
+              }
+            }}
+          >
+            📲 Send WhatsApp
+          </button>
         </div>
       </div>
 

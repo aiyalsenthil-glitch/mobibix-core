@@ -41,7 +41,20 @@ import {
   ExternalLink,
   History,
   FileText,
+  PlusCircle,
+  ReceiptText,
+  Search,
+  X,
 } from "lucide-react";
+import { AddPartModal } from "./AddPartModal";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const STATUS_OPTIONS: JobStatus[] = [
   "RECEIVED",
@@ -139,6 +152,9 @@ export default function JobCardsPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
+  const [selectedJobForPart, setSelectedJobForPart] = useState<JobCard | null>(
+    null,
+  );
 
   // CRM Modals State
   const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(
@@ -161,6 +177,26 @@ export default function JobCardsPage() {
 
   const [billingJob, setBillingJob] = useState<JobCard | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalInvoices, setTotalInvoices] = useState(0);
+
+  // Filters State
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [customerNameFilter, setCustomerNameFilter] = useState<string>("");
+  const [debouncedCustomerName, setDebouncedCustomerName] = useState("");
+
+  // Simple debounce for customer name
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedCustomerName(customerNameFilter);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [customerNameFilter]);
+
+  // memoize initial data to prevent re-render loops
+  const initialData = useRef([] as JobCard[]).current;
+
   // Use modern hook for async data loading with built-in race condition prevention
   const {
     data: jobCards = [],
@@ -170,11 +206,16 @@ export default function JobCardsPage() {
   } = useDeferredAsyncData(
     useCallback(
       () =>
-        selectedShopId ? listJobCards(selectedShopId) : Promise.resolve([]),
-      [selectedShopId],
+        selectedShopId
+          ? listJobCards(selectedShopId, {
+              status: statusFilter === "ALL" ? undefined : (statusFilter as any),
+              customerName: debouncedCustomerName || undefined,
+            })
+          : Promise.resolve([]),
+      [selectedShopId, statusFilter, debouncedCustomerName],
     ),
-    [selectedShopId],
-    [] as JobCard[], // Initial data
+    [selectedShopId, statusFilter, debouncedCustomerName],
+    initialData,
   );
 
   const handleStatusChange = async (job: JobCard, status: JobStatus) => {
@@ -287,6 +328,102 @@ export default function JobCardsPage() {
 
       <JobCardsTabs />
 
+      {/* Filters Section */}
+      <div
+        className={`${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"} border rounded-xl p-4 mb-6 shadow-sm`}
+      >
+        <div className="flex flex-col md:flex-row gap-4 items-end">
+          {/* Shop Selector (Only if multiple) */}
+          {hasMultipleShops && (
+            <div className="flex-1 w-full">
+              <label
+                className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${theme === "dark" ? "text-stone-400" : "text-gray-500"}`}
+              >
+                Shop
+              </label>
+              <select
+                value={selectedShopId || ""}
+                onChange={(e) => selectShop(e.target.value)}
+                className={`w-full px-4 py-2 rounded-lg font-medium focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 border ${
+                  theme === "dark"
+                    ? "bg-stone-900 border-white/10 text-white"
+                    : "bg-gray-50 border-gray-300 text-black"
+                }`}
+              >
+                <option value="">-- Select Shop --</option>
+                {shops.map((shop) => (
+                  <option key={shop.id} value={shop.id}>
+                    {shop.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Status Filter */}
+          <div className="w-full md:w-48">
+            <label
+              className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${theme === "dark" ? "text-stone-400" : "text-gray-500"}`}
+            >
+              Status
+            </label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger
+                className={`${theme === "dark" ? "bg-stone-900 border-white/10 text-white" : "bg-gray-50 border-gray-300 text-black"}`}
+              >
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Status</SelectItem>
+                {STATUS_OPTIONS.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Search Input */}
+          <div className="flex-[2] w-full relative">
+            <label
+              className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${theme === "dark" ? "text-stone-400" : "text-gray-500"}`}
+            >
+              Search
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
+              <Input
+                placeholder="Search Customer Name..."
+                value={customerNameFilter}
+                onChange={(e) => setCustomerNameFilter(e.target.value)}
+                className={`pl-10 pr-10 ${theme === "dark" ? "bg-stone-900 border-white/10 text-white placeholder:text-stone-600" : "bg-gray-50 border-gray-300 text-black"}`}
+              />
+              {customerNameFilter && (
+                <button
+                  onClick={() => setCustomerNameFilter("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {(statusFilter !== "ALL" || customerNameFilter) && (
+            <button
+              onClick={() => {
+                setStatusFilter("ALL");
+                setCustomerNameFilter("");
+              }}
+              className="px-4 py-2 text-sm font-medium text-teal-500 hover:text-teal-400 transition-colors whitespace-nowrap mb-1"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Shop Filter Section - Only show if multiple shops */}
       {isLoadingShops ? (
         <div className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg p-4 mb-6 shadow-sm">
@@ -303,7 +440,7 @@ export default function JobCardsPage() {
                   Select Shop
                 </label>
                 <select
-                  value={selectedShopId}
+                  value={selectedShopId || ""}
                   onChange={(e) => selectShop(e.target.value)}
                   className={`w-full px-4 py-2 rounded-lg font-medium focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 ${
                     theme === "dark"
@@ -419,7 +556,7 @@ export default function JobCardsPage() {
 
                         return (
                           <select
-                            value={job.status}
+                            value={job.status || ""}
                             onChange={(e) =>
                               handleStatusChange(
                                 job,
@@ -468,6 +605,22 @@ export default function JobCardsPage() {
                           View
                         </button>
 
+                        {/* Quick Action: Add Part */}
+                        {![
+                          "READY",
+                          "DELIVERED",
+                          "CANCELLED",
+                          "RETURNED",
+                        ].includes(job.status) && (
+                          <button
+                            onClick={() => setSelectedJobForPart(job)}
+                            className="px-2 py-1 bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 rounded-md text-xs font-bold hover:bg-orange-200 dark:hover:bg-orange-500/30 transition flex items-center gap-1"
+                            title="Add Part"
+                          >
+                            <PlusCircle className="w-3 h-3" /> Part
+                          </button>
+                        )}
+
                         {/* Quick Action: Mark Ready */}
                         {![
                           "READY",
@@ -513,6 +666,22 @@ export default function JobCardsPage() {
                             >
                               <History className="w-4 h-4 mr-2" />
                               View History
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              onClick={() => setSelectedJobForPart(job)}
+                            >
+                              <PlusCircle className="mr-2 h-4 w-4" />
+                              <span>Add Part</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setBillingJob(job);
+                              }}
+                            >
+                              <ReceiptText className="mr-2 h-4 w-4" />
+                              <span>Generate Bill</span>
                             </DropdownMenuItem>
 
                             <DropdownMenuItem
@@ -662,6 +831,17 @@ export default function JobCardsPage() {
           onSubmit={handleBillSubmit}
           job={billingJob}
           shopId={selectedShopId!}
+        />
+      )}
+      {selectedJobForPart && selectedShopId && (
+        <AddPartModal
+          shopId={selectedShopId}
+          jobId={selectedJobForPart.id}
+          onClose={() => setSelectedJobForPart(null)}
+          onSuccess={() => {
+            reload();
+            setSelectedJobForPart(null);
+          }}
         />
       )}
     </div>

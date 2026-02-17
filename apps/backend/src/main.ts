@@ -1,4 +1,6 @@
 import { NestFactory } from '@nestjs/core';
+import * as Sentry from '@sentry/node';
+import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
@@ -13,7 +15,10 @@ import { PerformanceInterceptor } from './common/interceptors/performance.interc
 import { WhatsAppConfigValidator } from './modules/whatsapp/whatsapp.config-validator';
 import { PrismaService } from './core/prisma/prisma.service';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { ThrottlerExceptionFilter } from './common/filters/throttler-exception.filter';
 import { validateEnv } from './config/env.validation';
+
+// Force Hot Reload: Public Invoice Fix
 
 async function bootstrap() {
   /**
@@ -22,6 +27,14 @@ async function bootstrap() {
    * Fail fast if critical env vars are missing
    */
   validateEnv();
+
+  // 🔍 Initialize Sentry (Phase 5)
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    integrations: [nodeProfilingIntegration()],
+    tracesSampleRate: 1.0, // Capture 100% of transactions
+    profilesSampleRate: 1.0, // Capture 100% of profiles
+  });
   /**
    * 1️⃣ Create raw Express server
    */
@@ -80,6 +93,7 @@ async function bootstrap() {
         'http://localhost_REPLACED:3008',
         'http://localhost_REPLACED:3009',
         'http://localhost_REPLACED:3010',
+        'http://localhost_REPLACED:5200',
         'https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com',
         'https://mobibix.in',
         'https://www.mobibix.in',
@@ -135,10 +149,13 @@ async function bootstrap() {
   app.useGlobalInterceptors(new PerformanceInterceptor());
 
   /**
-   * 🛡️ 1️⃣0️⃣ Global exception filter (Tier 4 Security)
+   * 🛡️ 1️⃣0️⃣ Global exception filters (Tier 4 Security)
    * Sanitizes all error responses and logs full details on server
    */
-  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalFilters(
+    new AllExceptionsFilter(),
+    new ThrottlerExceptionFilter(), // ← Rate limit errors
+  );
 
   /**
    * 🌐 1️⃣1️⃣ Global API prefix

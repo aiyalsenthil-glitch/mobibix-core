@@ -1,6 +1,8 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { InvoiceService } from '../invoices/invoice.service';
+import { PaymentRetryService } from './payment-retry.service';
 import { PaymentStatus } from '@prisma/client';
 
 /**
@@ -19,6 +21,8 @@ export class PaymentActivationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly invoiceService: InvoiceService,
+    private readonly paymentRetryService: PaymentRetryService,
   ) {}
 
   /**
@@ -84,6 +88,20 @@ export class PaymentActivationService {
         `[PAYMENT] ✅ Activation complete: Payment ${payment.id} → Subscription ${subscription.id}`,
       );
 
+      // ✅ GENERATE INVOICE
+      try {
+        const invoice = await this.invoiceService.createInvoiceForPayment(payment.id);
+        this.logger.log(
+          `[INVOICE] ✅ Generated invoice ${invoice.invoiceNumber} for payment ${payment.id}`,
+        );
+      } catch (invoiceErr) {
+        // Invoice generation failure should not block subscription activation
+        this.logger.error(
+          `[INVOICE] ⚠️ Failed to generate invoice for payment ${payment.id}`,
+          invoiceErr as Error,
+        );
+      }
+
       return {
         status: 'activated',
         paymentId,
@@ -104,12 +122,17 @@ export class PaymentActivationService {
    */
   async failPayment(paymentId: string, reason: string) {
     this.logger.warn(`[PAYMENT] ❌ Failed: ${paymentId} - ${reason}`);
-    return this.prisma.payment.update({
+    const updatedPayment = await this.prisma.payment.update({
       where: { id: paymentId },
       data: {
         status: PaymentStatus.FAILED,
         meta: { failureReason: reason },
       },
     });
+
+    // 🔄 Trigger Retry / Dunning Process
+    await this.paymentRetryService.scheduleRetry(paymentId);
+
+    return updatedPayment;
   }
 }

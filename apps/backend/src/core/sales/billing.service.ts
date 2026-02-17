@@ -45,6 +45,7 @@ export interface CreateInvoiceOptions {
   paymentMethods?: { mode: PaymentMode; amount: number }[]; // Amount in Rupees
 
   pricesIncludeTax?: boolean;
+  invoiceDate?: Date; // Custom invoice date (defaults to now)
 
   // Context specific
   referenceType?: 'JOB' | 'SALE';
@@ -163,17 +164,20 @@ export class BillingService {
       }
     }
 
-    const status =
-      totalPaidPaisa >= totalAmountPaisa - 100
-        ? InvoiceStatus.PAID
-        : InvoiceStatus.PARTIALLY_PAID;
+    let status: InvoiceStatus = InvoiceStatus.UNPAID;
+    if (totalPaidPaisa >= totalAmountPaisa - 100) {
+      status = InvoiceStatus.PAID;
+    } else if (totalPaidPaisa > 0) {
+      status = InvoiceStatus.PARTIALLY_PAID;
+    }
 
     // 7. Generate Invoice Number
+    const invoiceDate = options.invoiceDate || new Date();
     const invoiceNumber =
       await this.documentNumberService.generateDocumentNumber(
         shopId,
         DocumentType.SALES_INVOICE,
-        new Date(),
+        invoiceDate,
       );
 
     // 8. Create Invoice
@@ -183,7 +187,7 @@ export class BillingService {
         shopId,
         customerId: options.customerId,
         invoiceNumber,
-        invoiceDate: new Date(),
+        invoiceDate,
         customerName: options.customerName,
         customerPhone: options.customerPhone,
         customerState: options.customerState,
@@ -276,12 +280,16 @@ export class BillingService {
           note: `Invoice ${invoiceNumber}`,
         }));
 
+        const stockRefType = options.referenceType === 'JOB' ? 'REPAIR' : 'SALE';
+        const stockRefId =
+          options.referenceType === 'JOB' ? (options.referenceId as string) : invoice.id;
+
         await this.stockService.recordStockOutBatch(
           tenantId,
           shopId,
           stockOutItems,
-          'SALE', // ReferenceType
-          invoice.id, // ReferenceId
+          stockRefType as any,
+          stockRefId,
           tx,
         );
       }

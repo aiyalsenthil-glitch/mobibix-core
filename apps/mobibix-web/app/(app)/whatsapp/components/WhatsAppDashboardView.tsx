@@ -17,6 +17,7 @@ type WhatsAppDashboardViewProps = {
   onCreateCampaign: () => void;
   onRefresh: () => void;
   hasAddon?: boolean;
+  isPro?: boolean;
 };
 
 export default function WhatsAppDashboardView({
@@ -35,6 +36,7 @@ export default function WhatsAppDashboardView({
   onCreateCampaign,
   onRefresh,
   hasAddon = false,
+  isPro = false,
 }: WhatsAppDashboardViewProps) {
   return (
     <div className="space-y-8">
@@ -249,10 +251,10 @@ export default function WhatsAppDashboardView({
               />
               <button
                 onClick={onSend}
-                disabled={sending || quotaExhausted}
-                className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                disabled={sending || quotaExhausted || !isPro}
+                className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity ${!isPro ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'} disabled:opacity-50`}
               >
-                {sending ? "Sending..." : "Send Message"}
+                {sending ? "Sending..." : !isPro ? "PRO Only" : "Send Message"}
               </button>
             </div>
           </div>
@@ -302,10 +304,10 @@ export default function WhatsAppDashboardView({
               />
               <button
                 onClick={onCreateCampaign}
-                disabled={campaigning || quotaExhausted}
-                className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                disabled={campaigning || quotaExhausted || !isPro}
+                className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity ${!isPro ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'} disabled:opacity-50`}
               >
-                {campaigning ? "Saving..." : "Create Campaign"}
+                {campaigning ? "Saving..." : !isPro ? "PRO Only" : "Create Campaign"}
               </button>
             </div>
           </div>

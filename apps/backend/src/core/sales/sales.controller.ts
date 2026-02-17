@@ -84,6 +84,7 @@ export class SalesController {
       takeNum,
       undefined,
       fromJobCard === 'true',
+      req.query.status as any,
     );
   }
 

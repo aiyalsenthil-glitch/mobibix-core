@@ -2,6 +2,7 @@ import { useState } from "react";
 import WhatsAppRetailInbox from "./WhatsAppRetailInbox";
 import WhatsAppPremiumPromoBanner from "../../whatsapp/components/WhatsAppPremiumPromoBanner";
 import WhatsAppSettingsModal from "./WhatsAppSettingsModal";
+import { useAuth } from "@/hooks/useAuth";
 
 type WhatsAppCrmDashboardProps = {
   hasPhoneNumber: boolean;
@@ -16,6 +17,8 @@ export default function WhatsAppCrmDashboard({
   whatsappAllowed = true, // Default to true for backward compatibility if not passed
   hasAddon = false,
 }: WhatsAppCrmDashboardProps) {
+  const { authUser: user } = useAuth();
+  const isPro = user?.planCode === "MOBIBIX_PRO" || user?.planCode === "GYM_PRO";
   const isRetailDemo = moduleType === 'MOBILE_SHOP';
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -164,7 +167,7 @@ export default function WhatsAppCrmDashboard({
         {/* Main Content */}
         {isRetailDemo ? (
            // ✅ Retail Demo Inbox
-           <WhatsAppRetailInbox disabled={!whatsappAllowed} />
+           <WhatsAppRetailInbox disabled={!whatsappAllowed || !isPro} />
         ) : (
           // Legacy Placeholder Layout
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -187,33 +190,33 @@ export default function WhatsAppCrmDashboard({
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="font-semibold text-gray-900 mb-4">Quick Actions</h2>
               <div className="space-y-3">
-                <button 
-                  disabled={!whatsappAllowed}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition items-center flex justify-between group ${!whatsappAllowed ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-teal-50 text-teal-700 hover:bg-teal-100'}`}
+                 <button 
+                  disabled={!whatsappAllowed || !isPro}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition items-center flex justify-between group ${(!whatsappAllowed || !isPro) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-teal-50 text-teal-700 hover:bg-teal-100'}`}
                 >
                   <span>📝 Create Template</span>
-                  {!whatsappAllowed && <span className="text-xs border border-gray-300 rounded px-1 group-hover:block">ADD-ON</span>}
+                  {(!whatsappAllowed || !isPro) && <span className="text-xs border border-gray-300 rounded px-1 group-hover:block">PRO ONLY</span>}
                 </button>
                 <button 
-                  disabled={!whatsappAllowed}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition items-center flex justify-between group ${!whatsappAllowed ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
+                  disabled={!whatsappAllowed || !isPro}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition items-center flex justify-between group ${(!whatsappAllowed || !isPro) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
                 >
                   <span>👥 Add Team Member</span>
-                  {!whatsappAllowed && <span className="text-xs border border-gray-300 rounded px-1">ADD-ON</span>}
+                  {(!whatsappAllowed || !isPro) && <span className="text-xs border border-gray-300 rounded px-1">PRO ONLY</span>}
                 </button>
                 <button 
-                  disabled={!whatsappAllowed}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition items-center flex justify-between group ${!whatsappAllowed ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}
+                  disabled={!whatsappAllowed || !isPro}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition items-center flex justify-between group ${(!whatsappAllowed || !isPro) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}
                 >
                   <span>⚙️ Configure Automation</span>
-                  {!whatsappAllowed && <span className="text-xs border border-gray-300 rounded px-1">ADD-ON</span>}
+                  {(!whatsappAllowed || !isPro) && <span className="text-xs border border-gray-300 rounded px-1">PRO ONLY</span>}
                 </button>
                 <button 
-                  disabled={!whatsappAllowed}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition items-center flex justify-between group ${!whatsappAllowed ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}`}
+                  disabled={!whatsappAllowed || !isPro}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition items-center flex justify-between group ${(!whatsappAllowed || !isPro) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}`}
                 >
                   <span>📊 View Analytics</span>
-                  {!whatsappAllowed && <span className="text-xs border border-gray-300 rounded px-1">ADD-ON</span>}
+                  {(!whatsappAllowed || !isPro) && <span className="text-xs border border-gray-300 rounded px-1">PRO ONLY</span>}
                 </button>
               </div>
             </div>

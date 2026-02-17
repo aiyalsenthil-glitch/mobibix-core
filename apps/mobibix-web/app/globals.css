@@ -106,102 +106,108 @@
 
 @layer utilities {
   .glass {
-    @apply bg-white/10 dark:bg-black/10 backdrop-blur-md border border-white/20 dark:border-white/10;
+    @apply bg-white/10 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl;
   }
   .glass-card {
-    @apply bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-border/50 shadow-sm;
+    @apply bg-white/80 dark:bg-white/[0.03] backdrop-blur-[40px] border border-zinc-200 dark:border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.1)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] ring-1 ring-inset ring-black/5 dark:ring-white/5;
+    /* Top Highlight */
+    background-image: linear-gradient(to bottom, rgba(255,255,255,0.8) 0%, transparent 100%);
   }
-}
-.phone {
-  position: absolute;
-  height: 260px;
-  width: 130px;
-  border-radius: 24px;
-  background: linear-gradient(160deg, oklch(0.28 0 0), oklch(0.18 0 0));
-  box-shadow:
-    0 0 40px oklch(var(--primary) / 0.35),
-    inset 0 0 0 1px oklch(1 0 0 / 8%);
-  animation: float 12s infinite ease-in-out;
-}
-
-.phone::after {
-  content: "";
-  position: absolute;
-  inset: 8px;
-  border-radius: 16px;
-  background: oklch(0.12 0 0);
-}
-
-.phone-1 {
-  transform: rotate(-12deg) translateX(-120px);
-  animation-delay: 0s;
-}
-
-.phone-2 {
-  transform: rotate(0deg);
-  animation-delay: 2s;
-}
-
-.phone-3 {
-  transform: rotate(12deg) translateX(120px);
-  animation-delay: 4s;
-}
-
-@keyframes float {
-  0% {
-    transform: translateY(0) rotate(var(--r, 0deg));
+  .dark .glass-card {
+    background-image: linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, transparent 100%);
   }
-  50% {
-    transform: translateY(-18px) rotate(var(--r, 0deg));
+  .input-glass {
+    @apply bg-zinc-50 dark:bg-white/[0.07] backdrop-blur-md border border-zinc-200 dark:border-white/10 focus:border-emerald-500/50 focus:bg-white dark:focus:bg-white/[0.12] focus:-translate-y-[2px] focus:ring-8 focus:ring-emerald-500/10 dark:focus:ring-emerald-500/5 transition-all duration-300 outline-none;
   }
-  100% {
-    transform: translateY(0) rotate(var(--r, 0deg));
+  
+  .aurora-bg {
+    background-size: 300% 300%;
+    animation: aurora-shift 30s ease-in-out infinite;
+    filter: blur(100px);
+    background-image: 
+      radial-gradient(at 10% 10%, rgba(16, 185, 129, 0.08) 0px, transparent 40%),
+      radial-gradient(at 90% 10%, rgba(56, 189, 248, 0.08) 0px, transparent 40%),
+      radial-gradient(at 50% 50%, rgba(250, 204, 21, 0.04) 0px, transparent 50%),
+      radial-gradient(at 10% 90%, rgba(16, 185, 129, 0.04) 0px, transparent 40%),
+      radial-gradient(at 90% 90%, rgba(56, 189, 248, 0.04) 0px, transparent 40%);
   }
-}
-@keyframes float {
-  0% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-24px);
-  }
-  100% {
-    transform: translateY(0px);
+  
+  .dark .aurora-bg {
+    background-image: 
+      radial-gradient(at 10% 10%, rgba(16, 185, 129, 0.12) 0px, transparent 40%),
+      radial-gradient(at 90% 10%, rgba(99, 102, 241, 0.12) 0px, transparent 40%),
+      radial-gradient(at 50% 50%, rgba(79, 70, 229, 0.08) 0px, transparent 50%),
+      radial-gradient(at 10% 90%, rgba(236, 72, 153, 0.08) 0px, transparent 40%),
+      radial-gradient(at 90% 90%, rgba(45, 212, 191, 0.08) 0px, transparent 40%);
   }
 }
 
-@layer base {
-  body {
-    background: oklch(var(--background));
-    color: oklch(var(--foreground));
-  }
+/* Animations */
+@keyframes background-fade {
+  0% { opacity: 0; }
+  100% { opacity: 0.6; }
 }
 
-@keyframes gradient-slow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+@keyframes aurora-shift {
+  0% { background-position: 0% 0%; opacity: 0.6; transform: scale(1); }
+  50% { background-position: 100% 100%; opacity: 0.8; transform: scale(1.05); }
+  100% { background-position: 0% 0%; opacity: 0.6; transform: scale(1); }
 }
 
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes card-entrance {
+  0% { opacity: 0; transform: translateY(12px) scale(0.98); filter: blur(8px); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 }
 
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes fade-in-up-stagger {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
-.animate-gradient-slow {
-  background-size: 200% 200%;
-  animation: gradient-slow 15s ease infinite;
+@keyframes input-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }
 
-.animate-slide-up {
-  animation: slide-up 0.6s ease-out forwards;
+@keyframes divider-expand {
+  0% { transform: scaleX(0); opacity: 0; }
+  100% { transform: scaleX(1); opacity: 1; }
 }
 
-.animate-fade-in {
-  animation: fade-in 0.5s ease-out forwards;
+@keyframes logo-pulse {
+  0% { opacity: 0.4; transform: scale(0.8); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  50% { opacity: 1; transform: scale(1.1); box-shadow: 0 0 10px 2px rgba(16, 185, 129, 0.3); }
+  100% { opacity: 0.4; transform: scale(0.8); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
+
+.animate-card-entrance {
+  animation: card-entrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-stagger-1 { animation: fade-in-up-stagger 0.5s ease-out 0.8s forwards; opacity: 0; }
+.animate-stagger-2 { animation: fade-in-up-stagger 0.5s ease-out 0.9s forwards; opacity: 0; }
+.animate-stagger-3 { animation: fade-in-up-stagger 0.5s ease-out 1.0s forwards; opacity: 0; }
+.animate-stagger-4 { animation: fade-in-up-stagger 0.5s ease-out 1.1s forwards; opacity: 0; }
+
+.animate-input-error {
+  animation: input-shake 0.2s ease-in-out 0s 2;
+  @apply border-red-500/50 ring-red-500/10 focus:ring-red-500/20 focus:border-red-500;
+}
+
+.animate-divider-expand {
+  animation: divider-expand 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-logo-status {
+  animation: logo-pulse 3s ease-in-out infinite;
+}
+
+.hover-lift {
+  @apply hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 active:scale-95 active:translate-y-0.5;
+}
+
+.btn-futuristic {
+  @apply bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow-[0_4px_20px_rgba(16,184,129,0.3)] hover:shadow-[0_8px_30px_rgba(16,184,129,0.5)] active:scale-95 transition-all duration-300;
+}
+

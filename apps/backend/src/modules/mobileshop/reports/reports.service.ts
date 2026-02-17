@@ -9,6 +9,7 @@ import {
   ReceiptType,
   ReceiptStatus,
   Prisma,
+  ProductType,
 } from '@prisma/client';
 
 @Injectable()
@@ -86,13 +87,13 @@ export class MobileShopReportsService {
 
     return {
       metrics: {
-        salesPaid: totalSalesPaid,
-        salesCredit: totalSalesCredit,
-        totalPurchases: purchaseTotal,
-        totalExpenses: totalExpenses._sum.amount || 0,
-        netCashFlow: (cashIn._sum.amount || 0) - (cashOut._sum.amount || 0),
-        pendingReceivables: totalSalesCredit, // Same as Credit Sales
-        pendingPayables: pendingPayables,
+        salesPaid: totalSalesPaid / 100,
+        salesCredit: totalSalesCredit / 100,
+        totalPurchases: purchaseTotal / 100,
+        totalExpenses: (totalExpenses._sum.amount || 0) / 100,
+        netCashFlow: ((cashIn._sum.amount || 0) - (cashOut._sum.amount || 0)) / 100,
+        pendingReceivables: totalSalesCredit / 100, // Same as Credit Sales
+        pendingPayables: pendingPayables / 100,
       },
     };
   }
@@ -107,11 +108,13 @@ export class MobileShopReportsService {
     endDate?: Date,
     shopId?: string,
     partyId?: string,
+    jobCardOnly?: boolean,
   ) {
     const where: any = {
       tenantId,
       ...(shopId && { shopId }),
       ...(partyId && { customerId: partyId }),
+      ...(jobCardOnly && { jobCardId: { not: null } }),
       status: { not: InvoiceStatus.VOIDED },
       ...(startDate &&
         endDate && {
@@ -122,7 +125,7 @@ export class MobileShopReportsService {
     const invoices = await this.prisma.invoice.findMany({
       where,
       include: {
-        items: true,
+        items: { include: { product: true } },
         receipts: { where: { status: ReceiptStatus.ACTIVE } },
         customer: { select: { name: true } },
         shop: { select: { name: true } },
@@ -131,17 +134,27 @@ export class MobileShopReportsService {
     });
 
     // Fetch StockLedger Costs for these invoices
-    // Corrected: StockLedger ReferenceId is InvoiceId, so match ShopProductId too.
-    const allInvoiceIds = invoices.map((inv) => inv.id);
+    const salesInvoiceIds = invoices.map((inv) => inv.id);
+    const repairJobCardIds = invoices
+      .filter((inv) => inv.jobCardId)
+      .map((inv) => inv.jobCardId as string);
 
-    // Optimized: Only fetch if we have invoices
-    const costMap = new Map<string, number | null>(); // Key: invoiceId:shopProductId
-    if (allInvoiceIds.length > 0) {
+    const costMap = new Map<string, number | null>(); // Key: referenceId:shopProductId
+
+    if (salesInvoiceIds.length > 0 || repairJobCardIds.length > 0) {
       const costs = await this.prisma.stockLedger.findMany({
         where: {
           tenantId,
-          referenceType: 'SALE',
-          referenceId: { in: allInvoiceIds },
+          OR: [
+            {
+              referenceType: 'SALE',
+              referenceId: { in: salesInvoiceIds },
+            },
+            {
+              referenceType: 'REPAIR',
+              referenceId: { in: repairJobCardIds },
+            },
+          ],
         },
         select: { referenceId: true, costPerUnit: true, shopProductId: true },
       });
@@ -159,19 +172,30 @@ export class MobileShopReportsService {
       let isProfitValid = true;
 
       for (const item of inv.items) {
-        const cost = costMap.get(`${inv.id}:${item.shopProductId}`);
+        // SERVICE items always have zero cost (100% margin on labor)
+        if (item.product?.type === ProductType.SERVICE) {
+          totalProfit! += item.lineTotal - item.gstAmount;
+          continue;
+        }
+
+        // Determine correct refId for cost lookup
+        // Priority 1: New Format (REPAIR + jobCardId)
+        // Priority 2: Legacy/Buggy Format (SALE + invoiceId)
+        let cost = inv.jobCardId
+          ? costMap.get(`${inv.jobCardId}:${item.shopProductId}`)
+          : undefined;
+
+        if (cost === undefined || cost === null) {
+          cost = costMap.get(`${inv.id}:${item.shopProductId}`);
+        }
+
         if (cost === undefined || cost === null) {
           isProfitValid = false;
           break; // One missing cost voids invoice profit (conservative)
         }
-        // Profit = (NetRevenue - Cost) * Qty
-        // NetRevenue per item (paisa) = item.lineTotal - item.gstAmount
-        // Cost per total quantity (paisa) = cost * item.quantity
-        // totalProfit! += (item.lineTotal - item.gstAmount) - (cost * item.quantity);
 
-        // Wait, lineTotal is already total (rate * qty + gst).
-        // So (lineTotal - gstAmount) is already total net revenue for that line.
-        totalProfit += item.lineTotal - item.gstAmount - cost * item.quantity;
+        // Profit = total net revenue - (cost * quantity)
+        totalProfit! += item.lineTotal - item.gstAmount - cost * item.quantity;
       }
 
       if (!isProfitValid) totalProfit = null;
@@ -242,9 +266,9 @@ export class MobileShopReportsService {
       purchaseNo: p.invoiceNumber,
       supplier: p.supplierName,
       date: p.invoiceDate,
-      totalAmount: p.grandTotal,
-      paidAmount: p.paidAmount,
-      pendingAmount: p.grandTotal - p.paidAmount,
+      totalAmount: p.grandTotal / 100, // Paisa to Rupees
+      paidAmount: p.paidAmount / 100, // Paisa to Rupees
+      pendingAmount: (p.grandTotal - p.paidAmount) / 100, // Paisa to Rupees
       stockReceived: p.status !== PurchaseStatus.DRAFT, // Check logic
       shopName: p.shop.name,
     }));
@@ -565,7 +589,48 @@ export class MobileShopReportsService {
       productId: p.shopProductId,
       name: productMap.get(p.shopProductId)?.name || 'Unknown',
       totalQty: p._sum.quantity || 0,
-      totalAmount: p._sum.lineTotal || 0,
+      totalAmount: (p._sum.lineTotal || 0) / 100, // Paisa to Rupees
     }));
+  }
+
+  async getRepairReport(
+    tenantId: string,
+    startDate?: Date,
+    endDate?: Date,
+    shopId?: string,
+  ) {
+    return this.getSalesReport(
+      tenantId,
+      startDate,
+      endDate,
+      shopId,
+      undefined,
+      true,
+    );
+  }
+
+  async getRepairMetrics(
+    tenantId: string,
+    startDate?: Date,
+    endDate?: Date,
+    shopId?: string,
+  ) {
+    const report = await this.getRepairReport(
+      tenantId,
+      startDate,
+      endDate,
+      shopId,
+    );
+
+    const totalRepairs = report.length;
+    const totalRevenue = report.reduce((sum, r) => sum + r.totalAmount, 0);
+    const totalProfit = report.reduce((sum, r) => sum + (r.profit || 0), 0);
+
+    return {
+      totalRepairs,
+      totalRevenue,
+      totalProfit,
+      margin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
+    };
   }
 }

@@ -2,10 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  listProducts,
-  type ShopProduct,
-} from "@/services/products.api";
+import { listProducts, type ShopProduct } from "@/services/products.api";
 import { getStockBalances } from "@/services/stock.api";
 import { createInvoice } from "@/services/sales.api";
 import { useShop } from "@/context/ShopContext";
@@ -52,17 +49,13 @@ export default function CreateInvoicePage() {
     addItem,
     removeItem,
     updateItem,
-    totals: {
-      subtotal,
-      totalGst,
-      grandTotal,
-    }
+    totals: { subtotal, totalGst, grandTotal },
   } = useInvoiceForm({ shopGstEnabled: selectedShop?.gstEnabled });
 
   const [products, setProducts] = useState<ShopProduct[]>([]);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imeiHighlight, setImeiHighlight] = useState(false);
@@ -275,259 +268,355 @@ export default function CreateInvoicePage() {
 
   if (isLoadingShops) {
     return (
-      <div className="max-w-7xl mx-auto text-center py-20">
-        <div className="animate-spin text-teal-600 text-3xl mb-4">⟳</div>
-        <p className="text-gray-500">Loading shop details...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0b0f14] text-slate-700 dark:text-slate-200 flex items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-10 w-10 rounded-full border-2 border-teal-400/40 border-t-teal-400 animate-spin"></div>
+          <p className="text-xs uppercase tracking-[0.35em] text-teal-600 dark:text-teal-300/70">
+            Loading
+          </p>
+          <p className="mt-2 text-slate-500 dark:text-slate-400">
+            Preparing invoice workspace...
+          </p>
+        </div>
       </div>
     );
   }
 
   if (!selectedShop) {
     return (
-      <div className="max-w-7xl mx-auto text-center py-20 flex flex-col items-center">
-        <p className="text-red-500 mb-6 bg-red-50 px-6 py-4 rounded-xl border border-red-100">
-          No shop selected or shop not found.
-        </p>
-        <button
-          onClick={() => router.push("/sales")}
-          className="px-8 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold transition"
-        >
-          Go Back to Sales
-        </button>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0b0f14] text-slate-700 dark:text-slate-200 flex items-center justify-center px-6">
+        <div className="max-w-lg w-full rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-8 text-center shadow-lg dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+          <p className="text-xs uppercase tracking-[0.35em] text-rose-600 dark:text-rose-300/80">
+            Missing shop
+          </p>
+          <h2 className="mt-3 text-2xl font-[var(--font-playfair)] text-slate-900 dark:text-slate-100">
+            No shop selected
+          </h2>
+          <p className="mt-3 text-slate-600 dark:text-slate-400">
+            Choose a shop to create invoices and manage inventory-linked stock.
+          </p>
+          <button
+            onClick={() => router.push("/sales")}
+            className="mt-6 px-6 py-3 rounded-xl bg-teal-500/90 text-white font-semibold hover:bg-teal-600 dark:hover:bg-teal-400 transition"
+          >
+            Back to Sales
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto py-8 px-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-          Create New Sales Invoice
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400">
-          Fill in the details below to generate a new GST invoice.
-        </p>
-      </div>
-
-      {shopError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
-          <span>⚠️</span> {shopError}
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0b0f14] text-slate-900 dark:text-slate-100">
+      <div className="max-w-[1400px] mx-auto py-6 px-6">
+        <div className="relative overflow-hidden rounded-[24px] border border-slate-200 dark:border-white/10 bg-gradient-to-br from-slate-100 via-white to-slate-50 dark:from-white/10 dark:via-white/5 dark:to-transparent p-6 shadow-xl dark:shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
+          <div className="absolute -top-40 -right-24 h-72 w-72 rounded-full bg-teal-500/10 dark:bg-teal-500/20 blur-[120px]"></div>
+          <div className="absolute -bottom-32 -left-20 h-72 w-72 rounded-full bg-amber-400/5 dark:bg-amber-400/10 blur-[120px]"></div>
+          <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.4em] text-teal-600 dark:text-teal-300/70">
+                Sales Workspace
+              </p>
+              <h1 className="mt-2 text-2xl md:text-3xl font-[var(--font-playfair)] text-slate-900 dark:text-white">
+                New Sales Invoice
+              </h1>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 max-w-xl">
+                Build a clean, GST-ready invoice with live stock, customer, and
+                payment visibility in one pass.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2.5">
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Active shop
+                </p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {selectedShop?.name ?? "Selected shop"}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
-          <span>⚠️</span> {error}
-        </div>
-      )}
-
-      {/* Customer Selector */}
-      <InvoiceCustomerSelector 
-        selectedCustomer={selectedCustomer}
-        onSelectCustomer={setSelectedCustomer}
-        onClearCustomer={() => setSelectedCustomer(null)}
-        onNewCustomer={() => setIsCustomerModalOpen(true)}
-      />
-
-       {/* Invoice Date & Inter-state Notice */}
-       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-8 mb-8 shadow-sm">
-         <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6">
-             Invoice Details
-         </h2>
-         <div className="max-w-md">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Invoice Date
-            </label>
-            <input
-              type="date"
-              value={invoiceDate}
-              onChange={(e) => setInvoiceDate(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-50/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white dark:focus:bg-gray-800 transition shadow-sm"
-            />
-         </div>
-         {isInterState && selectedShop?.gstEnabled && (
-          <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 px-4 py-3 rounded-lg text-sm border border-blue-100 dark:border-blue-800 flex items-center gap-2">
-            <span>ℹ️</span>
-            <strong>Inter-State Sale:</strong> IGST will be applied as customer
-            state is different from shop state.
+        {shopError && (
+          <div className="mt-4 rounded-2xl border border-rose-400 dark:border-rose-500/30 bg-rose-100 dark:bg-rose-500/10 px-4 py-2.5 text-rose-800 dark:text-rose-200">
+            <span className="mr-2">⚠️</span>
+            {shopError}
           </div>
         )}
-       </div>
 
-      {/* Product Items Table */}
-      <InvoiceProductTable 
-        items={items}
-        products={products}
-        pricesIncludeTax={pricesIncludeTax}
-        onPricesIncludeTaxChange={setPricesIncludeTax}
-        onUpdateItem={updateItem}
-        onAddItem={addItem}
-        onRemoveItem={removeItem}
-        imeiHighlight={imeiHighlight}
-      />
-      
-      {/* Create Product Button */}
-      {/* <div className="mb-8 text-right">
-        <button
-           onClick={() => setIsProductModalOpen(true)}
-           className="text-sm text-teal-600 hover:text-teal-700 font-medium"
-        >
-           + Create New Product
-        </button>
-      </div> */}
-      {/* (Optional: Add this back if we want quick product creation from invoice page) */}
+        {error && (
+          <div className="mt-4 rounded-2xl border border-rose-400 dark:border-rose-500/30 bg-rose-100 dark:bg-rose-500/10 px-4 py-2.5 text-rose-800 dark:text-rose-200">
+            <span className="mr-2">⚠️</span>
+            {error}
+          </div>
+        )}
 
-      {/* Payment & Totals */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
-            Payment Mode
-          </label>
-          <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-            {["CASH", "UPI", "CARD", "BANK", "CREDIT"].map((mode) => (
+        <div className="mt-6 space-y-5">
+          {/* Combined Customer & Invoice Details Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-5">
+            <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Customer Details
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Search or add a new customer.
+                </p>
+              </div>
+              <InvoiceCustomerSelector
+                selectedCustomer={selectedCustomer}
+                onSelectCustomer={setSelectedCustomer}
+                onClearCustomer={() => setSelectedCustomer(null)}
+                onNewCustomer={() => setIsCustomerModalOpen(true)}
+              />
+            </div>
+
+            <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Invoice Details
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Confirm timing and tax handling.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 mb-2">
+                  Invoice Date
+                </label>
+                <input
+                  type="date"
+                  value={invoiceDate}
+                  onChange={(e) => setInvoiceDate(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-black/40 px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-400/70 transition"
+                />
+              </div>
+              {isInterState && selectedShop?.gstEnabled && (
+                <div className="mt-4 rounded-xl border border-sky-400/30 bg-sky-100 dark:bg-sky-400/10 px-4 py-2.5 text-sm text-sky-900 dark:text-sky-100">
+                  <strong className="mr-2">Inter-State Sale:</strong>
+                  IGST will be applied as customer state is different from shop
+                  state.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Product Items
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Add products, quantities, and GST.
+              </p>
+            </div>
+            <InvoiceProductTable
+              items={items}
+              products={products}
+              pricesIncludeTax={pricesIncludeTax}
+              onPricesIncludeTaxChange={setPricesIncludeTax}
+              onUpdateItem={updateItem}
+              onAddItem={addItem}
+              onRemoveItem={removeItem}
+              onNewProduct={() => setIsProductModalOpen(true)}
+              imeiHighlight={imeiHighlight}
+            />
+          </div>
+        </div>
+
+        {/* Payment & Totals */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_0.7fr] gap-5 mb-6">
+          <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Payment Mode
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Choose how the invoice is paid.
+                </p>
+              </div>
+              <span className="rounded-full border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.3em] text-slate-600 dark:text-slate-300">
+                {paymentMode}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+              {["CASH", "UPI", "CARD", "BANK", "CREDIT"].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setPaymentMode(mode as any)}
+                  className={`px-4 py-3 rounded-2xl text-xs font-semibold tracking-[0.2em] transition border ${
+                    paymentMode === mode
+                      ? "bg-teal-400 text-white dark:text-slate-900 border-teal-300 shadow-[0_10px_30px_rgba(13,148,136,0.35)]"
+                      : "bg-slate-100 dark:bg-black/40 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10"
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
               <button
-                key={mode}
-                onClick={() => setPaymentMode(mode as any)}
-                className={`px-4 py-3 rounded-xl text-sm font-bold transition border ${
-                  paymentMode === mode
-                    ? "bg-teal-600 text-white border-teal-600 shadow-teal-200 shadow-lg scale-105"
-                    : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                onClick={() => setPaymentMode("MIXED")}
+                className={`px-4 py-3 rounded-2xl text-xs font-semibold tracking-[0.2em] transition border ${
+                  paymentMode === "MIXED"
+                    ? "bg-amber-400 text-white dark:text-slate-900 border-amber-300 shadow-[0_10px_30px_rgba(251,191,36,0.35)]"
+                    : "bg-slate-100 dark:bg-black/40 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10"
                 }`}
               >
-                {mode}
+                SPLIT
               </button>
-            ))}
-            <button
-               onClick={() => setPaymentMode("MIXED")}
-               className={`px-4 py-3 rounded-xl text-sm font-bold transition border ${
-                 paymentMode === "MIXED"
-                   ? "bg-purple-600 text-white border-purple-600 shadow-purple-200 shadow-lg scale-105"
-                   : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-               }`}
-            >
-              SPLIT
-            </button>
-          </div>
+            </div>
 
-          {/* Split Payment Inputs */}
-          {paymentMode === "MIXED" && (
-            <div className="mt-6 bg-purple-50 dark:bg-purple-900/10 p-4 rounded-xl border border-purple-100 dark:border-purple-800">
-               <h4 className="text-sm font-bold text-purple-900 dark:text-purple-300 mb-3">Split Payment Details</h4>
-               <div className="space-y-3">
-                 {splitPayments.map((payment, idx) => (
-                    <div key={payment.id} className="flex gap-2 items-center">
-                       <select 
-                         value={payment.mode}
-                         onChange={(e) => {
-                             const newSplits = [...splitPayments];
-                             newSplits[idx].mode = e.target.value as any;
-                             setSplitPayments(newSplits);
-                         }}
-                         className="px-3 py-2 rounded-lg border border-purple-200 text-sm w-32"
-                       >
-                          <option value="CASH">Cash</option>
-                          <option value="UPI">UPI</option>
-                          <option value="CARD">Card</option>
-                          <option value="BANK">Bank</option>
-                       </select>
-                       <div className="relative flex-1">
-                          <span className="absolute left-3 top-2 text-gray-500">₹</span>
-                          <input 
-                            type="number"
-                            placeholder="Amount"
-                            value={payment.amount}
-                            onChange={(e) => {
-                                const newSplits = [...splitPayments];
-                                newSplits[idx].amount = e.target.value;
-                                setSplitPayments(newSplits);
-                            }}
-                            className="w-full pl-7 pr-3 py-2 rounded-lg border border-purple-200 text-sm focus:ring-2 focus:ring-purple-500"
-                          />
-                       </div>
-                       {splitPayments.length > 1 && (
-                           <button 
-                             onClick={() => {
-                                 setSplitPayments(splitPayments.filter(p => p.id !== payment.id));
-                             }}
-                             className="p-2 text-red-400 hover:text-red-600"
-                           >
-                              <Trash2 size={16} />
-                           </button>
-                       )}
+            {paymentMode === "MIXED" && (
+              <div className="mt-5 rounded-2xl border border-amber-400/30 bg-amber-100 dark:bg-amber-400/10 p-4">
+                <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-3">
+                  Split Payment Details
+                </h4>
+                <div className="space-y-3">
+                  {splitPayments.map((payment, idx) => (
+                    <div
+                      key={payment.id}
+                      className="flex flex-wrap gap-2 items-center"
+                    >
+                      <select
+                        value={payment.mode}
+                        onChange={(e) => {
+                          const newSplits = [...splitPayments];
+                          newSplits[idx].mode = e.target.value as any;
+                          setSplitPayments(newSplits);
+                        }}
+                        className="px-3 py-2 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-black/40 text-xs text-slate-900 dark:text-white"
+                      >
+                        <option value="CASH">Cash</option>
+                        <option value="UPI">UPI</option>
+                        <option value="CARD">Card</option>
+                        <option value="BANK">Bank</option>
+                      </select>
+                      <div className="relative flex-1 min-w-[180px]">
+                        <span className="absolute left-3 top-2 text-slate-500 dark:text-slate-400">
+                          ₹
+                        </span>
+                        <input
+                          type="number"
+                          placeholder="Amount"
+                          value={payment.amount}
+                          onChange={(e) => {
+                            const newSplits = [...splitPayments];
+                            newSplits[idx].amount = e.target.value;
+                            setSplitPayments(newSplits);
+                          }}
+                          className="w-full pl-7 pr-3 py-2 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-black/40 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-400/70 focus:outline-none"
+                        />
+                      </div>
+                      {splitPayments.length > 1 && (
+                        <button
+                          onClick={() => {
+                            setSplitPayments(
+                              splitPayments.filter((p) => p.id !== payment.id),
+                            );
+                          }}
+                          className="p-2 text-rose-600 dark:text-rose-300 hover:text-rose-700 dark:hover:text-rose-200"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
-                 ))}
-                 
-                 <button 
-                   onClick={() => setSplitPayments([...splitPayments, { id: crypto.randomUUID(), mode: "CASH", amount: "" }])}
-                   className="text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 mt-2"
-                 >
-                    + Add Another Payment Method
-                 </button>
+                  ))}
 
-                 <div className="pt-3 border-t border-purple-200 mt-2 flex justify-between text-sm">
-                    <span>Total Split:</span>
-                    <span className={
-                        (splitPayments.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0) > grandTotal + 1) ? "text-red-600 font-bold" : "text-purple-900 font-bold"
-                    }>
-                        ₹{splitPayments.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0).toFixed(2)}
+                  <button
+                    onClick={() =>
+                      setSplitPayments([
+                        ...splitPayments,
+                        { id: crypto.randomUUID(), mode: "CASH", amount: "" },
+                      ])
+                    }
+                    className="text-xs font-semibold text-amber-700 dark:text-amber-200 hover:text-amber-800 dark:hover:text-amber-100"
+                  >
+                    + Add another payment method
+                  </button>
+
+                  <div className="pt-3 border-t border-amber-300 dark:border-amber-200/20 mt-2 flex justify-between text-sm text-amber-900 dark:text-amber-100">
+                    <span>Total Split</span>
+                    <span
+                      className={
+                        splitPayments.reduce(
+                          (acc, p) => acc + (parseFloat(p.amount) || 0),
+                          0,
+                        ) >
+                        grandTotal + 1
+                          ? "text-rose-700 dark:text-rose-200 font-semibold"
+                          : "text-amber-900 dark:text-amber-100 font-semibold"
+                      }
+                    >
+                      ₹
+                      {splitPayments
+                        .reduce(
+                          (acc, p) => acc + (parseFloat(p.amount) || 0),
+                          0,
+                        )
+                        .toFixed(2)}
                     </span>
-                 </div>
-               </div>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-8 h-fit">
-          <div className="space-y-3 mb-6">
-            <div className="flex justify-between text-gray-600 dark:text-gray-400">
-              <span>Subtotal</span>
-              <span>₹{subtotal.toFixed(2)}</span>
-            </div>
-            {selectedShop?.gstEnabled && (
-                <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                <span>Total GST</span>
-                <span>₹{totalGst.toFixed(2)}</span>
+                  </div>
                 </div>
+              </div>
             )}
           </div>
-          <div className="flex justify-between items-center text-xl font-bold text-gray-900 dark:text-white pt-6 border-t border-gray-200 dark:border-gray-700">
-            <span>Grand Total</span>
-            <span className="text-teal-600">₹{grandTotal.toFixed(2)}</span>
+
+          <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-gradient-to-br from-slate-100 via-white to-slate-50 dark:from-white/10 dark:via-white/5 dark:to-transparent p-5 shadow-lg dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] h-fit">
+            <div className="space-y-2.5">
+              <div className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
+                <span>Subtotal</span>
+                <span>₹{subtotal.toFixed(2)}</span>
+              </div>
+              {selectedShop?.gstEnabled && (
+                <div className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
+                  <span>Total GST</span>
+                  <span>₹{totalGst.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-5 flex justify-between items-center text-2xl font-semibold text-slate-900 dark:text-white border-t border-slate-300 dark:border-white/10 pt-4">
+              <span>Grand Total</span>
+              <span className="text-teal-600 dark:text-teal-300">
+                ₹{grandTotal.toFixed(2)}
+              </span>
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full mt-6 py-3.5 rounded-2xl bg-teal-500 text-white font-semibold text-base tracking-[0.2em] uppercase shadow-[0_12px_30px_rgba(13,148,136,0.35)] hover:bg-teal-600 disabled:opacity-60 disabled:cursor-not-allowed transition"
+            >
+              {loading ? "Creating Invoice..." : "Confirm & Create Invoice"}
+            </button>
           </div>
-
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full mt-8 py-4 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            {loading ? "Creating Invoice..." : `Confirm & Create Invoice`}
-          </button>
         </div>
-      </div>
 
-      {/* Modals */}
-      {isCustomerModalOpen && (
-        <CustomerModal
-          onClose={handleCustomerModalClose}
-          onSuccess={(customer) => {
-               // In a clearer flow, we might want to auto-select this customer.
-               // But the party selector might not have this in its local list unless we refresh/search.
-               // Usually PartySelector will find it immediately by search.
-               // We can also auto-select if we passed a callback to CustomerModal but it just takes onSuccess mostly for reload.
-               // Let's just close it.
-               handleCustomerModalClose();
-               setSelectedCustomer(customer); // Optimistic select
-          }}
-        />
-      )}
-      
-      {isProductModalOpen && (
-        <ProductModal
-          onClose={handleProductModalClose}
-          onProductCreated={handleProductCreated}
-          shopId={selectedShop.id}
-        />
-      )}
+        {/* Modals */}
+        {isCustomerModalOpen && (
+          <CustomerModal
+            onClose={handleCustomerModalClose}
+            onSuccess={(customer) => {
+              // In a clearer flow, we might want to auto-select this customer.
+              // But the party selector might not have this in its local list unless we refresh/search.
+              // Usually PartySelector will find it immediately by search.
+              // We can also auto-select if we passed a callback to CustomerModal but it just takes onSuccess mostly for reload.
+              // Let's just close it.
+              handleCustomerModalClose();
+              setSelectedCustomer(customer); // Optimistic select
+            }}
+          />
+        )}
+
+        {isProductModalOpen && (
+          <ProductModal
+            onClose={handleProductModalClose}
+            onProductCreated={handleProductCreated}
+            shopId={selectedShop.id}
+          />
+        )}
+      </div>
     </div>
   );
 }

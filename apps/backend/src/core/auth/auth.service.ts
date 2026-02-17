@@ -217,6 +217,11 @@ export class AuthService {
 
       // 🟢 First login without tenant context (allowed)
       if (!tenantCode && !activeUserTenant) {
+        // Count all user tenants for frontend router
+        const userTenantCount = await this.prisma.userTenant.count({
+          where: { userId: user.id },
+        });
+
         const token = this.jwtService.sign({
           sub: user.id,
           tenantId: null,
@@ -240,6 +245,7 @@ export class AuthService {
             tenantCode: null,
           },
           tenant: null,
+          tenantCount: userTenantCount,
         };
       }
 
@@ -323,6 +329,9 @@ export class AuthService {
           name: resolvedUserTenant.tenant.name,
           code: resolvedUserTenant.tenant.code,
         },
+        tenantCount: await this.prisma.userTenant.count({
+          where: { userId: user.id },
+        }),
       };
     } catch (err) {
       // Log the actual error for debugging

@@ -1,10 +1,12 @@
 import { authenticatedFetch } from "./auth.api";
+import type { Shop } from "./shops.api";
+import type { ShopProduct } from "./products.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
 
 export type PaymentMode = "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT";
-export type InvoiceStatus = "DRAFT" | "FINAL" | "PAID" | "CREDIT" | "VOIDED";
+export type InvoiceStatus = "DRAFT" | "FINAL" | "PAID" | "PARTIALLY_PAID" | "CREDIT" | "VOIDED";
 export type PaymentStatus = "PAID" | "PARTIALLY_PAID" | "UNPAID" | "CANCELLED";
 
 export type InvoiceType = "SALES" | "REPAIR";
@@ -113,11 +115,17 @@ export interface CreateInvoiceDto {
 export async function listInvoices(
   shopId: string,
   fromJobCard?: boolean,
-  options?: { skip?: number; take?: number },
+  options?: {
+    skip?: number;
+    take?: number;
+    status?: string;
+    customerName?: string;
+  },
 ): Promise<
   | SalesInvoice[]
   | { data: SalesInvoice[]; total: number; skip: number; take: number }
 > {
+  const startTime = Date.now();
   try {
     const query = new URLSearchParams({ shopId });
     if (fromJobCard) query.append("fromJobCard", "true");
@@ -125,10 +133,14 @@ export async function listInvoices(
       query.append("skip", options.skip.toString());
     if (options?.take !== undefined)
       query.append("take", options.take.toString());
+    if (options?.status) query.append("status", options.status);
+    if (options?.customerName) query.append("search", options.customerName); // Search already covers name
 
-    const response = await authenticatedFetch(
-      `/mobileshop/sales/invoices?${query.toString()}`,
-    );
+    const url = `/mobileshop/sales/invoices?${query.toString()}`;
+
+    const fetchStart = Date.now();
+    const response = await authenticatedFetch(url);
+    console.log(`[Sales API] Fetch took ${Date.now() - fetchStart}ms`);
 
     if (!response.ok) {
       let errorMessage = "Failed to fetch invoices";
@@ -143,12 +155,28 @@ export async function listInvoices(
         message: errorMessage,
         shopId,
       });
-      // Return empty array instead of throwing to prevent UI crash
       return [];
     }
 
     const data = await response.json();
-    return data.invoices || [];
+    console.log(`[Sales API] Total time: ${Date.now() - startTime}ms`);
+
+    // Handle paginated response (with pagination object)
+    if (data.data && data.pagination) {
+      return {
+        data: data.data,
+        total: data.pagination.total,
+        skip: data.pagination.offset || 0,
+        take: data.pagination.limit,
+      };
+    }
+
+    // Handle legacy array response or invoices field
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    return data.invoices || data.data || [];
   } catch (error) {
     console.error("Failed to list invoices:", error);
     return [];
@@ -166,6 +194,33 @@ export async function getInvoice(invoiceId: string): Promise<SalesInvoice> {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || "Failed to fetch invoice");
+  }
+
+  return response.json();
+}
+
+export interface PublicInvoiceResponse {
+  invoice: SalesInvoice;
+  shop: Shop;
+  products: Partial<ShopProduct>[];
+}
+
+/**
+ * Get a single PUBLIC invoice by ID (No Auth)
+ */
+export async function getPublicInvoice(invoiceId: string): Promise<PublicInvoiceResponse> {
+  const url = `${API_BASE_URL}/mobileshop/sales/public/invoice/${invoiceId}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    let errorMessage = "Failed to fetch invoice";
+    try {
+      const error = await response.json();
+      errorMessage = error.message || errorMessage;
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();

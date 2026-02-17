@@ -176,7 +176,7 @@ export class VouchersService {
     // Return standardized paginated format
     const page = Math.floor(skip / take) + 1;
     return {
-      data: vouchers,
+      data: vouchers.map((v) => ({ ...v, amount: this.fromPaisa(v.amount) })),
       total,
       pagination: {
         total,

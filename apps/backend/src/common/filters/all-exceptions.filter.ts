@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ErrorCode, ERROR_MESSAGES } from '../enums/error-codes.enum';
+import * as Sentry from '@sentry/node';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -33,6 +34,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       `❌ [${request.method}] ${request.url} - ${status}`,
       exception instanceof Error ? exception.stack : JSON.stringify(exception),
     );
+
+    // 🚨 Sentry Reporting (Critical Errors Only)
+    if (status >= 500) {
+      Sentry.captureException(exception);
+    }
 
     if (exception instanceof HttpException) {
       const exceptionResponse = exception.getResponse();

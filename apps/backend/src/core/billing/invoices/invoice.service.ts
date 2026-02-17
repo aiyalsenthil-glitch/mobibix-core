@@ -1,0 +1,368 @@
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../../core/prisma/prisma.service';
+import PDFDocument from 'pdfkit';
+import { Readable } from 'stream';
+
+@Injectable()
+export class InvoiceService {
+  private readonly logger = new Logger(InvoiceService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Generate next invoice number (sequential, format: INV-YYYY-NNNN)
+   */
+  private async generateInvoiceNumber(): Promise<string> {
+    const year = new Date().getFullYear();
+    const prefix = `INV-${year}-`;
+
+    // Get last invoice for current year
+    const lastInvoice = await this.prisma.subscriptionInvoice.findFirst({
+      where: {
+        invoiceNumber: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        invoiceNumber: 'desc',
+      },
+    });
+
+    let sequence = 1;
+    if (lastInvoice) {
+      const lastSeq = parseInt(lastInvoice.invoiceNumber.split('-')[2]);
+      sequence = lastSeq + 1;
+    }
+
+    return `${prefix}${sequence.toString().padStart(4, '0')}`;
+  }
+
+  /**
+   * Calculate GST based on state
+   * @param amount Base amount in paise
+   * @param isInterstate Whether it's an inter-state transaction
+   */
+  private calculateGST(amount: number, isInterstate: boolean) {
+    const gstRate = 0.18; // 18% GST for digital services
+    const totalGst = Math.round(amount * gstRate);
+
+    if (isInterstate) {
+      return {
+        cgst: 0,
+        sgst: 0,
+        igst: totalGst,
+      };
+    } else {
+      return {
+        cgst: Math.round(totalGst / 2), // 9%
+        sgst: Math.round(totalGst / 2), // 9%
+        igst: 0,
+      };
+    }
+  }
+
+  /**
+   * Create invoice for a payment
+   */
+  async createInvoiceForPayment(paymentId: string): Promise<any> {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            contactPhone: true,
+            code: true,
+          },
+        },
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+
+    // Check if invoice already exists
+    const existing = await this.prisma.subscriptionInvoice.findUnique({
+      where: { id: paymentId }, // Use id instead of paymentId as unique constraint
+    });
+
+    if (existing) {
+      this.logger.log(`Invoice already exists for payment ${paymentId}`);
+      return existing;
+    }
+
+    // Get plan details
+    const plan = await this.prisma.plan.findUnique({
+      where: { id: payment.planId },
+      select: {
+        id: true,
+        name: true,
+        module: true,
+        code: true,
+      },
+    });
+
+    const invoiceNumber = await this.generateInvoiceNumber();
+
+    // Calculate GST (assuming intra-state for now)
+    const gst = this.calculateGST(payment.amount, false);
+    const total = payment.amount + gst.cgst + gst.sgst + gst.igst;
+
+    // Create invoice
+    const invoice = await this.prisma.subscriptionInvoice.create({
+      data: {
+        invoiceNumber,
+        tenant: { connect: { id: payment.tenantId } },
+        payment: { connect: { id: payment.id } },
+        gstin: process.env.COMPANY_GSTIN || null,
+        sacCode: '998314', // SAC for subscription services
+        invoiceDate: new Date(),
+        amount: payment.amount,
+        cgst: gst.cgst,
+        sgst: gst.sgst,
+        igst: gst.igst,
+        total,
+        description: `${plan?.name || 'Plan'} - ${payment.billingCycle}`,
+        planSnapshot: {
+          planId: plan?.id,
+          planName: plan?.name,
+          module: plan?.module,
+          billingCycle: payment.billingCycle,
+        },
+        status: 'DRAFT' as any, // Will be SubscriptionInvoiceStatus.DRAFT after migration
+      },
+    });
+
+    this.logger.log(`✅ Invoice ${invoiceNumber} created for payment ${paymentId}`);
+
+    return invoice;
+  }
+
+  /**
+   * Generate PDF for an invoice
+   * Returns a Buffer that can be written to file or streamed
+   */
+  async generatePDF(invoiceId: string): Promise<Buffer> {
+    const invoice = await this.prisma.subscriptionInvoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        tenant: {
+          select: {
+            name: true,
+            contactPhone: true,
+            code: true,
+          },
+        },
+        payment: true,
+      },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException('Invoice not found');
+    }
+
+    return new Promise((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+
+      // Pipe PDF into buffer
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      // --- Header ---
+      doc
+        .fontSize(20)
+        .text(process.env.COMPANY_NAME || 'GymPilot SaaS', 50, 45)
+        .fontSize(10)
+        .text(process.env.COMPANY_ADDRESS || '', 50, 70)
+        .text(`GSTIN: ${invoice.gstin || 'Not Registered'}`, 50, 85)
+        .text(` Email: ${process.env.COMPANY_EMAIL || ''}`, 50, 100);
+
+      // Invoice Number and Date (Right aligned)
+      doc
+        .fontSize(10)
+        .text(`Invoice #: ${invoice.invoiceNumber}`, 400, 45)
+        .text(
+          `Date: ${invoice.invoiceDate.toLocaleDateString('en-IN')}`,
+          400,
+          60,
+        )
+        .text(`SAC Code: ${invoice.sacCode}`, 400, 75);
+
+      // Line separator
+      doc
+        .strokeColor('#aaaaaa')
+        .lineWidth(1)
+        .moveTo(50, 120)
+        .lineTo(560, 120)
+        .stroke();
+
+      // --- Bill To ---
+      doc
+        .fontSize(12)
+        .fillColor('#000')
+        .text('BILL TO:', 50, 140)
+        .fontSize(10)
+        .text(invoice.tenant.name, 50, 160)
+        .text(`Phone: ${invoice.tenant.contactPhone || 'N/A'}`, 50, 175);
+
+      if (invoice.customerGstin) {
+        doc.text(`GSTIN: ${invoice.customerGstin}`, 50, 190);
+      }
+
+      // --- Line Items Table ---
+      const tableTop = 250;
+      doc.fontSize(10).fillColor('#000');
+
+      // Table headers
+      doc
+        .font('Helvetica-Bold')
+        .text('Description', 50, tableTop)
+        .text('HSN/SAC', 250, tableTop)
+        .text('Amount', 400, tableTop, { align: 'right', width: 110 });
+
+      doc
+        .strokeColor('#aaaaaa')
+        .lineWidth(1)
+        .moveTo(50, tableTop + 15)
+        .lineTo(560, tableTop + 15)
+        .stroke();
+
+      // Line item
+      doc
+        .font('Helvetica')
+        .text(invoice.description, 50, tableTop + 25)
+        .text(invoice.sacCode, 250, tableTop + 25)
+        .text(`₹${(invoice.amount / 100).toFixed(2)}`, 400, tableTop + 25, {
+          align: 'right',
+          width: 110,
+        });
+
+      // --- Tax Breakdown ---
+      const taxTop = tableTop + 60;
+
+      doc
+        .fontSize(10)
+        .text('Subtotal:', 400, taxTop, { width: 80, align: 'right' })
+        .text(`₹${(invoice.amount / 100).toFixed(2)}`, 480, taxTop, {
+          width: 80,
+          align: 'right',
+        });
+
+      if (invoice.cgst && invoice.cgst > 0) {
+        doc
+          .text('CGST (9%):', 400, taxTop + 15, { width: 80, align: 'right' })
+          .text(`₹${(invoice.cgst / 100).toFixed(2)}`, 480, taxTop + 15, {
+            width: 80,
+            align: 'right',
+          });
+
+        doc
+          .text('SGST (9%):', 400, taxTop + 30, { width: 80, align: 'right' })
+          .text(`₹${(invoice.sgst! / 100).toFixed(2)}`, 480, taxTop + 30, {
+            width: 80,
+            align: 'right',
+          });
+      }
+
+      if (invoice.igst && invoice.igst > 0) {
+        doc
+          .text('IGST (18%):', 400, taxTop + 15, { width: 80, align: 'right' })
+          .text(`₹${(invoice.igst / 100).toFixed(2)}`, 480, taxTop + 15, {
+            width: 80,
+            align: 'right',
+          });
+      }
+
+      // Total
+      doc
+        .strokeColor('#000')
+        .lineWidth(2)
+        .moveTo(400, taxTop + 50)
+        .lineTo(560, taxTop + 50)
+        .stroke();
+
+      doc
+        .fontSize(12)
+        .font('Helvetica-Bold')
+        .text('TOTAL:', 400, taxTop + 60, { width: 80, align: 'right' })
+        .text(`₹${(invoice.total / 100).toFixed(2)}`, 480, taxTop + 60, {
+          width: 80,
+          align: 'right',
+        });
+
+      // --- Footer ---
+      doc
+        .fontSize(8)
+        .fillColor('#777')
+        .text(
+          'This is a system-generated invoice and does not require a signature.',
+          50,
+          750,
+          { align: 'center', width: 500 },
+        )
+        .text(
+          `Payment ID: ${invoice.payment.id}`,
+          50,
+          765,
+          { align: 'center', width: 500 },
+        );
+
+      doc.end();
+    });
+  }
+
+  /**
+   * Get invoice by ID
+   */
+  async getInvoice(invoiceId: string) {
+    return this.prisma.subscriptionInvoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        tenant: {
+          select: {
+            name: true,
+            contactPhone: true,
+            code: true,
+          },
+        },
+        payment: true,
+      },
+    });
+  }
+
+  /**
+   * Mark invoice as sent
+   */
+  async markAsSent(invoiceId: string) {
+    return this.prisma.subscriptionInvoice.update({
+      where: { id: invoiceId },
+      data: {
+        status: 'SENT' as any, // Will be SubscriptionInvoiceStatus.SENT after migration
+        emailSent: true,
+        emailSentAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Get all invoices for a tenant
+   */
+  async getInvoicesForTenant(tenantId: string) {
+    return this.prisma.subscriptionInvoice.findMany({
+      where: { tenantId },
+      orderBy: { invoiceDate: 'desc' },
+      include: {
+        payment: {
+          select: {
+            status: true,
+            amount: true,
+          },
+        },
+      },
+    });
+  }
+}

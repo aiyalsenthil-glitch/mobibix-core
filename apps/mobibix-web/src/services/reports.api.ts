@@ -131,6 +131,13 @@ export interface TopProductItem {
   totalAmount: number;
 }
 
+export interface RepairMetrics {
+  totalRepairs: number;
+  totalRevenue: number;
+  totalProfit: number;
+  margin: number;
+}
+
 export async function getTopSellingProducts(
   params: ReportParams = {},
 ): Promise<TopProductItem[]> {
@@ -142,10 +149,34 @@ export async function getTopSellingProducts(
   const data: TopProductItem[] = await response.json();
 
   // Convert Paise to Rupees
-  return data.map(item => ({
+  return data.map((item) => ({
     ...item,
     totalAmount: item.totalAmount / 100,
   }));
+}
+
+export async function getRepairReport(
+  params: ReportParams = {},
+): Promise<SalesReportItem[]> {
+  const query = new URLSearchParams(cleanParams(params));
+  const response = await authenticatedFetch(
+    `/api/mobileshop/reports/repairs?${query}`,
+  );
+  if (!response.ok) throw new Error("Failed to fetch repair report");
+  const data: SalesReportItem[] = await response.json();
+  return data;
+}
+
+export async function getRepairMetrics(
+  params: ReportParams = {},
+): Promise<RepairMetrics> {
+  const query = new URLSearchParams(cleanParams(params));
+  const response = await authenticatedFetch(
+    `/api/mobileshop/reports/repair-metrics?${query}`,
+  );
+  if (!response.ok) throw new Error("Failed to fetch repair metrics");
+  const data: RepairMetrics = await response.json();
+  return data;
 }
 
 // =============================================================================
@@ -154,38 +185,51 @@ export async function getTopSellingProducts(
 
 export interface Gstr1SummaryItem {
   hsnCode: string;
-  description: string;
-  uqc: string;
-  totalQuantity: number;
-  totalValue: number;
-  taxableValue: number;
-  integratedTax: number;
-  centralTax: number;
-  stateTax: number;
-  cess: number;
+  quantity: number;
+  unitPrice: number;
+  totalAmount: number;
+  cgstRate: number;
+  cgstAmount: number;
+  sgstRate: number;
+  sgstAmount: number;
+  igstRate: number;
+  igstAmount: number;
 }
 
-export interface Gstr1SalesRegisterItem {
+export interface Gstr1Record {
   invoiceNumber: string;
   invoiceDate: string;
   customerName: string;
-  gstin: string | null;
-  state: string | null;
-  invoiceValue: number;
-  taxableValue: number;
-  integratedTax: number;
-  centralTax: number;
-  stateTax: number;
-  cess: number;
+  gstinUin: string;
+  invoiceAmount: number;
+  taxableAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  category: string;
+}
+
+export interface Gstr1Report {
+  period: string;
+  generatedDate: string;
+  totalInvoices: number;
+  b2bCount: number;
+  b2cCount: number;
+  exportCount: number;
+  totalTaxableAmount: number;
+  totalCgst: number;
+  totalSgst: number;
+  totalIgst: number;
+  records: Gstr1Record[];
 }
 
 export async function getGstr1SalesRegister(
   startDate: string,
   endDate: string
-): Promise<Gstr1SalesRegisterItem[]> {
+): Promise<Gstr1Report> {
   const query = new URLSearchParams({ startDate, endDate });
   const response = await authenticatedFetch(
-    `/api/reports/gstr1?${query}`
+    `/reports/gstr1?${query}`
   );
   if (!response.ok) throw new Error("Failed to fetch GSTR-1 Sales Register");
   const data = await response.json();
@@ -198,9 +242,83 @@ export async function getGstr1HsnSummary(
 ): Promise<Gstr1SummaryItem[]> {
   const query = new URLSearchParams({ startDate, endDate });
   const response = await authenticatedFetch(
-    `/api/reports/gstr1/hsn-summary?${query}`
+    `/reports/gstr1/hsn-summary?${query}`
   );
   if (!response.ok) throw new Error("Failed to fetch GSTR-1 HSN Summary");
+  const data = await response.json();
+  return data;
+}
+
+// =============================================================================
+// GSTR-2 REPORTS
+// =============================================================================
+
+export interface Gstr2SummaryItem {
+  hsnCode: string;
+  quantity: number;
+  unitPrice: number;
+  totalAmount: number;
+  cgstRate: number;
+  cgstAmount: number;
+  sgstRate: number;
+  sgstAmount: number;
+  igstRate: number;
+  igstAmount: number;
+  itcEligible: boolean;
+}
+
+export interface Gstr2Record {
+  purchaseNumber: string;
+  invoiceDate: string;
+  supplierName: string;
+  supplierGstin: string;
+  invoiceAmount: number;
+  taxableAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  itcEligible: boolean;
+  itcCgstAmount: number;
+  itcSgstAmount: number;
+  itcIgstAmount: number;
+}
+
+export interface Gstr2Report {
+  period: string;
+  generatedDate: string;
+  totalPurchases: number;
+  itcEligibleCount: number;
+  legacyUnverifiedCount: number;
+  totalTaxableAmount: number;
+  totalCgst: number;
+  totalSgst: number;
+  totalIgst: number;
+  totalITC: number;
+  records: Gstr2Record[];
+}
+
+export async function getGstr2PurchaseRegister(
+  startDate: string,
+  endDate: string
+): Promise<Gstr2Report> {
+  const query = new URLSearchParams({ startDate, endDate });
+  const response = await authenticatedFetch(
+    `/reports/gstr2?${query}`
+  );
+  if (!response.ok) throw new Error("Failed to fetch GSTR-2 Purchase Register");
+  const data = await response.json();
+  return data;
+}
+
+export async function getGstr2HsnSummary(
+  startDate: string,
+  endDate: string
+): Promise<Gstr2SummaryItem[]> {
+  const query = new URLSearchParams({ startDate, endDate });
+  const response = await authenticatedFetch(
+    `/reports/gstr2/hsn-summary?${query}`
+  );
+  if (!response.ok) throw new Error("Failed to fetch GSTR-2 HSN Summary");
   const data = await response.json();
   return data;
 }
@@ -225,7 +343,7 @@ export interface AgingReportDetailed extends AgingReport {
 }
 
 export async function getReceivablesAging(detailed = false): Promise<AgingReport | AgingReportDetailed> {
-  const endpoint = detailed ? "/api/reports/receivables-aging/detailed" : "/api/reports/receivables-aging";
+  const endpoint = detailed ? "/reports/receivables-aging/detailed" : "/reports/receivables-aging";
   const response = await authenticatedFetch(endpoint);
   if (!response.ok) throw new Error("Failed to fetch Receivables Aging report");
   const data = await response.json();
@@ -233,7 +351,7 @@ export async function getReceivablesAging(detailed = false): Promise<AgingReport
 }
 
 export async function getPayablesAging(detailed = false): Promise<AgingReport | AgingReportDetailed> {
-  const endpoint = detailed ? "/api/reports/payables-aging/detailed" : "/api/reports/payables-aging";
+  const endpoint = detailed ? "/reports/payables-aging/detailed" : "/reports/payables-aging";
   const response = await authenticatedFetch(endpoint);
   if (!response.ok) throw new Error("Failed to fetch Payables Aging report");
   const data = await response.json();

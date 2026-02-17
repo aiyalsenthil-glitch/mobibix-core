@@ -18,7 +18,6 @@ import {
 import { auth } from "@/lib/REMOVED_AUTH_PROVIDER";
 import {
   exchangeFirebaseToken,
-  getCurrentUser,
   logout as apiLogout,
   type ExchangeTokenResponse,
   type AuthRole,
@@ -77,24 +76,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
       if (user) {
         setFirebaseUser(user);
-
-        try {
-          const currentUser = await getCurrentUser();
-          if (currentUser) {
-            setAuthUser({
-              id: currentUser.id,
-              email: currentUser.email || user.email || "",
-              name: currentUser.fullName || user.displayName || undefined,
-              REMOVED_AUTH_PROVIDERUid: user.uid,
-              role: currentUser.role,
-              tenantId: currentUser.tenantId ?? undefined,
-            });
-            setIsLoading(false);
-            return;
-          }
-        } catch (err) {
-          console.warn("Failed to load current user session:", err);
-        }
 
         try {
           const response = await exchangeFirebaseToken(await user.getIdToken());

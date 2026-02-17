@@ -26,7 +26,7 @@ import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { ModuleScope } from '../../core/auth/decorators/module-scope.decorator';
 import { ModuleType, UserRole } from '@prisma/client';
 
-@Controller('whatsapp/user')
+@Controller('user/whatsapp')
 @ModuleScope(ModuleType.WHATSAPP_CRM)
 @UseGuards(JwtAuthGuard, TenantRequiredGuard, PlanFeatureGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)

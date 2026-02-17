@@ -22,6 +22,7 @@ import {
   ModuleType,
   BillingCycle,
   UserRole,
+  BillingType,
 } from '@prisma/client';
 import {
   ToggleAutoRenewDto,
@@ -249,12 +250,13 @@ export class SubscriptionsController {
     body: {
       newPlanId: string;
       newBillingCycle?: BillingCycle;
+      billingType?: BillingType;
     },
     @Query('module') module?: ModuleType,
   ) {
     const tenantId = req.user.tenantId;
 
-    const { newPlanId, newBillingCycle } = body;
+    const { newPlanId, newBillingCycle, billingType } = body;
 
     if (!newPlanId) {
       throw new BadRequestException('newPlanId is required');
@@ -291,7 +293,8 @@ export class SubscriptionsController {
         planId: newPlanId,
         module: resolvedModule,
         billingCycle: newBillingCycle || BillingCycle.MONTHLY,
-        autoRenew: true,
+        autoRenew: billingType === BillingType.AUTOPAY,
+        billingType: billingType || BillingType.MANUAL,
       });
 
       this.logger.log(
@@ -303,7 +306,13 @@ export class SubscriptionsController {
         success: true,
         subscriptionId: bought.id,
         planId: bought.planId,
-        message: 'Plan activated successfully.',
+        paymentLink: bought.paymentLink,
+        REMOVED_PAYMENT_INFRASubscriptionId: bought.subscriptionId,
+        message: bought.paymentLink 
+            ? 'Payment Link generated. Please complete payment.' 
+            : bought.subscriptionId 
+            ? 'Subscription initialized. Please complete authorization.' 
+            : 'Plan activated successfully.',
       };
     }
 
@@ -466,65 +475,5 @@ export class SubscriptionsController {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 🧪 TEST BYPASS (Temporary)
-  // ═══════════════════════════════════════════════════════════════════════════
-  @Post('test-bypass')
-  async testBypass(
-    @Req() req: any,
-    @Body() body: { planId: string; billingCycle?: BillingCycle },
-  ) {
-    const tenantId = req.user.tenantId;
 
-    const { planId, billingCycle = BillingCycle.MONTHLY } = body;
-    if (!planId) throw new BadRequestException('planId is required');
-
-    this.logger.warn(
-      `🛑 [TEST BYPASS] Activating plan ${planId} for tenant ${req.user.tenantId}`,
-    );
-
-    // Fetch plan to determine module
-    const plan = await this.prisma.plan.findUnique({ where: { id: planId } });
-    if (!plan) throw new BadRequestException('Plan not found');
-
-    if (plan.isAddon || plan.module === ModuleType.WHATSAPP_CRM) {
-      return this.subscriptionsService.manageAddon(
-        req.user.tenantId,
-        'ENABLE',
-        planId,
-        plan.module,
-      );
-    } else {
-      // Find current sub for this module
-      const currentSub =
-        await this.subscriptionsService.getCurrentActiveSubscription(
-          req.user.tenantId,
-          plan.module,
-        );
-
-      if (currentSub) {
-        return this.subscriptionsService.upgradePlan({
-          subscriptionId: currentSub.id,
-          newPlanId: planId,
-          newBillingCycle: billingCycle,
-        });
-      } else {
-        // Create new subscription
-        return this.prisma.tenantSubscription.create({
-          data: {
-            tenantId: req.user.tenantId,
-            planId: planId,
-            module: plan.module,
-            status: SubscriptionStatus.ACTIVE,
-            startDate: new Date(),
-            endDate: new Date(
-              new Date().setFullYear(new Date().getFullYear() + 1),
-            ),
-            autoRenew: true,
-            billingCycle,
-          },
-        });
-      }
-    }
-  }
 }

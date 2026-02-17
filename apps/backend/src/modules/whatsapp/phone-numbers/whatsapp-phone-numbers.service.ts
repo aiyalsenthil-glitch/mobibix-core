@@ -174,17 +174,18 @@ export class WhatsAppPhoneNumbersService {
     }
 
     // 2. Fetch all relevant phone numbers (Tenant-specific OR Module-shared)
+    // ⚠️ Do NOT filter by isEnabled - we need to show inactive numbers so they can be toggled
     const allPhones = await this.prisma.whatsAppNumber.findMany({
       where: {
         OR: [{ tenantId }, { tenantId: null, moduleType }],
-        isEnabled: true,
       },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     });
 
-    // 3. Map to unified structure
+    // 3. Map to unified structure - map isEnabled to isActive for frontend compatibility
     return allPhones.map((p) => ({
       ...p,
+      isActive: p.isEnabled, // Map for frontend compatibility
       source: p.tenantId ? ('TENANT' as const) : ('MODULE' as const),
       isInherited: !p.tenantId,
       // Ensure virtual tenantId for module numbers if requested for a specific tenant

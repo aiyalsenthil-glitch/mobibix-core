@@ -1,9 +1,10 @@
 import { Controller, Post, Req, Logger } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Public } from '../../auth/decorators/public.decorator';
 import type { Request } from 'express';
 import * as crypto from 'crypto';
-import { PaymentStatus } from '@prisma/client';
+import { PaymentStatus, WebhookStatus } from '@prisma/client';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { PaymentActivationService } from './payment-activation.service';
 
@@ -18,6 +19,7 @@ export class PaymentsWebhookController {
   ) {}
 
   @Public()
+  @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute
   @Post('webhook')
   async handleWebhook(@Req() req: Request) {
     try {
@@ -53,7 +55,7 @@ export class PaymentsWebhookController {
       this.logger.log(`🔔 Razorpay webhook received: ${event}`);
 
       // 📌 Store webhook event for admin dashboard (recommended)
-      await this.prisma.webhookEvent.create({
+      const webhookLog = await this.prisma.webhookEvent.create({
         data: {
           provider: 'RAZORPAY',
           eventType: event,
@@ -62,8 +64,11 @@ export class PaymentsWebhookController {
             payload.payload?.order?.entity?.id ??
             null,
           payload: payload,
+          status: WebhookStatus.PROCESSING,
         },
       });
+
+      try {
       if (event === 'payment.captured') {
         const REMOVED_PAYMENT_INFRAPayment = payload.payload.payment.entity;
 
@@ -169,12 +174,60 @@ export class PaymentsWebhookController {
           // ⚠️ Webhook still returns 200 OK so Razorpay doesn't retry
           // Payment is marked SUCCESS; subscription creation can be retried manually
         }
+      } else if (event === 'payment.failed') {
+        const REMOVED_PAYMENT_INFRAPayment = payload.payload.payment.entity;
+        const failReason =
+          REMOVED_PAYMENT_INFRAPayment.error_description ||
+          REMOVED_PAYMENT_INFRAPayment.error_reason ||
+          'Payment Failed';
+        this.logger.warn(
+          `[WEBHOOK] ❌ Payment Failed: ${REMOVED_PAYMENT_INFRAPayment.order_id} - ${failReason}`,
+        );
+
+        // Find payment by order ID
+        const paymentRecord = await this.prisma.payment.findFirst({
+          where: {
+            provider: 'RAZORPAY',
+            providerOrderId: REMOVED_PAYMENT_INFRAPayment.order_id,
+          },
+          select: { id: true },
+        });
+
+        if (paymentRecord) {
+          await this.paymentActivationService.failPayment(
+            paymentRecord.id,
+            failReason,
+          );
+        } else {
+          this.logger.warn(
+            `[WEBHOOK] Failed payment not found in DB: ${REMOVED_PAYMENT_INFRAPayment.order_id}`,
+          );
+        }
       }
 
+        // Update log status to SUCCESS
+        await this.prisma.webhookEvent.update({
+          where: { id: webhookLog.id },
+          data: { status: WebhookStatus.SUCCESS, processedAt: new Date() },
+        });
+      } catch (err) {
+        this.logger.error('Webhook processing error', err);
+        // Update log status to FAILED
+        await this.prisma.webhookEvent.update({
+          where: { id: webhookLog.id },
+          data: {
+            status: WebhookStatus.FAILED,
+            error: (err as Error).message,
+            processedAt: new Date(),
+          },
+        });
+      }
+      
       return { received: true };
-      // 💰 Handle captured payments
+
     } catch (err) {
-      this.logger.error('Webhook processing error', err);
+      this.logger.error('Critical webhook error', err);
+      return { status: 'error' };
     }
   }
 }

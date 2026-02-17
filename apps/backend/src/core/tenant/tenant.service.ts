@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModuleType } from '@prisma/client';
@@ -20,6 +21,8 @@ import { getCreateAudit } from '../audit/audit.helper';
 
 @Injectable()
 export class TenantService {
+  private readonly logger = new Logger(TenantService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly plansService: PlansService,
@@ -121,6 +124,11 @@ export class TenantService {
       trialPlan.id,
       effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
     );
+
+    this.logger.log(
+      `✅ Trial subscription created for tenant ${tenant.id} (${effectiveTenantType})`,
+    );
+
     const userTenant = await this.prisma.userTenant.create({
       data: {
         userId,
@@ -128,6 +136,10 @@ export class TenantService {
         role: UserRole.OWNER,
       },
     });
+
+    this.logger.log(
+      `✅ Tenant onboarding completed: ${tenant.name} (${tenant.code}) for user ${userId}`,
+    );
 
     return { tenant, userTenant };
   }

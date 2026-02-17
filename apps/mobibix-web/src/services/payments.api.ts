@@ -53,19 +53,4 @@ export async function verifyPayment(data: {
   return response.json();
 }
 
-/**
- * Bypass Razorpay and Activate Directly (TESTING ONLY)
- */
-export async function bypassPayment(planId: string, billingCycle: string = 'MONTHLY'): Promise<any> {
-    const response = await authenticatedFetch("/billing/subscription/test-bypass", {
-      method: "POST",
-      body: JSON.stringify({ planId, billingCycle }),
-    });
-  
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Bypass activation failed");
-    }
-  
-    return response.json();
-}
+

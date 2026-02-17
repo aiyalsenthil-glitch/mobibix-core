@@ -15,7 +15,6 @@ import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { UserRole, ModuleType } from '@prisma/client';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
-import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
 import { VirtualTenantGuard } from './guards/virtual-tenant.guard';
 import { ModuleScope } from '../../core/auth/decorators/module-scope.decorator';
 
@@ -29,9 +28,31 @@ interface CreateWhatsAppSettingDto {
 
 @Controller('whatsapp/settings')
 @ModuleScope(ModuleType.WHATSAPP_CRM)
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, VirtualTenantGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class WhatsAppSettingsController {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * GET /whatsapp/admin/modules
+   * Get available module types for WhatsApp configuration
+   * Returns: ["GYM", "MOBILE_SHOP"]
+   * Accessible by: ADMIN only
+   */
+  @Get('admin/modules')
+  @Roles(UserRole.ADMIN)
+  async getAvailableModules(@Req() req: any) {
+    // Admin endpoint - no tenant check required
+    return [
+      {
+        id: 'GYM',
+        name: 'Gym Management',
+      },
+      {
+        id: 'MOBILE_SHOP',
+        name: 'Mobile Shop',
+      },
+    ];
+  }
 
   /**
    * GET /whatsapp/settings/:moduleType
@@ -41,6 +62,7 @@ export class WhatsAppSettingsController {
    */
   @Get(':moduleType')
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
+  @UseGuards(VirtualTenantGuard)
   async getSettings(@Param('moduleType') moduleType: string, @Req() req: any) {
     // Role validation is handled by RolesGuard
     // Tenant isolation for OWNER is handled by VirtualTenantGuard
@@ -75,6 +97,7 @@ export class WhatsAppSettingsController {
    */
   @Post(':moduleType')
   @Roles(UserRole.ADMIN, UserRole.OWNER)
+  @UseGuards(VirtualTenantGuard)
   async createSettings(
     @Param('moduleType') moduleType: string,
     @Body() dto: CreateWhatsAppSettingDto,
@@ -105,6 +128,7 @@ export class WhatsAppSettingsController {
    */
   @Patch(':moduleType')
   @Roles(UserRole.ADMIN, UserRole.OWNER)
+  @UseGuards(VirtualTenantGuard)
   async updateSettings(
     @Param('moduleType') moduleType: string,
     @Body() dto: Partial<CreateWhatsAppSettingDto>,

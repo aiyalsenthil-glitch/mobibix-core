@@ -1,4 +1,7 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, setAccessToken } from "./auth.api";
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
 
 export interface TenantSubscription {
   id: string;
@@ -36,7 +39,7 @@ export interface SubscriptionDetails {
   attendanceAllowed: boolean;
   daysLeft: number;
   isTrial: boolean;
-  subscriptionStatus: 'ACTIVE' | 'TRIAL' | 'PAST_DUE' | 'EXPIRED';
+  subscriptionStatus: "ACTIVE" | "TRIAL" | "PAST_DUE" | "EXPIRED";
 
   autoRenew: boolean;
   subscriptionId: string;
@@ -60,17 +63,22 @@ export interface Plan {
 }
 
 export interface AvailablePlansResponse {
-    plans: Plan[];
+  plans: Plan[];
 }
 
 /**
  * Toggle Auto Renew
  */
-export async function toggleAutoRenew(enabled: boolean): Promise<{ subscriptionId: string; autoRenew: boolean }> {
-  const response = await authenticatedFetch("/billing/subscription/auto-renew", {
-    method: "PATCH",
-    body: JSON.stringify({ enabled }),
-  });
+export async function toggleAutoRenew(
+  enabled: boolean,
+): Promise<{ subscriptionId: string; autoRenew: boolean }> {
+  const response = await authenticatedFetch(
+    "/billing/subscription/auto-renew",
+    {
+      method: "PATCH",
+      body: JSON.stringify({ enabled }),
+    },
+  );
   if (!response.ok) {
     throw new Error("Failed to update auto-renewal settings");
   }
@@ -80,7 +88,9 @@ export async function toggleAutoRenew(enabled: boolean): Promise<{ subscriptionI
 /**
  * Fetch current subscription details
  */
-export async function getSubscription(): Promise<{ current: SubscriptionDetails }> {
+export async function getSubscription(): Promise<{
+  current: SubscriptionDetails;
+}> {
   const response = await authenticatedFetch("/billing/subscription/current");
   if (!response.ok) {
     throw new Error("Failed to fetch subscription details");
@@ -92,7 +102,7 @@ export async function getSubscription(): Promise<{ current: SubscriptionDetails 
  * Fetch available plans (optional module filter)
  */
 export async function getAvailablePlans(module?: string): Promise<Plan[]> {
-  const query = module ? `?module=${module}` : '';
+  const query = module ? `?module=${module}` : "";
   const response = await authenticatedFetch(`/plans/available${query}`);
   if (!response.ok) {
     throw new Error("Failed to fetch plans");
@@ -103,10 +113,14 @@ export async function getAvailablePlans(module?: string): Promise<Plan[]> {
 /**
  * Upgrade Subscription (Immediate)
  */
-export async function upgradeSubscription(newPlanId: string, newBillingCycle?: string) {
+export async function upgradeSubscription(
+  newPlanId: string,
+  newBillingCycle?: string,
+  billingType?: "MANUAL" | "AUTOPAY",
+) {
   const response = await authenticatedFetch("/billing/subscription/upgrade", {
     method: "PATCH",
-    body: JSON.stringify({ newPlanId, newBillingCycle }),
+    body: JSON.stringify({ newPlanId, newBillingCycle, billingType }),
   });
   if (!response.ok) {
     const err = await response.json();
@@ -118,7 +132,10 @@ export async function upgradeSubscription(newPlanId: string, newBillingCycle?: s
 /**
  * Downgrade Subscription (Scheduled)
  */
-export async function downgradeSubscription(newPlanId: string, newBillingCycle?: string) {
+export async function downgradeSubscription(
+  newPlanId: string,
+  newBillingCycle?: string,
+) {
   const response = await authenticatedFetch("/billing/subscription/downgrade", {
     method: "PATCH",
     body: JSON.stringify({ newPlanId, newBillingCycle }),
@@ -134,27 +151,31 @@ export async function downgradeSubscription(newPlanId: string, newBillingCycle?:
  * Check Downgrade Eligibility
  */
 export interface DowngradeCheckResponse {
-    isEligible: boolean;
-    blockers: string[];
-    currentUsage: {
-        staff: number;
-        members: number | null;
-        shops: number;
-    };
-    limits: {
-        maxStaff: number | null;
-        maxMembers: number | null;
-        maxShops: number | null;
-    };
+  isEligible: boolean;
+  blockers: string[];
+  currentUsage: {
+    staff: number;
+    members: number | null;
+    shops: number;
+  };
+  limits: {
+    maxStaff: number | null;
+    maxMembers: number | null;
+    maxShops: number | null;
+  };
 }
 
-export async function checkDowngradeEligibility(targetPlanId: string): Promise<DowngradeCheckResponse> {
-    const response = await authenticatedFetch(`/billing/subscription/downgrade-check?targetPlan=${targetPlanId}`);
-    if (!response.ok) {
-        throw new Error("Failed to check downgrade eligibility");
-    }
-    return response.json();
-    return response.json();
+export async function checkDowngradeEligibility(
+  targetPlanId: string,
+): Promise<DowngradeCheckResponse> {
+  const response = await authenticatedFetch(
+    `/billing/subscription/downgrade-check?targetPlan=${targetPlanId}`,
+  );
+  if (!response.ok) {
+    throw new Error("Failed to check downgrade eligibility");
+  }
+  return response.json();
+  return response.json();
 }
 
 /**
@@ -169,9 +190,11 @@ export interface UsageSnapshot {
 }
 
 export async function getUsageHistory(days = 30): Promise<UsageSnapshot[]> {
-  const response = await authenticatedFetch(`/tenant/usage-history?days=${days}`);
+  const response = await authenticatedFetch(
+    `/tenant/usage-history?days=${days}`,
+  );
   if (!response.ok) {
-     return []; // Fail silently or returns empty
+    return []; // Fail silently or returns empty
   }
   return response.json();
 }
@@ -224,7 +247,9 @@ export interface CreateTenantResponse {
   accessToken: string;
 }
 
-export async function createTenant(dto: CreateTenantDto): Promise<CreateTenantResponse> {
+export async function createTenant(
+  dto: CreateTenantDto,
+): Promise<CreateTenantResponse> {
   const response = await authenticatedFetch("/tenant", {
     method: "POST",
     body: JSON.stringify(dto),
@@ -234,6 +259,30 @@ export async function createTenant(dto: CreateTenantDto): Promise<CreateTenantRe
     throw new Error(err.message || "Failed to create tenant");
   }
   return response.json();
+}
+
+export async function createTenantWithToken(
+  dto: CreateTenantDto,
+  accessToken: string,
+): Promise<CreateTenantResponse> {
+  const response = await fetch(`${API_BASE_URL}/tenant`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(dto),
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.message || "Failed to create tenant");
+  }
+  const data = (await response.json()) as CreateTenantResponse;
+  if (data?.accessToken) {
+    setAccessToken(data.accessToken);
+  }
+  return data;
 }
 export interface TenantUsageResponse {
   hasTenant: boolean;
@@ -267,9 +316,9 @@ export interface TenantUsageResponse {
 }
 
 export async function getTenantUsage(): Promise<TenantUsageResponse> {
-    const response = await authenticatedFetch("/tenant/usage");
-    if (!response.ok) {
-        throw new Error("Failed to fetch tenant usage");
-    }
-    return response.json();
+  const response = await authenticatedFetch("/tenant/usage");
+  if (!response.ok) {
+    throw new Error("Failed to fetch tenant usage");
+  }
+  return response.json();
 }

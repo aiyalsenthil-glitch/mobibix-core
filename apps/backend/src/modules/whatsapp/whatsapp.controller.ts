@@ -29,7 +29,7 @@ import {
 } from './variable-registry';
 
 @Controller('whatsapp')
-@UseGuards(JwtAuthGuard, RolesGuard, VirtualTenantGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
 export class WhatsAppController {
   constructor(
@@ -43,6 +43,7 @@ export class WhatsAppController {
    * Get variables allowed for a specific template context
    */
   @Get('variables/:module/:templateKey')
+  @UseGuards(VirtualTenantGuard)
   async getTemplateVariables(
     @Param('module') module: string,
     @Param('templateKey') templateKey: string,
@@ -72,6 +73,7 @@ export class WhatsAppController {
    * Get WhatsApp logs for a tenant
    */
   @Get('logs/:tenantId')
+  @UseGuards(VirtualTenantGuard)
   async getLogs(
     @Param('tenantId') tenantId: string,
     @Req() req: any,
@@ -231,6 +233,7 @@ export class WhatsAppController {
    * Get WhatsApp templates for a module (GYM, MOBILE_SHOP)
    */
   @Get('templates/:moduleType')
+  @UseGuards(VirtualTenantGuard)
   async getTemplates(@Param('moduleType') moduleType: string) {
     const templates = await this.prisma.whatsAppTemplate.findMany({
       where: { moduleType },
@@ -345,6 +348,7 @@ export class WhatsAppController {
    * Get WhatsApp automations for a module (GYM, MOBILE_SHOP)
    */
   @Get('automations/:moduleType')
+  @UseGuards(VirtualTenantGuard)
   async getAutomations(@Param('moduleType') moduleType: string) {
     // Map legacy/mobile UI value to correct enum
     let prismaModuleType: ModuleType;

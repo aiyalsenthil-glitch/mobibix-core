@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ModuleType } from '@prisma/client';
+import { ModuleType, SubscriptionStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MODULE_SCOPE_KEY } from '../decorators/module-scope.decorator';
 import {
@@ -89,6 +89,63 @@ export class SubscriptionGuard implements CanActivate {
     });
 
     if (!subscription) {
+      const userRole = user?.role as UserRole | undefined;
+      const canAutoTrial =
+        userRole === UserRole.OWNER || userRole === UserRole.ADMIN;
+
+      if (canAutoTrial) {
+        const tenantExists = await this.prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { id: true },
+        });
+
+        if (!tenantExists) {
+          this.logger.warn(
+            `Subscription check failed: tenant ${tenantId} not found`,
+          );
+          throw new ForbiddenException('Tenant not found');
+        }
+
+        const existingCount = await this.prisma.tenantSubscription.count({
+          where: { tenantId, module: moduleScope },
+        });
+
+        if (existingCount === 0) {
+          const trialCode =
+            moduleScope === ModuleType.MOBILE_SHOP
+              ? 'MOBIBIX_TRIAL'
+              : 'GYM_TRIAL';
+
+          const plan = await this.prisma.plan.findFirst({
+            where: { code: trialCode },
+            select: { id: true },
+          });
+
+          if (plan) {
+            const startDate = new Date();
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + 14);
+
+            await this.prisma.tenantSubscription.create({
+              data: {
+                tenantId,
+                planId: plan.id,
+                module: moduleScope,
+                status: SubscriptionStatus.TRIAL,
+                startDate,
+                endDate,
+              },
+            });
+
+            this.logger.log(
+              `✅ Auto-created trial subscription for tenant ${tenantId} (${moduleScope})`,
+            );
+
+            return true;
+          }
+        }
+      }
+
       this.logger.warn(
         `Subscription check failed: No active ${moduleScope} subscription for tenant ${tenantId}`,
       );

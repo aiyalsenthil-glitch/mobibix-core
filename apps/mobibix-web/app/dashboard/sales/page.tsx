@@ -8,6 +8,15 @@ import {
   type InvoiceStatus,
   type PaymentMode,
 } from "@/services/sales.api";
+import { Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
   DRAFT: "bg-gray-500/15 text-gray-400",
@@ -33,6 +42,19 @@ export default function SalesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Filters State
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+
+  // Simple debounce for search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   useEffect(() => {
     const loadShops = async () => {
       try {
@@ -51,12 +73,12 @@ export default function SalesPage() {
     loadShops();
   }, []);
 
-  // Auto-load invoices whenever shop selection changes
+  // Auto-load invoices whenever shop selection or filters change
   useEffect(() => {
     if (selectedShopId) {
       void loadInvoices();
     }
-  }, [selectedShopId]);
+  }, [selectedShopId, statusFilter, debouncedSearchQuery]);
 
   const loadInvoices = async () => {
     if (!selectedShopId) {
@@ -68,7 +90,10 @@ export default function SalesPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await listInvoices(selectedShopId);
+      const data = await listInvoices(selectedShopId, false, {
+        status: statusFilter === "ALL" ? undefined : statusFilter,
+        customerName: debouncedSearchQuery || undefined,
+      });
       // Handle both paginated and non-paginated responses
       const invoicesList = Array.isArray(data) ? data : data.data;
       setInvoices(invoicesList);
@@ -98,26 +123,23 @@ export default function SalesPage() {
         </button>
       </div>
 
-      {/* Shop Filter Section */}
-      <div className="bg-white/5 border border-white/10 rounded-lg p-4 mb-6">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <label className="block text-sm text-stone-400 mb-2">
+      {/* Filters Section */}
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+          {/* Shop Selection */}
+          <div className="md:col-span-4">
+            <label className="block text-sm font-medium text-stone-400 mb-2">
               Select Shop
             </label>
             {isLoadingShops ? (
-              <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-stone-400">
+              <div className="px-4 py-2 bg-stone-900/50 border border-white/10 rounded-xl text-stone-500 animate-pulse">
                 Loading shops...
-              </div>
-            ) : shops.length === 0 ? (
-              <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-stone-400">
-                No shops available
               </div>
             ) : (
               <select
                 value={selectedShopId}
                 onChange={(e) => setSelectedShopId(e.target.value)}
-                className="w-full px-4 py-2 bg-stone-900 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full px-4 py-2 bg-stone-900 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all cursor-pointer"
               >
                 <option value="">-- Select a shop --</option>
                 {shops.map((shop) => (
@@ -128,13 +150,74 @@ export default function SalesPage() {
               </select>
             )}
           </div>
-          <button
-            onClick={loadInvoices}
-            disabled={!selectedShopId || isLoading}
-            className="mt-6 px-6 py-2 bg-teal-500 hover:bg-teal-600 disabled:bg-teal-500/50 text-white rounded-lg font-medium transition"
-          >
-            {isLoading ? "Loading..." : "Refresh"}
-          </button>
+
+          {/* Search Filter */}
+          <div className="md:col-span-4 relative">
+            <label className="block text-sm font-medium text-stone-400 mb-2">
+              Search Invoice/Customer
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
+              <Input
+                placeholder="Invoice #, Name or Phone"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-10 bg-stone-900 border-white/20 rounded-xl focus-visible:ring-teal-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Status Filter */}
+          <div className="md:col-span-3">
+            <label className="block text-sm font-medium text-stone-400 mb-2">
+              Status
+            </label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-10 bg-stone-900 border-white/20 rounded-xl text-white focus:ring-teal-500">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent className="bg-stone-900 border-white/10 text-white">
+                <SelectItem value="ALL">All Status</SelectItem>
+                <SelectItem value="DRAFT">Draft</SelectItem>
+                <SelectItem value="FINAL">Final</SelectItem>
+                <SelectItem value="PAID">Paid</SelectItem>
+                <SelectItem value="CREDIT">Credit</SelectItem>
+                <SelectItem value="VOIDED">Voided</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Refresh Button or Clear */}
+          <div className="md:col-span-1 flex gap-2">
+            <button
+              onClick={loadInvoices}
+              disabled={!selectedShopId || isLoading}
+              className="w-full h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white rounded-xl transition-all"
+              title="Refresh results"
+            >
+              <Search className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            </button>
+            {(statusFilter !== "ALL" || searchQuery) && (
+              <button
+                onClick={() => {
+                  setStatusFilter("ALL");
+                  setSearchQuery("");
+                }}
+                className="w-full h-10 flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all"
+                title="Clear all filters"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

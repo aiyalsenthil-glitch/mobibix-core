@@ -2,6 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Script from "next/script";
+import {
+  getSubscription,
+  getAvailablePlans,
+  upgradeSubscription,
+  downgradeSubscription,
+  checkDowngradeEligibility,
+  toggleAutoRenew,
+  type SubscriptionDetails,
+  type Plan,
 import {
   getSubscription,
   getAvailablePlans,
@@ -12,9 +22,8 @@ import {
   type SubscriptionDetails,
   type Plan,
 } from "@/services/tenant.api";
-import { bypassPayment } from "@/services/payments.api";
 import DowngradeBlockerModal from "./DowngradeBlockerModal";
-import { Check, AlertCircle, Loader2, Zap, Shield, Crown } from "lucide-react";
+import { Check, AlertCircle, Loader2, Zap, Shield, Crown, CreditCard, RefreshCw } from "lucide-react";
 
 // Marketing features mapping
 const PLAN_MARKETING_FEATURES: Record<string, string[]> = {
@@ -64,6 +73,7 @@ export default function SettingsPage() {
   const [processingPlanId, setProcessingPlanId] = useState<string | null>(null);
   const [autoRenewLoading, setAutoRenewLoading] = useState(false);
   const [selectedCycle, setSelectedCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
+  const [billingType, setBillingType] = useState<"AUTOPAY" | "MANUAL">("AUTOPAY");
 
   // Downgrade Modal State
   const [downgradeModalOpen, setDowngradeModalOpen] = useState(false);
@@ -79,6 +89,12 @@ export default function SettingsPage() {
       ]);
       setSubscription(subData.current);
       setPlans(plansData);
+      
+      // smart default: if current is manual and autoRenew is false, maybe default to MANUAL?
+      // But we prefer AUTOPAY. Keep default AUTOPAY.
+      if (subData.current.autoRenew) {
+          setBillingType("AUTOPAY");
+      }
     } catch (err: any) {
       console.error("Failed to load settings data", err);
       setError(err.message || "Failed to load subscription details");
@@ -105,11 +121,20 @@ export default function SettingsPage() {
     }
   };
 
+  const handleRazorpayPayment = (options: any) => {
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (response: any){
+        setError(`Payment Failed: ${response.error.description}`);
+      });
+      rzp.open();
+  };
+
   const handlePlanChange = async (plan: Plan) => {
     if (!subscription) return;
 
     // Fix: usage of 'level' instead of 'planLevel'
-    const isUpgrade = plan.level > (subscription.level ?? 0);
+    // Also consider moving from Trial to ANY plan as an upgrade/activation
+    const isUpgrade = plan.level > (subscription.level ?? 0) || subscription.isTrial;
 
     if (!isUpgrade) {
       // 1. Run Pre-check
@@ -129,7 +154,8 @@ export default function SettingsPage() {
         return;
       }
     } else {
-        if (!confirm(`Confirm upgrade to ${plan.displayName}? You will be charged immediately.`)) {
+        const action = billingType === "AUTOPAY" ? "Enable AutoPay" : "Pay Manually";
+        if (!confirm(`Confirm upgrade to ${plan.displayName} (${selectedCycle})?\nAction: ${action}`)) {
             return;
         }
     }
@@ -139,15 +165,47 @@ export default function SettingsPage() {
       setError(null);
 
       if (isUpgrade) {
-        await upgradeSubscription(plan.id, selectedCycle);
-        alert(`Successfully upgraded to ${plan.displayName}!`);
+        // Upgrade with Billing Type
+        const response = await upgradeSubscription(plan.id, selectedCycle, billingType);
+        
+        if (response.paymentLink) {
+            // Manual Flow
+             window.location.href = response.paymentLink;
+             return; // Redirecting
+        } else if (response.REMOVED_PAYMENT_INFRASubscriptionId) {
+            // AutoPay Flow
+            const options = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Ensure env var is set
+                subscription_id: response.REMOVED_PAYMENT_INFRASubscriptionId,
+                name: "MobiBix SaaS",
+                description: `${plan.displayName} Subscription`,
+                handler: async function (response: any) {
+                     // Success
+                     alert("Subscription Authorization Successful! Activating plan...");
+                     await loadData(); // Reload to see active status
+                },
+                prefill: {
+                    name: "", // Can prefill if we have user data in context
+                    email: "",
+                    contact: ""
+                },
+                theme: {
+                    color: "#4F46E5"
+                }
+            };
+            handleRazorpayPayment(options);
+        } else {
+            alert(`Successfully upgraded to ${plan.displayName}!`);
+            await loadData();
+        }
+
       } else {
         // Fallback
         await downgradeSubscription(plan.id, selectedCycle); 
         alert(`Downgrade to ${plan.displayName} scheduled. Changes will apply at next renewal.`);
+        await loadData();
       }
 
-      await loadData();
     } catch (err: any) {
       console.error('Plan change failed:', err);
       setError(err.message || "Plan change failed");
@@ -186,6 +244,8 @@ export default function SettingsPage() {
   }
 
   return (
+    <>
+    <Script src="https://checkout.REMOVED_PAYMENT_INFRA.com/v1/checkout.js" strategy="lazyOnload" />
     <div className="max-w-6xl mx-auto py-8 px-4">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div>
@@ -271,33 +331,71 @@ export default function SettingsPage() {
       )}
 
       {/* Available Plans Selector */}
-      <div className="text-center mb-8">
+      <div className="text-center mb-6">
         <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
           Upgrade your plan
         </h3>
+        
         {/* Cycle Toggle */}
-        <div className="inline-flex bg-gray-100 p-1 rounded-xl">
-           <button
-            onClick={() => setSelectedCycle("MONTHLY")}
-            className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
-              selectedCycle === "MONTHLY"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-900"
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setSelectedCycle("YEARLY")}
-            className={`px-6 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-              selectedCycle === "YEARLY"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-900"
-            }`}
-          >
-            Yearly <span className="text-xs bg-green-100 text-green-700 px-1.5 rounded-full">-15%</span>
-          </button>
+        <div className="inline-flex flex-col sm:flex-row items-center gap-4 bg-gray-50 dark:bg-stone-900/50 p-2 rounded-2xl border border-gray-200 dark:border-stone-800">
+            {/* Payment Mode */}
+             <div className="flex bg-white dark:bg-stone-900 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-stone-800">
+                <button
+                    onClick={() => setBillingType("AUTOPAY")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${
+                        billingType === "AUTOPAY"
+                        ? "bg-indigo-600 text-white shadow-md"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                >
+                    <RefreshCw size={16} /> AutoPay
+                </button>
+                <button
+                    onClick={() => setBillingType("MANUAL")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${
+                        billingType === "MANUAL"
+                        ? "bg-indigo-600 text-white shadow-md"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                >
+                    <CreditCard size={16} /> Pay Manually
+                </button>
+            </div>
+
+            <div className="w-px h-8 bg-gray-300 dark:bg-stone-700 hidden sm:block"></div>
+
+            {/* Billing Cycle */}
+            <div className="flex bg-white dark:bg-stone-900 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-stone-800">
+                <button
+                    onClick={() => setSelectedCycle("MONTHLY")}
+                    className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
+                    selectedCycle === "MONTHLY"
+                        ? "bg-gray-900 dark:bg-stone-700 text-white shadow-md"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                >
+                    Monthly
+                </button>
+                <button
+                    onClick={() => setSelectedCycle("YEARLY")}
+                    className={`px-6 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                    selectedCycle === "YEARLY"
+                        ? "bg-gray-900 dark:bg-stone-700 text-white shadow-md"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                >
+                    Yearly <span className="text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded-full">-15%</span>
+                </button>
+            </div>
         </div>
+        
+        {/* Caption */}
+        <p className="text-sm text-gray-500 mt-3">
+            {billingType === "AUTOPAY" 
+                ? "Auto-renewal enabled. Cancel anytime." 
+                : "Manual payment required for each renewal."}
+        </p>
+
       </div>
 
       <div className="grid md:grid-cols-3 gap-8 items-start">
@@ -315,10 +413,10 @@ export default function SettingsPage() {
           return (
             <div
               key={plan.id}
-              className={`relative bg-white rounded-2xl border transition-all duration-300 flex flex-col h-full ${
+              className={`relative bg-white dark:bg-stone-900 rounded-2xl border transition-all duration-300 flex flex-col h-full ${
                 isCurrent
                   ? "border-indigo-500 ring-2 ring-indigo-500 shadow-lg scale-105 z-10"
-                  : "border-gray-200 hover:border-indigo-300 hover:shadow-xl"
+                  : "border-gray-200 dark:border-stone-800 hover:border-indigo-300 hover:shadow-xl"
               }`}
             >
               {isCurrent && (
@@ -328,14 +426,14 @@ export default function SettingsPage() {
               )}
 
               <div className="p-8 pb-4">
-                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mb-4 text-indigo-600">
+                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center mb-4 text-indigo-600 dark:text-indigo-400">
                     <PlanIcon size={24} />
                 </div>
-                <h4 className="text-xl font-bold text-gray-900">{plan.displayName}</h4>
+                <h4 className="text-xl font-bold text-gray-900 dark:text-white">{plan.displayName}</h4>
                 <p className="text-gray-500 text-sm mt-2 min-h-[40px]">{plan.description || plan.tagline || "Perfect for growing businesses"}</p>
                 
                 <div className="mt-6 flex items-baseline gap-1">
-                  <span className="text-4xl font-extrabold text-gray-900">
+                  <span className="text-4xl font-extrabold text-gray-900 dark:text-white">
                     ₹{(cycleData.price / 100).toFixed(0)}
                   </span>
                   <span className="text-gray-500 font-medium">/{selectedCycle === "YEARLY" ? "yr" : "mo"}</span>
@@ -347,11 +445,11 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              <div className="p-8 pt-4 flex-grow border-t border-gray-100 mt-4">
+              <div className="p-8 pt-4 flex-grow border-t border-gray-100 dark:border-stone-800 mt-4">
                 <ul className="space-y-3">
                      {/* Prefer Marketing Features, else fallback to raw caps */}
                      {(PLAN_MARKETING_FEATURES[plan.displayName] || plan.features || []).map((f, i) => (
-                         <li key={i} className="flex items-start gap-3 text-sm text-gray-600">
+                         <li key={i} className="flex items-start gap-3 text-sm text-gray-600 dark:text-gray-300">
                              <Check size={18} className="text-green-500 mt-0.5 flex-shrink-0" />
                              <span>{f}</span>
                          </li>
@@ -363,12 +461,12 @@ export default function SettingsPage() {
                 <button
                     onClick={() => handlePlanChange(plan)}
                     disabled={isCurrent || processingPlanId !== null}
-                    className={`w-full py-3 rounded-xl font-semibold transition-all ${
+                    className={`w-full py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
                     isCurrent
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        ? "bg-gray-100 dark:bg-stone-800 text-gray-400 cursor-not-allowed"
                         : plan.level > (subscription?.level ?? 0)
                         ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg"
-                        : "bg-white border-2 border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                        : "bg-white dark:bg-stone-900 border-2 border-gray-200 dark:border-stone-700 text-gray-600 dark:text-gray-300 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-stone-800"
                     }`}
                 >
                     {processingPlanId === plan.id ? (
@@ -378,38 +476,18 @@ export default function SettingsPage() {
                     ) : isCurrent ? (
                         "Current Plan"
                     ) : plan.level > (subscription?.level ?? 0) ? (
-                        "Upgrade Now"
+                        billingType === "AUTOPAY" ? (
+                            <>Subscribe <RefreshCw size={16} /></>
+                        ) : (
+                            <>Pay Now <CreditCard size={16} /></>
+                        )
                     ) : (
                         "Downgrade"
                     )}
                 </button>
                 
                 {/* Temporary Bypass Button */}
-                {!isCurrent && (
-                <button
-                    onClick={async (e) => {
-                        e.stopPropagation();
-                        if (!confirm(`BYPASS PAYMENT: Activate ${plan.displayName} directly?`)) return;
-                        setProcessingPlanId(plan.id);
-                        try {
-                            console.log(`[TEST BYPASS] Starting bypass for ${plan.displayName} (${plan.id}) with cycle ${selectedCycle}`);
-                            const res = await bypassPayment(plan.id, selectedCycle);
-                            console.log('[TEST BYPASS] Success:', res);
-                            alert(`Successfully activated ${plan.displayName} via test bypass!`);
-                            window.location.reload();
-                        } catch (err: any) {
-                          console.error('[TEST BYPASS] Failed:', err);
-                          alert("Bypass Failed: " + (err.message || "Unknown error"));
-                        } finally {
-                          setProcessingPlanId(null);
-                        }
-                    }}
-                    disabled={processingPlanId !== null}
-                    className="w-full mt-2 py-2 text-[10px] font-bold text-gray-400 hover:text-indigo-500 transition-colors uppercase tracking-widest"
-                >
-                    Test Bypass (Free)
-                </button>
-                )}
+
               </div>
             </div>
           );
@@ -427,5 +505,6 @@ export default function SettingsPage() {
         targetPlanName={targetPlanForDowngrade?.displayName || "Selected Plan"}
       />
     </div>
+    </>
   );
 }

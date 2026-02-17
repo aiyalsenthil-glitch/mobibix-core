@@ -13,6 +13,8 @@ export type PlanRules = {
   maxShops: number | null; // null = unlimited
   whatsapp?: {
     messageQuota: number;
+    utilityQuota?: number;
+    marketingQuota?: number;
     isDaily?: boolean;
     maxNumbers?: number;
   };
@@ -158,7 +160,9 @@ export class PlanRulesService {
       whatsapp: {
         messageQuota:
           (plan.whatsappUtilityQuota || 0) + (plan.whatsappMarketingQuota || 0),
-        isDaily: plan.code === 'TRIAL', // Trial usually has daily quotas
+        utilityQuota: plan.whatsappUtilityQuota || 0,
+        marketingQuota: plan.whatsappMarketingQuota || 0,
+        isDaily: plan.code === 'TRIAL' || plan.code === 'MOBIBIX_TRIAL', // Trial usually has daily quotas
         maxNumbers: 1,
       },
       analyticsHistoryDays: plan.analyticsHistoryDays,
@@ -178,9 +182,13 @@ export class PlanRulesService {
 
           // Add Quotas (Additive)
           if (resultRules.whatsapp) {
-            resultRules.whatsapp.messageQuota +=
-              (addonPlan.whatsappUtilityQuota || 0) +
-              (addonPlan.whatsappMarketingQuota || 0);
+            const util = addonPlan.whatsappUtilityQuota || 0;
+            const mark = addonPlan.whatsappMarketingQuota || 0;
+            resultRules.whatsapp.utilityQuota =
+              (resultRules.whatsapp.utilityQuota || 0) + util;
+            resultRules.whatsapp.marketingQuota =
+              (resultRules.whatsapp.marketingQuota || 0) + mark;
+            resultRules.whatsapp.messageQuota += util + mark;
           }
 
           // Merge Features (Unique)

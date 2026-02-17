@@ -22,6 +22,7 @@ export interface PlanPriceInput {
 export interface PlanPriceResponse {
   price: number;
   billingCycle: BillingCycle;
+  REMOVED_PAYMENT_INFRAPlanId?: string;
 }
 
 @Injectable()
@@ -43,12 +44,18 @@ export class PlanPriceService {
           billingCycle,
         },
       },
+      select: {
+          price: true,
+          isActive: true,
+          REMOVED_PAYMENT_INFRAPlanId: true
+      }
     });
 
     if (planPrice && planPrice.isActive) {
       return {
         price: planPrice.price,
         billingCycle,
+        REMOVED_PAYMENT_INFRAPlanId: planPrice.REMOVED_PAYMENT_INFRAPlanId || undefined,
       };
     }
 

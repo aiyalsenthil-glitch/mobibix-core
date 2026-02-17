@@ -113,6 +113,38 @@ export class MobileShopReportsController extends TenantScopedController {
     );
   }
 
+  @Get('repairs')
+  async getRepairReport(
+    @Request() req,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('shopId') shopId?: string,
+  ) {
+    const tenantId = this.getTenantId(req);
+    return this.reportsService.getRepairReport(
+      tenantId,
+      startDate ? new Date(startDate) : undefined,
+      endDate ? new Date(endDate) : undefined,
+      shopId,
+    );
+  }
+
+  @Get('repair-metrics')
+  async getRepairMetrics(
+    @Request() req,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('shopId') shopId?: string,
+  ) {
+    const tenantId = this.getTenantId(req);
+    return this.reportsService.getRepairMetrics(
+      tenantId,
+      startDate ? new Date(startDate) : undefined,
+      endDate ? new Date(endDate) : undefined,
+      shopId,
+    );
+  }
+
   // ===== GST REPORTS =====
 
   @Get('gstr-1/b2b')
