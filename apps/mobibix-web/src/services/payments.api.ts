@@ -53,4 +53,22 @@ export async function verifyPayment(data: {
   return response.json();
 }
 
+/**
+ * BYPASS FOR TESTING: Skip Razorpay and activate directly
+ * ONLY FOR DEVELOPMENT/TESTING - Endpoint may not exist in prod
+ */
+export async function bypassPayment(planId: string, billingCycle: string): Promise<any> {
+    const response = await authenticatedFetch("/payments/bypass-activation", {
+        method: "POST",
+        body: JSON.stringify({ planId, billingCycle }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Bypass failed");
+    }
+
+    return response.json();
+}
+
 
