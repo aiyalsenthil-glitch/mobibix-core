@@ -1,0 +1,93 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:processDebugGoogleServices UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+
+> Task :app:kaptGenerateStubsDebugKotlin
+w: Kapt currently doesn't support language version 2.0+. Falling back to 1.9.
+
+> Task :app:kaptDebugKotlin UP-TO-DATE
+> Task :app:compileDebugKotlin
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/core/di/GoogleSignInModule.kt:4:8 'class GoogleSignIn : Any' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/core/di/GoogleSignInModule.kt:5:8 'class GoogleSignInClient : GoogleApi<GoogleSignInOptions!>' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/core/di/GoogleSignInModule.kt:6:8 'class GoogleSignInOptions : AbstractSafeParcelable, Api.ApiOptions.Optional, ReflectedParcelable' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/core/di/GoogleSignInModule.kt:19:75 'class GoogleSignInOptions : AbstractSafeParcelable, Api.ApiOptions.Optional, ReflectedParcelable' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/core/di/GoogleSignInModule.kt:20:16 'class GoogleSignInOptions : AbstractSafeParcelable, Api.ApiOptions.Optional, ReflectedParcelable' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/core/di/GoogleSignInModule.kt:20:44 'class GoogleSignInOptions : AbstractSafeParcelable, Api.ApiOptions.Optional, ReflectedParcelable' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/core/di/GoogleSignInModule.kt:29:24 'class GoogleSignInOptions : AbstractSafeParcelable, Api.ApiOptions.Optional, ReflectedParcelable' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/core/di/GoogleSignInModule.kt:30:8 'class GoogleSignInClient : GoogleApi<GoogleSignInOptions!>' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/core/di/GoogleSignInModule.kt:31:16 'class GoogleSignIn : Any' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/components/BarcodeScannerScreen.kt:38:26 'val LocalLifecycleOwner: ProvidableCompositionLocal<LifecycleOwner>' is deprecated. Moved to lifecycle-runtime-compose library in androidx.lifecycle.compose package.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/home/OwnerDashboardScreen.kt:206:62 'constructor(p0: String!, p1: String!): Locale' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/home/OwnerDashboardScreen.kt:234:66 'val Icons.Filled.TrendingUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.TrendingUp.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/home/OwnerDashboardScreen.kt:234:96 'val Icons.Filled.TrendingDown: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.TrendingDown.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/home/OwnerDashboardScreen.kt:254:62 'constructor(p0: String!, p1: String!): Locale' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/jobs/CreateJobScreen.kt:235:22 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/login/GoogleSignInViewModel.kt:5:8 'class GoogleSignIn : Any' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/login/GoogleSignInViewModel.kt:6:8 'class GoogleSignInClient : GoogleApi<GoogleSignInOptions!>' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/login/GoogleSignInViewModel.kt:13:29 'class GoogleSignInClient : GoogleApi<GoogleSignInOptions!>' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/login/GoogleSignInViewModel.kt:19:20 'class GoogleSignIn : Any' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/products/ProductListScreen.kt:61:44 'val Icons.Filled.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/products/ProductListScreen.kt:125:62 'constructor(p0: String!, p1: String!): Locale' is deprecated. Deprecated in Java.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/sales/InvoiceItemRow.kt:74:37 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/sales/InvoiceItemRow.kt:132:41 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/sales/SalesListScreen.kt:37:26 'val LocalLifecycleOwner: ProvidableCompositionLocal<LifecycleOwner>' is deprecated. Moved to lifecycle-runtime-compose library in androidx.lifecycle.compose package.
+
+> Task :app:compileDebugJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :app:hiltAggregateDepsDebug
+
+> Task :app:hiltJavaCompileDebug
+Note: E:\Projects\gym-saas\apps\mobibix-android\app\build\generated\hilt\component_sources\debug\com\aiyal\mobibix\DaggerMobiBixApplication_HiltComponents_SingletonC.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :app:processDebugJavaRes
+> Task :app:transformDebugClassesWithAsm
+> Task :app:mergeDebugJavaResource
+> Task :app:dexBuilderDebug
+> Task :app:mergeProjectDexDebug
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+
+[Incubating] Problems report is available at: file:///E:/Projects/gym-saas/apps/mobibix-android/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 1m 24s
+44 actionable tasks: 12 executed, 32 up-to-date

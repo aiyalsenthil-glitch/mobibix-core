@@ -1,0 +1,92 @@
+{
+  "project_info": {
+    "project_number": "927893624866",
+    "REMOVED_PROJECT_ID": "gym-saas-prod",
+    "storage_bucket": "gym-saas-prod.REMOVED_AUTH_PROVIDERstorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:927893624866:android:43b3d468bb4fbb11e3127b",
+        "android_client_info": {
+          "package_name": "com.aiyal.gymsaas"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "927893624866-666ohrv0cj8fv4g2ohl7ejiv1vfcuv2g.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aiyal.gymsaas",
+            "certificate_hash": "36bc9b2961590cfecf4cde06bf2fd462b3388cbc"
+          }
+        },
+        {
+          "client_id": "927893624866-i6t4glas5i1p5flhm2uruktu3jbgl8qs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aiyal.gymsaas",
+            "certificate_hash": "ea72b1f814f1d34dc4d6daa6a2b1f2500290aa4f"
+          }
+        },
+        {
+          "client_id": "927893624866-tujsutp4ch7g9nr1kfms8qres21hb4l1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aiyal.gymsaas",
+            "certificate_hash": "13d6afa6cb0344d2db4c1d88a2debecf702f4a82"
+          }
+        },
+        {
+          "client_id": "927893624866-i6p0u1b23q3a6es9dq3giobh6kjm0fo5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "REMOVED_KEY": [
+        {
+          "current_key": "AIzaSyBPVyhLOYEoqHP2rVWIjMZj6EZne_E6m9U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "927893624866-i6p0u1b23q3a6es9dq3giobh6kjm0fo5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:927893624866:android:9a967f5ddbb332f4e3127b",
+        "android_client_info": {
+          "package_name": "com.aiyal.mobibix"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "927893624866-i6p0u1b23q3a6es9dq3giobh6kjm0fo5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "REMOVED_KEY": [
+        {
+          "current_key": "AIzaSyBPVyhLOYEoqHP2rVWIjMZj6EZne_E6m9U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "927893624866-i6p0u1b23q3a6es9dq3giobh6kjm0fo5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
