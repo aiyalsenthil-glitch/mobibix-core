@@ -31,4 +31,12 @@ export class MobileShopDashboardController extends TenantScopedController {
     const tenantId = this.getTenantId(req);
     return this.dashboardService.getOwnerDashboard(tenantId, shopId, skipCache);
   }
+
+  @Roles(UserRole.OWNER)
+  @Permissions(Permission.DASHBOARD_VIEW)
+  @Get('shop-breakdown')
+  getShopBreakdown(@Req() req: any) {
+    const tenantId = this.getTenantId(req);
+    return this.dashboardService.getShopBreakdown(tenantId);
+  }
 }

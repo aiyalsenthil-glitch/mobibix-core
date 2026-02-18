@@ -249,12 +249,12 @@ export default function PricingPage() {
                   ))}
                 </tr>
                 <tr className="border-b border-border">
-                  <td className="p-4 text-sm">WhatsApp Marketing</td>
+                  <td className="p-4 text-sm font-medium">WhatsApp Marketing <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full ml-1">Coming Soon</span></td>
                   {plans.map((plan) => (
                     <td key={plan.id} className="text-center p-4 text-sm">
                       {plan.limits.whatsappMarketingQuota > 0 ? (
-                        <span className="text-green-600 dark:text-green-400">
-                          ✓ {plan.limits.whatsappMarketingQuota}/mo
+                        <span className="text-muted-foreground italic text-xs">
+                          {plan.limits.whatsappMarketingQuota}/mo
                         </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -263,12 +263,12 @@ export default function PricingPage() {
                   ))}
                 </tr>
                 <tr className="border-b border-border">
-                  <td className="p-4 text-sm">WhatsApp Utility</td>
+                  <td className="p-4 text-sm font-medium">WhatsApp Utility <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full ml-1">Coming Soon</span></td>
                   {plans.map((plan) => (
                     <td key={plan.id} className="text-center p-4 text-sm">
                       {plan.limits.whatsappUtilityQuota > 0 ? (
-                        <span className="text-green-600 dark:text-green-400">
-                          ✓ {plan.limits.whatsappUtilityQuota}/mo
+                        <span className="text-muted-foreground italic text-xs">
+                          {plan.limits.whatsappUtilityQuota}/mo
                         </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>

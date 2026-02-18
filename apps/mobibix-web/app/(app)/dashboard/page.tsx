@@ -79,7 +79,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { authUser } = useAuth();
   const { theme } = useTheme();
-  const { selectedShopId } = useShop();
+  const { shops, selectedShopId, selectShop, hasMultipleShops } = useShop() as any;
   const isDark = theme === "dark";
 
   const [data, setData] = useState<DashboardData>({});
@@ -89,6 +89,7 @@ export default function DashboardPage() {
   const salesTrend = useMemo(() => data.salesTrend || [], [data]);
 
   const [usageHistory, setUsageHistory] = useState<UsageSnapshot[]>([]);
+  const [shopBreakdown, setShopBreakdown] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const userRole = authUser?.role?.toLowerCase();
@@ -129,7 +130,7 @@ export default function DashboardPage() {
       const reportParams = selectedShopId ? { shopId: selectedShopId } : {};
 
       // Optimized: Reduced from 5 to 3 calls. Sales/Trend data now comes from main dashboard API.
-      const [dashRes, profitRes, usageRes] = await Promise.all([
+      const [dashRes, profitRes, usageRes, breakdownRes] = await Promise.all([
         authenticatedFetch(
           `/mobileshop/dashboard/${endpoint}${shopQuery ? "?" + shopQuery.substring(1) : ""}`,
         ).catch(() => null),
@@ -141,6 +142,9 @@ export default function DashboardPage() {
             }).catch(() => ({ metrics: { grossProfit: 0 } }))
           : Promise.resolve({ metrics: { grossProfit: 0 } }),
         isOwner ? getUsageHistory(30).catch(() => []) : Promise.resolve([]),
+        isOwner && isAllShops
+          ? authenticatedFetch("/mobileshop/dashboard/shop-breakdown").then(r => r.json()).catch(() => [])
+          : Promise.resolve([]),
       ]);
 
       if (dashRes?.ok) {
@@ -152,6 +156,10 @@ export default function DashboardPage() {
 
       if (Array.isArray(usageRes)) {
         setUsageHistory(usageRes);
+      }
+
+      if (Array.isArray(breakdownRes)) {
+        setShopBreakdown(breakdownRes);
       }
     } catch (error) {
       console.error("Dashboard Fetch Error:", error);
@@ -188,15 +196,38 @@ export default function DashboardPage() {
     <div className="space-y-8 pb-10">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            {isAllShops ? "Enterprise Overview" : "Dashboard Overview"}
-          </h1>
-          <p className="text-muted-foreground">
-            {isAllShops
-              ? "Consolidated metrics across all shops."
-              : "Monitor your business performance in real-time."}
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              {isAllShops ? "Enterprise Overview" : "Dashboard Overview"}
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              {isAllShops
+                ? "Consolidated metrics across all shops."
+                : "Monitor your business performance in real-time."}
+            </p>
+          </div>
+          
+          {/* Shop Selector */}
+          {isOwner && hasMultipleShops && (
+            <div className="relative group">
+              <select
+                value={selectedShopId || ""}
+                onChange={(e) => selectShop(e.target.value)}
+                className="appearance-none bg-background border border-border rounded-lg px-4 py-2 pr-10 text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer hover:border-primary/50"
+              >
+                <option value="">All Shops (Combined)</option>
+                {shops.map((shop: any) => (
+                  <option key={shop.id} value={shop.id}>
+                    {shop.name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground group-hover:text-primary transition-colors">
+                <Settings className="w-4 h-4" />
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -368,6 +399,48 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Row: Shop Breakdown (Owner All Shops Only) */}
+      {isOwner && isAllShops && shopBreakdown.length > 0 && (
+        <div className="glass-card p-6 overflow-hidden">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-base font-semibold text-foreground">
+              Per-Shop Revenue Breakdown
+            </h3>
+            <span className="text-xs text-muted-foreground font-medium">
+              Current Month
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/30">
+                <tr>
+                  <th className="px-4 py-3 font-semibold rounded-l-lg">Shop Name</th>
+                  <th className="px-4 py-3 font-semibold text-right">Revenue (MTD)</th>
+                  <th className="px-4 py-3 font-semibold text-right">Sales</th>
+                  <th className="px-4 py-3 font-semibold text-right rounded-r-lg">Repairs</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {shopBreakdown.map((shop) => (
+                  <tr key={shop.shopId} className="hover:bg-muted/10 transition-colors">
+                    <td className="px-4 py-4 font-medium text-foreground">{shop.shopName}</td>
+                    <td className="px-4 py-4 text-right font-semibold text-emerald-500">
+                      {new Intl.NumberFormat("en-IN", {
+                        style: "currency",
+                        currency: "INR",
+                        maximumFractionDigits: 0,
+                      }).format(shop.revenue)}
+                    </td>
+                    <td className="px-4 py-4 text-right text-muted-foreground">{shop.salesCount}</td>
+                    <td className="px-4 py-4 text-right text-muted-foreground">{shop.jobCardCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Row 2: Inventory & Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

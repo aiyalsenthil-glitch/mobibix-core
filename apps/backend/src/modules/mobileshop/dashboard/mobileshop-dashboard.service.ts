@@ -381,4 +381,50 @@ export class MobileShopDashboardService {
 
     return response;
   }
+
+  /**
+   * Get per-shop revenue breakdown for the current month
+   */
+  async getShopBreakdown(tenantId: string) {
+    const today = new Date();
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const shops = await this.prisma.shop.findMany({
+      where: { tenantId },
+      select: { id: true, name: true },
+    });
+
+    const breakdown = await Promise.all(
+      shops.map(async (shop) => {
+        const [salesAgg, jobCardCount] = await Promise.all([
+          this.prisma.invoice.aggregate({
+            where: {
+              tenantId,
+              shopId: shop.id,
+              createdAt: { gte: monthStart },
+            },
+            _sum: { totalAmount: true },
+            _count: { id: true },
+          }),
+          this.prisma.jobCard.count({
+            where: {
+              tenantId,
+              shopId: shop.id,
+              createdAt: { gte: monthStart },
+            },
+          }),
+        ]);
+
+        return {
+          shopId: shop.id,
+          shopName: shop.name,
+          revenue: (salesAgg._sum.totalAmount ?? 0) / 100,
+          salesCount: salesAgg._count.id,
+          jobCardCount,
+        };
+      }),
+    );
+
+    return breakdown.sort((a, b) => b.revenue - a.revenue);
+  }
 }

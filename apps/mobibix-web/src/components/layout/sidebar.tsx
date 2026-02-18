@@ -27,7 +27,6 @@ const navItems: NavItem[] = [
   { label: "Shops", href: "/shops", icon: "🏪" },
   { label: "Staff", href: "/staff", icon: "👥" },
   { label: "Settings", href: "/settings", icon: "⚙️" },
-  { label: "Pricing", href: "/pricing", icon: "🏷️" },
 ];
 
 // ... imports
@@ -98,7 +97,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
             ? "bg-gray-950 border-gray-800"
             : "bg-gradient-to-b from-white via-teal-50/30 to-white border-teal-100"
         } border-r z-50 lg:z-40 ${
-            mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Logo/Brand + Mobile Close */}
@@ -110,24 +109,39 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           }`}
         >
           {!effectiveCollapsed && (
-            <img 
-              src="/assets/mobibix-main-logo.png" 
-              alt="MobiBix Logo" 
+            <img
+              src="/assets/mobibix-main-logo.png"
+              alt="MobiBix Logo"
               className="h-28 w-auto object-contain"
             />
           )}
 
           {/* Mobile Close Button */}
           {mobileOpen && (
-             <button onClick={onClose} className="absolute right-4 top-4 lg:hidden p-1 text-gray-500 hover:text-red-500">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
-             </button>
+            <button
+              onClick={onClose}
+              className="absolute right-4 top-4 lg:hidden p-1 text-gray-500 hover:text-red-500"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
           )}
 
           {effectiveCollapsed && (
-            <img 
-              src="/assets/mobibix-app-icon.png" 
-              alt="MobiBix Icon" 
+            <img
+              src="/assets/mobibix-app-icon.png"
+              alt="MobiBix Icon"
               className="w-12 h-12 object-contain"
             />
           )}
@@ -156,7 +170,9 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                 <span className="text-lg flex-shrink-0">{item.icon}</span>
                 {!effectiveCollapsed && (
                   <>
-                    <span className="font-medium text-sm flex-1">{item.label}</span>
+                    <span className="font-medium text-sm flex-1">
+                      {item.label}
+                    </span>
                     {item.label === "Customers" &&
                       counts &&
                       counts.total > 0 && (

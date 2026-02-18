@@ -101,9 +101,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
           setSelectedShopId(data[0].id);
           localStorage.setItem(SELECTED_SHOP_KEY, data[0].id);
         } else if (data.length > 1) {
-          // Multiple shops but no valid selection - select first
-          setSelectedShopId(data[0].id);
-          localStorage.setItem(SELECTED_SHOP_KEY, data[0].id);
+          // Multiple shops but no valid selection - leave as "All Shops" (empty)
+          setSelectedShopId("");
+          localStorage.removeItem(SELECTED_SHOP_KEY);
         }
       }
     }
