@@ -27,4 +27,20 @@ class ReportRepositoryImpl @Inject constructor(
     override suspend fun getProfitSummary(shopId: String?, startDate: String?, endDate: String?): ProfitSummaryResponse {
         return reportApi.getProfitSummary(shopId, startDate, endDate)
     }
+
+    override suspend fun getTaxReport(shopId: String?, startDate: String?, endDate: String?): List<com.aiyal.mobibix.data.network.TaxReportItem> {
+        return reportApi.getTaxReport(shopId, startDate, endDate)
+    }
+
+    override suspend fun getReceivables(shopId: String?): List<com.aiyal.mobibix.data.network.OutstandingItem> {
+        return reportApi.getReceivables(shopId)
+    }
+
+    override suspend fun getPayables(shopId: String?): List<com.aiyal.mobibix.data.network.OutstandingItem> {
+        return reportApi.getPayables(shopId)
+    }
+
+    override suspend fun getDailySales(shopId: String?, startDate: String?, endDate: String?): List<com.aiyal.mobibix.data.network.DailySalesItem> {
+        return reportApi.getDailySales(shopId, startDate, endDate)
+    }
 }

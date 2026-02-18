@@ -23,6 +23,10 @@ data class ReportsUiState(
     val repairReport: List<SalesReportItem> = emptyList(),
     val inventoryReport: List<InventoryReportItem> = emptyList(),
     val profitMetrics: ProfitSummaryMetrics? = null,
+    val taxReport: List<com.aiyal.mobibix.data.network.TaxReportItem> = emptyList(),
+    val receivables: List<com.aiyal.mobibix.data.network.OutstandingItem> = emptyList(),
+    val payables: List<com.aiyal.mobibix.data.network.OutstandingItem> = emptyList(),
+    val dailySales: List<com.aiyal.mobibix.data.network.DailySalesItem> = emptyList(),
     val startDate: String = LocalDate.now().minusMonths(1).format(DateTimeFormatter.ISO_DATE),
     val endDate: String = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
 )
@@ -86,6 +90,58 @@ class ReportViewModel @Inject constructor(
             try {
                 val response = reportRepository.getProfitSummary(shopId, _uiState.value.startDate, _uiState.value.endDate)
                 _uiState.value = _uiState.value.copy(isLoading = false, profitMetrics = response.metrics)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    fun loadTaxReport() {
+        val shopId = shopContextProvider.getActiveShopId() ?: ""
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val report = reportRepository.getTaxReport(shopId, _uiState.value.startDate, _uiState.value.endDate)
+                _uiState.value = _uiState.value.copy(isLoading = false, taxReport = report)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    fun loadReceivables() {
+        val shopId = shopContextProvider.getActiveShopId() ?: ""
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val report = reportRepository.getReceivables(shopId)
+                _uiState.value = _uiState.value.copy(isLoading = false, receivables = report)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    fun loadPayables() {
+        val shopId = shopContextProvider.getActiveShopId() ?: ""
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val report = reportRepository.getPayables(shopId)
+                _uiState.value = _uiState.value.copy(isLoading = false, payables = report)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    fun loadDailySales() {
+        val shopId = shopContextProvider.getActiveShopId() ?: ""
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val report = reportRepository.getDailySales(shopId, _uiState.value.startDate, _uiState.value.endDate)
+                _uiState.value = _uiState.value.copy(isLoading = false, dailySales = report)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
             }

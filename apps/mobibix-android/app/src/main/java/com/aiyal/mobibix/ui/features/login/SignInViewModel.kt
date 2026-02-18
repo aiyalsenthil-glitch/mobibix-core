@@ -44,6 +44,10 @@ class SignInViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(email = email)
     }
 
+    fun setError(message: String) {
+        _uiState.value = _uiState.value.copy(errorMessage = message, isLoading = false)
+    }
+
     fun signIn(password: String) {
         val email = _uiState.value.email
         viewModelScope.launch {

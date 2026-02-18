@@ -157,4 +157,22 @@ object NetworkModule {
     fun provideCustomerApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.CustomerApi {
         return retrofit.create(com.aiyal.mobibix.data.network.CustomerApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideWhatsappApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.WhatsappApi {
+        return retrofit.create(com.aiyal.mobibix.data.network.WhatsappApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLoyaltyApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.LoyaltyApi {
+        return retrofit.create(com.aiyal.mobibix.data.network.LoyaltyApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideBillingApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.BillingApi {
+        return retrofit.create(com.aiyal.mobibix.data.network.BillingApi::class.java)
+    }
 }

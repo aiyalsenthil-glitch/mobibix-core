@@ -1,7 +1,6 @@
 package com.aiyal.mobibix.ui.navigation
 
 import android.content.Intent
-import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import kotlinx.coroutines.launch
 import com.aiyal.mobibix.core.app.AppState
 import com.aiyal.mobibix.core.auth.AuthEntryPoint
 import com.aiyal.mobibix.ui.features.finance.FinanceLandingScreen
@@ -46,7 +46,6 @@ import dagger.hilt.android.EntryPointAccessors
 @Composable
 fun AppNavGraph(
     navController: NavHostController = rememberNavController(),
-    googleSignInLauncher: ActivityResultLauncher<Intent>
 ) {
     val context = LocalContext.current
     val authEntryPoint = EntryPointAccessors.fromApplication(context, AuthEntryPoint::class.java)
@@ -68,6 +67,8 @@ fun AppNavGraph(
             val googleSignInViewModel: GoogleSignInViewModel = hiltViewModel()
             val uiState = signInViewModel.uiState.value
 
+            val scope = androidx.compose.runtime.rememberCoroutineScope()
+
             LaunchedEffect(uiState.loginSuccess) {
                 if (uiState.loginSuccess) {
                     navController.navigate("home") { popUpTo("login") { inclusive = true } }
@@ -84,7 +85,15 @@ fun AppNavGraph(
                 onSignup = { password, fullName -> signInViewModel.signUp(password, fullName) },
                 onCheckVerification = { signInViewModel.checkVerification() },
                 onResendVerification = { signInViewModel.resendVerification() },
-                onGoogleLogin = { googleSignInLauncher.launch(googleSignInViewModel.getSignInIntent()) },
+                onGoogleLogin = {
+                    scope.launch {
+                       googleSignInViewModel.signIn(
+                           activityContext = context,
+                           onSuccess = { token -> signInViewModel.signInWithGoogle(token) },
+                           onError = { error -> signInViewModel.setError(error) }
+                       )
+                    }
+                },
                 onBack = { signInViewModel.setStep(com.aiyal.mobibix.ui.features.login.AuthStep.LANDING) }
             )
         }
@@ -209,6 +218,32 @@ fun AppNavGraph(
 
         composable("profit_loss_report") {
             com.aiyal.mobibix.ui.features.reports.ProfitLossScreen(
+                navController = navController
+            )
+        }
+
+        composable("tax_report") {
+            com.aiyal.mobibix.ui.features.reports.TaxReportScreen(
+                navController = navController
+            )
+        }
+
+        composable("receivables_report") {
+            com.aiyal.mobibix.ui.features.reports.OutstandingReportScreen(
+                navController = navController,
+                reportType = "receivables"
+            )
+        }
+
+        composable("payables_report") {
+            com.aiyal.mobibix.ui.features.reports.OutstandingReportScreen(
+                navController = navController,
+                reportType = "payables"
+            )
+        }
+
+        composable("daily_sales_report") {
+            com.aiyal.mobibix.ui.features.reports.DailySalesReportScreen(
                 navController = navController
             )
         }
@@ -362,6 +397,45 @@ fun AppNavGraph(
         }
         composable("create_voucher") {
             CreateVoucherScreen(navController = navController)
+        }
+
+        // WhatsApp CRM Routes
+        composable("whatsapp_dashboard") {
+            com.aiyal.mobibix.ui.features.whatsapp.WhatsappDashboardScreen(
+                navController = navController
+            )
+        }
+        composable("whatsapp_templates") {
+            com.aiyal.mobibix.ui.features.whatsapp.WhatsappTemplatesScreen(
+                navController = navController
+            )
+        }
+        composable("whatsapp_campaigns") {
+            com.aiyal.mobibix.ui.features.whatsapp.WhatsappCampaignsScreen(
+                navController = navController
+            )
+        }
+        composable("whatsapp_create_campaign") {
+            com.aiyal.mobibix.ui.features.whatsapp.WhatsappCreateCampaignScreen(
+                navController = navController
+            )
+        }
+        composable("whatsapp_quick_message") {
+            com.aiyal.mobibix.ui.features.whatsapp.WhatsappQuickMessageScreen(
+                navController = navController
+            )
+        }
+
+        // Phase 4 Routes
+        composable("loyalty") {
+            com.aiyal.mobibix.ui.features.loyalty.LoyaltyScreen(
+                navController = navController
+            )
+        }
+        composable("billing") {
+            com.aiyal.mobibix.ui.features.billing.BillingScreen(
+                navController = navController
+            )
         }
     }
 }

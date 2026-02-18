@@ -24,9 +24,13 @@ data class ReportType(
 fun ReportsLandingScreen(navController: NavController) {
     val reportTypes = listOf(
         ReportType("Sales Report", "Detailed view of all sales", Icons.Default.Sell, "sales_report"),
+        ReportType("Daily Sales", "Day-wise breakups", Icons.Default.Today, "daily_sales_report"),
         ReportType("Repair Report", "Track job card performance", Icons.Default.Build, "repair_report"),
         ReportType("Inventory Report", "Stock levels and value", Icons.Default.Inventory, "inventory_report"),
-        ReportType("Profit & Loss", "Revenue and cost breakdown", Icons.Default.Assessment, "profit_loss_report")
+        ReportType("Profit & Loss", "Revenue and cost breakdown", Icons.Default.Assessment, "profit_loss_report"),
+        ReportType("Tax Report", "GSTR and tax details", Icons.Default.Description, "tax_report"),
+        ReportType("Receivables", "Pending from customers", Icons.Default.ArrowCircleDown, "receivables_report"),
+        ReportType("Payables", "Pending to suppliers", Icons.Default.ArrowCircleUp, "payables_report")
     )
 
     Scaffold(

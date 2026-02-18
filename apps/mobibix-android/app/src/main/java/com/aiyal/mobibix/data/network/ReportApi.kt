@@ -67,4 +67,55 @@ interface ReportApi {
         @Query("startDate") startDate: String?,
         @Query("endDate") endDate: String?
     ): ProfitSummaryResponse
+
+    @GET("api/mobileshop/reports/tax")
+    suspend fun getTaxReport(
+        @Query("shopId") shopId: String?,
+        @Query("startDate") startDate: String?,
+        @Query("endDate") endDate: String?
+    ): List<TaxReportItem>
+
+    @GET("api/mobileshop/reports/receivables")
+    suspend fun getReceivables(
+        @Query("shopId") shopId: String?
+    ): List<OutstandingItem>
+
+    @GET("api/mobileshop/reports/payables")
+    suspend fun getPayables(
+        @Query("shopId") shopId: String?
+    ): List<OutstandingItem>
+
+    @GET("api/mobileshop/reports/daily-sales")
+    suspend fun getDailySales(
+        @Query("shopId") shopId: String?,
+        @Query("startDate") startDate: String?,
+        @Query("endDate") endDate: String?
+    ): List<DailySalesItem>
 }
+
+data class TaxReportItem(
+    val date: String,
+    val invoiceNo: String,
+    val customerName: String?,
+    val gstNo: String?,
+    val taxableAmount: Double,
+    val cgst: Double,
+    val sgst: Double,
+    val igst: Double,
+    val totalTax: Double,
+    val totalAmount: Double
+)
+
+data class OutstandingItem(
+    val entityName: String, // Customer or Supplier Name
+    val pendingAmount: Double,
+    val lastTransactionDate: String?
+)
+
+data class DailySalesItem(
+    val date: String,
+    val totalOrders: Int,
+    val totalSales: Double,
+    val cashSales: Double,
+    val onlineSales: Double
+)

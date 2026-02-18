@@ -92,7 +92,7 @@ fun SalesListScreen(
                         label = { Text("Shop") },
                         leadingIcon = { Icon(Icons.Outlined.Store, null) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shopDropdownExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = shopDropdownExpanded,

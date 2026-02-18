@@ -30,6 +30,9 @@ fun MoreScreen(
     onNavigateToJobCardSettings: () -> Unit,
     onNavigateToInvoiceSettings: () -> Unit,
     onNavigateToFinance: () -> Unit,
+    onNavigateToWhatsApp: () -> Unit,
+    onNavigateToBilling: () -> Unit,
+    onNavigateToLoyalty: () -> Unit,
     onLogout: () -> Unit,
     viewModel: MoreViewModel = hiltViewModel()
 ) {
@@ -50,6 +53,9 @@ fun MoreScreen(
             item {
                 MenuListItem("Reports", onNavigateToReports)
                 MenuListItem("Finance", onNavigateToFinance)
+                MenuListItem("WhatsApp CRM", onNavigateToWhatsApp)
+                MenuListItem("Loyalty Program", onNavigateToLoyalty)
+                MenuListItem("Billing & Plans", onNavigateToBilling)
                 MenuListItem("Customers", onNavigateToCustomers)
                 MenuListItem("Staff", onNavigateToStaff)
                 MenuListItem("Shop Settings", onNavigateToShopSettings)

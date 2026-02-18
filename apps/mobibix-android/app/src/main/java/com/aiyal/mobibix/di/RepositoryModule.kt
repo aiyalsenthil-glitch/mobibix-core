@@ -95,4 +95,22 @@ abstract class RepositoryModule {
     abstract fun bindStaffRepository(
         staffRepositoryImpl: StaffRepositoryImpl
     ): StaffRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWhatsappRepository(
+        whatsappRepositoryImpl: com.aiyal.mobibix.data.repository.WhatsappRepositoryImpl
+    ): com.aiyal.mobibix.domain.WhatsappRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLoyaltyRepository(
+        loyaltyRepositoryImpl: com.aiyal.mobibix.domain.LoyaltyRepositoryImpl
+    ): com.aiyal.mobibix.domain.LoyaltyRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindBillingRepository(
+        billingRepositoryImpl: com.aiyal.mobibix.domain.BillingRepositoryImpl
+    ): com.aiyal.mobibix.domain.BillingRepository
 }

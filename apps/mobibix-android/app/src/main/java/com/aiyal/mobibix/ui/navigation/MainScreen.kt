@@ -75,6 +75,9 @@ fun MainScreen(
                 MoreScreen(
                     onNavigateToReports = { mainNavController.navigate("reports") },
                     onNavigateToFinance = { mainNavController.navigate("finance") },
+                    onNavigateToWhatsApp = { mainNavController.navigate("whatsapp_dashboard") },
+                    onNavigateToLoyalty = { mainNavController.navigate("loyalty") },
+                    onNavigateToBilling = { mainNavController.navigate("billing") },
                     onNavigateToCustomers = { mainNavController.navigate("customers") },
                     onNavigateToStaff = { mainNavController.navigate("staff") },
                     onNavigateToShopSettings = { mainNavController.navigate("shop_management") },

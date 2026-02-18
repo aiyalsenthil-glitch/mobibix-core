@@ -4,9 +4,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("kotlin-kapt")
     alias(libs.plugins.hilt.android.plugin)
     alias(libs.plugins.google.services.plugin)
+    alias(libs.plugins.ksp)
 }
 
 val localProperties = Properties()
@@ -60,9 +60,6 @@ android {
         compose = true
         buildConfig = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
     lint {
         disable.add("InvalidSetHasFixedSize")
     }
@@ -83,7 +80,7 @@ dependencies {
     // Hilt
     implementation(libs.hilt.android)
     implementation(libs.androidx.ui)
-    kapt(libs.hilt.compiler)
+    ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
     // Retrofit & OkHttp
@@ -101,7 +98,11 @@ dependencies {
     // Firebase
     implementation(platform(libs.REMOVED_AUTH_PROVIDER.bom))
     implementation(libs.REMOVED_AUTH_PROVIDER.auth)
-    implementation(libs.play.services.auth)
+    
+    // Credential Manager
+    implementation(libs.credentials)
+    implementation(libs.credentials.play.services.auth)
+    implementation(libs.googleid)
 
     // QR Code
     implementation(libs.zxing.core)
