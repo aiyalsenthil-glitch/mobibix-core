@@ -53,6 +53,7 @@ interface PublicJobDetails {
   deviceModel: string;
   updatedAt?: string;
   estimatedDelivery?: string;
+  shop?: { name: string };
 }
 
 /**

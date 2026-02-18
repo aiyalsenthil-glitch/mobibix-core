@@ -22,6 +22,7 @@ const STATUS_COLORS: Record<InvoiceStatus, string> = {
   DRAFT: "bg-gray-500/15 text-gray-400",
   FINAL: "bg-blue-500/15 text-blue-400",
   PAID: "bg-green-500/15 text-green-400",
+  PARTIALLY_PAID: "bg-teal-500/15 text-teal-400",
   CREDIT: "bg-amber-500/15 text-amber-400",
   VOIDED: "bg-red-500/15 text-red-400",
 };

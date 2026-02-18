@@ -16,7 +16,11 @@ import { getRoleRedirect } from "@/lib/auth-routes";
 import { sendVerificationEmail } from "@/services/auth.api";
 import { Eye, EyeOff, Loader2, Check, Mail, ArrowRight, AlertCircle } from "lucide-react";
 
-export default function AuthPage() {
+interface AuthPageProps {
+  mode?: "signin" | "signup";
+}
+
+export default function AuthPage({ mode }: AuthPageProps) {
   const router = useRouter();
   const {
     isAuthenticated,
@@ -27,7 +31,14 @@ export default function AuthPage() {
 
   // State: 0=Landing, 1=LoginPass, 2=SignupPass, 3=Verify
   type Step = "LANDING" | "LOGIN_PASS" | "SIGNUP_PASS" | "VERIFY";
-  const [step, setStep] = useState<Step>("LANDING");
+  
+  const getInitialStep = (): Step => {
+    if (mode === "signin") return "LOGIN_PASS";
+    if (mode === "signup") return "SIGNUP_PASS";
+    return "LANDING";
+  };
+
+  const [step, setStep] = useState<Step>(getInitialStep());
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

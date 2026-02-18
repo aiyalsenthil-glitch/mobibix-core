@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import {
   getGstr1SalesRegister,
   getGstr1HsnSummary,
-  type Gstr1SalesRegisterItem,
+  type Gstr1Record,
   type Gstr1SummaryItem,
 } from "@/services/reports.api";
 import { formatCurrency } from "@/lib/gst.utils";
@@ -24,7 +24,7 @@ export function GstrReportViewer({ shopId }: GstrReportViewerProps) {
   );
 
   // Sales Register state
-  const [salesRegister, setSalesRegister] = useState<Gstr1SalesRegisterItem[]>(
+  const [salesRegister, setSalesRegister] = useState<Gstr1Record[]>(
     [],
   );
   const [loadingSalesRegister, setLoadingSalesRegister] = useState(false);
@@ -44,7 +44,8 @@ export function GstrReportViewer({ shopId }: GstrReportViewerProps) {
         setLoadingSalesRegister(true);
         setSalesRegisterError(null);
         const data = await getGstr1SalesRegister(startDate, endDate);
-        setSalesRegister(data);
+        // data is Gstr1Report, which has 'records' array
+        setSalesRegister(data.records);
       } catch (err: any) {
         console.error("Failed to load sales register:", err);
         setSalesRegisterError(err.message || "Failed to load sales register");
@@ -76,33 +77,33 @@ export function GstrReportViewer({ shopId }: GstrReportViewerProps) {
   // Calculate totals
   const salesRegisterTotals = {
     invoiceValue: salesRegister.reduce(
-      (sum, item) => sum + (item.invoiceValue || 0),
+      (sum, item) => sum + (item.invoiceAmount || 0),
       0,
     ),
     taxableValue: salesRegister.reduce(
-      (sum, item) => sum + (item.taxableValue || 0),
+      (sum, item) => sum + (item.taxableAmount || 0),
       0,
     ),
     igst: salesRegister.reduce(
-      (sum, item) => sum + (item.integratedTax || 0),
+      (sum, item) => sum + (item.igstAmount || 0),
       0,
     ),
-    cgst: salesRegister.reduce((sum, item) => sum + (item.centralTax || 0), 0),
-    sgst: salesRegister.reduce((sum, item) => sum + (item.stateTax || 0), 0),
+    cgst: salesRegister.reduce((sum, item) => sum + (item.cgstAmount || 0), 0),
+    sgst: salesRegister.reduce((sum, item) => sum + (item.sgstAmount || 0), 0),
   };
 
   const hsnSummaryTotals = {
     totalValue: hsnSummary.reduce(
-      (sum, item) => sum + (item.totalValue || 0),
+      (sum, item) => sum + (item.totalAmount || 0),
       0,
     ),
     taxableValue: hsnSummary.reduce(
       (sum, item) => sum + (item.taxableValue || 0),
       0,
     ),
-    igst: hsnSummary.reduce((sum, item) => sum + (item.integratedTax || 0), 0),
-    cgst: hsnSummary.reduce((sum, item) => sum + (item.centralTax || 0), 0),
-    sgst: hsnSummary.reduce((sum, item) => sum + (item.stateTax || 0), 0),
+    igst: hsnSummary.reduce((sum, item) => sum + (item.igstAmount || 0), 0),
+    cgst: hsnSummary.reduce((sum, item) => sum + (item.cgstAmount || 0), 0),
+    sgst: hsnSummary.reduce((sum, item) => sum + (item.sgstAmount || 0), 0),
   };
 
   // Export to CSV
@@ -288,7 +289,7 @@ export function GstrReportViewer({ shopId }: GstrReportViewerProps) {
                         GSTIN
                       </th>
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                        State
+                        Category
                       </th>
                       <th className="px-4 py-3 text-right font-semibold text-gray-700">
                         Invoice Value
@@ -325,25 +326,25 @@ export function GstrReportViewer({ shopId }: GstrReportViewerProps) {
                           {item.customerName || "-"}
                         </td>
                         <td className="px-4 py-3 font-mono text-xs text-gray-600">
-                          {item.gstin || "-"}
+                          {item.gstinUin || "-"}
                         </td>
                         <td className="px-4 py-3 text-gray-600">
-                          {item.state || "-"}
+                          {item.category || "-"}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-900 font-medium">
-                          {formatCurrency(item.invoiceValue)}
+                          {formatCurrency(item.invoiceAmount)}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-900">
-                          {formatCurrency(item.taxableValue)}
+                          {formatCurrency(item.taxableAmount)}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-600">
-                          {formatCurrency(item.centralTax)}
+                          {formatCurrency(item.cgstAmount)}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-600">
-                          {formatCurrency(item.stateTax)}
+                          {formatCurrency(item.sgstAmount)}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-600">
-                          {formatCurrency(item.integratedTax)}
+                          {formatCurrency(item.igstAmount)}
                         </td>
                       </tr>
                     ))}
@@ -459,22 +460,22 @@ export function GstrReportViewer({ shopId }: GstrReportViewerProps) {
                           {item.description || "-"}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-600">
-                          {item.totalQuantity}
+                          {item.quantity}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-900 font-medium">
-                          {formatCurrency(item.totalValue)}
+                          {formatCurrency(item.totalAmount)}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-900">
-                          {formatCurrency(item.taxableValue)}
+                          {formatCurrency(item.taxableValue || 0)}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-600">
-                          {formatCurrency(item.centralTax)}
+                          {formatCurrency(item.cgstAmount)}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-600">
-                          {formatCurrency(item.stateTax)}
+                          {formatCurrency(item.sgstAmount)}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-600">
-                          {formatCurrency(item.integratedTax)}
+                          {formatCurrency(item.igstAmount)}
                         </td>
                       </tr>
                     ))}
