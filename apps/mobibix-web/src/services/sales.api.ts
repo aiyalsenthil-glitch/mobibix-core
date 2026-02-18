@@ -62,6 +62,7 @@ export interface SalesInvoice {
     deviceSerial: string | null;
     problem: string;
   };
+  whatsappSent?: boolean;
 }
 
 export interface InvoiceItemDetail {
