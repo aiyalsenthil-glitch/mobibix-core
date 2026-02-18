@@ -12,11 +12,74 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ai_net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Ollama Service
+  ollama:
+    image: ollama/ollama:latest
+    container_name: mobibix-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ai_net
+    # No ports exposed to host — internal only
+    # GPU: runtime: nvidia (requires nvidia-container-toolkit on host)
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # AI Operating System Core
+  ai-core:
+    build:
+      context: .
+      dockerfile: apps/ai-core/Dockerfile
+      target: development
+    container_name: mobibix-ai-core
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3010
+      AI_CORE_DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/mobibix?schema=ai_core"
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_DEFAULT_MODEL: llama3:8b
+      OLLAMA_EMBED_MODEL: nomic-embed-text
+      OLLAMA_TIMEOUT_MS: 30000
+      MAX_CONCURRENT_LLM_REQUESTS: ${MAX_CONCURRENT_LLM_REQUESTS:-2}
+      MAX_TOOL_CALLS_PER_REQUEST: ${MAX_TOOL_CALLS_PER_REQUEST:-5}
+      MAX_TOTAL_TOKENS_PER_REQUEST: ${MAX_TOTAL_TOKENS_PER_REQUEST:-6000}
+      AI_CLOUD_FALLBACK_ENABLED: ${AI_CLOUD_FALLBACK_ENABLED:-false}
+      AI_CLOUD_PROVIDER: ${AI_CLOUD_PROVIDER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-your-development-jwt-secret-change-me}
+    networks:
+      - ai_net
+    # No ports exposed to host
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ./apps/ai-core/src:/app/src:cached
+      - ./apps/ai-core/prisma:/app/prisma:cached
+      - ai_core_node_modules:/app/node_modules
+    command: npm run start:dev
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost_REPLACED:3010/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # NestJS Backend API
   backend:
@@ -28,24 +91,31 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: development
-      DATABASE_URL: "postgresql://postgres.kpskhmjqvuncrtgthsxf:m5gztfER4UP2TVgD@aws-1-ap-south-1.pooler.supabase.com:6543/postgres"
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/mobibix}
       JWT_SECRET: ${JWT_SECRET:-your-development-jwt-secret-change-me}
-      JWT_EXPIRES_IN: "7d"
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       PORT: 3000
       GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/REMOVED_AUTH_PROVIDER-admin.json
-      RESEND_API_KEY: ${RESEND_API_KEY}
-      EMAIL_FROM: ${EMAIL_FROM}
-      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
-      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
-      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
-      WHATSAPP_ENABLED: ${WHATSAPP_ENABLED}
-      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN}
-      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
-      WHATSAPP_WABA_ID: ${WHATSAPP_WABA_ID}
-      WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION}
-      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN}
-      ANDROID_LATEST_VERSION_CODE: ${ANDROID_LATEST_VERSION_CODE}
-      ANDROID_MIN_REQUIRED_VERSION_CODE: ${ANDROID_MIN_REQUIRED_VERSION_CODE}
+      FIREBASE_SERVICE_ACCOUNT_BASE64: ${FIREBASE_SERVICE_ACCOUNT_BASE64:-}
+      ENCRYPTION_MASTER_KEY: ${ENCRYPTION_MASTER_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM_MOBIBIX:-MobiBix <no-reply@mobibix.in>}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      WHATSAPP_ENABLED: ${WHATSAPP_ENABLED:-false}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_WABA_ID: ${WHATSAPP_WABA_ID:-}
+      WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v22.0}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+      ANDROID_LATEST_VERSION_CODE: ${ANDROID_LATEST_VERSION_CODE:-1}
+      ANDROID_MIN_REQUIRED_VERSION_CODE: ${ANDROID_MIN_REQUIRED_VERSION_CODE:-1}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      # AI integration
+      AI_CORE_INTERNAL_URL: http://ai-core:3010
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
     ports:
       - "3000:3000"
       - "9229:9229"
@@ -55,6 +125,11 @@ services:
       - ./apps/backend/secrets:/app/secrets:ro
       - backend_node_modules:/app/node_modules
     command: npm run start:dev
+    networks:
+      - public_net
+      - ai_net
+    depends_on:
+      - ai-core
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost_REPLACED:3000/health"]
       interval: 30s
@@ -92,11 +167,23 @@ services:
     depends_on:
       - backend
     command: npm run dev
+    networks:
+      - public_net
+
+networks:
+  public_net:
+    driver: bridge
+  ai_net:
+    driver: bridge
 
 volumes:
   postgres_data:
     driver: local
+  ollama_data:
+    driver: local
   backend_node_modules:
+    driver: local
+  ai_core_node_modules:
     driver: local
   mobibix_web_node_modules:
     driver: local
