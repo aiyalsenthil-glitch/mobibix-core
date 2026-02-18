@@ -37,6 +37,7 @@ import {
   Settings,
   ArrowRight,
 } from "lucide-react";
+import { ValueSnapshotWidget } from "@/components/dashboard/ValueSnapshotWidget";
 
 interface DashboardData {
   today?: {
@@ -60,6 +61,18 @@ interface DashboardData {
   };
   paymentStats?: { name: string; value: number }[];
   salesTrend?: { date: string; sales: number }[];
+  valueSnapshot?: {
+    monthRevenue: number;
+    lastMonthRevenue: number; // Phase 3
+    invoiceCount: number;
+    collectionRate: number;
+    whatsappStats: {
+      sent: number;
+      delivered: number;
+      recoveredAmount: number; // Phase 2
+    };
+    repairTurnaroundDays: string;
+  };
 }
 
 export default function DashboardPage() {
@@ -194,6 +207,11 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* Row 0: Value Snapshot (Visible ROI) */}
+      {isOwner && data.valueSnapshot && (
+        <ValueSnapshotWidget data={data.valueSnapshot} isLoading={loading} />
+      )}
 
       {/* Row 1: Financial KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

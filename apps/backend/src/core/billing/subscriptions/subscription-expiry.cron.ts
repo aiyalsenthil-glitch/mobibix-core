@@ -1,13 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
-import { EmailService } from '../../../common/email';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { SubscriptionTrialExpiringEvent } from '../../../common/email/email.events';
+// import { EmailService } from '../../../common/email'; <-- Removed direct usage
 
 @Injectable()
 export class SubscriptionExpiryCron {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly emailService: EmailService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   // 🔒 Prevent parallel executions
@@ -100,18 +102,19 @@ export class SubscriptionExpiryCron {
         try {
           console.log(`[CRON][Expiry] Sending expiry email to ${owner.email}`);
 
-          await this.emailService.sendEmail({
-            to: owner.email,
-            subject: 'Your GymPilot plan expires soon ⏰',
-            html: `
-              <h3>Plan Expiry Reminder</h3>
-              <p>Your <b>${sub.plan.name}</b> plan will expire on
-              <b>${sub.endDate.toDateString()}</b>.</p>
-              <p>Please renew or upgrade to avoid service interruption.</p>
-              <br/>
-              <p>— Team GymPilot</p>
-            `,
-          });
+          
+          const module = sub.tenant.tenantType === 'GYM' ? 'GYM' : 'MOBILE_SHOP'; // simple map
+          
+          await this.eventEmitter.emitAsync(
+            'subscription.trial.expiring',
+            new SubscriptionTrialExpiringEvent(
+              sub.tenantId,
+              module as any,
+              new Date(),
+              sub,
+              7 // days left (approximated for this logic, technically we queried range 0-7)
+            )
+          );
           await this.prisma.tenantSubscription.update({
             where: { id: sub.id },
             data: {

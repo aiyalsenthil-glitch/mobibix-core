@@ -132,6 +132,123 @@ export class PlansService {
   }
 
   /**
+   * PUBLIC ENDPOINT - Get pricing for public display
+   * Returns plans grouped by module with pricing, features, and savings
+   */
+  async getPublicPricing(module?: ModuleType) {
+    const where: any = {
+      isActive: true,
+      isPublic: true,
+      level: { gt: 0 }, // Hide TRIAL
+      isAddon: false, // Hide WhatsApp add-ons from public pricing
+    };
+
+    if (module) {
+      where.module = module;
+    }
+
+    const plans = await this.prisma.plan.findMany({
+      where,
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        level: true,
+        module: true,
+        tagline: true,
+        description: true,
+        featuresJson: true,
+        maxStaff: true,
+        maxMembers: true,
+        maxShops: true,
+        whatsappUtilityQuota: true,
+        whatsappMarketingQuota: true,
+        analyticsHistoryDays: true,
+        planPrices: {
+          where: { isActive: true },
+          select: {
+            billingCycle: true,
+            price: true,
+          },
+          orderBy: { billingCycle: 'asc' },
+        },
+        planFeatures: {
+          select: { feature: true, enabled: true },
+        },
+      },
+      orderBy: [{ module: 'asc' }, { level: 'asc' }],
+    });
+
+    // Group by module
+    const grouped = plans.reduce(
+      (acc, plan) => {
+        const moduleKey = plan.module;
+        if (!acc[moduleKey]) {
+          acc[moduleKey] = [];
+        }
+
+        // Calculate savings for yearly vs monthly
+        const monthlyPrice = plan.planPrices.find(
+          (p) => p.billingCycle === 'MONTHLY',
+        )?.price;
+        const yearlyPrice = plan.planPrices.find(
+          (p) => p.billingCycle === 'YEARLY',
+        )?.price;
+
+        let yearlySavings = 0;
+        let yearlySavingsPercent = 0;
+
+        if (monthlyPrice && yearlyPrice) {
+          const yearlyEquivalent = monthlyPrice * 12;
+          yearlySavings = yearlyEquivalent - yearlyPrice;
+          yearlySavingsPercent = Math.round(
+            (yearlySavings / yearlyEquivalent) * 100,
+          );
+        }
+
+        acc[moduleKey].push({
+          id: plan.id,
+          code: plan.code,
+          name: plan.name,
+          level: plan.level,
+          tagline: plan.tagline,
+          description: plan.description,
+          features: plan.featuresJson || [],
+          pricing: plan.planPrices.map((p) => ({
+            cycle: p.billingCycle,
+            price: p.price,
+            priceFormatted: `₹${(p.price / 100).toFixed(0)}`,
+          })),
+          limits: {
+            maxStaff: plan.maxStaff,
+            maxMembers: plan.maxMembers,
+            maxShops: plan.maxShops,
+            whatsappUtilityQuota: plan.whatsappUtilityQuota,
+            whatsappMarketingQuota: plan.whatsappMarketingQuota,
+            analyticsHistoryDays: plan.analyticsHistoryDays,
+          },
+          savings: {
+            yearly: yearlySavings,
+            yearlyPercent: yearlySavingsPercent,
+            yearlyFormatted: `₹${(yearlySavings / 100).toFixed(0)}`,
+          },
+          enabledFeatures: plan.planFeatures
+            .filter((f) => f.enabled)
+            .map((f) => f.feature),
+        });
+
+        return acc;
+      },
+      {} as Record<string, any[]>,
+    );
+
+    return {
+      GYM: grouped.GYM || [],
+      MOBILE_SHOP: grouped.MOBILE_SHOP || [],
+    };
+  }
+
+  /**
    * Admin update plan (identity + module + tier only)
    */
   async updatePlan(

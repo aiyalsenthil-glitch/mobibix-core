@@ -90,6 +90,7 @@ model Tenant {
   whatsAppUsage         WhatsAppDailyUsage[]
   usageSnapshots        UsageSnapshot[]
   featureFlags          FeatureFlag[]        @relation("TenantFeatureFlags")
+  emailLogs             EmailLog[]
 }
 
 model UserTenant {
@@ -132,6 +133,7 @@ model User {
   userTenants       UserTenant[]
   assignedJobs      JobCard[]          @relation("JobCardAssignment")
   refreshTokens     RefreshToken[]
+  emailLogs         EmailLog[]
 
   @@index([REMOVED_AUTH_PROVIDERUid])
   @@index([email])
@@ -232,6 +234,7 @@ model Party {
   purchaseOrders      PurchaseOrder[]
   paymentVouchers     PaymentVoucher[]
   whatsAppLogs        WhatsAppLog[]
+  emailLogs           EmailLog[]
 
   @@unique([tenantId, phone])
   @@index([tenantId])
@@ -2050,5 +2053,59 @@ enum WebhookStatus {
   SUCCESS
   FAILED
   IGNORED
+}
+
+enum EmailRecipientType {
+  TENANT
+  STAFF
+  CUSTOMER
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model EmailLog {
+  id            String             @id @default(cuid())
+  tenantId      String
+  
+  // Recipient Details
+  recipientType EmailRecipientType
+  recipientEmail String
+  staffId       String?            // Optional: Link to User if Staff
+  customerId    String?            // Optional: Link to Party if Customer
+
+  // Email Details
+  emailType     String             // e.g. "TRIAL_EXPIRING", "INVOICE_GENERATED"
+  referenceId   String             // Composite uniqueness key (e.g. InvoiceID, MemberID + Date)
+  subject       String
+  body          String?            // Optional: Store rendered HTML (debug only?) or just metadata
+  
+  // Context
+  module        ModuleType         // GYM | MOBILE_SHOP
+  
+  // Status & Metadata
+  status        EmailStatus        @default(PENDING)
+  sentAt        DateTime?
+  error         String?
+  retryCount    Int                @default(0)
+  
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  // Relations (Optional but helpful for data integrity)
+  staff         User?              @relation(fields: [staffId], references: [id])
+  customer      Party?             @relation(fields: [customerId], references: [id])
+
+  // 🔥 IDEMPOTENCY KEY
+  @@unique([tenantId, recipientType, emailType, referenceId, module], name: "idempotency_key")
+  @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
 }
 

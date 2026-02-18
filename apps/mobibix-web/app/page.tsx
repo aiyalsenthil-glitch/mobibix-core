@@ -89,7 +89,7 @@ export default function HomePage() {
           {/* Navigation Links */}
           <div className="hidden md:flex items-center gap-8 text-xs font-normal text-muted-foreground hover:text-foreground transition-colors tracking-wide">
             <NavLink href="#features">Features</NavLink>
-            <NavLink href="#pricing">Pricing</NavLink>
+            <NavLink href="/pricing">Pricing</NavLink>
             <NavLink href="#testimonials">Customers</NavLink>
           </div>
 

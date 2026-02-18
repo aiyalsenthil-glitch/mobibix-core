@@ -1,0 +1,51 @@
+import { ModuleType } from '@prisma/client';
+
+export type EmailTemplateType =
+  | 'TENANT_WELCOME'
+  | 'TRIAL_STARTED'
+  | 'TRIAL_EXPIRING'
+  | 'TRIAL_EXPIRED'
+  | 'PLAN_UPGRADED'
+  | 'PLAN_DOWNGRADED'
+  | 'SUBSCRIPTION_ACTIVATED'
+  | 'SUBSCRIPTION_HALTED'
+  | 'PAYMENT_SUCCESS'
+  | 'PAYMENT_FAILED'
+  | 'STAFF_INVITED'
+  | 'MEMBER_EXPIRING'
+  | 'MEMBERSHIP_EXPIRED'
+  | 'MEMBERSHIP_RENEWAL_SUCCESS'
+  | 'INVOICE_GENERATED'
+  | 'PAYMENT_RECEIPT'
+  | 'JOBCARD_CREATED'
+  | 'JOBCARD_STATUS_UPDATED'
+  | 'JOBCARD_COMPLETED';
+
+export interface EmailTemplateProps {
+  // Tenant
+  TENANT_WELCOME: { tenantName: string; link: string };
+  TRIAL_STARTED: { name: string; planName: string; trialEndDate: string; dashboardLink: string };
+  TRIAL_EXPIRING: { name: string; trialEndDate: string; upgradeLink: string };
+  TRIAL_EXPIRED: { name: string; planName: string; upgradeLink: string };
+  PLAN_UPGRADED: { name: string; newPlanName: string; effectiveDate: string; dashboardLink: string };
+  PLAN_DOWNGRADED: { name: string; newPlanName: string; effectiveDate: string; dashboardLink: string };
+  SUBSCRIPTION_ACTIVATED: { name: string; planName: string; nextBillingDate: string; dashboardLink: string };
+  SUBSCRIPTION_HALTED: { name: string; billingLink: string };
+  PAYMENT_SUCCESS: { name: string; amount: string; date: string; invoiceLink: string };
+  PAYMENT_FAILED: { tenantName: string; planName: string; retryCount: number; payLink: string };
+  
+  // Staff
+  STAFF_INVITED: { staffName: string; inviterName: string; role: string; inviteLink: string };
+  
+  // Member
+  MEMBER_EXPIRING: { name: string; gymName: string; expiryDate: string; renewLink: string };
+  MEMBERSHIP_EXPIRED: { memberName: string; gymName: string; renewalLink: string };
+  MEMBERSHIP_RENEWAL_SUCCESS: { memberName: string; gymName: string; expiryDate: string; renewalLink: string };
+  
+  // Customer
+  INVOICE_GENERATED: { customerName: string; invoiceNumber: string; amount: string; storeName: string; invoiceDate: string; viewLink: string };
+  PAYMENT_RECEIPT: { customerName: string; receiptNumber: string; amount: string; date: string; storeName: string; viewLink: string };
+  JOBCARD_CREATED: { customerName: string; jobcardNumber: string; storeName: string; trackingLink: string };
+  JOBCARD_STATUS_UPDATED: { customerName: string; jobcardNumber: string; newStatus: string; storeName: string; trackingLink: string };
+  JOBCARD_COMPLETED: { customerName: string; jobcardNumber: string; deviceName: string; cost: string; storeName: string; trackingLink: string };
+}

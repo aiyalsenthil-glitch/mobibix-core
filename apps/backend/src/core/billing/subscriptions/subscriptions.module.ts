@@ -5,10 +5,18 @@ import { AuthModule } from '../../auth/auth.module';
 import { PlanPriceService } from '../plan-price.service';
 import { PlansModule } from '../plans/plans.module';
 import { RazorpayService } from '../REMOVED_PAYMENT_INFRA.service';
+import { SubscriptionExpiryCron } from './subscription-expiry.cron';
+import { MemberExpiryCron } from './member-expiry.cron';
 
 @Module({
   imports: [AuthModule, forwardRef(() => PlansModule)],
-  providers: [SubscriptionsService, PlanPriceService, RazorpayService],
+  providers: [
+    SubscriptionsService, 
+    PlanPriceService, 
+    RazorpayService,
+    SubscriptionExpiryCron,
+    MemberExpiryCron
+  ],
   controllers: [SubscriptionsController],
   exports: [SubscriptionsService, RazorpayService],
 })

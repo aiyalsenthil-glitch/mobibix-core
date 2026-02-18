@@ -76,6 +76,12 @@ export class MobileShopDashboardService {
       totalProducts,
       inventoryKpi,
       jobCardStats,
+      whatsappSentCount,
+      whatsappDeliveredCount,
+      monthSalesAgg,
+      paidSalesAgg,
+      repairDocs,
+      lastMonthSalesAgg,
     ] = await Promise.all([
       // Today's sales
       this.prisma.invoice.aggregate({
@@ -128,7 +134,106 @@ export class MobileShopDashboardService {
         },
         _count: true,
       }),
+      // 📱 VALUE SNAPSHOT: WhatsApp Stats
+      this.prisma.whatsAppLog.count({
+        where: { tenantId, sentAt: { gte: monthStart } }
+      }),
+      this.prisma.whatsAppLog.count({
+        where: { tenantId, sentAt: { gte: monthStart }, status: 'DELIVERED' }
+      }),
+      // 💳 VALUE SNAPSHOT: Collection Rate (Invoices Paid vs Total this month)
+      this.prisma.invoice.aggregate({
+        where: { tenantId, shopId: { in: shopIds }, createdAt: { gte: monthStart } },
+        _sum: { totalAmount: true }
+      }),
+      this.prisma.invoice.aggregate({
+        where: { 
+          tenantId, 
+          shopId: { in: shopIds }, 
+          createdAt: { gte: monthStart },
+          status: 'PAID'
+        },
+        _sum: { totalAmount: true }
+      }),
+      // 🔧 VALUE SNAPSHOT: Repair Turnaround (Avg days RECEIVED -> DELIVERED)
+      this.prisma.jobCard.findMany({
+        where: {
+          tenantId,
+          shopId: { in: shopIds },
+          status: 'DELIVERED',
+          updatedAt: { gte: monthStart }
+        },
+        select: { createdAt: true, updatedAt: true }
+      }),
+      // 📊 TRENDS: Last Month Sales
+      this.prisma.invoice.aggregate({
+        where: { 
+          tenantId, 
+          shopId: { in: shopIds }, 
+          createdAt: { 
+            gte: new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1),
+            lt: monthStart
+          } 
+        },
+        _sum: { totalAmount: true }
+      }),
     ]);
+
+    const lastMonthSalesAmount = (lastMonthSalesAgg._sum?.totalAmount ?? 0) / 100;
+
+    // 📱 WHATSAPP RECOVERY: Correlation (Invoice within 48h of WhatsApp)
+    const thisMonthInvoices = await this.prisma.invoice.findMany({
+      where: {
+        tenantId,
+        shopId: { in: shopIds },
+        createdAt: { gte: monthStart },
+        status: 'PAID'
+      },
+      select: { totalAmount: true, customerId: true, createdAt: true }
+    });
+
+    // Fetch relevant WhatsApp logs once
+    const whatsappLogs = await this.prisma.whatsAppLog.findMany({
+      where: {
+        tenantId,
+        sentAt: { gte: new Date(monthStart.getTime() - 48 * 60 * 60 * 1000) }
+      },
+      select: { customerId: true, sentAt: true }
+    });
+
+    let whatsappRecoveryAmount = 0;
+    for (const inv of thisMonthInvoices) {
+      if (!inv.customerId) continue;
+      
+      const windowStart = new Date(inv.createdAt.getTime() - 48 * 60 * 60 * 1000);
+      const reminder = whatsappLogs.find(log => 
+        log.customerId === inv.customerId &&
+        log.sentAt >= windowStart &&
+        log.sentAt <= inv.createdAt
+      );
+
+      if (reminder) {
+        whatsappRecoveryAmount += inv.totalAmount;
+      }
+    }
+    const whatsappRecoverySales = whatsappRecoveryAmount / 100;
+
+    const whatsappSent = whatsappSentCount;
+    const whatsappDelivered = whatsappDeliveredCount;
+
+    const totalInvAmount = (monthSalesAgg._sum?.totalAmount ?? 0);
+    const paidInvAmount = (paidSalesAgg._sum?.totalAmount ?? 0);
+    const collectionRate = totalInvAmount > 0 
+      ? Math.round((paidInvAmount / totalInvAmount) * 100) 
+      : 100;
+
+    const turnaroundDaysArr = repairDocs.map(r => {
+      const diff = r.updatedAt.getTime() - r.createdAt.getTime();
+      return diff / (1000 * 60 * 60 * 24);
+    });
+    const repairTurnaroundDays = turnaroundDaysArr.length > 0
+      ? (turnaroundDaysArr.reduce((a, b) => a + b, 0) / turnaroundDaysArr.length).toFixed(1)
+      : "0";
 
     // Parse repair pipeline from groupBy result
     const jobCardMap = new Map(
@@ -253,9 +358,22 @@ export class MobileShopDashboardService {
         deadStock: inventoryKpi.deadStock.slice(0, 5),
       },
 
-      // aggregated stats
       paymentStats,
       salesTrend,
+
+      // 🎯 VALUE SNAPSHOT
+      valueSnapshot: {
+        monthRevenue: (monthSales._sum.totalAmount ?? 0) / 100,
+        lastMonthRevenue: lastMonthSalesAmount, // Phase 3
+        invoiceCount: monthSales._count.id,
+        collectionRate,
+        whatsappStats: {
+          sent: whatsappSent,
+          delivered: whatsappDelivered,
+          recoveredAmount: whatsappRecoverySales, // Phase 2
+        },
+        repairTurnaroundDays,
+      },
     };
 
     // 📦 CACHE RESPONSE for 60 seconds

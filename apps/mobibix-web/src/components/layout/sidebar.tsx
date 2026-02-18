@@ -27,6 +27,7 @@ const navItems: NavItem[] = [
   { label: "Shops", href: "/shops", icon: "🏪" },
   { label: "Staff", href: "/staff", icon: "👥" },
   { label: "Settings", href: "/settings", icon: "⚙️" },
+  { label: "Pricing", href: "/pricing", icon: "🏷️" },
 ];
 
 // ... imports
@@ -102,40 +103,33 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       >
         {/* Logo/Brand + Mobile Close */}
         <div
-          className={`${sidebarPadding} border-b transition-all duration-300 flex items-center justify-between ${
+          className={`${sidebarPadding} border-b transition-all duration-300 flex items-center justify-center ${
             isDark
               ? "border-gray-800"
               : "border-teal-100 bg-gradient-to-r from-teal-50/50 to-transparent"
           }`}
         >
           {!effectiveCollapsed && (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-md">
-                M
-              </div>
-              <h1
-                className={`text-xl font-bold bg-gradient-to-r ${
-                  isDark
-                    ? "text-white"
-                    : "from-teal-600 to-teal-700 bg-clip-text text-transparent"
-                }`}
-              >
-                MobiBix
-              </h1>
-            </div>
+            <img 
+              src="/assets/mobibix-main-logo.png" 
+              alt="MobiBix Logo" 
+              className="h-28 w-auto object-contain"
+            />
           )}
 
           {/* Mobile Close Button */}
           {mobileOpen && (
-             <button onClick={onClose} className="lg:hidden p-1 text-gray-500 hover:text-red-500">
+             <button onClick={onClose} className="absolute right-4 top-4 lg:hidden p-1 text-gray-500 hover:text-red-500">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
              </button>
           )}
 
           {effectiveCollapsed && (
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-lg">
-              M
-            </div>
+            <img 
+              src="/assets/mobibix-app-icon.png" 
+              alt="MobiBix Icon" 
+              className="w-12 h-12 object-contain"
+            />
           )}
         </div>
 

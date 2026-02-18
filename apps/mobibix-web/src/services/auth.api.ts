@@ -172,16 +172,21 @@ export async function exchangeFirebaseToken(
 
     return data;
   } catch (error: any) {
-    console.error("Token exchange error:", error);
+    if (Object.keys(error).length === 0) {
+        console.error("Token exchange error (Empty Object):", JSON.stringify(error, null, 2), error);
+    } else {
+        console.error("Token exchange error:", error);
+    }
 
     // Handle network errors (Connection refused / Server down)
-    if (error instanceof TypeError && error.message === "Failed to fetch") {
-      throw {
+    if (error instanceof TypeError && (error.message === "Failed to fetch" || error.message.includes("NetworkError"))) {
+      const authError: AuthError = {
         code: "NETWORK_ERROR",
         message:
           "Unable to connect to server. Please check your internet connection or try again later.",
-        details: { originalError: error.message },
-      } as AuthError;
+        details: { originalError: error.message, apiUrl: API_BASE_URL },
+      };
+      throw authError; // Throw typed error
     }
 
     throw error;
@@ -226,6 +231,33 @@ export async function logout(): Promise<void> {
     }
     setAccessToken(null);
   }
+}
+
+/**
+ * Creates email/password account (Client-Side Firebase)
+ */
+import { 
+  createUserWithEmailAndPassword, 
+  sendEmailVerification, 
+  User as FirebaseUser,
+  updateProfile
+} from "REMOVED_AUTH_PROVIDER/auth";
+import { auth } from "@/lib/REMOVED_AUTH_PROVIDER";
+
+export async function createEmailAccount(email: string, pass: string, name?: string): Promise<FirebaseUser> {
+  if (!auth) throw new Error("Firebase not initialized");
+  
+  const credential = await createUserWithEmailAndPassword(auth, email, pass);
+  
+  if (name) {
+    await updateProfile(credential.user, { displayName: name });
+  }
+
+  return credential.user;
+}
+
+export async function sendVerificationEmail(user: FirebaseUser): Promise<void> {
+  await sendEmailVerification(user);
 }
 
 export async function getCurrentUser(): Promise<CurrentUserResponse | null> {

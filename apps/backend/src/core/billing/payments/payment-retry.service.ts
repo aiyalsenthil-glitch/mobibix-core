@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PaymentStatus, PaymentRetryStatus } from '@prisma/client';
+import { PaymentStatus, PaymentRetryStatus, ModuleType } from '@prisma/client';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { PaymentFailedEvent } from '../../../common/email/email.events';
 
 @Injectable()
 export class PaymentRetryService {
@@ -10,7 +12,10 @@ export class PaymentRetryService {
   // Dunning Schedule (in hours from initial failure)
   private readonly RETRY_SCHEDULE = [1, 24, 72]; // 1h, 1d, 3d
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2
+  ) {}
 
   /**
    * Schedule the next retry for a failed payment.
@@ -119,11 +124,34 @@ export class PaymentRetryService {
     }
 
     // 2. Perform Dunning Action (Email)
-    // TODO: Integrate real EmailService
-    this.logger.warn(`[DUNNING] 📧 Sending payment reminder #${retry.retryCount} to Tenant ${payment.tenantId} for Payment ${payment.id}`);
-    
-    // In a real implementation:
-    // await this.emailService.sendPaymentFailedEmail(payment.tenantId, payment.id);
+    // Fetch tenant to know module type and email
+    const tenant = await this.prisma.tenant.findUnique({
+        where: { id: payment.tenantId },
+        include: { users: { where: { role: 'OWNER' } } }
+    });
+
+    if (tenant && tenant.users[0]?.email) {
+        const module = tenant.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
+        
+        // Calculate next retry time for display
+        const nextRetryDelay = this.RETRY_SCHEDULE[retry.retryCount] || null;
+        const nextRetryDate = nextRetryDelay ? new Date(Date.now() + nextRetryDelay * 3600000) : null;
+
+        await this.eventEmitter.emitAsync(
+            'payment.failed',
+            new PaymentFailedEvent(
+                tenant.id,
+                module,
+                new Date(),
+                payment,
+                retry.retryCount,
+                nextRetryDate
+            )
+        );
+        this.logger.log(`[DUNNING] Emitted payment.failed event for ${tenant.users[0].email}`);
+    } else {
+        this.logger.warn(`[DUNNING] Could not send email: Tenant or Owner email missing for ${payment.tenantId}`);
+    }
 
     // 3. Mark this retry as PROCESSED
     await this.prisma.paymentRetry.update({

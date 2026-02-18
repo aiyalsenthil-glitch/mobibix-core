@@ -17,8 +17,16 @@ async function main() {
   });
 
   const prisma = new PrismaClient();
+  
+  const mockEventEmitter = {
+      emitAsync: async (event: string, payload: any) => {
+          console.log(`[MOCK EVENT] Emitted: ${event}`, payload);
+          return [];
+      }
+  };
+
   // Mock PrismaService (which extends PrismaClient)
-  const paymentRetryService = new PaymentRetryService(prisma as any);
+  const paymentRetryService = new PaymentRetryService(prisma as any, mockEventEmitter as any);
 
   console.log('🚀 Starting Payment Retry Verification...');
 

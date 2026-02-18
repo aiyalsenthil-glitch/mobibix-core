@@ -7,6 +7,9 @@ import FacebookSDK from "../components/FacebookSDK";
 export const metadata = {
   title: "MobiBix – Digital Retail Platform",
   description: "Mobile shop ERP & repair management platform",
+  icons: {
+    icon: "/assets/mobibix-app-icon.png",
+  },
 };
 export const playfair = Playfair_Display({
   subsets: ["latin"],

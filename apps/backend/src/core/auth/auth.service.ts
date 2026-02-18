@@ -127,6 +127,17 @@ export class AuthService {
         throw new UnauthorizedException('Invalid Firebase payload');
       }
 
+      // 🛑 Reject unverified email/password accounts
+      // Google sign-in always has email_verified = true (or doesn't use 'password' provider)
+      /* 
+      if (
+        decoded.REMOVED_AUTH_PROVIDER?.sign_in_provider === 'password' &&
+        !decoded.email_verified
+      ) {
+        throw new UnauthorizedException('EMAIL_NOT_VERIFIED');
+      } 
+      */
+
       // ─────────────────────────────
       // 2️⃣ Find or create user (atomic upsert prevents race condition)
       // ─────────────────────────────
@@ -348,7 +359,11 @@ export class AuthService {
         err instanceof UnauthorizedException ||
         err?.code?.includes?.('auth')
       ) {
-        throw new UnauthorizedException('Firebase authentication failed');
+        // If it's already our custom exception, rethrow it
+        if (err.message === 'EMAIL_NOT_VERIFIED' || err.message === 'Invalid Firebase payload') {
+            throw err;
+        }
+        throw new UnauthorizedException(`Firebase authentication failed: ${err.message}`);
       }
 
       // Prisma errors

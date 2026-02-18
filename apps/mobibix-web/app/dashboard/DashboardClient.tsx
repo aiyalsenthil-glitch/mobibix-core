@@ -70,6 +70,14 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
             📊 Dashboard
           </Link>
           <Link
+            href="/pricing"
+            className={`block px-4 py-3 rounded-lg transition-all ${
+              isActive("/pricing") ? navItemActive : navItemInactive
+            }`}
+          >
+            🏷️ Pricing
+          </Link>
+          <Link
             href="/sales"
             className={`block px-4 py-3 rounded-lg transition-all ${
               isActive("/sales") ? navItemActive : navItemInactive

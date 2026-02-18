@@ -15,9 +15,10 @@ import { randomBytes } from 'crypto';
 import { PLAN_CAPABILITIES } from '../billing/plan-capabilities';
 import { PlanRulesService } from '../billing/plan-rules.service';
 import { normalizePhone } from '../../common/utils/phone.util';
-import { EmailService } from '../../common/email/email.service';
-import { welcomeEmailTemplate } from '../../common/email/templates/welcome.template';
+// import { EmailService } from '../../common/email/email.service'; <-- Removed direct usage
 import { getCreateAudit } from '../audit/audit.helper';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { TenantWelcomeEvent } from '../../common/email/email.events';
 
 @Injectable()
 export class TenantService {
@@ -29,6 +30,7 @@ export class TenantService {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly jwtService: JwtService,
     private readonly planRulesService: PlanRulesService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -99,23 +101,30 @@ export class TenantService {
         ...getCreateAudit(userId), // ✅ Capture who created
       },
     });
-    // Send welcome email after gym creation
+    // Send welcome email after gym create (Event Driven)
     if (!user.welcomeEmailSent && user.email) {
       try {
-        const emailService = new EmailService();
-
-        await emailService.sendEmail({
-          to: user.email,
-          subject: 'Welcome to GymPilot 🎉',
-          html: welcomeEmailTemplate(tenant.name),
-        });
+        const module = effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM'; // Resolve module
+        
+        await this.eventEmitter.emitAsync(
+          'tenant.welcome',
+          new TenantWelcomeEvent(
+            tenant.id,
+            module,
+            new Date(),
+            user,
+            tenant
+          )
+        );
 
         await this.prisma.user.update({
           where: { id: user.id },
           data: { welcomeEmailSent: true },
         });
+        
+        this.logger.log(`[EVENT] Emitted tenant.welcome for ${user.email}`);
       } catch (err) {
-        console.error('Welcome email failed', err);
+        this.logger.error('Failed to emit welcome event', err);
       }
     }
 
