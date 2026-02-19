@@ -138,101 +138,78 @@ export class AuthService {
       } 
       */
 
-      // ─────────────────────────────
-      // 2️⃣ Find or create user (atomic upsert prevents race condition)
-      // ─────────────────────────────
-      const user = await this.prisma.user.upsert({
-        where: { REMOVED_AUTH_PROVIDERUid: decoded.uid },
-        update: {
-          email: decoded.email ?? null,
-          fullName: decoded.name ?? null,
-        },
-        create: {
-          REMOVED_AUTH_PROVIDERUid: decoded.uid,
-          email: decoded.email ?? null,
-          fullName: decoded.name ?? null,
-          role: UserRole.USER,
-          tenantId: null,
-        },
-      });
-
-      // ─────────────────────────────
-      // 3️⃣ Staff invite auto-accept (OPTIMIZED: run in parallel with tenant lookup)
-      // ─────────────────────────────
-      const staffInvitePromise = decoded.email
-        ? this.prisma.staffInvite.findFirst({
-            where: {
-              email: decoded.email,
-              accepted: false,
+      // 2️⃣ Find user, resolve tenant context, and check invites (PARALLEL)
+      // Consolidate multiple queries into one parallel block to reduce round trips
+      const [user, globalTenant, staffInvite] = await Promise.all([
+        this.prisma.user.upsert({
+          where: { REMOVED_AUTH_PROVIDERUid: decoded.uid },
+          update: {
+            email: decoded.email ?? null,
+            fullName: decoded.name ?? null,
+          },
+          create: {
+            REMOVED_AUTH_PROVIDERUid: decoded.uid,
+            email: decoded.email ?? null,
+            fullName: decoded.name ?? null,
+            role: UserRole.USER,
+            tenantId: null,
+          },
+          include: {
+            userTenants: {
+              include: {
+                tenant: {
+                  select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                  },
+                },
+              },
             },
-          })
-        : Promise.resolve(null);
+          },
+        }),
+        tenantCode
+          ? this.prisma.tenant.findUnique({
+              where: { code: tenantCode },
+              select: { id: true },
+            })
+          : Promise.resolve(null),
+        decoded.email
+          ? this.prisma.staffInvite.findFirst({
+              where: {
+                email: decoded.email,
+                accepted: false,
+              },
+            })
+          : Promise.resolve(null),
+      ]);
 
       // ─────────────────────────────
-      // 4️⃣ Resolve active tenant context (OPTIMIZED)\n      // ─────────────────────────────
+      // 3️⃣ Resolve active tenant context (IN-MEMORY)
+      // ─────────────────────────────
+      const userTenants = user.userTenants;
+      const userTenantCount = userTenants.length;
       let activeUserTenant: any = null;
 
       if (tenantCode) {
-        // Get tenant by code (simple query, indexed)
-        const tenant = await this.prisma.tenant.findUnique({
-          where: { code: tenantCode },
-          select: { id: true },
-        });
-
-        if (!tenant) {
+        if (!globalTenant) {
           throw new UnauthorizedException('Tenant code is invalid');
         }
 
-        // Get user-tenant relationship with simple includes (no nested includes)
-        activeUserTenant = await this.prisma.userTenant.findFirst({
-          where: {
-            userId: user.id,
-            tenantId: tenant.id,
-          },
-          select: {
-            id: true,
-            tenantId: true,
-            role: true,
-            tenant: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-              },
-            },
-          },
-        });
-      } else {
-        // Get first user tenant without expensive nested includes
-        activeUserTenant = await this.prisma.userTenant.findFirst({
-          where: { userId: user.id },
-          select: {
-            id: true,
-            tenantId: true,
-            role: true,
-            tenant: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-              },
-            },
-          },
-        });
-      }
+        activeUserTenant = userTenants.find(
+          (ut) => ut.tenant.code === tenantCode,
+        );
 
-      // 🚫 Tenant requested but user not linked → BLOCK
-      if (tenantCode && !activeUserTenant) {
-        throw new UnauthorizedException('User is not linked to this tenant');
+        if (!activeUserTenant) {
+          throw new UnauthorizedException('User is not linked to this tenant');
+        }
+      } else {
+        // Fallback: Use the first linked tenant if it exists
+        activeUserTenant = userTenants[0] || null;
       }
 
       // 🟢 First login without tenant context (allowed)
-      if (!tenantCode && !activeUserTenant) {
-        // Count all user tenants for frontend router
-        const userTenantCount = await this.prisma.userTenant.count({
-          where: { userId: user.id },
-        });
-
+      if (!activeUserTenant) {
         const token = this.jwtService.sign({
           sub: user.id,
           tenantId: null,
@@ -263,7 +240,40 @@ export class AuthService {
       const resolvedUserTenant = activeUserTenant!;
 
       // ─────────────────────────────
-      // 5️⃣ Issue JWT
+      // 5️⃣ Accept staff invite (fire-and-forget but already resolved locally)
+      // ─────────────────────────────
+      const processStaffInvite = async () => {
+        if (!staffInvite) return;
+
+        try {
+          await this.prisma.userTenant.upsert({
+            where: {
+              userId_tenantId: {
+                userId: user.id,
+                tenantId: staffInvite.tenantId,
+              },
+            },
+            update: {
+              role: UserRole.STAFF,
+            },
+            create: {
+              userId: user.id,
+              tenantId: staffInvite.tenantId,
+              role: UserRole.STAFF,
+            },
+          });
+
+          await this.prisma.staffInvite.update({
+            where: { id: staffInvite.id },
+            data: { accepted: true },
+          });
+        } catch (err) {
+          console.warn('⚠️  Failed to accept staff invite:', err?.message);
+        }
+      };
+
+      // ─────────────────────────────
+      // 6️⃣ Issue JWT & Refresh Token
       // ─────────────────────────────
       const token = this.jwtService.sign({
         sub: user.id,
@@ -272,40 +282,10 @@ export class AuthService {
         role: resolvedUserTenant.role,
       });
 
-      const refreshToken = await this.createRefreshToken(user.id);
-
-      // ─────────────────────────────
-      // 6️⃣ Handle staff invite acceptance (fire-and-forget)
-      // ─────────────────────────────
-      staffInvitePromise
-        .then(async (invite) => {
-          if (invite) {
-            await this.prisma.userTenant.upsert({
-              where: {
-                userId_tenantId: {
-                  userId: user.id,
-                  tenantId: invite.tenantId,
-                },
-              },
-              update: {
-                role: UserRole.STAFF,
-              },
-              create: {
-                userId: user.id,
-                tenantId: invite.tenantId,
-                role: UserRole.STAFF,
-              },
-            });
-
-            await this.prisma.staffInvite.update({
-              where: { id: invite.id },
-              data: { accepted: true },
-            });
-          }
-        })
-        .catch((err) => {
-          console.warn('⚠️  Failed to accept staff invite:', err?.message);
-        });
+      const [refreshToken] = await Promise.all([
+        this.createRefreshToken(user.id),
+        processStaffInvite(), // Run in parallel with token creation
+      ]);
 
       // ─────────────────────────────
       // 7️⃣ Set Firebase custom claims (fire-and-forget for speed)
@@ -340,9 +320,7 @@ export class AuthService {
           name: resolvedUserTenant.tenant.name,
           code: resolvedUserTenant.tenant.code,
         },
-        tenantCount: await this.prisma.userTenant.count({
-          where: { userId: user.id },
-        }),
+        tenantCount: userTenantCount,
       };
     } catch (err) {
       // Log the actual error for debugging

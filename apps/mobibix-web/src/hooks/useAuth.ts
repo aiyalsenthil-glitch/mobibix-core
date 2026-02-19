@@ -155,7 +155,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
     // Only redirect from public/auth pages
     if (
-      pathname === "/" ||
       pathname?.startsWith("/signin") ||
       pathname?.startsWith("/signup")
     ) {
