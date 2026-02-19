@@ -98,37 +98,32 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
   const exchangeToken = useCallback(
     async (REMOVED_AUTH_PROVIDERUser: FirebaseUser, tenantCode?: string) => {
-      console.log("DEBUG: useAuth.exchangeToken called for:", REMOVED_AUTH_PROVIDERUser.email);
       try {
         setIsLoading(true);
         setError(null);
 
         const idToken = await REMOVED_AUTH_PROVIDERUser.getIdToken();
-        console.log("DEBUG: Firebase ID Token acquired");
 
         const response = await exchangeFirebaseToken(idToken, tenantCode);
-        console.log("DEBUG: exchangeFirebaseToken API RESPONSE RECEIVED", response.user.id);
 
         setAuthUser(response.user);
         setFirebaseUser(REMOVED_AUTH_PROVIDERUser);
 
         // Post-login redirect based on tenant count/role
-        console.log("DEBUG: Calculating redirect...");
+        // Use window.location.href (hard navigation) instead of router.replace()
+        // to prevent the signin page from briefly flashing during soft navigation
         const redirectPath = getPostLoginRedirect(response);
-        console.log("DEBUG: Redirecting to:", redirectPath);
-        router.replace(redirectPath);
+        window.location.href = redirectPath;
 
+        // Keep isLoading = true; the hard navigation will tear down this page
         return response as ExchangeTokenResponse;
       } catch (err: any) {
-        console.error("DEBUG: useAuth.exchangeToken ERROR:", err);
         setError(err.message || "Failed to exchange token");
-        throw err;
-      } finally {
-        console.log("DEBUG: useAuth.exchangeToken FINALLY - setting isLoading: false");
         setIsLoading(false);
+        throw err;
       }
     },
-    [router],
+    [],
   );
 
   // Redirect if authUser already resolved (e.g., page reload with valid token)
@@ -167,9 +162,9 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       pathname?.startsWith("/signup")
     ) {
       const path = getRoleRedirect(authUser);
-      router.replace(path);
+      window.location.href = path;
     }
-  }, [authUser, router, pathname]);
+  }, [authUser, pathname]);
 
   const logout = useCallback(async () => {
     try {

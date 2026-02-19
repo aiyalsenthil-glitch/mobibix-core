@@ -52,9 +52,9 @@ export default function AuthPage({ mode }: AuthPageProps) {
     if (authLoading) return;
     if (isAuthenticated && authUser) {
       const path = getRoleRedirect(authUser);
-      router.replace(path);
+      window.location.href = path;
     }
-  }, [authLoading, isAuthenticated, authUser, router]);
+  }, [authLoading, isAuthenticated, authUser]);
 
   // Clear error on step change
   useEffect(() => setError(null), [step]);
@@ -64,22 +64,18 @@ export default function AuthPage({ mode }: AuthPageProps) {
       setLoading(true);
       setError(null);
       const result = await signInWithPopup(auth, googleProvider);
-      console.log("DEBUG: Google sign-in result:", result.user.email);
-      // Exchange token (backend handles verification check - Google is always verified)
-      console.log("DEBUG: Starting exchangeToken stage...");
       const response = await exchangeToken(result.user);
-      console.log("DEBUG: exchangeToken COMPLETED", response?.user?.id);
-      setLoading(false);
-      // Redirect is handled by exchangeToken() in useAuth.ts
-      // No duplicate redirect needed here
+      // Keep loading = true; hard navigation in exchangeToken will tear down this page
     } catch (err: any) {
-      console.error("DEBUG: handleGoogleSignIn error details:", err);
       // Backend error code for blocked unverified emails
       if (err.message === "EMAIL_NOT_VERIFIED") {
         setFirebaseUser(auth.currentUser);
         setStep("VERIFY");
       } else if (err?.code !== "auth/popup-closed-by-user") {
-        setError(err.message || "Failed to sign in with Google");
+        const msg = err.code === 'auth/invalid-credential'
+          ? "Invalid login credentials. Please try again."
+          : (err.message || "Failed to sign in with Google");
+        setError(msg);
       }
     } finally {
       if (!isAuthenticated) setLoading(false);
@@ -104,18 +100,11 @@ export default function AuthPage({ mode }: AuthPageProps) {
     setLoading(true);
     setError(null);
     try {
-      console.log("DEBUG: signInWithEmailAndPassword START:", email);
       const result = await signInWithEmailAndPassword(auth, email, password);
-      console.log("DEBUG: signInWithEmailAndPassword SUCCESS:", result.user.email);
       // Exchange token (backend enforces email verification)
-      console.log("DEBUG: Starting exchangeToken stage...");
       const response = await exchangeToken(result.user);
-      console.log("DEBUG: exchangeToken COMPLETED", response?.user?.id);
-      setLoading(false);
-      // Redirect is handled by exchangeToken() in useAuth.ts
-      // No duplicate redirect needed here
+      // Keep loading = true; hard navigation in exchangeToken will tear down this page
     } catch (err: any) {
-      console.error("DEBUG: handleLogin error details:", err);
       if (err.code === 'auth/user-not-found') {
         setError("Account not found. Create one?");
         setStep("SIGNUP_PASS");
@@ -128,9 +117,14 @@ export default function AuthPage({ mode }: AuthPageProps) {
         setStep("VERIFY");
       } else {
          // Granular Firebase error handling
-         const msg = err.code === 'auth/unauthorized-domain' 
-           ? "This domain is not authorized in Firebase. Check Firebase Console > Auth > Settings."
-           : (err.message || "Invalid credentials");
+         let msg = err.message || "Invalid credentials";
+         
+         if (err.code === 'auth/unauthorized-domain') {
+           msg = "This domain is not authorized in Firebase. Check Firebase Console > Auth > Settings.";
+         } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+           msg = "Invalid email or password. Please try again.";
+         }
+         
          setError(msg);
       }
       setLoading(false);
@@ -151,7 +145,6 @@ export default function AuthPage({ mode }: AuthPageProps) {
     setError(null);
     
     try {
-      console.log("DEBUG: createUserWithEmailAndPassword START:", email);
       const res = await createUserWithEmailAndPassword(auth, email, password);
       if (fullName) {
         await updateProfile(res.user, { displayName: fullName });
@@ -163,9 +156,16 @@ export default function AuthPage({ mode }: AuthPageProps) {
       setStep("VERIFY");
       setLoading(false);
     } catch (err: any) {
-      const msg = err.code === 'auth/unauthorized-domain' 
-        ? "This domain is not authorized in Firebase. Check Firebase Console > Auth > Settings."
-        : (err.message || "Signup failed");
+      let msg = err.message || "Signup failed";
+      
+      if (err.code === 'auth/unauthorized-domain') {
+        msg = "This domain is not authorized in Firebase. Check Firebase Console > Auth > Settings.";
+      } else if (err.code === 'auth/email-already-in-use') {
+        msg = "This email is already registered. Try signing in instead.";
+      } else if (err.code === 'auth/weak-password') {
+        msg = "Password is too weak. Please use a stronger password.";
+      }
+      
       setError(msg);
       setLoading(false);
     }
