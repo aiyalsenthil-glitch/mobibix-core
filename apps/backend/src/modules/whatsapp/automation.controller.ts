@@ -29,7 +29,7 @@ import { Roles } from '../../core/auth/decorators/roles.decorator';
  *
  * Protected by JWT auth (admin/owner only recommended)
  */
-@Controller('api/whatsapp/automations')
+@Controller('whatsapp/automations')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
 export class AutomationController {

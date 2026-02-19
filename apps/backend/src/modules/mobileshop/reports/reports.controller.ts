@@ -14,7 +14,7 @@ import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
 import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
 
-@Controller('api/mobileshop/reports')
+@Controller('mobileshop/reports')
 @ModuleScope(ModuleType.MOBILE_SHOP)
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
