@@ -1,4 +1,3 @@
-/// <reference types="multer" />
 import {
   Controller,
   Get,
@@ -25,6 +24,17 @@ import type { Response } from 'express';
 import { ProductsService } from './products.service';
 import { ImportProductDto } from './dto/import-product.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
+
+// Local interface for Multer file since global Express.Multer.File 
+// might not be available in all environments depending on TS configuration
+interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+}
 
 @UseGuards(JwtAuthGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
@@ -95,7 +105,7 @@ export class ProductsController {
         fileIsRequired: true,
       }),
     )
-    file: Express.Multer.File,
+    file: MulterFile,
     @Body() body: { shopId: string; includeStock: string },
   ) {
     const tenantId = req.user.tenantId;
