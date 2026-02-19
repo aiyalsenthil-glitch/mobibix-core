@@ -140,14 +140,29 @@ export class AuthService {
 
       // 2️⃣ Find user, resolve tenant context, and check invites (PARALLEL)
       // Consolidate multiple queries into one parallel block to reduce round trips
-      const [user, globalTenant, staffInvite] = await Promise.all([
-        this.prisma.user.upsert({
-          where: { REMOVED_AUTH_PROVIDERUid: decoded.uid },
-          update: {
-            email: decoded.email ?? null,
-            fullName: decoded.name ?? null,
+      // 2️⃣ Find or Create User (Optimized)
+      // We first try findUnique to avoid the overhead of a full upsert with includes
+      let user = await this.prisma.user.findUnique({
+        where: { REMOVED_AUTH_PROVIDERUid: decoded.uid },
+        include: {
+          userTenants: {
+            include: {
+              tenant: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                },
+              },
+            },
           },
-          create: {
+        },
+      });
+
+      if (!user) {
+        // Create new user if they don't exist
+        user = await this.prisma.user.create({
+          data: {
             REMOVED_AUTH_PROVIDERUid: decoded.uid,
             email: decoded.email ?? null,
             fullName: decoded.name ?? null,
@@ -167,7 +182,27 @@ export class AuthService {
               },
             },
           },
-        }),
+        });
+      } else {
+        // User exists, check if we need to update meta (async/fire-and-forget for speed)
+        const needsUpdate =
+          (decoded.email && user.email !== decoded.email) ||
+          (decoded.name && user.fullName !== decoded.name);
+
+        if (needsUpdate) {
+          this.prisma.user
+            .update({
+              where: { id: user.id },
+              data: {
+                email: decoded.email ?? user.email,
+                fullName: decoded.name ?? user.fullName,
+              },
+            })
+            .catch((e) => console.warn('⚠️  Failed to update user meta:', e.message));
+        }
+      }
+
+      const [globalTenant, staffInvite] = await Promise.all([
         tenantCode
           ? this.prisma.tenant.findUnique({
               where: { code: tenantCode },

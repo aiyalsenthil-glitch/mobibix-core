@@ -64,11 +64,13 @@ export default function AuthPage({ mode }: AuthPageProps) {
       setLoading(true);
       setError(null);
       const result = await signInWithPopup(auth, googleProvider);
-      
+      console.log("DEBUG: Google sign-in result:", result.user.email);
       // Exchange token (backend handles verification check - Google is always verified)
+      console.log("DEBUG: Starting exchangeToken stage...");
       await exchangeToken(result.user);
+      console.log("DEBUG: exchangeToken COMPLETED");
     } catch (err: any) {
-      console.error("Google sign-in error:", err);
+      console.error("DEBUG: handleGoogleSignIn error details:", err);
       // Backend error code for blocked unverified emails
       if (err.message === "EMAIL_NOT_VERIFIED") {
         setFirebaseUser(auth.currentUser);
@@ -92,13 +94,22 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
   const handleLogin = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (!email || !email.includes("@")) {
+      setError("Please enter a valid email address");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
+      console.log("DEBUG: signInWithEmailAndPassword START:", email);
       const result = await signInWithEmailAndPassword(auth, email, password);
+      console.log("DEBUG: signInWithEmailAndPassword SUCCESS:", result.user.email);
       // Exchange token (backend enforces email verification)
+      console.log("DEBUG: Starting exchangeToken stage...");
       await exchangeToken(result.user);
+      console.log("DEBUG: exchangeToken COMPLETED");
     } catch (err: any) {
+      console.error("DEBUG: handleLogin error details:", err);
       if (err.code === 'auth/user-not-found') {
         setError("Account not found. Create one?");
         setStep("SIGNUP_PASS");
@@ -122,6 +133,10 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
   const handleSignup = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (!email || !email.includes("@")) {
+      setError("Please enter a valid email address");
+      return;
+    }
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
@@ -130,6 +145,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
     setError(null);
     
     try {
+      console.log("DEBUG: createUserWithEmailAndPassword START:", email);
       const res = await createUserWithEmailAndPassword(auth, email, password);
       if (fullName) {
         await updateProfile(res.user, { displayName: fullName });

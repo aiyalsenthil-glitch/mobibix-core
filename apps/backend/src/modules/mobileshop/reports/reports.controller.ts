@@ -31,6 +31,19 @@ export class MobileShopReportsController extends TenantScopedController {
     super();
   }
 
+  /**
+   * Helper to parse date from multiple possible query parameters
+   */
+  private parseDate(
+    primary?: string,
+    secondary?: string,
+    defaultDate?: Date,
+  ): Date {
+    if (primary) return new Date(primary);
+    if (secondary) return new Date(secondary);
+    return defaultDate || new Date();
+  }
+
   @Get('dashboard')
   async getDashboard(@Request() req, @Query('shopId') shopId?: string) {
     const tenantId = this.getTenantId(req);
@@ -152,12 +165,17 @@ export class MobileShopReportsController extends TenantScopedController {
     @Request() req,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
     @Query('shopId') shopId?: string,
   ) {
+    const from = this.parseDate(startDate, fromDate);
+    const to = this.parseDate(endDate, toDate);
+
     return this.gstReports.getGSTR1B2B(
       this.getTenantId(req),
-      new Date(fromDate),
-      new Date(toDate),
+      from,
+      to,
       shopId,
     );
   }
@@ -167,12 +185,17 @@ export class MobileShopReportsController extends TenantScopedController {
     @Request() req,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
     @Query('shopId') shopId?: string,
   ) {
+    const from = this.parseDate(startDate, fromDate);
+    const to = this.parseDate(endDate, toDate);
+
     return this.gstReports.getGSTR1B2C(
       this.getTenantId(req),
-      new Date(fromDate),
-      new Date(toDate),
+      from,
+      to,
       shopId,
     );
   }
@@ -182,12 +205,17 @@ export class MobileShopReportsController extends TenantScopedController {
     @Request() req,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
     @Query('shopId') shopId?: string,
   ) {
+    const from = this.parseDate(startDate, fromDate);
+    const to = this.parseDate(endDate, toDate);
+
     return this.gstReports.getGSTR2(
       this.getTenantId(req),
-      new Date(fromDate),
-      new Date(toDate),
+      from,
+      to,
       shopId,
     );
   }
@@ -197,12 +225,17 @@ export class MobileShopReportsController extends TenantScopedController {
     @Request() req,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
     @Query('shopId') shopId?: string,
   ) {
+    const from = this.parseDate(startDate, fromDate);
+    const to = this.parseDate(endDate, toDate);
+
     const csv = await this.gstReports.exportGSTR1AsCSV(
       this.getTenantId(req),
-      new Date(fromDate),
-      new Date(toDate),
+      from,
+      to,
       shopId,
     );
     return { csv };
@@ -213,12 +246,17 @@ export class MobileShopReportsController extends TenantScopedController {
     @Request() req,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
     @Query('shopId') shopId?: string,
   ) {
+    const from = this.parseDate(startDate, fromDate);
+    const to = this.parseDate(endDate, toDate);
+
     const csv = await this.gstReports.exportGSTR2AsCSV(
       this.getTenantId(req),
-      new Date(fromDate),
-      new Date(toDate),
+      from,
+      to,
       shopId,
     );
     return { csv };
@@ -288,15 +326,21 @@ export class MobileShopReportsController extends TenantScopedController {
     @Query('shopId') shopId: string,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
   ) {
     if (!shopId) {
       return { error: 'shopId is required for daily sales report' };
     }
+
+    const from = this.parseDate(startDate, fromDate);
+    const to = this.parseDate(endDate, toDate);
+
     return this.dailySales.getDailySalesReport(
       req.user.tenantId,
       shopId,
-      new Date(fromDate),
-      new Date(toDate),
+      from,
+      to,
     );
   }
 
@@ -322,15 +366,21 @@ export class MobileShopReportsController extends TenantScopedController {
     @Query('shopId') shopId: string,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
   ) {
     if (!shopId) {
       return { error: 'shopId is required' };
     }
+
+    const from = this.parseDate(startDate, fromDate);
+    const to = this.parseDate(endDate, toDate);
+
     const csv = await this.dailySales.exportDailySalesCSV(
       req.user.tenantId,
       shopId,
-      new Date(fromDate),
-      new Date(toDate),
+      from,
+      to,
     );
     return { csv };
   }
