@@ -1,7 +1,7 @@
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: mobibix-postgres
     restart: unless-stopped
     environment:
@@ -54,7 +54,7 @@ services:
       OLLAMA_DEFAULT_MODEL: llama3:8b
       OLLAMA_EMBED_MODEL: nomic-embed-text
       OLLAMA_TIMEOUT_MS: 30000
-      MAX_CONCURRENT_LLM_REQUESTS: ${MAX_CONCURRENT_LLM_REQUESTS:-2}
+      MAX_CONCURRENT_LLM_REQUESTS: ${MAX_CONCURRENT_LLM_REQUESTS:-1}
       MAX_TOOL_CALLS_PER_REQUEST: ${MAX_TOOL_CALLS_PER_REQUEST:-5}
       MAX_TOTAL_TOKENS_PER_REQUEST: ${MAX_TOTAL_TOKENS_PER_REQUEST:-6000}
       AI_CLOUD_FALLBACK_ENABLED: ${AI_CLOUD_FALLBACK_ENABLED:-false}
