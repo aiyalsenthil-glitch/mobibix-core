@@ -1,6 +1,73 @@
 package com.aiyal.mobibix.ui.features.settings
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+
+// ...
+
+@Composable
+fun SettingsScreen(
+    navController: NavController,
+    shopContextProvider: ShopContextProvider
+) {
+    val activeShopId = shopContextProvider.getActiveShopId() ?: ""
+    // ThemeState is a singleton object, access directly
+    val isSystemDark = isSystemInDarkTheme()
+    val isDarkTheme = ThemeState.isDarkMode ?: isSystemDark
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // ... (Header code unchanged)
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            // ── Appearance Section ──
+            item {
+                SettingsSectionHeader("Appearance")
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    if (isDarkTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Dark Mode", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("Adjust app appearance", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(
+                            checked = isDarkTheme,
+                            onCheckedChange = { 
+                                ThemeState.isDarkMode = it 
+                            }
+                        )
+                    }
+                }
+            }
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn

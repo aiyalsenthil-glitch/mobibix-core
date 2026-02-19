@@ -89,6 +89,15 @@ fun StockAdjustmentScreen(
             )
             Spacer(modifier = Modifier.height(24.dp))
 
+            val uiState by viewModel.uiState.collectAsState()
+            
+            LaunchedEffect(uiState.actionSuccess) {
+                if (uiState.actionSuccess) {
+                    viewModel.resetActionSuccess()
+                    navController.popBackStack()
+                }
+            }
+
             Button(
                 onClick = {
                     val qty = quantity.toIntOrNull()
@@ -99,22 +108,13 @@ fun StockAdjustmentScreen(
                     
                     isSaving = true
                     saveError = null
-                    // We need a shopId - passing it via VM or Context would be better
-                    // but for now relying on VM to pick it up or passed
-                    // NOTE: This logic should ideally be in VM but keeping it simple for this screen
-                    viewModel.correctStock(productId, qty, reason, note) { success, error ->
-                         isSaving = false
-                         if (success) {
-                             navController.popBackStack()
-                         } else {
-                             saveError = error ?: "Failed to update stock"
-                         }
-                    }
+                    
+                    viewModel.correctStock(productId, qty, reason, note)
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isSaving
+                enabled = !uiState.isLoading
             ) {
-                if (isSaving) {
+                if (uiState.isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Updating...")

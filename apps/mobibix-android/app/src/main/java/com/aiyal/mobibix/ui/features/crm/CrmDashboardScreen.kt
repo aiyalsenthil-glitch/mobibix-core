@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.WatchLater
 import androidx.compose.material3.*
@@ -162,7 +163,7 @@ fun PremiumActionCard(title: String, subtitle: String, icon: ImageVector, color:
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Icon(Icons.Default.ArrowBack, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) // Arrow Forward actually needed
+            Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) // Arrow Forward actually needed
         }
     }
 }

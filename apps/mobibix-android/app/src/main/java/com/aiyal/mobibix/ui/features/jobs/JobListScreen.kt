@@ -181,7 +181,7 @@ fun PremiumJobCard(job: JobCardResponse, onClick: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                PremiumStatusChip(status = job.status)
+                PremiumStatusChip(status = job.status.name)
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
