@@ -133,9 +133,13 @@ async function bootstrap() {
     res.status(200).json({ status: 'ok' });
   });
 
-  /**
-   * 🚨 TEMPORARY: Raw Admin Injection Route (Bypasses Guards)
-   */
+  // Root health check for Render/Cloud providers (prevents 404 on HEAD /)
+  server.get('/', (_req, res) => {
+    res.status(200).json({ status: 'ok', message: 'MobiBix API' });
+  });
+  server.head('/', (_req, res) => {
+    res.status(200).end();
+  });
 
   /**
    * 8️⃣ Create NestJS app ON SAME Express instance
