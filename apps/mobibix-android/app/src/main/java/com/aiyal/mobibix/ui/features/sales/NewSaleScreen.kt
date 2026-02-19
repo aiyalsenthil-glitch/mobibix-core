@@ -1,5 +1,6 @@
 package com.aiyal.mobibix.ui.features.sales
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -7,12 +8,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -56,7 +62,7 @@ fun NewSaleScreen(
 
     val items = remember { mutableStateListOf<InvoiceItemUi>() }
 
-    val saving by viewModel.saving.collectAsState() // Correctly collect the state
+    val saving by viewModel.saving.collectAsState()
 
     LaunchedEffect(shopId) {
         if (shopId.isNotBlank()) {
@@ -68,57 +74,115 @@ fun NewSaleScreen(
     val scope = rememberCoroutineScope()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("New Sale") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("New Sale") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
         ) {
-            // ... (rest of the UI)
-
-            Button(
-                enabled = items.none { it.productId == null } && items.isNotEmpty() && !saving,
-                onClick = {
-                    val request = CreateInvoiceRequest(
-                        shopId = shopId,
-                        customerName = customerName.takeIf { it.isNotBlank() },
-                        customerPhone = customerPhone.takeIf { it.isNotBlank() },
-                        paymentMode = paymentMode,
-                        items = items.map {
-                            val appliedGstRate = if (it.gstRate == -1f) it.customGstRate ?: 0f else it.gstRate
-                            val lineBase = it.quantity * it.rate
-                            val gstAmount = (lineBase * appliedGstRate / 100).roundToInt()
-                            InvoiceItemRequest(
-                                shopProductId = it.productId!!,
-                                quantity = it.quantity,
-                                rate = it.rate,
-                                gstRate = appliedGstRate,
-                                gstAmount = gstAmount,
-                                lineTotal = lineBase + gstAmount
-                            )
-                        }
-                    )
-                    viewModel.createInvoice(
-                        request = request, 
-                        onSuccess = { navController.popBackStack() }, 
-                        onError = { error ->
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Error: $error")
-                            }
-                        }
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().height(48.dp)
-            ) {
-                if (saving) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                } else {
-                    Text("Create Invoice")
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Customer Details", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+                        OutlinedTextField(value = customerName, onValueChange = { customerName = it }, label = { Text("Customer Name (Optional)") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(value = customerPhone, onValueChange = { customerPhone = it }, label = { Text("Customer Phone (Optional)") }, modifier = Modifier.fillMaxWidth())
+                    }
                 }
+            }
+
+            items(items.toList()) { item ->
+                InvoiceItemRow(
+                    item = item,
+                    products = products,
+                    onRemove = { items.remove(item) },
+                    onItemChange = { updatedItem ->
+                        val index = items.indexOf(item)
+                        if (index != -1) {
+                            items[index] = updatedItem
+                        }
+                    },
+                    gstEnabled = gstEnabled
+                )
+            }
+
+            item {
+                Button(onClick = { items.add(InvoiceItemUi()) }) {
+                    Text("Add Item")
+                }
+            }
+            
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Payment", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = paymentMode == "CASH", onClick = { paymentMode = "CASH" })
+                            Text("Cash")
+                            Spacer(modifier = Modifier.size(16.dp))
+                            RadioButton(selected = paymentMode == "ONLINE", onClick = { paymentMode = "ONLINE" })
+                            Text("Online")
+                        }
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    enabled = items.none { it.productId == null } && items.isNotEmpty() && !saving,
+                    onClick = {
+                        val request = CreateInvoiceRequest(
+                            shopId = shopId,
+                            customerName = customerName.takeIf { it.isNotBlank() },
+                            customerPhone = customerPhone.takeIf { it.isNotBlank() },
+                            paymentMode = paymentMode,
+                            items = items.mapNotNull { item ->
+                                item.productId?.let {
+                                    val appliedGstRate = if (item.gstRate == -1f) item.customGstRate ?: 0f else item.gstRate
+                                    val lineBase = item.quantity * item.rate
+                                    val gstAmount = (lineBase * appliedGstRate / 100).roundToInt()
+                                    InvoiceItemRequest(
+                                        shopProductId = it,
+                                        quantity = item.quantity,
+                                        rate = item.rate,
+                                        gstRate = appliedGstRate,
+                                        gstAmount = gstAmount,
+                                        lineTotal = lineBase + gstAmount
+                                    )
+                                }
+                            }
+                        )
+                        viewModel.createInvoice(
+                            request = request, 
+                            onSuccess = { navController.popBackStack() }, 
+                            onError = { error ->
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Error: $error")
+                                }
+                            }
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    if (saving) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Text("Create Invoice")
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }

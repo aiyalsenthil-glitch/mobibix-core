@@ -6,47 +6,21 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.outlined.AttachMoney
-import androidx.compose.material.icons.outlined.Build
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.Event
-import androidx.compose.material.icons.outlined.Laptop
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Phone
-import androidx.compose.material.icons.outlined.Smartphone
-import androidx.compose.material.icons.outlined.Tablet
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -99,41 +73,43 @@ fun CreateJobScreen(
             )
         },
         bottomBar = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                if (uiState.error != null) {
-                    Text(
-                        text = uiState.error!!,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    if (currentStep < 3) {
-                        Button(
-                            onClick = { currentStep++ },
-                            enabled = when (currentStep) {
-                                1 -> isStep1Valid()
-                                2 -> isStep2Valid()
-                                else -> false
+            Surface(shadowElevation = 8.dp) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    if (uiState.error != null) {
+                        Text(
+                            text = uiState.error!!,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (currentStep < 3) {
+                            Button(
+                                onClick = { currentStep++ },
+                                enabled = when (currentStep) {
+                                    1 -> isStep1Valid()
+                                    2 -> isStep2Valid()
+                                    else -> false
+                                }
+                            ) {
+                                Text("Next")
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next Step")
                             }
-                        ) {
-                            Text("Next")
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next Step")
-                        }
-                    } else {
-                        Button(
-                            onClick = { viewModel.submitJob(shopId) },
-                            enabled = isStep3Valid() && !uiState.loading
-                        ) {
-                            if (uiState.loading) {
-                                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        } else {
+                            Button(
+                                onClick = { viewModel.submitJob(shopId) },
+                                enabled = isStep3Valid() && !uiState.loading
+                            ) {
+                                if (uiState.loading) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                } else {
+                                    Text("Create Job")
+                                }
                             }
-                            Text("Create Job")
                         }
                     }
                 }
@@ -160,6 +136,16 @@ fun CreateJobScreen(
 }
 
 @Composable
+private fun FormStep(title: String, content: @Composable () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 16.dp))
+            content()
+        }
+    }
+}
+
+@Composable
 private fun Step1CustomerInfo(
     formData: CreateJobFormData,
     onFormDataChange: (CreateJobFormData) -> Unit
@@ -167,37 +153,39 @@ private fun Step1CustomerInfo(
     val showPhoneError = formData.customerPhone.isNotBlank() && !isValidIndianPhoneNumber(formData.customerPhone)
     val showAltPhoneError = formData.customerAltPhone.isNotBlank() && !isValidIndianPhoneNumber(formData.customerAltPhone)
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        OutlinedTextField(
-            value = formData.customerName,
-            onValueChange = { onFormDataChange(formData.copy(customerName = it)) },
-            label = { Text("Customer Name*") },
-            leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = "Customer Name") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        OutlinedTextField(
-            value = formData.customerPhone,
-            onValueChange = { onFormDataChange(formData.copy(customerPhone = it)) },
-            label = { Text("Customer Phone*") },
-            leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = "Customer Phone") },
-            modifier = Modifier.fillMaxWidth(),
-            isError = showPhoneError,
-            supportingText = { if (showPhoneError) Text("Please enter a valid 10-digit Indian phone number.") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-        )
-        OutlinedTextField(
-            value = formData.customerAltPhone,
-            onValueChange = { onFormDataChange(formData.copy(customerAltPhone = it)) },
-            label = { Text("Alternate Phone (Optional)") },
-            leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = "Alternate Phone") },
-            modifier = Modifier.fillMaxWidth(),
-            isError = showAltPhoneError,
-            supportingText = { if (showAltPhoneError) Text("Please enter a valid 10-digit Indian phone number.") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-        )
+    FormStep(title = "Customer Information") {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedTextField(
+                value = formData.customerName,
+                onValueChange = { onFormDataChange(formData.copy(customerName = it)) },
+                label = { Text("Customer Name*") },
+                leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = formData.customerPhone,
+                onValueChange = { onFormDataChange(formData.copy(customerPhone = it)) },
+                label = { Text("Customer Phone*") },
+                leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+                isError = showPhoneError,
+                supportingText = { if (showPhoneError) Text("Please enter a valid 10-digit Indian phone number.") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+            )
+            OutlinedTextField(
+                value = formData.customerAltPhone,
+                onValueChange = { onFormDataChange(formData.copy(customerAltPhone = it)) },
+                label = { Text("Alternate Phone (Optional)") },
+                leadingIcon = { Icon(Icons.Outlined.Phone, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+                isError = showAltPhoneError,
+                supportingText = { if (showAltPhoneError) Text("Please enter a valid 10-digit Indian phone number.") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+            )
+        }
     }
 }
 
@@ -210,67 +198,63 @@ private fun Step2DeviceDetails(
     var expanded by remember { mutableStateOf(false) }
     val deviceTypes = remember { listOf("Mobile", "Laptop", "Tablet", "Other") }
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            OutlinedTextField(
-                value = formData.deviceType,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Device Type*") },
-                leadingIcon = {
-                    val icon = when (formData.deviceType.lowercase()) {
-                        "mobile" -> Icons.Outlined.Smartphone
-                        "laptop" -> Icons.Outlined.Laptop
-                        "tablet" -> Icons.Outlined.Tablet
-                        else -> Icons.Outlined.Smartphone
-                    }
-                    Icon(icon, contentDescription = "Device Type")
-                },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
-            )
-            ExposedDropdownMenu(
+    FormStep(title = "Device Details") {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            ExposedDropdownMenuBox(
                 expanded = expanded,
-                onDismissRequest = { expanded = false }
+                onExpandedChange = { expanded = !expanded },
             ) {
-                deviceTypes.forEach { type ->
-                    DropdownMenuItem(
-                        text = { Text(type) },
-                        onClick = {
-                            onFormDataChange(formData.copy(deviceType = type))
-                            expanded = false
+                OutlinedTextField(
+                    value = formData.deviceType,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Device Type*") },
+                    leadingIcon = {
+                        val icon = when (formData.deviceType.lowercase()) {
+                            "mobile" -> Icons.Outlined.Smartphone
+                            "laptop" -> Icons.Outlined.Laptop
+                            "tablet" -> Icons.Outlined.Tablet
+                            else -> Icons.Outlined.Devices
                         }
-                    )
+                        Icon(icon, contentDescription = null)
+                    },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                )
+                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    deviceTypes.forEach { type ->
+                        DropdownMenuItem(
+                            text = { Text(type) },
+                            onClick = {
+                                onFormDataChange(formData.copy(deviceType = type))
+                                expanded = false
+                            }
+                        )
+                    }
                 }
             }
+            OutlinedTextField(
+                value = formData.deviceBrand,
+                onValueChange = { onFormDataChange(formData.copy(deviceBrand = it)) },
+                label = { Text("Device Brand*") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = formData.deviceModel,
+                onValueChange = { onFormDataChange(formData.copy(deviceModel = it)) },
+                label = { Text("Device Model*") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = formData.deviceSerial,
+                onValueChange = { onFormDataChange(formData.copy(deviceSerial = it)) },
+                label = { Text("IMEI / Serial Number (Optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
         }
-        OutlinedTextField(
-            value = formData.deviceBrand,
-            onValueChange = { onFormDataChange(formData.copy(deviceBrand = it)) },
-            label = { Text("Device Brand*") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        OutlinedTextField(
-            value = formData.deviceModel,
-            onValueChange = { onFormDataChange(formData.copy(deviceModel = it)) },
-            label = { Text("Device Model*") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        OutlinedTextField(
-            value = formData.deviceSerial,
-            onValueChange = { onFormDataChange(formData.copy(deviceSerial = it)) },
-            label = { Text("IMEI / Serial Number (Optional)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
     }
 }
 
@@ -289,81 +273,72 @@ private fun Step3JobSpecifics(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val selectedDate = datePickerState.selectedDateMillis?.let {
-                            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                            sdf.format(Date(it))
-                        }
+                        val selectedDate = datePickerState.selectedDateMillis?.let { sdf.format(Date(it)) }
                         if (selectedDate != null) {
                             onFormDataChange(formData.copy(estimatedDelivery = selectedDate))
                         }
                         showDatePicker = false
                     }
-                ) {
-                    Text("OK")
-                }
+                ) { Text("OK") }
             },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showDatePicker = false
-                    }
-                ) {
-                    Text("Cancel")
-                }
-            }
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } }
         ) {
             DatePicker(state = datePickerState)
         }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        OutlinedTextField(
-            value = formData.customerComplaint,
-            onValueChange = { onFormDataChange(formData.copy(customerComplaint = it)) },
-            label = { Text("Customer Complaint*") },
-            leadingIcon = { Icon(Icons.Outlined.Description, contentDescription = "Customer Complaint") },
-            modifier = Modifier.fillMaxWidth(),
-            maxLines = 3
-        )
-        OutlinedTextField(
-            value = formData.physicalCondition,
-            onValueChange = { onFormDataChange(formData.copy(physicalCondition = it)) },
-            label = { Text("Physical Condition (Optional)") },
-            leadingIcon = { Icon(Icons.Outlined.Build, contentDescription = "Physical Condition") },
-            modifier = Modifier.fillMaxWidth(),
-            maxLines = 3
-        )
-        OutlinedTextField(
-            value = formData.estimatedCost,
-            onValueChange = { onFormDataChange(formData.copy(estimatedCost = it)) },
-            label = { Text("Estimated Cost") },
-            leadingIcon = { Icon(Icons.Outlined.AttachMoney, contentDescription = "Estimated Cost") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-        OutlinedTextField(
-            value = formData.advancePaid,
-            onValueChange = { onFormDataChange(formData.copy(advancePaid = it)) },
-            label = { Text("Advance Paid") },
-            leadingIcon = { Icon(Icons.Outlined.AttachMoney, contentDescription = "Advance Paid") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
+    FormStep(title = "Job Details") {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedTextField(
+                value = formData.customerComplaint,
+                onValueChange = { onFormDataChange(formData.copy(customerComplaint = it)) },
+                label = { Text("Customer Complaint*") },
+                leadingIcon = { Icon(Icons.Outlined.Description, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3
+            )
+            OutlinedTextField(
+                value = formData.physicalCondition,
+                onValueChange = { onFormDataChange(formData.copy(physicalCondition = it)) },
+                label = { Text("Physical Condition (Optional)") },
+                leadingIcon = { Icon(Icons.Outlined.Build, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3
+            )
+            OutlinedTextField(
+                value = formData.estimatedCost,
+                onValueChange = { onFormDataChange(formData.copy(estimatedCost = it)) },
+                label = { Text("Estimated Cost") },
+                leadingIcon = { Icon(Icons.Outlined.AttachMoney, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+            OutlinedTextField(
+                value = formData.advancePaid,
+                onValueChange = { onFormDataChange(formData.copy(advancePaid = it)) },
+                label = { Text("Advance Paid") },
+                leadingIcon = { Icon(Icons.Outlined.AttachMoney, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
 
-        val interactionSource = remember { MutableInteractionSource() }
-        if (interactionSource.collectIsPressedAsState().value) {
-            showDatePicker = true
+            val interactionSource = remember { MutableInteractionSource() }
+            if (interactionSource.collectIsPressedAsState().value) {
+                showDatePicker = true
+            }
+            OutlinedTextField(
+                value = formData.estimatedDelivery,
+                onValueChange = {},
+                label = { Text("Estimated Delivery (Optional)") },
+                leadingIcon = { Icon(Icons.Outlined.Event, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+                readOnly = true,
+                interactionSource = interactionSource
+            )
         }
-        OutlinedTextField(
-            value = formData.estimatedDelivery,
-            onValueChange = {},
-            label = { Text("Estimated Delivery (Optional)") },
-            leadingIcon = { Icon(Icons.Outlined.Event, contentDescription = "Estimated Delivery") },
-            modifier = Modifier.fillMaxWidth(),
-            readOnly = true,
-            interactionSource = interactionSource
-        )
     }
 }
+
+private val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())

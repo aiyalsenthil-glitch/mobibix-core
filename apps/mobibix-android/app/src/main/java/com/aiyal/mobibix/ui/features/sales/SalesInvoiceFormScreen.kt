@@ -90,6 +90,7 @@ fun SalesInvoiceFormScreen(
                     item = item,
                     products = products,
                     onRemove = { items.removeAt(index) },
+                    onItemChange = { updatedItem -> items[index] = updatedItem },
                     gstEnabled = gstEnabled
                 )
             }
