@@ -47,8 +47,12 @@ export function setAccessToken(token: string | null) {
 
   if (token) {
     sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+    // Set cookie for middleware (SSR) visibility
+    document.cookie = `${ACCESS_TOKEN_KEY}=${token}; path=/; SameSite=Lax; Secure; max-age=${7 * 24 * 60 * 60}`;
   } else {
     sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+    // Clear cookie
+    document.cookie = `${ACCESS_TOKEN_KEY}=; path=/; SameSite=Lax; Secure; max-age=0`;
   }
 }
 
