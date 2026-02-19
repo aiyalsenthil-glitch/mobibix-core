@@ -85,7 +85,8 @@ fun ImportProductsScreen(
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(Modifier.height(8.dp))
-                    Divider()
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider()
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         items(state.rows) { row ->
                             ListItem(
@@ -103,7 +104,7 @@ fun ImportProductsScreen(
                 }
                 is ImportState.Importing -> {
                     LinearProgressIndicator(
-                        progress = state.progress.toFloat() / state.total.toFloat(),
+                        progress = { state.progress.toFloat() / state.total.toFloat() },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Text(

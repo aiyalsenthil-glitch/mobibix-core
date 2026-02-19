@@ -7,7 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -62,7 +62,7 @@ fun WhatsappDashboardScreen(
             PremiumWhatsappCard(
                 title = "Quick Message",
                 description = "Send a template message to a customer",
-                icon = Icons.Default.Message,
+                icon = Icons.AutoMirrored.Filled.Message,
                 accentColor = Color(0xFF8B5CF6),
                 onClick = { navController.navigate("whatsapp_quick_message") }
             )

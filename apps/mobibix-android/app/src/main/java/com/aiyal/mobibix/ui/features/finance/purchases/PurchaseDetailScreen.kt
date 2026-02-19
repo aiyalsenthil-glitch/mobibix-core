@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,7 +37,7 @@ fun PurchaseDetailScreen(
                 title = { Text("Purchase Details") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -64,7 +64,7 @@ fun PurchaseDetailScreen(
                         Text(text = purchase.invoiceNumber, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                         Text(text = "Date: ${purchase.invoiceDate.substring(0, 10)}", style = MaterialTheme.typography.bodyMedium)
                     }
-                    PurchaseStatusChip(purchase.status)
+                    PremiumPurchaseStatusChip(purchase.status)
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))

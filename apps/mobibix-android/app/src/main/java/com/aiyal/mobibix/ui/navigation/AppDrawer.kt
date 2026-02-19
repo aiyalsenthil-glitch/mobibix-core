@@ -10,7 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -37,7 +37,7 @@ private val drawerItems = listOf(
     DrawerItem("Products", Icons.Default.ShoppingBag, "product_list"),
     DrawerItem("Inventory", Icons.Default.Inventory, "inventory"),
     DrawerItem("Customers", Icons.Default.People, "customers"),
-    DrawerItem("WhatsApp", Icons.Default.Chat, "whatsapp_dashboard"),
+    DrawerItem("WhatsApp", Icons.AutoMirrored.Filled.Chat, "whatsapp_dashboard"),
     DrawerItem("CRM", Icons.Default.AssignmentInd, "crm_dashboard"),
     DrawerItem("Suppliers", Icons.Default.LocalShipping, "suppliers"),
     DrawerItem("Purchases", Icons.Default.ShoppingCart, "purchases"),

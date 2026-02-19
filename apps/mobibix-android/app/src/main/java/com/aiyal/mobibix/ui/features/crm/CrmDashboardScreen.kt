@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Phone
@@ -78,7 +78,7 @@ fun CrmDashboardScreen(
                     CrmStatCard(
                         title = "Active Follow-ups",
                         value = uiState.stats?.activeFollowUps?.toString() ?: "0",
-                        icon = Icons.Default.Assignment,
+                        icon = Icons.AutoMirrored.Filled.Assignment,
                         color = Color(0xFFF59E0B),
                         modifier = Modifier.weight(1f)
                     )
