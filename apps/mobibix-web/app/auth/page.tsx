@@ -70,10 +70,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
       const response = await exchangeToken(result.user);
       console.log("DEBUG: exchangeToken COMPLETED", response?.user?.id);
       setLoading(false);
-      if (response) {
-        const path = getRoleRedirect(response.user);
-        window.location.href = path;
-      }
+      // Redirect is handled by exchangeToken() in useAuth.ts
+      // No duplicate redirect needed here
     } catch (err: any) {
       console.error("DEBUG: handleGoogleSignIn error details:", err);
       // Backend error code for blocked unverified emails
@@ -114,10 +112,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
       const response = await exchangeToken(result.user);
       console.log("DEBUG: exchangeToken COMPLETED", response?.user?.id);
       setLoading(false);
-      if (response) {
-        const path = getRoleRedirect(response.user);
-        window.location.href = path;
-      }
+      // Redirect is handled by exchangeToken() in useAuth.ts
+      // No duplicate redirect needed here
     } catch (err: any) {
       console.error("DEBUG: handleLogin error details:", err);
       if (err.code === 'auth/user-not-found') {

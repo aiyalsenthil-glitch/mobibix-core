@@ -51,6 +51,16 @@ export async function setAccessToken(token: string | null) {
     sessionStorage.removeItem(ACCESS_TOKEN_KEY);
   }
 
+  // Set a client-readable session hint cookie (not HttpOnly, so JS can read it)
+  // This survives page refresh unlike sessionStorage
+  if (typeof document !== "undefined") {
+    if (token) {
+      document.cookie = `mobi_session_hint=1; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${window.location.protocol === 'https:' ? '; Secure' : ''}`;
+    } else {
+      document.cookie = "mobi_session_hint=; path=/; max-age=0";
+    }
+  }
+
   // Synchronize session cookie with Next.js server for Middleware/SSR
   try {
     await fetch("/api/auth/session", {
@@ -221,7 +231,8 @@ export function getCsrfToken(): string | null {
 }
 
 export function hasSessionHint(): boolean {
-  return !!getCsrfToken();
+  if (getAccessToken()) return true;
+  return !!getCookieValue("mobi_session_hint");
 }
 
 export async function logout(): Promise<void> {
@@ -239,6 +250,7 @@ export async function logout(): Promise<void> {
   } finally {
     if (typeof document !== "undefined") {
       document.cookie = "csrfToken=; Max-Age=0; path=/";
+      document.cookie = "mobi_session_hint=; Max-Age=0; path=/";
     }
     await setAccessToken(null);
   }

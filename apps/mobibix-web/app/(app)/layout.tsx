@@ -20,9 +20,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isDark = mounted && theme === "dark";
 
   useEffect(() => {
-    const ok = authGuard(router);
-    setIsReady(ok);
-  }, [router]);
+    // Don't check guard until auth has finished loading
+    if (isLoading) return;
+
+    if (authUser) {
+      // Auth resolved with a valid user — no guard check needed
+      setIsReady(true);
+    } else {
+      // Auth finished loading but no user → check guard (may redirect to signin)
+      const ok = authGuard(router);
+      setIsReady(ok);
+    }
+  }, [router, isLoading, authUser]);
 
   useEffect(() => {
     if (!isReady || isLoading) return;
