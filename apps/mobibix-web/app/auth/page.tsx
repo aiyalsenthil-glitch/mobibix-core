@@ -67,8 +67,13 @@ export default function AuthPage({ mode }: AuthPageProps) {
       console.log("DEBUG: Google sign-in result:", result.user.email);
       // Exchange token (backend handles verification check - Google is always verified)
       console.log("DEBUG: Starting exchangeToken stage...");
-      await exchangeToken(result.user);
-      console.log("DEBUG: exchangeToken COMPLETED");
+      const response = await exchangeToken(result.user);
+      console.log("DEBUG: exchangeToken COMPLETED", response?.user?.id);
+      setLoading(false);
+      if (response) {
+        const path = getRoleRedirect(response.user);
+        window.location.href = path;
+      }
     } catch (err: any) {
       console.error("DEBUG: handleGoogleSignIn error details:", err);
       // Backend error code for blocked unverified emails
@@ -106,8 +111,13 @@ export default function AuthPage({ mode }: AuthPageProps) {
       console.log("DEBUG: signInWithEmailAndPassword SUCCESS:", result.user.email);
       // Exchange token (backend enforces email verification)
       console.log("DEBUG: Starting exchangeToken stage...");
-      await exchangeToken(result.user);
-      console.log("DEBUG: exchangeToken COMPLETED");
+      const response = await exchangeToken(result.user);
+      console.log("DEBUG: exchangeToken COMPLETED", response?.user?.id);
+      setLoading(false);
+      if (response) {
+        const path = getRoleRedirect(response.user);
+        window.location.href = path;
+      }
     } catch (err: any) {
       console.error("DEBUG: handleLogin error details:", err);
       if (err.code === 'auth/user-not-found') {
@@ -155,6 +165,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
       await sendVerificationEmail(res.user);
       setFirebaseUser(res.user);
       setStep("VERIFY");
+      setLoading(false);
     } catch (err: any) {
       const msg = err.code === 'auth/unauthorized-domain' 
         ? "This domain is not authorized in Firebase. Check Firebase Console > Auth > Settings."
@@ -277,7 +288,9 @@ export default function AuthPage({ mode }: AuthPageProps) {
                </div>
                
                <div className="relative">
-                 <input
+                  <input
+                    id="password"
+                    name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter Password"
                     autoFocus
@@ -313,7 +326,9 @@ export default function AuthPage({ mode }: AuthPageProps) {
                </div>
 
                <div className="space-y-4">
-                 <input
+                  <input
+                    id="full-name"
+                    name="full-name"
                     type="text"
                     placeholder="Full Name"
                     autoComplete="name"
