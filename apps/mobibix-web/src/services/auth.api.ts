@@ -41,18 +41,25 @@ const API_BASE_URL =
 const ACCESS_TOKEN_KEY = "accessToken";
 let inMemoryAccessToken: string | null = null;
 
-export function setAccessToken(token: string | null) {
+export async function setAccessToken(token: string | null) {
   inMemoryAccessToken = token;
   if (typeof sessionStorage === "undefined") return;
 
   if (token) {
     sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
-    // Set cookie for middleware (SSR) visibility
-    document.cookie = `${ACCESS_TOKEN_KEY}=${token}; path=/; SameSite=Lax; Secure; max-age=${7 * 24 * 60 * 60}`;
   } else {
     sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-    // Clear cookie
-    document.cookie = `${ACCESS_TOKEN_KEY}=; path=/; SameSite=Lax; Secure; max-age=0`;
+  }
+
+  // Synchronize session cookie with Next.js server for Middleware/SSR
+  try {
+    await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+  } catch (err) {
+    console.warn("Failed to sync session cookie:", err);
   }
 }
 
@@ -171,7 +178,7 @@ export async function exchangeFirebaseToken(
     const data: ExchangeTokenResponse = await response.json();
 
     if (data?.accessToken) {
-      setAccessToken(data.accessToken);
+      await setAccessToken(data.accessToken);
     }
 
     return data;
@@ -233,7 +240,7 @@ export async function logout(): Promise<void> {
     if (typeof document !== "undefined") {
       document.cookie = "csrfToken=; Max-Age=0; path=/";
     }
-    setAccessToken(null);
+    await setAccessToken(null);
   }
 }
 
@@ -323,7 +330,7 @@ async function refreshAccessToken(): Promise<boolean> {
         try {
           const data = await response.json();
           if (data?.accessToken) {
-            setAccessToken(data.accessToken);
+            await setAccessToken(data.accessToken);
           }
         } catch {
           // Ignore JSON parsing failures.

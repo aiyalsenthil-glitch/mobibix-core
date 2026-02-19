@@ -44,13 +44,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 4. Protected route: Check for accessToken cookie
-  //    ✅ Cookie is set by backend on successful auth exchange
-  //    ✅ Backend sets HttpOnly flag = cannot be read by JavaScript
-  //    ✅ Browser automatically includes in all same-origin requests
-  const accessToken = request.cookies.get("accessToken")?.value;
+  // 4. Protected route: Check for mobi_session_token cookie
+  //    ✅ Cookie is set by /api/auth/session on successful auth exchange
+  //    ✅ Using a distinct name to avoid collision with cross-site backend cookies
+  const accessToken = request.cookies.get("mobi_session_token")?.value;
 
   if (isProtectedRoute && !accessToken) {
+    console.log(`[MIDDLEWARE] Redirecting ${path} to /signin: No session token`);
     // 5. Redirect to signin (server-side, prevents flash of authenticated content)
     const url = request.nextUrl.clone();
     url.pathname = "/signin";

@@ -73,7 +73,7 @@ export async function getSalesReport(
 ): Promise<SalesReportItem[]> {
   const query = new URLSearchParams(cleanParams(params));
   const response = await authenticatedFetch(
-    `/api/mobileshop/reports/sales?${query}`,
+    `/mobileshop/reports/sales?${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch sales report");
   const data: SalesReportItem[] = await response.json();
@@ -87,7 +87,7 @@ export async function getPurchaseReport(
 ): Promise<PurchaseReportItem[]> {
   const query = new URLSearchParams(cleanParams(params));
   const response = await authenticatedFetch(
-    `/api/mobileshop/reports/purchases?${query}`,
+    `/mobileshop/reports/purchases?${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch purchase report");
   const data: PurchaseReportItem[] = await response.json();
@@ -101,7 +101,7 @@ export async function getInventoryReport(
 ): Promise<InventoryReportItem[]> {
   const query = shopId ? `?shopId=${shopId}` : "";
   const response = await authenticatedFetch(
-    `/api/mobileshop/reports/inventory${query}`,
+    `/mobileshop/reports/inventory${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch inventory report");
   const data: InventoryReportItem[] = await response.json();
@@ -115,7 +115,7 @@ export async function getProfitSummary(
 ): Promise<{ metrics: ProfitSummaryMetrics }> {
   const query = new URLSearchParams(cleanParams(params));
   const response = await authenticatedFetch(
-    `/api/mobileshop/reports/profit?${query}`,
+    `/mobileshop/reports/profit?${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch profit summary");
   const data: { metrics: ProfitSummaryMetrics } = await response.json();
@@ -143,7 +143,7 @@ export async function getTopSellingProducts(
 ): Promise<TopProductItem[]> {
   const query = new URLSearchParams(cleanParams(params));
   const response = await authenticatedFetch(
-    `/api/mobileshop/reports/top-products?${query}`,
+    `/mobileshop/reports/top-products?${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch top products");
   const data: TopProductItem[] = await response.json();
@@ -160,7 +160,7 @@ export async function getRepairReport(
 ): Promise<SalesReportItem[]> {
   const query = new URLSearchParams(cleanParams(params));
   const response = await authenticatedFetch(
-    `/api/mobileshop/reports/repairs?${query}`,
+    `/mobileshop/reports/repairs?${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch repair report");
   const data: SalesReportItem[] = await response.json();
@@ -172,7 +172,7 @@ export async function getRepairMetrics(
 ): Promise<RepairMetrics> {
   const query = new URLSearchParams(cleanParams(params));
   const response = await authenticatedFetch(
-    `/api/mobileshop/reports/repair-metrics?${query}`,
+    `/mobileshop/reports/repair-metrics?${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch repair metrics");
   const data: RepairMetrics = await response.json();
