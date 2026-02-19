@@ -175,4 +175,10 @@ object NetworkModule {
     fun provideBillingApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.BillingApi {
         return retrofit.create(com.aiyal.mobibix.data.network.BillingApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideCrmApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.CrmApi {
+        return retrofit.create(com.aiyal.mobibix.data.network.CrmApi::class.java)
+    }
 }

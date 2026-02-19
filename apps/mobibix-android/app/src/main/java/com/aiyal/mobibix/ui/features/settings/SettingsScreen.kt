@@ -1,88 +1,43 @@
 package com.aiyal.mobibix.ui.features.settings
 
-import androidx.compose.foundation.isSystemInDarkTheme
-
-// ...
-
-@Composable
-fun SettingsScreen(
-    navController: NavController,
-    shopContextProvider: ShopContextProvider
-) {
-    val activeShopId = shopContextProvider.getActiveShopId() ?: ""
-    // ThemeState is a singleton object, access directly
-    val isSystemDark = isSystemInDarkTheme()
-    val isDarkTheme = ThemeState.isDarkMode ?: isSystemDark
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // ... (Header code unchanged)
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // ── Appearance Section ──
-            item {
-                SettingsSectionHeader("Appearance")
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    if (isDarkTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Dark Mode", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text("Adjust app appearance", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(
-                            checked = isDarkTheme,
-                            onCheckedChange = { 
-                                ThemeState.isDarkMode = it 
-                            }
-                        )
-                    }
-                }
-            }
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Store
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.aiyal.mobibix.core.shop.ShopContextProvider
 import com.aiyal.mobibix.ui.theme.ThemeState
@@ -95,15 +50,15 @@ fun SettingsScreen(
     shopContextProvider: ShopContextProvider
 ) {
     val activeShopId = shopContextProvider.getActiveShopId() ?: ""
-    val themeState = ThemeState.current
-    var isDarkTheme by remember { mutableStateOf(themeState.isDarkTheme) }
+    val isSystemDark = isSystemInDarkTheme()
+    val isDarkTheme = ThemeState.isDarkMode ?: isSystemDark
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // ── Premium Header ──
+        // ── Header ──
         Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                 Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -152,8 +107,7 @@ fun SettingsScreen(
                         Switch(
                             checked = isDarkTheme,
                             onCheckedChange = { 
-                                isDarkTheme = it 
-                                themeState.toggleTheme()
+                                ThemeState.isDarkMode = it 
                             }
                         )
                     }

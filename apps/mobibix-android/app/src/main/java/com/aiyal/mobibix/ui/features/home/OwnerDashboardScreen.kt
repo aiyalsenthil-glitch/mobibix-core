@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -46,7 +48,7 @@ fun OwnerDashboardScreen(
     onOpenDrawer: () -> Unit = {}
 ) {
     var showShopSelector by remember { mutableStateOf(false) }
-    val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
+    val currencyFormatter = NumberFormat.getCurrencyInstance(Locale.Builder().setLanguage("en").setRegion("IN").build())
 
     if (state.loading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -164,7 +166,7 @@ fun OwnerDashboardScreen(
                     ) {
                         Text("Detailed Reports", fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.width(4.dp))
-                        Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -190,7 +192,7 @@ fun OwnerDashboardScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Default.TrendingUp,
+                                Icons.AutoMirrored.Filled.TrendingUp,
                                 contentDescription = null,
                                 tint = TealAccent,
                                 modifier = Modifier.size(24.dp)
@@ -337,7 +339,7 @@ fun OwnerDashboardScreen(
                 title = "TODAY PROFIT",
                 value = currencyFormatter.format(state.todaySales * 0.3), // Approximate
                 subtitle = "Revenue minus cost",
-                icon = Icons.Default.TrendingUp,
+                icon = Icons.AutoMirrored.Filled.TrendingUp,
                 iconBgColor = Color(0xFF3B82F6),
                 modifier = Modifier.padding(horizontal = 16.dp)
             )

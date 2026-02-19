@@ -19,7 +19,7 @@ import java.util.Locale
 fun InvoicePrintLayout(
     data: InvoicePrintData
 ) {
-    val formatter = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
+    val formatter = NumberFormat.getCurrencyInstance(Locale.Builder().setLanguage("en").setRegion("IN").build())
     
     Column(
         modifier = Modifier

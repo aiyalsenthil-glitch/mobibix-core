@@ -25,7 +25,7 @@ fun PurchaseDetailScreen(
     viewModel: PurchaseViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
+    val currencyFormatter = NumberFormat.getCurrencyInstance(Locale.Builder().setLanguage("en").setRegion("IN").build())
 
     LaunchedEffect(purchaseId) {
         viewModel.loadPurchaseDetail(purchaseId)
