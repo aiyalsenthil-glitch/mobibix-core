@@ -21,7 +21,8 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": ["multer"]
   },
   "exclude": ["node_modules", "dist", "dist/**", "prisma/generated"]
 }

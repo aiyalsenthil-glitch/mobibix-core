@@ -1,4 +1,4 @@
-import 'multer';
+/// <reference types="multer" />
 import {
   Controller,
   Get,
