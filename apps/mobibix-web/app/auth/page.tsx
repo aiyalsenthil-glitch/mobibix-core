@@ -33,8 +33,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
   type Step = "LANDING" | "LOGIN_PASS" | "SIGNUP_PASS" | "VERIFY";
   
   const getInitialStep = (): Step => {
-    if (mode === "signin") return "LOGIN_PASS";
-    if (mode === "signup") return "SIGNUP_PASS";
+    // Always start at LANDING to ensure email is captured
     return "LANDING";
   };
 
@@ -232,10 +231,13 @@ export default function AuthPage({ mode }: AuthPageProps) {
               </div>
 
               <div className="space-y-2">
-                 <input
+                  <input
+                  id="email"
+                  name="email"
                   type="email"
                   placeholder="name@company.com"
                   autoFocus
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleEmailNext()}
@@ -263,6 +265,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter Password"
                     autoFocus
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/5 text-white placeholder-zinc-600 focus:outline-none focus:bg-white/10 transition-all font-medium"
@@ -297,6 +300,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
                  <input
                     type="text"
                     placeholder="Full Name"
+                    autoComplete="name"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/5 text-white placeholder-zinc-600 focus:outline-none focus:bg-white/10 transition-all font-medium"
@@ -304,8 +308,11 @@ export default function AuthPage({ mode }: AuthPageProps) {
                   
                   <div className="relative">
                     <input
+                        id="new-password"
+                        name="new-password"
                         type={showPassword ? "text" : "password"}
                         placeholder="Create Password (min 6 chars)"
+                        autoComplete="new-password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/5 text-white placeholder-zinc-600 focus:outline-none focus:bg-white/10 transition-all font-medium"
