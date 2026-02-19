@@ -18,7 +18,8 @@ import com.aiyal.mobibix.ui.components.StatCard
 
 @Composable
 fun StaffDashboardScreen(
-    state: StaffDashboardState
+    state: StaffDashboardState,
+    onOpenDrawer: () -> Unit = {}
 ) {
     if (state.loading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

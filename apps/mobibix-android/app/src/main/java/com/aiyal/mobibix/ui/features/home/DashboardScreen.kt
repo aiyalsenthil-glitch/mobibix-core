@@ -22,10 +22,12 @@ fun DashboardScreen(
             OwnerDashboardScreen(
                 state = viewModel.ownerState.value,
                 onShopSelected = { shopId -> viewModel.loadOwnerDashboard(shopId) },
-                onNavigateToJobs = { /* navController.navigate("job_list") */ onNavigateToJobs() }, // Reverted to original parameter, assuming navController is not in scope here.
-                onNavigateToInventory = { /* TODO: Navigate to inventory */ onNavigateToInventory() }, // Reverted to original parameter
-                onNavigateToNewSale = { /* TODO: Navigate to new sale */ onNavigateToNewSale() }, // Reverted to original parameter
-                onNavigateToNewPurchase = { /* TODO: Navigate to new purchase */ onNavigateToNewPurchase() } // Reverted to original parameter
+                onNavigateToJobs = onNavigateToJobs,
+                onNavigateToInventory = onNavigateToInventory,
+                onNavigateToNewSale = onNavigateToNewSale,
+                onNavigateToNewPurchase = onNavigateToNewPurchase,
+                onNavigateToReports = {},
+                onOpenDrawer = {}
             )
         }
 

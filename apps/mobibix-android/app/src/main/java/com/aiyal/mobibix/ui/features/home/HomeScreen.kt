@@ -9,7 +9,8 @@ import com.aiyal.mobibix.core.app.AppState
 @Composable
 fun HomeScreen(
     appState: AppState,
-    navController: NavController, 
+    navController: NavController,
+    onOpenDrawer: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     when (appState) {
@@ -24,7 +25,9 @@ fun HomeScreen(
                 onNavigateToJobs = { navController.navigate("job_list") },
                 onNavigateToInventory = { /* TODO: Navigate to inventory */ },
                 onNavigateToNewSale = { /* TODO: Navigate to new sale */ },
-                onNavigateToNewPurchase = { /* TODO: Navigate to new purchase */ }
+                onNavigateToNewPurchase = { /* TODO: Navigate to new purchase */ },
+                onNavigateToReports = { navController.navigate("reports") },
+                onOpenDrawer = onOpenDrawer
             )
         }
         is AppState.Staff -> {
@@ -32,7 +35,8 @@ fun HomeScreen(
                 viewModel.loadStaffDashboard()
             }
             StaffDashboardScreen(
-                state = viewModel.staffState.value
+                state = viewModel.staffState.value,
+                onOpenDrawer = onOpenDrawer
             )
         }
         else -> { /* Handle other states if necessary */ }
