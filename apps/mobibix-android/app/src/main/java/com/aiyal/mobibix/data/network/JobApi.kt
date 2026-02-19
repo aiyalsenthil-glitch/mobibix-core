@@ -41,11 +41,16 @@ data class UpdateStatusRequest(
     val status: String
 )
 
+data class JobCardListResponse(
+    val jobCards: List<JobCardResponse>,
+    val empty: Boolean
+)
+
 interface JobApi {
     @GET("api/mobileshop/shops/{shopId}/job-cards")
     suspend fun getJobs(
         @Path("shopId") shopId: String
-    ): List<JobCardResponse>
+    ): JobCardListResponse
 
     @GET("api/mobileshop/shops/{shopId}/job-cards/{jobId}")
     suspend fun getJobDetails(

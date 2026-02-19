@@ -15,7 +15,7 @@ class JobRepositoryImpl @Inject constructor(
 ) : JobRepository {
 
     override suspend fun getJobs(shopId: String): List<JobCardResponse> {
-        return api.getJobs(shopId)
+        return api.getJobs(shopId).jobCards
     }
 
     override suspend fun getJobDetails(shopId: String, jobId: String): JobCardResponse {
