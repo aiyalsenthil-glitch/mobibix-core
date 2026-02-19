@@ -185,9 +185,11 @@ export async function getRepairMetrics(
 
 export interface Gstr1SummaryItem {
   hsnCode: string;
+  description?: string;
   quantity: number;
   unitPrice: number;
   totalAmount: number;
+  taxableValue?: number;
   cgstRate: number;
   cgstAmount: number;
   sgstRate: number;

@@ -13,7 +13,9 @@ export type InvoiceType = "SALES" | "REPAIR";
 
 export interface SalesInvoice {
   id: string;
+  tenantId?: string;
   shopId: string;
+  shopName?: string;
   customerId?: string;
   invoiceNumber: string;
   totalAmount: number;
