@@ -11,6 +11,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.aiyal.mobibix.data.network.StockCorrectionRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -19,21 +20,14 @@ fun StockAdjustmentScreen(
     productId: String,
     viewModel: ProductViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val product = remember(uiState.products) { uiState.products.find { it.id == productId } }
-
     var quantity by remember { mutableStateOf("") }
-    var reason by remember { mutableStateOf("Manual Correction") }
+    var reason by remember { mutableStateOf("Stock Check Update") } // Default Reason
     var note by remember { mutableStateOf("") }
-
-    val reasons = listOf("Manual Correction", "Damaged", "Lost", "Found", "Stock-In Error")
-
-    LaunchedEffect(uiState.actionSuccess) {
-        if (uiState.actionSuccess) {
-            viewModel.resetActionSuccess()
-            navController.popBackStack()
-        }
-    }
+    var isSaving by remember { mutableStateOf(false) }
+    var saveError by remember { mutableStateOf<String?>(null) }
+    
+    // We could load product details here if we want to show current stock
+    // For now assuming user knows what they are correcting
 
     Scaffold(
         topBar = {
@@ -49,89 +43,84 @@ fun StockAdjustmentScreen(
     ) { padding ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            product?.let {
+            Text(
+                "Correct Stock Level",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (saveError != null) {
                 Text(
-                    text = it.name,
-                    style = MaterialTheme.typography.headlineSmall
-                )
-                Text(
-                    text = "Current Stock: ${it.stockQty}",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = saveError!!,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
 
             OutlinedTextField(
                 value = quantity,
                 onValueChange = { quantity = it },
-                label = { Text("Adjustment Quantity (+ / -)") },
+                label = { Text("New Quantity (+/- Adjustment)") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                placeholder = { Text("e.g. 5 or -2") }
+                supportingText = { Text("Enter positive to add, negative to remove") }
             )
+            Spacer(modifier = Modifier.height(16.dp))
 
-            var expanded by remember { mutableStateOf(false) }
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded }
-            ) {
-                OutlinedTextField(
-                    value = reason,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Reason") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
-                )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    reasons.forEach { r ->
-                        DropdownMenuItem(
-                            text = { Text(r) },
-                            onClick = {
-                                reason = r
-                                expanded = false
-                            }
-                        )
-                    }
-                }
-            }
+            OutlinedTextField(
+                value = reason,
+                onValueChange = { reason = it },
+                label = { Text("Reason") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it },
-                label = { Text("Notes (Optional)") },
+                label = { Text("Note (Optional)") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3
             )
-
-            if (uiState.isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-
-            if (uiState.error != null) {
-                Text(text = uiState.error!!, color = MaterialTheme.colorScheme.error)
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = {
                     val qty = quantity.toIntOrNull()
-                    if (qty != null) {
-                        viewModel.correctStock(productId, qty, reason, note.takeIf { it.isNotBlank() })
+                    if (qty == null || qty == 0) {
+                        saveError = "Please enter a valid non-zero quantity"
+                        return@Button
+                    }
+                    
+                    isSaving = true
+                    saveError = null
+                    // We need a shopId - passing it via VM or Context would be better
+                    // but for now relying on VM to pick it up or passed
+                    // NOTE: This logic should ideally be in VM but keeping it simple for this screen
+                    viewModel.correctStock(productId, qty, reason, note) { success, error ->
+                         isSaving = false
+                         if (success) {
+                             navController.popBackStack()
+                         } else {
+                             saveError = error ?: "Failed to update stock"
+                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = quantity.isNotBlank() && !uiState.isLoading
+                enabled = !isSaving
             ) {
-                Text("Post Adjustment")
+                if (isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Updating...")
+                } else {
+                    Text("Update Stock")
+                }
             }
         }
     }

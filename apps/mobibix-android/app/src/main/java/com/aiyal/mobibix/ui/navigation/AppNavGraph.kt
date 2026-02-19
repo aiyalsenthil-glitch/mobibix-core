@@ -247,6 +247,12 @@ fun AppNavGraph(
                 navController = navController
             )
         }
+        composable("aging_report") {
+            com.aiyal.mobibix.ui.features.reports.AgingReportScreen(navController = navController)
+        }
+        composable("gstr2_report") {
+            com.aiyal.mobibix.ui.features.reports.Gstr2ReportScreen(navController = navController)
+        }
 
         composable("staff") {
             StaffScreen(
@@ -436,6 +442,37 @@ fun AppNavGraph(
             com.aiyal.mobibix.ui.features.billing.BillingScreen(
                 navController = navController
             )
+        }
+
+        // CRM Routes
+        composable("crm_dashboard") {
+            com.aiyal.mobibix.ui.features.crm.CrmDashboardScreen(navController = navController)
+        }
+        composable("crm_follow_ups") {
+            com.aiyal.mobibix.ui.features.crm.FollowUpsScreen(navController = navController)
+        }
+        
+        // Placeholder routes for drawer items not yet implemented
+        composable("settings") {
+            com.aiyal.mobibix.ui.features.settings.SettingsScreen(
+                navController = navController,
+                shopContextProvider = shopContextProvider
+            )
+        }
+        composable("suppliers") {
+            com.aiyal.mobibix.ui.features.suppliers.SupplierListScreen(
+                navController = navController
+            )
+        }
+        composable("stock_adjustment/{productId}") { backStackEntry ->
+             val productId = backStackEntry.arguments?.getString("productId") ?: return@composable
+             com.aiyal.mobibix.ui.features.products.StockAdjustmentScreen(navController = navController, productId = productId)
+        }
+        composable("import_products") {
+             com.aiyal.mobibix.ui.features.products.ImportProductsScreen(navController = navController)
+        }
+        composable("negative_stock") {
+             com.aiyal.mobibix.ui.features.products.NegativeStockScreen(navController = navController)
         }
     }
 }
