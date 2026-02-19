@@ -35,6 +35,7 @@ import kotlin.math.roundToInt
 
 data class InvoiceItemUi(
     var productId: String? = null,
+    var productName: String? = null, // Added this field
     var quantity: Int = 1,
     var rate: Int = 0,
     var gstRate: Float = 0f,
@@ -47,6 +48,7 @@ fun InvoiceItemRow(
     item: InvoiceItemUi,
     products: List<ShopProduct>,
     onRemove: () -> Unit,
+    onItemChange: (InvoiceItemUi) -> Unit,
     gstEnabled: Boolean
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -78,8 +80,11 @@ fun InvoiceItemRow(
                     DropdownMenuItem(
                         text = { Text("${product.name} (Stock: ${product.stockQty})") },
                         onClick = {
-                            item.productId = product.id
-                            item.rate = product.salePrice ?: 0
+                            onItemChange(item.copy(
+                                productId = product.id,
+                                productName = product.name,
+                                rate = product.salePrice ?: 0
+                            ))
                             expanded = false
                         }
                     )
@@ -88,13 +93,13 @@ fun InvoiceItemRow(
         }
         Spacer(Modifier.height(8.dp))
         Row {
-            OutlinedTextField(value = item.quantity.toString(), onValueChange = { item.quantity = it.toIntOrNull()?.coerceAtLeast(1) ?: 1 }, label = { Text("Qty") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            OutlinedTextField(value = item.quantity.toString(), onValueChange = { onItemChange(item.copy(quantity = it.toIntOrNull()?.coerceAtLeast(1) ?: 1)) }, label = { Text("Qty") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
             Spacer(Modifier.width(8.dp))
-            OutlinedTextField(value = item.rate.toString(), onValueChange = { item.rate = it.toIntOrNull()?.coerceAtLeast(0) ?: 0 }, label = { Text("Rate") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            OutlinedTextField(value = item.rate.toString(), onValueChange = { onItemChange(item.copy(rate = it.toIntOrNull()?.coerceAtLeast(0) ?: 0)) }, label = { Text("Rate") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
         }
         if (gstEnabled) {
             Spacer(Modifier.height(8.dp))
-            GstSelector(item = item)
+            GstSelector(item = item, onItemChange = onItemChange)
         }
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -109,7 +114,7 @@ fun InvoiceItemRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GstSelector(item: InvoiceItemUi) {
+private fun GstSelector(item: InvoiceItemUi, onItemChange: (InvoiceItemUi) -> Unit) {
     val gstOptions = listOf("0%", "5%", "18%", "28%", "Other")
     var expanded by remember { mutableStateOf(false) }
     val selectedLabel = when (item.gstRate) {
@@ -136,13 +141,14 @@ private fun GstSelector(item: InvoiceItemUi) {
                         DropdownMenuItem(
                             text = { Text(label) },
                             onClick = {
-                                item.gstRate = when (label) {
+                                val newGstRate = when (label) {
                                     "0%" -> 0f
                                     "5%" -> 5f
                                     "18%" -> 18f
                                     "28%" -> 28f
                                     else -> -1f
                                 }
+                                onItemChange(item.copy(gstRate = newGstRate))
                                 expanded = false
                             }
                         )
@@ -154,7 +160,7 @@ private fun GstSelector(item: InvoiceItemUi) {
         if (item.gstRate == -1f) {
             OutlinedTextField(
                 value = item.customGstRate?.toString() ?: "",
-                onValueChange = { item.customGstRate = it.toFloatOrNull() },
+                onValueChange = { onItemChange(item.copy(customGstRate = it.toFloatOrNull())) },
                 label = { Text("Custom %") },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
