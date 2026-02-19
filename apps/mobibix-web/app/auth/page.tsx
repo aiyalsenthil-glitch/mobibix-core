@@ -111,7 +111,11 @@ export default function AuthPage({ mode }: AuthPageProps) {
         setFirebaseUser(auth.currentUser);
         setStep("VERIFY");
       } else {
-         setError(err.message || "Invalid credentials");
+         // Granular Firebase error handling
+         const msg = err.code === 'auth/unauthorized-domain' 
+           ? "This domain is not authorized in Firebase. Check Firebase Console > Auth > Settings."
+           : (err.message || "Invalid credentials");
+         setError(msg);
       }
       setLoading(false);
     }
@@ -137,8 +141,10 @@ export default function AuthPage({ mode }: AuthPageProps) {
       setFirebaseUser(res.user);
       setStep("VERIFY");
     } catch (err: any) {
-      setError(err.message || "Signup failed");
-    } finally {
+      const msg = err.code === 'auth/unauthorized-domain' 
+        ? "This domain is not authorized in Firebase. Check Firebase Console > Auth > Settings."
+        : (err.message || "Signup failed");
+      setError(msg);
       setLoading(false);
     }
   };
