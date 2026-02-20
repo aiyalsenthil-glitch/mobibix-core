@@ -1,45 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-
-// Mock data to simulate pending approvals
-const mockApprovals = [
-  {
-    id: "req_001",
-    staffName: "Alex Mercer",
-    role: "Sales Executive",
-    branch: "Downtown Branch",
-    action: "sale.refund",
-    uiLabel: "Refund Invoices",
-    details: "Invoice #INV-9284 ($120.00)",
-    status: "PENDING",
-    createdAt: "10 mins ago"
-  },
-  {
-    id: "req_002",
-    staffName: "Sarah Chen",
-    role: "Gym Trainer",
-    branch: "Northside Branch",
-    action: "member.view_financials",
-    uiLabel: "View Member Payments",
-    details: "Member #MEM-102 (John Doe)",
-    status: "PENDING",
-    createdAt: "2 hours ago"
-  }
-];
+import { authenticatedFetch } from "@/services/auth.api";
 
 export default function ApprovalInboxPage() {
   const { authUser } = useAuth();
-  const [approvals, setApprovals] = useState(mockApprovals);
+  const [approvals, setApprovals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchApprovals();
+  }, []);
+
+  const fetchApprovals = async () => {
+    try {
+      const response = await authenticatedFetch("/permissions/approvals/pending");
+      if (response.ok) {
+        const data = await response.json();
+        setApprovals(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch approvals:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDecision = async (id: string, approved: boolean) => {
     setLoadingId(id);
-    // Simulate network latency
-    await new Promise(r => setTimeout(r, 800));
-    setApprovals(prev => prev.filter(r => r.id !== id));
-    setLoadingId(null);
+    try {
+      const response = await authenticatedFetch(`/permissions/approvals/${id}/resolve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: approved ? "APPROVED" : "REJECTED",
+          comment: approved ? "Approved via web inbox" : "Denied via web inbox",
+        }),
+      });
+      if (response.ok) {
+        setApprovals(prev => prev.filter(r => r.id !== id));
+      }
+    } catch (err) {
+      console.error("Failed to resolve approval:", err);
+    } finally {
+      setLoadingId(null);
+    }
   };
 
   if (!authUser?.isSystemOwner && !authUser?.permissions?.includes("approval.override")) {

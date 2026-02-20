@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ModuleType } from '@prisma/client';
+import { ModuleType, Prisma } from '@prisma/client';
 import { CacheService } from '../cache/cache.service';
 
 @Injectable()
@@ -90,5 +90,233 @@ export class PermissionService {
        select: { approvalPolicy: true }
     });
     return perm?.approvalPolicy || null;
+  }
+
+  // --- Role Management CRUD ---
+
+  async listRoles(tenantId: string) {
+    return this.prisma.role.findMany({
+      where: {
+        OR: [
+          { tenantId: null }, // System Roles
+          { tenantId, deletedAt: null } // Custom Tenant Roles
+        ]
+      },
+      orderBy: { isSystem: 'desc' }
+    });
+  }
+
+  async getRoleById(roleId: string, tenantId: string) {
+    const role = await this.prisma.role.findFirst({
+      where: {
+        id: roleId,
+        OR: [
+          { tenantId: null },
+          { tenantId, deletedAt: null }
+        ]
+      }
+    });
+    if (!role) throw new NotFoundException('Role not found');
+    return role;
+  }
+
+  async getRolePermissions(roleId: string) {
+    const mappings = await this.prisma.rolePermission.findMany({
+      where: { roleId },
+      include: {
+        permission: {
+          include: { resource: true }
+        }
+      }
+    });
+
+    // Flatten to "module.resource.action" strings
+    return mappings.map(m => 
+      `${m.permission.resource.moduleType.toLowerCase()}.${m.permission.resource.name}.${m.permission.action}`
+    );
+  }
+
+  async createRole(tenantId: string, name: string, description: string, permissions: string[]) {
+    return this.prisma.$transaction(async (tx) => {
+      const role = await tx.role.create({
+        data: {
+          tenantId,
+          name,
+          description,
+          isSystem: false,
+        }
+      });
+
+      if (permissions.length > 0) {
+        // Resolve permission IDs from strings
+        for (const pStr of permissions) {
+          const [module, resource, action] = pStr.split('.');
+          const dbPerm = await tx.permission.findFirst({
+            where: {
+              action,
+              resource: {
+                name: resource,
+                moduleType: module.toUpperCase() as ModuleType
+              }
+            }
+          });
+
+          if (dbPerm) {
+            await tx.rolePermission.create({
+              data: {
+                roleId: role.id,
+                permissionId: dbPerm.id
+              }
+            });
+          }
+        }
+      }
+
+      return role;
+    });
+  }
+
+  async updateRole(roleId: string, tenantId: string, data: { name?: string; description?: string; permissions?: string[] }) {
+    const role = await this.getRoleById(roleId, tenantId);
+    if (role.isSystem) throw new ForbiddenException('Cannot modify system roles');
+
+    return this.prisma.$transaction(async (tx) => {
+      const updatedRole = await tx.role.update({
+        where: { id: roleId },
+        data: {
+          name: data.name,
+          description: data.description,
+        }
+      });
+
+      if (data.permissions) {
+        // Wipe and replace permissions
+        await tx.rolePermission.deleteMany({ where: { roleId } });
+
+        for (const pStr of data.permissions) {
+          const [module, resource, action] = pStr.split('.');
+          const dbPerm = await tx.permission.findFirst({
+            where: {
+              action,
+              resource: {
+                name: resource,
+                moduleType: module.toUpperCase() as ModuleType
+              }
+            }
+          });
+
+          if (dbPerm) {
+            await tx.rolePermission.create({
+              data: {
+                roleId,
+                permissionId: dbPerm.id
+              }
+            });
+          }
+        }
+      }
+
+      return updatedRole;
+    });
+  }
+
+  async deleteRole(roleId: string, tenantId: string) {
+    const role = await this.getRoleById(roleId, tenantId);
+    if (role.isSystem) throw new ForbiddenException('Cannot delete system roles');
+
+    return this.prisma.role.update({
+      where: { id: roleId },
+      data: {
+        deletedAt: new Date(),
+      }
+    });
+  }
+
+  async seedPermissions() {
+    const dictionary = [
+      {
+        module: 'MOBILE_SHOP',
+        resources: [
+          { name: 'sales', actions: [
+            { id: 'sale.create', sensitive: false },
+            { id: 'sale.view', sensitive: false },
+            { id: 'sale.view_profit', sensitive: true },
+            { id: 'sale.refund', sensitive: true }
+          ]},
+          { name: 'inventory', actions: [
+            { id: 'inventory.view', sensitive: false },
+            { id: 'inventory.create', sensitive: false },
+            { id: 'inventory.adjust', sensitive: false }
+          ]},
+          { name: 'customers', actions: [
+            { id: 'customer.view', sensitive: false },
+            { id: 'customer.create', sensitive: false }
+          ]}
+        ]
+      },
+      {
+        module: 'GYM',
+        resources: [
+          { name: 'members', actions: [
+            { id: 'member.view', sensitive: false },
+            { id: 'member.view_financials', sensitive: false },
+            { id: 'attendance.mark', sensitive: false }
+          ]}
+        ]
+      },
+      {
+        module: 'CORE',
+        resources: [
+          { name: 'finance', actions: [
+            { id: 'report.view_financials', sensitive: true },
+            { id: 'report.export', sensitive: true }
+          ]},
+          { name: 'admin', actions: [
+            { id: 'approval.override', sensitive: true }
+          ]}
+        ]
+      }
+    ];
+
+    for (const mod of dictionary) {
+      for (const res of mod.resources) {
+        const dbRes = await this.prisma.resource.upsert({
+          where: {
+            moduleType_name: {
+              moduleType: mod.module as ModuleType,
+              name: res.name
+            }
+          },
+          update: {},
+          create: {
+            moduleType: mod.module as ModuleType,
+            name: res.name
+          }
+        });
+
+        for (const act of res.actions) {
+          const [_, actionName] = act.id.includes('.') ? act.id.split('.') : [null, act.id];
+          const finalAction = actionName || act.id;
+
+          await this.prisma.permission.upsert({
+            where: {
+              resourceId_action: {
+                resourceId: dbRes.id,
+                action: finalAction
+              }
+            },
+            update: {
+              approvalPolicy: act.sensitive ? { requiresApproval: true } : Prisma.DbNull
+            },
+            create: {
+              resourceId: dbRes.id,
+              action: finalAction,
+              approvalPolicy: act.sensitive ? { requiresApproval: true } : Prisma.DbNull
+            }
+          });
+        }
+      }
+    }
+    return { success: true };
   }
 }

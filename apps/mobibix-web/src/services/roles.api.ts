@@ -38,46 +38,49 @@ const MOCK_ROLES: RoleDto[] = [
 ];
 
 export async function listRoles(): Promise<RoleDto[]> {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 600));
-  return [...MOCK_ROLES];
+  const response = await authenticatedFetch("/permissions/roles");
+  if (!response.ok) throw new Error("Failed to fetch roles");
+  return response.json();
 }
 
 export async function getRole(id: string): Promise<RoleDto> {
-  await new Promise(resolve => setTimeout(resolve, 400));
-  const role = MOCK_ROLES.find(r => r.id === id);
-  if (!role) throw new Error("Role not found");
-  return role;
+  const response = await authenticatedFetch(`/permissions/roles/${id}`);
+  if (!response.ok) throw new Error("Failed to fetch role details");
+  return response.json();
 }
 
 export async function createRole(data: Partial<RoleDto>): Promise<RoleDto> {
-  await new Promise(resolve => setTimeout(resolve, 600));
-  const newRole = {
-    id: "custom_" + Date.now(),
-    name: data.name || "Custom Role",
-    isSystem: false,
-    description: data.description || "Custom role created by user",
-    permissions: data.permissions || [],
-  };
-  MOCK_ROLES.push(newRole);
-  return newRole;
+  const response = await authenticatedFetch("/permissions/roles", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: data.name,
+      description: data.description,
+      permissions: data.permissions,
+    }),
+  });
+  if (!response.ok) throw new Error("Failed to create role");
+  return response.json();
 }
 
 export async function updateRole(id: string, data: Partial<RoleDto>): Promise<RoleDto> {
-  await new Promise(resolve => setTimeout(resolve, 600));
-  const idx = MOCK_ROLES.findIndex(r => r.id === id);
-  if (idx === -1) throw new Error("Role not found");
-  if (MOCK_ROLES[idx].isSystem) throw new Error("Cannot modify system roles");
-  
-  MOCK_ROLES[idx] = { ...MOCK_ROLES[idx], ...data };
-  return MOCK_ROLES[idx];
+  const response = await authenticatedFetch(`/permissions/roles/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: data.name,
+      description: data.description,
+      permissions: data.permissions,
+    }),
+  });
+  if (!response.ok) throw new Error("Failed to update role");
+  return response.json();
 }
 
 export async function deleteRole(id: string): Promise<void> {
-  await new Promise(resolve => setTimeout(resolve, 600));
-  const idx = MOCK_ROLES.findIndex(r => r.id === id);
-  if (idx === -1) throw new Error("Role not found");
-  if (MOCK_ROLES[idx].isSystem) throw new Error("Cannot delete system roles");
-  
-  MOCK_ROLES.splice(idx, 1);
+  const response = await authenticatedFetch(`/permissions/roles/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error("Failed to delete role");
 }
+

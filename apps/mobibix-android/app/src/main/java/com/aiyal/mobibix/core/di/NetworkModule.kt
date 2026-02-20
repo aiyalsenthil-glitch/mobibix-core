@@ -181,4 +181,10 @@ object NetworkModule {
     fun provideCrmApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.CrmApi {
         return retrofit.create(com.aiyal.mobibix.data.network.CrmApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun providePermissionsApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.PermissionsApi {
+        return retrofit.create(com.aiyal.mobibix.data.network.PermissionsApi::class.java)
+    }
 }

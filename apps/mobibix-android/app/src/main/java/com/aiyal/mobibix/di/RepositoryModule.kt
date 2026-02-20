@@ -1,25 +1,8 @@
 package com.aiyal.mobibix.di
 
-import com.aiyal.mobibix.data.repository.DashboardRepositoryImpl
-import com.aiyal.mobibix.domain.DashboardRepository
-import com.aiyal.mobibix.data.repository.CustomerRepositoryImpl
-import com.aiyal.mobibix.domain.CustomerRepository
-import com.aiyal.mobibix.data.repository.JobRepositoryImpl
-import com.aiyal.mobibix.domain.JobRepository
-import com.aiyal.mobibix.data.repository.PurchaseRepositoryImpl
-import com.aiyal.mobibix.data.repository.ReceiptRepositoryImpl
-import com.aiyal.mobibix.data.repository.ReportRepositoryImpl
-import com.aiyal.mobibix.data.repository.ShopRepositoryImpl
-import com.aiyal.mobibix.data.repository.StaffRepositoryImpl
-import com.aiyal.mobibix.data.repository.SupplierRepositoryImpl
-import com.aiyal.mobibix.data.repository.VoucherRepositoryImpl
-import com.aiyal.mobibix.domain.PurchaseRepository
-import com.aiyal.mobibix.domain.ReceiptRepository
-import com.aiyal.mobibix.domain.ReportRepository
-import com.aiyal.mobibix.domain.ShopRepository
-import com.aiyal.mobibix.domain.StaffRepository
-import com.aiyal.mobibix.domain.SupplierRepository
-import com.aiyal.mobibix.domain.VoucherRepository
+import com.aiyal.mobibix.data.repository.*
+import com.aiyal.mobibix.domain.*
+import com.aiyal.mobibix.domain.repository.*
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -57,8 +40,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindProductRepository(
-        productRepositoryImpl: com.aiyal.mobibix.data.repository.ProductRepositoryImpl
-    ): com.aiyal.mobibix.domain.ProductRepository
+        productRepositoryImpl: ProductRepositoryImpl
+    ): ProductRepository
 
     @Binds
     @Singleton
@@ -98,25 +81,31 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindRolesRepository(
+        rolesRepositoryImpl: RolesRepositoryImpl
+    ): RolesRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindApprovalRepository(
+        approvalRepositoryImpl: ApprovalRepositoryImpl
+    ): ApprovalRepository
+
+    @Binds
+    @Singleton
     abstract fun bindWhatsappRepository(
-        whatsappRepositoryImpl: com.aiyal.mobibix.data.repository.WhatsappRepositoryImpl
-    ): com.aiyal.mobibix.domain.WhatsappRepository
+        whatsappRepositoryImpl: WhatsappRepositoryImpl
+    ): WhatsappRepository
 
     @Binds
     @Singleton
     abstract fun bindLoyaltyRepository(
-        loyaltyRepositoryImpl: com.aiyal.mobibix.domain.LoyaltyRepositoryImpl
-    ): com.aiyal.mobibix.domain.LoyaltyRepository
+        loyaltyRepositoryImpl: LoyaltyRepositoryImpl
+    ): LoyaltyRepository
 
     @Binds
     @Singleton
     abstract fun bindBillingRepository(
-        billingRepositoryImpl: com.aiyal.mobibix.domain.BillingRepositoryImpl
-    ): com.aiyal.mobibix.domain.BillingRepository
-
-    @Binds
-    @Singleton
-    abstract fun bindRolesRepository(
-        mockRolesRepositoryImpl: com.aiyal.mobibix.data.repository.MockRolesRepositoryImpl
-    ): com.aiyal.mobibix.domain.repository.RolesRepository
+        billingRepositoryImpl: BillingRepositoryImpl
+    ): BillingRepository
 }
