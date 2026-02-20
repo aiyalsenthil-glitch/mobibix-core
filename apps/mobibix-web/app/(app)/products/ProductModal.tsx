@@ -49,6 +49,7 @@ export function ProductModal({
     openingStock: "",
     openingCost: "",
     openingImeis: "",
+    reorderLevel: "",
   });
 
   const isOwnerOrManager =
@@ -125,6 +126,7 @@ export function ProductModal({
         salePrice: parseFloat(formData.salePrice),
         gstRate: parseFloat(formData.gstRate),
         isSerialized: formData.isSerialized,
+        reorderLevel: formData.reorderLevel ? parseInt(formData.reorderLevel) : undefined,
       });
 
       // Handle Immediate Stock Initialization if provided (skip for SERVICE)
@@ -508,6 +510,33 @@ export function ProductModal({
                         </option>
                       ))}
                   </select>
+                </div>
+
+                {/* Reorder Level */}
+                <div>
+                  <label
+                    className={`block text-sm font-medium mb-2 ${
+                      theme === "dark" ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Low Stock Alert Level
+                  </label>
+                  <input
+                    type="number"
+                    name="reorderLevel"
+                    value={formData.reorderLevel}
+                    onChange={handleChange}
+                    min="0"
+                    placeholder="e.g. 5"
+                    className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                      theme === "dark"
+                        ? "bg-gray-800 border-white/20 text-white"
+                        : "bg-white border-gray-300 text-gray-900"
+                    }`}
+                  />
+                  <p className="text-xs mt-1 text-gray-500">
+                    Alert when stock falls below this quantity.
+                  </p>
                 </div>
               </div>
 

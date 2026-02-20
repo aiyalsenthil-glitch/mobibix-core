@@ -341,7 +341,7 @@ export class MobileShopDashboardService {
 
       inventory: {
         totalProducts,
-        negativeStockCount: inventoryKpi.negativeStock.length,
+        negativeStockCount: inventoryKpi.lowStock.length, // Use Low Stock (Stock <= Reorder) instead of Negative
         deadStockCount: inventoryKpi.deadStock.length,
         fastMoving: inventoryKpi.fastMoving.slice(0, 5),
       },
@@ -354,7 +354,7 @@ export class MobileShopDashboardService {
       },
 
       alerts: {
-        negativeStock: inventoryKpi.negativeStock.slice(0, 5),
+        negativeStock: inventoryKpi.lowStock.slice(0, 5), // Show Low Stock items in alerts too
         deadStock: inventoryKpi.deadStock.slice(0, 5),
       },
 

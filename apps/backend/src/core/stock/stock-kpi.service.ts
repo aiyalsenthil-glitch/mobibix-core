@@ -72,44 +72,62 @@ export class StockKpiService {
             .slice(0, 10);
         }),
 
-      // 3) NEGATIVE STOCK - Direct balance calculation with minimal data
-      this.prisma.stockLedger
-        .groupBy({
-          by: ['shopProductId'],
-          where: {
-            tenantId,
-            shopId,
-            createdAt: { gte: addDays(new Date(), -90) },
-          },
-          _sum: { quantity: true },
-        })
-        .then(async (groups) => {
-          // Filter to items with negative effective balance
-          const negativeIds = groups
-            .filter((g) => {
-              const totalQty = g._sum.quantity ?? 0;
-              return totalQty < 0;
-            })
-            .map((g) => g.shopProductId);
+      // 3) LOW STOCK & NEGATIVE STOCK - Correct Calculation
+      (async () => {
+        const stockStatus = await this.prisma.$queryRaw<
+          Array<{
+            shopProductId: string;
+            balance: number;
+          }>
+        >`
+          SELECT "shopProductId", SUM(CASE WHEN "type" = 'IN' THEN "quantity" ELSE -"quantity" END) as "balance"
+          FROM "StockLedger"
+          WHERE "tenantId" = ${tenantId} AND "shopId" = ${shopId}
+          GROUP BY "shopProductId"
+        `;
 
-          if (negativeIds.length === 0) return [];
+        // Get reorder levels for active products
+        const products = await this.prisma.shopProduct.findMany({
+          where: { tenantId, shopId, isActive: true },
+          select: { id: true, name: true, reorderLevel: true },
+        });
 
-          // Get details for negative stock items
-          const products = await this.prisma.shopProduct.findMany({
-            where: { id: { in: negativeIds } },
-            select: { id: true, name: true },
-          });
+        // Map balance to products and find low stock / negative stock
+        const lowStockItems: any[] = [];
+        const negativeStockItems: any[] = [];
 
-          return products.map((p) => {
-            const group = groups.find((g) => g.shopProductId === p.id);
-            return {
+        products.forEach((p) => {
+          const stockEntry = stockStatus.find((s) => s.shopProductId === p.id);
+          const currentStock = stockEntry ? Number(stockEntry.balance) : 0; // Default to 0 if no ledger entries
+
+          // Check for Negative Stock
+          if (currentStock < 0) {
+            negativeStockItems.push({
               productId: p.id,
               name: p.name,
-              negativeCount: 1, // Simplified: just mark as negative
-              negativeDays: 1, // Simplified: dashboard only shows if currently negative
-            };
-          });
-        }),
+              negativeCount: Math.abs(currentStock),
+              negativeDays: 1,
+            });
+          }
+
+          // Check for Low Stock (Stock <= Reorder Level)
+          // Default reorderLevel is 0 if not set. So if stock is 0 and reorder is 0, it's low stock.
+          const reorderLevel = p.reorderLevel ?? 0;
+          if (currentStock <= reorderLevel) {
+            lowStockItems.push({
+              productId: p.id,
+              name: p.name,
+              stock: currentStock,
+              reorderLevel: reorderLevel,
+            });
+          }
+        });
+
+        return {
+          negativeStock: negativeStockItems,
+          lowStock: lowStockItems,
+        };
+      })(),
     ]);
 
     // Process trend data (in-memory, but limited to 500 entries)
@@ -146,7 +164,8 @@ export class StockKpiService {
       trend,
       fastMoving: productMovement,
       deadStock: deadStockCount > 0 ? [{ count: deadStockCount }] : [],
-      negativeStock: negativeStockData,
+      negativeStock: negativeStockData.negativeStock,
+      lowStock: negativeStockData.lowStock,
     };
   }
 }

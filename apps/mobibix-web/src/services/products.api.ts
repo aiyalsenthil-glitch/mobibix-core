@@ -88,6 +88,7 @@ export async function createProduct(
     costPrice?: number; // Add cost price support
     gstRate?: number;
     isSerialized?: boolean;
+    reorderLevel?: number; // Add reorder level
   },
 ): Promise<ShopProduct> {
   const response = await authenticatedFetch("/mobileshop/inventory/product", {
@@ -101,10 +102,11 @@ export async function createProduct(
       type: data.type,
       category: data.category,
       salePrice: data.salePrice,
-      costPrice: data.costPrice, // Add cost price
+      costPrice: data.costPrice,
       hsnCode: data.hsnSac,
       gstRate: data.gstRate,
       isSerialized: data.isSerialized,
+      reorderLevel: data.reorderLevel,
     }),
   });
 
@@ -128,8 +130,9 @@ export async function updateProduct(
     category?: string;
     hsnSac?: string;
     salePrice?: number;
-    costPrice?: number; // Add cost price support
+    costPrice?: number;
     gstRate?: number;
+    reorderLevel?: number; // Add reorder level support
   },
 ): Promise<ShopProduct> {
   const response = await authenticatedFetch(
@@ -148,6 +151,7 @@ export async function updateProduct(
         ...(data.costPrice !== undefined && { costPrice: data.costPrice }),
         ...(data.hsnSac && { hsnCode: data.hsnSac }),
         ...(data.gstRate !== undefined && { gstRate: data.gstRate }),
+        ...(data.reorderLevel !== undefined && { reorderLevel: data.reorderLevel }),
       }),
     },
   );
