@@ -56,6 +56,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "REMOVED_AUTH_PROVIDER-admin": "^13.6.0",
+    "ioredis": "^5.9.3",
     "jsonwebtoken": "^9.0.3",
     "lru-cache": "^11.2.5",
     "multer": "^2.0.2",

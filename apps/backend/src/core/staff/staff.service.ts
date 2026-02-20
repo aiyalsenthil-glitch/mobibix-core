@@ -170,8 +170,9 @@ export class StaffService {
     if (data.shopId) {
       await this.prisma.shopStaff.upsert({
         where: {
-          userId_shopId: {
+          userId_tenantId_shopId: {
             userId: existingUser.id,
+            tenantId,
             shopId: data.shopId,
           },
         },

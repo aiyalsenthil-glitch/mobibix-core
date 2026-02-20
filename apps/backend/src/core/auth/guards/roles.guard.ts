@@ -40,8 +40,18 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('User role not found');
     }
 
-    if (!requiredRoles.includes(user.role)) {
-      throw new ForbiddenException('Insufficient role');
+    // ✅ ROOT/SYSTEM OWNER BYPASS (If marked in JWT or user object)
+    if (user.isSystemOwner) {
+      return true;
+    }
+
+    const hasRole = requiredRoles.some((role) => {
+      const roleStr = typeof role === 'string' ? role : (role as string);
+      return user.role === roleStr;
+    });
+
+    if (!hasRole) {
+      throw new ForbiddenException(`Insufficient role. Required one of: ${requiredRoles.join(', ')}`);
     }
 
     return true;

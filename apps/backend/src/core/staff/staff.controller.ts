@@ -23,9 +23,13 @@ import {
   PlanFeatureGuard,
   RequirePlanFeature,
 } from '../billing/guards/plan-feature.guard';
+import { ModuleType } from '@prisma/client';
+import { RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { BranchAccessGuard } from '../permissions/guards/branch-access.guard';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
 
 @Controller('staff')
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard)
 export class StaffController {
   constructor(
     private readonly staffService: StaffService, // ✅ inject
@@ -34,6 +38,7 @@ export class StaffController {
   // ✅ OWNER: list staff
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions(Permission.STAFF_MANAGE)
+  @RequirePermission(ModuleType.CORE, 'staff', 'view_all')
   @Get()
   listStaff(
     @Req() req: any,

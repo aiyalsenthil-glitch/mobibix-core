@@ -10,6 +10,9 @@ import { RolesGuard } from './guards/roles.guard';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { PrismaService } from '../prisma/prisma.service';
 import { FirebaseAdminService } from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
+import { AuthVerificationService } from './services/auth-verification.service';
+import { UserResolutionService } from './services/user-resolution.service';
+import { TokenFactoryService } from './services/token-factory.service';
 
 @Module({
   imports: [
@@ -31,6 +34,9 @@ import { FirebaseAdminService } from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROV
   controllers: [AuthController],
   providers: [
     AuthService,
+    AuthVerificationService,
+    UserResolutionService,
+    TokenFactoryService,
     JwtAuthGuard, // 🔥 PROVIDE HERE
     RolesGuard,
     JwtStrategy,

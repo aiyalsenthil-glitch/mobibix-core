@@ -34,125 +34,72 @@ export class PrismaService
       'Party',
       'Shop',
       'Invoice',
-      'Payment', // SECURITY FIX: Enable soft-delete for payments
-      'SupplierPayment', // SECURITY FIX: Enable soft-delete for supplier payments
-      'SubscriptionInvoice', // Added for GST invoice generation
+      'Payment',
+      'SupplierPayment',
+      'SubscriptionInvoice',
+      'Role',           // NEW
+      'UserTenant',     // NEW
+      'ShopStaff',      // NEW
+      'StaffInvite',     // NEW
+      'ApprovalRequest', // NEW
+      'JobCard'         // NEW
+    ]);
+
+    const multiTenantModels = new Set<string>([
+      'Member',
+      'Party',
+      'Shop',
+      'Invoice',
+      'Payment',
+      'SupplierPayment',
+      'SubscriptionInvoice',
+      'Role',
+      'UserTenant',
+      'ShopStaff',
+      'StaffInvite',
+      'ApprovalRequest',
+      'JobCard',
+      'Product',
+      'StockLog',
+      'Inventory'
     ]);
 
     const baseClient = this;
     const extendedClient = this.$extends({
       query: {
         $allModels: {
-          async findUnique({ model, args, query }: any) {
-            if (!model || !softDeleteModels.has(model)) {
-              return query(args);
+          async $allOperations({ model, operation, args, query }: any) {
+            const tenantId = getCtx('tenantId');
+            const skipTenantCheck = getCtx('isInternalQuery') === true;
+
+            // 1. Soft Delete Filter
+            if (model && softDeleteModels.has(model)) {
+              if (['findUnique', 'findUniqueOrThrow', 'findFirst', 'findFirstOrThrow', 'findMany', 'count', 'aggregate', 'groupBy'].includes(operation)) {
+                args.where = withSoftDeleteFilter(args.where ?? {});
+              }
             }
 
-            const where = args?.where ?? {};
-            const filteredWhere = withSoftDeleteFilter(where);
-            const hasDeletedAtFilter = Object.prototype.hasOwnProperty.call(
-              where,
-              'deletedAt',
-            );
+            // 2. Tenant Isolation
+            if (model && multiTenantModels.has(model) && tenantId && !skipTenantCheck) {
+              if (['findUnique', 'findUniqueOrThrow', 'findFirst', 'findFirstOrThrow', 'findMany', 'count', 'aggregate', 'groupBy', 'update', 'updateMany', 'delete', 'deleteMany'].includes(operation)) {
+                args.where = {
+                  ...(args.where ?? {}),
+                  tenantId
+                };
+              }
 
-            if (!hasDeletedAtFilter) {
-              const delegateName =
-                model.charAt(0).toLowerCase() + model.slice(1);
-              const delegate = (baseClient as any)[delegateName];
-              return delegate.findFirst({
-                ...args,
-                where: filteredWhere,
-              });
-            }
-
-            return query(args);
-          },
-          async findUniqueOrThrow({ model, args, query }: any) {
-            if (!model || !softDeleteModels.has(model)) {
-              return query(args);
-            }
-
-            const where = args?.where ?? {};
-            const filteredWhere = withSoftDeleteFilter(where);
-            const hasDeletedAtFilter = Object.prototype.hasOwnProperty.call(
-              where,
-              'deletedAt',
-            );
-
-            if (!hasDeletedAtFilter) {
-              const delegateName =
-                model.charAt(0).toLowerCase() + model.slice(1);
-              const delegate = (baseClient as any)[delegateName];
-              return delegate.findFirstOrThrow({
-                ...args,
-                where: filteredWhere,
-              });
+              if (['create', 'upsert'].includes(operation)) {
+                if (operation === 'create') {
+                  args.data = { ...(args.data ?? {}), tenantId };
+                } else if (operation === 'upsert') {
+                  args.create = { ...(args.create ?? {}), tenantId };
+                  args.where = { ...(args.where ?? {}), tenantId };
+                }
+              }
             }
 
             return query(args);
-          },
-          async findFirst({ model, args, query }: any) {
-            if (!model || !softDeleteModels.has(model)) {
-              return query(args);
-            }
-
-            args.where = withSoftDeleteFilter(args?.where);
-
-            return query(args);
-          },
-          async findFirstOrThrow({ model, args, query }: any) {
-            if (!model || !softDeleteModels.has(model)) {
-              return query(args);
-            }
-
-            args.where = withSoftDeleteFilter(args?.where);
-
-            return query(args);
-          },
-          async findMany({ model, args, query }: any) {
-            if (!model || !softDeleteModels.has(model)) {
-              return query(args);
-            }
-
-            args.where = withSoftDeleteFilter(args?.where);
-
-            return query(args);
-          },
-          async count({ model, args, query }: any) {
-            if (!model || !softDeleteModels.has(model)) {
-              return query(args);
-            }
-
-            args.where = withSoftDeleteFilter(args?.where);
-
-            return query(args);
-          },
-          async aggregate({ model, args, query }: any) {
-            if (!model || !softDeleteModels.has(model)) {
-              return query(args);
-            }
-
-            args.where = withSoftDeleteFilter(args?.where);
-
-            return query(args);
-          },
-          async groupBy({ model, args, query }: any) {
-            if (!model || !softDeleteModels.has(model)) {
-              return query(args);
-            }
-
-            const where = args?.where ?? {};
-            const hasDeletedAtFilter = Object.prototype.hasOwnProperty.call(
-              where,
-              'deletedAt',
-            );
-
-            if (!hasDeletedAtFilter) {
-              args.where = { ...where, deletedAt: null };
-            }
-
-            return query(args);
-          },
+          }
         },
       },
     });

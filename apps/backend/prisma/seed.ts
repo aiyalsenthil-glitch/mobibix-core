@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env' });
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, ModuleType } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { HSN_DATA } from './hsn-data';
@@ -129,6 +129,286 @@ async function seedModulePhoneNumbers(): Promise<{
   }
 
   return { created, skipped };
+}
+
+async function seedEnterpriseRoles() {
+  console.log('🌱 Seeding Enterprise Roles and Permissions...');
+
+  // 1. Define Resources and Permissions
+  const resources = [
+    // --- CORE MULTI-MODULE ---
+    {
+      name: 'approval',
+      moduleType: 'CORE' as any,
+      description: 'System-wide approval actions',
+      permissions: [
+        { action: 'override', description: 'Can override and approve any pending request' }
+      ]
+    },
+    {
+      name: 'shop',
+      moduleType: 'CORE' as any,
+      description: 'Branch/Shop management',
+      permissions: [
+        { action: 'settings_modify', description: 'Can modify shop/branch settings' }
+      ]
+    },
+    {
+      name: 'staff',
+      moduleType: 'CORE' as any,
+      description: 'Staff management',
+      permissions: [
+        { action: 'invite', description: 'Can invite new staff members' },
+        { action: 'view_all', description: 'Can view all staff members' },
+        { action: 'edit_roles', description: 'Can edit staff roles' }
+      ]
+    },
+    {
+      name: 'report',
+      moduleType: 'CORE' as any,
+      description: 'Analytics and Reporting',
+      permissions: [
+        { action: 'export', description: 'Can export business reports' },
+        { action: 'view_financials', description: 'Can view high-level financial reports' }
+      ]
+    },
+    {
+      name: 'expense',
+      moduleType: 'CORE' as any,
+      description: 'Expense Management',
+      permissions: [
+        { action: 'create', description: 'Can record expenses' },
+        { action: 'view', description: 'Can view expenses' }
+      ]
+    },
+
+    // --- MOBILE_SHOP MODULE ---
+    {
+      name: 'sale',
+      moduleType: 'MOBILE_SHOP' as any,
+      description: 'Sales and Billing',
+      permissions: [
+        { action: 'create', description: 'Can create sales invoices' },
+        { action: 'view_all', description: 'Can view all sales' },
+        { action: 'view_own', description: 'Can view only own sales' },
+        { action: 'refund', description: 'Can process refunds', approvalPolicy: { "requiredPermission": "approval.override" } },
+        { action: 'view_profit', description: 'Can view profit margins on sales' },
+        { action: 'view_cost', description: 'Can view cost prices' }
+      ]
+    },
+    {
+      name: 'inventory',
+      moduleType: 'MOBILE_SHOP' as any,
+      description: 'Product Inventory',
+      permissions: [
+        { action: 'view', description: 'Can view inventory' },
+        { action: 'add', description: 'Can add new products/stock' },
+        { action: 'adjust', description: 'Can adjust existing stock' },
+        { action: 'delete', description: 'Can delete products' }
+      ]
+    },
+    {
+      name: 'jobcard',
+      moduleType: 'MOBILE_SHOP' as any,
+      description: 'Mobile Repair Job Cards',
+      permissions: [
+        { action: 'create', description: 'Can create repair job cards' },
+        { action: 'view_all', description: 'Can view all job cards' },
+        { action: 'update_status', description: 'Can update job card status' },
+        { action: 'assign', description: 'Can assign technicians' },
+        { action: 'view_financials', description: 'Can view job card pricing/cost' }
+      ]
+    },
+
+    // --- GYM MODULE ---
+    {
+      name: 'attendance',
+      moduleType: 'GYM' as any,
+      description: 'Gym Attendance Tracking',
+      permissions: [
+        { action: 'mark', description: 'Can mark attendance for members' },
+        { action: 'view_all', description: 'Can view all attendance logs' }
+      ]
+    },
+    {
+      name: 'member',
+      moduleType: 'GYM' as any,
+      description: 'Gym Members',
+      permissions: [
+        { action: 'add', description: 'Can add new members' },
+        { action: 'edit', description: 'Can edit member profiles' },
+        { action: 'view_all', description: 'Can view all members' },
+        { action: 'view_financials', description: 'Can view member payment history' }
+      ]
+    },
+    {
+      name: 'membership',
+      moduleType: 'GYM' as any,
+      description: 'Gym Memberships',
+      permissions: [
+        { action: 'assign', description: 'Can assign membership plans' },
+        { action: 'renew', description: 'Can process membership renewals' },
+        { action: 'cancel', description: 'Can cancel active memberships', approvalPolicy: { "requiredPermission": "approval.override" } }
+      ]
+    }
+  ];
+
+  // Map to store created permission IDs
+  const permissionIds: Record<string, string> = {};
+
+  // Upsert Resources and Permissions
+  for (const res of resources) {
+    const resource = await prisma.resource.upsert({
+      where: {
+        moduleType_name: {
+          moduleType: res.moduleType,
+          name: res.name
+        }
+      },
+      update: { description: res.description },
+      create: {
+        moduleType: res.moduleType,
+        name: res.name,
+        description: res.description
+      }
+    });
+
+    for (const perm of res.permissions) {
+      const permission = await prisma.permission.upsert({
+        where: {
+          resourceId_action: {
+            resourceId: resource.id,
+            action: perm.action
+          }
+        },
+        update: {
+          description: perm.description,
+          approvalPolicy: perm.approvalPolicy ? (perm.approvalPolicy as any) : undefined
+        },
+        create: {
+          resourceId: resource.id,
+          action: perm.action,
+          description: perm.description,
+          approvalPolicy: perm.approvalPolicy ? (perm.approvalPolicy as any) : undefined
+        }
+      });
+      // Store reference like 'sale.create' -> id
+      permissionIds[`${resource.name}.${permission.action}`] = permission.id;
+    }
+  }
+
+  console.log(`✅ Seeded ${resources.length} Resources and their Permissions`);
+
+  // 2. Define System Default Roles
+  const systemRoles = [
+    {
+      name: 'OWNER',
+      description: 'System Root Owner (Has total access, bypasses permissions)',
+      isSystem: true,
+      isRoot: true,
+      permissions: [] // Root doesn't need explicit permissions mapped
+    },
+    {
+      name: 'SHOP_MANAGER',
+      description: 'Mobile Shop Manager with full operational control',
+      isSystem: true,
+      isRoot: false,
+      permissions: [
+        'sale.create', 'sale.view_all', 'sale.refund', 'sale.view_profit', 'sale.view_cost',
+        'inventory.view', 'inventory.add', 'inventory.adjust',
+        'jobcard.create', 'jobcard.view_all', 'jobcard.update_status', 'jobcard.assign', 'jobcard.view_financials',
+        'staff.view_all', 'report.export', 'expense.create', 'expense.view'
+      ]
+    },
+    {
+      name: 'SHOP_STAFF',
+      description: 'Standard Mobile Shop Sales/Tech Staff',
+      isSystem: true,
+      isRoot: false,
+      permissions: [
+        'sale.create', 'sale.view_own',
+        'inventory.view',
+        'jobcard.create', 'jobcard.update_status'
+      ]
+    },
+    {
+      name: 'GYM_MANAGER',
+      description: 'Gym Branch Manager with full operational control',
+      isSystem: true,
+      isRoot: false,
+      permissions: [
+        'attendance.mark', 'attendance.view_all',
+        'member.add', 'member.edit', 'member.view_all', 'member.view_financials',
+        'membership.assign', 'membership.renew', 'membership.cancel',
+        'staff.view_all', 'report.export', 'expense.create', 'expense.view'
+      ]
+    },
+    {
+      name: 'GYM_TRAINER',
+      description: 'Standard Gym Trainer or Front Desk Staff',
+      isSystem: true,
+      isRoot: false,
+      permissions: [
+        'attendance.mark',
+        'member.view_all'
+      ]
+    }
+  ];
+
+  // Safe Upsert for System Roles (tenantId is null)
+  for (const sr of systemRoles) {
+    let role = await prisma.role.findFirst({
+      where: {
+        name: sr.name,
+        tenantId: null
+      }
+    });
+
+    if (!role) {
+      role = await prisma.role.create({
+        data: {
+          name: sr.name,
+          description: sr.description,
+          isSystem: sr.isSystem,
+          isRoot: sr.isRoot,
+          category: 'SYSTEM_TEMPLATE'
+        }
+      });
+    } else {
+      await prisma.role.update({
+        where: { id: role.id },
+        data: {
+          description: sr.description,
+          isSystem: sr.isSystem,
+          isRoot: sr.isRoot
+        }
+      });
+    }
+
+    // Assign Permissions
+    if (sr.permissions && sr.permissions.length > 0) {
+      const rolePermsData = sr.permissions.map((p: string) => {
+        const pId = permissionIds[p];
+        if (!pId) throw new Error(`Permission ${p} not found during seeding.`);
+        return {
+          roleId: role!.id,
+          permissionId: pId
+        };
+      });
+
+      // Clear existing to avoid duplicates on reset
+      await prisma.rolePermission.deleteMany({
+        where: { roleId: role.id }
+      });
+
+      await prisma.rolePermission.createMany({
+        data: rolePermsData,
+        skipDuplicates: true
+      });
+    }
+  }
+
+  console.log(`✅ Seeded ${systemRoles.length} System Template Roles`);
 }
 
 async function main() {
@@ -638,6 +918,11 @@ async function main() {
     });
   }
   console.log(`✅ Seeded ${HSN_DATA.length} HSN codes`);
+
+  // ENTERPRISE ROLES
+  console.log('\n=========================================');
+  await seedEnterpriseRoles();
+  console.log('=========================================\n');
 
   // WHATSAPP INITIALIZATION
   console.log('\n🌱 Seeding WhatsApp configuration...');

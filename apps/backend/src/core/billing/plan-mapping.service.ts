@@ -43,6 +43,7 @@ export class PlanMappingService {
     module: ModuleType,
   ): string | null {
     const mapping: Record<ModuleType, Record<string, string>> = {
+      CORE: {},
       GYM: {
         TRIAL: 'GYM_TRIAL',
         STANDARD: 'GYM_STANDARD',

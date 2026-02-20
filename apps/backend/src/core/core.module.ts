@@ -25,6 +25,7 @@ import { CommonModule } from '../common/common.module';
 import { PlatformModule } from './platform/platform.module';
 import { ReportsHardeningModule } from './reports/reports-hardening.module';
 import { SystemModule } from './system/system.module';
+import { PermissionsModule } from './permissions/permissions.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { SystemModule } from './system/system.module';
     PlatformModule,
     ReportsHardeningModule,
     SystemModule,
+    PermissionsModule,
   ],
   exports: [
     AuthModule,
@@ -64,6 +66,7 @@ import { SystemModule } from './system/system.module';
     AuditModule,
     StaffModule,
     HsnModule,
+    PermissionsModule,
   ],
 })
 export class CoreModule {}
