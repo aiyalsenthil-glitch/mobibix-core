@@ -26,6 +26,8 @@ const navItems: NavItem[] = [
   { label: "Reports", href: "/reports", icon: "📈" },
   { label: "Shops", href: "/shops", icon: "🏪" },
   { label: "Staff", href: "/staff", icon: "👥" },
+  { label: "Roles", href: "/roles", icon: "🛡️" },
+  { label: "Approvals", href: "/approvals", icon: "✅" },
   { label: "Settings", href: "/settings", icon: "⚙️" },
 ];
 

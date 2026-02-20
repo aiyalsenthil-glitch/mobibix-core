@@ -8,6 +8,8 @@ import { Topbar } from "@/components/layout/topbar";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 
+import { GlobalApprovalInterceptor } from "@/components/auth/GlobalApprovalInterceptor";
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { authUser, isLoading } = useAuth();
@@ -88,6 +90,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main
         className={`${marginLeft} pt-20 px-4 lg:px-8 py-8 transition-all duration-300 bg-white dark:bg-slate-950 min-h-screen`}
       >
+        <GlobalApprovalInterceptor />
         {children}
       </main>
     </div>

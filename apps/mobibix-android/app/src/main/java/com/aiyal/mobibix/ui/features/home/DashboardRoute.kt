@@ -18,35 +18,35 @@ fun DashboardRoute(
         }
     }
 
-    when (appState) {
-        is AppState.Owner -> {
-            LaunchedEffect(Unit) {
-                viewModel.loadOwnerDashboard(shopId = null)
-            }
-            OwnerDashboardScreen(
-                state = viewModel.ownerState.value,
-                onShopSelected = { shopId -> viewModel.loadOwnerDashboard(shopId) },
-                // onLogout is handled by the main Scaffold's TopBar now
-                onNavigateToJobs = { navController.navigate("job_list") },
-                onNavigateToInventory = { /* TODO: navController.navigate("inventory_list") */ },
-                // onNavigateToStaff is handled by the 'More' tab now
-                onNavigateToNewSale = { /* TODO: navController.navigate("new_sale") */ },
-                onNavigateToNewPurchase = { /* TODO: navController.navigate("new_purchase") */ }
-            )
-        }
+    val isSystemOwner = when(appState) {
+        is AppState.Owner -> appState.isSystemOwner
+        is AppState.Staff -> appState.isSystemOwner
+        else -> false
+    }
 
-        is AppState.Staff -> {
-            LaunchedEffect(appState.shopId) {
-                viewModel.loadStaffDashboard()
-            }
-            StaffDashboardScreen(
-                state = viewModel.staffState.value
-                // onLogout parameter removed as it's no longer needed
-            )
+    if (isSystemOwner) {
+        LaunchedEffect(Unit) {
+            viewModel.loadOwnerDashboard(shopId = null)
         }
-
-        else -> {
-            // Handle other states
+        OwnerDashboardScreen(
+            state = viewModel.ownerState.value,
+            onShopSelected = { shopId -> viewModel.loadOwnerDashboard(shopId) },
+            // onLogout is handled by the main Scaffold's TopBar now
+            onNavigateToJobs = { navController.navigate("job_list") },
+            onNavigateToInventory = { /* TODO: navController.navigate("inventory_list") */ },
+            // onNavigateToStaff is handled by the 'More' tab now
+            onNavigateToNewSale = { /* TODO: navController.navigate("new_sale") */ },
+            onNavigateToNewPurchase = { /* TODO: navController.navigate("new_purchase") */ }
+        )
+    } else if (appState is AppState.Staff) {
+        LaunchedEffect(appState.shopId) {
+            viewModel.loadStaffDashboard()
         }
+        StaffDashboardScreen(
+            state = viewModel.staffState.value
+            // onLogout parameter removed as it's no longer needed
+        )
+    } else {
+        // Handle other states
     }
 }

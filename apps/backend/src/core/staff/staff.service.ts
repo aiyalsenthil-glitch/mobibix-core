@@ -208,6 +208,8 @@ export class StaffService {
     email: string,
     name?: string,
     phone?: string,
+    roleId?: string,
+    branchIds?: string[],
   ) {
     await this.ensureStaffAllowed(tenantId);
 
@@ -248,6 +250,8 @@ export class StaffService {
         createdAt: new Date(), // refresh timestamp (optional)
         name,
         phone,
+        roleId,
+        shopIds: branchIds || [],
         ...getUpdateAudit(creatorId),
       },
 
@@ -256,6 +260,8 @@ export class StaffService {
         email,
         name,
         phone,
+        roleId,
+        shopIds: branchIds || [],
         role: UserRole.STAFF,
         ...getCreateAudit(creatorId),
       },

@@ -30,7 +30,9 @@ export interface AuthUser {
   email: string;
   name?: string;
   REMOVED_AUTH_PROVIDERUid: string;
-  role: AuthRole;
+  role: AuthRole | string;
+  isSystemOwner: boolean;
+  permissions?: string[];
   tenantId?: string;
   planCode?: string;
 }
@@ -46,6 +48,7 @@ export interface AuthContextType {
     REMOVED_AUTH_PROVIDERUser: FirebaseUser,
     tenantCode?: string,
   ) => Promise<ExchangeTokenResponse>;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -183,6 +186,33 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
+  const refreshSession = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const { getCurrentUser } = await import("@/services/auth.api");
+      const user = await getCurrentUser();
+      
+      if (user) {
+        setAuthUser((prev) => ({
+          ...prev,
+          ...(user as unknown as AuthUser), // Merge new permissions/context
+        }));
+      }
+    } catch (err) {
+      console.warn("Silent session refresh failed:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Phase 5: Rehydrate Context on Branch Change
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleBranchChange = () => { refreshSession(); };
+    window.addEventListener("branch_changed", handleBranchChange);
+    return () => window.removeEventListener("branch_changed", handleBranchChange);
+  }, [refreshSession]);
+
   const value: AuthContextType = {
     REMOVED_AUTH_PROVIDERUser,
     authUser,
@@ -191,6 +221,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     error,
     logout,
     exchangeToken,
+    refreshSession,
   };
 
   return createElement(AuthContext.Provider, { value }, children);

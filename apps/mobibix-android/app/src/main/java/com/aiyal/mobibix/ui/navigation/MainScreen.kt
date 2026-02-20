@@ -121,8 +121,13 @@ fun MainScreen(
                 }
                 composable(BottomNavItem.Repair.route) {
                     val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
+                    val isSystemOwner = when(appState) {
+                         is AppState.Owner -> appState.isSystemOwner
+                         is AppState.Staff -> appState.isSystemOwner
+                         else -> false
+                    }
                     JobListScreen(
-                        isOwner = appState is AppState.Owner,
+                        isOwner = isSystemOwner,
                         navController = mainNavController,
                         shopId = activeShopId ?: ""
                     )

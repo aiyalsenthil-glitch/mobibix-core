@@ -113,4 +113,10 @@ abstract class RepositoryModule {
     abstract fun bindBillingRepository(
         billingRepositoryImpl: com.aiyal.mobibix.domain.BillingRepositoryImpl
     ): com.aiyal.mobibix.domain.BillingRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindRolesRepository(
+        mockRolesRepositoryImpl: com.aiyal.mobibix.data.repository.MockRolesRepositoryImpl
+    ): com.aiyal.mobibix.domain.repository.RolesRepository
 }

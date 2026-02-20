@@ -16,7 +16,9 @@ data class UserDto(
     @SerializedName("id") val id: String,
     @SerializedName("email") val email: String,
     @SerializedName("name") val name: String?,
-    @SerializedName("role") val role: String
+    @SerializedName("role") val role: String?,
+    @SerializedName("isSystemOwner") val isSystemOwner: Boolean? = false,
+    @SerializedName("permissions") val permissions: List<String>? = emptyList()
 )
 
 data class TenantDto(

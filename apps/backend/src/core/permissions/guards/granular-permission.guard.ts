@@ -3,6 +3,8 @@ import {
   ExecutionContext,
   Injectable,
   Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSION_KEY, RequiredPermission } from '../decorators/require-permission.decorator';
@@ -14,6 +16,7 @@ export class GranularPermissionGuard implements CanActivate {
 
   constructor(
     private readonly reflector: Reflector,
+    @Inject(forwardRef(() => PermissionService))
     private readonly permissionService: PermissionService,
   ) {}
 

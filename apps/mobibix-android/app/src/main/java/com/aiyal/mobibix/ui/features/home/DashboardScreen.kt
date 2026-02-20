@@ -14,35 +14,35 @@ fun DashboardScreen(
     onNavigateToNewPurchase: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
-    when (appState) {
-        is AppState.Owner -> {
-            LaunchedEffect(Unit) { 
-                viewModel.loadOwnerDashboard(shopId = null)
-            }
-            OwnerDashboardScreen(
-                state = viewModel.ownerState.value,
-                onShopSelected = { shopId -> viewModel.loadOwnerDashboard(shopId) },
-                onNavigateToJobs = onNavigateToJobs,
-                onNavigateToInventory = onNavigateToInventory,
-                onNavigateToNewSale = onNavigateToNewSale,
-                onNavigateToNewPurchase = onNavigateToNewPurchase,
-                onNavigateToReports = {},
-                onOpenDrawer = {}
-            )
-        }
+    val isSystemOwner = when(appState) {
+        is AppState.Owner -> appState.isSystemOwner
+        is AppState.Staff -> appState.isSystemOwner
+        else -> false
+    }
 
-        is AppState.Staff -> {
-            LaunchedEffect(appState.shopId) {
-                viewModel.loadStaffDashboard()
-            }
-            // The onLogout parameter is removed as it's no longer needed.
-            StaffDashboardScreen(
-                state = viewModel.staffState.value
-            )
+    if (isSystemOwner) {
+        LaunchedEffect(Unit) { 
+            viewModel.loadOwnerDashboard(shopId = null)
         }
-
-        else -> {
-            // Handle other states
+        OwnerDashboardScreen(
+            state = viewModel.ownerState.value,
+            onShopSelected = { shopId -> viewModel.loadOwnerDashboard(shopId) },
+            onNavigateToJobs = onNavigateToJobs,
+            onNavigateToInventory = onNavigateToInventory,
+            onNavigateToNewSale = onNavigateToNewSale,
+            onNavigateToNewPurchase = onNavigateToNewPurchase,
+            onNavigateToReports = {},
+            onOpenDrawer = {}
+        )
+    } else if (appState is AppState.Staff) {
+        LaunchedEffect(appState.shopId) {
+            viewModel.loadStaffDashboard()
         }
+        // The onLogout parameter is removed as it's no longer needed.
+        StaffDashboardScreen(
+            state = viewModel.staffState.value
+        )
+    } else {
+        // Handle other states
     }
 }

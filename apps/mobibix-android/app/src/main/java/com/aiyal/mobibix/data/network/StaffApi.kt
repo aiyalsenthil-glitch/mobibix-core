@@ -4,8 +4,11 @@ import retrofit2.http.*
 
 data class InviteStaffRequest(
     val email: String,
-    val role: String, // Should always be STAFF
-    val shopId: String
+    val name: String,
+    val phone: String?,
+    val roleId: String,
+    val branchIds: List<String>,
+    val shopId: String? // Legacy fallback
 )
 
 data class AcceptInviteRequest(

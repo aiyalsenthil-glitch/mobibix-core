@@ -4,20 +4,15 @@ import type {
   ExchangeTokenResponse,
 } from "@/services/auth.api";
 
-// Compute post-login redirect path based on role and tenant assignment
+// Compute post-login redirect path based on user status
 export function getRoleRedirect(user: AuthUserPayload): string {
-  switch (user.role as AuthRole) {
-    case "owner":
-      return user.tenantId ? "/dashboard" : "/setup-business";
-    case "staff":
-      return user.tenantId ? "/dashboard" : "/setup-business";
-    case "member":
-      return "/dashboard";
-    case "admin":
-      return "/dashboard";
-    default:
-      return "/dashboard";
+  // Owners without a tenant must complete setup
+  if (user.isSystemOwner && !user.tenantId) {
+    return "/setup-business";
   }
+  
+  // Everyone else goes to dashboard if they have a tenant, or setup if they somehow don't
+  return user.tenantId ? "/dashboard" : "/setup-business";
 }
 
 // Post-login routing using backend response (tenant counts)
@@ -33,10 +28,11 @@ export function getPostLoginRedirect(response: ExchangeTokenResponse): string {
 
   // Single tenant: prefer returned tenant, fallback to user.tenantId
   const tenantId = tenant?.id ?? tenants?.[0]?.id ?? user.tenantId;
+  // Owners without a tenant must complete setup
+  if (user.isSystemOwner && (!tenantId || tenantId === "")) {
+    return "/setup-business";
+  }
 
-  if (user.role === "owner") return tenantId ? "/dashboard" : "/dashboard";
-  if (user.role === "staff") return tenantId ? "/dashboard" : "/dashboard";
-  if (user.role === "member") return "/dashboard";
-  if (user.role === "admin") return "/dashboard";
-  return "/dashboard";
+  // Everyone else goes to dashboard if they have a tenant, else onboarding
+  return tenantId ? "/dashboard" : "/onboarding";
 }

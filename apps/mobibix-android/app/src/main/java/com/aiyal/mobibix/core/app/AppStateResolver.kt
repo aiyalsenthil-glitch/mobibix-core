@@ -23,9 +23,17 @@ class AppStateResolver @Inject constructor(
 
         return when {
             me.tenantId == null -> AppState.TenantRequired
-            me.role == "OWNER" -> AppState.Owner
-            me.role == "STAFF" -> AppState.Staff(me.tenantId!!)
-            else -> AppState.TenantRequired
+            me.isSystemOwner == true -> AppState.Owner(
+                role = me.role,
+                isSystemOwner = true,
+                permissions = me.permissions ?: emptyList()
+            )
+            else -> AppState.Staff(
+                shopId = me.tenantId, // Using tenantId for shopId temporarily, though this may change with multi-branch logic
+                role = me.role,
+                isSystemOwner = false,
+                permissions = me.permissions ?: emptyList()
+            )
         }
     }
 }

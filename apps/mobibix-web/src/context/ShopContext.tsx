@@ -118,6 +118,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     } else {
       localStorage.removeItem(SELECTED_SHOP_KEY);
     }
+    // Phase 5: Trigger rehydration of activePermissions globally
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event('branch_changed'));
+    }
   };
 
   const refreshShops = useCallback(async () => {

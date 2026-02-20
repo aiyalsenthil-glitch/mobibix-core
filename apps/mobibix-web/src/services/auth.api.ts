@@ -93,8 +93,11 @@ export interface AuthUserPayload {
   email: string;
   name?: string;
   REMOVED_AUTH_PROVIDERUid: string;
-  role: AuthRole;
+  role: AuthRole | string; // Soon to be deprecated for dynamic roles
+  isSystemOwner: boolean;
+  permissions?: string[];
   tenantId?: string;
+  tenantCode?: string;
   planCode?: string; // e.g., 'MOBIBIX_TRIAL', 'MOBIBIX_STANDARD'
 }
 
@@ -102,10 +105,13 @@ export interface CurrentUserResponse {
   id: string;
   email: string;
   fullName?: string | null;
-  role: AuthRole;
+  role: AuthRole | string;
+  isSystemOwner: boolean;
   tenantId?: string | null;
+  tenantCode?: string | null;
   tenantType?: string | null;
   tenantName?: string | null;
+  permissions?: string[];
 }
 
 export interface ExchangeTokenResponse {
@@ -392,6 +398,39 @@ export async function authenticatedFetch(
         headers: retryHeaders,
         credentials: "include",
       });
+    }
+  }
+
+  // Phase 4: Approval Interceptor
+  if (response.status === 403) {
+    const clonedResponse = response.clone();
+    try {
+      const errorData = await clonedResponse.json();
+      if (errorData?.code === "APPROVAL_REQUIRED") {
+        return new Promise<Response>((resolve, reject) => {
+          import("@/lib/events/approval.events").then(({ dispatchApprovalRequired }) => {
+            dispatchApprovalRequired(
+              errorData.action || "unknown_action",
+              errorData,
+              async () => {
+                // On Manager Override success, re-attempt the fetch.
+                // In reality, we'd pass an override PIN or token in headers here.
+                const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
+                  ...options,
+                  headers: { ...headers, "X-Manager-Override": "true" },
+                  credentials: "include",
+                });
+                resolve(retryResponse);
+              },
+              (err) => {
+                reject(err);
+              }
+            );
+          });
+        });
+      }
+    } catch (e) {
+      // Ignore JSON parse errors for non-JSON 403s
     }
   }
 

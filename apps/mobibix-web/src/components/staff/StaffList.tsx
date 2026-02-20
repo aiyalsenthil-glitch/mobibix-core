@@ -91,7 +91,7 @@ export function StaffList() {
                   <td className="px-6 py-4">
                     <span
                       className={`px-2 py-1 text-xs rounded-full font-medium ${
-                        staff.role === "OWNER"
+                        staff.isSystemOwner
                           ? "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300"
                           : "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300"
                       }`}
@@ -114,7 +114,7 @@ export function StaffList() {
                     {new Date(staff.joinDate).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    {staff.role !== "OWNER" && (
+                    {!staff.isSystemOwner && (
                       <button
                         onClick={() => handleRemove(staff.id, staff.status)}
                         className="text-gray-500 dark:text-stone-500 hover:text-red-500 dark:hover:text-red-400 transition"

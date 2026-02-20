@@ -82,7 +82,7 @@ export class StaffController {
   @Post('invite')
   async invite(
     @Req() req: any,
-    @Body() body: { email: string; name?: string; phone?: string },
+    @Body() body: { email: string; name?: string; phone?: string; roleId?: string; branchIds?: string[] },
   ) {
     return this.staffService.inviteByEmail(
       req.user.tenantId,
@@ -90,6 +90,8 @@ export class StaffController {
       body.email,
       body.name,
       body.phone,
+      body.roleId,
+      body.branchIds,
     );
   }
   @Roles(UserRole.OWNER)

@@ -111,6 +111,29 @@ export class UserResolutionService {
      if (!staffInvite) return;
 
      try {
+       const shopStaffCreations = (staffInvite.shopIds || []).map((shopId: string) => 
+         this.prisma.shopStaff.upsert({
+           where: {
+             userId_tenantId_shopId: {
+               userId: userId,
+               tenantId: staffInvite.tenantId,
+               shopId: shopId,
+             }
+           },
+           update: {
+             roleId: staffInvite.roleId || null,
+             isActive: true,
+           },
+           create: {
+             userId: userId,
+             tenantId: staffInvite.tenantId,
+             shopId: shopId,
+             roleId: staffInvite.roleId || null,
+             role: UserRole.STAFF,
+           }
+         })
+       );
+
        await this.prisma.$transaction([
          this.prisma.userTenant.upsert({
            where: {
@@ -128,12 +151,13 @@ export class UserResolutionService {
              role: UserRole.STAFF,
            },
          }),
+         ...shopStaffCreations,
          this.prisma.staffInvite.update({
            where: { id: staffInvite.id },
            data: { accepted: true },
          }),
        ]);
-     } catch (err) {
+     } catch (err: any) {
        console.warn('⚠️  Failed to accept staff invite:', err?.message);
      }
   }

@@ -20,8 +20,15 @@ class StaffRepositoryImpl @Inject constructor(
         return staffApi.getInvites()
     }
 
-    override suspend fun inviteStaff(email: String, role: String, shopId: String) {
-        staffApi.invite(InviteStaffRequest(email, role, shopId))
+    override suspend fun inviteStaff(
+        email: String,
+        name: String,
+        phone: String?,
+        roleId: String,
+        branchIds: List<String>,
+        shopId: String?
+    ) {
+        staffApi.invite(InviteStaffRequest(email, name, phone, roleId, branchIds, shopId))
     }
 
     override suspend fun removeStaff(id: String) {

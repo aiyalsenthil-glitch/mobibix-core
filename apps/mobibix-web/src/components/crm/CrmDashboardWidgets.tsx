@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getCrmDashboard, type CrmDashboardMetrics } from "@/services/crm.api";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermission } from "@/hooks/usePermission";
 
 interface CrmDashboardWidgetsProps {
   shopId?: string;
@@ -14,6 +15,7 @@ export function CrmDashboardWidgets({
   preset = "LAST_30_DAYS",
 }: CrmDashboardWidgetsProps) {
   const { authUser } = useAuth();
+  const { hasPermission } = usePermission();
   const [metrics, setMetrics] = useState<CrmDashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +106,7 @@ export function CrmDashboardWidgets({
         />
 
         {/* Outstanding Amount */}
-        {authUser?.role?.toLowerCase() !== "staff" && (
+        {hasPermission("report.view_financials") && (
           <MetricCard
             title="Outstanding Amount"
             value={`₹${(metrics.financials?.outstandingAmount || 0).toLocaleString()}`}
@@ -130,7 +132,7 @@ export function CrmDashboardWidgets({
         />
 
         {/* Top Customers */}
-        {authUser?.role?.toLowerCase() !== "staff" && (
+        {hasPermission("report.view_financials") && (
           <div className="bg-white/5 border border-white/10 rounded-xl p-6 md:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
               <span className="text-2xl">🏆</span>

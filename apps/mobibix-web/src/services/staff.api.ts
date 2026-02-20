@@ -5,7 +5,8 @@ export interface Staff {
   email: string;
   name: string | null;
   phone: string | null;
-  role: "OWNER" | "STAFF";
+  role: string;
+  isSystemOwner: boolean;
   status: "ACTIVE" | "INVITED";
   joinDate: string; // createdAt
 }
@@ -14,8 +15,11 @@ export interface AddStaffDto {
   email: string;
   name: string;
   phone?: string;
-  shopId?: string; // Optional, for future use if we want to assign to shop immediately
+  shopId?: string; // Legacy field
+  roleId: string;
+  branchIds: string[];
 }
+
 
 /**
  * List all staff members (Active + Invited)
@@ -39,6 +43,7 @@ export async function listStaff(): Promise<Staff[]> {
     name: s.fullName,
     phone: s.phone,
     role: s.role,
+    isSystemOwner: s.isSystemOwner ?? false,
     status: "ACTIVE",
     joinDate: s.createdAt || new Date().toISOString(), // Fallback if missing
   }));
@@ -49,6 +54,7 @@ export async function listStaff(): Promise<Staff[]> {
     name: i.name,
     phone: i.phone,
     role: i.role,
+    isSystemOwner: false, // Invites are never system owners
     status: "INVITED",
     joinDate: i.createdAt,
   }));

@@ -77,7 +77,7 @@ export function Topbar({ isCollapsed = false, onMenuClick }: TopbarProps) {
               isDark ? "text-gray-400" : "text-teal-600/70 font-medium"
             }`}
           >
-            {authUser?.role || "member"}
+            {authUser?.isSystemOwner ? "System Owner" : (authUser?.role || "Staff")}
           </p>
         </div>
 

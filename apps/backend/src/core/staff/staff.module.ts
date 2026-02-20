@@ -5,9 +5,10 @@ import { StaffService } from './staff.service';
 import { UsersModule } from '../users/users.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { BillingModule } from '../billing/billing.module';
+import { PermissionsModule } from '../permissions/permissions.module';
 
 @Module({
-  imports: [AuthModule, UsersModule, BillingModule], // ✅ REQUIRED for JwtAuthGuard & PlanFeatureGuard
+  imports: [AuthModule, UsersModule, BillingModule, PermissionsModule], // ✅ REQUIRED for JwtAuthGuard, PlanFeatureGuard, and GranularPermissionGuard
   controllers: [StaffController],
   providers: [StaffService, PrismaService],
 })
