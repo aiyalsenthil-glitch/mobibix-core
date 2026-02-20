@@ -29,6 +29,16 @@ data class CreateFollowUpRequest(
     val priority: String
 )
 
+data class TimelineEvent(
+    val id: String,
+    val date: String,
+    val type: String, // e.g. "SALE", "JOB", "PAYMENT", "FOLLOW_UP", "LOYALTY"
+    val title: String,
+    val description: String?,
+    val amount: Double? = null,
+    val status: String? = null
+)
+
 interface CrmApi {
     @GET("api/crm/stats")
     suspend fun getDashboardStats(@Query("shopId") shopId: String): CrmDashboardStats
@@ -44,4 +54,7 @@ interface CrmApi {
 
     @PATCH("api/crm/follow-ups/{id}/complete")
     suspend fun completeFollowUp(@Path("id") id: String)
+
+    @GET("api/crm/timeline/{customerId}")
+    suspend fun getCustomerTimeline(@Path("customerId") customerId: String): List<TimelineEvent>
 }

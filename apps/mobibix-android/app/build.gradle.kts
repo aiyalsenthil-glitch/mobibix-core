@@ -125,6 +125,8 @@ dependencies {
     implementation(libs.vico.compose)
     implementation(libs.vico.compose.m3)
     implementation(libs.vico.core)
+    implementation(libs.REMOVED_PAYMENT_INFRA.checkout)
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

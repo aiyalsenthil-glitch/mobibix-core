@@ -19,6 +19,9 @@ import com.aiyal.mobibix.ui.features.MoreViewModel
 import com.aiyal.mobibix.ui.features.home.HomeScreen
 import com.aiyal.mobibix.ui.features.jobs.JobListScreen
 import com.aiyal.mobibix.ui.features.sales.SalesListScreen
+import com.aiyal.mobibix.ui.features.billing.BillingViewModel
+import com.aiyal.mobibix.data.network.SubscriptionDetails
+import com.aiyal.mobibix.ui.components.SubscriptionAlertBanner
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,7 +42,13 @@ fun MainScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val moreViewModel: MoreViewModel = hiltViewModel()
+    val billingViewModel: BillingViewModel = hiltViewModel()
     val logoutComplete by moreViewModel.logoutComplete.collectAsState()
+    val billingState by billingViewModel.uiState.collectAsState()
+    
+    LaunchedEffect(Unit) {
+        billingViewModel.loadData()
+    }
 
     LaunchedEffect(logoutComplete) {
         if (logoutComplete) {
@@ -78,12 +87,22 @@ fun MainScreen(
         }
     ) {
         Scaffold(
+            topBar = {
+                val currentPlan = billingState.currentPlan
+                if (currentPlan != null) {
+                    SubscriptionAlertBanner(
+                        status = currentPlan.subscriptionStatus,
+                        daysLeft = currentPlan.daysLeft,
+                        onClick = { mainNavController.navigate("billing") }
+                    )
+                }
+            },
             bottomBar = { AppBottomNavigationBar(navController = nestedNavController) }
-        ) {
+        ) { padding ->
             NavHost(
                 navController = nestedNavController,
                 startDestination = BottomNavItem.Home.route,
-                modifier = Modifier.padding(it)
+                modifier = Modifier.padding(padding)
             ) {
                 composable(BottomNavItem.Home.route) {
                     HomeScreen(

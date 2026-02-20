@@ -3,6 +3,7 @@ package com.aiyal.mobibix.data.network
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Query
 
 data class LoyaltySummary(
@@ -34,6 +35,26 @@ data class RedeemPointsRequest(
     val description: String?
 )
 
+data class LoyaltyConfig(
+    val tenantId: String? = null,
+    val isEnabled: Boolean,
+    val earnAmountPerPoint: Int,
+    val pointsPerEarnUnit: Int = 1,
+    val pointValueInRupees: Double,
+    val maxRedeemPercent: Int,
+    val allowOnRepairs: Boolean,
+    val allowOnAccessories: Boolean,
+    val allowOnServices: Boolean,
+    val expiryDays: Int? = null,
+    val allowManualAdjustment: Boolean,
+    val minInvoiceForEarn: Int? = null
+)
+
+data class UpdateLoyaltyConfigResponse(
+    val success: Boolean,
+    val config: LoyaltyConfig
+)
+
 interface LoyaltyApi {
     @GET("api/loyalty/summary")
     suspend fun getLoyaltySummary(@Query("shopId") shopId: String): LoyaltySummary
@@ -46,6 +67,12 @@ interface LoyaltyApi {
 
     @POST("api/loyalty/redeem")
     suspend fun redeemPoints(@Body request: RedeemPointsRequest): ResponseStatus
+
+    @GET("api/loyalty/config")
+    suspend fun getLoyaltyConfig(): LoyaltyConfig
+
+    @PUT("api/loyalty/config")
+    suspend fun updateLoyaltyConfig(@Body config: LoyaltyConfig): UpdateLoyaltyConfigResponse
 }
 
 data class ResponseStatus(

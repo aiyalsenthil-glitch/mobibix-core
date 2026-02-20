@@ -369,6 +369,16 @@ fun AppNavGraph(
                 navController = navController
             )
         }
+        composable(
+            route = "customer_timeline/{customerId}",
+            arguments = listOf(navArgument("customerId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val customerId = backStackEntry.arguments?.getString("customerId") ?: ""
+            com.aiyal.mobibix.ui.features.customers.CustomerTimelineScreen(
+                customerId = customerId,
+                navController = navController
+            )
+        }
         composable("add_customer") {
             com.aiyal.mobibix.ui.features.customers.AddCustomerScreen(
                 onNavigateBack = { navController.popBackStack() }
@@ -450,6 +460,9 @@ fun AppNavGraph(
         }
         composable("crm_follow_ups") {
             com.aiyal.mobibix.ui.features.crm.FollowUpsScreen(navController = navController)
+        }
+        composable("loyalty_settings") {
+            com.aiyal.mobibix.ui.features.loyalty.LoyaltySettingsScreen(navController = navController)
         }
         
         // Placeholder routes for drawer items not yet implemented

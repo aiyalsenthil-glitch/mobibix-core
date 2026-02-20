@@ -1,6 +1,8 @@
 package com.aiyal.mobibix.core.utils
 
 import com.aiyal.mobibix.data.network.ShopProduct
+import com.aiyal.mobibix.data.network.SalesReportItem
+import com.aiyal.mobibix.data.network.DailySalesItem
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -17,6 +19,33 @@ object CsvUtils {
             val stock = p.stockQty
             val sku = p.sku ?: ""
             "$name,$category,$sale,$cost,$stock,$sku"
+        }
+        return "$header\n$rows"
+    }
+
+    fun generateSalesReportCsv(sales: List<SalesReportItem>): String {
+        val header = "InvoiceNo,Date,Customer,TotalAmount,PaymentMode,Profit"
+        val rows = sales.joinToString("\n") { s ->
+            val invoiceNo = s.invoiceNo.replace(",", " ")
+            val date = s.date.replace(",", " ")
+            val customer = s.customer?.replace(",", " ") ?: "Walk-in"
+            val total = s.totalAmount
+            val pMode = s.paymentMode.replace(",", " ")
+            val profit = s.profit ?: 0.0
+            "$invoiceNo,$date,$customer,$total,$pMode,$profit"
+        }
+        return "$header\n$rows"
+    }
+
+    fun generateDailySalesCsv(sales: List<DailySalesItem>): String {
+        val header = "Date,TotalOrders,CashSales,OnlineSales,TotalSales"
+        val rows = sales.joinToString("\n") { s ->
+            val date = s.date.replace(",", " ")
+            val orders = s.totalOrders
+            val cash = s.cashSales
+            val online = s.onlineSales
+            val total = s.totalSales
+            "$date,$orders,$cash,$online,$total"
         }
         return "$header\n$rows"
     }

@@ -26,6 +26,8 @@ ui = "1.10.1"
 camerax = "1.4.0"
 mlkit_barcode = "17.3.0"
 accompanist = "0.34.0"
+REMOVED_PAYMENT_INFRA = "1.6.40"
+
 
 
 [libraries]
@@ -74,6 +76,8 @@ androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
 vico-core = { group = "com.patrykandpatrick.vico", name = "core", version.ref = "vico" }
+REMOVED_PAYMENT_INFRA-checkout = { group = "com.REMOVED_PAYMENT_INFRA", name = "checkout", version.ref = "REMOVED_PAYMENT_INFRA" }
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

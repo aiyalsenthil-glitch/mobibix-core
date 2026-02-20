@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.aiyal.mobibix.data.network.dto.CreateCustomerRequest
 import com.aiyal.mobibix.data.network.dto.CustomerResponse
 import com.aiyal.mobibix.domain.CustomerRepository
+import com.aiyal.mobibix.data.repository.CrmRepository
+import com.aiyal.mobibix.data.network.TimelineEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +16,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CustomerViewModel @Inject constructor(
-    private val repository: CustomerRepository
+    private val repository: CustomerRepository,
+    private val crmRepository: CrmRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CustomerUiState())
@@ -85,6 +88,24 @@ class CustomerViewModel @Inject constructor(
             }
         }
     }
+
+    fun loadCustomerTimeline(customerId: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(loading = true, error = null)
+            try {
+                val timeline = crmRepository.getCustomerTimeline(customerId)
+                _uiState.value = _uiState.value.copy(
+                    loading = false,
+                    timelineEvents = timeline
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    loading = false,
+                    error = e.message ?: "Failed to load timeline"
+                )
+            }
+        }
+    }
     
     fun resetOperationState() {
          _uiState.value = _uiState.value.copy(operationSuccess = false, error = null)
@@ -96,6 +117,7 @@ data class CustomerUiState(
     val operationLoading: Boolean = false,
     val customers: List<CustomerResponse> = emptyList(),
     val selectedCustomer: CustomerResponse? = null,
+    val timelineEvents: List<TimelineEvent> = emptyList(),
     val error: String? = null,
     val operationSuccess: Boolean = false
 )

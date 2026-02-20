@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -139,6 +140,13 @@ fun SettingsScreen(
                             icon = Icons.Default.Build,
                             color = Color(0xFF8B5CF6),
                             onClick = { navController.navigate("job_card_settings") }
+                        )
+                        SettingsOptionCard(
+                            title = "Loyalty Settings",
+                            subtitle = "Configure loyalty points and rewards",
+                            icon = Icons.Default.Star,
+                            color = Color(0xFFEC4899), // A new color for loyalty
+                            onClick = { navController.navigate("loyalty_settings") }
                         )
                     }
                 } else {

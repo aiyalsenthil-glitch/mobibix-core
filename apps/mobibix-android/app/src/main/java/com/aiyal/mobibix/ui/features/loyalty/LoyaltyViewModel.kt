@@ -7,6 +7,7 @@ import com.aiyal.mobibix.data.network.AddPointsRequest
 import com.aiyal.mobibix.data.network.LoyaltyHistoryItem
 import com.aiyal.mobibix.data.network.LoyaltySummary
 import com.aiyal.mobibix.data.network.RedeemPointsRequest
+import com.aiyal.mobibix.data.network.LoyaltyConfig
 import com.aiyal.mobibix.domain.LoyaltyRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,9 @@ data class LoyaltyUiState(
     val error: String? = null,
     val summary: LoyaltySummary? = null,
     val history: List<LoyaltyHistoryItem> = emptyList(),
-    val actionSuccess: String? = null
+    val actionSuccess: String? = null,
+    val config: LoyaltyConfig? = null,
+    val isSavingConfig: Boolean = false
 )
 
 @HiltViewModel
@@ -78,6 +81,34 @@ class LoyaltyViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    fun loadConfig() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val config = repository.getLoyaltyConfig()
+                _uiState.value = _uiState.value.copy(isLoading = false, config = config)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    fun saveConfig(config: LoyaltyConfig) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSavingConfig = true, error = null, actionSuccess = null)
+            try {
+                val response = repository.updateLoyaltyConfig(config)
+                if (response.success) {
+                    _uiState.value = _uiState.value.copy(isSavingConfig = false, config = response.config, actionSuccess = "Loyalty settings saved")
+                } else {
+                    _uiState.value = _uiState.value.copy(isSavingConfig = false, error = "Failed to save loyalty settings")
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isSavingConfig = false, error = e.message)
             }
         }
     }

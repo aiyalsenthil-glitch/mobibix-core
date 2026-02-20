@@ -4,6 +4,8 @@ import com.aiyal.mobibix.data.network.AddPointsRequest
 import com.aiyal.mobibix.data.network.LoyaltyApi
 import com.aiyal.mobibix.data.network.LoyaltyHistoryItem
 import com.aiyal.mobibix.data.network.LoyaltySummary
+import com.aiyal.mobibix.data.network.LoyaltyConfig
+import com.aiyal.mobibix.data.network.UpdateLoyaltyConfigResponse
 import com.aiyal.mobibix.data.network.RedeemPointsRequest
 import com.aiyal.mobibix.data.network.ResponseStatus
 import javax.inject.Inject
@@ -14,6 +16,8 @@ interface LoyaltyRepository {
     suspend fun getLoyaltyHistory(shopId: String): List<LoyaltyHistoryItem>
     suspend fun addPoints(request: AddPointsRequest): ResponseStatus
     suspend fun redeemPoints(request: RedeemPointsRequest): ResponseStatus
+    suspend fun getLoyaltyConfig(): LoyaltyConfig
+    suspend fun updateLoyaltyConfig(config: LoyaltyConfig): UpdateLoyaltyConfigResponse
 }
 
 @Singleton
@@ -31,4 +35,10 @@ class LoyaltyRepositoryImpl @Inject constructor(
 
     override suspend fun redeemPoints(request: RedeemPointsRequest): ResponseStatus =
         api.redeemPoints(request)
+        
+    override suspend fun getLoyaltyConfig(): LoyaltyConfig =
+        api.getLoyaltyConfig()
+        
+    override suspend fun updateLoyaltyConfig(config: LoyaltyConfig): UpdateLoyaltyConfigResponse =
+        api.updateLoyaltyConfig(config)
 }

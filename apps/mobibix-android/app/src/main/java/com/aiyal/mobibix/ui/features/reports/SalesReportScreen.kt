@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,9 +17,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.aiyal.mobibix.data.network.SalesReportItem
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import com.aiyal.mobibix.core.utils.CsvUtils
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.util.Locale
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +34,22 @@ fun SalesReportScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale.Builder().setLanguage("en").setRegion("IN").build())
+    val context = LocalContext.current
+    
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        uri?.let {
+            try {
+                context.contentResolver.openOutputStream(it)?.use { outputStream ->
+                    val csvString = CsvUtils.generateSalesReportCsv(uiState.salesReport)
+                    outputStream.write(csvString.toByteArray())
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadSalesReport()
@@ -40,6 +62,15 @@ fun SalesReportScreen(
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (uiState.salesReport.isNotEmpty()) {
+                        IconButton(onClick = { 
+                            createDocumentLauncher.launch("sales_report_${uiState.startDate}_to_${uiState.endDate}.csv") 
+                        }) {
+                            Icon(Icons.Default.Download, contentDescription = "Export CSV")
+                        }
                     }
                 }
             )

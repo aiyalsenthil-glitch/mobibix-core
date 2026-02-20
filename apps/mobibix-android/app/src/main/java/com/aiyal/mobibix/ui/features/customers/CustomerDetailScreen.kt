@@ -7,6 +7,8 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -84,6 +86,14 @@ fun CustomerDetailScreen(
                     DetailRow("Party Type", customer.partyType)
                     DetailRow("GST Number", customer.gstNumber ?: "None")
                     DetailRow("Loyalty Points", customer.loyaltyPoints.toString())
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
+                    OutlinedButton(
+                        onClick = { navController.navigate("customer_timeline/${customer.id}") },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("View Customer Timeline")
+                    }
                 }
             }
         }

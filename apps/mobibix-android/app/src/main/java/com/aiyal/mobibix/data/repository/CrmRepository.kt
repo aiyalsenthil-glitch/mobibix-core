@@ -4,6 +4,7 @@ import com.aiyal.mobibix.data.network.CreateFollowUpRequest
 import com.aiyal.mobibix.data.network.CrmApi
 import com.aiyal.mobibix.data.network.CrmDashboardStats
 import com.aiyal.mobibix.data.network.FollowUp
+import com.aiyal.mobibix.data.network.TimelineEvent
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,5 +26,9 @@ class CrmRepository @Inject constructor(
 
     suspend fun completeFollowUp(id: String) {
         crmApi.completeFollowUp(id)
+    }
+
+    suspend fun getCustomerTimeline(customerId: String): List<TimelineEvent> {
+        return crmApi.getCustomerTimeline(customerId)
     }
 }
