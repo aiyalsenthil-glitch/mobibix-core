@@ -14,6 +14,14 @@ export class CreateTenantDto {
 
   @IsOptional()
   @IsString()
+  businessType?: string;
+
+  @IsOptional()
+  @IsString()
+  businessCategoryId?: string;
+
+  @IsOptional()
+  @IsString()
   code?: string;
 
   @IsOptional()

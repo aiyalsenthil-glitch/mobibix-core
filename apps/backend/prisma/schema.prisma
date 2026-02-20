@@ -37,6 +37,8 @@ model Tenant {
   gstNumber    String?
   taxId        String?
   businessType String?
+  businessCategoryId String?
+  businessCategory   BusinessCategory? @relation("TenantBusinessCategory", fields: [businessCategoryId], references: [id])
   currency     String    @default("INR")
   timezone     String    @default("Asia/Kolkata")
   createdAt    DateTime  @default(now())
@@ -94,6 +96,21 @@ model Tenant {
   emailLogs                EmailLog[]
   roles                    Role[]
   approvalRequests         ApprovalRequest[]
+}
+
+model BusinessCategory {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  description  String?
+  isActive     Boolean  @default(true)
+  isComingSoon Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenants Tenant[] @relation("TenantBusinessCategory")
+
+  @@index([isActive, sortOrder])
 }
 
 model UserTenant {

@@ -8,7 +8,8 @@ data class UserMeResponse(
     val tenantId: String?,  // null or uuid
     val isSystemOwner: Boolean? = false,
     val permissions: List<String>? = emptyList(),
-    val inviteToken: String? // Present if user is invited but has not accepted
+    val inviteToken: String?, // Present if user is invited but has not accepted
+    val isComingSoon: Boolean? = false
 )
 
 interface UserApi {

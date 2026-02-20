@@ -7,6 +7,7 @@ import {
   Req,
   UseGuards,
   ForbiddenException,
+  Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -26,11 +27,12 @@ export class ApprovalsController {
 
   @Get('pending')
   @Roles(UserRole.OWNER)
-  async listPending(@Req() req: any) {
+  async listPending(@Req() req: any, @Query('shopId') shopId?: string) {
     return this.prisma.approvalRequest.findMany({
       where: {
         tenantId: req.user.tenantId,
         status: 'PENDING',
+        ...(shopId ? { shopId } : {}),
       },
       include: {
         requester: {

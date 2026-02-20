@@ -17,30 +17,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.aiyal.mobibix.data.network.InviteStaffRequest
 import com.aiyal.mobibix.data.network.StaffApi
 import kotlinx.coroutines.launch
-
-// Mock Data for UI Demonstration
-private val mockShops = listOf(
-    Pair("shop_1", "Downtown Branch - Main St."),
-    Pair("shop_2", "Northside Branch - 5th Ave.")
-)
-
-private val mockRoles = listOf(
-    mapOf("id" to "shop_manager", "name" to "Shop Manager", "desc" to "Can manage sales, inventory, and staff.", "isCustom" to false),
-    mapOf("id" to "sales_exec", "name" to "Sales Executive", "desc" to "Can ring up sales and view basic inventory.", "isCustom" to false),
-    mapOf("id" to "custom_1", "name" to "Senior Accountant", "desc" to "Handles financials and reporting.", "isCustom" to true)
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InviteStaffScreen(
     staffApi: StaffApi,
     activeShopId: String,
+    viewModel: StaffViewModel = hiltViewModel(),
     onDone: () -> Unit,
     onNavigateToCustomRole: () -> Unit = {}
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     var step by remember { mutableStateOf(1) }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -170,12 +161,12 @@ fun InviteStaffScreen(
                     Spacer(Modifier.height(8.dp))
                 }
                 
-                items(mockShops) { shop ->
-                    val isSelected = selectedBranches.contains(shop.first)
+                items(uiState.shops) { shop ->
+                    val isSelected = selectedBranches.contains(shop.id)
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
                             val newSet = selectedBranches.toMutableSet()
-                            if (isSelected) newSet.remove(shop.first) else newSet.add(shop.first)
+                            if (isSelected) newSet.remove(shop.id) else newSet.add(shop.id)
                             selectedBranches = newSet
                         },
                         colors = CardDefaults.cardColors(
@@ -186,7 +177,7 @@ fun InviteStaffScreen(
                         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = isSelected, onCheckedChange = null)
                             Spacer(Modifier.width(12.dp))
-                            Text(shop.second, fontWeight = FontWeight.SemiBold)
+                            Text(shop.name, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -197,13 +188,12 @@ fun InviteStaffScreen(
                     Spacer(Modifier.height(16.dp))
                 }
 
-                items(mockRoles) { role ->
-                    val isSelected = selectedRoleId == role["id"]
-                    val isCustom = role["isCustom"] as Boolean
+                items(uiState.roles) { role ->
+                    val isSelected = selectedRoleId == role.id
                     
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
-                            selectedRoleId = role["id"] as String
+                            selectedRoleId = role.id
                         },
                         colors = CardDefaults.cardColors(
                             containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
@@ -212,20 +202,20 @@ fun InviteStaffScreen(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(role["name"] as String, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                Text(role.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                                 if (isSelected) {
                                     Spacer(modifier = Modifier.weight(1f))
                                     Icon(Icons.Default.CheckCircle, contentDescription = "Selected", tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
-                            if (isCustom) {
+                            if (!role.isSystem) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Box(modifier = Modifier.background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
                                     Text("Custom", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
-                            Text(role["desc"] as String, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(role.description ?: "Access level: ${role.name}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -249,3 +239,4 @@ fun InviteStaffScreen(
         }
     }
 }
+

@@ -11,37 +11,55 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.aiyal.mobibix.domain.ShopRepository
+import com.aiyal.mobibix.domain.model.Role
+import com.aiyal.mobibix.domain.repository.RolesRepository
+import com.aiyal.mobibix.data.network.ShopResponse
+import kotlinx.coroutines.async
 
 data class StaffUiState(
     val isLoading: Boolean = false,
     val staff: List<StaffResponse> = emptyList(),
     val invites: List<InviteResponse> = emptyList(),
+    val roles: List<Role> = emptyList(),
+    val shops: List<ShopResponse> = emptyList(),
     val error: String? = null
 )
 
 @HiltViewModel
 class StaffViewModel @Inject constructor(
-    private val staffRepository: StaffRepository
+    private val staffRepository: StaffRepository,
+    private val rolesRepository: RolesRepository,
+    private val shopRepository: ShopRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StaffUiState())
     val uiState: StateFlow<StaffUiState> = _uiState.asStateFlow()
 
-    fun loadStaff() {
+    init {
+        loadInitialData()
+    }
+
+    fun loadInitialData() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val staff = staffRepository.getStaff()
-                val invites = staffRepository.getInvites()
+                val staffDeferred = async { staffRepository.getStaff() }
+                val invitesDeferred = async { staffRepository.getInvites() }
+                val rolesDeferred = async { rolesRepository.listRoles() }
+                val shopsDeferred = async { shopRepository.getShops() }
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    staff = staff,
-                    invites = invites
+                    staff = staffDeferred.await(),
+                    invites = invitesDeferred.await(),
+                    roles = rolesDeferred.await(),
+                    shops = shopsDeferred.await()
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Failed to load staff"
+                    error = e.message ?: "Failed to load staff data"
                 )
             }
         }
@@ -51,7 +69,7 @@ class StaffViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 staffRepository.removeStaff(id)
-                loadStaff()
+                loadInitialData()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
@@ -62,7 +80,7 @@ class StaffViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 staffRepository.revokeInvite(id)
-                loadStaff()
+                loadInitialData()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }

@@ -1,11 +1,21 @@
 package com.aiyal.mobibix.data.network
 
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
+
+data class BusinessCategory(
+    val id: String,
+    val name: String,
+    val description: String?,
+    val isComingSoon: Boolean
+)
 
 data class CreateTenantRequest(
     val name: String,
-    val tenantType: String = "MOBILE_SHOP"
+    val tenantType: String = "MOBILE_SHOP",
+    val businessType: String? = null,
+    val businessCategoryId: String? = null
 )
 
 data class CreateTenantResponse(
@@ -17,4 +27,7 @@ interface TenantApi {
     suspend fun createTenant(
         @Body body: CreateTenantRequest
     ): CreateTenantResponse
+
+    @GET("api/platform/business-categories")
+    suspend fun getBusinessCategories(): List<BusinessCategory>
 }

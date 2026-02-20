@@ -8,10 +8,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,10 +29,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.aiyal.mobibix.core.app.AppState
+import com.aiyal.mobibix.data.network.BusinessCategory
 import com.aiyal.mobibix.data.network.CreateTenantRequest
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TenantRequiredScreen(
     navController: NavController
@@ -45,8 +52,26 @@ fun TenantRequiredScreen(
     val scope = rememberCoroutineScope()
 
     var businessName by remember { mutableStateOf("") }
+    var categories by remember { mutableStateOf<List<BusinessCategory>>(emptyList()) }
+    var selectedCategory by remember { mutableStateOf<BusinessCategory?>(null) }
+    var isExpanded by remember { mutableStateOf(false) }
+
     var loading by remember { mutableStateOf(false) }
+    var categoriesLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        try {
+            categories = tenantApi.getBusinessCategories()
+            if (categories.isNotEmpty()) {
+                selectedCategory = categories.firstOrNull { it.name == "Mobile Shop" } ?: categories.firstOrNull()
+            }
+        } catch (e: Exception) {
+            error = "Failed to load business categories: ${e.message}"
+        } finally {
+            categoriesLoading = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -80,6 +105,55 @@ fun TenantRequiredScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
+        Spacer(Modifier.height(16.dp))
+
+        if (categoriesLoading) {
+            Text("Loading categories...", style = MaterialTheme.typography.bodySmall)
+        } else {
+            ExposedDropdownMenuBox(
+                expanded = isExpanded,
+                onExpandedChange = { isExpanded = it },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = selectedCategory?.name ?: "Select Category",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Business Type") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = isExpanded,
+                    onDismissRequest = { isExpanded = false }
+                ) {
+                    categories.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(category.name) },
+                            onClick = {
+                                selectedCategory = category
+                                isExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        val isComingSoon = selectedCategory?.isComingSoon == true || selectedCategory?.name != "Mobile Shop"
+
+        if (selectedCategory != null && isComingSoon) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Coming soon! Only Mobile Shops are supported during this phase.",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
+            )
+        }
+
         Spacer(Modifier.height(24.dp))
 
         if (error != null) {
@@ -92,14 +166,18 @@ fun TenantRequiredScreen(
 
         Button(
             onClick = {
-                if (loading) return@Button
+                if (loading || selectedCategory == null || isComingSoon) return@Button
                 loading = true
                 error = null
 
                 scope.launch {
                     try {
                         val response = tenantApi.createTenant(
-                            CreateTenantRequest(name = businessName)
+                            CreateTenantRequest(
+                                name = businessName,
+                                businessType = selectedCategory!!.name,
+                                businessCategoryId = selectedCategory!!.id
+                            )
                         )
 
                         tokenStore.saveToken(response.accessToken)
@@ -116,7 +194,7 @@ fun TenantRequiredScreen(
                     }
                 }
             },
-            enabled = !loading && businessName.isNotBlank(),
+            enabled = !loading && businessName.isNotBlank() && selectedCategory != null && !isComingSoon,
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
             Text(if (loading) "Creating..." else "Create Business")

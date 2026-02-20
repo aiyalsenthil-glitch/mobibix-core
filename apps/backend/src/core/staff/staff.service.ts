@@ -14,9 +14,14 @@ import {
 } from '../soft-delete/soft-delete.helper';
 import { getCreateAudit, getUpdateAudit } from '../audit/audit.helper';
 
+import { JwtService } from '@nestjs/jwt';
+
 @Injectable()
 export class StaffService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService
+  ) {}
 
   // 🔒 Ensure plan allows staff management (PLUS / PRO)
   private async ensureStaffAllowed(tenantId: string) {
@@ -121,6 +126,81 @@ export class StaffService {
       total,
       skip: options?.skip ?? 0,
       take: options?.take ?? 50,
+    };
+  }
+
+  // ✅ Accept invite
+  async acceptInvite(userId: string, targetToken: string) {
+    const invite = await this.prisma.staffInvite.findUnique({
+      where: { id: targetToken }
+    });
+
+    if (!invite || invite.accepted) {
+      throw new BadRequestException('Invalid or expired invite');
+    }
+
+    const shopStaffCreations = (invite.shopIds || []).map((shopId: string) => 
+      this.prisma.shopStaff.upsert({
+        where: {
+          userId_tenantId_shopId: {
+            userId,
+            tenantId: invite.tenantId,
+            shopId: shopId,
+          }
+        },
+        update: {
+          roleId: invite.roleId || null,
+          isActive: true,
+        },
+        create: {
+          userId,
+          tenantId: invite.tenantId,
+          shopId: shopId,
+          roleId: invite.roleId || null,
+          role: UserRole.STAFF,
+        }
+      })
+    );
+
+    const ut = await this.prisma.$transaction(async (tx) => {
+      const userTenant = await tx.userTenant.upsert({
+        where: {
+          userId_tenantId: {
+            userId: userId,
+            tenantId: invite.tenantId,
+          },
+        },
+        update: {
+          role: UserRole.STAFF,
+        },
+        create: {
+          userId: userId,
+          tenantId: invite.tenantId,
+          role: UserRole.STAFF,
+        },
+      });
+
+      await Promise.all(shopStaffCreations);
+
+      await tx.staffInvite.update({
+        where: { id: invite.id },
+        data: { accepted: true },
+      });
+
+      return userTenant;
+    });
+
+    // Issue new JWT with branch access
+    const jwtPayload = {
+      sub: userId,
+      tenantId: invite.tenantId,
+      userTenantId: ut.id,
+      role: UserRole.STAFF,
+    };
+
+    return {
+      accessToken: this.jwtService.sign(jwtPayload),
+      tenantId: invite.tenantId,
     };
   }
 

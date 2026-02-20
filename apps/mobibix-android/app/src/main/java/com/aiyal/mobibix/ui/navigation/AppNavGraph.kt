@@ -99,7 +99,9 @@ fun AppNavGraph(
         }
 
         composable("home") {
-            val appState by produceState<AppState?>(initialValue = null) {
+            val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
+            
+            val appState by produceState<AppState?>(initialValue = null, activeShopId) {
                 value = appStateResolver.resolve()
             }
 
@@ -124,17 +126,27 @@ fun AppNavGraph(
             }
 
             appState?.let { state ->
-                MainScreen(
-                    mainNavController = navController, 
-                    appState = state,
-                    shopContextProvider = shopContextProvider,
-                    shopApi = shopApi
-                )
+                if (state is AppState.ComingSoonBusiness) {
+                    LaunchedEffect(state) {
+                        navController.navigate("coming_soon_business") { popUpTo(0) }
+                    }
+                } else {
+                    MainScreen(
+                        mainNavController = navController, 
+                        appState = state,
+                        shopContextProvider = shopContextProvider,
+                        shopApi = shopApi
+                    )
+                }
             }
         }
 
         composable("tenant_required") {
             TenantRequiredScreen(navController = navController)
+        }
+
+        composable("coming_soon_business") {
+            com.aiyal.mobibix.ui.features.onboarding.ComingSoonBusinessScreen(navController = navController)
         }
 
         composable("create_shop") {

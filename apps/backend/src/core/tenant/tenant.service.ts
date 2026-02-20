@@ -89,6 +89,8 @@ export class TenantService {
         legalName: dto.legalName,
         code,
         tenantType: dto.tenantType ?? 'GYM',
+        businessType: dto.businessType,
+        businessCategoryId: dto.businessCategoryId,
 
         contactPhone: dto.contactPhone,
         addressLine1: dto.addressLine1,

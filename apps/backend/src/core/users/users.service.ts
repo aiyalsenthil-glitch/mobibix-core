@@ -86,10 +86,49 @@ export class UsersService {
             id: true,
             name: true,
             tenantType: true,
+            enabledModules: true,
+            businessType: true,
+            businessCategory: {
+              select: {
+                isComingSoon: true,
+              }
+            }
           },
         },
       },
     });
+
+    const isSystemOwner = userTenant?.isSystemOwner ?? false;
+    let grantedPermissions: string[] = [];
+
+    if (isSystemOwner) {
+      grantedPermissions = ['*'];
+    } else if (userTenant) {
+        // Staff user: find their assigned shop role if any, or tenant role
+        const staff = await this.prisma.shopStaff.findFirst({
+            where: { userId, tenantId: userTenant.tenantId, isActive: true },
+            select: { roleId: true }
+        });
+        
+        if (staff?.roleId) {
+            const mappings = await this.prisma.rolePermission.findMany({
+                where: { roleId: staff.roleId },
+                include: { permission: { include: { resource: true } } }
+            });
+            grantedPermissions = mappings.map(m => 
+                `${m.permission.resource.moduleType.toLowerCase()}.${m.permission.resource.name}.${m.permission.action}`
+            );
+        }
+    }
+
+    // Check for pending invite
+    let invite: { id: string } | null = null;
+    if (user.email) {
+      invite = await this.prisma.staffInvite.findFirst({
+          where: { email: user.email, accepted: false },
+          select: { id: true }
+      });
+    }
 
     return {
       ...user,
@@ -99,6 +138,12 @@ export class UsersService {
       tenantId: userTenant?.tenantId ?? null,
       tenantType: userTenant?.tenant?.tenantType ?? null,
       tenantName: userTenant?.tenant?.name ?? null,
+      businessType: userTenant?.tenant?.businessType ?? null,
+      isComingSoon: userTenant?.tenant?.businessCategory?.isComingSoon ?? false,
+      isSystemOwner,
+      enabledModules: userTenant?.tenant?.enabledModules ?? [],
+      grantedPermissions,
+      inviteToken: invite?.id ?? null,
     };
   }
 

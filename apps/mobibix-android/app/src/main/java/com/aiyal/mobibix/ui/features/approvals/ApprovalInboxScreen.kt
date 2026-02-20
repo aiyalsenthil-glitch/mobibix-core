@@ -17,32 +17,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-data class MockApproval(
-    val id: String,
-    val staffName: String,
-    val role: String,
-    val branch: String,
-    val uiLabel: String,
-    val details: String,
-    val createdAt: String
-)
-
-private val mockApprovals = listOf(
-    MockApproval("req_001", "Alex Mercer", "Sales Executive", "Downtown Branch", "Refund Invoices", "Invoice #INV-9284 ($120.00)", "10 mins ago"),
-    MockApproval("req_002", "Sarah Chen", "Gym Trainer", "Northside Branch", "View Member Payments", "Member #MEM-102 (John Doe)", "2 hours ago")
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ApprovalInboxScreen(
+    viewModel: ApprovalViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
-    var approvals by remember { mutableStateOf(mockApprovals) }
-    var processingId by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
+    val uiState by viewModel.uiState.collectAsState()
+    val processingIds by viewModel.processingIds.collectAsState()
 
     Scaffold(
         topBar = {
@@ -74,34 +60,43 @@ fun ApprovalInboxScreen(
                 }
             }
 
-            if (approvals.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("✨", style = MaterialTheme.typography.displayLarge)
-                        Spacer(Modifier.height(16.dp))
-                        Text("All Caught Up!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text("No pending requests.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            when (val state = uiState) {
+                is ApprovalUiState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color(0xFFF59E0B))
                     }
                 }
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(approvals) { req ->
-                        ApprovalCard(
-                            req = req,
-                            isProcessing = processingId == req.id,
-                            onDecision = { approved ->
-                                processingId = req.id
-                                scope.launch {
-                                    delay(800) // Simulate network
-                                    approvals = approvals.filter { it.id != req.id }
-                                    processingId = null
-                                }
+                is ApprovalUiState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                        Text(state.message, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                is ApprovalUiState.Success -> {
+                    if (state.requests.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("✨", style = MaterialTheme.typography.displayLarge)
+                                Spacer(Modifier.height(16.dp))
+                                Text("All Caught Up!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                Text("No pending requests.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                        )
+                        }
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(state.requests) { req ->
+                                ApprovalCard(
+                                    req = req,
+                                    isProcessing = processingIds.contains(req.id),
+                                    onDecision = { approved ->
+                                        viewModel.resolveApproval(req.id, approved)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -110,7 +105,11 @@ fun ApprovalInboxScreen(
 }
 
 @Composable
-fun ApprovalCard(req: MockApproval, isProcessing: Boolean, onDecision: (Boolean) -> Unit) {
+fun ApprovalCard(
+    req: com.aiyal.mobibix.domain.model.ApprovalRequest,
+    isProcessing: Boolean,
+    onDecision: (Boolean) -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -126,24 +125,26 @@ fun ApprovalCard(req: MockApproval, isProcessing: Boolean, onDecision: (Boolean)
                     Text("AUTHORIZATION REQ", style = MaterialTheme.typography.labelSmall, color = Color(0xFFD97706), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                 }
                 Spacer(modifier = Modifier.weight(1f))
-                Text(req.createdAt, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Just now", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(12.dp))
             
-            Text("${req.staffName} requests to", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(req.uiLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("${req.requesterName} requests to", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(req.actionType.replace(".", " ").uppercase(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             
-            Spacer(Modifier.height(8.dp))
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(req.details, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(8.dp))
+            if (req.entityId != null) {
+                Spacer(Modifier.height(8.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Reference ID: ${req.entityId}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(8.dp))
+                }
             }
             
             Spacer(Modifier.height(8.dp))
-            Text("👤 ${req.role}   •   🏬 ${req.branch}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("📧 ${req.requesterEmail}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -164,7 +165,7 @@ fun ApprovalCard(req: MockApproval, isProcessing: Boolean, onDecision: (Boolean)
                     modifier = Modifier.weight(1f)
                 ) {
                     if (isProcessing) {
-                        Text("Wait...")
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
                     } else {
                         Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
@@ -175,3 +176,4 @@ fun ApprovalCard(req: MockApproval, isProcessing: Boolean, onDecision: (Boolean)
         }
     }
 }
+

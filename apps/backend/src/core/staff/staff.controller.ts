@@ -29,14 +29,13 @@ import { BranchAccessGuard } from '../permissions/guards/branch-access.guard';
 import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
 
 @Controller('staff')
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard)
 export class StaffController {
   constructor(
     private readonly staffService: StaffService, // ✅ inject
   ) {}
 
   // ✅ OWNER: list staff
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard)
   @Permissions(Permission.STAFF_MANAGE)
   @RequirePermission(ModuleType.CORE, 'staff', 'view_all')
   @Get()
@@ -55,7 +54,7 @@ export class StaffController {
   }
 
   // ✅ OWNER: TEMP create staff (staff must have logged in once)
-  @UseGuards(JwtAuthGuard, PlanFeatureGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard, PlanFeatureGuard)
   @RequirePlanFeature('staff')
   @Roles(UserRole.OWNER)
   @Post()
@@ -78,6 +77,7 @@ export class StaffController {
   }
 
   // ✅ OWNER: INVITE staff by email (PROPER FLOW)
+  @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard)
   @Roles(UserRole.OWNER)
   @Post('invite')
   async invite(
@@ -94,19 +94,30 @@ export class StaffController {
       body.branchIds,
     );
   }
+  @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard)
   @Roles(UserRole.OWNER)
   @Get('invites')
   async listInvites(@Req() req: any) {
     return this.staffService.listInvites(req.user.tenantId);
   }
+
+  // ✅ USER: Accept an invite (Bypasses TenantRequired & Roles constraints)
+  @UseGuards(JwtAuthGuard)
+  @Post('invite/accept')
+  async acceptInvite(@Req() req: any, @Body('token') token: string) {
+    // Note: Since this controller is globally guarded by TenantRequiredGuard, this request will normally bounce.
+    // However, if we put it here, Android needs to not send a tenant ID. Let's fix this in the main controller structure.
+    return this.staffService.acceptInvite(req.user.sub, token);
+  }
   //Staff Invite Revoke
+  @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard)
   @Roles(UserRole.OWNER)
   @Delete('invite/:id')
   async revokeInvite(@Req() req: any, @Param('id') inviteId: string) {
     return this.staffService.revokeInvite(req.user.tenantId, inviteId);
   }
   // ✅ OWNER: Remove staff from tenant
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard)
   @Permissions(Permission.STAFF_MANAGE)
   @Delete(':staffUserId')
   async removeStaff(

@@ -2,6 +2,7 @@ package com.aiyal.mobibix.core.app
 
 sealed class AppState {
     object TenantRequired : AppState()
+    object ComingSoonBusiness : AppState()
     data class Owner(
         val role: String,
         val isSystemOwner: Boolean,
@@ -18,6 +19,7 @@ sealed class AppState {
     fun toRoute(): String {
         return when (this) {
             is TenantRequired -> "tenant_required"
+            is ComingSoonBusiness -> "coming_soon_business"
             is Owner -> "owner_dashboard"
             is Staff -> "staff_dashboard/$shopId"
         }

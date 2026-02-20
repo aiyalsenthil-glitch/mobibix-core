@@ -23,6 +23,7 @@ class AppStateResolver @Inject constructor(
 
         return when {
             me.tenantId == null -> AppState.TenantRequired
+            me.isComingSoon == true -> AppState.ComingSoonBusiness
             me.isSystemOwner == true -> AppState.Owner(
                 role = me.role,
                 isSystemOwner = true,

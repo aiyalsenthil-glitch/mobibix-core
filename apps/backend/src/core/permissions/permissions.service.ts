@@ -95,14 +95,33 @@ export class PermissionService {
   // --- Role Management CRUD ---
 
   async listRoles(tenantId: string) {
-    return this.prisma.role.findMany({
+    const roles = await this.prisma.role.findMany({
       where: {
         OR: [
           { tenantId: null }, // System Roles
           { tenantId, deletedAt: null } // Custom Tenant Roles
         ]
       },
+      include: {
+        rolePermissions: {
+          include: {
+            permission: {
+              include: { resource: true }
+            }
+          }
+        }
+      },
       orderBy: { isSystem: 'desc' }
+    });
+
+    return roles.map(role => {
+      const { rolePermissions, ...rest } = role;
+      return {
+        ...rest,
+        permissions: rolePermissions.map(m => 
+          `${m.permission.resource.moduleType.toLowerCase()}.${m.permission.resource.name}.${m.permission.action}`
+        ),
+      };
     });
   }
 
@@ -137,6 +156,21 @@ export class PermissionService {
   }
 
   async createRole(tenantId: string, name: string, description: string, permissions: string[]) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { enabledModules: true }
+    });
+    const allowedModules = ['CORE', ...(tenant?.enabledModules || [])];
+
+    if (permissions && permissions.length > 0) {
+      for (const pStr of permissions) {
+        const module = pStr.split('.')[0].toUpperCase();
+        if (!allowedModules.includes(module)) {
+          throw new ForbiddenException(`Cannot assign permissions for unentitled module: ${module}`);
+        }
+      }
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const role = await tx.role.create({
         data: {
@@ -180,7 +214,22 @@ export class PermissionService {
     const role = await this.getRoleById(roleId, tenantId);
     if (role.isSystem) throw new ForbiddenException('Cannot modify system roles');
 
-    return this.prisma.$transaction(async (tx) => {
+    if (data.permissions && data.permissions.length > 0) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { enabledModules: true }
+      });
+      const allowedModules = ['CORE', ...(tenant?.enabledModules || [])];
+
+      for (const pStr of data.permissions) {
+        const module = pStr.split('.')[0].toUpperCase();
+        if (!allowedModules.includes(module)) {
+          throw new ForbiddenException(`Cannot assign permissions for unentitled module: ${module}`);
+        }
+      }
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
       const updatedRole = await tx.role.update({
         where: { id: roleId },
         data: {
@@ -218,18 +267,40 @@ export class PermissionService {
 
       return updatedRole;
     });
+
+    // Invalidate caches for all users with this role
+    const users = await this.prisma.shopStaff.findMany({
+      where: { roleId },
+      select: { userId: true, tenantId: true }
+    });
+    for (const u of users) {
+      await this.invalidateUserPermissions(u.userId, u.tenantId);
+    }
+
+    return result;
   }
 
   async deleteRole(roleId: string, tenantId: string) {
     const role = await this.getRoleById(roleId, tenantId);
     if (role.isSystem) throw new ForbiddenException('Cannot delete system roles');
 
-    return this.prisma.role.update({
+    const deletedRole = await this.prisma.role.update({
       where: { id: roleId },
       data: {
         deletedAt: new Date(),
       }
     });
+
+    // Invalidate caches for all users with this role
+    const users = await this.prisma.shopStaff.findMany({
+      where: { roleId },
+      select: { userId: true, tenantId: true }
+    });
+    for (const u of users) {
+      await this.invalidateUserPermissions(u.userId, u.tenantId);
+    }
+    
+    return deletedRole;
   }
 
   async seedPermissions() {

@@ -8,35 +8,6 @@ export interface RoleDto {
   permissions: string[];
 }
 
-// Temporary mock data to drive the UI until backend is fully hooked up
-const MOCK_ROLES: RoleDto[] = [
-  {
-    id: "system_owner",
-    name: "System Owner",
-    isSystem: true,
-    description: "Full access to all modules and billing. Cannot be modified or deleted.",
-    permissions: ["*"],
-  },
-  {
-    id: "shop_manager",
-    name: "Shop Manager",
-    isSystem: true,
-    description: "Can manage sales, inventory, and staff. Cannot view profit margins or export financial data.",
-    permissions: [
-      "sale.create", "sale.view", "sale.refund",
-      "inventory.view", "inventory.adjust", "inventory.create",
-      "customer.view", "customer.create"
-    ],
-  },
-  {
-    id: "sales_executive",
-    name: "Sales Executive",
-    isSystem: true,
-    description: "Can ring up sales and view basic inventory. No access to adjustments or refunds.",
-    permissions: ["sale.create", "sale.view", "inventory.view", "customer.create", "customer.view"],
-  }
-];
-
 export async function listRoles(): Promise<RoleDto[]> {
   const response = await authenticatedFetch("/permissions/roles");
   if (!response.ok) throw new Error("Failed to fetch roles");
