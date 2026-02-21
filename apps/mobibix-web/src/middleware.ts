@@ -28,6 +28,7 @@ const protectedRoutes = [
   "/staff",
   "/customers",
   "/products",
+  "/setup-business",
 ];
 const publicRoutes = ["/signin", "/signup", "/", "/onboarding"];
 

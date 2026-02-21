@@ -176,9 +176,18 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         await signOut(auth);
       }
       await apiLogout();
+      
+      // Clear local caches
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem("shops_cache");
+      }
+
       setFirebaseUser(null);
       setAuthUser(null);
       setError(null);
+
+      // Force hard redirect to clear all context/state
+      window.location.href = "/auth";
     } catch (err: any) {
       setError(err.message || "Logout failed");
     } finally {

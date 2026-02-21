@@ -65,6 +65,14 @@ export class UserResolutionService {
             },
           })
           .catch((e) => console.warn('⚠️  Failed to update user meta:', e.message));
+      } else if (user.email && user.email !== user.email.toLowerCase()) {
+        // Proactively normalize existing user email if mixed case
+        this.prisma.user
+          .update({
+            where: { id: user.id },
+            data: { email: user.email.toLowerCase() },
+          })
+          .catch(() => null);
       }
     }
 
@@ -73,10 +81,9 @@ export class UserResolutionService {
 
   async checkInvites(email?: string) {
     if (!email) return null;
-    const normalizedEmail = email.toLowerCase();
     return this.prisma.staffInvite.findFirst({
       where: {
-        email: normalizedEmail,
+        email: { equals: email, mode: 'insensitive' },
         accepted: false,
       },
     });
