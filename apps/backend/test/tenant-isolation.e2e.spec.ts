@@ -2,7 +2,7 @@ import { INestApplication, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/core/prisma/prisma.service';
-import * as request from 'supertest';
+import request from 'supertest';
 
 /**
  * PHASE 1: Tenant Isolation (E2E Tests)
@@ -13,11 +13,11 @@ import * as request from 'supertest';
 describe('Tenant Isolation (E2E)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let adminJwt: string;
-  let tenant1Jwt: string;
-  let tenant2Jwt: string;
-  let tenant1Id: string;
-  let tenant2Id: string;
+  let adminJwt: string = 'adminJwt';
+  let tenant1Jwt: string = 'tenant1Jwt';
+  let tenant2Jwt: string = 'tenant2Jwt';
+  let tenant1Id: string = 'tenant1Id';
+  let tenant2Id: string = 'tenant2Id';
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -81,8 +81,8 @@ describe('Tenant Isolation (E2E)', () => {
         where: { id: response.body.purchaseId },
       });
 
-      expect(record.tenantId).toBe(tenant1Id);
-      expect(record.tenantId).not.toBe(tenant2Id);
+      expect(record!.tenantId).toBe(tenant1Id);
+      expect(record!.tenantId).not.toBe(tenant2Id);
     });
   });
 
@@ -125,7 +125,7 @@ describe('Tenant Isolation (E2E)', () => {
       });
 
       expect(subscription).toBeDefined();
-      expect(subscription.tenantId).toBe(tenant1Id);
+      expect(subscription!.tenantId).toBe(tenant1Id);
     });
 
     it('should reject webhook attempting cross-tenant activation', async () => {
@@ -174,11 +174,11 @@ describe('Tenant Isolation (E2E)', () => {
         .expect(200);
 
       // Record should belong to resolved tenant, not user input
-      const attendance = await prisma.attendance.findFirst({
+      const attendance = await prisma.gymAttendance.findFirst({
         where: { memberId: response.body.memberId },
       });
 
-      expect(attendance.tenantId).toBe(tenant1Id);
+      expect(attendance!.tenantId).toBe(tenant1Id);
     });
 
     it('should reject QR with invalid tenantCode', async () => {

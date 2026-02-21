@@ -16,8 +16,8 @@ export interface AddStaffDto {
   name: string;
   phone?: string;
   shopId?: string; // Legacy field
-  roleId: string;
-  branchIds: string[];
+  roleId?: string;
+  branchIds?: string[];
 }
 
 

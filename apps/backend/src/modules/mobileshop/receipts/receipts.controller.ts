@@ -58,6 +58,7 @@ export class ReceiptsController extends TenantScopedController {
   @Get()
   async findAll(
     @CurrentUser() user: any,
+    @Query('shopId') shopId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('paymentMethod') paymentMethod?: PaymentMode,
@@ -65,7 +66,7 @@ export class ReceiptsController extends TenantScopedController {
     @Query('skip') skip?: string,
     @Query('take') take?: string,
   ): Promise<{ data: ReceiptEntity[]; total: number }> {
-    return this.receiptsService.getReceipts(user.tenantId, user.shopId, {
+    return this.receiptsService.getReceipts(user.tenantId, shopId || user.shopId, {
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,
       paymentMethod,
@@ -113,6 +114,7 @@ export class ReceiptsController extends TenantScopedController {
   @Get('summary')
   async getSummary(
     @CurrentUser() user: any,
+    @Query('shopId') shopId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ): Promise<any> {
@@ -123,7 +125,7 @@ export class ReceiptsController extends TenantScopedController {
 
     return this.receiptsService.getReceiptSummary(
       user.tenantId,
-      user.shopId,
+      shopId || user.shopId,
       start,
       end,
     );

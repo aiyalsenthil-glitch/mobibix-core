@@ -138,8 +138,11 @@ export class VouchersService {
 
     const where: any = {
       tenantId,
-      shopId,
     };
+    
+    if (shopId) {
+      where.shopId = shopId;
+    }
 
     if (filters?.startDate || filters?.endDate) {
       where.date = {};
@@ -275,16 +278,21 @@ export class VouchersService {
     byVoucherType: Record<string, { count: number; amount: number }>;
     byPaymentMode: Record<string, { count: number; amount: number }>;
   }> {
-    const vouchers = await this.prisma.paymentVoucher.findMany({
-      where: {
-        tenantId,
-        shopId,
-        status: VoucherStatus.ACTIVE,
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
+    const where: any = {
+      tenantId,
+      status: VoucherStatus.ACTIVE,
+      date: {
+        gte: startDate,
+        lte: endDate,
       },
+    };
+
+    if (shopId) {
+      where.shopId = shopId;
+    }
+
+    const vouchers = await this.prisma.paymentVoucher.findMany({
+      where,
     });
 
     const byVoucherType: Record<string, { count: number; amount: number }> = {};

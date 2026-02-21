@@ -73,13 +73,15 @@ describe('WhatsApp Integration (e2e)', () => {
         },
       });
 
-      await prisma.whatsAppPhoneNumber.create({
+      await prisma.whatsAppNumber.create({
         data: {
           tenantId,
           phoneNumber: '919876543210',
           phoneNumberId: '1000000000001',
           wabaId: '2000000000002',
-          isActive: true,
+          isEnabled: true,
+          isSystem: true,
+          displayNumber: '919876543210',
           purpose: 'DEFAULT',
         },
       });
@@ -125,7 +127,7 @@ describe('WhatsApp Integration (e2e)', () => {
   afterAll(async () => {
     // Cleanup
     await prisma.whatsAppLog.deleteMany({ where: { tenantId } });
-    await prisma.whatsAppPhoneNumber.deleteMany({ where: { tenantId } });
+    await prisma.whatsAppNumber.deleteMany({ where: { tenantId } });
     await prisma.whatsAppSetting.deleteMany({ where: { tenantId } });
     await prisma.subscriptionAddon.deleteMany({
       where: { subscription: { tenantId } },

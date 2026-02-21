@@ -7,7 +7,7 @@ import { RoleDto, listRoles, deleteRole } from "@/services/roles.api";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-export default function RoleListScreen() {
+export default function RolesTab() {
   const { isSystemOwner } = usePermission();
   const [roles, setRoles] = useState<RoleDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,15 +51,9 @@ export default function RoleListScreen() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-12">
+    <div className="space-y-8 animate-fade-in pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Role Management</h1>
-          <p className="text-sm text-gray-500 dark:text-stone-400 mt-1">
-            Choose a simple template or create a custom set of permissions for your staff.
-          </p>
-        </div>
+      <div className="flex justify-end">
         <Link
           href="/roles/new"
           className="px-5 py-2.5 bg-teal-500 hover:bg-teal-600 active:bg-teal-700 text-white font-medium rounded-xl shadow-lg shadow-teal-500/20 transition-all flex items-center gap-2"

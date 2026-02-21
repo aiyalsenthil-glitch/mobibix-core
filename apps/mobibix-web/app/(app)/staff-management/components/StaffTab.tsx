@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Mail, Phone, Calendar, Shield, Clock } from "lucide-react";
+import { Plus, Trash2, Mail, Phone, Calendar, Shield, Clock, Building2, Check } from "lucide-react";
 import { listStaff, addStaff, removeStaff, type Staff } from "@/services/staff.api";
+import { listRoles, type RoleDto } from "@/services/roles.api";
+import { listShops, type Shop } from "@/services/shops.api";
 import { format } from "date-fns";
 import PageTabs from "@/components/layout/PageTabs";
 
-export default function StaffPage() {
+export default function StaffTab() {
   const [activeTab, setActiveTab] = useState("active");
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,20 +16,30 @@ export default function StaffPage() {
   
   // Modal State
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [roles, setRoles] = useState<RoleDto[]>([]);
+  const [shops, setShops] = useState<Shop[]>([]);
   const [inviteForm, setInviteForm] = useState({
     email: "",
     name: "",
     phone: "",
+    roleId: "",
+    branchIds: [] as string[],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const data = await listStaff();
-      setStaffList(data);
+      const [staffData, rolesData, shopsData] = await Promise.all([
+        listStaff(),
+        listRoles(),
+        listShops(),
+      ]);
+      setStaffList(staffData);
+      setRoles(rolesData);
+      setShops(shopsData);
     } catch (err: any) {
-      setError(err.message || "Failed to load staff");
+      setError(err.message || "Failed to load staff management data");
     } finally {
       setLoading(false);
     }
@@ -43,9 +55,12 @@ export default function StaffPage() {
 
     try {
       setIsSubmitting(true);
-      await addStaff(inviteForm);
+      await addStaff({
+        ...inviteForm,
+        roleId: inviteForm.roleId || undefined,
+      });
       setIsInviteModalOpen(false);
-      setInviteForm({ email: "", name: "", phone: "" });
+      setInviteForm({ email: "", name: "", phone: "", roleId: "", branchIds: [] });
       loadData();
       alert("Invitation sent successfully!");
     } catch (err: any) {
@@ -53,6 +68,15 @@ export default function StaffPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const toggleBranch = (branchId: string) => {
+    setInviteForm(prev => ({
+      ...prev,
+      branchIds: prev.branchIds.includes(branchId)
+        ? prev.branchIds.filter(id => id !== branchId)
+        : [...prev.branchIds, branchId]
+    }));
   };
 
   const handleRemove = async (staff: Staff) => {
@@ -70,12 +94,8 @@ export default function StaffPage() {
   const invitedStaff = activeTab === "pending" ? staffList.filter((s) => s.status === "INVITED") : [];
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Staff Management</h1>
-          <p className="text-gray-500 mt-1">Manage access to your shop and assign roles.</p>
-        </div>
+    <div className="space-y-6">
+      <div className="flex justify-end mb-4">
         <button
           onClick={() => setIsInviteModalOpen(true)}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"
@@ -229,6 +249,52 @@ export default function StaffPage() {
                     className="w-full pl-10 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="+91 98765 43210"
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assign Role</label>
+                <div className="relative">
+                  <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <select
+                    value={inviteForm.roleId}
+                    onChange={e => setInviteForm({...inviteForm, roleId: e.target.value})}
+                    className="w-full pl-10 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">Default Staff Permissions</option>
+                    {roles.map(role => (
+                      <option key={role.id} value={role.id}>{role.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Assign to Shops</label>
+                <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                  {shops.map(shop => (
+                    <button
+                      key={shop.id}
+                      type="button"
+                      onClick={() => toggleBranch(shop.id)}
+                      className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                        inviteForm.branchIds.includes(shop.id)
+                          ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300"
+                          : "border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Building2 size={16} />
+                        <span className="text-sm font-medium">{shop.name}</span>
+                      </div>
+                      {inviteForm.branchIds.includes(shop.id) && (
+                        <Check size={16} className="text-indigo-500" />
+                      )}
+                    </button>
+                  ))}
+                  {shops.length === 0 && (
+                    <p className="text-xs text-center text-gray-400 py-4">No shops found to assign.</p>
+                  )}
                 </div>
               </div>
 

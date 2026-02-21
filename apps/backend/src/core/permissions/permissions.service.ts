@@ -95,6 +95,12 @@ export class PermissionService {
   // --- Role Management CRUD ---
 
   async listRoles(tenantId: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { enabledModules: true }
+    });
+    const allowedModules = ['CORE', ...(tenant?.enabledModules || [])];
+
     const roles = await this.prisma.role.findMany({
       where: {
         OR: [
@@ -114,7 +120,23 @@ export class PermissionService {
       orderBy: { isSystem: 'desc' }
     });
 
-    return roles.map(role => {
+    const filteredRoles = roles.filter(role => {
+      // Custom roles are already scoped to the tenant, so they're safe.
+      // We only need to filter System Roles.
+      if (!role.isSystem) return true;
+
+      // For system roles, check if EVERY permission belongs to an allowed module.
+      // If a single permission belongs to a module not in allowedModules, hide the role.
+      // Root role (permissions length 0) is an exception, usually bypasses this,
+      // but let's check explicit mappings.
+      if (role.rolePermissions.length === 0) return true;
+
+      return role.rolePermissions.every(rp =>
+        allowedModules.includes(rp.permission.resource.moduleType)
+      );
+    });
+
+    return filteredRoles.map(role => {
       const { rolePermissions, ...rest } = role;
       return {
         ...rest,
@@ -171,6 +193,27 @@ export class PermissionService {
       }
     }
 
+    // Pre-fetch all valid permission IDs outside the transaction to avoid N+1 queries
+    // that cause the transaction to expire (500 error on clone)
+    const validPermissionIds: string[] = [];
+    if (permissions && permissions.length > 0) {
+      const dbPerms = await this.prisma.permission.findMany({
+        where: {
+          OR: permissions.map(pStr => {
+            const [module, resource, action] = pStr.split('.');
+            return {
+              action,
+              resource: {
+                name: resource,
+                moduleType: module.toUpperCase() as ModuleType
+              }
+            };
+          })
+        }
+      });
+      validPermissionIds.push(...dbPerms.map(p => p.id));
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const role = await tx.role.create({
         data: {
@@ -181,29 +224,19 @@ export class PermissionService {
         }
       });
 
-      if (permissions.length > 0) {
-        // Resolve permission IDs from strings
-        for (const pStr of permissions) {
-          const [module, resource, action] = pStr.split('.');
-          const dbPerm = await tx.permission.findFirst({
-            where: {
-              action,
-              resource: {
-                name: resource,
-                moduleType: module.toUpperCase() as ModuleType
-              }
-            }
-          });
-
-          if (dbPerm) {
-            await tx.rolePermission.create({
+      if (validPermissionIds.length > 0) {
+        // Use Promise.all with individual creates instead of createMany 
+        // to handle adapter/database compatibility issues while still avoiding serial N+1 waits
+        await Promise.all(
+          validPermissionIds.map(id => 
+            tx.rolePermission.create({
               data: {
                 roleId: role.id,
-                permissionId: dbPerm.id
+                permissionId: id
               }
-            });
-          }
-        }
+            })
+          )
+        );
       }
 
       return role;
@@ -229,44 +262,54 @@ export class PermissionService {
       }
     }
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const updatedRole = await tx.role.update({
-        where: { id: roleId },
-        data: {
-          name: data.name,
-          description: data.description,
-        }
-      });
-
-      if (data.permissions) {
-        // Wipe and replace permissions
-        await tx.rolePermission.deleteMany({ where: { roleId } });
-
-        for (const pStr of data.permissions) {
-          const [module, resource, action] = pStr.split('.');
-          const dbPerm = await tx.permission.findFirst({
-            where: {
-              action,
-              resource: {
-                name: resource,
-                moduleType: module.toUpperCase() as ModuleType
-              }
-            }
-          });
-
-          if (dbPerm) {
-            await tx.rolePermission.create({
-              data: {
-                roleId,
-                permissionId: dbPerm.id
-              }
-            });
+      const validPermissionIds: string[] = [];
+      if (data.permissions && data.permissions.length > 0) {
+        const dbPerms = await this.prisma.permission.findMany({
+          where: {
+            OR: data.permissions.map(pStr => {
+              const [module, resource, action] = pStr.split('.');
+              return {
+                action,
+                resource: {
+                  name: resource,
+                  moduleType: module.toUpperCase() as ModuleType
+                }
+              };
+            })
           }
-        }
+        });
+        validPermissionIds.push(...dbPerms.map(p => p.id));
       }
 
-      return updatedRole;
-    });
+      const result = await this.prisma.$transaction(async (tx) => {
+        const updatedRole = await tx.role.update({
+          where: { id: roleId },
+          data: {
+            name: data.name,
+            description: data.description,
+          }
+        });
+
+        if (data.permissions) {
+          // Wipe and replace permissions
+          await tx.rolePermission.deleteMany({ where: { roleId } });
+
+          if (validPermissionIds.length > 0) {
+            await Promise.all(
+              validPermissionIds.map(id =>
+                tx.rolePermission.create({
+                  data: {
+                    roleId,
+                    permissionId: id
+                  }
+                })
+              )
+            );
+          }
+        }
+
+        return updatedRole;
+      });
 
     // Invalidate caches for all users with this role
     const users = await this.prisma.shopStaff.findMany({

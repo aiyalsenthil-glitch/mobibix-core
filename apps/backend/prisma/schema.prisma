@@ -291,6 +291,7 @@ model CustomerFollowUp {
   @@index([assignedToUserId])
   @@index([followUpAt])
   @@index([status])
+  @@index([tenantId, assignedToUserId, status, followUpAt])
 }
 
 model CustomerReminder {
@@ -1164,6 +1165,7 @@ model JobCard {
   @@index([shopId])
   @@index([customerId])
   @@index([tenantId, shopId, status, createdAt])
+  @@index([shopId, createdAt(sort: Desc)])
 }
 
 model HSNCode {

@@ -5,30 +5,44 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
 import { getFollowUpCounts } from "@/services/crm.api";
+import {
+  LayoutDashboard,
+  Banknote,
+  Wrench,
+  Tags,
+  PackageSearch,
+  Users,
+  MessageSquareShare,
+  Truck,
+  Inbox,
+  CreditCard,
+  LineChart,
+  Store,
+  ShieldCheck,
+  Settings,
+} from "lucide-react";
 
 interface NavItem {
   label: string;
   href?: string;
-  icon: string;
+  icon: React.ElementType;
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: "📊" },
-  { label: "Sales", href: "/sales", icon: "💰" },
-  { label: "Job Cards", href: "/jobcards", icon: "🔧" },
-  { label: "Products", href: "/products", icon: "🏷️" },
-  { label: "Inventory", href: "/inventory", icon: "📦" },
-  { label: "Customers", href: "/customers", icon: "👥" },
-  { label: "WhatsApp", href: "/whatsapp", icon: "💬" },
-  { label: "Suppliers", href: "/suppliers", icon: "🚚" },
-  { label: "Purchases", href: "/purchases", icon: "📥" },
-  { label: "Payments", href: "/receipts", icon: "💳" },
-  { label: "Reports", href: "/reports", icon: "📈" },
-  { label: "Shops", href: "/shops", icon: "🏪" },
-  { label: "Staff", href: "/staff", icon: "👥" },
-  { label: "Roles", href: "/roles", icon: "🛡️" },
-  { label: "Approvals", href: "/approvals", icon: "✅" },
-  { label: "Settings", href: "/settings", icon: "⚙️" },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Sales", href: "/sales", icon: Banknote },
+  { label: "Job Cards", href: "/jobcards", icon: Wrench },
+  { label: "Products", href: "/products", icon: Tags },
+  { label: "Inventory", href: "/inventory", icon: PackageSearch },
+  { label: "Customers", href: "/customers", icon: Users },
+  { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare },
+  { label: "Suppliers", href: "/suppliers", icon: Truck },
+  { label: "Purchases", href: "/purchases", icon: Inbox },
+  { label: "Payments", href: "/receipts", icon: CreditCard },
+  { label: "Reports", href: "/reports", icon: LineChart },
+  { label: "Shops", href: "/shops", icon: Store },
+  { label: "Staff Management", href: "/staff-management", icon: ShieldCheck },
+  { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 // ... imports
@@ -79,8 +93,8 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   if (!mounted) return null;
 
   const effectiveCollapsed = mobileOpen ? false : isCollapsed;
-  const sidebarWidth = effectiveCollapsed ? "w-20" : "w-64";
-  const sidebarPadding = effectiveCollapsed ? "p-4" : "p-6";
+  const sidebarWidth = effectiveCollapsed ? "w-[72px]" : "w-64";
+  const sidebarPadding = effectiveCollapsed ? "p-3" : "py-2 px-4";
 
   return (
     <>
@@ -94,7 +108,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-screen ${sidebarWidth} flex flex-col transition-transform duration-300 shadow-lg ${
+        className={`fixed left-0 top-0 h-screen ${sidebarWidth} flex flex-col transition-transform duration-300 shadow-lg group/sidebar ${
           isDark
             ? "bg-gray-950 border-gray-800"
             : "bg-gradient-to-b from-white via-teal-50/30 to-white border-teal-100"
@@ -114,7 +128,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
             <img
               src="/assets/mobibix-main-logo.png"
               alt="MobiBix Logo"
-              className="h-28 w-auto object-contain"
+              className="h-24 w-auto object-contain"
             />
           )}
 
@@ -150,29 +164,32 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+        <nav className={`flex-1 p-2 space-y-1.5 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full ${effectiveCollapsed ? 'overflow-x-hidden' : ''}`}>
           {navItems.map((item) => {
             const isActive = pathname === item.href;
+            const Icon = item.icon;
             return (
               <Link
                 key={item.label}
                 href={item.href!}
                 onClick={() => mobileOpen && onClose && onClose()}
-                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${
+                className={`flex items-center gap-3 py-2.5 px-3 rounded-xl transition-all duration-200 group relative ${
                   isActive
                     ? isDark
-                      ? "bg-teal-500/20 text-teal-300 border border-teal-500/30 shadow-md"
-                      : "bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/30 border border-teal-400 font-semibold"
+                      ? "bg-teal-500/15 text-teal-400 font-semibold"
+                      : "bg-teal-50 text-teal-700 font-semibold before:absolute before:left-0 before:w-1.5 before:h-8 before:bg-teal-600 before:rounded-r-full"
                     : isDark
-                      ? "text-gray-400 hover:bg-gray-800 hover:text-white"
-                      : "text-gray-700 hover:bg-teal-50 hover:text-teal-700 hover:shadow-sm font-medium"
-                } ${effectiveCollapsed ? "justify-center" : ""}`}
+                      ? "text-gray-400 hover:bg-gray-800/50 hover:text-white"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium"
+                } ${effectiveCollapsed ? "justify-center px-0" : ""}`}
                 title={effectiveCollapsed ? item.label : ""}
               >
-                <span className="text-lg flex-shrink-0">{item.icon}</span>
+                <div className={`flex-shrink-0 ${effectiveCollapsed ? 'mx-auto' : ''}`}>
+                   <Icon size={22} strokeWidth={isActive ? 2.5 : 2} className={isActive && !isDark ? "text-teal-600" : ""} />
+                </div>
                 {!effectiveCollapsed && (
                   <>
-                    <span className="font-medium text-sm flex-1">
+                    <span className="text-[14.5px] tracking-wide flex-1">
                       {item.label}
                     </span>
                     {item.label === "Customers" &&
@@ -186,7 +203,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                 )}
 
                 {effectiveCollapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                  <div className="absolute left-[calc(100%+8px)] px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-xl pointer-events-none z-50">
                     {item.label}
                   </div>
                 )}
@@ -197,7 +214,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
 
         {/* Toggle Button (Desktop Only) */}
         <div
-          className={`hidden lg:flex p-2 border-t transition-all duration-300 ${
+          className={`hidden lg:flex p-2 border-t transition-all duration-300 opacity-0 group-hover/sidebar:opacity-100 ${
             isDark ? "border-gray-800" : "border-teal-100"
           }`}
         >
@@ -222,25 +239,6 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
             )}
           </button>
         </div>
-
-        {/* Footer */}
-        {!isCollapsed && (
-          <div
-            className={`p-4 border-t transition-all duration-300 ${
-              isDark
-                ? "border-gray-800 text-gray-500"
-                : "border-teal-100 text-teal-600/60"
-            }`}
-          >
-            <p
-              className={`text-xs font-medium ${
-                isDark ? "" : "text-teal-700/70"
-              }`}
-            >
-              v1.0.0
-            </p>
-          </div>
-        )}
       </aside>
 
       {/* Content Shift */}

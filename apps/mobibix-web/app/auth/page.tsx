@@ -38,6 +38,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
   };
 
   const [step, setStep] = useState<Step>(getInitialStep());
+  const [intendedMode, setIntendedMode] = useState<"signin" | "signup">("signin");
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -87,8 +88,12 @@ export default function AuthPage({ mode }: AuthPageProps) {
       setError("Please enter a valid email address");
       return;
     }
-    // Optimistic flow: Assume login first. If user not found, we switch to signup.
-    setStep("LOGIN_PASS");
+    
+    if (intendedMode === "signup") {
+      setStep("SIGNUP_PASS");
+    } else {
+      setStep("LOGIN_PASS");
+    }
   };
 
   const handleLogin = async (e?: React.FormEvent) => {
@@ -200,26 +205,26 @@ export default function AuthPage({ mode }: AuthPageProps) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-zinc-950 flex items-center justify-center relative overflow-hidden selection:bg-emerald-500/30 selection:text-emerald-200">
+    <div className="min-h-screen w-full bg-white dark:bg-zinc-950 flex items-center justify-center relative overflow-hidden selection:bg-emerald-500/30 selection:text-emerald-900 dark:selection:text-emerald-200">
       
       {/* Background Effects */}
       <div className="absolute inset-0 pointer-events-none">
-         <div className="absolute inset-0 bg-radial-[circle_at_center,_transparent_0%,_#ffffff_100%] dark:bg-radial-[circle_at_center,_transparent_0%,_#09090b_100%] opacity-80 z-0"></div>
+         <div className="absolute inset-0 bg-radial-[circle_at_center,_transparent_0%,_#f8fafc_100%] dark:bg-radial-[circle_at_center,_transparent_0%,_#09090b_100%] opacity-80 z-0"></div>
          <div className="absolute inset-0 aurora-bg opacity-30 dark:opacity-40 animate-[aurora-shift_30s_ease_in_out_infinite,_background-fade_1.5s_ease_forwards] z-10"></div>
          <div className="absolute inset-0 opacity-[0.02] dark:opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] z-30"></div>
       </div>
 
       <div className="relative z-10 w-full max-w-md px-6 animate-card-entrance">
-        <div className="glass-card p-10 rounded-[2.5rem] relative group border border-white/5 bg-black/40 backdrop-blur-xl">
+        <div className="glass-card p-10 rounded-[2.5rem] relative group border border-zinc-100 dark:border-white/5 bg-white/40 dark:bg-black/40 backdrop-blur-xl">
           
           {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2.5 mb-6">
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
-              <span className="text-xs font-bold tracking-[0.4em] uppercase text-zinc-500">MobiBix</span>
+              <span className="text-xs font-bold tracking-[0.4em] uppercase text-zinc-400 dark:text-zinc-500">MobiBix</span>
             </div>
             
-            <h1 className="text-3xl font-extrabold text-white tracking-tight leading-tight">
+            <h1 className="text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight leading-tight">
               {step === "SIGNUP_PASS" ? "Create Account" : step === "VERIFY" ? "Verify Email" : "Welcome Back"}
             </h1>
           </div>
@@ -248,9 +253,9 @@ export default function AuthPage({ mode }: AuthPageProps) {
               </button>
 
               <div className="relative flex items-center gap-4">
-                <div className="h-[1px] flex-1 bg-white/10"></div>
-                <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">or use email</span>
-                <div className="h-[1px] flex-1 bg-white/10"></div>
+                <div className="h-[1px] flex-1 bg-zinc-200 dark:bg-white/10"></div>
+                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">or use email</span>
+                <div className="h-[1px] flex-1 bg-zinc-200 dark:bg-white/10"></div>
               </div>
 
               <div className="space-y-2">
@@ -264,14 +269,40 @@ export default function AuthPage({ mode }: AuthPageProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleEmailNext()}
-                  className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/5 text-white placeholder-zinc-600 focus:outline-none focus:bg-white/10 transition-all font-medium"
+                  className="w-full px-5 py-4 rounded-2xl bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:bg-white dark:focus:bg-white/10 transition-all font-medium"
                 />
                 <button
                   onClick={handleEmailNext}
-                  className="w-full py-4 rounded-2xl bg-zinc-800 text-zinc-300 font-bold hover:bg-zinc-700 hover:text-white transition-all flex items-center justify-center gap-2"
+                  className="w-full py-4 rounded-2xl bg-zinc-900 dark:bg-zinc-800 text-zinc-100 dark:text-zinc-300 font-bold hover:bg-zinc-800 dark:hover:bg-zinc-700 hover:text-white transition-all flex items-center justify-center gap-2"
                 >
-                  Continue <ArrowRight className="w-4 h-4" />
+                  {intendedMode === "signup" ? "Create Account" : "Continue"} <ArrowRight className="w-4 h-4" />
                 </button>
+
+                <div className="text-center mt-4">
+                  <p className="text-sm text-zinc-500">
+                    {intendedMode === "signin" ? (
+                      <>
+                        Don't have an account?{" "}
+                        <button 
+                          onClick={() => setIntendedMode("signup")}
+                          className="text-emerald-500 font-bold hover:text-emerald-400 underline decoration-emerald-500/30 underline-offset-4"
+                        >
+                          Sign Up
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        Already have an account?{" "}
+                        <button 
+                          onClick={() => setIntendedMode("signin")}
+                          className="text-emerald-500 font-bold hover:text-emerald-400 underline decoration-emerald-500/30 underline-offset-4"
+                        >
+                          Sign In
+                        </button>
+                      </>
+                    )}
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -279,11 +310,14 @@ export default function AuthPage({ mode }: AuthPageProps) {
           {step === "LOGIN_PASS" && (
              <form onSubmit={handleLogin} className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
                <div className="flex justify-between items-center text-xs">
-                 <span className="text-zinc-500">{email}</span>
-                 <button type="button" onClick={() => setStep("LANDING")} className="text-emerald-500 hover:text-emerald-400">Change</button>
+                 <div className="flex flex-col">
+                   <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Signing in as</span>
+                   <span className="text-zinc-700 dark:text-zinc-300 font-medium">{email}</span>
+                 </div>
+                 <button type="button" onClick={() => setStep("LANDING")} className="text-emerald-500 hover:text-emerald-400 font-bold">Change</button>
                </div>
                
-               <div className="relative">
+                <div className="relative">
                   <input
                     id="password"
                     name="password"
@@ -293,12 +327,12 @@ export default function AuthPage({ mode }: AuthPageProps) {
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/5 text-white placeholder-zinc-600 focus:outline-none focus:bg-white/10 transition-all font-medium"
+                    className="w-full px-5 py-4 rounded-2xl bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:bg-white dark:focus:bg-white/10 transition-all font-medium"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-400"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -317,8 +351,11 @@ export default function AuthPage({ mode }: AuthPageProps) {
           {step === "SIGNUP_PASS" && (
              <form onSubmit={handleSignup} className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
                 <div className="flex justify-between items-center text-xs">
-                 <span className="text-zinc-500">{email}</span>
-                 <button type="button" onClick={() => setStep("LANDING")} className="text-emerald-500 hover:text-emerald-400">Change</button>
+                 <div className="flex flex-col">
+                   <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Creating account for</span>
+                   <span className="text-zinc-700 dark:text-zinc-300 font-medium">{email}</span>
+                 </div>
+                 <button type="button" onClick={() => setStep("LANDING")} className="text-emerald-500 hover:text-emerald-400 font-bold">Change</button>
                </div>
 
                <div className="space-y-4">
@@ -327,10 +364,10 @@ export default function AuthPage({ mode }: AuthPageProps) {
                     name="full-name"
                     type="text"
                     placeholder="Full Name"
-                    autoComplete="name"
+                     autoComplete="name"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/5 text-white placeholder-zinc-600 focus:outline-none focus:bg-white/10 transition-all font-medium"
+                    className="w-full px-5 py-4 rounded-2xl bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:bg-white dark:focus:bg-white/10 transition-all font-medium"
                   />
                   
                   <div className="relative">
@@ -342,12 +379,12 @@ export default function AuthPage({ mode }: AuthPageProps) {
                         autoComplete="new-password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/5 text-white placeholder-zinc-600 focus:outline-none focus:bg-white/10 transition-all font-medium"
+                        className="w-full px-5 py-4 rounded-2xl bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:bg-white dark:focus:bg-white/10 transition-all font-medium"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-400"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -370,9 +407,9 @@ export default function AuthPage({ mode }: AuthPageProps) {
                   <Mail className="w-10 h-10" />
                </div>
                
-               <div className="space-y-2">
-                 <h3 className="text-white font-bold text-lg">Check your inbox</h3>
-                 <p className="text-zinc-500 text-sm">We sent a verification link to <br/><span className="text-zinc-300 font-medium">{email}</span></p>
+                <div className="space-y-2">
+                 <h3 className="text-zinc-900 dark:text-white font-bold text-lg">Check your inbox</h3>
+                 <p className="text-zinc-500 text-sm">We sent a verification link to <br/><span className="text-zinc-900 dark:text-zinc-300 font-medium">{email}</span></p>
                </div>
 
                <div className="space-y-4">
@@ -384,7 +421,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
                     {loading ? <Loader2 className="animate-spin w-5 h-5" /> : "I've Verified My Email"}
                   </button>
                   
-                  <button onClick={resendEmail} className="text-xs text-zinc-600 hover:text-zinc-400 underline">
+                  <button onClick={resendEmail} className="text-xs text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-400 underline">
                     Resend Email
                   </button>
                </div>
@@ -393,7 +430,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
         </div>
         
-        <div className="mt-8 text-center text-[10px] text-zinc-700 font-bold uppercase tracking-widest">
+        <div className="mt-8 text-center text-[10px] text-zinc-400 dark:text-zinc-700 font-bold uppercase tracking-widest">
            Secure Access • MobiBix OS
         </div>
       </div>

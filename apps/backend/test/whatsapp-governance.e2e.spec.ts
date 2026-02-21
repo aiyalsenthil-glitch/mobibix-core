@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
-import * as request from 'supertest';
+import request from 'supertest';
 import { UserRole } from '@prisma/client';
 
 /**
@@ -12,10 +12,10 @@ import { UserRole } from '@prisma/client';
  */
 describe('WhatsApp Governance (E2E)', () => {
   let app: INestApplication;
-  let adminJwt: string;
-  let staffJwt: string;
-  let ownerJwt: string;
-  let tenantId: string;
+  let adminJwt: string = 'mock_admin_jwt';
+  let staffJwt: string = 'mock_staff_jwt';
+  let ownerJwt: string = 'mock_owner_jwt';
+  let tenantId: string = 'mock_tenant_id';
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

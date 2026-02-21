@@ -142,13 +142,17 @@ export class ReceiptsService {
       take?: number;
     },
   ): Promise<{ data: ReceiptEntity[]; total: number }> {
+    this.logger.debug(`Fetching receipts for shopId: ${shopId}`);
     const skip = filters?.skip || 0;
     const take = filters?.take || 50;
 
     const where: any = {
       tenantId,
-      shopId,
     };
+    
+    if (shopId) {
+      where.shopId = shopId;
+    }
 
     if (filters?.startDate || filters?.endDate) {
       where.createdAt = {};
@@ -198,12 +202,17 @@ export class ReceiptsService {
     shopId: string,
     idOrReceiptId: string,
   ): Promise<ReceiptEntity> {
+    const whereClause: any = {
+      OR: [{ id: idOrReceiptId }, { receiptId: idOrReceiptId }],
+      tenantId,
+    };
+    
+    if (shopId) {
+      whereClause.shopId = shopId;
+    }
+
     const receipt = await this.prisma.receipt.findFirst({
-      where: {
-        OR: [{ id: idOrReceiptId }, { receiptId: idOrReceiptId }],
-        tenantId,
-        shopId,
-      },
+      where: whereClause,
     });
 
     if (!receipt) {
@@ -288,16 +297,21 @@ export class ReceiptsService {
     totalAmount: number;
     byPaymentMode: Record<string, { count: number; amount: number }>;
   }> {
-    const receipts = await this.prisma.receipt.findMany({
-      where: {
-        tenantId,
-        shopId,
-        status: ReceiptStatus.ACTIVE,
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
+    const whereClause: any = {
+      tenantId,
+      status: ReceiptStatus.ACTIVE,
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
       },
+    };
+
+    if (shopId) {
+      whereClause.shopId = shopId;
+    }
+
+    const receipts = await this.prisma.receipt.findMany({
+      where: whereClause,
     });
 
     const byPaymentMode: Record<string, { count: number; amount: number }> = {};

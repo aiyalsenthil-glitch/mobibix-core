@@ -424,41 +424,6 @@ export default function JobCardsPage() {
         </div>
       </div>
 
-      {/* Shop Filter Section - Only show if multiple shops */}
-      {isLoadingShops ? (
-        <div className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg p-4 mb-6 shadow-sm">
-          <div className="text-black dark:text-stone-300">Loading shops...</div>
-        </div>
-      ) : shops.length === 0 ? null : (
-        hasMultipleShops && (
-          <div className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg p-4 mb-6 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <label
-                  className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-stone-300" : "text-black"}`}
-                >
-                  Select Shop
-                </label>
-                <select
-                  value={selectedShopId || ""}
-                  onChange={(e) => selectShop(e.target.value)}
-                  className={`w-full px-4 py-2 rounded-lg font-medium focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 ${
-                    theme === "dark"
-                      ? "bg-stone-900/40 border-white/20 text-white"
-                      : "bg-white border-gray-300 text-black"
-                  } border`}
-                >
-                  {shops.map((shop) => (
-                    <option key={shop.id} value={shop.id}>
-                      {shop.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        )
-      )}
 
       {(error || shopsError) && (
         <div className="bg-rose-50 border border-rose-200 text-rose-700 dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-200 px-4 py-3 rounded-lg mb-4">

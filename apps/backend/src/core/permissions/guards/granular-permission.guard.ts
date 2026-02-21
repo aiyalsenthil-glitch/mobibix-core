@@ -39,7 +39,7 @@ export class GranularPermissionGuard implements CanActivate {
     }
 
     // Resolve shopId
-    const shopId = request.params.shopId || request.query.shopId || request.body.shopId || null;
+    const shopId = request.params?.shopId || request.query?.shopId || request.body?.shopId || null;
 
     try {
       const hasPermission = await this.permissionService.hasPermission(

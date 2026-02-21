@@ -95,22 +95,32 @@ export class AuthService {
       const decoded = await this.authVerification.verifyFirebaseToken(REMOVED_AUTH_PROVIDERToken);
 
       // 2️⃣ Resolve user and check for invites
-      const [user, staffInvite] = await Promise.all([
+      let [user, staffInvite] = await Promise.all([
         this.userResolution.resolveUser(decoded),
         this.userResolution.checkInvites(decoded.email),
       ]);
 
-      // 3️⃣ Resolve active tenant context
-      const activeUserTenant = await this.userResolution.resolveActiveTenant(user, tenantCode);
+      // 3️⃣ Process Invite IF it exists (CRITICAL for correct initial redirect)
+      if (staffInvite) {
+        await this.userResolution.processStaffInvite(user.id, staffInvite);
+        // Re-fetch user to include newly linked tenants
+        user = await this.userResolution.resolveUser(decoded);
+      }
+
+      // 4️⃣ Resolve active tenant context
+      const activeUserTenant = await this.userResolution.resolveActiveTenant(
+        user,
+        tenantCode,
+      );
       const userTenantCount = user.userTenants.length;
 
-      // 4️⃣ Resolve IDs for JWT
+      // 5️⃣ Resolve IDs for JWT
       const tenantId = activeUserTenant?.tenantId ?? null;
       const userTenantId = activeUserTenant?.id ?? null;
       const role = activeUserTenant?.role ?? user.role;
       const isSystemOwner = (activeUserTenant as any)?.isSystemOwner ?? false;
 
-      // 5️⃣ Issue JWT & Refresh Token
+      // 6️⃣ Issue JWT & Refresh Token
       const token = this.tokenFactory.generateAccessToken({
         sub: user.id,
         tenantId,
@@ -119,12 +129,9 @@ export class AuthService {
         isSystemOwner,
       });
 
-      const [refreshToken] = await Promise.all([
-        this.tokenFactory.createRefreshToken(user.id),
-        this.userResolution.processStaffInvite(user.id, staffInvite),
-      ]);
+      const refreshToken = await this.tokenFactory.createRefreshToken(user.id);
 
-      // 6️⃣ Set Firebase custom claims (fire-and-forget)
+      // 7️⃣ Set Firebase custom claims (fire-and-forget)
       if (tenantId) {
         this.REMOVED_AUTH_PROVIDERAdmin.setCustomUserClaims(user.REMOVED_AUTH_PROVIDERUid, {
           tenantId,

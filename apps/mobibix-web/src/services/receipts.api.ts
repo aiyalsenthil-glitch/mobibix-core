@@ -85,6 +85,7 @@ export async function createReceipt(
  * Get all receipts for the authenticated shop
  */
 export async function getReceipts(filters?: {
+  shopId?: string;
   startDate?: Date | string;
   endDate?: Date | string;
   paymentMethod?: PaymentMode;
@@ -102,6 +103,9 @@ export async function getReceipts(filters?: {
   }
   if (filters?.paymentMethod) {
     params.append("paymentMethod", filters.paymentMethod);
+  }
+  if (filters?.shopId) {
+    params.append("shopId", filters.shopId);
   }
   if (filters?.status) {
     params.append("status", filters.status);
@@ -161,10 +165,15 @@ export async function cancelReceipt(
  * Get receipt summary by date range
  */
 export async function getReceiptSummary(
+  shopId?: string,
   startDate?: Date | string,
   endDate?: Date | string,
 ): Promise<ReceiptSummary> {
   const params = new URLSearchParams();
+
+  if (shopId) {
+    params.append("shopId", shopId);
+  }
 
   if (startDate) {
     params.append("startDate", new Date(startDate).toISOString());

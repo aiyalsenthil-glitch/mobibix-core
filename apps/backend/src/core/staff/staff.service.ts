@@ -292,10 +292,11 @@ export class StaffService {
     branchIds?: string[],
   ) {
     await this.ensureStaffAllowed(tenantId);
+    const normalizedEmail = email.toLowerCase();
 
     // check if user already exists
     const existingUser = await this.prisma.user.findFirst({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -317,12 +318,13 @@ export class StaffService {
     }
 
     // allow re-invite if user exists but has no tenant
+    const sanitizedRoleId = roleId === "" ? null : roleId;
 
     await this.prisma.staffInvite.upsert({
       where: {
         tenantId_email: {
           tenantId,
-          email,
+          email: normalizedEmail,
         },
       },
       update: {
@@ -330,20 +332,18 @@ export class StaffService {
         createdAt: new Date(), // refresh timestamp (optional)
         name,
         phone,
-        roleId,
+        roleId: sanitizedRoleId,
         shopIds: branchIds || [],
-        ...getUpdateAudit(creatorId),
       },
 
       create: {
         tenantId,
-        email,
+        email: normalizedEmail,
         name,
         phone,
-        roleId,
+        roleId: sanitizedRoleId,
         shopIds: branchIds || [],
         role: UserRole.STAFF,
-        ...getCreateAudit(creatorId),
       },
     });
   }

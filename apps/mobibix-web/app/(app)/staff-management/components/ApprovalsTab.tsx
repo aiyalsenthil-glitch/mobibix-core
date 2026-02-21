@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { authenticatedFetch } from "@/services/auth.api";
 
-export default function ApprovalInboxPage() {
+export default function ApprovalsTab() {
   const { authUser } = useAuth();
   const [approvals, setApprovals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,16 +64,7 @@ export default function ApprovalInboxPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto pb-24">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Approval Inbox
-        </h1>
-        <p className="text-gray-500 dark:text-slate-400">
-          Review and authorize pending sensitive requests from your staff.
-        </p>
-      </div>
+    <div className="space-y-4 pb-24">
 
       <div className="space-y-4">
         {approvals.length === 0 ? (

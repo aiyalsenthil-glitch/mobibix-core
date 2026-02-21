@@ -25,10 +25,11 @@ export class UserResolutionService {
     });
 
     if (!user) {
+      const normalizedEmail = decodedToken.email?.toLowerCase() ?? null;
       user = await this.prisma.user.create({
         data: {
           REMOVED_AUTH_PROVIDERUid: decodedToken.uid,
-          email: decodedToken.email ?? null,
+          email: normalizedEmail,
           fullName: decodedToken.name ?? null,
           role: UserRole.USER,
           tenantId: null,
@@ -54,11 +55,12 @@ export class UserResolutionService {
         (decodedToken.name && user.fullName !== decodedToken.name);
 
       if (needsUpdate) {
+        const normalizedEmail = decodedToken.email?.toLowerCase() ?? user.email;
         this.prisma.user
           .update({
             where: { id: user.id },
             data: {
-              email: decodedToken.email ?? user.email,
+              email: normalizedEmail,
               fullName: decodedToken.name ?? user.fullName,
             },
           })
@@ -71,9 +73,10 @@ export class UserResolutionService {
 
   async checkInvites(email?: string) {
     if (!email) return null;
+    const normalizedEmail = email.toLowerCase();
     return this.prisma.staffInvite.findFirst({
       where: {
-        email: email,
+        email: normalizedEmail,
         accepted: false,
       },
     });

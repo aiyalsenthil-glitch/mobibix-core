@@ -74,6 +74,7 @@ export async function createVoucher(
  * Get all vouchers for the authenticated shop
  */
 export async function getVouchers(filters?: {
+  shopId?: string;
   startDate?: Date | string;
   endDate?: Date | string;
   paymentMethod?: PaymentMode;
@@ -92,6 +93,9 @@ export async function getVouchers(filters?: {
   }
   if (filters?.paymentMethod) {
     params.append("paymentMethod", filters.paymentMethod);
+  }
+  if (filters?.shopId) {
+    params.append("shopId", filters.shopId);
   }
   if (filters?.status) {
     params.append("status", filters.status);
@@ -154,10 +158,15 @@ export async function cancelVoucher(
  * Get voucher summary by date range
  */
 export async function getVoucherSummary(
+  shopId?: string,
   startDate?: Date | string,
   endDate?: Date | string,
 ): Promise<VoucherSummary> {
   const params = new URLSearchParams();
+
+  if (shopId) {
+    params.append("shopId", shopId);
+  }
 
   if (startDate) {
     params.append("startDate", new Date(startDate).toISOString());

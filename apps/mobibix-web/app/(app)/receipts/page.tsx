@@ -10,8 +10,10 @@ import {
 } from "@/services/receipts.api";
 import { AlertCircle, Plus, Trash2 } from "lucide-react";
 import { PaymentTabs } from "@/components/sales/PaymentTabs";
+import { useShop } from "@/context/ShopContext";
 
 export default function ReceiptsPage() {
+  const { shops, selectedShopId, selectShop, hasMultipleShops } = useShop();
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -32,6 +34,7 @@ export default function ReceiptsPage() {
     setError(null);
     try {
       const result = await getReceipts({
+        shopId: selectedShopId || undefined,
         skip: currentPage * pageSize,
         take: pageSize,
         paymentMethod: paymentMethodFilter || undefined,
@@ -56,6 +59,7 @@ export default function ReceiptsPage() {
     statusFilter,
     startDateFilter,
     endDateFilter,
+    selectedShopId,
   ]);
 
   const formatCurrency = (amount: number) => {
@@ -95,7 +99,30 @@ export default function ReceiptsPage() {
       {/* Filters */}
       <div className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-800 p-6 space-y-4 transition-colors">
         <h2 className="font-semibold text-gray-900 dark:text-white">Filters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {hasMultipleShops && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Shop
+              </label>
+              <select
+                value={selectedShopId}
+                onChange={(e) => {
+                  selectShop(e.target.value);
+                  setCurrentPage(0);
+                }}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-950 text-gray-900 dark:text-white"
+              >
+                <option value="">All Shops</option>
+                {shops.map((shop) => (
+                  <option key={shop.id} value={shop.id}>
+                    {shop.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Payment Mode
