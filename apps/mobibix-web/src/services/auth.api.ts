@@ -268,6 +268,7 @@ export async function logout(): Promise<void> {
 import { 
   createUserWithEmailAndPassword, 
   sendEmailVerification, 
+  sendPasswordResetEmail,
   User as FirebaseUser,
   updateProfile
 } from "REMOVED_AUTH_PROVIDER/auth";
@@ -287,6 +288,11 @@ export async function createEmailAccount(email: string, pass: string, name?: str
 
 export async function sendVerificationEmail(user: FirebaseUser): Promise<void> {
   await sendEmailVerification(user);
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  if (!auth) throw new Error("Firebase not initialized");
+  await sendPasswordResetEmail(auth, email);
 }
 
 export async function getCurrentUser(): Promise<CurrentUserResponse | null> {

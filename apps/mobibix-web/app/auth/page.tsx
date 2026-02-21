@@ -13,7 +13,7 @@ import {
 import { auth, googleProvider } from "@/lib/REMOVED_AUTH_PROVIDER";
 import { useAuth } from "@/hooks/useAuth";
 import { getRoleRedirect } from "@/lib/auth-routes";
-import { sendVerificationEmail } from "@/services/auth.api";
+import { sendVerificationEmail, requestPasswordReset } from "@/services/auth.api";
 import { Eye, EyeOff, Loader2, Check, Mail, ArrowRight, AlertCircle } from "lucide-react";
 
 interface AuthPageProps {
@@ -29,8 +29,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
     authUser,
   } = useAuth();
 
-  // State: 0=Landing, 1=LoginPass, 2=SignupPass, 3=Verify
-  type Step = "LANDING" | "LOGIN_PASS" | "SIGNUP_PASS" | "VERIFY";
+  // State: 0=Landing, 1=LoginPass, 2=SignupPass, 3=Verify, 4=ForgotPass
+  type Step = "LANDING" | "LOGIN_PASS" | "SIGNUP_PASS" | "VERIFY" | "FORGOT_PASS";
   
   const getInitialStep = (): Step => {
     // Always start at LANDING to ensure email is captured
@@ -84,10 +84,12 @@ export default function AuthPage({ mode }: AuthPageProps) {
   };
 
   const handleEmailNext = () => {
-    if (!email.includes("@")) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail.includes("@")) {
       setError("Please enter a valid email address");
       return;
     }
+    setEmail(normalizedEmail);
     
     if (intendedMode === "signup") {
       setStep("SIGNUP_PASS");
@@ -98,14 +100,15 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
   const handleLogin = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!email || !email.includes("@")) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
       setError("Please enter a valid email address");
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
+      const result = await signInWithEmailAndPassword(auth, normalizedEmail, password);
       // Exchange token (backend enforces email verification)
       const response = await exchangeToken(result.user);
       // Keep loading = true; hard navigation in exchangeToken will tear down this page
@@ -138,7 +141,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
   const handleSignup = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!email || !email.includes("@")) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
       setError("Please enter a valid email address");
       return;
     }
@@ -201,6 +205,26 @@ export default function AuthPage({ mode }: AuthPageProps) {
       setError("Verification email sent!"); // using error state for success msg temporarily
     } catch (err: any) {
       setError(err.message);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
+      setError("Please enter your email address first");
+      setStep("LANDING");
+      return;
+    }
+    setEmail(normalizedEmail);
+    setLoading(true);
+    try {
+      await requestPasswordReset(normalizedEmail);
+      setStep("FORGOT_PASS");
+      setError("Reset link sent!");
+    } catch (err: any) {
+      setError(err.message || "Failed to send reset link");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -317,26 +341,38 @@ export default function AuthPage({ mode }: AuthPageProps) {
                  <button type="button" onClick={() => setStep("LANDING")} className="text-emerald-500 hover:text-emerald-400 font-bold">Change</button>
                </div>
                
-                <div className="relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter Password"
-                    autoFocus
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-5 py-4 rounded-2xl bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:bg-white dark:focus:bg-white/10 transition-all font-medium"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-400"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-               </div>
+                <div className="space-y-4">
+                  <div className="relative">
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter Password"
+                      autoFocus
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-5 py-4 rounded-2xl bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:bg-white dark:focus:bg-white/10 transition-all font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-400"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+
+                  <div className="text-right">
+                    <button 
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-xs text-zinc-500 hover:text-emerald-500 font-medium transition-colors"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                </div>
 
                <button
                   type="submit"
@@ -423,6 +459,32 @@ export default function AuthPage({ mode }: AuthPageProps) {
                   
                   <button onClick={resendEmail} className="text-xs text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-400 underline">
                     Resend Email
+                  </button>
+               </div>
+            </div>
+          )}
+
+          {step === "FORGOT_PASS" && (
+            <div className="text-center space-y-8 animate-in fade-in zoom-in duration-300">
+               <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto text-emerald-500 border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+                  <Mail className="w-10 h-10" />
+               </div>
+               
+                <div className="space-y-2">
+                 <h3 className="text-zinc-900 dark:text-white font-bold text-lg">Reset Link Sent</h3>
+                 <p className="text-zinc-500 text-sm">We've sent a password reset link to <br/><span className="text-zinc-900 dark:text-zinc-300 font-medium">{email}</span></p>
+               </div>
+
+               <div className="space-y-4">
+                  <button
+                    onClick={() => setStep("LOGIN_PASS")}
+                    className="w-full py-4 rounded-2xl bg-zinc-900 dark:bg-zinc-800 text-white font-bold hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
+                  >
+                    Back to Login
+                  </button>
+                  
+                  <button onClick={handleForgotPassword} className="text-xs text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-400 underline">
+                    Resend Reset Link
                   </button>
                </div>
             </div>
