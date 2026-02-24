@@ -19,7 +19,8 @@ export type EmailTemplateType =
   | 'PAYMENT_RECEIPT'
   | 'JOBCARD_CREATED'
   | 'JOBCARD_STATUS_UPDATED'
-  | 'JOBCARD_COMPLETED';
+  | 'JOBCARD_COMPLETED'
+  | 'EMAIL_VERIFICATION';
 
 export interface EmailTemplateProps {
   // Tenant
@@ -48,4 +49,7 @@ export interface EmailTemplateProps {
   JOBCARD_CREATED: { customerName: string; jobcardNumber: string; storeName: string; trackingLink: string };
   JOBCARD_STATUS_UPDATED: { customerName: string; jobcardNumber: string; newStatus: string; storeName: string; trackingLink: string };
   JOBCARD_COMPLETED: { customerName: string; jobcardNumber: string; deviceName: string; cost: string; storeName: string; trackingLink: string };
+
+  // System Auth
+  EMAIL_VERIFICATION: { name: string; verificationLink: string };
 }

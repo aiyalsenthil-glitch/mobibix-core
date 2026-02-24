@@ -41,7 +41,7 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen bg-white dark:bg-black text-black dark:text-white transition-colors duration-200">
       {/* Sidebar */}
       <aside
-        className={`w-64 border-r ${sidebarBg} backdrop-blur flex flex-col p-4 fixed h-screen overflow-y-auto transition-colors duration-200 z-10`}
+        className={`hidden md:flex w-64 border-r ${sidebarBg} backdrop-blur flex-col p-4 fixed h-screen overflow-y-auto transition-colors duration-200 z-10`}
       >
         <div className="flex items-center justify-between mb-8 pt-2 px-2">
           <div className="flex items-center gap-2">
@@ -172,13 +172,13 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-64 overflow-y-auto transition-colors duration-200">
+      <main className="flex-1 ml-0 md:ml-64 overflow-y-auto transition-colors duration-200">
         {/* Fixed Topbar across dashboard */}
-        <div className="fixed top-0 right-0 left-64 z-20">
+        <div className="fixed top-0 right-0 left-0 md:left-64 z-20">
             <SubscriptionAlert />
             <Topbar isCollapsed={false} />
         </div>
-        <div className="pt-28 min-h-screen bg-white dark:bg-black">
+        <div className="pt-28 min-h-screen bg-white dark:bg-black p-4 md:p-8">
           {children}
         </div>
       </main>

@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 import type { Shop } from "./shops.api";
 import type { ShopProduct } from "./products.api";
 
@@ -148,7 +148,7 @@ export async function listInvoices(
     if (!response.ok) {
       let errorMessage = "Failed to fetch invoices";
       try {
-        const error = await response.json();
+        const error = await extractData(response);
         errorMessage = error.message || errorMessage;
       } catch (e) {
         // ignore json parse error
@@ -161,7 +161,7 @@ export async function listInvoices(
       return [];
     }
 
-    const data = await response.json();
+    const data = await extractData(response);
     console.log(`[Sales API] Total time: ${Date.now() - startTime}ms`);
 
     // Handle paginated response (with pagination object)
@@ -195,11 +195,11 @@ export async function getInvoice(invoiceId: string): Promise<SalesInvoice> {
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch invoice");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 export interface PublicInvoiceResponse {
@@ -218,7 +218,7 @@ export async function getPublicInvoice(invoiceId: string): Promise<PublicInvoice
   if (!response.ok) {
     let errorMessage = "Failed to fetch invoice";
     try {
-      const error = await response.json();
+      const error = await extractData(response);
       errorMessage = error.message || errorMessage;
     } catch {
       // ignore
@@ -226,7 +226,7 @@ export async function getPublicInvoice(invoiceId: string): Promise<PublicInvoice
     throw new Error(errorMessage);
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -241,11 +241,11 @@ export async function createInvoice(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to create invoice");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -264,11 +264,11 @@ export async function updateInvoice(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to update invoice");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -283,11 +283,11 @@ export async function cancelInvoice(invoiceId: string): Promise<SalesInvoice> {
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to cancel invoice");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 // Legacy payment API removed – use collectPayment only
@@ -301,11 +301,11 @@ export async function listPayments(invoiceId: string) {
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch payments");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -337,11 +337,11 @@ export async function collectPayment(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to collect payment");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -360,9 +360,9 @@ export async function addItemToInvoice(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to add item");
   }
 
-  return response.json();
+  return extractData(response);
 }

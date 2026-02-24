@@ -31,6 +31,8 @@ import { JobcardCreatedEmail } from './templates/customer/jobcard-created';
 import { JobcardStatusUpdatedEmail } from './templates/customer/jobcard-status-updated';
 import { JobcardCompletedEmail } from './templates/customer/jobcard-completed';
 
+import { EmailVerificationEmail } from './templates/system/email-verification';
+
 import { ModuleType } from '@prisma/client';
 import { EmailTemplateType } from './email-template-types';
 
@@ -172,6 +174,10 @@ export class EmailService {
               return JobcardStatusUpdatedEmail({ module, ...data });
           case 'JOBCARD_COMPLETED':
               return JobcardCompletedEmail({ module, ...data });
+
+          // System
+          case 'EMAIL_VERIFICATION':
+              return EmailVerificationEmail({ module, ...data });
 
           default:
               this.logger.warn(`Unknown email template type: ${type}`);

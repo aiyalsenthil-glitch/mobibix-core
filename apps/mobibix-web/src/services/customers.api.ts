@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -47,11 +47,11 @@ export async function listCustomers(): Promise<Customer[]> {
   const response = await authenticatedFetch(`/core/customers`);
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to load customers");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -73,11 +73,11 @@ export async function listCustomersPaginated(options?: {
   const response = await authenticatedFetch(url);
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to load customers");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -87,11 +87,11 @@ export async function getCustomer(customerId: string): Promise<Customer> {
   const response = await authenticatedFetch(`/core/customers/${customerId}`);
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to load customer");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -109,11 +109,11 @@ export async function getCustomerByPhone(
   }
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to lookup customer");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -136,7 +136,7 @@ export async function searchCustomers(
     return [];
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -154,11 +154,11 @@ export async function createCustomer(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to create customer");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -177,11 +177,11 @@ export async function updateCustomer(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to update customer");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -193,7 +193,7 @@ export async function deleteCustomer(customerId: string): Promise<void> {
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to delete customer");
   }
 }

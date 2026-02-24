@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -66,7 +66,7 @@ export async function getCustomerLoyaltyBalance(
       return 0; // Return 0 if error
     }
 
-    const data = await response.json();
+    const data = await extractData(response);
     return data.balance || 0;
   } catch (error) {
     console.error("Error fetching loyalty balance:", error);
@@ -93,7 +93,7 @@ export async function validateLoyaltyRedemption(
     if (!response.ok) {
       let errorMessage = "Validation failed";
       try {
-        const error = await response.json();
+        const error = await extractData(response);
         errorMessage = error.error || errorMessage;
       } catch (e) {
         // ignore json parse error
@@ -108,7 +108,7 @@ export async function validateLoyaltyRedemption(
       };
     }
 
-    const data = await response.json();
+    const data = await extractData(response);
     return {
       success: data.success !== false,
       points: data.points,
@@ -138,7 +138,7 @@ export async function getLoyaltyConfig(): Promise<LoyaltyConfig | null> {
       return null;
     }
 
-    const data = await response.json();
+    const data = await extractData(response);
     return data;
   } catch (error) {
     console.error("Error fetching loyalty config:", error);
@@ -168,7 +168,7 @@ export async function updateLoyaltyConfig(
       return null;
     }
 
-    const data = await response.json();
+    const data = await extractData(response);
     return data.config;
   } catch (error) {
     console.error("Error updating loyalty config:", error);
@@ -196,7 +196,7 @@ export async function createManualAdjustment(request: {
     if (!response.ok) {
       let errorMessage = "Failed to create adjustment";
       try {
-        const error = await response.json();
+        const error = await extractData(response);
         errorMessage = error.message || errorMessage;
       } catch (e) {
         // ignore json parse error

@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 export interface WhatsAppDashboard {
   planRequired?: boolean; // Added for no-plan scenario
@@ -79,10 +79,10 @@ export interface WhatsAppLog {
 export async function getWhatsAppDashboard(): Promise<WhatsAppDashboard> {
   const response = await authenticatedFetch("/user/whatsapp/dashboard");
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to load WhatsApp dashboard");
   }
-  return response.json();
+  return extractData(response);
 }
 
 export async function sendWhatsAppMessage(
@@ -94,11 +94,11 @@ export async function sendWhatsAppMessage(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to send WhatsApp message");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 export interface WhatsAppNumber {
@@ -118,10 +118,10 @@ export async function getPhoneNumbers(
     `/whatsapp/phone-numbers/${tenantId}`,
   );
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch phone numbers");
   }
-  return response.json();
+  return extractData(response);
 }
 
 export async function getWhatsAppLogs(params?: {
@@ -144,11 +144,11 @@ export async function getWhatsAppLogs(params?: {
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch WhatsApp logs");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 export async function createWhatsAppCampaign(
@@ -160,11 +160,11 @@ export async function createWhatsAppCampaign(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to create campaign");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 export async function scheduleWhatsAppCampaign(
@@ -180,20 +180,20 @@ export async function scheduleWhatsAppCampaign(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to schedule campaign");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 export async function getWhatsAppStatus(): Promise<WhatsAppStatus> {
   const response = await authenticatedFetch("/integrations/whatsapp/status");
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch WhatsApp status");
   }
-  return response.json();
+  return extractData(response);
 }
 
 export async function manualSyncWhatsApp(
@@ -207,7 +207,7 @@ export async function manualSyncWhatsApp(
     },
   );
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to perform manual sync");
   }
 }
@@ -220,7 +220,7 @@ export async function disconnectWhatsApp(): Promise<void> {
     },
   );
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to disconnect WhatsApp");
   }
 }
@@ -228,8 +228,8 @@ export async function disconnectWhatsApp(): Promise<void> {
 export async function connectWhatsApp(): Promise<{ url: string }> {
   const response = await authenticatedFetch("/integrations/whatsapp/connect");
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to initiate WhatsApp connection");
   }
-  return response.json();
+  return extractData(response);
 }

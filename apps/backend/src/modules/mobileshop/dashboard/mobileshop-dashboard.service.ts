@@ -18,7 +18,9 @@ export class MobileShopDashboardService {
     skipCache = false,
   ) {
     // 🔴 CHECK CACHE FIRST
-    const cacheKey = `dashboard:owner:${tenantId}:${shopId || 'all'}`;
+    const cacheVersion = process.env.CACHE_VERSION || '1';
+    const cacheKey = `v${cacheVersion}:dashboard:owner:${tenantId}:${shopId || 'all'}`;
+    
     if (!skipCache) {
       const cached = await this.cacheManager.get<any>(cacheKey);
       if (cached) {

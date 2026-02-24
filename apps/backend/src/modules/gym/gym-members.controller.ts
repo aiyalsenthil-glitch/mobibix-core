@@ -58,12 +58,26 @@ export class GymMembersController {
   @Permissions(Permission.MEMBER_VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('renewal-due')
-  listRenewalDue(@Req() req: any) {
-    return this.membersService.listMembershipsDue(req.user.tenantId);
+  listRenewalDue(
+    @Req() req: any,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
+    return this.membersService.listMembershipsDue(req.user.tenantId, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
   }
   @Get('payment-due')
-  getPaymentDue(@Req() req) {
-    return this.membersService.getPaymentDueMembers(req.user.tenantId);
+  getPaymentDue(
+    @Req() req: any,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
+    return this.membersService.getPaymentDueMembers(req.user.tenantId, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
   }
 
   @Permissions(Permission.MEMBER_VIEW)

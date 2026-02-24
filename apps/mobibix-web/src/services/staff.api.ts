@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 export interface Staff {
   id: string; // user.id or invite.id
@@ -28,12 +28,12 @@ export interface AddStaffDto {
 export async function listStaff(): Promise<Staff[]> {
   // 1. Fetch active staff
   const staffResponse = await authenticatedFetch("/staff");
-  const activeStaffData = staffResponse.ok ? await staffResponse.json() : [];
+  const activeStaffData = staffResponse.ok ? await extractData(staffResponse) : [];
   const activeStaff = Array.isArray(activeStaffData) ? activeStaffData : (activeStaffData.data || []);
 
   // 2. Fetch invited staff
   const invitesResponse = await authenticatedFetch("/staff/invites");
-  const invitesData = invitesResponse.ok ? await invitesResponse.json() : [];
+  const invitesData = invitesResponse.ok ? await extractData(invitesResponse) : [];
   const invitedStaff = Array.isArray(invitesData) ? invitesData : (invitesData.data || []);
 
   // 3. Merge and Normalize
@@ -72,7 +72,7 @@ export async function addStaff(dto: AddStaffDto): Promise<void> {
   });
 
   if (!response.ok) {
-    const err = await response.json();
+    const err = await extractData(response);
     throw new Error(err.message || "Failed to add staff");
   }
 }
@@ -90,7 +90,7 @@ export async function removeStaff(staffId: string, status: "ACTIVE" | "INVITED")
   });
 
   if (!response.ok) {
-    const err = await response.json();
+    const err = await extractData(response);
     throw new Error(err.message || "Failed to remove staff");
   }
 }

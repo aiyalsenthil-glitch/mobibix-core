@@ -1,4 +1,4 @@
-import { authenticatedFetch, unwrapStandardResponse } from "./auth.api";
+import { authenticatedFetch, unwrapStandardResponse, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -129,11 +129,11 @@ export async function listShops(): Promise<Shop[]> {
   const response = await authenticatedFetch(`/mobileshop/shops`);
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch shops");
   }
 
-  const json = await response.json();
+  const json = await extractData(response);
   const result: any = unwrapStandardResponse(json);
   
   // Handle paginated response: { data: [], total, skip, take }
@@ -161,11 +161,11 @@ export async function getShop(shopId: string): Promise<Shop> {
   const response = await authenticatedFetch(`/mobileshop/shops/${shopId}`);
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch shop");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -178,11 +178,11 @@ export async function createShop(data: CreateShopDto): Promise<Shop> {
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to create shop");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -198,11 +198,11 @@ export async function updateShop(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to update shop");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -214,11 +214,11 @@ export async function getShopSettings(shopId: string): Promise<Shop> {
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch shop settings");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -237,11 +237,11 @@ export async function updateShopSettings(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to update shop settings");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -312,11 +312,11 @@ export async function getShopDocumentSettings(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch document settings");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -336,9 +336,9 @@ export async function updateShopDocumentSetting(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to update document setting");
   }
 
-  return response.json();
+  return extractData(response);
 }

@@ -37,7 +37,8 @@ export class StockKpiController {
       throw new BadRequestException('shopId required');
     }
 
-    const cacheKey = `kpi:${tenantId}:${shopId}`;
+    const cacheVersion = process.env.CACHE_VERSION || '1';
+    const cacheKey = `v${cacheVersion}:kpi:${tenantId}:${shopId}`;
 
     const cached = await this.cache.get(cacheKey);
     if (cached) return cached;

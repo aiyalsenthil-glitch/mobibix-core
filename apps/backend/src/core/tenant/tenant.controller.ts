@@ -4,6 +4,7 @@ import {
   Get,
   Post,
   Req,
+  Res,
   UseGuards,
   ForbiddenException,
   Patch,
@@ -14,6 +15,7 @@ import {
   DefaultValuePipe,
   ParseIntPipe,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { UsageSnapshotService } from '../analytics/usage-snapshot.service';
 
 import { UserRole } from '@prisma/client';
@@ -79,7 +81,11 @@ export class TenantController {
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.USER) // Allow USER role for first-time tenant creation
   @SkipSubscriptionCheck()
   @Post()
-  async createTenant(@Req() req: any, @Body() dto: CreateTenantDto) {
+  async createTenant(
+    @Req() req: any,
+    @Body() dto: CreateTenantDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const userId = req.user.sub;
 
     const { tenant, userTenant } = await this.tenantService.createTenant(
@@ -92,6 +98,15 @@ export class TenantController {
       tenantId: tenant.id,
       userTenantId: userTenant.id,
       role: UserRole.OWNER,
+    });
+
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie('accessToken', token, {
+      httpOnly: true,
+      sameSite: isProd ? 'none' : 'lax',
+      secure: isProd,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',
     });
 
     return {

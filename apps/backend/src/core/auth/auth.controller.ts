@@ -12,6 +12,7 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
 import { SkipSubscriptionCheck } from './decorators/skip-subscription-check.decorator';
+import { CurrentUser } from './decorators/current-user.decorator';
 import { GoogleExchangeDto } from './dto/google-exchange.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { FirebaseAdminService } from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
@@ -218,6 +219,15 @@ export class AuthController {
     const decoded = await this.REMOVED_AUTH_PROVIDERAdmin.verifyIdToken(token);
 
     return decoded;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('send-verification-email')
+  async sendVerificationEmail(@Req() req: any) {
+    const userId = req.user.userId;
+    // Call the Auth Service to handle the generation and dispatch
+    await this.authService.sendVerificationEmail(userId);
+    return { success: true, message: 'Verification email sent' };
   }
 
   @UseGuards(JwtAuthGuard)

@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 /**
  * Add stock for a product
@@ -28,9 +28,9 @@ export async function stockIn(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to add stock");
   }
 
-  return response.json();
+  return extractData(response);
 }

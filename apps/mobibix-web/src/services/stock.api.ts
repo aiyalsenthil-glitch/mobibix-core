@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 export interface StockBalance {
   productId: string;
@@ -44,11 +44,11 @@ export async function getStockBalances(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch stock balances");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -64,11 +64,11 @@ export async function correctStock(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to correct stock");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -81,9 +81,9 @@ export async function getNegativeStockReport(
   const response = await authenticatedFetch(`/reports/negative-stock${params}`);
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch negative stock report");
   }
 
-  return response.json();
+  return extractData(response);
 }

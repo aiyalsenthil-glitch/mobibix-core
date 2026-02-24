@@ -331,7 +331,7 @@ export class MembersService {
   // MEMBERSHIP RENEWAL DUE
   // (expired + overdue)
   // ===============================
-  async listMembershipsDue(tenantId: string) {
+  async listMembershipsDue(tenantId: string, options?: { skip?: number; take?: number }) {
     const endToday = endOfDay(new Date());
     return this.prisma.member.findMany({
       where: {
@@ -341,6 +341,9 @@ export class MembersService {
           lte: endToday,
         },
       },
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 100,
+      orderBy: { membershipEndAt: 'desc' },
     });
   }
 
@@ -394,13 +397,16 @@ export class MembersService {
     };
   }
 
-  async getPaymentDueMembers(tenantId: string) {
+  async getPaymentDueMembers(tenantId: string, options?: { skip?: number; take?: number }) {
     const members = await this.prisma.member.findMany({
       where: {
         tenantId,
         isActive: true,
+        paymentStatus: { in: ['DUE', 'PARTIAL'] },
       },
-
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 100,
+      orderBy: { paymentDueDate: 'asc' },
       select: {
         id: true,
         fullName: true,

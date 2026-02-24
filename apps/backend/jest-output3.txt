@@ -1,0 +1,130 @@
+FAIL test/frontend-auth.e2e.spec.ts
+  ΓùÅ Frontend Auth Strategy Validation (E2E) ΓÇ║ Auth Exchange Endpoint (Common for Both Frontends) ΓÇ║ should exchange Firebase ID token for Backend JWT
+
+    TypeError: request is not a function
+
+      33 |     it('should exchange Firebase ID token for Backend JWT', async () => {
+      34 |       // Both frontends call: POST /auth/exchange with { idToken, tenantCode }
+    > 35 |       const response = await request(backendServer)
+         |                              ^
+      36 |         .post('/auth/exchange')
+      37 |         .send({
+      38 |           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
+
+      at Object.<anonymous> (frontend-auth.e2e.spec.ts:35:30)
+
+  ΓùÅ Frontend Auth Strategy Validation (E2E) ΓÇ║ Auth Exchange Endpoint (Common for Both Frontends) ΓÇ║ should return JWT with tenantId claim for multi-tenant context
+
+    TypeError: request is not a function
+
+      48 |     it('should return JWT with tenantId claim for multi-tenant context', async () => {
+      49 |       // Both GymPilot and MobiBix need tenantId for tenant-scoped API calls
+    > 50 |       const response = await request(backendServer)
+         |                              ^
+      51 |         .post('/auth/exchange')
+      52 |         .send({
+      53 |           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
+
+      at Object.<anonymous> (frontend-auth.e2e.spec.ts:50:30)
+
+  ΓùÅ Frontend Auth Strategy Validation (E2E) ΓÇ║ Auth Exchange Endpoint (Common for Both Frontends) ΓÇ║ should handle missing tenantCode for owner login
+
+    TypeError: request is not a function
+
+      66 |     it('should handle missing tenantCode for owner login', async () => {
+      67 |       // Owners (no tenant) may call without tenantCode
+    > 68 |       const response = await request(backendServer)
+         |                              ^
+      69 |         .post('/auth/exchange')
+      70 |         .send({
+      71 |           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
+
+      at Object.<anonymous> (frontend-auth.e2e.spec.ts:68:30)
+
+  ΓùÅ Frontend Auth Strategy Validation (E2E) ΓÇ║ Auth Exchange Endpoint (Common for Both Frontends) ΓÇ║ should reject invalid Firebase token
+
+    TypeError: request is not a function
+
+      80 |     it('should reject invalid Firebase token', async () => {
+      81 |       // Invalid token = 401 Unauthorized
+    > 82 |       await request(backendServer)
+         |             ^
+      83 |         .post('/auth/exchange')
+      84 |         .send({
+      85 |           idToken: 'invalid_token_xyz',
+
+      at Object.<anonymous> (frontend-auth.e2e.spec.ts:82:13)
+
+  ΓùÅ Frontend Auth Strategy Validation (E2E) ΓÇ║ GymPilot Frontend - localStorage Bearer Token Strategy ΓÇ║ should provide accessToken for localStorage storage
+
+    TypeError: request is not a function
+
+      93 |     it('should provide accessToken for localStorage storage', async () => {
+      94 |       // GymPilot (SPA) stores token in localStorage and reads it on each request
+    > 95 |       const response = await request(backendServer)
+         |                              ^
+      96 |         .post('/auth/exchange')
+      97 |         .send({
+      98 |           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
+
+      at Object.<anonymous> (frontend-auth.e2e.spec.ts:95:30)
+
+  ΓùÅ Frontend Auth Strategy Validation (E2E) ΓÇ║ GymPilot Frontend - localStorage Bearer Token Strategy ΓÇ║ should support Bearer token in Authorization header
+
+    TypeError: request is not a function
+
+      110 |     it('should support Bearer token in Authorization header', async () => {
+      111 |       // After GymPilot stores token, it sends: Authorization: Bearer <token>
+    > 112 |       const exchangeResponse = await request(backendServer)
+          |                                      ^
+      113 |         .post('/auth/exchange')
+      114 |         .send({ idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token', tenantCode: 'gym-12345' })
+      115 |         .expect(200);
+
+      at Object.<anonymous> (frontend-auth.e2e.spec.ts:112:38)
+
+  ΓùÅ Frontend Auth Strategy Validation (E2E) ΓÇ║ GymPilot Frontend - localStorage Bearer Token Strategy ΓÇ║ should provide user metadata for frontend context
+
+    TypeError: request is not a function
+
+      128 |     it('should provide user metadata for frontend context', async () => {
+      129 |       // GymPilot stores user info in state: {userId, email, role, tenantId}
+    > 130 |       const response = await request(backendServer)
+          |                              ^
+      131 |         .post('/auth/exchange')
+      132 |         .send({
+      133 |           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
+
+      at Object.<anonymous> (frontend-auth.e2e.spec.ts:130:30)
+
+  ΓùÅ Frontend Auth Strategy Validation (E2E) ΓÇ║ GymPilot Frontend - localStorage Bearer Token Strategy ΓÇ║ should SPA strategy: No middleware needed for GymPilot
+
+    TypeError: request is not a function
+
+      155 |
+      156 |       // This test just verifies the exchange endpoint works (already tested above)
+    > 157 |       const response = await request(backendServer)
+          |                              ^
+      158 |         .post('/auth/exchange')
+      159 |         .send({
+      160 |           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
+
+      at Object.<anonymous> (frontend-auth.e2e.spec.ts:157:30)
+
+  ΓùÅ Frontend Auth Strategy Validation (E2E) ΓÇ║ MobiBix Frontend - Cookie + Middleware Strategy ΓÇ║ should provide accessToken and support Set-Cookie
+
+    TypeError: request is not a function
+
+      171 |     it('should provide accessToken and support Set-Cookie', async () => {
+      172 |       // MobiBix (SSR) can receive token via Set-Cookie header
+    > 173 |       const response = await request(backendServer)
+          |                              ^
+      174 |         .post('/auth/exchange')
+      175 |         .send({
+      176 |           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
+
+      at Object.<anonymous> (frontend-auth.e2e.spec.ts:173:30)
+
+  ΓùÅ Frontend Auth Strategy Validation (E2E) ΓÇ║ MobiBix Frontend - Cookie + Middleware Strategy ΓÇ║ should middleware validate accessToken cookie on protected routes
+
+    TypeError: request is not a function

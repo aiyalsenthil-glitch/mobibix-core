@@ -52,7 +52,6 @@ import { PermissionsModule } from './permissions/permissions.module';
     FollowUpsModule,
     CrmDashboardModule,
     PlatformModule,
-    PlatformModule,
     ReportsHardeningModule,
     SystemModule,
     PermissionsModule,

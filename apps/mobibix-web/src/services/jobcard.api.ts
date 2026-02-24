@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -151,11 +151,11 @@ export async function listJobCards(
   const response = await authenticatedFetch(url);
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch job cards");
   }
 
-  const data = await response.json();
+  const data = await extractData(response);
   // Backend returns { jobCards: [...], empty: false }
   return data.jobCards || [];
 }
@@ -172,11 +172,11 @@ export async function getJobCard(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch job card");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -195,11 +195,11 @@ export async function createJobCard(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to create job card");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -219,11 +219,11 @@ export async function updateJobCard(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to update job card");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -243,11 +243,11 @@ export async function updateJobCardStatus(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to update status");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -265,11 +265,11 @@ export async function reopenJobCard(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to reopen job");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -290,7 +290,7 @@ export async function addJobCardPart(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to add part");
   }
 }
@@ -311,7 +311,7 @@ export async function removeJobCardPart(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to remove part");
   }
 }
@@ -331,7 +331,7 @@ export async function deleteJobCard(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to delete job card");
   }
 }
@@ -350,12 +350,12 @@ export async function createWarrantyJob(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to create warranty job");
   }
 
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -376,11 +376,11 @@ export async function addJobCardAdvance(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to add advance");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -401,11 +401,11 @@ export async function refundJobCardAdvance(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to refund advance");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -441,9 +441,9 @@ export async function generateRepairBill(
     );
 
     if (!response.ok) {
-        const error = await response.json();
+        const error = await extractData(response);
         throw new Error(error.message || "Failed to generate bill");
     }
 
-    return response.json();
+    return extractData(response);
 }

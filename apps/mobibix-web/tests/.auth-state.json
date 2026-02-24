@@ -1,0 +1,75 @@
+{
+  "cookies": [
+    {
+      "name": "accessToken",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmZTkxOTAwYy04NjI4LTRmNTMtODk2MS00MmIxYTViOGFiMTkiLCJ0ZW5hbnRJZCI6ImNtbG1jZTV1cjAwMDQ2Y2xldTk3emZwMWkiLCJ1c2VyVGVuYW50SWQiOiJjbWxtY2U2Z2YwMDA2NmNsZWw0b2YybGZ4Iiwicm9sZSI6Ik9XTkVSIiwiaXNTeXN0ZW1Pd25lciI6dHJ1ZSwiaWF0IjoxNzcxOTQzNTYwLCJleHAiOjE3NzI1NDgzNjB9.Ey1WyMwbBDxf7NPozE5Mq4Qkqw1YP1XwydGkypw08Vo",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1772548360.087503,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "gp_session_hint",
+      "value": "1",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1772548360.087836,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "mobi_session_hint",
+      "value": "1",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1772548360.115038,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "refreshToken",
+      "value": "20add9e62468272461efaa113c21c02f451b0d5d513e5d90fc41a534dad9c7e9",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1774535560.087647,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "csrfToken",
+      "value": "31c660e394d53ea03ec73a1b49a79e64b79b98b002a55ee16cf8f8c117b9b6b3",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1772548360.08775,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "mobi_session_token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmZTkxOTAwYy04NjI4LTRmNTMtODk2MS00MmIxYTViOGFiMTkiLCJ0ZW5hbnRJZCI6ImNtbG1jZTV1cjAwMDQ2Y2xldTk3emZwMWkiLCJ1c2VyVGVuYW50SWQiOiJjbWxtY2U2Z2YwMDA2NmNsZWw0b2YybGZ4Iiwicm9sZSI6Ik9XTkVSIiwiaXNTeXN0ZW1Pd25lciI6dHJ1ZSwiaWF0IjoxNzcxOTQzNTYwLCJleHAiOjE3NzI1NDgzNjB9.Ey1WyMwbBDxf7NPozE5Mq4Qkqw1YP1XwydGkypw08Vo",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1772548360.138496,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost_REPLACED:3001",
+      "localStorage": [
+        {
+          "name": "REMOVED_AUTH_PROVIDER:authUser:AIzaSyDdUTQLBIQTe34hxMbJlXqagmbzmfIniGk:[DEFAULT]",
+          "value": "{\"uid\":\"PPREmbbB02gT3eEtJTR1TVSPH5s2\",\"email\":\"test@gmail.com\",\"emailVerified\":false,\"isAnonymous\":false,\"providerData\":[{\"providerId\":\"password\",\"uid\":\"test@gmail.com\",\"displayName\":null,\"email\":\"test@gmail.com\",\"phoneNumber\":null,\"photoURL\":null}],\"stsTokenManager\":{\"refreshToken\":\"AMf-vBxUUqDFF5wOL-0hfTINZvdLSN0IxAK1spiYi9vEKy8KZObMaV7sOZljnYtLbqZLEeDUHQCE34LztSdWiMjD6tuobODwlzeYPk34mUXswAAK2DsdwhTg1pBWo5QyXCoQVRbIapIk1YrX2ZvJf4ScqYUKetdhCYd7GVMOih0iqrduWhhxfEvcYDmuOfaA6lffYpZB_xz4\",\"accessToken\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6IjJjMjdhZmY1YzlkNGU1MzVkNWRjMmMwNWM1YTE2N2FlMmY1NjgxYzIiLCJ0eXAiOiJKV1QifQ.eyJ0ZW5hbnRJZCI6ImNtbG1jZTV1cjAwMDQ2Y2xldTk3emZwMWkiLCJyb2xlIjoiT1dORVIiLCJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vZ3ltLXNhYXMtcHJvZCIsImF1ZCI6Imd5bS1zYWFzLXByb2QiLCJhdXRoX3RpbWUiOjE3NzE5NDM1OTQsInVzZXJfaWQiOiJQUFJFbWJiQjAyZ1QzZUV0SlRSMVRWU1BINXMyIiwic3ViIjoiUFBSRW1iYkIwMmdUM2VFdEpUUjFUVlNQSDVzMiIsImlhdCI6MTc3MTk0MzU5NCwiZXhwIjoxNzcxOTQ3MTk0LCJlbWFpbCI6InRlc3RAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7ImVtYWlsIjpbInRlc3RAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoicGFzc3dvcmQifX0.OZ0po8ucZwkx8DEtdBVynCeHTVUIa7W7v-n9yCMt9G87dAgWeGUmlBCda74HZPN9Av61vA0UweC5nOf2fBUO-fh0Nt1w9Q8ZYLAvfLUIQrESE6tkY6uoGUA10OQhiz43aMYnxCrTu8L9zpCTppESm0MqaO_ir4cnU0fJwCcsDGaGVujfcTgpsPDlpzHGn8X-q7U7KPjQQrXBXZrh_t4mqY4FBEowjKWxAleLkwENCWwbikPLkGCVIyHUZH5SYNlqBYTabbJidMV7T4Aywb-pd3Sbti3LW24lB7fJMkIJFtTA8gVzq51vmIqM8qid1DYkCcBaRW3Nj-UVUJSz18jryQ\",\"expirationTime\":1771947158945},\"createdAt\":\"1768980153895\",\"lastLoginAt\":\"1771943594591\",\"apiKey\":\"AIzaSyDdUTQLBIQTe34hxMbJlXqagmbzmfIniGk\",\"appName\":\"[DEFAULT]\"}"
+        }
+      ]
+    }
+  ]
+}

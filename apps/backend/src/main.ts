@@ -12,6 +12,7 @@ import cookieParser from 'cookie-parser';
 import { join } from 'path';
 import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { Logger } from 'nestjs-pino';
 
 import { WhatsAppConfigValidator } from './modules/whatsapp/whatsapp.config-validator';
 import { PrismaService } from './core/prisma/prisma.service';
@@ -145,7 +146,12 @@ async function bootstrap() {
   /**
    * 8️⃣ Create NestJS app ON SAME Express instance
    */
-  const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
+    bufferLogs: true, 
+  });
+  
+  // Replace default Nest logger with Pino
+  app.useLogger(app.get(Logger));
 
   /**
    * 📊 9️⃣ Add global performance monitoring (Tier 4)

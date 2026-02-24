@@ -1,0 +1,233 @@
+FAIL test/rbac.e2e.spec.ts (8.643 s)
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Products Controller (@Roles) ΓÇ║ should allow OWNER to manage products
+
+    TypeError: request is not a function
+
+      39 |     it('should allow OWNER to manage products', async () => {
+      40 |       // Γ£à OWNER can import/export products
+    > 41 |       const response = await request(app.getHttpServer())
+         |                              ^
+      42 |         .get('/mobileshop/products')
+      43 |         .set('Authorization', `Bearer ${ownerJwt}`)
+      44 |         .expect(200);
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:41:30)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Products Controller (@Roles) ΓÇ║ should allow STAFF to view products
+
+    TypeError: request is not a function
+
+      49 |     it('should allow STAFF to view products', async () => {
+      50 |       // Γ£à STAFF can view products (if @Roles includes STAFF)
+    > 51 |       const response = await request(app.getHttpServer())
+         |                              ^
+      52 |         .get('/mobileshop/products')
+      53 |         .set('Authorization', `Bearer ${staffJwt}`)
+      54 |         .expect(200);
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:51:30)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Products Controller (@Roles) ΓÇ║ should reject unauthenticated access to products
+
+    TypeError: request is not a function
+
+      59 |     it('should reject unauthenticated access to products', async () => {
+      60 |       // Γ¥î No JWT = 401 Unauthorized
+    > 61 |       await request(app.getHttpServer())
+         |             ^
+      62 |         .get('/mobileshop/products')
+      63 |         .expect(401);
+      64 |     });
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:61:13)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Products Controller (@Roles) ΓÇ║ should enforce explicit @Roles enum (not string literals)
+
+    TypeError: request is not a function
+
+      69 |
+      70 |       // If a custom role string was used, it won't be recognized
+    > 71 |       const response = await request(app.getHttpServer())
+         |                              ^
+      72 |         .get('/mobileshop/products')
+      73 |         .set('Authorization', `Bearer ${ownerJwt}`)
+      74 |         .expect(200); // Should work because UserRole.OWNER is properly used
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:71:30)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Customers Controller (@Roles) ΓÇ║ should allow OWNER to manage customers
+
+    TypeError: request is not a function
+
+      81 |     it('should allow OWNER to manage customers', async () => {
+      82 |       // Γ£à OWNER can create/list customers (with @Roles decorator)
+    > 83 |       const response = await request(app.getHttpServer())
+         |                              ^
+      84 |         .get('/core/customers')
+      85 |         .set('Authorization', `Bearer ${ownerJwt}`)
+      86 |         .expect(200);
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:83:30)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Customers Controller (@Roles) ΓÇ║ should allow STAFF to manage customers (if included in @Roles)
+
+    TypeError: request is not a function
+
+      91 |     it('should allow STAFF to manage customers (if included in @Roles)', async () => {
+      92 |       // Γ£à STAFF can access (if @Roles(UserRole.OWNER, UserRole.STAFF))
+    > 93 |       const response = await request(app.getHttpServer())
+         |                              ^
+      94 |         .get('/core/customers')
+      95 |         .set('Authorization', `Bearer ${staffJwt}`)
+      96 |         .expect(200);
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:93:30)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Customers Controller (@Roles) ΓÇ║ should reject USER role accessing owner-only endpoint
+
+    TypeError: request is not a function
+
+      104 |
+      105 |       // Γ¥î USER cannot access (not in @Roles)
+    > 106 |       await request(app.getHttpServer())
+          |             ^
+      107 |         .get('/core/customers')
+      108 |         .set('Authorization', `Bearer ${userJwt}`)
+      109 |         .expect(403); // RolesGuard blocks
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:106:13)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Admin Platform Controller (@Roles) ΓÇ║ should allow ADMIN to manage platform settings
+
+    TypeError: request is not a function
+
+      114 |     it('should allow ADMIN to manage platform settings', async () => {
+      115 |       // Γ£à ADMIN can list plans (with @Roles(UserRole.ADMIN))
+    > 116 |       const response = await request(app.getHttpServer())
+          |                              ^
+      117 |         .get('/platform')
+      118 |         .set('Authorization', `Bearer ${adminJwt}`)
+      119 |         .expect(200);
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:116:30)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Admin Platform Controller (@Roles) ΓÇ║ should reject OWNER attempting platform access
+
+    TypeError: request is not a function
+
+      124 |     it('should reject OWNER attempting platform access', async () => {
+      125 |       // Γ¥î OWNER is not ADMIN, should be rejected
+    > 126 |       await request(app.getHttpServer())
+          |             ^
+      127 |         .get('/platform')
+      128 |         .set('Authorization', `Bearer ${ownerJwt}`)
+      129 |         .expect(403); // RolesGuard rejects non-ADMIN
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:126:13)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Admin Platform Controller (@Roles) ΓÇ║ should reject STAFF attempting admin access
+
+    TypeError: request is not a function
+
+      132 |     it('should reject STAFF attempting admin access', async () => {
+      133 |       // Γ¥î STAFF is not ADMIN
+    > 134 |       await request(app.getHttpServer())
+          |             ^
+      135 |         .get('/platform')
+      136 |         .set('Authorization', `Bearer ${staffJwt}`)
+      137 |         .expect(403);
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:134:13)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Admin Webhooks Controller (@Roles) ΓÇ║ should allow ADMIN to list webhook events
+
+    TypeError: request is not a function
+
+      142 |     it('should allow ADMIN to list webhook events', async () => {
+      143 |       // Γ£à ADMIN with JwtAuthGuard + RolesGuard can access
+    > 144 |       const response = await request(app.getHttpServer())
+          |                              ^
+      145 |         .get('/admin/webhooks')
+      146 |         .set('Authorization', `Bearer ${adminJwt}`)
+      147 |         .expect(200);
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:144:30)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Admin Webhooks Controller (@Roles) ΓÇ║ should reject STAFF from listing webhook events
+
+    TypeError: request is not a function
+
+      152 |     it('should reject STAFF from listing webhook events', async () => {
+      153 |       // Γ¥î STAFF cannot access (not ADMIN)
+    > 154 |       await request(app.getHttpServer())
+          |             ^
+      155 |         .get('/admin/webhooks')
+      156 |         .set('Authorization', `Bearer ${staffJwt}`)
+      157 |         .expect(403); // Both JwtAuthGuard + RolesGuard check
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:154:13)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Admin Webhooks Controller (@Roles) ΓÇ║ should enforce both JwtAuthGuard and RolesGuard
+
+    TypeError: request is not a function
+
+      162 |
+      163 |       // Missing JWT = 401 (JwtAuthGuard blocks first)
+    > 164 |       await request(app.getHttpServer()).get('/admin/webhooks').expect(401);
+          |             ^
+      165 |
+      166 |       // Invalid role = 403 (RolesGuard blocks second)
+      167 |       await request(app.getHttpServer())
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:164:13)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Members Controller (Implicit + Explicit @Roles) ΓÇ║ should enforce @Roles on members controller
+
+    TypeError: request is not a function
+
+      175 |     it('should enforce @Roles on members controller', async () => {
+      176 |       // Γ£à OWNER + STAFF can manage members
+    > 177 |       const response = await request(app.getHttpServer())
+          |                              ^
+      178 |         .get('/members')
+      179 |         .set('Authorization', `Bearer ${ownerJwt}`)
+      180 |         .expect(200);
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:177:30)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Members Controller (Implicit + Explicit @Roles) ΓÇ║ should reject unauthorized roles
+
+    TypeError: request is not a function
+
+      187 |       const userJwt = 'user-token-with-USER-role';
+      188 |
+    > 189 |       await request(app.getHttpServer())
+          |             ^
+      190 |         .get('/members')
+      191 |         .set('Authorization', `Bearer ${userJwt}`)
+      192 |         .expect(403);
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:189:13)
+
+  ΓùÅ RBAC Enforcement (E2E) ΓÇ║ Global @Roles Enum Normalization ΓÇ║ should not have any string-based @Roles decorators
+
+    TypeError: request is not a function
+
+      204 |       // This test passes if all controllers properly use UserRole enum
+      205 |
+    > 206 |       const response = await request(app.getHttpServer())
+          |                              ^
+      207 |         .get('/core/customers')
+      208 |         .set('Authorization', `Bearer ${ownerJwt}`)
+      209 |         .expect(200); // Works because UserRole.OWNER is properly used
+
+      at Object.<anonymous> (rbac.e2e.spec.ts:206:30)
+
+PASS test/rbac.e2e-spec.ts (10.345 s)
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+
+Test Suites: 1 failed, 1 passed, 2 total
+Tests:       16 failed, 5 passed, 21 total
+Snapshots:   0 total
+Time:        11.709 s
+Ran all test suites.

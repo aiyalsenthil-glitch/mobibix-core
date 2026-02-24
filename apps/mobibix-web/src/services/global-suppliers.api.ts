@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -85,7 +85,7 @@ export async function listGlobalSuppliers(
     if (!response.ok) {
       let errorMessage = "Failed to fetch global suppliers";
       try {
-        const error = await response.json();
+        const error = await extractData(response);
         errorMessage = error.message || error.error || errorMessage;
         console.error("API Error:", {
           status: response.status,
@@ -97,7 +97,7 @@ export async function listGlobalSuppliers(
       throw new Error(errorMessage);
     }
 
-    const result = await response.json();
+    const result = await extractData(response);
     // Handle both array and paginated response
     if (Array.isArray(result)) {
       return result;
@@ -122,7 +122,7 @@ export async function getGlobalSupplier(id: string): Promise<GlobalSupplier> {
       throw new Error(`Failed to fetch supplier: ${response.statusText}`);
     }
 
-    return response.json();
+    return extractData(response);
   } catch (error: any) {
     console.error("Get global supplier error:", error);
     throw error;
@@ -149,13 +149,13 @@ export async function linkGlobalSupplier(
     if (!response.ok) {
       let errorMessage = "Failed to link supplier";
       try {
-        const error = await response.json();
+        const error = await extractData(response);
         errorMessage = error.message || error.error || errorMessage;
       } catch (e) {}
       throw new Error(errorMessage);
     }
 
-    return response.json();
+    return extractData(response);
   } catch (error: any) {
     console.error("Link supplier error:", error);
     throw error;
@@ -187,7 +187,7 @@ export async function getLinkedSuppliers(params?: {
       throw new Error("Failed to fetch linked suppliers");
     }
 
-    const result = await response.json();
+    const result = await extractData(response);
     return Array.isArray(result) ? result : result.data || [];
   } catch (error: any) {
     console.error("Get linked suppliers error:", error);

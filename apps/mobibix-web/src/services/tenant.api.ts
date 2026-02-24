@@ -1,4 +1,4 @@
-import { authenticatedFetch, setAccessToken, unwrapStandardResponse } from "./auth.api";
+import { authenticatedFetch, setAccessToken, unwrapStandardResponse, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -82,7 +82,7 @@ export async function toggleAutoRenew(
   if (!response.ok) {
     throw new Error("Failed to update auto-renewal settings");
   }
-  const json = await response.json();
+  const json = await extractData(response);
   return unwrapStandardResponse(json);
 }
 
@@ -96,7 +96,7 @@ export async function getSubscription(): Promise<{
   if (!response.ok) {
     throw new Error("Failed to fetch subscription details");
   }
-  const json = await response.json();
+  const json = await extractData(response);
   return unwrapStandardResponse(json);
 }
 
@@ -109,7 +109,7 @@ export async function getAvailablePlans(module?: string): Promise<Plan[]> {
   if (!response.ok) {
     throw new Error("Failed to fetch plans");
   }
-  const json = await response.json();
+  const json = await extractData(response);
   return unwrapStandardResponse(json);
 }
 
@@ -126,10 +126,10 @@ export async function upgradeSubscription(
     body: JSON.stringify({ newPlanId, newBillingCycle, billingType }),
   });
   if (!response.ok) {
-    const err = await response.json();
+    const err = await extractData(response);
     throw new Error(err.message || "Upgrade failed");
   }
-  const json = await response.json();
+  const json = await extractData(response);
   return unwrapStandardResponse(json);
 }
 
@@ -145,10 +145,10 @@ export async function downgradeSubscription(
     body: JSON.stringify({ newPlanId, newBillingCycle }),
   });
   if (!response.ok) {
-    const err = await response.json();
+    const err = await extractData(response);
     throw new Error(err.message || "Downgrade failed");
   }
-  const json = await response.json();
+  const json = await extractData(response);
   return unwrapStandardResponse(json);
 }
 
@@ -179,7 +179,7 @@ export async function checkDowngradeEligibility(
   if (!response.ok) {
     throw new Error("Failed to check downgrade eligibility");
   }
-  const json = await response.json();
+  const json = await extractData(response);
   return unwrapStandardResponse(json);
 }
 
@@ -201,7 +201,7 @@ export async function getUsageHistory(days = 30): Promise<UsageSnapshot[]> {
   if (!response.ok) {
     return []; // Fail silently or returns empty
   }
-  const json = await response.json();
+  const json = await extractData(response);
   return unwrapStandardResponse(json);
 }
 export async function getCurrentTenant(): Promise<CurrentTenantResponse> {
@@ -209,7 +209,7 @@ export async function getCurrentTenant(): Promise<CurrentTenantResponse> {
   if (!response.ok) {
     throw new Error("Failed to fetch tenant details");
   }
-  const json = await response.json();
+  const json = await extractData(response);
   return unwrapStandardResponse(json);
 }
 
@@ -233,7 +233,7 @@ export async function getUsageSummary(): Promise<UsageSummary> {
   if (!response.ok) {
     throw new Error("Failed to fetch usage summary");
   }
-  const json = await response.json();
+  const json = await extractData(response);
   return unwrapStandardResponse(json);
 }
 
@@ -263,10 +263,10 @@ export async function createTenant(
     body: JSON.stringify(dto),
   });
   if (!response.ok) {
-    const err = await response.json();
+    const err = await extractData(response);
     throw new Error(err.message || "Failed to create tenant");
   }
-  const json = await response.json();
+  const json = await extractData(response);
   return unwrapStandardResponse(json);
 }
 
@@ -284,10 +284,10 @@ export async function createTenantWithToken(
   });
 
   if (!response.ok) {
-    const err = await response.json();
+    const err = await extractData(response);
     throw new Error(err.message || "Failed to create tenant");
   }
-  const json = await response.json();
+  const json = await extractData(response);
   const data = unwrapStandardResponse<CreateTenantResponse>(json);
   if (data?.accessToken) {
     setAccessToken(data.accessToken);
@@ -330,6 +330,6 @@ export async function getTenantUsage(): Promise<TenantUsageResponse> {
   if (!response.ok) {
     throw new Error("Failed to fetch tenant usage");
   }
-  const json = await response.json();
+  const json = await extractData(response);
   return unwrapStandardResponse(json);
 }

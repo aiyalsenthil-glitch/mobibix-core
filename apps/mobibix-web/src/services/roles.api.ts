@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 export interface RoleDto {
   id: string;
@@ -11,13 +11,13 @@ export interface RoleDto {
 export async function listRoles(): Promise<RoleDto[]> {
   const response = await authenticatedFetch("/permissions/roles");
   if (!response.ok) throw new Error("Failed to fetch roles");
-  return response.json();
+  return extractData(response);
 }
 
 export async function getRole(id: string): Promise<RoleDto> {
   const response = await authenticatedFetch(`/permissions/roles/${id}`);
   if (!response.ok) throw new Error("Failed to fetch role details");
-  return response.json();
+  return extractData(response);
 }
 
 export async function createRole(data: Partial<RoleDto>): Promise<RoleDto> {
@@ -31,7 +31,7 @@ export async function createRole(data: Partial<RoleDto>): Promise<RoleDto> {
     }),
   });
   if (!response.ok) throw new Error("Failed to create role");
-  return response.json();
+  return extractData(response);
 }
 
 export async function updateRole(id: string, data: Partial<RoleDto>): Promise<RoleDto> {
@@ -45,7 +45,7 @@ export async function updateRole(id: string, data: Partial<RoleDto>): Promise<Ro
     }),
   });
   if (!response.ok) throw new Error("Failed to update role");
-  return response.json();
+  return extractData(response);
 }
 
 export async function deleteRole(id: string): Promise<void> {

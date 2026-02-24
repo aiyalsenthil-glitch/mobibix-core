@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 export enum ProductType {
   GOODS = "GOODS",
@@ -67,11 +67,11 @@ export async function listProducts(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch products");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -111,11 +111,11 @@ export async function createProduct(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to create product");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -157,11 +157,11 @@ export async function updateProduct(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to update product");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -198,11 +198,11 @@ export async function adjustStock(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to adjust stock");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -219,11 +219,11 @@ export async function getStockLevels(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch stock levels");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -237,11 +237,11 @@ export async function getLowStockProducts(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch low stock products");
   }
 
-  const data = await response.json();
+  const data = await extractData(response);
   return Array.isArray(data) ? data : data.data || [];
 }
 
@@ -263,10 +263,10 @@ export async function getStockHistory(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch stock history");
   }
 
-  const data = await response.json();
+  const data = await extractData(response);
   return Array.isArray(data) ? data : data.data || [];
 }

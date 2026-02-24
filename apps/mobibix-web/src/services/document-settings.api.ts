@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 import type {
   DocumentNumberSetting,
   DocumentType,
@@ -22,7 +22,7 @@ export async function getDocumentSettings(
     throw new Error(error.message || "Failed to fetch document settings");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -51,5 +51,5 @@ export async function updateDocumentSetting(
     throw new Error(error.message || "Failed to update document settings");
   }
 
-  return response.json();
+  return extractData(response);
 }

@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -63,11 +63,11 @@ export async function createVoucher(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to create voucher");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -117,7 +117,7 @@ export async function getVouchers(filters?: {
     throw new Error("Failed to fetch vouchers");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -130,7 +130,7 @@ export async function getVoucher(voucherId: string): Promise<PaymentVoucher> {
     throw new Error("Voucher not found");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -147,11 +147,11 @@ export async function cancelVoucher(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to cancel voucher");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -182,5 +182,5 @@ export async function getVoucherSummary(
     throw new Error("Failed to fetch voucher summary");
   }
 
-  return response.json();
+  return extractData(response);
 }

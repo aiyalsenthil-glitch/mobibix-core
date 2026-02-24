@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 export interface CreateOrderResponse {
   orderId: string;
@@ -23,11 +23,11 @@ export async function createOrder(planId: string, billingCycle: 'MONTHLY' | 'QUA
   });
   
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to create payment order");
   }
   
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -46,11 +46,11 @@ export async function verifyPayment(data: {
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Payment verification failed");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -64,11 +64,11 @@ export async function bypassPayment(planId: string, billingCycle: string): Promi
     });
 
     if (!response.ok) {
-        const error = await response.json();
+        const error = await extractData(response);
         throw new Error(error.message || "Bypass failed");
     }
 
-    return response.json();
+    return extractData(response);
 }
 
 

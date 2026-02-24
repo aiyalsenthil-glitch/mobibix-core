@@ -386,6 +386,20 @@ async function refreshAccessToken(): Promise<boolean> {
   return (await refreshInFlight) === "ok";
 }
 
+export async function extractData<T = any>(res: Response): Promise<T> {
+  const text = await res.text();
+  if (!text) return {} as T;
+  try {
+    const data = JSON.parse(text);
+    if (data && data.success === true && data.data !== undefined) {
+      return data.data as T;
+    }
+    return data as T;
+  } catch(e) {
+    return {} as T;
+  }
+}
+
 export async function authenticatedFetch(
   endpoint: string,
   options: RequestInit = {},
@@ -412,11 +426,12 @@ export async function authenticatedFetch(
         ...headers,
         ...getCsrfHeader(),
       };
-      return fetch(`${API_BASE_URL}${endpoint}`, {
+      const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers: retryHeaders,
         credentials: "include",
       });
+      return retryResponse;
     }
   }
 
@@ -433,8 +448,6 @@ export async function authenticatedFetch(
               data.action || "unknown_action",
               data,
               async () => {
-                // On Manager Override success, re-attempt the fetch.
-                // In reality, we'd pass an override PIN or token in headers here.
                 const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
                   ...options,
                   headers: { ...headers, "X-Manager-Override": "true" },

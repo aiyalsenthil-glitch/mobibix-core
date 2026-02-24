@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -50,7 +50,7 @@ export async function searchParties(
     return [];
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -60,11 +60,11 @@ export async function getParty(id: string): Promise<Party> {
   const response = await authenticatedFetch(`/core/parties/${id}`);
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to load party");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -80,11 +80,11 @@ export async function upgradeParty(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to upgrade party");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -94,9 +94,9 @@ export async function getPartyBalance(id: string): Promise<{ balance: number; cu
   const response = await authenticatedFetch(`/core/parties/${id}/balance`);
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch balance");
   }
 
-  return response.json();
+  return extractData(response);
 }

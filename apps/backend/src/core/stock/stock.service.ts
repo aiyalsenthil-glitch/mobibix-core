@@ -71,6 +71,12 @@ export class StockService {
     tx?: any,
   ) {
     const prisma = tx || this.prisma;
+
+    // 🛡️ ENTERPRISE LOCK: Prevent concurrent overselling by acquiring row-level lock on the product
+    if (tx) {
+      await tx.$executeRaw`SELECT id FROM "ShopProduct" WHERE id = ${productId} FOR UPDATE`;
+    }
+
     const product = await prisma.shopProduct.findFirst({
       where: { id: productId, tenantId, isActive: true },
       select: { id: true, type: true, isSerialized: true, name: true },
@@ -158,6 +164,14 @@ export class StockService {
   ) {
     const prisma = tx || this.prisma;
     const productIds = items.map((i) => i.productId);
+
+    // 🛡️ ENTERPRISE LOCK: Sort IDs to prevent cross-deadlocks, then acquire row-level locks
+    if (tx) {
+      const sortedIds = [...new Set(productIds)].sort();
+      for (const pid of sortedIds) {
+        await tx.$executeRaw`SELECT id FROM "ShopProduct" WHERE id = ${pid} FOR UPDATE`;
+      }
+    }
 
     // Bulk fetch products
     const products = (await prisma.shopProduct.findMany({

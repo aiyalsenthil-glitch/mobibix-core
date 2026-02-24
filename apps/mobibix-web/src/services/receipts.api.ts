@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -74,11 +74,11 @@ export async function createReceipt(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to create receipt");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -124,7 +124,7 @@ export async function getReceipts(filters?: {
     throw new Error("Failed to fetch receipts");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -137,7 +137,7 @@ export async function getReceipt(receiptId: string): Promise<Receipt> {
     throw new Error("Receipt not found");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -154,11 +154,11 @@ export async function cancelReceipt(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to cancel receipt");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -189,5 +189,5 @@ export async function getReceiptSummary(
     throw new Error("Failed to fetch receipt summary");
   }
 
-  return response.json();
+  return extractData(response);
 }

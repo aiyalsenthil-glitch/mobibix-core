@@ -3,6 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 
+import { LoggerModule } from 'nestjs-pino';
+import { randomUUID } from 'crypto';
+
 import { CoreModule } from './core/core.module';
 import { GymModule } from './modules/gym/gym.module';
 import { HealthModule } from './health/health.module';
@@ -41,6 +44,30 @@ import { EmailModule } from './common/email/email.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+
+    // 🔬 Distributed Systems Observability (Structured JSON Logs)
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',
+        // Auto-inject correlation IDs for every request
+        genReqId: (req: any) => req.headers['x-request-id'] || randomUUID(),
+        // Format beautifully in dev, raw JSON in prod
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? {
+                target: 'pino-pretty',
+                options: { singleLine: true, colorize: true },
+              }
+            : undefined,
+        customProps: (req: any) => {
+          // Attempt to extract tenant context if the AuthGuard sets it
+          return {
+            tenantId: req.user?.tenantId || 'anonymous',
+            userId: req.user?.userId || 'unauthenticated',
+          };
+        },
+      },
     }),
 
     // 🛡️ Rate Limiting (Multi-Tier)

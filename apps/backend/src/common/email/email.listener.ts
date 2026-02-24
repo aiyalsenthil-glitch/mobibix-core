@@ -44,11 +44,31 @@ export class EmailListener {
   @OnEvent('subscription.trial.expiring')
   async handleTrialExpiring(event: SubscriptionTrialExpiringEvent) {
     const { tenantId, module, subscription, daysLeft } = event;
-    // We need to fetch owner email here or pass it in event
-    // Assuming event payload might need enhancement or we fetch from DB
-    // For now, let's assume we can get it from a theoretical relation or service
-    // In real impl, we should pass targetEmail in event to avoid DB lookups here
-    this.logger.warn(`[TODO] Handle Trial Expiring - Need Owner Email for Tenant ${tenantId}`);
+    const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        include: { users: { where: { role: 'OWNER' } } }
+    });
+    
+    const ownerEmail = tenant?.users[0]?.email;
+    if (!ownerEmail) {
+        this.logger.warn(`[TRIAL EXPIRING] No owner email found for Tenant ${tenantId}`);
+        return;
+    }
+
+    await this.emailService.send({
+        tenantId,
+        recipientType: 'TENANT',
+        emailType: 'TRIAL_EXPIRING',
+        referenceId: `TRIAL-EXP-WARNING-${subscription.id}`,
+        module,
+        to: ownerEmail,
+        subject: `Your ${module === 'MOBILE_SHOP' ? 'MobiBix' : 'GymPilot'} Trial Expires in ${daysLeft} Days ⏳`,
+        data: {
+             tenantName: tenant.name,
+             daysLeft,
+             upgradeLink: `https://${module === 'MOBILE_SHOP' ? 'shop' : 'gym'}.mobibix.in/settings/billing`
+        }
+    });
   }
 
   @OnEvent('member.expiring')

@@ -178,6 +178,7 @@ export class BillingService {
         shopId,
         DocumentType.SALES_INVOICE,
         invoiceDate,
+        prisma, // Pass the active transaction client to prevent sequence gaps on rollback
       );
 
     // 8. Create Invoice

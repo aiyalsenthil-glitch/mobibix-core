@@ -43,4 +43,9 @@ export class FirebaseAdminService {
   async setCustomUserClaims(uid: string, claims: Record<string, any>) {
     return admin.auth().setCustomUserClaims(uid, claims);
   }
+
+  // Phase 3: Email Verification support
+  async generateEmailVerificationLink(email: string) {
+    return admin.auth().generateEmailVerificationLink(email);
+  }
 }

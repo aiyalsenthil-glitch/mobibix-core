@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 export interface SalesReportItem {
   invoiceNo: string;
@@ -76,7 +76,7 @@ export async function getSalesReport(
     `/mobileshop/reports/sales?${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch sales report");
-  const data: SalesReportItem[] = await response.json();
+  const data: SalesReportItem[] = await extractData(response);
   
   // Backend already returns values in Rupees
   return data;
@@ -90,7 +90,7 @@ export async function getPurchaseReport(
     `/mobileshop/reports/purchases?${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch purchase report");
-  const data: PurchaseReportItem[] = await response.json();
+  const data: PurchaseReportItem[] = await extractData(response);
 
   // Backend already returns values in Rupees
   return data;
@@ -104,7 +104,7 @@ export async function getInventoryReport(
     `/mobileshop/reports/inventory${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch inventory report");
-  const data: InventoryReportItem[] = await response.json();
+  const data: InventoryReportItem[] = await extractData(response);
 
   // Backend already returns values in Rupees (Division by 100 handled in backend)
   return data;
@@ -118,7 +118,7 @@ export async function getProfitSummary(
     `/mobileshop/reports/profit?${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch profit summary");
-  const data: { metrics: ProfitSummaryMetrics } = await response.json();
+  const data: { metrics: ProfitSummaryMetrics } = await extractData(response);
 
   // Backend already returns values in Rupees (division by 100 handled there)
   return data;
@@ -146,7 +146,7 @@ export async function getTopSellingProducts(
     `/mobileshop/reports/top-products?${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch top products");
-  const data: TopProductItem[] = await response.json();
+  const data: TopProductItem[] = await extractData(response);
 
   // Convert Paise to Rupees
   return data.map((item) => ({
@@ -163,7 +163,7 @@ export async function getRepairReport(
     `/mobileshop/reports/repairs?${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch repair report");
-  const data: SalesReportItem[] = await response.json();
+  const data: SalesReportItem[] = await extractData(response);
   return data;
 }
 
@@ -175,7 +175,7 @@ export async function getRepairMetrics(
     `/mobileshop/reports/repair-metrics?${query}`,
   );
   if (!response.ok) throw new Error("Failed to fetch repair metrics");
-  const data: RepairMetrics = await response.json();
+  const data: RepairMetrics = await extractData(response);
   return data;
 }
 
@@ -234,7 +234,7 @@ export async function getGstr1SalesRegister(
     `/reports/gstr1?${query}`
   );
   if (!response.ok) throw new Error("Failed to fetch GSTR-1 Sales Register");
-  const data = await response.json();
+  const data = await extractData(response);
   return data;
 }
 
@@ -247,7 +247,7 @@ export async function getGstr1HsnSummary(
     `/reports/gstr1/hsn-summary?${query}`
   );
   if (!response.ok) throw new Error("Failed to fetch GSTR-1 HSN Summary");
-  const data = await response.json();
+  const data = await extractData(response);
   return data;
 }
 
@@ -308,7 +308,7 @@ export async function getGstr2PurchaseRegister(
     `/reports/gstr2?${query}`
   );
   if (!response.ok) throw new Error("Failed to fetch GSTR-2 Purchase Register");
-  const data = await response.json();
+  const data = await extractData(response);
   return data;
 }
 
@@ -321,7 +321,7 @@ export async function getGstr2HsnSummary(
     `/reports/gstr2/hsn-summary?${query}`
   );
   if (!response.ok) throw new Error("Failed to fetch GSTR-2 HSN Summary");
-  const data = await response.json();
+  const data = await extractData(response);
   return data;
 }
 
@@ -348,7 +348,7 @@ export async function getReceivablesAging(detailed = false): Promise<AgingReport
   const endpoint = detailed ? "/reports/receivables-aging/detailed" : "/reports/receivables-aging";
   const response = await authenticatedFetch(endpoint);
   if (!response.ok) throw new Error("Failed to fetch Receivables Aging report");
-  const data = await response.json();
+  const data = await extractData(response);
   return data;
 }
 
@@ -356,6 +356,6 @@ export async function getPayablesAging(detailed = false): Promise<AgingReport | 
   const endpoint = detailed ? "/reports/payables-aging/detailed" : "/reports/payables-aging";
   const response = await authenticatedFetch(endpoint);
   if (!response.ok) throw new Error("Failed to fetch Payables Aging report");
-  const data = await response.json();
+  const data = await extractData(response);
   return data;
 }

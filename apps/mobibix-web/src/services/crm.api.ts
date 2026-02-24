@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -121,11 +121,11 @@ export async function getCrmDashboard(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch CRM dashboard");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -147,11 +147,11 @@ export async function getMyFollowUps(options?: {
   const response = await authenticatedFetch(url);
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch follow-ups");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -167,11 +167,11 @@ export async function getFollowUpCounts(): Promise<{
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch follow-up counts");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -194,11 +194,11 @@ export async function createFollowUp(data: {
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to create follow-up");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -220,11 +220,11 @@ export async function updateFollowUpStatus(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to update follow-up status");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -242,11 +242,11 @@ export async function getCustomerTimeline(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch customer timeline");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -264,11 +264,11 @@ export async function sendWhatsAppMessage(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to send WhatsApp message");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -286,9 +286,9 @@ export async function getWhatsAppLogs(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response);
     throw new Error(error.message || "Failed to fetch WhatsApp logs");
   }
 
-  return response.json();
+  return extractData(response);
 }

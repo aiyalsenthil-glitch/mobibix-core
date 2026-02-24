@@ -10,6 +10,7 @@ import { AuthVerificationService } from './services/auth-verification.service';
 import { UserResolutionService } from './services/user-resolution.service';
 import { TokenFactoryService } from './services/token-factory.service';
 import { FirebaseAdminService } from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
+import { EmailService } from '../../common/email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +20,7 @@ export class AuthService {
     private readonly userResolution: UserResolutionService,
     private readonly tokenFactory: TokenFactoryService,
     private readonly REMOVED_AUTH_PROVIDERAdmin: FirebaseAdminService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -170,5 +172,44 @@ export class AuthService {
         `Authentication failed: ${err.message || 'Unknown error'}`
       );
     }
+  }
+
+  /**
+   * 📧 Email Verification Endpoint
+   */
+  async sendVerificationEmail(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, fullName: true, id: true, tenantId: true },
+    });
+
+    if (!user || !user.email) {
+      throw new UnauthorizedException('User not found or missing email address');
+    }
+
+    const tenantId = user.tenantId || (await this.prisma.userTenant.findFirst({ where: { userId } }))?.tenantId;
+
+    if (!tenantId) {
+       console.warn(`[sendVerificationEmail] User ${userId} has no associated tenant context for EmailLog.`);
+    }
+
+    // Generate link directly via Firebase Admin
+    const link = await this.REMOVED_AUTH_PROVIDERAdmin.generateEmailVerificationLink(user.email);
+
+    // Send the email using our custom Resend email service with our own templates
+    await this.emailService.send({
+      targetType: 'SYSTEM',
+      tenantId: tenantId || process.env.SYSTEM_TENANT_ID || 'dummy',
+      recipientType: 'STAFF',
+      emailType: 'EMAIL_VERIFICATION',
+      referenceId: user.id,
+      module: 'GYM', // Defaulting to GYM branding since it's global auth for now
+      to: user.email,
+      subject: 'Verify your GymPilot account',
+      data: {
+        name: user.fullName || 'User',
+        verificationLink: link,
+      }
+    } as any); // Cast as any if we need to bypass strict type for `targetType/recipientType`
   }
 }
