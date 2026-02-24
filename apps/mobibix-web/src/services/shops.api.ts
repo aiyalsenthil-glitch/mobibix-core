@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, unwrapStandardResponse } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -133,7 +133,8 @@ export async function listShops(): Promise<Shop[]> {
     throw new Error(error.message || "Failed to fetch shops");
   }
 
-  const result = await response.json();
+  const json = await response.json();
+  const result: any = unwrapStandardResponse(json);
   
   // Handle paginated response: { data: [], total, skip, take }
   if (result && typeof result === 'object' && Array.isArray(result.data)) {
@@ -146,7 +147,10 @@ export async function listShops(): Promise<Shop[]> {
   }
   
   // Last resort: return empty array
-  console.error('[listShops] API returned unexpected response:', result);
+  if (result && Object.keys(result).length > 0) {
+    console.error('[listShops] API returned unexpected response shape:', result);
+  }
+  
   return [];
 }
 

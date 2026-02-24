@@ -12,12 +12,17 @@ export class InvoiceService {
   /**
    * Generate next invoice number (sequential, format: INV-YYYY-NNNN)
    */
-  private async generateInvoiceNumber(): Promise<string> {
+  /**
+   * Generate next invoice number (sequential, format: INV-YYYY-NNNN)
+   * This is now handled within createInvoiceForPayment with retry logic
+   */
+  private async generateInvoiceNumber(tx: any): Promise<string> {
     const year = new Date().getFullYear();
     const prefix = `INV-${year}-`;
 
-    // Get last invoice for current year
-    const lastInvoice = await this.prisma.subscriptionInvoice.findFirst({
+    // Get last invoice for current year with a lock if possible (via raw query if needed, 
+    // but here we rely on the transaction and unique constraint retry in the caller)
+    const lastInvoice = await tx.subscriptionInvoice.findFirst({
       where: {
         invoiceNumber: {
           startsWith: prefix,
@@ -30,8 +35,9 @@ export class InvoiceService {
 
     let sequence = 1;
     if (lastInvoice) {
-      const lastSeq = parseInt(lastInvoice.invoiceNumber.split('-')[2]);
-      sequence = lastSeq + 1;
+      const parts = lastInvoice.invoiceNumber.split('-');
+      const lastSeq = parseInt(parts[parts.length - 1]);
+      sequence = isNaN(lastSeq) ? 1 : lastSeq + 1;
     }
 
     return `${prefix}${sequence.toString().padStart(4, '0')}`;
@@ -64,80 +70,105 @@ export class InvoiceService {
   /**
    * Create invoice for a payment
    */
+  /**
+   * Create invoice for a payment
+   */
   async createInvoiceForPayment(paymentId: string): Promise<any> {
-    const payment = await this.prisma.payment.findUnique({
-      where: { id: paymentId },
-      include: {
-        tenant: {
-          select: {
-            id: true,
-            name: true,
-            contactPhone: true,
-            code: true,
-          },
-        },
-      },
-    });
+    let retries = 0;
+    const maxRetries = 3;
 
-    if (!payment) {
-      throw new NotFoundException('Payment not found');
+    while (retries < maxRetries) {
+      try {
+        return await this.prisma.$transaction(async (tx) => {
+          const payment = await tx.payment.findUnique({
+            where: { id: paymentId },
+            include: {
+              tenant: {
+                select: {
+                  id: true,
+                  name: true,
+                  contactPhone: true,
+                  code: true,
+                },
+              },
+            },
+          });
+
+          if (!payment) {
+            throw new NotFoundException('Payment not found');
+          }
+
+          // Check if invoice already exists
+          const existing = await tx.subscriptionInvoice.findUnique({
+            where: { paymentId },
+          });
+
+          if (existing) {
+            this.logger.log(`Invoice already exists for payment ${paymentId}`);
+            return existing;
+          }
+
+          // Get plan details
+          const plan = await tx.plan.findUnique({
+            where: { id: payment.planId },
+            select: {
+              id: true,
+              name: true,
+              module: true,
+              code: true,
+            },
+          });
+
+          const invoiceNumber = await this.generateInvoiceNumber(tx);
+
+          // Calculate GST (assuming intra-state for now)
+          const gst = this.calculateGST(payment.amount, false);
+          const total = payment.amount + gst.cgst + gst.sgst + gst.igst;
+
+          // Create invoice
+          const invoice = await tx.subscriptionInvoice.create({
+            data: {
+              invoiceNumber,
+              tenant: { connect: { id: payment.tenantId } },
+              payment: { connect: { id: payment.id } },
+              gstin: process.env.COMPANY_GSTIN || null,
+              sacCode: '998314', // SAC for subscription services
+              invoiceDate: new Date(),
+              amount: payment.amount,
+              cgst: gst.cgst,
+              sgst: gst.sgst,
+              igst: gst.igst,
+              total,
+              description: `${plan?.name || 'Plan'} - ${payment.billingCycle}`,
+              planSnapshot: {
+                planId: plan?.id,
+                planName: plan?.name,
+                module: plan?.module,
+                billingCycle: payment.billingCycle,
+              },
+              status: 'DRAFT' as any,
+            },
+          });
+
+          this.logger.log(`✅ Invoice ${invoiceNumber} created for payment ${paymentId}`);
+          return invoice;
+        }, {
+          isolationLevel: 'Serializable', // Use Serializable to catch conflicts
+        });
+      } catch (error: any) {
+        // Check for Prisma unique constraint violation (P2002)
+        if (error.code === 'P2002' && error.meta?.target?.includes('invoiceNumber')) {
+          retries++;
+          this.logger.warn(`Invoice number collision, retry ${retries}/${maxRetries}...`);
+          // Small random delay before retry
+          await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
+          continue;
+        }
+        throw error;
+      }
     }
 
-    // Check if invoice already exists
-    const existing = await this.prisma.subscriptionInvoice.findUnique({
-      where: { id: paymentId }, // Use id instead of paymentId as unique constraint
-    });
-
-    if (existing) {
-      this.logger.log(`Invoice already exists for payment ${paymentId}`);
-      return existing;
-    }
-
-    // Get plan details
-    const plan = await this.prisma.plan.findUnique({
-      where: { id: payment.planId },
-      select: {
-        id: true,
-        name: true,
-        module: true,
-        code: true,
-      },
-    });
-
-    const invoiceNumber = await this.generateInvoiceNumber();
-
-    // Calculate GST (assuming intra-state for now)
-    const gst = this.calculateGST(payment.amount, false);
-    const total = payment.amount + gst.cgst + gst.sgst + gst.igst;
-
-    // Create invoice
-    const invoice = await this.prisma.subscriptionInvoice.create({
-      data: {
-        invoiceNumber,
-        tenant: { connect: { id: payment.tenantId } },
-        payment: { connect: { id: payment.id } },
-        gstin: process.env.COMPANY_GSTIN || null,
-        sacCode: '998314', // SAC for subscription services
-        invoiceDate: new Date(),
-        amount: payment.amount,
-        cgst: gst.cgst,
-        sgst: gst.sgst,
-        igst: gst.igst,
-        total,
-        description: `${plan?.name || 'Plan'} - ${payment.billingCycle}`,
-        planSnapshot: {
-          planId: plan?.id,
-          planName: plan?.name,
-          module: plan?.module,
-          billingCycle: payment.billingCycle,
-        },
-        status: 'DRAFT' as any, // Will be SubscriptionInvoiceStatus.DRAFT after migration
-      },
-    });
-
-    this.logger.log(`✅ Invoice ${invoiceNumber} created for payment ${paymentId}`);
-
-    return invoice;
+    throw new Error('Failed to generate unique invoice number after multiple retries');
   }
 
   /**

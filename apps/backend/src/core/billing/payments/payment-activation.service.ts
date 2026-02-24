@@ -39,81 +39,87 @@ export class PaymentActivationService {
    * Both webhook + verify.controller call this method.
    */
   async activateSubscriptionFromPayment(paymentId: string) {
-    const payment = await this.prisma.payment.findUniqueOrThrow({
-      where: { id: paymentId },
-      select: {
-        id: true,
-        tenantId: true,
-        planId: true,
-        billingCycle: true,
-        status: true,
-        providerOrderId: true,
-      },
-    });
-
-    // ✅ IDEMPOTENCY CHECK: Only activate pending payments
-    if (payment.status === PaymentStatus.SUCCESS) {
-      this.logger.log(
-        `[PAYMENT] Idempotent: Payment ${payment.id} already activated. Skipping.`,
-      );
-      return { status: 'already_processed', paymentId };
-    }
-
-    // Get plan details
-    const plan = await this.prisma.plan.findUniqueOrThrow({
-      where: { id: payment.planId },
-      select: {
-        id: true,
-        module: true,
-        name: true,
-      },
-    });
-
-    // ✅ ACTIVATE SUBSCRIPTION
-    try {
-      const subscription = await this.subscriptionsService.buyPlanPhase1({
-        tenantId: payment.tenantId,
-        planId: payment.planId,
-        module: plan.module,
-        billingCycle: payment.billingCycle,
+    return await this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.findUniqueOrThrow({
+        where: { id: paymentId },
+        select: {
+          id: true,
+          tenantId: true,
+          planId: true,
+          billingCycle: true,
+          status: true,
+          providerOrderId: true,
+        },
       });
 
-      // Mark payment as SUCCESS
-      await this.prisma.payment.update({
-        where: { id: payment.id },
-        data: { status: PaymentStatus.SUCCESS },
-      });
-
-      this.logger.log(
-        `[PAYMENT] ✅ Activation complete: Payment ${payment.id} → Subscription ${subscription.id}`,
-      );
-
-      // ✅ GENERATE INVOICE
-      try {
-        const invoice = await this.invoiceService.createInvoiceForPayment(payment.id);
+      // ✅ IDEMPOTENCY CHECK: Only activate pending payments
+      if (payment.status === PaymentStatus.SUCCESS) {
         this.logger.log(
-          `[INVOICE] ✅ Generated invoice ${invoice.invoiceNumber} for payment ${payment.id}`,
+          `[PAYMENT] Idempotent: Payment ${payment.id} already activated. Skipping.`,
         );
-      } catch (invoiceErr) {
-        // Invoice generation failure should not block subscription activation
-        this.logger.error(
-          `[INVOICE] ⚠️ Failed to generate invoice for payment ${payment.id}`,
-          invoiceErr as Error,
-        );
+        return { status: 'already_processed', paymentId };
       }
 
-      return {
-        status: 'activated',
-        paymentId,
-        subscriptionId: subscription.id,
-      };
-    } catch (err) {
-      this.logger.error(
-        `[PAYMENT] ❌ Activation failed: ${payment.id}`,
-        err as Error,
-      );
-      throw err;
-    }
+      // Get plan details
+      const plan = await tx.plan.findUniqueOrThrow({
+        where: { id: payment.planId },
+        select: {
+          id: true,
+          module: true,
+          name: true,
+        },
+      });
+
+      // ✅ ACTIVATE SUBSCRIPTION
+      try {
+        // Use buyPlanPhase1 with flags to prevent redundant payment links and force ACTIVE status
+        const subscription = await this.subscriptionsService.buyPlanPhase1({
+          tenantId: payment.tenantId,
+          planId: payment.planId,
+          module: plan.module,
+          billingCycle: payment.billingCycle,
+          initialStatus: 'ACTIVE' as any,
+          skipExternalPayment: true,
+        });
+
+        // Mark payment as SUCCESS
+        await tx.payment.update({
+          where: { id: payment.id },
+          data: { status: PaymentStatus.SUCCESS },
+        });
+
+        this.logger.log(
+          `[PAYMENT] ✅ Activation complete: Payment ${payment.id} → Subscription ${subscription.id}`,
+        );
+
+        // ✅ GENERATE INVOICE (Called separately but inside this flow's logic)
+        // Note: invoiceService.createInvoiceForPayment handles its own retry/transaction logic
+        // We call it AFTER the nested update to ensure we don't block the core activation
+        try {
+          const invoice = await this.invoiceService.createInvoiceForPayment(payment.id);
+          this.logger.log(
+            `[INVOICE] ✅ Generated invoice ${invoice.invoiceNumber} for payment ${payment.id}`,
+          );
+        } catch (invoiceErr) {
+          this.logger.error(
+            `[INVOICE] ⚠️ Failed to generate invoice for payment ${payment.id}`,
+            invoiceErr as Error,
+          );
+        }
+
+        return {
+          status: 'activated',
+          paymentId,
+          subscriptionId: subscription.id,
+        };
+      } catch (err) {
+        this.logger.error(
+          `[PAYMENT] ❌ Activation failed: ${payment.id}`,
+          err as Error,
+        );
+        throw err;
+      }
+    });
   }
 
   /**

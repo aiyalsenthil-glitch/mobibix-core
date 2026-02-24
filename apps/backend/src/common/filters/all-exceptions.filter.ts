@@ -104,6 +104,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     // 🚀 Standardized Error Response
     const errorResponse: any = {
+      success: false,
       statusCode: status,
       errorCode,
       message,

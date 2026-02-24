@@ -41,6 +41,16 @@ const API_BASE_URL =
 const ACCESS_TOKEN_KEY = "accessToken";
 let inMemoryAccessToken: string | null = null;
 
+/**
+ * Standardizes unwrapping of backend responses
+ */
+export function unwrapStandardResponse<T>(data: any): T {
+  if (data && data.success === true && data.data !== undefined) {
+    return data.data as T;
+  }
+  return data as T;
+}
+
 export async function setAccessToken(token: string | null) {
   inMemoryAccessToken = token;
   if (typeof sessionStorage === "undefined") return;
@@ -191,7 +201,8 @@ export async function exchangeFirebaseToken(
       } as AuthError;
     }
 
-    const data: ExchangeTokenResponse = await response.json();
+    const json = await response.json();
+    const data = unwrapStandardResponse<ExchangeTokenResponse>(json);
 
     if (data?.accessToken) {
       await setAccessToken(data.accessToken);
@@ -318,7 +329,8 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
     return null;
   }
 
-  return (await response.json()) as CurrentUserResponse;
+    const json = await response.json();
+    return unwrapStandardResponse<CurrentUserResponse>(json);
 }
 
 function getCsrfHeader(): Record<string, string> {
@@ -352,7 +364,8 @@ async function refreshAccessToken(): Promise<boolean> {
         }
 
         try {
-          const data = await response.json();
+          const json = await response.json();
+          const data = unwrapStandardResponse<any>(json);
           if (data?.accessToken) {
             await setAccessToken(data.accessToken);
           }
@@ -413,11 +426,12 @@ export async function authenticatedFetch(
     try {
       const errorData = await clonedResponse.json();
       if (errorData?.code === "APPROVAL_REQUIRED") {
+        const data = unwrapStandardResponse<any>(errorData);
         return new Promise<Response>((resolve, reject) => {
           import("@/lib/events/approval.events").then(({ dispatchApprovalRequired }) => {
             dispatchApprovalRequired(
-              errorData.action || "unknown_action",
-              errorData,
+              data.action || "unknown_action",
+              data,
               async () => {
                 // On Manager Override success, re-attempt the fetch.
                 // In reality, we'd pass an override PIN or token in headers here.

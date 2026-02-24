@@ -33,6 +33,8 @@ export interface BuyPlanInput {
   startDate?: Date;
   autoRenew?: boolean;
   billingType?: BillingType;
+  initialStatus?: SubscriptionStatus; // Force an initial status (e.g. ACTIVE)
+  skipExternalPayment?: boolean;      // Skip Razorpay link generation
 }
 
 export interface UpgradePlanInput {
@@ -45,6 +47,7 @@ export interface DowngradePlanInput {
   subscriptionId: string;
   newPlanId: string;
   newBillingCycle?: BillingCycle;
+  immediate?: boolean; // If true, downgrade happens immediately instead of scheduling
 }
 
 export interface AddAddonInput {
@@ -111,8 +114,10 @@ export class SubscriptionsService {
       module,
       billingCycle,
       startDate = new Date(),
-      autoRenew = false, // defaults for backward compatibility
-      billingType = BillingType.MANUAL, // Default to Manual
+      autoRenew = false,
+      billingType = BillingType.MANUAL,
+      initialStatus: forcedStatus,
+      skipExternalPayment = false,
     } = input;
 
     // Validate tenant exists
@@ -169,7 +174,7 @@ export class SubscriptionsService {
     let REMOVED_PAYMENT_INFRASubscriptionId: string | undefined;
 
     // 1. MANUAL FLOW (Payment Link)
-    if (billingType === BillingType.MANUAL) {
+    if (billingType === BillingType.MANUAL && !skipExternalPayment) {
         if (priceResponse.price > 0) {
             // Create Razorpay Payment Link
             const link = await this.REMOVED_PAYMENT_INFRAService.createPaymentLink(
@@ -185,12 +190,10 @@ export class SubscriptionsService {
             );
             providerPaymentLinkId = link.id;
             paymentLinkUrl = link.short_url;
-        } else {
-            // Free plan logic if price is 0 (though unlikely for BuyPlan)
         }
     } 
     // 2. AUTOPAY FLOW (Subscription)
-    else if (billingType === BillingType.AUTOPAY) {
+    else if (billingType === BillingType.AUTOPAY && !skipExternalPayment) {
         // Ensure PlanPrice has REMOVED_PAYMENT_INFRAPlanId
         if (!priceResponse.REMOVED_PAYMENT_INFRAPlanId) {
             throw new BadRequestException(`AutoPay not configured for this plan (${plan.name} - ${billingCycle})`);
@@ -212,7 +215,7 @@ export class SubscriptionsService {
     // We are setting status to PENDING initially for paid plans.
 
     // Determine initial status
-    const initialStatus = priceResponse.price > 0 ? SubscriptionStatus.PENDING : SubscriptionStatus.ACTIVE;
+    const initialStatus = forcedStatus || (priceResponse.price > 0 ? SubscriptionStatus.PENDING : SubscriptionStatus.ACTIVE);
     const endDate = this.calculateEndDate(startDate, billingCycle);
 
     let subscription: TenantSubscription;
@@ -417,6 +420,36 @@ export class SubscriptionsService {
       );
     }
 
+    // If IMMEDIATE, update plan and status right away
+    if (input.immediate) {
+      const updated = await this.prisma.tenantSubscription.update({
+        where: { id: subscriptionId },
+        data: {
+          planId: newPlanId,
+          billingCycle: targetCycle,
+          priceSnapshot: nextPrice.price,
+          status: SubscriptionStatus.ACTIVE,
+          updatedAt: new Date(),
+          // Clear any scheduled changes
+          nextPlanId: null,
+          nextBillingCycle: null,
+          nextPriceSnapshot: null,
+        },
+      });
+
+      this.logger.log(
+        `📉 Downgraded ${subscription.tenant.name}@${subscription.module} IMMEDIATELY: ` +
+          `${subscription.plan.name} → ${newPlan.name}. ` +
+          `New price: ₹${nextPrice.price / 100}`,
+      );
+
+      this.cacheService.delete(
+        `subscription:${subscription.tenantId}:${subscription.module}`,
+      );
+
+      return updated;
+    }
+
     // SCHEDULE downgrade: Set next* fields
     const scheduled = await this.prisma.tenantSubscription.update({
       where: { id: subscriptionId },
@@ -585,7 +618,13 @@ export class SubscriptionsService {
       `🛒 Buying addon ${addonPlan.name} for sub ${subscriptionId}. Co-terminus expiry: ${endDate}`,
     );
 
-    // 4. Upsert addon record
+    // 4. Get price for this addon
+    const priceResponse = await this.planPriceService.getPlanPrice({
+      planId: addonPlanId,
+      billingCycle,
+    });
+
+    // 5. Upsert addon record
     const addon = await this.prisma.subscriptionAddon.upsert({
       where: {
         subscriptionId_addonPlanId: {
@@ -597,6 +636,7 @@ export class SubscriptionsService {
         status: SubscriptionStatus.ACTIVE,
         endDate: endDate,
         billingCycle,
+        priceSnapshot: priceResponse.price,
         autoRenew: autoRenew ?? true,
       },
       create: {
@@ -606,6 +646,7 @@ export class SubscriptionsService {
         startDate: new Date(),
         endDate: endDate,
         billingCycle,
+        priceSnapshot: priceResponse.price,
         autoRenew: autoRenew ?? true,
       },
     });

@@ -67,6 +67,8 @@ export class AuthController {
     res.clearCookie('accessToken', baseOptions);
     res.clearCookie('refreshToken', baseOptions);
     res.clearCookie('csrfToken', baseOptions);
+    res.clearCookie('gp_session_hint', baseOptions);
+    res.clearCookie('mobi_session_hint', baseOptions);
   }
 
   @Public()
@@ -103,14 +105,18 @@ export class AuthController {
     }
 
     const csrfToken = this.generateCsrfToken();
-    res.cookie(
-      'csrfToken',
-      csrfToken,
-      this.buildCsrfCookieOptions(result.accessTokenExpiresIn),
-    );
+    const csrfOptions = this.buildCsrfCookieOptions(result.accessTokenExpiresIn);
+
+    res.cookie('csrfToken', csrfToken, csrfOptions);
+
+    // 🍪 Set Client-Readable Session Hints (Non-HttpOnly)
+    // Helps SPAs know if a session exists without reading HttpOnly cookies
+    res.cookie('gp_session_hint', '1', csrfOptions);
+    res.cookie('mobi_session_hint', '1', csrfOptions);
 
     return { ...result, csrfToken };
   }
+
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute - prevent brute force
   @Post('google/exchange')
@@ -137,11 +143,13 @@ export class AuthController {
     }
 
     const csrfToken = this.generateCsrfToken();
-    res.cookie(
-      'csrfToken',
-      csrfToken,
-      this.buildCsrfCookieOptions(result.accessTokenExpiresIn),
-    );
+    const csrfOptions = this.buildCsrfCookieOptions(result.accessTokenExpiresIn);
+
+    res.cookie('csrfToken', csrfToken, csrfOptions);
+
+    // 🍪 Set Client-Readable Session Hints (Non-HttpOnly)
+    res.cookie('gp_session_hint', '1', csrfOptions);
+    res.cookie('mobi_session_hint', '1', csrfOptions);
 
     return { ...result, csrfToken };
   }
@@ -172,11 +180,13 @@ export class AuthController {
     }
 
     const csrfToken = this.generateCsrfToken();
-    res.cookie(
-      'csrfToken',
-      csrfToken,
-      this.buildCsrfCookieOptions(result.accessTokenExpiresIn),
-    );
+    const csrfOptions = this.buildCsrfCookieOptions(result.accessTokenExpiresIn);
+
+    res.cookie('csrfToken', csrfToken, csrfOptions);
+
+    // 🍪 Set Client-Readable Session Hints (Non-HttpOnly)
+    res.cookie('gp_session_hint', '1', csrfOptions);
+    res.cookie('mobi_session_hint', '1', csrfOptions);
 
     return { ...result, csrfToken };
   }
@@ -194,6 +204,7 @@ export class AuthController {
 
     return { success: true };
   }
+
   @Public()
   @Get('debug/REMOVED_AUTH_PROVIDER-claims')
   async debugFirebaseClaims(@Req() req: any) {

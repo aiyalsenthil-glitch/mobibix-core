@@ -11,6 +11,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { join } from 'path';
 import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
 import { WhatsAppConfigValidator } from './modules/whatsapp/whatsapp.config-validator';
 import { PrismaService } from './core/prisma/prisma.service';
@@ -150,7 +151,10 @@ async function bootstrap() {
    * 📊 9️⃣ Add global performance monitoring (Tier 4)
    * Logs request duration and warns on slow queries
    */
-  app.useGlobalInterceptors(new PerformanceInterceptor());
+  app.useGlobalInterceptors(
+    new PerformanceInterceptor(),
+    new TransformInterceptor(),
+  );
 
   /**
    * 🛡️ 1️⃣0️⃣ Global exception filters (Tier 4 Security)

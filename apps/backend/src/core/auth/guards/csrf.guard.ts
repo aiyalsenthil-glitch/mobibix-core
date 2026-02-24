@@ -28,10 +28,6 @@ export class CsrfGuard implements CanActivate {
       return true;
     }
 
-    const authHeader = req.headers?.authorization as string | undefined;
-    if (authHeader?.startsWith('Bearer ')) {
-      return true;
-    }
 
     const csrfCookie = req.cookies?.csrfToken as string | undefined;
     const csrfHeader =

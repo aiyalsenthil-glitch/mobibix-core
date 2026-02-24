@@ -114,7 +114,7 @@ export class WhatsAppRemindersService {
               id: true,
               name: true,
               tenantType: true,
-              whatsappReminderNumberId: true, // Fetch configured reminder number
+              whatsappReminderNumberId: true,
               subscription: {
                 where: { status: 'ACTIVE' },
                 orderBy: { startDate: 'desc' },

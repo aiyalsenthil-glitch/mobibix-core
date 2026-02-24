@@ -8,6 +8,9 @@ export class DowngradeSubscriptionDto {
   @IsEnum(BillingCycle)
   @IsOptional()
   newBillingCycle?: BillingCycle;
+
+  @IsOptional()
+  isImmediate?: boolean;
 }
 
 export class DowngradeCheckQueryDto {

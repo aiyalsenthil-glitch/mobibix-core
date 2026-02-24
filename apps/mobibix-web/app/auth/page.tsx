@@ -83,7 +83,10 @@ export default function AuthPage({ mode }: AuthPageProps) {
     }
   };
 
-  const handleEmailNext = () => {
+  const handleEmailNext = (e?: React.FormEvent | React.KeyboardEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail.includes("@")) {
       setError("Please enter a valid email address");
@@ -292,11 +295,11 @@ export default function AuthPage({ mode }: AuthPageProps) {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleEmailNext()}
+                  onKeyDown={(e) => e.key === "Enter" && handleEmailNext(e)}
                   className="w-full px-5 py-4 rounded-2xl bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:bg-white dark:focus:bg-white/10 transition-all font-medium"
                 />
                 <button
-                  onClick={handleEmailNext}
+                  onClick={(e) => handleEmailNext(e)}
                   className="w-full py-4 rounded-2xl bg-zinc-900 dark:bg-zinc-800 text-zinc-100 dark:text-zinc-300 font-bold hover:bg-zinc-800 dark:hover:bg-zinc-700 hover:text-white transition-all flex items-center justify-center gap-2"
                 >
                   {intendedMode === "signup" ? "Create Account" : "Continue"} <ArrowRight className="w-4 h-4" />
@@ -446,6 +449,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
                 <div className="space-y-2">
                  <h3 className="text-zinc-900 dark:text-white font-bold text-lg">Check your inbox</h3>
                  <p className="text-zinc-500 text-sm">We sent a verification link to <br/><span className="text-zinc-900 dark:text-zinc-300 font-medium">{email}</span></p>
+                 <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Please check your spam folder too</p>
                </div>
 
                <div className="space-y-4">
@@ -473,6 +477,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
                 <div className="space-y-2">
                  <h3 className="text-zinc-900 dark:text-white font-bold text-lg">Reset Link Sent</h3>
                  <p className="text-zinc-500 text-sm">We've sent a password reset link to <br/><span className="text-zinc-900 dark:text-zinc-300 font-medium">{email}</span></p>
+                 <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Please check your spam folder too</p>
                </div>
 
                <div className="space-y-4">

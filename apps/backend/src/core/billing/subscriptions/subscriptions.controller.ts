@@ -348,7 +348,7 @@ export class SubscriptionsController {
   ) {
     const tenantId = req.user.tenantId;
 
-    const { newPlanId, newBillingCycle } = body;
+    const { newPlanId, newBillingCycle, isImmediate } = body;
 
     if (!newPlanId) {
       throw new BadRequestException('newPlanId is required');
@@ -386,18 +386,21 @@ export class SubscriptionsController {
       subscriptionId: currentSub.id,
       newPlanId,
       newBillingCycle,
+      immediate: isImmediate,
     });
 
     this.logger.log(
       `📉 Downgrade API: tenantId=${req.user.tenantId}, ` +
-        `subscriptionId=${downgraded.id}, newPlanId=${newPlanId}`,
+        `subscriptionId=${downgraded.id}, newPlanId=${newPlanId}, immediate=${isImmediate}`,
     );
 
     return {
       success: true,
       subscriptionId: downgraded.id,
       nextPlanId: downgraded.nextPlanId,
-      message: 'Plan downgrade scheduled. Changes apply at next renewal.',
+      message: isImmediate 
+        ? 'Plan downgraded immediately.' 
+        : 'Plan downgrade scheduled. Changes apply at next renewal.',
     };
   }
 

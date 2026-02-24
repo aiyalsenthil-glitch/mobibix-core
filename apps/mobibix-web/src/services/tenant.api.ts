@@ -1,4 +1,4 @@
-import { authenticatedFetch, setAccessToken } from "./auth.api";
+import { authenticatedFetch, setAccessToken, unwrapStandardResponse } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -82,7 +82,8 @@ export async function toggleAutoRenew(
   if (!response.ok) {
     throw new Error("Failed to update auto-renewal settings");
   }
-  return response.json();
+  const json = await response.json();
+  return unwrapStandardResponse(json);
 }
 
 /**
@@ -95,7 +96,8 @@ export async function getSubscription(): Promise<{
   if (!response.ok) {
     throw new Error("Failed to fetch subscription details");
   }
-  return response.json();
+  const json = await response.json();
+  return unwrapStandardResponse(json);
 }
 
 /**
@@ -107,7 +109,8 @@ export async function getAvailablePlans(module?: string): Promise<Plan[]> {
   if (!response.ok) {
     throw new Error("Failed to fetch plans");
   }
-  return response.json();
+  const json = await response.json();
+  return unwrapStandardResponse(json);
 }
 
 /**
@@ -126,7 +129,8 @@ export async function upgradeSubscription(
     const err = await response.json();
     throw new Error(err.message || "Upgrade failed");
   }
-  return response.json();
+  const json = await response.json();
+  return unwrapStandardResponse(json);
 }
 
 /**
@@ -144,7 +148,8 @@ export async function downgradeSubscription(
     const err = await response.json();
     throw new Error(err.message || "Downgrade failed");
   }
-  return response.json();
+  const json = await response.json();
+  return unwrapStandardResponse(json);
 }
 
 /**
@@ -174,8 +179,8 @@ export async function checkDowngradeEligibility(
   if (!response.ok) {
     throw new Error("Failed to check downgrade eligibility");
   }
-  return response.json();
-  return response.json();
+  const json = await response.json();
+  return unwrapStandardResponse(json);
 }
 
 /**
@@ -196,14 +201,16 @@ export async function getUsageHistory(days = 30): Promise<UsageSnapshot[]> {
   if (!response.ok) {
     return []; // Fail silently or returns empty
   }
-  return response.json();
+  const json = await response.json();
+  return unwrapStandardResponse(json);
 }
 export async function getCurrentTenant(): Promise<CurrentTenantResponse> {
   const response = await authenticatedFetch("/tenant/current");
   if (!response.ok) {
     throw new Error("Failed to fetch tenant details");
   }
-  return response.json();
+  const json = await response.json();
+  return unwrapStandardResponse(json);
 }
 
 export interface UsageSummary {
@@ -226,7 +233,8 @@ export async function getUsageSummary(): Promise<UsageSummary> {
   if (!response.ok) {
     throw new Error("Failed to fetch usage summary");
   }
-  return response.json();
+  const json = await response.json();
+  return unwrapStandardResponse(json);
 }
 
 /**
@@ -258,7 +266,8 @@ export async function createTenant(
     const err = await response.json();
     throw new Error(err.message || "Failed to create tenant");
   }
-  return response.json();
+  const json = await response.json();
+  return unwrapStandardResponse(json);
 }
 
 export async function createTenantWithToken(
@@ -278,7 +287,8 @@ export async function createTenantWithToken(
     const err = await response.json();
     throw new Error(err.message || "Failed to create tenant");
   }
-  const data = (await response.json()) as CreateTenantResponse;
+  const json = await response.json();
+  const data = unwrapStandardResponse<CreateTenantResponse>(json);
   if (data?.accessToken) {
     setAccessToken(data.accessToken);
   }
@@ -320,5 +330,6 @@ export async function getTenantUsage(): Promise<TenantUsageResponse> {
   if (!response.ok) {
     throw new Error("Failed to fetch tenant usage");
   }
-  return response.json();
+  const json = await response.json();
+  return unwrapStandardResponse(json);
 }
