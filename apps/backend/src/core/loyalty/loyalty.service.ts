@@ -83,17 +83,26 @@ export class LoyaltyService {
     tenantId: string,
     customerId: string,
   ): Promise<number> {
-    const result = await this.prisma.loyaltyTransaction.aggregate({
-      where: {
-        tenantId,
-        customerId,
-      },
-      _sum: {
-        points: true,
-      },
-    });
+    this.logger.debug(`[LoyaltyService] Calculating balance - Tenant: ${tenantId}, Customer: ${customerId}`);
+    
+    if (!customerId) return 0;
 
-    return result._sum.points || 0;
+    /**
+     * 🛡️ CRITICAL FIX: Use raw SQL for absolute filtering reliability
+     * Prisma aggregate/_sum can sometimes skip filters in complex multi-tenant environments
+     * if parameters are intermittently null or 'undefined' string.
+     */
+    const result = await this.prisma.$queryRaw<Array<{ balance: number }>>`
+      SELECT COALESCE(SUM(points), 0)::int as balance
+      FROM "LoyaltyTransaction"
+      WHERE "tenantId" = ${tenantId}
+      AND "customerId" = ${customerId}
+    `;
+
+    const balance = result[0]?.balance || 0;
+    this.logger.debug(`[LoyaltyService] Calculated balance: ${balance} for customer ${customerId}`);
+    
+    return balance;
   }
 
   /**

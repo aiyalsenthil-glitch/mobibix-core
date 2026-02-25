@@ -54,11 +54,18 @@ export class LoyaltyController {
   @Get('balance/:customerId')
   async getBalance(@Req() req: any, @Param('customerId') customerId: string) {
     const tenantId = req.user.tenantId;
+    
+    // Explicitly validate customerId presence
+    if (!customerId || customerId === 'undefined' || customerId === 'null') {
+      return { customerId: 'unknown', balance: 0, pointValueInRupees: 0 };
+    }
+
     const balance = await this.loyaltyService.getCustomerBalance(
       tenantId,
       customerId,
     );
-    return { customerId, balance, pointValueInRupees: balance * 1.0 }; // 1 point = ₹1
+    
+    return { customerId, balance, pointValueInRupees: balance * 1.0 }; 
   }
 
   /**
