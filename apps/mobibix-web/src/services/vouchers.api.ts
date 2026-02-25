@@ -184,3 +184,41 @@ export async function getVoucherSummary(
 
   return extractData(response);
 }
+
+/**
+ * Get advance balance for a supplier voucher
+ */
+export async function getAdvanceBalance(
+  voucherId: string
+): Promise<{ originalAmount: number; appliedAmount: number; remainingBalance: number }> {
+  const response = await authenticatedFetch(`/vouchers/advance/${voucherId}/balance`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch advance balance");
+  }
+
+  return extractData(response);
+}
+
+/**
+ * Apply advance to a purchase invoice
+ */
+export async function applyAdvanceToPurchase(
+  voucherId: string,
+  purchaseId: string,
+  appliedAmount: number
+): Promise<{ message: string; appliedAmount: number }> {
+  const response = await authenticatedFetch(`/vouchers/advance/${voucherId}/apply-to-purchase`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ purchaseId, appliedAmount }),
+  });
+
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error(error.message || "Failed to apply advance to purchase");
+  }
+
+  return extractData(response);
+}
+

@@ -57,7 +57,7 @@ export default function LoyaltySettingsPage() {
     }
   };
 
-  const handleChange = (field: keyof LoyaltyConfig, value: any) => {
+  const handleChange = <K extends keyof LoyaltyConfig>(field: K, value: LoyaltyConfig[K]) => {
     setConfig(prev => prev ? { ...prev, [field]: value } : null);
   };
 

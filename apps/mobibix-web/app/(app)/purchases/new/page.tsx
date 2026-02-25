@@ -14,6 +14,12 @@ import { authenticatedFetch } from "@/services/auth.api";
 import { useTheme } from "@/context/ThemeContext";
 import { PartySelector } from "@/components/common/PartySelector";
 import { type Party } from "@/services/parties.api";
+import { 
+  getVouchers, 
+  applyAdvanceToPurchase,
+  getAdvanceBalance,
+  type PaymentVoucher 
+} from "@/services/vouchers.api";
 
 // GSTIN Regex Validation
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
@@ -40,9 +46,45 @@ export default function NewPurchasePage() {
     items: [],
   });
 
-  // ... (existing code)
+  // Advance vouchers
+  const [advanceVouchers, setAdvanceVouchers] = useState<PaymentVoucher[]>([]);
+  const [selectedVoucherId, setSelectedVoucherId] = useState<string>("");
+  const [selectedVoucherBalance, setSelectedVoucherBalance] = useState<number>(0);
+  const [applyAdvanceAmount, setApplyAdvanceAmount] = useState<number>(0);
 
+  // Fetch advance vouchers when supplier is selected
+  const fetchSupplierAdvances = async (supplierId: string) => {
+    try {
+      const response = await getVouchers({ 
+        voucherType: "SUPPLIER", 
+        status: "ACTIVE" // You can filter on the backend for globalSupplierId
+      });
+      // Further filter manually here since filtering parameter isn't strictly on getVouchers out of the box
+      const advances = response.data.filter(v => v.globalSupplierId === supplierId && v.voucherType === "SUPPLIER");
+      setAdvanceVouchers(advances);
+    } catch (err: unknown) {
+      console.error("Failed to fetch advance vouchers:", err);
+      // Suppress UI error for seamlessness unless needed
+    }
+  };
 
+  const handleSelectVoucher = async (voucherId: string) => {
+    setSelectedVoucherId(voucherId);
+    setApplyAdvanceAmount(0);
+    if (!voucherId) {
+      setSelectedVoucherBalance(0);
+      return;
+    }
+
+    try {
+      const balanceObj = await getAdvanceBalance(voucherId);
+      setSelectedVoucherBalance(balanceObj.remainingBalance);
+    } catch (err: unknown) {
+      console.error("Failed to get voucher balance:", err);
+      setSelectedVoucherBalance(0);
+      setError("Failed to fetch selected voucher balance");
+    }
+  };
 
   // Current item being added
   const [currentItem, setCurrentItem] = useState<PurchaseItemDto>({
@@ -67,7 +109,7 @@ export default function NewPurchasePage() {
           if (shopsData.length > 0) {
             setFormData((prev) => ({ ...prev, shopId: shopsData[0].id }));
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error("Failed to load shops:", err);
           setError("Failed to load shops");
         }
@@ -184,9 +226,14 @@ export default function NewPurchasePage() {
         await submitPurchase(purchase.id);
       }
 
+      // 3. Apply advance if selected and amount > 0
+      if (selectedVoucherId && applyAdvanceAmount > 0) {
+        await applyAdvanceToPurchase(selectedVoucherId, purchase.id, applyAdvanceAmount);
+      }
+
       router.push("/purchases");
-    } catch (err: any) {
-      setError(err.message || "Failed to create purchase");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create purchase");
       console.error("Create purchase error:", err);
     } finally {
       setIsSubmitting(false);
@@ -344,6 +391,8 @@ export default function NewPurchasePage() {
                           globalSupplierId: party.id,
                           supplierName: party.name,
                         }));
+                        // Fetch their advance vouchers
+                        fetchSupplierAdvances(party.id);
                       }}
                       placeholder="Search existing supplier..."
                     />
@@ -506,6 +555,59 @@ export default function NewPurchasePage() {
                   <option value="BANK">Bank Transfer</option>
                 </select>
               </div>
+
+              {advanceVouchers.length > 0 && (
+                <div className="p-4 bg-teal-50 dark:bg-teal-900/10 border border-teal-200 dark:border-teal-800 rounded-lg">
+                  <h3 className="font-semibold text-teal-800 dark:text-teal-300 mb-3 flex justify-between items-center">
+                    <span>Apply Supplier Advance</span>
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1 text-teal-700 dark:text-teal-400">Select Voucher</label>
+                      <select
+                        value={selectedVoucherId}
+                        onChange={(e) => handleSelectVoucher(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg border ${
+                          theme === "dark"
+                            ? "bg-gray-800 border-gray-700 text-white"
+                            : "bg-white border-gray-300 text-gray-900"
+                        }`}
+                      >
+                        <option value="">-- No Advance --</option>
+                        {advanceVouchers.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            Advance #{v.id.substring(v.id.length - 6)} (₹{(v.amount).toFixed(2)})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {selectedVoucherId && (
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-teal-700 dark:text-teal-400">Amount to Apply (Max: ₹{selectedVoucherBalance.toFixed(2)})</label>
+                        <input
+                          type="number"
+                          value={applyAdvanceAmount}
+                          onChange={(e) => {
+                            const max = Math.min(selectedVoucherBalance, totals.grandTotal);
+                            const val = parseFloat(e.target.value) || 0;
+                            setApplyAdvanceAmount(Math.min(val, max));
+                          }}
+                          className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-teal-500 outline-none ${
+                            theme === "dark"
+                              ? "bg-gray-800 border-teal-700 text-white"
+                              : "bg-white border-teal-300 text-gray-900"
+                          }`}
+                          min="0"
+                          max={Math.min(selectedVoucherBalance, totals.grandTotal)}
+                          step="0.01"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
