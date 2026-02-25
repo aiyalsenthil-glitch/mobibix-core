@@ -41,6 +41,15 @@ export class AutoRenewCronService {
   async autoRenewSubscriptions() {
     this.logger.log('🔄 Starting auto-renew cycle...');
 
+    const [{ pg_try_advisory_lock: gotLock }] = await this.prisma.$queryRaw<{ pg_try_advisory_lock: boolean }[]>`
+      SELECT pg_try_advisory_lock(12345)
+    `;
+
+    if (!gotLock) {
+      this.logger.warn('Another cron instance is already running auto-renew. Skipping.');
+      return;
+    }
+
     try {
       // 🔄 CATCH-UP MECHANISM: Process renewals missed in last 3 days
       const lookbackDays = 3;
@@ -121,6 +130,9 @@ export class AutoRenewCronService {
         `❌ Auto-renew cron failed: ${err instanceof Error ? err.message : err}`,
         err instanceof Error ? err.stack : undefined,
       );
+    } finally {
+      // Release distributed instance lock
+      await this.prisma.$queryRaw`SELECT pg_advisory_unlock(12345)`;
     }
   }
 

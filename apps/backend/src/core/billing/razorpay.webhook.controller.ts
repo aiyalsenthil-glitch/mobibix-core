@@ -165,28 +165,37 @@ export class RazorpayWebhookController {
 
     if (internalPayment) {
         // Activate standard manual payment
-        await this.prisma.payment.update({
-            where: { id: internalPayment.id },
-            data: { status: 'SUCCESS' }
-        });
-
         const activeSub = await this.prisma.tenantSubscription.findFirst({
             where: { tenantId: internalPayment.tenantId, planId: internalPayment.planId, status: 'PENDING' },
             orderBy: { createdAt: 'desc' }
         });
 
         if (activeSub) {
-             await this.prisma.tenantSubscription.update({
-                where: { id: activeSub.id },
-                data: {
-                  status: SubscriptionStatus.ACTIVE,
-                  paymentStatus: PaymentStatus.SUCCESS,
-                  updatedAt: new Date(),
-                  startDate: new Date(),
-                  endDate: this.subscriptionsService['calculateEndDate'](new Date(), activeSub.billingCycle || 'MONTHLY') // Accessing protected/public equivalent calc
-                },
+             const endDate = this.subscriptionsService['calculateEndDate'](new Date(), activeSub.billingCycle || 'MONTHLY');
+             
+             await this.prisma.$transaction(async (tx) => {
+                 await tx.payment.update({
+                     where: { id: internalPayment.id },
+                     data: { status: 'SUCCESS' }
+                 });
+
+                 await tx.tenantSubscription.update({
+                    where: { id: activeSub.id },
+                    data: {
+                      status: SubscriptionStatus.ACTIVE,
+                      paymentStatus: PaymentStatus.SUCCESS,
+                      updatedAt: new Date(),
+                      startDate: new Date(),
+                      endDate: endDate
+                    },
+                 });
              });
              this.logger.log(`✅ TenantSubscription ${activeSub.id} activated (Manual).`);
+        } else {
+             await this.prisma.payment.update({
+                 where: { id: internalPayment.id },
+                 data: { status: 'SUCCESS' }
+             });
         }
 
         // Generate Invoice
@@ -285,6 +294,37 @@ export class RazorpayWebhookController {
                 }
             });
         }
+
+        // Create Payment record for the Autopay charge so we can generate an invoice
+        let internalPayment = await this.prisma.payment.findFirst({
+            where: { providerPaymentId: paymentEntity.id }
+        });
+
+        if (!internalPayment) {
+            internalPayment = await this.prisma.payment.create({
+                data: {
+                    tenantId: latestSub?.tenantId || subscription.tenantId,
+                    planId: latestSub?.planId || subscription.planId,
+                    billingCycle: latestSub?.billingCycle || subscription.billingCycle || 'MONTHLY',
+                    priceSnapshot: latestSub?.priceSnapshot || paymentEntity.base_amount || paymentEntity.amount,
+                    amount: paymentEntity.amount,
+                    currency: paymentEntity.currency || 'INR',
+                    status: 'SUCCESS',
+                    provider: 'RAZORPAY',
+                    providerOrderId: paymentEntity.order_id || `autopay_${Date.now()}`,
+                    providerPaymentId: paymentEntity.id,
+                }
+            });
+        }
+
+        // Generate Invoice
+        try {
+            await this.invoiceService.createInvoiceForPayment(internalPayment.id);
+            this.logger.log(`✅ Invoice generated for AutoPay payment ${internalPayment.id}`);
+        } catch(invErr) {
+            this.logger.error(`Failed to generate invoice for AutoPay payment ${internalPayment.id}`, invErr);
+        }
+
       } catch (renewalErr) {
           this.logger.error(`Sub renewal failed for ${subscription.id} via webhook`, renewalErr);
       }

@@ -10,6 +10,8 @@ import { EmailService } from '../../common/email/email.service';
 import { PlanRulesService } from './plan-rules.service';
 import { PlanMappingService } from './plan-mapping.service';
 import { RazorpayWebhookController } from './REMOVED_PAYMENT_INFRA.webhook.controller';
+import { AutoRenewCronService } from './auto-renew.cron';
+import { PaymentExpiryCronService } from './payment-expiry.cron';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { RazorpayWebhookController } from './REMOVED_PAYMENT_INFRA.webhook.contr
     SubscriptionExpiryCron,
     PlanRulesService,
     PlanMappingService,
+    AutoRenewCronService,
+    PaymentExpiryCronService,
   ],
   controllers: [RazorpayWebhookController],
   exports: [

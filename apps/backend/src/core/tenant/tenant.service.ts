@@ -412,6 +412,10 @@ export class TenantService {
       membersUsed,
       membersLimit: rules?.maxMembers ?? null,
       daysLeft,
+      endDate: subscription.endDate,
+      billingCycle: subscription.billingCycle || 'MONTHLY',
+      autoRenew: subscription.autoRenew ?? false,
+      paymentStatus: subscription.paymentStatus ?? 'PENDING',
 
       whatsappUsage: {
         marketing: usageStats._sum.marketing ?? 0,
