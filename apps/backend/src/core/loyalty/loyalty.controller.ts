@@ -51,7 +51,7 @@ export class LoyaltyController {
    * Get customer's current loyalty balance
    */
   @Get('balance/:customerId')
-  async getBalance(@Req() req: any, @Body('customerId') customerId: string) {
+  async getBalance(@Req() req: any, @Param('customerId') customerId: string) {
     const tenantId = req.user.tenantId;
     const balance = await this.loyaltyService.getCustomerBalance(
       tenantId,

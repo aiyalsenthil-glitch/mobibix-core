@@ -13,6 +13,7 @@ import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
 import { type FollowUpType } from "@/services/crm.api";
 import { CustomerTabs } from "@/components/crm/CustomerTabs";
 import { CustomerLoyaltyBalance } from "./CustomerLoyaltyBalance";
+import { ManualAdjustmentModal } from "./ManualAdjustmentModal";
 
 const PAGE_SIZE = 50;
 
@@ -40,6 +41,11 @@ export default function CustomersPage() {
     customerName: string;
     defaultPurpose: string;
     defaultType: FollowUpType;
+  } | null>(null);
+
+  const [adjustmentData, setAdjustmentData] = useState<{
+    customerId: string;
+    customerName: string;
   } | null>(null);
 
   // Debounce search term
@@ -343,6 +349,22 @@ export default function CustomersPage() {
                             📋
                           </button>
                           <button
+                            onClick={() => {
+                              setAdjustmentData({
+                                customerId: customer.id,
+                                customerName: customer.name,
+                              });
+                            }}
+                            className={`p-1.5 text-xs rounded-lg transition-colors ${
+                              theme === "dark"
+                                ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400"
+                                : "bg-purple-50 hover:bg-purple-100 text-purple-700"
+                            }`}
+                            title="Adjust Loyalty"
+                          >
+                            🎁
+                          </button>
+                          <button
                             onClick={() => handleEdit(customer)}
                             className={`px-3 py-1 text-xs rounded-lg transition-colors ${
                               theme === "dark"
@@ -453,6 +475,21 @@ export default function CustomersPage() {
             defaultType={followUpData.defaultType}
             onClose={() => setFollowUpData(null)}
             onSuccess={() => {}}
+          />
+        )}
+
+        {adjustmentData && (
+          <ManualAdjustmentModal
+            customerId={adjustmentData.customerId}
+            customerName={adjustmentData.customerName}
+            onClose={() => setAdjustmentData(null)}
+            onSuccess={() => {
+              setAdjustmentData(null);
+              // Instead of heavy reload, just let it be or trigger a small re-validation if implemented
+              // Since CustomerLoyaltyBalance handles its own load, maybe we trigger a mutate or force update
+              // For now, loadCustomers ensures the list is fresh although balance is isolated
+              loadCustomers(currentPage, debouncedSearch);
+            }}
           />
         )}
       </div>

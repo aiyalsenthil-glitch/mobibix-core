@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTheme } from "@/context/ThemeContext";
-import { authenticatedFetch } from "@/services/auth.api";
+import { exportProducts } from "@/services/products.api";
 
 interface ExportProductsModalProps {
   shopId: string;
@@ -27,20 +27,9 @@ export function ExportProductsModal({
       setError(null);
 
       // Call backend API to export products (CSV only, backend generates CSV)
-      const response = await authenticatedFetch(
-        `/mobileshop/products/export?shopId=${shopId}&includeStock=${includeStock}`,
-        {
-          method: "GET",
-        },
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to export products");
-      }
+      const blob = await exportProducts(shopId, includeStock);
 
       // Download file
-      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -56,8 +45,8 @@ export function ExportProductsModal({
       setTimeout(() => {
         onClose();
       }, 500);
-    } catch (err: any) {
-      setError(err.message || "Failed to export products");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to export products");
     } finally {
       setIsExporting(false);
     }

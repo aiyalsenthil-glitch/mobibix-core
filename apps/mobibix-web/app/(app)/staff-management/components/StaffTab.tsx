@@ -38,8 +38,8 @@ export default function StaffTab() {
       setStaffList(staffData);
       setRoles(rolesData);
       setShops(shopsData);
-    } catch (err: any) {
-      setError(err.message || "Failed to load staff management data");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load staff management data");
     } finally {
       setLoading(false);
     }
@@ -63,8 +63,8 @@ export default function StaffTab() {
       setInviteForm({ email: "", name: "", phone: "", roleId: "", branchIds: [] });
       loadData();
       alert("Invitation sent successfully!");
-    } catch (err: any) {
-      alert(err.message || "Failed to invite staff");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to invite staff");
     } finally {
       setIsSubmitting(false);
     }
@@ -83,10 +83,10 @@ export default function StaffTab() {
     if (!confirm(`Are you sure you want to remove ${staff.name || staff.email}?`)) return;
 
     try {
-      await removeStaff(staff.id, staff.status as any); // Type cast if needed based on API definition
+      await removeStaff(staff.id, staff.status as ("ACTIVE" | "INVITED")); 
       loadData();
-    } catch (err: any) {
-      alert(err.message || "Failed to remove staff");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to remove staff");
     }
   };
 

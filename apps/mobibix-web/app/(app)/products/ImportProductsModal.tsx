@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useTheme } from "@/context/ThemeContext";
-import { authenticatedFetch } from "@/services/auth.api";
+import { importProducts } from "@/services/products.api";
 
 interface ImportResult {
   success: number;
@@ -129,24 +129,9 @@ export function ImportProductsModal({
       setIsSubmitting(true);
       setError(null);
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("shopId", shopId);
-      formData.append("includeStock", includeStock.toString());
-
       // Call backend API to import products
-      const response = await authenticatedFetch("/mobileshop/products/import", {
-        method: "POST",
-        body: formData,
-        // Don't set Content-Type header - browser will set it with boundary for multipart/form-data
-      });
+      const data = await importProducts(shopId, file, includeStock);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to import products");
-      }
-
-      const data = await response.json();
       setResult(data);
 
       if (data.success > 0) {
@@ -157,8 +142,8 @@ export function ImportProductsModal({
           }
         }, 2000);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to import products");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to import products");
     } finally {
       setIsSubmitting(false);
     }

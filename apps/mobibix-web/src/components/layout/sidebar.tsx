@@ -21,6 +21,7 @@ import {
   Store,
   ShieldCheck,
   Settings,
+  Gift,
 } from "lucide-react";
 
 interface NavItem {
@@ -45,6 +46,7 @@ const navItems: NavItem[] = [
   { label: "Shops", href: "/shops", icon: Store },
   { label: "Staff Management", href: "/staff-management", icon: ShieldCheck },
   { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Loyalty", href: "/settings/loyalty", icon: Gift },
 ];
 
 // ... imports

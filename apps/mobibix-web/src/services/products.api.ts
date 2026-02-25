@@ -251,7 +251,7 @@ export async function getLowStockProducts(
 export async function getStockHistory(
   productId: string,
   options?: { skip?: number; take?: number },
-): Promise<any[]> {
+): Promise<Array<Record<string, unknown>>> {
   const query = new URLSearchParams();
   if (options?.skip !== undefined)
     query.append("skip", options.skip.toString());
@@ -277,10 +277,14 @@ export async function getStockHistory(
 export async function importProducts(
   shopId: string,
   file: File,
-): Promise<{ imported: number; errors: string[] }> {
+  includeStock?: boolean,
+): Promise<{ success: number; skipped: number; failed: number; errors: string[] }> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("shopId", shopId);
+  if (includeStock !== undefined) {
+    formData.append("includeStock", includeStock.toString());
+  }
 
   const response = await authenticatedFetch("/mobileshop/products/import", {
     method: "POST",
@@ -300,14 +304,29 @@ export async function importProducts(
 /**
  * Export products as CSV
  */
-export async function exportProducts(shopId: string): Promise<Blob> {
+export async function exportProducts(
+  shopId: string,
+  includeStock?: boolean,
+): Promise<Blob> {
+  const query = new URLSearchParams({ shopId });
+  if (includeStock !== undefined) {
+    query.append("includeStock", includeStock.toString());
+  }
+
   const response = await authenticatedFetch(
-    `/mobileshop/products/export?shopId=${shopId}`,
+    `/mobileshop/products/export?${query.toString()}`,
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to export products");
+    // We cannot use extractData here reliably since it can fail if response is not JSON
+    let errorMsg = "Failed to export products";
+    try {
+      const error = await response.json();
+      errorMsg = error.message || errorMsg;
+    } catch {
+      errorMsg = await response.text() || errorMsg;
+    }
+    throw new Error(errorMsg);
   }
 
   return response.blob();

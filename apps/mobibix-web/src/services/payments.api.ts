@@ -57,7 +57,7 @@ export async function verifyPayment(data: {
  * BYPASS FOR TESTING: Skip Razorpay and activate directly
  * ONLY FOR DEVELOPMENT/TESTING - Endpoint may not exist in prod
  */
-export async function bypassPayment(planId: string, billingCycle: string): Promise<any> {
+export async function bypassPayment(planId: string, billingCycle: string): Promise<Record<string, unknown>> {
     const response = await authenticatedFetch("/payments/bypass-activation", {
         method: "POST",
         body: JSON.stringify({ planId, billingCycle }),
@@ -106,7 +106,7 @@ export async function getPaymentHistory(): Promise<PaymentRecord[]> {
 /**
  * Retry a failed payment
  */
-export async function retryPayment(paymentId: string): Promise<any> {
+export async function retryPayment(paymentId: string): Promise<Record<string, unknown>> {
   const response = await authenticatedFetch(`/billing/payments/${paymentId}/retry`, {
     method: "POST",
   });
