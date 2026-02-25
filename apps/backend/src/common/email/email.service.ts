@@ -111,12 +111,14 @@ export class EmailService {
         throw new Error(`Template not found for type: ${emailType}`);
       }
       html = await render(template);
-    } catch (renderErr: any) {
-      this.logger.error(`[RENDER FAILED] ${renderErr.message}`);
+    } catch (renderErr: unknown) {
+      const message =
+        renderErr instanceof Error ? renderErr.message : 'Unknown render error';
+      this.logger.error(`[RENDER FAILED] ${message}`);
       await this.logResult(
         options,
         'FAILED',
-        `Render Error: ${renderErr.message}`,
+        `Render Error: ${message}`,
       );
       return;
     }
@@ -143,9 +145,10 @@ export class EmailService {
       // 5️⃣ LOG SUCCESS
       await this.logResult(options, 'SENT', null);
       this.logger.log(`[SENT] Email ${emailType} sent to ${to}`);
-    } catch (err: any) {
-      this.logger.error(`[FAILED] Email ${emailType} failed: ${err.message}`);
-      await this.logResult(options, 'FAILED', err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown email error';
+      this.logger.error(`[FAILED] Email ${emailType} failed: ${message}`);
+      await this.logResult(options, 'FAILED', message);
     }
   }
 

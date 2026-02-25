@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { type Shop } from "@/services/shops.api";
 import { listProducts, type ShopProduct } from "@/services/products.api";
@@ -31,13 +31,7 @@ export function CopyFromShopModal({
   // Filter out current shop
   const sourceShops = availableShops.filter((s) => s.id !== currentShopId);
 
-  useEffect(() => {
-    if (selectedShopId) {
-      loadSourceProducts();
-    }
-  }, [selectedShopId]);
-
-  const loadSourceProducts = async () => {
+  const loadSourceProducts = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -46,13 +40,20 @@ export function CopyFromShopModal({
       const productsList = Array.isArray(data) ? data : data.data;
       setProducts(productsList);
       setSelectedProducts(new Set());
-    } catch (err: any) {
-      setError(err.message || "Failed to load products");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load products";
+      setError(message);
       setProducts([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedShopId]);
+
+  useEffect(() => {
+    if (selectedShopId) {
+      void loadSourceProducts();
+    }
+  }, [selectedShopId, loadSourceProducts]);
 
   const toggleProduct = (productId: string) => {
     const newSet = new Set(selectedProducts);
@@ -100,8 +101,9 @@ export function CopyFromShopModal({
 
       onCopyComplete();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to copy products");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to copy products";
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }

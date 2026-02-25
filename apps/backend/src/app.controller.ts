@@ -3,14 +3,10 @@ import { AppService } from './app.service';
 import { JwtAuthGuard } from './core/auth/guards/jwt-auth.guard';
 import { Roles } from './core/auth/decorators/roles.decorator';
 import type { Request } from 'express';
-
-type AppRequestUser = {
-  role?: string;
-  tenantId?: string;
-};
+import type { UserContext } from './app.service';
 
 type AppRequest = Request & {
-  user: AppRequestUser;
+  user: UserContext;
   params: {
     tenantType: string;
   };
@@ -39,14 +35,16 @@ export class AppController {
   @UseGuards(JwtAuthGuard)
   @Roles('ADMIN', 'OWNER', 'STAFF')
   @Get('tenants')
-  async getTenants(@Req() req: AppRequest) {
+  getTenants(@Req() req: AppRequest): ReturnType<AppService['getTenants']> {
     return this.appService.getTenants(req.user);
   }
 
   @UseGuards(JwtAuthGuard)
   @Roles('ADMIN', 'OWNER', 'STAFF')
   @Get('tenants/:tenantType')
-  async getTenantsByType(@Req() req: AppRequest) {
+  getTenantsByType(
+    @Req() req: AppRequest,
+  ): ReturnType<AppService['getTenantsByType']> {
     return this.appService.getTenantsByType(req.user, req.params.tenantType);
   }
 }

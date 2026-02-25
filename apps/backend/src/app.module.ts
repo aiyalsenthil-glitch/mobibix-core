@@ -34,7 +34,16 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { EmailModule } from './common/email/email.module';
+
+type RequestUserContext = {
+  tenantId?: string;
+  userId?: string;
+};
+
+type LoggerRequest = {
+  headers?: Record<string, string | string[] | undefined>;
+  user?: RequestUserContext;
+};
 
 @Module({
   imports: [
@@ -53,7 +62,13 @@ import { EmailModule } from './common/email/email.module';
         // Disable automatic per-request logging (too verbose with full headers)
         autoLogging: false,
         // Auto-inject correlation IDs for every request
-        genReqId: (req: any) => req.headers['x-request-id'] || randomUUID(),
+        genReqId: (req: LoggerRequest) => {
+          const requestId = req.headers?.['x-request-id'];
+          if (Array.isArray(requestId)) {
+            return requestId[0] ?? randomUUID();
+          }
+          return requestId ?? randomUUID();
+        },
         // Format beautifully in dev, raw JSON in prod
         transport:
           process.env.NODE_ENV !== 'production'
@@ -62,7 +77,7 @@ import { EmailModule } from './common/email/email.module';
                 options: { singleLine: true, colorize: true },
               }
             : undefined,
-        customProps: (req: any) => {
+        customProps: (req: LoggerRequest) => {
           return {
             tenantId: req.user?.tenantId || 'anonymous',
             userId: req.user?.userId || 'unauthenticated',
