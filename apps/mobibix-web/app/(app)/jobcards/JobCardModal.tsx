@@ -90,7 +90,7 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
      if (shop?.gstEnabled && formData.billType !== 'WITH_GST') {
          setFormData(prev => ({ ...prev, billType: 'WITH_GST' }));
      }
-  }, [shop?.gstEnabled, formData.billType]);
+  }, [shop, formData.billType]);
 
   useEffect(() => {
     const loadCustomer = async () => {

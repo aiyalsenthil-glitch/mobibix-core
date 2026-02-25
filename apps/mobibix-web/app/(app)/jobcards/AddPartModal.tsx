@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   listProducts,
   type ShopProduct,
@@ -38,8 +38,11 @@ export function AddPartModal({
     | ShopProduct[]
     | { data: ShopProduct[]; total: number; skip: number; take: number };
 
-  const normalizeProducts = (response: ProductsResponse): ShopProduct[] =>
-    Array.isArray(response) ? response : response.data;
+  const normalizeProducts = useCallback(
+    (response: ProductsResponse): ShopProduct[] =>
+      Array.isArray(response) ? response : response.data,
+    [],
+  );
 
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState<ShopProduct[]>([]);
@@ -139,7 +142,7 @@ export function AddPartModal({
     } else {
       setShowDropdown(false);
     }
-  }, [searchTerm, shopId, createMode]);
+  }, [searchTerm, shopId, createMode, normalizeProducts]);
 
   // UX: Focus quantity when product is selected
   useEffect(() => {
@@ -477,7 +480,7 @@ export function AddPartModal({
                             }}
                           >
                             <UserPlus size={16} />
-                            Create new "{supplierSearch || 'Supplier'}"
+                            Create new &quot;{supplierSearch || "Supplier"}&quot;
                           </div>
                           {suppliers.map((s) => (
                             <div

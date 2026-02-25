@@ -49,8 +49,8 @@ export function AdvanceModal({
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Operation failed");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Operation failed");
     } finally {
       setIsSubmitting(false);
     }

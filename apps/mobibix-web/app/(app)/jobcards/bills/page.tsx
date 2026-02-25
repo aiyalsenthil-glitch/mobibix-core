@@ -13,10 +13,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
-import { NoShopsAlert } from "../../components/NoShopsAlert";
 import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
 import { CancelInvoiceModal } from "@/components/sales/CancelInvoiceModal";
-import { type FollowUpType } from "@/services/crm.api";
 import { JobCardsTabs } from "@/components/jobcards/JobCardsTabs";
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
@@ -54,7 +52,6 @@ export default function JobCardBillsPage() {
     shops,
     selectedShopId,
     isLoadingShops,
-    error: shopError,
     selectShop,
     hasMultipleShops,
   } = useShop();
@@ -97,14 +94,6 @@ export default function JobCardBillsPage() {
     id: string;
     number: string;
   } | null>(null);
-
-  const handlePrint = (invoiceId: string, invoiceNumber: string) => {
-    router.push(`/print/invoice/${invoiceId}?shopId=${selectedShopId}`);
-  };
-
-  const handleShare = (invoiceId: string, invoiceNumber: string) => {
-    router.push(`/sales/${invoiceId}/share?shopId=${selectedShopId}`);
-  };
 
   const handleEdit = (invoiceId: string) => {
     if (!isOwner) {

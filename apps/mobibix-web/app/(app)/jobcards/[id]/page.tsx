@@ -9,6 +9,7 @@ import {
   removeJobCardPart,
   JobStatus,
   createWarrantyJob,
+  type RepairBillDto,
 } from "@/services/jobcard.api";
 import { useShop } from "@/context/ShopContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -140,32 +141,20 @@ export default function JobCardDetailPage() {
     try {
       await updateJobCardStatus(selectedShopId, job.id, status);
       reload();
-    } catch (err: any) {
-      alert(err.message || "Failed to update status");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to update status");
     }
   };
 
-  const handleBillSubmit = async (dto: any) => {
+  const handleBillSubmit = async (dto: RepairBillDto) => {
     if (!job || !selectedShopId) return;
     try {
       await generateRepairBill(selectedShopId, job.id, dto);
       // Refresh to show invoice and new status
       reload();
       setIsBillingModalOpen(false);
-    } catch (err: any) {
-      alert(err.message || "Failed to generate bill");
-    }
-  };
-
-  const handleReadyConfirm = async () => {
-    if (!job || !selectedShopId) return;
-
-    try {
-      await updateJobCardStatus(selectedShopId, job.id, "READY");
-      setIsReadyConfirmOpen(false);
-      reload();
-    } catch (err: any) {
-      alert(err.message || "Failed to mark job READY");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to generate bill");
     }
   };
 
@@ -176,8 +165,8 @@ export default function JobCardDetailPage() {
       await reopenJobCard(selectedShopId, job.id);
       setIsReopenConfirmOpen(false);
       reload();
-    } catch (err: any) {
-      alert(err.message || "Failed to reopen job");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to reopen job");
     }
   };
 
@@ -186,8 +175,8 @@ export default function JobCardDetailPage() {
     try {
       await removeJobCardPart(selectedShopId!, job!.id, partId);
       reload();
-    } catch (err: any) {
-      alert(err.message || "Failed to remove part");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to remove part");
     }
   };
 
@@ -198,8 +187,8 @@ export default function JobCardDetailPage() {
       setIsWarrantyConfirmOpen(false);
       // Redirect to new job
       router.push(`/jobcards/${newJob.id}?shopId=${selectedShopId}`);
-    } catch (err: any) {
-      alert(err.message || "Failed to create warranty job");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to create warranty job");
       setIsWarrantyConfirmOpen(false);
     }
   };
@@ -272,8 +261,12 @@ export default function JobCardDetailPage() {
                   });
                   alert("WhatsApp alert sent!");
                   reload();
-                } catch (err: any) {
-                  alert(err.message || "Failed to send WhatsApp alert");
+                } catch (err: unknown) {
+                  alert(
+                    err instanceof Error
+                      ? err.message
+                      : "Failed to send WhatsApp alert",
+                  );
                 }
               }}
             >
