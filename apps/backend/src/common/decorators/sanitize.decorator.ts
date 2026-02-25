@@ -12,7 +12,7 @@ import {
  * Usage: @Sanitize() name: string;
  */
 export function Sanitize() {
-  return Transform(({ value }) => {
+  return Transform(({ value }: { value: unknown }) => {
     if (typeof value !== 'string') return value;
     return stripTags(trimAndNormalize(value));
   });
@@ -23,7 +23,7 @@ export function Sanitize() {
  * Usage: @SanitizeEmail() email: string;
  */
 export function SanitizeEmail() {
-  return Transform(({ value }) => {
+  return Transform(({ value }: { value: unknown }) => {
     if (typeof value !== 'string') return value;
     return sanitizeEmail(value) || value; // Return original if invalid format (validator will catch it)
   });
@@ -34,7 +34,7 @@ export function SanitizeEmail() {
  * Usage: @SanitizePhone() phone: string;
  */
 export function SanitizePhone() {
-  return Transform(({ value }) => {
+  return Transform(({ value }: { value: unknown }) => {
     if (typeof value !== 'string') return value;
     const sanitized = sanitizePhone(value);
     return sanitized || value; // Return original if invalid (validator will catch it)
@@ -46,7 +46,7 @@ export function SanitizePhone() {
  * Usage: @SanitizeHtml() content: string;
  */
 export function SanitizeHtmlTransform() {
-  return Transform(({ value }) => {
+  return Transform(({ value }: { value: unknown }) => {
     if (typeof value !== 'string') return value;
     return sanitizeHtml(value);
   });
@@ -57,7 +57,7 @@ export function SanitizeHtmlTransform() {
  * Usage: @TrimTransform() name: string;
  */
 export function TrimTransform() {
-  return Transform(({ value }) => {
+  return Transform(({ value }: { value: unknown }) => {
     if (typeof value !== 'string') return value;
     return trimAndNormalize(value);
   });

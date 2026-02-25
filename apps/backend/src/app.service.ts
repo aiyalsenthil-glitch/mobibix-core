@@ -12,9 +12,20 @@ type TenantSummary = {
   tenantType: string;
 };
 
+type TenantTypeOnly = { tenantType: string };
+
+type TenantDelegate = {
+  findMany: (args: unknown) => Promise<unknown>;
+  findUnique: (args: unknown) => Promise<unknown>;
+};
+
 @Injectable()
 export class AppService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private get tenantRepo(): TenantDelegate {
+    return this.prisma.tenant as unknown as TenantDelegate;
+  }
 
   getHello(): string {
     return 'Hello World!';
@@ -24,7 +35,7 @@ export class AppService {
     // Get unique tenant types (modules) available to the user
     if (user.role?.toUpperCase() === 'ADMIN') {
       // Admin sees all unique tenant types
-      const tenants = (await this.prisma.tenant.findMany({
+      const tenants = (await this.tenantRepo.findMany({
         select: {
           tenantType: true,
         },
@@ -32,7 +43,7 @@ export class AppService {
         orderBy: {
           tenantType: 'asc',
         },
-      })) as Array<{ tenantType: string }>;
+      })) as TenantTypeOnly[];
 
       // Transform to return module info
       const moduleMap: Record<string, string> = {
@@ -50,12 +61,12 @@ export class AppService {
 
     // Return user's tenant type
     if (user.tenantId) {
-      const tenant = (await this.prisma.tenant.findUnique({
+      const tenant = (await this.tenantRepo.findUnique({
         where: { id: user.tenantId },
         select: {
           tenantType: true,
         },
-      })) as { tenantType: string } | null;
+      })) as TenantTypeOnly | null;
 
       if (tenant) {
         const moduleMap: Record<string, string> = {
@@ -88,7 +99,7 @@ export class AppService {
       return [];
     }
 
-    const tenants = (await this.prisma.tenant.findMany({
+    const tenants = (await this.tenantRepo.findMany({
       where: {
         tenantType: {
           equals: tenantType,

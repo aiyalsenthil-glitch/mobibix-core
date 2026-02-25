@@ -29,8 +29,10 @@ export default function PaymentHistoryPage() {
       setError(null);
       const data = await getPaymentHistory();
       setPayments(data);
-    } catch (err: any) {
-      setError(err.message || "Failed to load payment history");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to load payment history";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -41,8 +43,9 @@ export default function PaymentHistoryPage() {
       setRetrying(paymentId);
       await retryPayment(paymentId);
       await loadPayments();
-    } catch (err: any) {
-      setError(err.message || "Retry failed");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Retry failed";
+      setError(message);
     } finally {
       setRetrying(null);
     }

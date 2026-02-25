@@ -54,7 +54,7 @@ export function EditProductModal({
         const results = await searchHsn(searchTerm);
         setHsnResults(results);
         setShowHsnDropdown(true);
-      } catch (err) {
+      } catch {
         console.warn("HSN search unavailable, using manual entry");
         setShowHsnDropdown(false);
       }
@@ -96,8 +96,10 @@ export function EditProductModal({
 
       onProductUpdated?.(updatedProduct);
       onClose();
-    } catch (err: any) {
-      alert(err.message || "Failed to update product");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update product";
+      alert(message);
     } finally {
       setIsSubmitting(false);
     }
