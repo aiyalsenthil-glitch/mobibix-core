@@ -37,14 +37,14 @@ export class PerformanceInterceptor implements NestInterceptor {
 
         if (duration > this.verySlowThreshold) {
           // Very slow - ERROR level
-          this.logger.error(`🐌 VERY SLOW: ${message}`);
+          this.logger.error(`[VERY SLOW] ${message}`);
         } else if (duration > this.slowThreshold) {
           // Slow - WARN level
-          this.logger.warn(`⚠️  SLOW: ${message}`);
+          this.logger.warn(`[SLOW] ${message}`);
         } else {
           // Normal - DEBUG level (only in dev)
           if (process.env.NODE_ENV === 'development') {
-            this.logger.debug(`✅ ${message}`);
+            this.logger.debug(`[OK] ${message}`);
           }
         }
       }),

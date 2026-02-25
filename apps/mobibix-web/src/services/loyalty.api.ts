@@ -43,8 +43,10 @@ export interface LoyaltyTransaction {
   customerId: string;
   points: number;
   type: "EARN" | "REDEEM" | "EXPIRE" | "MANUAL" | "REVERSAL";
+  source?: string;
   invoiceId?: string;
   reversalOf?: string;
+  note?: string;
   createdBy?: string;
   createdAt: string | Date;
 }
@@ -73,6 +75,24 @@ export async function getCustomerLoyaltyBalance(
     return 0;
   }
 }
+
+/**
+ * Get customer's loyalty transaction history
+ */
+export async function getCustomerLoyaltyHistory(
+  customerId: string,
+): Promise<LoyaltyTransaction[]> {
+  try {
+    const response = await authenticatedFetch(`/loyalty/history/${customerId}`);
+    if (!response.ok) return [];
+    const data = await extractData(response);
+    return data.transactions || [];
+  } catch (error) {
+    console.error("Error fetching loyalty history:", error);
+    return [];
+  }
+}
+
 
 /**
  * Validate if customer can redeem points

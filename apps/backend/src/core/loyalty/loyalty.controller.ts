@@ -55,7 +55,6 @@ export class LoyaltyController {
   async getBalance(@Req() req: any, @Param('customerId') customerId: string) {
     const tenantId = req.user.tenantId;
     
-    // Explicitly validate customerId presence
     if (!customerId || customerId === 'undefined' || customerId === 'null') {
       return { customerId: 'unknown', balance: 0, pointValueInRupees: 0 };
     }
@@ -66,6 +65,26 @@ export class LoyaltyController {
     );
     
     return { customerId, balance, pointValueInRupees: balance * 1.0 }; 
+  }
+
+  /**
+   * Get customer's loyalty transaction history
+   */
+  @Get('history/:customerId')
+  async getHistory(@Req() req: any, @Param('customerId') customerId: string) {
+    const tenantId = req.user.tenantId;
+
+    if (!customerId || customerId === 'undefined' || customerId === 'null') {
+      return { customerId: 'unknown', transactions: [] };
+    }
+
+    const transactions = await this.loyaltyService.getTransactionHistory(
+      tenantId,
+      customerId,
+      100,
+    );
+
+    return { customerId, transactions };
   }
 
   /**

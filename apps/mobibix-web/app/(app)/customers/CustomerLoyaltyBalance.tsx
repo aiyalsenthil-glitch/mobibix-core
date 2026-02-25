@@ -6,21 +6,26 @@ import { useTheme } from "@/context/ThemeContext";
 
 interface CustomerLoyaltyBalanceProps {
   customerId: string;
+  /** Called with the current balance when the badge is clicked */
+  onClick?: (balance: number) => void;
 }
 
 /**
- * Dynamically fetches and displays customer's loyalty balance
- * Uses loyalty transaction ledger (not direct field)
+ * Dynamically fetches and displays customer's loyalty balance.
+ * Optionally clickable to open the loyalty history drawer.
  */
 export function CustomerLoyaltyBalance({
   customerId,
+  onClick,
 }: CustomerLoyaltyBalanceProps) {
   const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [balance, setBalance] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    if (!customerId) return;
     const fetchBalance = async () => {
       try {
         setIsLoading(true);
@@ -35,22 +40,17 @@ export function CustomerLoyaltyBalance({
         setIsLoading(false);
       }
     };
-
-    if (customerId) {
-      fetchBalance();
-    }
+    fetchBalance();
   }, [customerId]);
 
   if (isLoading) {
     return (
       <span
-        className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-          theme === "dark"
-            ? "bg-stone-500/20 text-stone-300"
-            : "bg-gray-200 text-gray-600"
+        className={`inline-block px-3 py-1 rounded-full text-xs font-medium animate-pulse ${
+          isDark ? "bg-stone-700 text-stone-700" : "bg-gray-200 text-gray-200"
         }`}
       >
-        Loading...
+        oo pts
       </span>
     );
   }
@@ -59,25 +59,34 @@ export function CustomerLoyaltyBalance({
     return (
       <span
         className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-          theme === "dark"
-            ? "bg-red-500/20 text-red-300"
-            : "bg-red-100 text-red-700"
+          isDark ? "bg-red-500/15 text-red-400" : "bg-red-100 text-red-600"
         }`}
       >
-        Error
+        —
       </span>
     );
   }
 
+  const hasPoints = (balance ?? 0) > 0;
+
   return (
-    <span
-      className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-        theme === "dark"
-          ? "bg-purple-500/20 text-purple-300"
-          : "bg-purple-100 text-purple-700"
+    <button
+      onClick={() => onClick?.(balance ?? 0)}
+      disabled={!onClick}
+      title={onClick ? "Click to view loyalty history" : undefined}
+      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+        onClick ? "cursor-pointer hover:scale-105 active:scale-95" : "cursor-default"
+      } ${
+        hasPoints
+          ? isDark
+            ? "bg-purple-500/20 text-purple-300 hover:bg-purple-500/30"
+            : "bg-purple-100 text-purple-700 hover:bg-purple-200"
+          : isDark
+          ? "bg-white/8 text-stone-400 hover:bg-white/12"
+          : "bg-gray-100 text-gray-500 hover:bg-gray-200"
       }`}
     >
       {balance} pts
-    </span>
+    </button>
   );
 }

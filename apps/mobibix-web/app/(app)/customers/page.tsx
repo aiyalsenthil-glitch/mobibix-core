@@ -14,11 +14,27 @@ import { type FollowUpType } from "@/services/crm.api";
 import { CustomerTabs } from "@/components/crm/CustomerTabs";
 import { CustomerLoyaltyBalance } from "./CustomerLoyaltyBalance";
 import { ManualAdjustmentModal } from "./ManualAdjustmentModal";
+import { LoyaltyHistoryDrawer } from "./LoyaltyHistoryDrawer";
+import {
+  Search,
+  Plus,
+  UserPlus,
+  Clock,
+  PhoneCall,
+  Gift,
+  Pencil,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  Star,
+} from "lucide-react";
 
 const PAGE_SIZE = 50;
 
 export default function CustomersPage() {
   const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -32,9 +48,7 @@ export default function CustomersPage() {
   const [totalCustomers, setTotalCustomers] = useState(0);
 
   // CRM Modals State
-  const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(
-    null,
-  );
+  const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(null);
   const [timelineCustomerName, setTimelineCustomerName] = useState<string>("");
   const [followUpData, setFollowUpData] = useState<{
     customerId: string;
@@ -42,17 +56,23 @@ export default function CustomersPage() {
     defaultPurpose: string;
     defaultType: FollowUpType;
   } | null>(null);
-
   const [adjustmentData, setAdjustmentData] = useState<{
     customerId: string;
     customerName: string;
+  } | null>(null);
+
+  // Loyalty history drawer
+  const [loyaltyHistory, setLoyaltyHistory] = useState<{
+    customerId: string;
+    customerName: string;
+    balance: number;
   } | null>(null);
 
   // Debounce search term
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
-      setCurrentPage(0); // Reset to first page on new search
+      setCurrentPage(0);
     }, 500);
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -66,7 +86,6 @@ export default function CustomersPage() {
         take: PAGE_SIZE,
         search: search || undefined,
       });
-
       setCustomers(response.data);
       setTotalCustomers(response.total);
     } catch (err: unknown) {
@@ -80,22 +99,17 @@ export default function CustomersPage() {
     loadCustomers(currentPage, debouncedSearch);
   }, [currentPage, debouncedSearch, loadCustomers]);
 
-  const handleEdit = (customer: Customer) => {
-    setEditingCustomer(customer);
-  };
+  const handleEdit = (customer: Customer) => setEditingCustomer(customer);
 
   const handleDelete = async (customer: Customer) => {
     if (
       !confirm(
-        `Are you sure you want to delete customer "${customer.name}"? This will mark them as inactive.`,
+        `Are you sure you want to delete "${customer.name}"? This will mark them as inactive.`
       )
-    ) {
+    )
       return;
-    }
-
     try {
       await deleteCustomer(customer.id);
-      // Reload current page
       loadCustomers(currentPage, debouncedSearch);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to delete customer");
@@ -110,50 +124,45 @@ export default function CustomersPage() {
 
   const totalPages = Math.ceil(totalCustomers / PAGE_SIZE);
 
-  const handlePreviousPage = () => {
-    if (currentPage > 0) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages - 1) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-white dark:bg-stone-950 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className={`min-h-screen p-6 ${isDark ? "bg-stone-950" : "bg-gray-50"}`}>
+      <div className="max-w-7xl mx-auto">
         <CustomerTabs />
-        {/* Header */}
+
+        {/* ── Header ── */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1
-              className={`text-3xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}
-            >
-              Customers
-            </h1>
-            <p
-              className={`mt-1 ${theme === "dark" ? "text-stone-400" : "text-gray-600"}`}
-            >
-              Manage your customer database
-            </p>
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-xl ${isDark ? "bg-teal-500/15" : "bg-teal-50"}`}>
+                <Users className={`w-5 h-5 ${isDark ? "text-teal-400" : "text-teal-600"}`} />
+              </div>
+              <div>
+                <h1 className={`text-2xl font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
+                  Customers
+                </h1>
+                <p className={`text-sm ${isDark ? "text-stone-400" : "text-gray-500"}`}>
+                  {totalCustomers > 0
+                    ? `${totalCustomers} customer${totalCustomers !== 1 ? "s" : ""} total`
+                    : "Manage your customer database"}
+                </p>
+              </div>
+            </div>
           </div>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-medium transition"
+            className="flex items-center gap-2 px-4 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-medium transition-all shadow-lg shadow-teal-500/25 hover:shadow-teal-500/35"
           >
-            + Add Customer
+            <Plus className="w-4 h-4" />
+            Add Customer
           </button>
         </div>
 
-        {/* Error Message */}
+        {/* ── Error ── */}
         {error && (
           <div
-            className={`mb-6 px-4 py-3 rounded-lg ${
-              theme === "dark"
-                ? "bg-red-500/20 border border-red-500/50 text-red-300"
+            className={`mb-5 px-4 py-3 rounded-xl text-sm ${
+              isDark
+                ? "bg-red-500/10 border border-red-500/30 text-red-400"
                 : "bg-red-50 border border-red-200 text-red-700"
             }`}
           >
@@ -161,229 +170,232 @@ export default function CustomersPage() {
           </div>
         )}
 
-        {/* Search Bar */}
-        <div className="mb-6">
-          <input
-            type="text"
-            placeholder="Search by name or phone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-teal-500 ${
-              theme === "dark"
-                ? "bg-white/10 border-white/20 text-white placeholder-stone-400"
-                : "bg-white border-gray-300 text-black placeholder-gray-500"
-            }`}
-          />
+        {/* ── Search Bar ── */}
+        <div className="mb-5">
+          <div className="relative">
+            <Search
+              className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${
+                isDark ? "text-stone-500" : "text-gray-400"
+              }`}
+            />
+            <input
+              type="text"
+              placeholder="Search by name or phone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm transition-all outline-none ${
+                isDark
+                  ? "bg-white/5 border-white/10 text-white placeholder:text-stone-600 focus:border-teal-500/50 focus:bg-white/8"
+                  : "bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
+              }`}
+            />
+          </div>
         </div>
 
-        {/* Customers Table */}
+        {/* ── Table ── */}
         {isLoading ? (
-          <div
-            className={`text-center py-12 ${theme === "dark" ? "text-stone-400" : "text-gray-600"}`}
-          >
-            Loading customers...
+          <div className="space-y-2">
+            {[...Array(8)].map((_, i) => (
+              <div
+                key={i}
+                className={`h-14 rounded-xl animate-pulse ${isDark ? "bg-white/5" : "bg-gray-100"}`}
+              />
+            ))}
           </div>
         ) : customers.length === 0 ? (
           <div
-            className={`text-center py-12 ${theme === "dark" ? "text-stone-400" : "text-gray-600"}`}
+            className={`flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed ${
+              isDark ? "border-white/10 text-stone-500" : "border-gray-200 text-gray-400"
+            }`}
           >
-            {debouncedSearch
-              ? "No customers found matching your search"
-              : "No customers yet. Click '+ Add Customer' to create one."}
+            <UserPlus className="w-12 h-12 mb-3 opacity-30" />
+            <p className="text-lg font-semibold">No customers found</p>
+            <p className="text-sm mt-1">
+              {searchTerm ? "Try a different search term" : "Add your first customer to get started"}
+            </p>
           </div>
         ) : (
           <>
             <div
-              className={`overflow-x-auto rounded-lg border ${
-                theme === "dark" ? "border-white/10" : "border-gray-200"
+              className={`rounded-2xl border overflow-hidden ${
+                isDark ? "bg-stone-900/60 border-white/8" : "bg-white border-gray-200"
               }`}
             >
-              <table className="w-full">
+              <table className="w-full text-sm">
                 <thead>
                   <tr
                     className={`border-b ${
-                      theme === "dark"
-                        ? "border-white/10 bg-white/5"
-                        : "border-gray-200 bg-gray-50"
+                      isDark ? "border-white/8 bg-white/3" : "border-gray-100 bg-gray-50"
                     }`}
                   >
-                    <th
-                      className={`px-6 py-4 text-left text-sm font-semibold ${
-                        theme === "dark" ? "text-stone-300" : "text-gray-700"
-                      }`}
-                    >
-                      Name
-                    </th>
-                    <th
-                      className={`px-6 py-4 text-left text-sm font-semibold ${
-                        theme === "dark" ? "text-stone-300" : "text-gray-700"
-                      }`}
-                    >
-                      Phone
-                    </th>
-                    <th
-                      className={`px-6 py-4 text-left text-sm font-semibold ${
-                        theme === "dark" ? "text-stone-300" : "text-gray-700"
-                      }`}
-                    >
-                      State
-                    </th>
-                    <th
-                      className={`px-6 py-4 text-left text-sm font-semibold ${
-                        theme === "dark" ? "text-stone-300" : "text-gray-700"
-                      }`}
-                    >
-                      Loyalty Points
-                    </th>
-                    <th
-                      className={`px-6 py-4 text-left text-sm font-semibold ${
-                        theme === "dark" ? "text-stone-300" : "text-gray-700"
-                      }`}
-                    >
-                      Status
-                    </th>
-                    <th
-                      className={`px-6 py-4 text-right text-sm font-semibold ${
-                        theme === "dark" ? "text-stone-300" : "text-gray-700"
-                      }`}
-                    >
-                      Actions
-                    </th>
+                    {["Name", "Phone", "State", "Loyalty Points", "Status", "Actions"].map((h) => (
+                      <th
+                        key={h}
+                        className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${
+                          isDark ? "text-stone-500" : "text-gray-500"
+                        } ${h === "Actions" ? "text-right" : ""}`}
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {customers.map((customer, idx) => (
+                <tbody className="divide-y divide-white/5">
+                  {customers.map((customer) => (
                     <tr
                       key={customer.id}
-                      className={`border-b ${
-                        theme === "dark" ? "border-white/5" : "border-gray-200"
-                      } ${
+                      className={`group transition-colors ${
                         !customer.isActive
-                          ? theme === "dark"
-                            ? "bg-white/5 opacity-60"
-                            : "bg-gray-50 opacity-60"
-                          : idx % 2 === 0
-                            ? "bg-transparent"
-                            : theme === "dark"
-                              ? "bg-white/2"
-                              : "bg-gray-50/50"
-                      }`}
+                          ? isDark
+                            ? "opacity-50"
+                            : "opacity-60"
+                          : ""
+                      } ${isDark ? "hover:bg-white/3" : "hover:bg-gray-50/80"}`}
                     >
-                      <td
-                        className={`px-6 py-4 text-sm ${
-                          !customer.isActive
-                            ? theme === "dark"
-                              ? "text-stone-500 line-through"
-                              : "text-gray-500 line-through"
-                            : theme === "dark"
-                              ? "text-white"
-                              : "text-gray-900"
-                        }`}
-                      >
-                        {customer.name}
+                      {/* Name */}
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
+                              isDark
+                                ? "bg-teal-500/15 text-teal-400"
+                                : "bg-teal-50 text-teal-600"
+                            }`}
+                          >
+                            {customer.name?.charAt(0)?.toUpperCase() || "?"}
+                          </div>
+                          <span
+                            className={`font-medium ${
+                              !customer.isActive
+                                ? isDark
+                                  ? "text-stone-500 line-through"
+                                  : "text-gray-400 line-through"
+                                : isDark
+                                ? "text-white"
+                                : "text-gray-900"
+                            }`}
+                          >
+                            {customer.name}
+                          </span>
+                        </div>
                       </td>
-                      <td
-                        className={`px-6 py-4 text-sm ${
-                          theme === "dark" ? "text-stone-300" : "text-gray-700"
-                        }`}
-                      >
+
+                      {/* Phone */}
+                      <td className={`px-5 py-3.5 tabular-nums ${isDark ? "text-stone-300" : "text-gray-700"}`}>
                         {customer.phone}
                       </td>
-                      <td
-                        className={`px-6 py-4 text-sm ${
-                          theme === "dark" ? "text-stone-300" : "text-gray-700"
-                        }`}
-                      >
-                        {customer.state}
+
+                      {/* State */}
+                      <td className={`px-5 py-3.5 ${isDark ? "text-stone-400" : "text-gray-500"}`}>
+                        {customer.state || "—"}
                       </td>
-                      <td className="px-6 py-4 text-sm">
-                        <CustomerLoyaltyBalance customerId={customer.id} />
+
+                      {/* Loyalty Points — clickable to open history */}
+                      <td className="px-5 py-3.5">
+                        <CustomerLoyaltyBalance
+                          customerId={customer.id}
+                          onClick={(balance) =>
+                            setLoyaltyHistory({
+                              customerId: customer.id,
+                              customerName: customer.name,
+                              balance,
+                            })
+                          }
+                        />
                       </td>
-                      <td className="px-6 py-4 text-sm">
+
+                      {/* Status */}
+                      <td className="px-5 py-3.5">
                         <span
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
                             customer.isActive
-                              ? theme === "dark"
-                                ? "bg-green-500/20 text-green-300"
-                                : "bg-green-100 text-green-700"
-                              : theme === "dark"
-                                ? "bg-red-500/20 text-red-300"
-                                : "bg-red-100 text-red-700"
+                              ? isDark
+                                ? "bg-emerald-500/15 text-emerald-400"
+                                : "bg-emerald-50 text-emerald-700"
+                              : isDark
+                              ? "bg-red-500/15 text-red-400"
+                              : "bg-red-50 text-red-600"
                           }`}
                         >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              customer.isActive ? "bg-emerald-400" : "bg-red-400"
+                            }`}
+                          />
                           {customer.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
+
+                      {/* Actions */}
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center justify-end gap-1">
+                          {/* Timeline */}
+                          <ActionBtn
+                            title="View Timeline"
+                            color="stone"
+                            isDark={isDark}
                             onClick={() => {
                               setTimelineCustomerId(customer.id);
                               setTimelineCustomerName(customer.name);
                             }}
-                            className={`p-1.5 text-xs rounded-lg transition-colors ${
-                              theme === "dark"
-                                ? "bg-white/5 hover:bg-white/10 text-stone-300"
-                                : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                            }`}
-                            title="View History"
                           >
-                            🕒
-                          </button>
-                          <button
-                            onClick={() => {
+                            <Clock className="w-3.5 h-3.5" />
+                          </ActionBtn>
+
+                          {/* Follow-up */}
+                          <ActionBtn
+                            title="Add Follow-up"
+                            color="blue"
+                            isDark={isDark}
+                            onClick={() =>
                               setFollowUpData({
                                 customerId: customer.id,
                                 customerName: customer.name,
                                 defaultPurpose: "Routine follow-up",
                                 defaultType: "PHONE_CALL",
-                              });
-                            }}
-                            className={`p-1.5 text-xs rounded-lg transition-colors ${
-                              theme === "dark"
-                                ? "bg-white/5 hover:bg-white/10 text-stone-300"
-                                : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                            }`}
-                            title="Add Follow-up"
+                              })
+                            }
                           >
-                            📋
-                          </button>
-                          <button
-                            onClick={() => {
+                            <PhoneCall className="w-3.5 h-3.5" />
+                          </ActionBtn>
+
+                          {/* Loyalty Adjust */}
+                          <ActionBtn
+                            title="Adjust Loyalty"
+                            color="purple"
+                            isDark={isDark}
+                            onClick={() =>
                               setAdjustmentData({
                                 customerId: customer.id,
                                 customerName: customer.name,
-                              });
-                            }}
-                            className={`p-1.5 text-xs rounded-lg transition-colors ${
-                              theme === "dark"
-                                ? "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400"
-                                : "bg-purple-50 hover:bg-purple-100 text-purple-700"
-                            }`}
-                            title="Adjust Loyalty"
+                              })
+                            }
                           >
-                            🎁
-                          </button>
-                          <button
+                            <Star className="w-3.5 h-3.5" />
+                          </ActionBtn>
+
+                          {/* Divider */}
+                          <div className={`w-px h-5 mx-0.5 ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
+
+                          {/* Edit */}
+                          <ActionBtn
+                            title="Edit"
+                            color="teal"
+                            isDark={isDark}
                             onClick={() => handleEdit(customer)}
-                            className={`px-3 py-1 text-xs rounded-lg transition-colors ${
-                              theme === "dark"
-                                ? "bg-teal-500/20 hover:bg-teal-500/30 text-teal-300"
-                                : "bg-teal-100 hover:bg-teal-200 text-teal-700"
-                            }`}
                           >
-                            Edit
-                          </button>
-                          <button
+                            <Pencil className="w-3.5 h-3.5" />
+                          </ActionBtn>
+
+                          {/* Delete */}
+                          <ActionBtn
+                            title="Delete"
+                            color="red"
+                            isDark={isDark}
                             onClick={() => handleDelete(customer)}
-                            className={`px-3 py-1 text-xs rounded-lg transition-colors ${
-                              theme === "dark"
-                                ? "bg-red-500/20 hover:bg-red-500/30 text-red-300"
-                                : "bg-red-100 hover:bg-red-200 text-red-700"
-                            }`}
                           >
-                            Delete
-                          </button>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </ActionBtn>
                         </div>
                       </td>
                     </tr>
@@ -392,57 +404,38 @@ export default function CustomersPage() {
               </table>
             </div>
 
-            {/* Pagination Controls */}
+            {/* ── Pagination ── */}
             {totalCustomers > PAGE_SIZE && (
               <div
-                className={`mt-4 flex items-center justify-between px-4 py-3 rounded-lg border ${
-                  theme === "dark"
-                    ? "border-white/10 bg-white/5"
-                    : "border-gray-200 bg-gray-50"
+                className={`mt-4 flex items-center justify-between px-4 py-3 rounded-xl border ${
+                  isDark ? "border-white/8 bg-white/3" : "border-gray-200 bg-white"
                 }`}
               >
-                <div
-                  className={`text-sm ${theme === "dark" ? "text-stone-400" : "text-gray-600"}`}
-                >
-                  Showing {currentPage * PAGE_SIZE + 1} to{" "}
-                  {Math.min((currentPage + 1) * PAGE_SIZE, totalCustomers)} of{" "}
-                  {totalCustomers} customers
-                </div>
-                <div className="flex gap-2">
+                <p className={`text-sm ${isDark ? "text-stone-400" : "text-gray-500"}`}>
+                  Showing {currentPage * PAGE_SIZE + 1}–
+                  {Math.min((currentPage + 1) * PAGE_SIZE, totalCustomers)} of {totalCustomers}
+                </p>
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={handlePreviousPage}
+                    onClick={() => currentPage > 0 && setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 0}
-                    className={`px-4 py-2 rounded-lg font-medium transition ${
-                      currentPage === 0
-                        ? theme === "dark"
-                          ? "bg-white/5 text-stone-600 cursor-not-allowed"
-                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : theme === "dark"
-                          ? "bg-white/10 hover:bg-white/20 text-stone-300"
-                          : "bg-white hover:bg-gray-100 text-gray-700"
+                    className={`p-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+                      isDark ? "bg-white/8 hover:bg-white/15 text-stone-300" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                     }`}
                   >
-                    Previous
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <span
-                    className={`px-4 py-2 ${theme === "dark" ? "text-stone-300" : "text-gray-700"}`}
-                  >
-                    Page {currentPage + 1} of {totalPages}
+                  <span className={`text-sm tabular-nums ${isDark ? "text-stone-300" : "text-gray-600"}`}>
+                    {currentPage + 1} / {totalPages}
                   </span>
                   <button
-                    onClick={handleNextPage}
+                    onClick={() => currentPage < totalPages - 1 && setCurrentPage(currentPage + 1)}
                     disabled={currentPage >= totalPages - 1}
-                    className={`px-4 py-2 rounded-lg font-medium transition ${
-                      currentPage >= totalPages - 1
-                        ? theme === "dark"
-                          ? "bg-white/5 text-stone-600 cursor-not-allowed"
-                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : theme === "dark"
-                          ? "bg-white/10 hover:bg-white/20 text-stone-300"
-                          : "bg-white hover:bg-gray-100 text-gray-700"
+                    className={`p-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+                      isDark ? "bg-white/8 hover:bg-white/15 text-stone-300" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                     }`}
                   >
-                    Next
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -450,12 +443,11 @@ export default function CustomersPage() {
           </>
         )}
 
-        {/* Add/Edit Customer Modal */}
+        {/* ── Modals / Drawers ── */}
         {(isAddModalOpen || editingCustomer) && (
           <CustomerForm customer={editingCustomer} onClose={handleFormClose} />
         )}
 
-        {/* CRM Modals */}
         <CustomerTimelineDrawer
           isOpen={!!timelineCustomerId}
           customerId={timelineCustomerId || ""}
@@ -469,8 +461,8 @@ export default function CustomersPage() {
         {followUpData && (
           <AddFollowUpModal
             isOpen={!!followUpData}
-            customerId={followUpData.customerId || ""}
-            customerName={followUpData.customerName || "Customer"}
+            customerId={followUpData.customerId}
+            customerName={followUpData.customerName}
             defaultPurpose={followUpData.defaultPurpose}
             defaultType={followUpData.defaultType}
             onClose={() => setFollowUpData(null)}
@@ -485,14 +477,71 @@ export default function CustomersPage() {
             onClose={() => setAdjustmentData(null)}
             onSuccess={() => {
               setAdjustmentData(null);
-              // Instead of heavy reload, just let it be or trigger a small re-validation if implemented
-              // Since CustomerLoyaltyBalance handles its own load, maybe we trigger a mutate or force update
-              // For now, loadCustomers ensures the list is fresh although balance is isolated
               loadCustomers(currentPage, debouncedSearch);
             }}
           />
         )}
+
+        {loyaltyHistory && (
+          <LoyaltyHistoryDrawer
+            customerId={loyaltyHistory.customerId}
+            customerName={loyaltyHistory.customerName}
+            balance={loyaltyHistory.balance}
+            onClose={() => setLoyaltyHistory(null)}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+/* ── Reusable icon action button ── */
+type BtnColor = "stone" | "blue" | "purple" | "teal" | "red";
+
+const colorMap: Record<BtnColor, { dark: string; light: string }> = {
+  stone: {
+    dark: "bg-white/5 hover:bg-white/12 text-stone-400 hover:text-stone-200",
+    light: "bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700",
+  },
+  blue: {
+    dark: "bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300",
+    light: "bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700",
+  },
+  purple: {
+    dark: "bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300",
+    light: "bg-purple-50 hover:bg-purple-100 text-purple-600 hover:text-purple-700",
+  },
+  teal: {
+    dark: "bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 hover:text-teal-300",
+    light: "bg-teal-50 hover:bg-teal-100 text-teal-600 hover:text-teal-700",
+  },
+  red: {
+    dark: "bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300",
+    light: "bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700",
+  },
+};
+
+function ActionBtn({
+  children,
+  title,
+  color,
+  isDark,
+  onClick,
+}: {
+  children: React.ReactNode;
+  title: string;
+  color: BtnColor;
+  isDark: boolean;
+  onClick: () => void;
+}) {
+  const cls = isDark ? colorMap[color].dark : colorMap[color].light;
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`p-1.5 rounded-lg transition-all ${cls}`}
+    >
+      {children}
+    </button>
   );
 }
