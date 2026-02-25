@@ -1,5 +1,3 @@
-import { ModuleType } from '@prisma/client';
-
 export type EmailTemplateType =
   | 'TENANT_WELCOME'
   | 'TRIAL_STARTED'

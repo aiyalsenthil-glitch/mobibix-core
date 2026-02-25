@@ -5,11 +5,9 @@ import {
   Member,
   Invoice,
   Payment,
-  JobCard,
   StaffInvite,
   Plan,
   TenantSubscription,
-  BillingCycle,
 } from '@prisma/client';
 
 export type ModuleType = 'GYM' | 'MOBILE_SHOP';

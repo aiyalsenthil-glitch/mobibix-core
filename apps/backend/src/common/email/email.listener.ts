@@ -4,13 +4,21 @@ import { EmailService } from './email.service';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import {
   SubscriptionTrialExpiringEvent,
-  SubscriptionTrialExpiredEvent,
-  PaymentSuccessEvent,
   PaymentFailedEvent,
   MemberExpiringEvent,
-  TenantWelcomeEvent,
 } from './email.events';
-import { User, Tenant } from '@prisma/client';
+
+type TenantWelcomePayload = {
+  module: 'GYM' | 'MOBILE_SHOP';
+  user: {
+    id: string;
+    email: string | null;
+    fullName?: string | null;
+  };
+  tenant: {
+    id: string;
+  };
+};
 
 @Injectable()
 export class EmailListener {
@@ -22,20 +30,25 @@ export class EmailListener {
   ) {}
 
   @OnEvent('tenant.welcome')
-  async handleTenantWelcome(event: TenantWelcomeEvent) {
-    const { tenant, user, module } = event;
+  async handleTenantWelcome(event: TenantWelcomePayload) {
+    if (!event.user.email) {
+      this.logger.warn(
+        `[TENANT WELCOME] No email found for user ${event.user.id}`,
+      );
+      return;
+    }
 
     await this.emailService.send({
-      tenantId: tenant.id,
+      tenantId: event.tenant.id,
       recipientType: 'TENANT',
       emailType: 'TENANT_WELCOME',
-      referenceId: user.id, // Only one welcome per user
-      module,
-      to: user.email!,
-      subject: `Welcome to ${module === 'MOBILE_SHOP' ? 'MobiBix' : 'GymPilot'}! 🚀`,
+      referenceId: event.user.id, // Only one welcome per user
+      module: event.module,
+      to: event.user.email,
+      subject: `Welcome to ${event.module === 'MOBILE_SHOP' ? 'MobiBix' : 'GymPilot'}! 🚀`,
       data: {
-        name: user.fullName || 'User',
-        link: `https://${module === 'MOBILE_SHOP' ? 'shop' : 'gym'}.mobibix.in`,
+        name: event.user.fullName || 'User',
+        link: `https://${event.module === 'MOBILE_SHOP' ? 'shop' : 'gym'}.mobibix.in`,
       },
     });
   }
