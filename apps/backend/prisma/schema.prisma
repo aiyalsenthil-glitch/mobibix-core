@@ -20,34 +20,34 @@ enum AutopayStatus {
 }
 
 model Tenant {
-  id           String    @id @default(cuid())
-  name         String
-  legalName    String?
-  tenantType   String
-  code         String    @unique
-  contactPhone String?
-  contactEmail String?
-  website      String?
-  logoUrl      String?
-  addressLine1 String?
-  addressLine2 String?
-  city         String?
-  state        String?
-  pincode      String?
-  country      String    @default("India")
-  gstNumber    String?
-  taxId        String?
-  businessType String?
+  id                 String            @id @default(cuid())
+  name               String
+  legalName          String?
+  tenantType         String
+  code               String            @unique
+  contactPhone       String?
+  contactEmail       String?
+  website            String?
+  logoUrl            String?
+  addressLine1       String?
+  addressLine2       String?
+  city               String?
+  state              String?
+  pincode            String?
+  country            String            @default("India")
+  gstNumber          String?
+  taxId              String?
+  businessType       String?
   businessCategoryId String?
   businessCategory   BusinessCategory? @relation("TenantBusinessCategory", fields: [businessCategoryId], references: [id])
-  currency     String    @default("INR")
-  timezone     String    @default("Asia/Kolkata")
-  createdAt    DateTime  @default(now())
-  createdBy    String?
-  updatedAt    DateTime  @updatedAt
-  updatedBy    String?
-  deletedAt    DateTime?
-  deletedBy    String?
+  currency           String            @default("INR")
+  timezone           String            @default("Asia/Kolkata")
+  createdAt          DateTime          @default(now())
+  createdBy          String?
+  updatedAt          DateTime          @updatedAt
+  updatedBy          String?
+  deletedAt          DateTime?
+  deletedBy          String?
 
   kioskToken               String?               @unique
   enabledModules           ModuleType[] // Gates what permissions a tenant can assign to roles
@@ -619,6 +619,8 @@ model TenantSubscription {
   @@index([planId])
   @@index([module])
   @@index([autoRenew])
+  @@index([providerSubscriptionId])
+  @@index([providerPaymentLinkId])
 }
 
 model SubscriptionAddon {
