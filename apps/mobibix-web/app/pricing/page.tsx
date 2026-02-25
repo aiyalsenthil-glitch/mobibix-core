@@ -311,7 +311,7 @@ export default function PricingPage() {
             />
             <FAQItem
               question="Do you offer refunds?"
-              answer="We offer a 30-day money-back guarantee. If you're not satisfied, contact us for a full refund within 30 days of purchase."
+              answer="Refund requests are evaluated case by case. Contact us at support@REMOVED_DOMAIN within 7 days of your billing date and we'll review your request promptly."
             />
             <FAQItem
               question="What payment methods do you accept?"

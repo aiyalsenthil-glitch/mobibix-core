@@ -83,7 +83,7 @@ export class RazorpayService {
         },
         reminder_enable: true,
         reference_id: referenceId,
-        callback_url: 'https://mobibix.com/billing/success', // specific callback
+        callback_url: `${process.env.BACKEND_URL || 'https://REMOVED_DOMAIN'}/billing/success`, // specific callback
         callback_method: 'get',
       };
 
@@ -119,14 +119,13 @@ export class RazorpayService {
   }
 
   validateWebhookSignature(
-    body: any,
+    rawBody: Buffer | string,
     signature: string,
     secret: string,
   ): boolean {
-    const bodyStr = JSON.stringify(body);
     const expectedSignature = crypto
       .createHmac('sha256', secret)
-      .update(bodyStr)
+      .update(rawBody)
       .digest('hex');
 
     return expectedSignature === signature;

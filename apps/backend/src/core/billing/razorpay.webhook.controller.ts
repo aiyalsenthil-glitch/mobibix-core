@@ -6,7 +6,9 @@ import {
   BadRequestException,
   Logger,
   Inject,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { RazorpayService } from './REMOVED_PAYMENT_INFRA.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -36,6 +38,7 @@ export class RazorpayWebhookController {
   async handleWebhook(
     @Headers('x-REMOVED_PAYMENT_INFRA-signature') signature: string,
     @Body() body: any,
+    @Req() req: Request & { rawBody?: Buffer },
   ) {
     const secret = this.configService.get<string>('RAZORPAY_WEBHOOK_SECRET');
     if (!secret) {
@@ -44,7 +47,7 @@ export class RazorpayWebhookController {
     }
 
     if (
-      !this.REMOVED_PAYMENT_INFRAService.validateWebhookSignature(body, signature, secret)
+      !this.REMOVED_PAYMENT_INFRAService.validateWebhookSignature(req.rawBody ?? Buffer.from(JSON.stringify(body)), signature, secret)
     ) {
       this.logger.warn('Invalid Razorpay Webhook Signature');
       throw new BadRequestException('Invalid signature');
@@ -364,13 +367,40 @@ export class RazorpayWebhookController {
     
     // Attempt internal cleanup
     const internalPayment = await this.prisma.payment.findFirst({
-        where: { providerPaymentId: payment.id }
+        where: { providerPaymentId: payment.id },
+        include: { tenant: true }
     });
 
     if (internalPayment) {
-        await this.prisma.payment.update({
-            where: { id: internalPayment.id },
-            data: { status: 'FAILED' }
+        await this.prisma.$transaction(async (tx) => {
+            await tx.payment.update({
+                where: { id: internalPayment.id },
+                data: { status: 'FAILED' }
+            });
+
+            const activeSub = await tx.tenantSubscription.findFirst({
+                where: {
+                    tenantId: internalPayment.tenantId,
+                    planId: internalPayment.planId,
+                    status: { in: ['ACTIVE', 'PENDING'] }
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            if (activeSub) {
+                await tx.tenantSubscription.update({
+                    where: { id: activeSub.id },
+                    data: {
+                        paymentStatus: PaymentStatus.FAILED,
+                        status: SubscriptionStatus.PAST_DUE,
+                        updatedAt: new Date(),
+                    }
+                });
+                this.logger.warn(
+                    `⚠️ Subscription ${activeSub.id} moved to PAST_DUE ` +
+                    `(tenant: ${internalPayment.tenant?.name})`
+                );
+            }
         });
     }
   }
