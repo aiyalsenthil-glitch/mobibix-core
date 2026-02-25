@@ -101,15 +101,21 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
           // Since getCustomer returns a legacy Customer, and we want Party...
           // effectively they share common fields id, name, phone.
           if (c) {
-             const party: Party = {
-                id: c.id,
-                name: c.name,
-                phone: c.phone,
-                partyType: 'CUSTOMER', // Inferred as it was a job card
-                tenantId: '', // Not needed for UI display usually
-                // other optional fields
-             } as Party; // Type casting for compatibility if strict types mismatch
-             setSelectedParty(party);
+            const party: Party = {
+              id: c.id,
+              name: c.name,
+              phone: c.phone,
+              email: c.email,
+              state: c.state,
+              partyType: c.partyType,
+              businessType: c.businessType,
+              gstNumber: c.gstNumber,
+              loyaltyPoints: c.loyaltyPoints,
+              isActive: c.isActive,
+              createdAt: c.createdAt,
+              updatedAt: c.updatedAt,
+            };
+            setSelectedParty(party);
           }
         } catch {
           //

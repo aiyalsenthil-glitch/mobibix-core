@@ -1,4 +1,3 @@
-
 import { ModuleType } from '@prisma/client';
 
 export type EmailrecipientType = 'TENANT' | 'STAFF' | 'CUSTOMER';
@@ -16,12 +15,12 @@ export interface SendEmailOptions {
   emailType: string;
   referenceId: string;
   module: ModuleType;
-  
+
   to: string;
   subject: string;
-  
+
   // Data to render template (React Email props)
-  data: any; 
-  
+  data: unknown;
+
   attachments?: EmailAttachment[];
 }

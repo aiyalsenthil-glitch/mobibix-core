@@ -66,6 +66,11 @@ export interface AvailablePlansResponse {
   plans: Plan[];
 }
 
+export interface UpgradeSubscriptionResponse {
+  paymentLink?: string;
+  REMOVED_PAYMENT_INFRASubscriptionId?: string;
+}
+
 /**
  * Toggle Auto Renew
  */
@@ -120,17 +125,17 @@ export async function upgradeSubscription(
   newPlanId: string,
   newBillingCycle?: string,
   billingType?: "MANUAL" | "AUTOPAY",
-) {
+): Promise<UpgradeSubscriptionResponse> {
   const response = await authenticatedFetch("/billing/subscription/upgrade", {
     method: "PATCH",
     body: JSON.stringify({ newPlanId, newBillingCycle, billingType }),
   });
   if (!response.ok) {
-    const err = await extractData(response);
+    const err = await extractData<{ message?: string }>(response);
     throw new Error(err.message || "Upgrade failed");
   }
   const json = await extractData(response);
-  return unwrapStandardResponse(json);
+  return unwrapStandardResponse<UpgradeSubscriptionResponse>(json);
 }
 
 /**
