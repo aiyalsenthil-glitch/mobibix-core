@@ -1,31 +1,18 @@
 "use client";
 
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   getJobCard,
   updateJobCardStatus,
   reopenJobCard,
-  addJobCardPart,
   removeJobCardPart,
-  JobCard,
   JobStatus,
   createWarrantyJob,
-  addJobCardAdvance,
-  refundJobCardAdvance,
 } from "@/services/jobcard.api";
 import { useShop } from "@/context/ShopContext";
-import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
-import {
-  listProducts,
-  ShopProduct,
-  createProduct,
-  ProductType,
-  getStockLevels,
-} from "@/services/products.api";
-import { createPurchase } from "@/services/purchases.api";
 import { sendWhatsAppMessage } from "@/services/whatsapp.api";
 import { AdvanceModal } from "./AdvanceModal";
 import { AddPartModal } from "../AddPartModal";
@@ -62,7 +49,6 @@ import { generateRepairBill } from "@/services/jobcard.api";
 export default function JobCardDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const { theme } = useTheme();
   const { authUser: user } = useAuth(); // To check role
   const { selectedShopId } = useShop();
   const [isAddPartModalOpen, setIsAddPartModalOpen] = useState(false);

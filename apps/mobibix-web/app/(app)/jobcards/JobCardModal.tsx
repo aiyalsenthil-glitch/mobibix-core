@@ -90,7 +90,7 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
      if (shop?.gstEnabled && formData.billType !== 'WITH_GST') {
          setFormData(prev => ({ ...prev, billType: 'WITH_GST' }));
      }
-  }, [shop?.gstEnabled]);
+  }, [shop?.gstEnabled, formData.billType]);
 
   useEffect(() => {
     const loadCustomer = async () => {
@@ -108,7 +108,7 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
                 partyType: 'CUSTOMER', // Inferred as it was a job card
                 tenantId: '', // Not needed for UI display usually
                 // other optional fields
-             } as any; // Type casting for compatibility if strict types mismatch
+             } as Party; // Type casting for compatibility if strict types mismatch
              setSelectedParty(party);
           }
         } catch {
@@ -183,8 +183,8 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
         await createJobCard(shopId, payload as CreateJobCardDto);
       }
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to save job card");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save job card");
     } finally {
       setIsSubmitting(false);
     }

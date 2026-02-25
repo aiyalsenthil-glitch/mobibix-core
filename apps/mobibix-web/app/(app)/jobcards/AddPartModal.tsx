@@ -3,19 +3,23 @@
 import { useState, useEffect, useRef } from "react";
 import {
   listProducts,
-  ShopProduct,
+  type ShopProduct,
   createProduct,
   ProductType,
   getStockLevels,
 } from "@/services/products.api";
-import { createPurchase } from "@/services/purchases.api";
+import {
+  createPurchase,
+  type PaymentMode,
+  type PurchaseStatus,
+} from "@/services/purchases.api";
 import { addJobCardPart } from "@/services/jobcard.api";
 import { 
   listSuppliers, 
   createSupplier, 
   type Supplier 
 } from "@/services/suppliers.api";
-import { Search, Plus, UserPlus, X, Loader2 } from "lucide-react";
+import { Search, UserPlus, X } from "lucide-react";
 
 interface AddPartModalProps {
   shopId: string;
@@ -30,6 +34,13 @@ export function AddPartModal({
   onClose,
   onSuccess,
 }: AddPartModalProps) {
+  type ProductsResponse =
+    | ShopProduct[]
+    | { data: ShopProduct[]; total: number; skip: number; take: number };
+
+  const normalizeProducts = (response: ProductsResponse): ShopProduct[] =>
+    Array.isArray(response) ? response : response.data;
+
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState<ShopProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<ShopProduct | null>(
@@ -102,20 +113,16 @@ export function AddPartModal({
     if (searchTerm.length > 1 && !createMode) {
       // 🛡️ Fetch stock levels separately for accurate display
       Promise.all([listProducts(shopId), getStockLevels(shopId)]).then(
-        ([prodResponse, stockResponse]: [any, any]) => {
-          const allProds = Array.isArray(prodResponse)
-            ? prodResponse
-            : (prodResponse as any).data;
-          const allStock = Array.isArray(stockResponse)
-            ? stockResponse
-            : (stockResponse as any).data;
+        ([prodResponse, stockResponse]) => {
+          const allProds = normalizeProducts(prodResponse);
+          const allStock = normalizeProducts(stockResponse);
 
           const stockMap = new Map(
-            (allStock as any[]).map((s) => [s.id, s.stockQty || 0]),
+            allStock.map((s) => [s.id, s.stockQty || 0]),
           );
 
           setProducts(
-            (allProds as any[])
+            allProds
               .filter(
                 (p) =>
                   p.type !== ProductType.SERVICE &&
@@ -196,8 +203,8 @@ export function AddPartModal({
             globalSupplierId: finalSupplierId,
             supplierName: finalSupplierName,
             invoiceNumber: `JOB-AUTO-${Date.now().toString().slice(-6)}`,
-            paymentMethod: "CASH" as any,
-            status: "SUBMITTED" as any, // 🛡️ CRITICAL FIX: Mark as submitted to update stock
+            paymentMethod: "CASH" as PaymentMode,
+            status: "SUBMITTED" as PurchaseStatus, // 🛡️ CRITICAL FIX: Mark as submitted to update stock
             items: [
               {
                 shopProductId: productId,
@@ -220,8 +227,8 @@ export function AddPartModal({
       await addJobCardPart(shopId, jobId, productId, quantity);
       onSuccess();
       onClose();
-    } catch (err: any) {
-      alert(err.message || "Failed to add part");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to add part");
     } finally {
       setIsSubmitting(false);
     }
@@ -328,7 +335,7 @@ export function AddPartModal({
                         }}
                         className="text-teal-600 hover:text-teal-700 font-bold text-sm"
                       >
-                        Create "{searchTerm}"
+                        Create &quot;{searchTerm}&quot;
                       </button>
                     </div>
                   )}
