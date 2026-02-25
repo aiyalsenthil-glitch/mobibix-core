@@ -3,6 +3,9 @@
 import 'dotenv/config';
 import { defineConfig, env } from 'prisma/config';
 
+const fallbackDatabaseUrl =
+  'postgresql://postgres:postgres@localhost_REPLACED:5432/postgres?schema=public';
+
 export default defineConfig({
   schema: 'prisma/schema.prisma',
 
@@ -11,7 +14,7 @@ export default defineConfig({
     seed: 'ts-node prisma/seed.ts',
   },
   datasource: {
-    url: env('DATABASE_URL'),
+    url: process.env.DATABASE_URL ?? fallbackDatabaseUrl,
     // shadowDatabaseUrl: env('SHADOW_DATABASE_URL'),
   },
 });
