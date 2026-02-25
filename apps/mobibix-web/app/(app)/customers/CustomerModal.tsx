@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   createCustomer,
   updateCustomer,
@@ -129,8 +129,8 @@ export function CustomerModal({
 
       onSuccess?.(result);
       onClose();
-    } catch (err: any) {
-      alert(err.message || "Failed to save customer");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to save customer");
     } finally {
       setIsSubmitting(false);
     }

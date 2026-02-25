@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
-import { getProfitSummary, getSalesReport } from "@/services/reports.api";
+import { getProfitSummary } from "@/services/reports.api";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { getUsageHistory, UsageSnapshot } from "@/services/tenant.api";
 import { authenticatedFetch } from "@/services/auth.api";
@@ -38,6 +38,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { ValueSnapshotWidget } from "@/components/dashboard/ValueSnapshotWidget";
+import type { Shop } from "@/services/shops.api";
 
 interface DashboardData {
   today?: {
@@ -75,11 +76,19 @@ interface DashboardData {
   };
 }
 
+interface ShopBreakdownItem {
+  shopId: string;
+  shopName: string;
+  revenue: number;
+  salesCount: number;
+  jobCardCount: number;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { authUser } = useAuth();
   const { theme } = useTheme();
-  const { shops, selectedShopId, selectShop, hasMultipleShops } = useShop() as any;
+  const { shops, selectedShopId, selectShop, hasMultipleShops } = useShop();
   const isDark = theme === "dark";
 
   const [data, setData] = useState<DashboardData>({});
@@ -89,7 +98,7 @@ export default function DashboardPage() {
   const salesTrend = useMemo(() => data.salesTrend || [], [data]);
 
   const [usageHistory, setUsageHistory] = useState<UsageSnapshot[]>([]);
-  const [shopBreakdown, setShopBreakdown] = useState<any[]>([]);
+  const [shopBreakdown, setShopBreakdown] = useState<ShopBreakdownItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const userRole = authUser?.role?.toLowerCase();
@@ -100,7 +109,7 @@ export default function DashboardPage() {
     userRole === "member";
   const isAllShops = !selectedShopId && isOwner;
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     if (!authUser || !authUser.tenantId) {
       setLoading(false);
       return;
@@ -159,18 +168,18 @@ export default function DashboardPage() {
       }
 
       if (Array.isArray(breakdownRes)) {
-        setShopBreakdown(breakdownRes);
+        setShopBreakdown(breakdownRes as ShopBreakdownItem[]);
       }
     } catch (error) {
       console.error("Dashboard Fetch Error:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [authUser, selectedShopId, isOwner, userRole, isAllShops]);
 
   useEffect(() => {
     fetchDashboard();
-  }, [selectedShopId, authUser?.id]);
+  }, [fetchDashboard]);
 
   // Memoize chart colors to prevent recreation on every render
   const COLORS = useMemo(
@@ -217,7 +226,7 @@ export default function DashboardPage() {
                 className="appearance-none bg-background border border-border rounded-lg px-4 py-2 pr-10 text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer hover:border-primary/50"
               >
                 <option value="">All Shops (Combined)</option>
-                {shops.map((shop: any) => (
+                {shops.map((shop: Shop) => (
                   <option key={shop.id} value={shop.id}>
                     {shop.name}
                   </option>

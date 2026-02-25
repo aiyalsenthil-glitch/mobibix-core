@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,11 +23,9 @@ import {
   getNegativeStockReport,
   type NegativeStockItem,
 } from "@/services/stock.api";
-import { useShop } from "@/context/ShopContext";
 
 export default function NegativeStockReportPage() {
   const router = useRouter();
-  const { selectedShopId } = useShop();
   const [items, setItems] = useState<NegativeStockItem[]>([]);
   const [uniqueShops, setUniqueShops] = useState<
     Array<{ id: string; name: string }>
@@ -38,11 +36,7 @@ export default function NegativeStockReportPage() {
   const [error, setError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
-    loadReport();
-  }, [selectedShop, retryCount]);
-
-  const loadReport = async () => {
+  const loadReport = useCallback(async () => {
     try {
       setIsLoading(true);
       setError("");
@@ -74,7 +68,11 @@ export default function NegativeStockReportPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedShop]);
+
+  useEffect(() => {
+    loadReport();
+  }, [loadReport, retryCount]);
 
   const handleRetry = () => {
     setRetryCount((prev) => prev + 1);

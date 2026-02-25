@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import {
   listCustomersPaginated,
   deleteCustomer,
@@ -18,7 +17,6 @@ import { CustomerLoyaltyBalance } from "./CustomerLoyaltyBalance";
 const PAGE_SIZE = 50;
 
 export default function CustomersPage() {
-  const router = useRouter();
   const { theme } = useTheme();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,7 +29,6 @@ export default function CustomersPage() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
   const [totalCustomers, setTotalCustomers] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
 
   // CRM Modals State
   const [timelineCustomerId, setTimelineCustomerId] = useState<string | null>(
@@ -66,12 +63,8 @@ export default function CustomersPage() {
 
       setCustomers(response.data);
       setTotalCustomers(response.total);
-      setHasMore(
-        response.data.length === PAGE_SIZE &&
-          (page + 1) * PAGE_SIZE < response.total,
-      );
-    } catch (err: any) {
-      setError(err.message || "Failed to load customers");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load customers");
     } finally {
       setIsLoading(false);
     }
@@ -98,8 +91,8 @@ export default function CustomersPage() {
       await deleteCustomer(customer.id);
       // Reload current page
       loadCustomers(currentPage, debouncedSearch);
-    } catch (err: any) {
-      alert(err.message || "Failed to delete customer");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to delete customer");
     }
   };
 

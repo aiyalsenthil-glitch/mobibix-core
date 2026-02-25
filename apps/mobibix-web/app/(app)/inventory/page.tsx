@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import type { ReactNode } from "react";
 import {
   listProducts,
   type ShopProduct,
@@ -24,10 +25,8 @@ import {
   AlertTriangle, 
   DollarSign, 
   Plus, 
-  Filter, 
   Store,
-  Box,
-  TrendingDown
+  Box
 } from "lucide-react";
 
 export default function InventoryPage() {
@@ -77,9 +76,11 @@ export default function InventoryPage() {
         const data = await listProducts(selectedShopId);
         const productList = Array.isArray(data) ? data : data.data;
         setProducts(productList);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to fetch products:", err);
-        setError(err.message || "Failed to load inventory");
+        setError(
+          err instanceof Error ? err.message : "Failed to load inventory",
+        );
       } finally {
         setIsLoading(false);
       }
@@ -266,7 +267,7 @@ export default function InventoryPage() {
                    <TableRow>
                       <TableCell colSpan={6} className="h-32 text-center">
                          <p className={isDark ? "text-gray-400" : "text-gray-500"}>
-                            No products match "{searchQuery}"
+                            No products match &quot;{searchQuery}&quot;
                          </p>
                       </TableCell>
                    </TableRow>
@@ -426,7 +427,15 @@ export default function InventoryPage() {
 
 // Helper Components
 
-function StatCard({ title, value, icon, theme, isWarning }: any) {
+type StatCardProps = {
+  title: string;
+  value: string | number;
+  icon: ReactNode;
+  theme: string;
+  isWarning?: boolean;
+};
+
+function StatCard({ title, value, icon, theme, isWarning }: StatCardProps) {
    const isDark = theme === "dark";
    return (
      <div className={`p-5 rounded-xl border shadow-sm flex items-center gap-4 transition-transform hover:scale-[1.01] ${
