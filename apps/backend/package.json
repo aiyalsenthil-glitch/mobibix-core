@@ -91,6 +91,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^22.19.2",
     "@types/p-limit": "^2.1.0",
+    "@types/react": "^19.2.14",
     "@types/supertest": "^6.0.2",
     "dotenv-cli": "^11.0.0",
     "eslint": "^10.0.2",
