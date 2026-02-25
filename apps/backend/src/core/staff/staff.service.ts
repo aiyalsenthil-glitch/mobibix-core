@@ -20,7 +20,7 @@ import { JwtService } from '@nestjs/jwt';
 export class StaffService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
   ) {}
 
   // 🔒 Ensure plan allows staff management (PLUS / PRO)
@@ -132,21 +132,21 @@ export class StaffService {
   // ✅ Accept invite
   async acceptInvite(userId: string, targetToken: string) {
     const invite = await this.prisma.staffInvite.findUnique({
-      where: { id: targetToken }
+      where: { id: targetToken },
     });
 
     if (!invite || invite.accepted) {
       throw new BadRequestException('Invalid or expired invite');
     }
 
-    const shopStaffCreations = (invite.shopIds || []).map((shopId: string) => 
+    const shopStaffCreations = (invite.shopIds || []).map((shopId: string) =>
       this.prisma.shopStaff.upsert({
         where: {
           userId_tenantId_shopId: {
             userId,
             tenantId: invite.tenantId,
             shopId: shopId,
-          }
+          },
         },
         update: {
           roleId: invite.roleId || null,
@@ -158,8 +158,8 @@ export class StaffService {
           shopId: shopId,
           roleId: invite.roleId || null,
           role: UserRole.STAFF,
-        }
-      })
+        },
+      }),
     );
 
     const ut = await this.prisma.$transaction(async (tx) => {
@@ -318,7 +318,7 @@ export class StaffService {
     }
 
     // allow re-invite if user exists but has no tenant
-    const sanitizedRoleId = roleId === "" ? null : roleId;
+    const sanitizedRoleId = roleId === '' ? null : roleId;
 
     await this.prisma.staffInvite.upsert({
       where: {

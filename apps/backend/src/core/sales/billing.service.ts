@@ -281,9 +281,12 @@ export class BillingService {
           note: `Invoice ${invoiceNumber}`,
         }));
 
-        const stockRefType = options.referenceType === 'JOB' ? 'REPAIR' : 'SALE';
+        const stockRefType =
+          options.referenceType === 'JOB' ? 'REPAIR' : 'SALE';
         const stockRefId =
-          options.referenceType === 'JOB' ? (options.referenceId as string) : invoice.id;
+          options.referenceType === 'JOB'
+            ? (options.referenceId as string)
+            : invoice.id;
 
         await this.stockService.recordStockOutBatch(
           tenantId,

@@ -1,4 +1,3 @@
-
 import { Catch, ArgumentsHost, HttpException, Logger } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
 import * as Sentry from '@sentry/node';
@@ -9,9 +8,7 @@ export class SentryFilter extends BaseExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost) {
     const httpStatus =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : 500;
+      exception instanceof HttpException ? exception.getStatus() : 500;
 
     // Only report 500s or non-HTTP errors to Sentry
     if (httpStatus >= 500) {

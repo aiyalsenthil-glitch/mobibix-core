@@ -1,5 +1,16 @@
-
-import { Tenant, User, Party, Member, Invoice, Payment, JobCard, StaffInvite, Plan, TenantSubscription, BillingCycle } from '@prisma/client';
+import {
+  Tenant,
+  User,
+  Party,
+  Member,
+  Invoice,
+  Payment,
+  JobCard,
+  StaffInvite,
+  Plan,
+  TenantSubscription,
+  BillingCycle,
+} from '@prisma/client';
 
 export type ModuleType = 'GYM' | 'MOBILE_SHOP';
 
@@ -18,7 +29,7 @@ export class TenantWelcomeEvent implements BaseEmailEvent {
     public module: ModuleType,
     public timestamp: Date,
     public user: User,
-    public tenant: Tenant
+    public tenant: Tenant,
   ) {}
 }
 
@@ -27,7 +38,7 @@ export class SubscriptionTrialStartedEvent implements BaseEmailEvent {
     public tenantId: string,
     public module: ModuleType,
     public timestamp: Date,
-    public subscription: TenantSubscription
+    public subscription: TenantSubscription,
   ) {}
 }
 
@@ -37,7 +48,7 @@ export class SubscriptionTrialExpiringEvent implements BaseEmailEvent {
     public module: ModuleType,
     public timestamp: Date,
     public subscription: TenantSubscription,
-    public daysLeft: number
+    public daysLeft: number,
   ) {}
 }
 
@@ -46,7 +57,7 @@ export class SubscriptionTrialExpiredEvent implements BaseEmailEvent {
     public tenantId: string,
     public module: ModuleType,
     public timestamp: Date,
-    public subscription: TenantSubscription
+    public subscription: TenantSubscription,
   ) {}
 }
 
@@ -56,7 +67,7 @@ export class SubscriptionUpgradedEvent implements BaseEmailEvent {
     public module: ModuleType,
     public timestamp: Date,
     public oldPlan: Plan,
-    public newPlan: Plan
+    public newPlan: Plan,
   ) {}
 }
 
@@ -66,7 +77,7 @@ export class PaymentSuccessEvent implements BaseEmailEvent {
     public module: ModuleType,
     public timestamp: Date,
     public payment: Payment,
-    public billingType: string // 'MANUAL' | 'AUTOPAY'
+    public billingType: string, // 'MANUAL' | 'AUTOPAY'
   ) {}
 }
 
@@ -77,7 +88,7 @@ export class PaymentFailedEvent implements BaseEmailEvent {
     public timestamp: Date,
     public payment: Payment,
     public retryCount: number,
-    public nextRetry: Date | null
+    public nextRetry: Date | null,
   ) {}
 }
 
@@ -90,7 +101,7 @@ export class StaffInvitedEvent implements BaseEmailEvent {
     public module: ModuleType,
     public timestamp: Date,
     public invite: StaffInvite,
-    public token: string
+    public token: string,
   ) {}
 }
 
@@ -104,7 +115,7 @@ export class CustomerInvoiceGeneratedEvent implements BaseEmailEvent {
     public timestamp: Date,
     public invoice: Invoice, // Using existing Invoice model, assume mapped later
     public customer: Party,
-    public pdfUrl?: string
+    public pdfUrl?: string,
   ) {}
 }
 
@@ -114,6 +125,6 @@ export class MemberExpiringEvent implements BaseEmailEvent {
     public module: ModuleType,
     public timestamp: Date,
     public member: Member,
-    public expiryDate: Date
+    public expiryDate: Date,
   ) {}
 }

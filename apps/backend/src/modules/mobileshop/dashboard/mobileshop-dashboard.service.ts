@@ -20,7 +20,7 @@ export class MobileShopDashboardService {
     // 🔴 CHECK CACHE FIRST
     const cacheVersion = process.env.CACHE_VERSION || '1';
     const cacheKey = `v${cacheVersion}:dashboard:owner:${tenantId}:${shopId || 'all'}`;
-    
+
     if (!skipCache) {
       const cached = await this.cacheManager.get<any>(cacheKey);
       if (cached) {
@@ -138,24 +138,28 @@ export class MobileShopDashboardService {
       }),
       // 📱 VALUE SNAPSHOT: WhatsApp Stats
       this.prisma.whatsAppLog.count({
-        where: { tenantId, sentAt: { gte: monthStart } }
+        where: { tenantId, sentAt: { gte: monthStart } },
       }),
       this.prisma.whatsAppLog.count({
-        where: { tenantId, sentAt: { gte: monthStart }, status: 'DELIVERED' }
+        where: { tenantId, sentAt: { gte: monthStart }, status: 'DELIVERED' },
       }),
       // 💳 VALUE SNAPSHOT: Collection Rate (Invoices Paid vs Total this month)
       this.prisma.invoice.aggregate({
-        where: { tenantId, shopId: { in: shopIds }, createdAt: { gte: monthStart } },
-        _sum: { totalAmount: true }
+        where: {
+          tenantId,
+          shopId: { in: shopIds },
+          createdAt: { gte: monthStart },
+        },
+        _sum: { totalAmount: true },
       }),
       this.prisma.invoice.aggregate({
-        where: { 
-          tenantId, 
-          shopId: { in: shopIds }, 
+        where: {
+          tenantId,
+          shopId: { in: shopIds },
           createdAt: { gte: monthStart },
-          status: 'PAID'
+          status: 'PAID',
         },
-        _sum: { totalAmount: true }
+        _sum: { totalAmount: true },
       }),
       // 🔧 VALUE SNAPSHOT: Repair Turnaround (Avg days RECEIVED -> DELIVERED)
       this.prisma.jobCard.findMany({
@@ -163,25 +167,30 @@ export class MobileShopDashboardService {
           tenantId,
           shopId: { in: shopIds },
           status: 'DELIVERED',
-          updatedAt: { gte: monthStart }
+          updatedAt: { gte: monthStart },
         },
-        select: { createdAt: true, updatedAt: true }
+        select: { createdAt: true, updatedAt: true },
       }),
       // 📊 TRENDS: Last Month Sales
       this.prisma.invoice.aggregate({
-        where: { 
-          tenantId, 
-          shopId: { in: shopIds }, 
-          createdAt: { 
-            gte: new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1),
-            lt: monthStart
-          } 
+        where: {
+          tenantId,
+          shopId: { in: shopIds },
+          createdAt: {
+            gte: new Date(
+              monthStart.getFullYear(),
+              monthStart.getMonth() - 1,
+              1,
+            ),
+            lt: monthStart,
+          },
         },
-        _sum: { totalAmount: true }
+        _sum: { totalAmount: true },
       }),
     ]);
 
-    const lastMonthSalesAmount = (lastMonthSalesAgg._sum?.totalAmount ?? 0) / 100;
+    const lastMonthSalesAmount =
+      (lastMonthSalesAgg._sum?.totalAmount ?? 0) / 100;
 
     // 📱 WHATSAPP RECOVERY: Correlation (Invoice within 48h of WhatsApp)
     const thisMonthInvoices = await this.prisma.invoice.findMany({
@@ -189,29 +198,32 @@ export class MobileShopDashboardService {
         tenantId,
         shopId: { in: shopIds },
         createdAt: { gte: monthStart },
-        status: 'PAID'
+        status: 'PAID',
       },
-      select: { totalAmount: true, customerId: true, createdAt: true }
+      select: { totalAmount: true, customerId: true, createdAt: true },
     });
 
     // Fetch relevant WhatsApp logs once
     const whatsappLogs = await this.prisma.whatsAppLog.findMany({
       where: {
         tenantId,
-        sentAt: { gte: new Date(monthStart.getTime() - 48 * 60 * 60 * 1000) }
+        sentAt: { gte: new Date(monthStart.getTime() - 48 * 60 * 60 * 1000) },
       },
-      select: { customerId: true, sentAt: true }
+      select: { customerId: true, sentAt: true },
     });
 
     let whatsappRecoveryAmount = 0;
     for (const inv of thisMonthInvoices) {
       if (!inv.customerId) continue;
-      
-      const windowStart = new Date(inv.createdAt.getTime() - 48 * 60 * 60 * 1000);
-      const reminder = whatsappLogs.find(log => 
-        log.customerId === inv.customerId &&
-        log.sentAt >= windowStart &&
-        log.sentAt <= inv.createdAt
+
+      const windowStart = new Date(
+        inv.createdAt.getTime() - 48 * 60 * 60 * 1000,
+      );
+      const reminder = whatsappLogs.find(
+        (log) =>
+          log.customerId === inv.customerId &&
+          log.sentAt >= windowStart &&
+          log.sentAt <= inv.createdAt,
       );
 
       if (reminder) {
@@ -223,19 +235,24 @@ export class MobileShopDashboardService {
     const whatsappSent = whatsappSentCount;
     const whatsappDelivered = whatsappDeliveredCount;
 
-    const totalInvAmount = (monthSalesAgg._sum?.totalAmount ?? 0);
-    const paidInvAmount = (paidSalesAgg._sum?.totalAmount ?? 0);
-    const collectionRate = totalInvAmount > 0 
-      ? Math.round((paidInvAmount / totalInvAmount) * 100) 
-      : 100;
+    const totalInvAmount = monthSalesAgg._sum?.totalAmount ?? 0;
+    const paidInvAmount = paidSalesAgg._sum?.totalAmount ?? 0;
+    const collectionRate =
+      totalInvAmount > 0
+        ? Math.round((paidInvAmount / totalInvAmount) * 100)
+        : 100;
 
-    const turnaroundDaysArr = repairDocs.map(r => {
+    const turnaroundDaysArr = repairDocs.map((r) => {
       const diff = r.updatedAt.getTime() - r.createdAt.getTime();
       return diff / (1000 * 60 * 60 * 24);
     });
-    const repairTurnaroundDays = turnaroundDaysArr.length > 0
-      ? (turnaroundDaysArr.reduce((a, b) => a + b, 0) / turnaroundDaysArr.length).toFixed(1)
-      : "0";
+    const repairTurnaroundDays =
+      turnaroundDaysArr.length > 0
+        ? (
+            turnaroundDaysArr.reduce((a, b) => a + b, 0) /
+            turnaroundDaysArr.length
+          ).toFixed(1)
+        : '0';
 
     // Parse repair pipeline from groupBy result
     const jobCardMap = new Map(

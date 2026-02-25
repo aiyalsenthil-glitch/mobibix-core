@@ -331,7 +331,10 @@ export class MembersService {
   // MEMBERSHIP RENEWAL DUE
   // (expired + overdue)
   // ===============================
-  async listMembershipsDue(tenantId: string, options?: { skip?: number; take?: number }) {
+  async listMembershipsDue(
+    tenantId: string,
+    options?: { skip?: number; take?: number },
+  ) {
     const endToday = endOfDay(new Date());
     return this.prisma.member.findMany({
       where: {
@@ -397,7 +400,10 @@ export class MembersService {
     };
   }
 
-  async getPaymentDueMembers(tenantId: string, options?: { skip?: number; take?: number }) {
+  async getPaymentDueMembers(
+    tenantId: string,
+    options?: { skip?: number; take?: number },
+  ) {
     const members = await this.prisma.member.findMany({
       where: {
         tenantId,

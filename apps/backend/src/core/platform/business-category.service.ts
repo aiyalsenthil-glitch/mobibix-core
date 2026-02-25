@@ -18,7 +18,12 @@ export class BusinessCategoryService {
     });
   }
 
-  async create(data: { name: string; description?: string; isComingSoon?: boolean; sortOrder?: number }) {
+  async create(data: {
+    name: string;
+    description?: string;
+    isComingSoon?: boolean;
+    sortOrder?: number;
+  }) {
     return this.prisma.businessCategory.create({
       data: {
         name: data.name,
@@ -30,7 +35,16 @@ export class BusinessCategoryService {
     });
   }
 
-  async update(id: string, data: { name?: string; description?: string; isComingSoon?: boolean; isActive?: boolean; sortOrder?: number }) {
+  async update(
+    id: string,
+    data: {
+      name?: string;
+      description?: string;
+      isComingSoon?: boolean;
+      isActive?: boolean;
+      sortOrder?: number;
+    },
+  ) {
     return this.prisma.businessCategory.update({
       where: { id },
       data,

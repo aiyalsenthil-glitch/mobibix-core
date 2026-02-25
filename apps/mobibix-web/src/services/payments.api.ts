@@ -72,3 +72,49 @@ export async function bypassPayment(planId: string, billingCycle: string): Promi
 }
 
 
+export interface PaymentRecord {
+  id: string;
+  tenantId: string;
+  planId: string;
+  plan?: { name: string; code: string };
+  amount: number;
+  currency: string;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED';
+  provider: string;
+  providerOrderId?: string;
+  providerPaymentId?: string;
+  billingCycle?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Get payment history for current tenant
+ */
+export async function getPaymentHistory(): Promise<PaymentRecord[]> {
+  const response = await authenticatedFetch("/billing/payments/history");
+
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error(error.message || "Failed to fetch payment history");
+  }
+
+  const data = await extractData(response);
+  return Array.isArray(data) ? data : data.data || [];
+}
+
+/**
+ * Retry a failed payment
+ */
+export async function retryPayment(paymentId: string): Promise<any> {
+  const response = await authenticatedFetch(`/billing/payments/${paymentId}/retry`, {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error(error.message || "Failed to retry payment");
+  }
+
+  return extractData(response);
+}

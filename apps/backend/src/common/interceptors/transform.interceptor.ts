@@ -19,9 +19,10 @@ export interface Response<T> {
  * Wraps results in: { success: true, data: ..., timestamp: ..., path: ... }
  */
 @Injectable()
-export class TransformInterceptor<T>
-  implements NestInterceptor<T, Response<T>>
-{
+export class TransformInterceptor<T> implements NestInterceptor<
+  T,
+  Response<T>
+> {
   intercept(
     context: ExecutionContext,
     next: CallHandler,
@@ -59,11 +60,6 @@ export class TransformInterceptor<T>
           );
         });
 
-        // 🔍 DEBUG LOG
-        if (isSkipRoute || path.includes('shops')) {
-           console.log(`[TransformInterceptor] Path: ${path}, Skip: ${isSkipRoute}`);
-        }
-
         if (isSkipRoute) {
           return data;
         }
@@ -76,7 +72,7 @@ export class TransformInterceptor<T>
           data === undefined ||
           (typeof data === 'object' &&
             ((data.success !== undefined && data.data !== undefined) ||
-             (data.status === 'error')))
+              data.status === 'error'))
         ) {
           return data;
         }

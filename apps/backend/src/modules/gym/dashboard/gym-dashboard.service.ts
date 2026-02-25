@@ -96,7 +96,10 @@ export class GymDashboardService {
     const whatsappLogs = await this.prisma.whatsAppLog.findMany({
       where: {
         tenantId,
-        sentAt: { gte: new Date(startOfMonth.getTime() - 48 * 60 * 60 * 1000), lt: startOfNextMonth },
+        sentAt: {
+          gte: new Date(startOfMonth.getTime() - 48 * 60 * 60 * 1000),
+          lt: startOfNextMonth,
+        },
       },
       select: { memberId: true, sentAt: true },
     });
@@ -104,12 +107,15 @@ export class GymDashboardService {
     let whatsappRecoveryAmount = 0;
     for (const payment of thisMonthPayments) {
       if (!payment.memberId) continue;
-      
-      const windowStart = new Date(payment.createdAt.getTime() - 48 * 60 * 60 * 1000);
-      const reminder = whatsappLogs.find(log => 
-        log.memberId === payment.memberId && 
-        log.sentAt >= windowStart && 
-        log.sentAt <= payment.createdAt
+
+      const windowStart = new Date(
+        payment.createdAt.getTime() - 48 * 60 * 60 * 1000,
+      );
+      const reminder = whatsappLogs.find(
+        (log) =>
+          log.memberId === payment.memberId &&
+          log.sentAt >= windowStart &&
+          log.sentAt <= payment.createdAt,
       );
 
       if (reminder) {
@@ -132,20 +138,24 @@ export class GymDashboardService {
     });
     const expectedThisMonth = expectedRevenueAgg?._sum?.feeAmount ?? 0;
     const totalExpected = expectedThisMonth + monthlyRevenue;
-    const collectionEfficiency = totalExpected > 0 
-      ? Math.round((monthlyRevenue / totalExpected) * 100) 
-      : 100;
+    const collectionEfficiency =
+      totalExpected > 0
+        ? Math.round((monthlyRevenue / totalExpected) * 100)
+        : 100;
 
     // 📱 WHATSAPP STATS
     const [whatsappSent, whatsappDelivered] = await Promise.all([
       this.prisma.whatsAppLog.count({
-        where: { tenantId, sentAt: { gte: startOfMonth, lt: startOfNextMonth } },
+        where: {
+          tenantId,
+          sentAt: { gte: startOfMonth, lt: startOfNextMonth },
+        },
       }),
       this.prisma.whatsAppLog.count({
-        where: { 
-          tenantId, 
+        where: {
+          tenantId,
           sentAt: { gte: startOfMonth, lt: startOfNextMonth },
-          status: 'DELIVERED' 
+          status: 'DELIVERED',
         },
       }),
     ]);
@@ -153,18 +163,26 @@ export class GymDashboardService {
     // 🏋️ ATTENDANCE TREND (This Month Avg vs Last Month Avg)
     const [thisMonthCheckins, lastMonthCheckins] = await Promise.all([
       this.prisma.gymAttendance.count({
-        where: { tenantId, createdAt: { gte: startOfMonth, lt: startOfNextMonth } }
+        where: {
+          tenantId,
+          createdAt: { gte: startOfMonth, lt: startOfNextMonth },
+        },
       }),
       this.prisma.gymAttendance.count({
-        where: { tenantId, createdAt: { gte: lastMonthStart, lt: startOfMonth } }
-      })
+        where: {
+          tenantId,
+          createdAt: { gte: lastMonthStart, lt: startOfMonth },
+        },
+      }),
     ]);
 
-    const daysInMonth = new Date().getDate(); 
+    const daysInMonth = new Date().getDate();
     const daysInLastMonth = 30; // Approximation
 
     const attendanceAvg = Math.round(thisMonthCheckins / (daysInMonth || 1));
-    const lastMonthAttendanceAvg = Math.round(lastMonthCheckins / daysInLastMonth);
+    const lastMonthAttendanceAvg = Math.round(
+      lastMonthCheckins / daysInLastMonth,
+    );
 
     return {
       totalMembers,

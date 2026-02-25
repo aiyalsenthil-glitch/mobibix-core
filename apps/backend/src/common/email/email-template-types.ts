@@ -25,30 +25,111 @@ export type EmailTemplateType =
 export interface EmailTemplateProps {
   // Tenant
   TENANT_WELCOME: { tenantName: string; link: string };
-  TRIAL_STARTED: { name: string; planName: string; trialEndDate: string; dashboardLink: string };
+  TRIAL_STARTED: {
+    name: string;
+    planName: string;
+    trialEndDate: string;
+    dashboardLink: string;
+  };
   TRIAL_EXPIRING: { name: string; trialEndDate: string; upgradeLink: string };
   TRIAL_EXPIRED: { name: string; planName: string; upgradeLink: string };
-  PLAN_UPGRADED: { name: string; newPlanName: string; effectiveDate: string; dashboardLink: string };
-  PLAN_DOWNGRADED: { name: string; newPlanName: string; effectiveDate: string; dashboardLink: string };
-  SUBSCRIPTION_ACTIVATED: { name: string; planName: string; nextBillingDate: string; dashboardLink: string };
+  PLAN_UPGRADED: {
+    name: string;
+    newPlanName: string;
+    effectiveDate: string;
+    dashboardLink: string;
+  };
+  PLAN_DOWNGRADED: {
+    name: string;
+    newPlanName: string;
+    effectiveDate: string;
+    dashboardLink: string;
+  };
+  SUBSCRIPTION_ACTIVATED: {
+    name: string;
+    planName: string;
+    nextBillingDate: string;
+    dashboardLink: string;
+  };
   SUBSCRIPTION_HALTED: { name: string; billingLink: string };
-  PAYMENT_SUCCESS: { name: string; amount: string; date: string; invoiceLink: string };
-  PAYMENT_FAILED: { tenantName: string; planName: string; retryCount: number; payLink: string };
-  
+  PAYMENT_SUCCESS: {
+    name: string;
+    amount: string;
+    date: string;
+    invoiceLink: string;
+  };
+  PAYMENT_FAILED: {
+    tenantName: string;
+    planName: string;
+    retryCount: number;
+    payLink: string;
+  };
+
   // Staff
-  STAFF_INVITED: { staffName: string; inviterName: string; role: string; inviteLink: string };
-  
+  STAFF_INVITED: {
+    staffName: string;
+    inviterName: string;
+    role: string;
+    inviteLink: string;
+  };
+
   // Member
-  MEMBER_EXPIRING: { name: string; gymName: string; expiryDate: string; renewLink: string };
-  MEMBERSHIP_EXPIRED: { memberName: string; gymName: string; renewalLink: string };
-  MEMBERSHIP_RENEWAL_SUCCESS: { memberName: string; gymName: string; expiryDate: string; renewalLink: string };
-  
+  MEMBER_EXPIRING: {
+    name: string;
+    gymName: string;
+    expiryDate: string;
+    renewLink: string;
+  };
+  MEMBERSHIP_EXPIRED: {
+    memberName: string;
+    gymName: string;
+    renewalLink: string;
+  };
+  MEMBERSHIP_RENEWAL_SUCCESS: {
+    memberName: string;
+    gymName: string;
+    expiryDate: string;
+    renewalLink: string;
+  };
+
   // Customer
-  INVOICE_GENERATED: { customerName: string; invoiceNumber: string; amount: string; storeName: string; invoiceDate: string; viewLink: string };
-  PAYMENT_RECEIPT: { customerName: string; receiptNumber: string; amount: string; date: string; storeName: string; viewLink: string };
-  JOBCARD_CREATED: { customerName: string; jobcardNumber: string; storeName: string; trackingLink: string };
-  JOBCARD_STATUS_UPDATED: { customerName: string; jobcardNumber: string; newStatus: string; storeName: string; trackingLink: string };
-  JOBCARD_COMPLETED: { customerName: string; jobcardNumber: string; deviceName: string; cost: string; storeName: string; trackingLink: string };
+  INVOICE_GENERATED: {
+    customerName: string;
+    invoiceNumber: string;
+    amount: string;
+    storeName: string;
+    invoiceDate: string;
+    viewLink: string;
+  };
+  PAYMENT_RECEIPT: {
+    customerName: string;
+    receiptNumber: string;
+    amount: string;
+    date: string;
+    storeName: string;
+    viewLink: string;
+  };
+  JOBCARD_CREATED: {
+    customerName: string;
+    jobcardNumber: string;
+    storeName: string;
+    trackingLink: string;
+  };
+  JOBCARD_STATUS_UPDATED: {
+    customerName: string;
+    jobcardNumber: string;
+    newStatus: string;
+    storeName: string;
+    trackingLink: string;
+  };
+  JOBCARD_COMPLETED: {
+    customerName: string;
+    jobcardNumber: string;
+    deviceName: string;
+    cost: string;
+    storeName: string;
+    trackingLink: string;
+  };
 
   // System Auth
   EMAIL_VERIFICATION: { name: string; verificationLink: string };

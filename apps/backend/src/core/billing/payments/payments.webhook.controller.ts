@@ -69,141 +69,141 @@ export class PaymentsWebhookController {
       });
 
       try {
-      if (event === 'payment.captured') {
-        const REMOVED_PAYMENT_INFRAPayment = payload.payload.payment.entity;
+        if (event === 'payment.captured') {
+          const REMOVED_PAYMENT_INFRAPayment = payload.payload.payment.entity;
 
-        // 1️⃣ Find payment record with tenantId filter
-        const paymentRecord = await this.prisma.payment.findFirst({
-          where: {
-            provider: 'RAZORPAY',
-            providerOrderId: REMOVED_PAYMENT_INFRAPayment.order_id,
-            // ✅ DEFENSIVE: Verify tenant exists (added for cross-tenant security)
-            // This ensures payment.tenantId is valid before activation
-          },
-          select: {
-            id: true,
-            tenantId: true,
-            status: true,
-            planId: true,
-            billingCycle: true,
-            expiresAt: true, // ✅ ADD FIELD FOR EXPIRY CHECK
-          },
-        });
+          // 1️⃣ Find payment record with tenantId filter
+          const paymentRecord = await this.prisma.payment.findFirst({
+            where: {
+              provider: 'RAZORPAY',
+              providerOrderId: REMOVED_PAYMENT_INFRAPayment.order_id,
+              // ✅ DEFENSIVE: Verify tenant exists (added for cross-tenant security)
+              // This ensures payment.tenantId is valid before activation
+            },
+            select: {
+              id: true,
+              tenantId: true,
+              status: true,
+              planId: true,
+              billingCycle: true,
+              expiresAt: true, // ✅ ADD FIELD FOR EXPIRY CHECK
+            },
+          });
 
-        if (!paymentRecord) {
-          this.logger.warn(
-            `[WEBHOOK] Payment not found or possible cross-tenant mismatch: ${REMOVED_PAYMENT_INFRAPayment.order_id}`,
-          );
-          return { received: true, status: 'rejected' };
-        }
+          if (!paymentRecord) {
+            this.logger.warn(
+              `[WEBHOOK] Payment not found or possible cross-tenant mismatch: ${REMOVED_PAYMENT_INFRAPayment.order_id}`,
+            );
+            return { received: true, status: 'rejected' };
+          }
 
-        // ✅ DEFENSIVE: Verify tenant exists before activation
-        const tenant = await this.prisma.tenant.findUnique({
-          where: { id: paymentRecord.tenantId },
-          select: { id: true, code: true },
-        });
+          // ✅ DEFENSIVE: Verify tenant exists before activation
+          const tenant = await this.prisma.tenant.findUnique({
+            where: { id: paymentRecord.tenantId },
+            select: { id: true, code: true },
+          });
 
-        if (!tenant) {
-          this.logger.error(
-            `[WEBHOOK] Tenant missing for payment ${paymentRecord.id}. Blocking activation.`,
-          );
-          await this.paymentActivationService.failPayment(
-            paymentRecord.id,
-            'Tenant not found',
-          );
-          return { received: true, status: 'rejected' };
-        }
-
-        // ✅ Check if order expired
-        if (paymentRecord.expiresAt && new Date() > paymentRecord.expiresAt) {
-          this.logger.warn(
-            `[WEBHOOK] Payment ${paymentRecord.id} expired (${paymentRecord.expiresAt})`,
-          );
-
-          // Mark as FAILED due to late payment
-          await this.paymentActivationService.failPayment(
-            paymentRecord.id,
-            'Payment expired',
-          );
-
-          return {
-            received: true,
-            status: 'rejected',
-            reason: 'Payment received after order expiry',
-          };
-        }
-
-        // 2️⃣ Idempotency: if already processed, skip
-        if (paymentRecord.status === PaymentStatus.SUCCESS) {
-          this.logger.log(`Payment already processed: ${paymentRecord.id}`);
-          return { received: true };
-        }
-
-        // 3️⃣ Store Razorpay provider metadata (activation service will set status=SUCCESS)
-        await this.prisma.payment.update({
-          where: { id: paymentRecord.id },
-          data: {
-            providerPaymentId: REMOVED_PAYMENT_INFRAPayment.id,
-            amount: REMOVED_PAYMENT_INFRAPayment.amount / 100,
-            currency: REMOVED_PAYMENT_INFRAPayment.currency,
-          },
-        });
-
-        // 4️⃣ ✅ Use unified activation service (idempotent)
-        try {
-          const result =
-            await this.paymentActivationService.activateSubscriptionFromPayment(
+          if (!tenant) {
+            this.logger.error(
+              `[WEBHOOK] Tenant missing for payment ${paymentRecord.id}. Blocking activation.`,
+            );
+            await this.paymentActivationService.failPayment(
               paymentRecord.id,
+              'Tenant not found',
+            );
+            return { received: true, status: 'rejected' };
+          }
+
+          // ✅ Check if order expired
+          if (paymentRecord.expiresAt && new Date() > paymentRecord.expiresAt) {
+            this.logger.warn(
+              `[WEBHOOK] Payment ${paymentRecord.id} expired (${paymentRecord.expiresAt})`,
             );
 
-          this.logger.log(
-            `[WEBHOOK] ✅ Activation complete: Payment ${paymentRecord.id}, status=${result.status}`,
-          );
-        } catch (subscriptionErr) {
-          this.logger.error(
-            `[WEBHOOK] ❌ Activation failed: ${paymentRecord.id}`,
-            subscriptionErr,
-          );
+            // Mark as FAILED due to late payment
+            await this.paymentActivationService.failPayment(
+              paymentRecord.id,
+              'Payment expired',
+            );
 
-          // Mark as failed via service
-          await this.paymentActivationService.failPayment(
-            paymentRecord.id,
-            `Activation error: ${(subscriptionErr as Error).message}`,
-          );
+            return {
+              received: true,
+              status: 'rejected',
+              reason: 'Payment received after order expiry',
+            };
+          }
 
-          // ⚠️ Webhook still returns 200 OK so Razorpay doesn't retry
-          // Payment is marked SUCCESS; subscription creation can be retried manually
-        }
-      } else if (event === 'payment.failed') {
-        const REMOVED_PAYMENT_INFRAPayment = payload.payload.payment.entity;
-        const failReason =
-          REMOVED_PAYMENT_INFRAPayment.error_description ||
-          REMOVED_PAYMENT_INFRAPayment.error_reason ||
-          'Payment Failed';
-        this.logger.warn(
-          `[WEBHOOK] ❌ Payment Failed: ${REMOVED_PAYMENT_INFRAPayment.order_id} - ${failReason}`,
-        );
+          // 2️⃣ Idempotency: if already processed, skip
+          if (paymentRecord.status === PaymentStatus.SUCCESS) {
+            this.logger.log(`Payment already processed: ${paymentRecord.id}`);
+            return { received: true };
+          }
 
-        // Find payment by order ID
-        const paymentRecord = await this.prisma.payment.findFirst({
-          where: {
-            provider: 'RAZORPAY',
-            providerOrderId: REMOVED_PAYMENT_INFRAPayment.order_id,
-          },
-          select: { id: true },
-        });
+          // 3️⃣ Store Razorpay provider metadata (activation service will set status=SUCCESS)
+          await this.prisma.payment.update({
+            where: { id: paymentRecord.id },
+            data: {
+              providerPaymentId: REMOVED_PAYMENT_INFRAPayment.id,
+              amount: REMOVED_PAYMENT_INFRAPayment.amount / 100,
+              currency: REMOVED_PAYMENT_INFRAPayment.currency,
+            },
+          });
 
-        if (paymentRecord) {
-          await this.paymentActivationService.failPayment(
-            paymentRecord.id,
-            failReason,
-          );
-        } else {
+          // 4️⃣ ✅ Use unified activation service (idempotent)
+          try {
+            const result =
+              await this.paymentActivationService.activateSubscriptionFromPayment(
+                paymentRecord.id,
+              );
+
+            this.logger.log(
+              `[WEBHOOK] ✅ Activation complete: Payment ${paymentRecord.id}, status=${result.status}`,
+            );
+          } catch (subscriptionErr) {
+            this.logger.error(
+              `[WEBHOOK] ❌ Activation failed: ${paymentRecord.id}`,
+              subscriptionErr,
+            );
+
+            // Mark as failed via service
+            await this.paymentActivationService.failPayment(
+              paymentRecord.id,
+              `Activation error: ${(subscriptionErr as Error).message}`,
+            );
+
+            // ⚠️ Webhook still returns 200 OK so Razorpay doesn't retry
+            // Payment is marked SUCCESS; subscription creation can be retried manually
+          }
+        } else if (event === 'payment.failed') {
+          const REMOVED_PAYMENT_INFRAPayment = payload.payload.payment.entity;
+          const failReason =
+            REMOVED_PAYMENT_INFRAPayment.error_description ||
+            REMOVED_PAYMENT_INFRAPayment.error_reason ||
+            'Payment Failed';
           this.logger.warn(
-            `[WEBHOOK] Failed payment not found in DB: ${REMOVED_PAYMENT_INFRAPayment.order_id}`,
+            `[WEBHOOK] ❌ Payment Failed: ${REMOVED_PAYMENT_INFRAPayment.order_id} - ${failReason}`,
           );
+
+          // Find payment by order ID
+          const paymentRecord = await this.prisma.payment.findFirst({
+            where: {
+              provider: 'RAZORPAY',
+              providerOrderId: REMOVED_PAYMENT_INFRAPayment.order_id,
+            },
+            select: { id: true },
+          });
+
+          if (paymentRecord) {
+            await this.paymentActivationService.failPayment(
+              paymentRecord.id,
+              failReason,
+            );
+          } else {
+            this.logger.warn(
+              `[WEBHOOK] Failed payment not found in DB: ${REMOVED_PAYMENT_INFRAPayment.order_id}`,
+            );
+          }
         }
-      }
 
         // Update log status to SUCCESS
         await this.prisma.webhookEvent.update({
@@ -222,9 +222,8 @@ export class PaymentsWebhookController {
           },
         });
       }
-      
-      return { received: true };
 
+      return { received: true };
     } catch (err) {
       this.logger.error('Critical webhook error', err);
       return { status: 'error' };

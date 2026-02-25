@@ -8,13 +8,13 @@ import { PaymentFailedEvent } from '../../../common/email/email.events';
 @Injectable()
 export class PaymentRetryService {
   private readonly logger = new Logger(PaymentRetryService.name);
-  
+
   // Dunning Schedule (in hours from initial failure)
   private readonly RETRY_SCHEDULE = [1, 24, 72]; // 1h, 1d, 3d
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -35,14 +35,18 @@ export class PaymentRetryService {
     }
 
     if (payment.status === PaymentStatus.SUCCESS) {
-      this.logger.log(`[RETRY] Payment ${paymentId} is already SUCCESS. Skipping retry.`);
+      this.logger.log(
+        `[RETRY] Payment ${paymentId} is already SUCCESS. Skipping retry.`,
+      );
       return;
     }
 
     const retryCount = payment.retries.length;
 
     if (retryCount >= this.RETRY_SCHEDULE.length) {
-      this.logger.log(`[RETRY] Max retries reached for payment ${paymentId}. Dunning complete.`);
+      this.logger.log(
+        `[RETRY] Max retries reached for payment ${paymentId}. Dunning complete.`,
+      );
       // Optional: Cancel subscription here if not already active?
       return;
     }
@@ -60,7 +64,9 @@ export class PaymentRetryService {
       },
     });
 
-    this.logger.log(`[RETRY] Scheduled retry #${retryCount + 1} for payment ${paymentId} at ${nextRetryTime.toISOString()}`);
+    this.logger.log(
+      `[RETRY] Scheduled retry #${retryCount + 1} for payment ${paymentId} at ${nextRetryTime.toISOString()}`,
+    );
   }
 
   /**
@@ -81,11 +87,13 @@ export class PaymentRetryService {
     });
 
     if (pendingRetries.length === 0) {
-        this.logger.log('[RETRY] No pending retries found.');
-        return;
+      this.logger.log('[RETRY] No pending retries found.');
+      return;
     }
 
-    this.logger.log(`[RETRY] Found ${pendingRetries.length} retries to process.`);
+    this.logger.log(
+      `[RETRY] Found ${pendingRetries.length} retries to process.`,
+    );
 
     for (const retry of pendingRetries) {
       try {
@@ -111,13 +119,15 @@ export class PaymentRetryService {
     });
 
     if (freshPayment?.status === PaymentStatus.SUCCESS) {
-      this.logger.log(`[RETRY] Payment ${payment.id} resolved by user. Marking retry CANCELLED.`);
+      this.logger.log(
+        `[RETRY] Payment ${payment.id} resolved by user. Marking retry CANCELLED.`,
+      );
       await this.prisma.paymentRetry.update({
         where: { id: retry.id },
         data: {
-            status: PaymentRetryStatus.CANCELLED,
-            executedAt: new Date(),
-            failureReason: 'Payment already successful'
+          status: PaymentRetryStatus.CANCELLED,
+          executedAt: new Date(),
+          failureReason: 'Payment already successful',
         },
       });
       return;
@@ -126,31 +136,38 @@ export class PaymentRetryService {
     // 2. Perform Dunning Action (Email)
     // Fetch tenant to know module type and email
     const tenant = await this.prisma.tenant.findUnique({
-        where: { id: payment.tenantId },
-        include: { users: { where: { role: 'OWNER' } } }
+      where: { id: payment.tenantId },
+      include: { users: { where: { role: 'OWNER' } } },
     });
 
     if (tenant && tenant.users[0]?.email) {
-        const module = tenant.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
-        
-        // Calculate next retry time for display
-        const nextRetryDelay = this.RETRY_SCHEDULE[retry.retryCount] || null;
-        const nextRetryDate = nextRetryDelay ? new Date(Date.now() + nextRetryDelay * 3600000) : null;
+      const module =
+        tenant.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
 
-        await this.eventEmitter.emitAsync(
-            'payment.failed',
-            new PaymentFailedEvent(
-                tenant.id,
-                module,
-                new Date(),
-                payment,
-                retry.retryCount,
-                nextRetryDate
-            )
-        );
-        this.logger.log(`[DUNNING] Emitted payment.failed event for ${tenant.users[0].email}`);
+      // Calculate next retry time for display
+      const nextRetryDelay = this.RETRY_SCHEDULE[retry.retryCount] || null;
+      const nextRetryDate = nextRetryDelay
+        ? new Date(Date.now() + nextRetryDelay * 3600000)
+        : null;
+
+      await this.eventEmitter.emitAsync(
+        'payment.failed',
+        new PaymentFailedEvent(
+          tenant.id,
+          module,
+          new Date(),
+          payment,
+          retry.retryCount,
+          nextRetryDate,
+        ),
+      );
+      this.logger.log(
+        `[DUNNING] Emitted payment.failed event for ${tenant.users[0].email}`,
+      );
     } else {
-        this.logger.warn(`[DUNNING] Could not send email: Tenant or Owner email missing for ${payment.tenantId}`);
+      this.logger.warn(
+        `[DUNNING] Could not send email: Tenant or Owner email missing for ${payment.tenantId}`,
+      );
     }
 
     // 3. Mark this retry as PROCESSED

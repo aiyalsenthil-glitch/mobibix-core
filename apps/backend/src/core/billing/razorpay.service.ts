@@ -9,7 +9,9 @@ export class RazorpayService {
 
   constructor() {
     if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      this.logger.warn('⚠️ Razorpay credentials are not set in environment variables!');
+      this.logger.warn(
+        '⚠️ Razorpay credentials are not set in environment variables!',
+      );
     }
 
     this.REMOVED_PAYMENT_INFRA = new Razorpay({
@@ -22,10 +24,14 @@ export class RazorpayService {
    * Create a Subscription (AutoPay)
    * NOTE: We do NOT send amount here. The plan_id determines the amount.
    */
-  async createSubscription(planId: string, totalCount: number = 120, startAt?: number) {
+  async createSubscription(
+    planId: string,
+    totalCount: number = 120,
+    startAt?: number,
+  ) {
     try {
       this.logger.log(`Creating Razorpay Subscription for Plan: ${planId}`);
-      
+
       const options: any = {
         plan_id: planId,
         total_count: totalCount,
@@ -39,8 +45,13 @@ export class RazorpayService {
       const subscription = await this.REMOVED_PAYMENT_INFRA.subscriptions.create(options);
       return subscription;
     } catch (error: any) {
-      this.logger.error(`Razorpay Subscription Creation Failed: ${error.message}`, error);
-      throw new BadRequestException(`Failed to create subscription: ${error.error?.description || error.message}`);
+      this.logger.error(
+        `Razorpay Subscription Creation Failed: ${error.message}`,
+        error,
+      );
+      throw new BadRequestException(
+        `Failed to create subscription: ${error.error?.description || error.message}`,
+      );
     }
   }
 
@@ -53,10 +64,12 @@ export class RazorpayService {
     currency: string = 'INR',
     description: string,
     customer: { name: string; email: string; contact: string },
-    referenceId: string
+    referenceId: string,
   ) {
     try {
-      this.logger.log(`Creating Payment Link: ₹${amount / 100} for ${referenceId}`);
+      this.logger.log(
+        `Creating Payment Link: ₹${amount / 100} for ${referenceId}`,
+      );
 
       const options = {
         amount: amount, // Keeping strict to PAISE
@@ -77,8 +90,13 @@ export class RazorpayService {
       const paymentLink = await this.REMOVED_PAYMENT_INFRA.paymentLink.create(options);
       return paymentLink;
     } catch (error: any) {
-      this.logger.error(`Razorpay Payment Link Failed: ${error.message}`, error);
-      throw new BadRequestException(`Failed to create payment link: ${error.error?.description || error.message}`);
+      this.logger.error(
+        `Razorpay Payment Link Failed: ${error.message}`,
+        error,
+      );
+      throw new BadRequestException(
+        `Failed to create payment link: ${error.error?.description || error.message}`,
+      );
     }
   }
 
@@ -100,7 +118,11 @@ export class RazorpayService {
     }
   }
 
-  validateWebhookSignature(body: any, signature: string, secret: string): boolean {
+  validateWebhookSignature(
+    body: any,
+    signature: string,
+    secret: string,
+  ): boolean {
     const bodyStr = JSON.stringify(body);
     const expectedSignature = crypto
       .createHmac('sha256', secret)
@@ -123,17 +145,25 @@ export class RazorpayService {
       // Let's us 'cancel' which moves to CANCELLED state?
       // Actually, if we want to just stop *future* charges but keep current access,
       // we usually rely on 'cancel_at_cycle_end'.
-      
-      const response = await this.REMOVED_PAYMENT_INFRA.subscriptions.cancel(subscriptionId, false); 
+
+      const response = await this.REMOVED_PAYMENT_INFRA.subscriptions.cancel(
+        subscriptionId,
+        false,
+      );
       // false = cancel at end of cycle (pending_cancel)
       // true = cancel immediately
-      
+
       return response;
     } catch (error: any) {
-      this.logger.error(`Razorpay Subscription Cancellation Failed: ${error.message}`, error);
+      this.logger.error(
+        `Razorpay Subscription Cancellation Failed: ${error.message}`,
+        error,
+      );
       // Don't throw if already cancelled
       if (error.error?.code === 'BAD_REQUEST_ERROR') return null;
-      throw new BadRequestException(`Failed to cancel subscription: ${error.error?.description || error.message}`);
+      throw new BadRequestException(
+        `Failed to cancel subscription: ${error.error?.description || error.message}`,
+      );
     }
   }
 }

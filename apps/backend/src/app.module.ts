@@ -49,7 +49,9 @@ import { EmailModule } from './common/email/email.module';
     // 🔬 Distributed Systems Observability (Structured JSON Logs)
     LoggerModule.forRoot({
       pinoHttp: {
-        level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',
+        level: 'info',
+        // Disable automatic per-request logging (too verbose with full headers)
+        autoLogging: false,
         // Auto-inject correlation IDs for every request
         genReqId: (req: any) => req.headers['x-request-id'] || randomUUID(),
         // Format beautifully in dev, raw JSON in prod
@@ -61,7 +63,6 @@ import { EmailModule } from './common/email/email.module';
               }
             : undefined,
         customProps: (req: any) => {
-          // Attempt to extract tenant context if the AuthGuard sets it
           return {
             tenantId: req.user?.tenantId || 'anonymous',
             userId: req.user?.userId || 'unauthenticated',

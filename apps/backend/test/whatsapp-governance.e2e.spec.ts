@@ -12,10 +12,10 @@ import { UserRole } from '@prisma/client';
  */
 describe('WhatsApp Governance (E2E)', () => {
   let app: INestApplication;
-  let adminJwt: string = 'mock_admin_jwt';
-  let staffJwt: string = 'mock_staff_jwt';
-  let ownerJwt: string = 'mock_owner_jwt';
-  let tenantId: string = 'mock_tenant_id';
+  const adminJwt: string = 'mock_admin_jwt';
+  const staffJwt: string = 'mock_staff_jwt';
+  const ownerJwt: string = 'mock_owner_jwt';
+  const tenantId: string = 'mock_tenant_id';
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

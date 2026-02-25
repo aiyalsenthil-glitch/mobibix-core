@@ -37,12 +37,12 @@ export class PrismaService
       'Payment',
       'SupplierPayment',
       'SubscriptionInvoice',
-      'Role',           // NEW
-      'UserTenant',     // NEW
-      'ShopStaff',      // NEW
-      'StaffInvite',     // NEW
+      'Role', // NEW
+      'UserTenant', // NEW
+      'ShopStaff', // NEW
+      'StaffInvite', // NEW
       'ApprovalRequest', // NEW
-      'JobCard'         // NEW
+      'JobCard', // NEW
     ]);
 
     const multiTenantModels = new Set<string>([
@@ -61,7 +61,7 @@ export class PrismaService
       'JobCard',
       'Product',
       'StockLog',
-      'Inventory'
+      'Inventory',
     ]);
 
     const baseClient = this;
@@ -74,17 +74,48 @@ export class PrismaService
 
             // 1. Soft Delete Filter
             if (model && softDeleteModels.has(model)) {
-              if (['findUnique', 'findUniqueOrThrow', 'findFirst', 'findFirstOrThrow', 'findMany', 'count', 'aggregate', 'groupBy'].includes(operation)) {
+              if (
+                [
+                  'findUnique',
+                  'findUniqueOrThrow',
+                  'findFirst',
+                  'findFirstOrThrow',
+                  'findMany',
+                  'count',
+                  'aggregate',
+                  'groupBy',
+                ].includes(operation)
+              ) {
                 args.where = withSoftDeleteFilter(args.where ?? {});
               }
             }
 
             // 2. Tenant Isolation
-            if (model && multiTenantModels.has(model) && tenantId && !skipTenantCheck) {
-              if (['findUnique', 'findUniqueOrThrow', 'findFirst', 'findFirstOrThrow', 'findMany', 'count', 'aggregate', 'groupBy', 'update', 'updateMany', 'delete', 'deleteMany'].includes(operation)) {
+            if (
+              model &&
+              multiTenantModels.has(model) &&
+              tenantId &&
+              !skipTenantCheck
+            ) {
+              if (
+                [
+                  'findUnique',
+                  'findUniqueOrThrow',
+                  'findFirst',
+                  'findFirstOrThrow',
+                  'findMany',
+                  'count',
+                  'aggregate',
+                  'groupBy',
+                  'update',
+                  'updateMany',
+                  'delete',
+                  'deleteMany',
+                ].includes(operation)
+              ) {
                 args.where = {
                   ...(args.where ?? {}),
-                  tenantId
+                  tenantId,
                 };
               }
 
@@ -99,7 +130,7 @@ export class PrismaService
             }
 
             return query(args);
-          }
+          },
         },
       },
     });

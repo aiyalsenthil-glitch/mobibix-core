@@ -91,8 +91,8 @@ export class UsersService {
             businessCategory: {
               select: {
                 isComingSoon: true,
-              }
-            }
+              },
+            },
           },
         },
       },
@@ -104,29 +104,30 @@ export class UsersService {
     if (isSystemOwner) {
       grantedPermissions = ['*'];
     } else if (userTenant) {
-        // Staff user: find their assigned shop role if any, or tenant role
-        const staff = await this.prisma.shopStaff.findFirst({
-            where: { userId, tenantId: userTenant.tenantId, isActive: true },
-            select: { roleId: true }
+      // Staff user: find their assigned shop role if any, or tenant role
+      const staff = await this.prisma.shopStaff.findFirst({
+        where: { userId, tenantId: userTenant.tenantId, isActive: true },
+        select: { roleId: true },
+      });
+
+      if (staff?.roleId) {
+        const mappings = await this.prisma.rolePermission.findMany({
+          where: { roleId: staff.roleId },
+          include: { permission: { include: { resource: true } } },
         });
-        
-        if (staff?.roleId) {
-            const mappings = await this.prisma.rolePermission.findMany({
-                where: { roleId: staff.roleId },
-                include: { permission: { include: { resource: true } } }
-            });
-            grantedPermissions = mappings.map(m => 
-                `${m.permission.resource.moduleType.toLowerCase()}.${m.permission.resource.name}.${m.permission.action}`
-            );
-        }
+        grantedPermissions = mappings.map(
+          (m) =>
+            `${m.permission.resource.moduleType.toLowerCase()}.${m.permission.resource.name}.${m.permission.action}`,
+        );
+      }
     }
 
     // Check for pending invite
     let invite: { id: string } | null = null;
     if (user.email) {
       invite = await this.prisma.staffInvite.findFirst({
-          where: { email: user.email, accepted: false },
-          select: { id: true }
+        where: { email: user.email, accepted: false },
+        select: { id: true },
       });
     }
 

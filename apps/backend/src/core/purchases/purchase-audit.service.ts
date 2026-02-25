@@ -25,15 +25,8 @@ export class PurchaseAuditService {
   ): Promise<void> {
     // Store in audit log (implementation: store in JSON or create AuditLog table)
     // For now, rely on Prisma audit trail via createdAt/updatedAt + transaction logs
-    console.log({
-      eventType: 'PURCHASE_SUBMISSION',
-      tenantId,
-      purchaseId,
-      userId,
-      status,
-      timestamp: new Date(),
-      metadata,
-    });
+    // TODO: Persist to dedicated AuditLog table when created
+    // Currently a no-op placeholder
   }
 
   /**

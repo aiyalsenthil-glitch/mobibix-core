@@ -83,7 +83,7 @@ export class WhatsAppSender {
     const logId = options?.logId;
     const metadata = options?.metadata ?? undefined;
     const forceWhatsAppNumberId = options?.whatsAppNumberId;
-    
+
     // 🛡️ SANITIZE FEATURE:
     // If 'notificationType' is just a random string (like a template name 'invoice_created...'),
     // it won't match any enum. We must map it to a valid Feature or Core Type.
@@ -92,14 +92,16 @@ export class WhatsAppSender {
     const validFeatures = Object.values(WhatsAppFeature);
     const coreTypes = ['WELCOME', 'BILLING', 'REMINDER', 'PAYMENT_DUE', 'OTP'];
 
-    if (!validFeatures.includes(feature) && !coreTypes.includes(notificationType)) {
-        // Fallback: If it looks like a template key (not a feature), treat as UTILITY
-        feature = WhatsAppFeature.WHATSAPP_UTILITY;
+    if (
+      !validFeatures.includes(feature) &&
+      !coreTypes.includes(notificationType)
+    ) {
+      // Fallback: If it looks like a template key (not a feature), treat as UTILITY
+      feature = WhatsAppFeature.WHATSAPP_UTILITY;
     }
 
     // Declare early for closure access in logFailure
     let phoneNumberConfig: any;
-
 
     const updateLogStatus = async (
       status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'SKIPPED',
@@ -170,8 +172,11 @@ export class WhatsAppSender {
       // 🔒 GATE: Check if tenant has the specific feature entitlement
       // EXCEPTION: Core notifications remain available to all active plans
       // Check both original notificationType AND sanitized feature
-      if (CORE_NOTIFICATIONS.includes(notificationType) || CORE_NOTIFICATIONS.includes(feature)) {
-         // Allow core notification to proceed to quota checks
+      if (
+        CORE_NOTIFICATIONS.includes(notificationType) ||
+        CORE_NOTIFICATIONS.includes(feature)
+      ) {
+        // Allow core notification to proceed to quota checks
       } else {
         const hasEntitlement = planRules.features.includes(feature);
 

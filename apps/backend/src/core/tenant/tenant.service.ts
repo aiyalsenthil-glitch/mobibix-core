@@ -106,24 +106,19 @@ export class TenantService {
     // Send welcome email after gym create (Event Driven)
     if (!user.welcomeEmailSent && user.email) {
       try {
-        const module = effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM'; // Resolve module
-        
+        const module =
+          effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM'; // Resolve module
+
         await this.eventEmitter.emitAsync(
           'tenant.welcome',
-          new TenantWelcomeEvent(
-            tenant.id,
-            module,
-            new Date(),
-            user,
-            tenant
-          )
+          new TenantWelcomeEvent(tenant.id, module, new Date(), user, tenant),
         );
 
         await this.prisma.user.update({
           where: { id: user.id },
           data: { welcomeEmailSent: true },
         });
-        
+
         this.logger.log(`[EVENT] Emitted tenant.welcome for ${user.email}`);
       } catch (err) {
         this.logger.error('Failed to emit welcome event', err);
@@ -390,14 +385,6 @@ export class TenantService {
         authentication: true,
       },
     });
-
-    // DEBUG LOGS
-    console.log('----- TENANT USAGE DEBUG -----');
-    console.log('Tenant:', tenantId);
-    console.log('Plan Code:', plan.code);
-    console.log('Plan maxShops (DB):', plan.maxShops);
-    console.log('Rules maxShops (Aggregated):', rules?.maxShops);
-    console.log('------------------------------');
 
     // 7️⃣ Final response
     return {

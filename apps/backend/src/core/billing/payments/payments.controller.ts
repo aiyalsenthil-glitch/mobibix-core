@@ -206,23 +206,41 @@ export class PaymentsController {
   // ─────────────────────────────────────────────
   @Get('history')
   async getHistory(@Req() req: any) {
-    return this.prisma.payment.findMany({
+    const payments = await this.prisma.payment.findMany({
       where: {
         tenantId: req.user.tenantId,
-        status: 'SUCCESS',
       },
       orderBy: {
         createdAt: 'desc',
       },
-      select: {
-        id: true,
-        planId: true,
-        amount: true,
-        currency: true,
-        status: true,
-        provider: true,
-        createdAt: true,
-      },
+      take: 50,
     });
+
+    // Resolve plan names
+    const planIds = [...new Set(payments.map((p) => p.planId).filter(Boolean))];
+    const plans = planIds.length
+      ? await this.prisma.plan.findMany({
+          where: { id: { in: planIds } },
+          select: { id: true, name: true, code: true },
+        })
+      : [];
+
+    const planMap = new Map(plans.map((p) => [p.id, p]));
+
+    return payments.map((p) => ({
+      id: p.id,
+      tenantId: p.tenantId,
+      planId: p.planId,
+      plan: p.planId ? planMap.get(p.planId) || null : null,
+      amount: p.amount,
+      currency: p.currency,
+      status: p.status,
+      provider: p.provider,
+      providerOrderId: p.providerOrderId,
+      providerPaymentId: p.providerPaymentId,
+      billingCycle: p.billingCycle,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    }));
   }
 }

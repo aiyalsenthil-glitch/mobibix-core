@@ -18,7 +18,9 @@ export class AuthVerificationService {
       if (err instanceof UnauthorizedException) {
         throw err;
       }
-      throw new UnauthorizedException(`Firebase authentication failed: ${err.message}`);
+      throw new UnauthorizedException(
+        `Firebase authentication failed: ${err.message}`,
+      );
     }
   }
 }

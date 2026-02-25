@@ -30,7 +30,10 @@ export class RolesController {
 
   @Get(':id')
   async get(@Req() req: any, @Param('id') id: string) {
-    const role = await this.permissionService.getRoleById(id, req.user.tenantId);
+    const role = await this.permissionService.getRoleById(
+      id,
+      req.user.tenantId,
+    );
     const permissions = await this.permissionService.getRolePermissions(id);
     return { ...role, permissions };
   }
@@ -52,7 +55,8 @@ export class RolesController {
   async update(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() data: { name?: string; description?: string; permissions?: string[] },
+    @Body()
+    data: { name?: string; description?: string; permissions?: string[] },
   ) {
     return this.permissionService.updateRole(id, req.user.tenantId, data);
   }

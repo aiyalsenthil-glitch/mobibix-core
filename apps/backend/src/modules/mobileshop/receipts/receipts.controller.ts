@@ -66,14 +66,18 @@ export class ReceiptsController extends TenantScopedController {
     @Query('skip') skip?: string,
     @Query('take') take?: string,
   ): Promise<{ data: ReceiptEntity[]; total: number }> {
-    return this.receiptsService.getReceipts(user.tenantId, shopId || user.shopId, {
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate: endDate ? new Date(endDate) : undefined,
-      paymentMethod,
-      status,
-      skip: skip ? parseInt(skip, 10) : undefined,
-      take: take ? parseInt(take, 10) : undefined,
-    });
+    return this.receiptsService.getReceipts(
+      user.tenantId,
+      shopId || user.shopId,
+      {
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        paymentMethod,
+        status,
+        skip: skip ? parseInt(skip, 10) : undefined,
+        take: take ? parseInt(take, 10) : undefined,
+      },
+    );
   }
 
   /**

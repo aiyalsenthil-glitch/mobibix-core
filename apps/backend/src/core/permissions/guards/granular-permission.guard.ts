@@ -7,7 +7,10 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PERMISSION_KEY, RequiredPermission } from '../decorators/require-permission.decorator';
+import {
+  PERMISSION_KEY,
+  RequiredPermission,
+} from '../decorators/require-permission.decorator';
 import { PermissionService } from '../permissions.service';
 
 @Injectable()
@@ -22,10 +25,11 @@ export class GranularPermissionGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const shadowMode = false; // Phase 6: STRICT MODE ON
-    const requiredPermission = this.reflector.getAllAndOverride<RequiredPermission>(
-      PERMISSION_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const requiredPermission =
+      this.reflector.getAllAndOverride<RequiredPermission>(PERMISSION_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
 
     if (!requiredPermission) {
       return true;
@@ -39,7 +43,11 @@ export class GranularPermissionGuard implements CanActivate {
     }
 
     // Resolve shopId
-    const shopId = request.params?.shopId || request.query?.shopId || request.body?.shopId || null;
+    const shopId =
+      request.params?.shopId ||
+      request.query?.shopId ||
+      request.body?.shopId ||
+      null;
 
     try {
       const hasPermission = await this.permissionService.hasPermission(

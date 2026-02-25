@@ -60,15 +60,19 @@ export class VouchersController extends TenantScopedController {
     @Query('skip') skip?: string,
     @Query('take') take?: string,
   ): Promise<{ data: VoucherEntity[]; total: number }> {
-    return this.vouchersService.getVouchers(user.tenantId, shopId || user.shopId, {
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate: endDate ? new Date(endDate) : undefined,
-      paymentMethod,
-      status,
-      voucherType,
-      skip: skip ? parseInt(skip, 10) : undefined,
-      take: take ? parseInt(take, 10) : undefined,
-    });
+    return this.vouchersService.getVouchers(
+      user.tenantId,
+      shopId || user.shopId,
+      {
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        paymentMethod,
+        status,
+        voucherType,
+        skip: skip ? parseInt(skip, 10) : undefined,
+        take: take ? parseInt(take, 10) : undefined,
+      },
+    );
   }
 
   /**

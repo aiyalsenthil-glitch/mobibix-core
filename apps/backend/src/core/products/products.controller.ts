@@ -25,7 +25,7 @@ import { ProductsService } from './products.service';
 import { ImportProductDto } from './dto/import-product.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 
-// Local interface for Multer file since global Express.Multer.File 
+// Local interface for Multer file since global Express.Multer.File
 // might not be available in all environments depending on TS configuration
 interface MulterFile {
   fieldname: string;

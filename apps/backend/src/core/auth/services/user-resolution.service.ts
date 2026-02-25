@@ -64,7 +64,9 @@ export class UserResolutionService {
               fullName: decodedToken.name ?? user.fullName,
             },
           })
-          .catch((e) => console.warn('⚠️  Failed to update user meta:', e.message));
+          .catch((e) =>
+            console.warn('⚠️  Failed to update user meta:', e.message),
+          );
       } else if (user.email && user.email !== user.email.toLowerCase()) {
         // Proactively normalize existing user email if mixed case
         this.prisma.user
@@ -118,57 +120,58 @@ export class UserResolutionService {
   }
 
   async processStaffInvite(userId: string, staffInvite: any) {
-     if (!staffInvite) return;
+    if (!staffInvite) return;
 
-     try {
-       const shopStaffCreations = (staffInvite.shopIds || []).map((shopId: string) => 
-         this.prisma.shopStaff.upsert({
-           where: {
-             userId_tenantId_shopId: {
-               userId: userId,
-               tenantId: staffInvite.tenantId,
-               shopId: shopId,
-             }
-           },
-           update: {
-             roleId: staffInvite.roleId || null,
-             isActive: true,
-           },
-           create: {
-             userId: userId,
-             tenantId: staffInvite.tenantId,
-             shopId: shopId,
-             roleId: staffInvite.roleId || null,
-             role: UserRole.STAFF,
-           }
-         })
-       );
+    try {
+      const shopStaffCreations = (staffInvite.shopIds || []).map(
+        (shopId: string) =>
+          this.prisma.shopStaff.upsert({
+            where: {
+              userId_tenantId_shopId: {
+                userId: userId,
+                tenantId: staffInvite.tenantId,
+                shopId: shopId,
+              },
+            },
+            update: {
+              roleId: staffInvite.roleId || null,
+              isActive: true,
+            },
+            create: {
+              userId: userId,
+              tenantId: staffInvite.tenantId,
+              shopId: shopId,
+              roleId: staffInvite.roleId || null,
+              role: UserRole.STAFF,
+            },
+          }),
+      );
 
-       await this.prisma.$transaction([
-         this.prisma.userTenant.upsert({
-           where: {
-             userId_tenantId: {
-               userId: userId,
-               tenantId: staffInvite.tenantId,
-             },
-           },
-           update: {
-             role: UserRole.STAFF,
-           },
-           create: {
-             userId: userId,
-             tenantId: staffInvite.tenantId,
-             role: UserRole.STAFF,
-           },
-         }),
-         ...shopStaffCreations,
-         this.prisma.staffInvite.update({
-           where: { id: staffInvite.id },
-           data: { accepted: true },
-         }),
-       ]);
-     } catch (err: any) {
-       console.warn('⚠️  Failed to accept staff invite:', err?.message);
-     }
+      await this.prisma.$transaction([
+        this.prisma.userTenant.upsert({
+          where: {
+            userId_tenantId: {
+              userId: userId,
+              tenantId: staffInvite.tenantId,
+            },
+          },
+          update: {
+            role: UserRole.STAFF,
+          },
+          create: {
+            userId: userId,
+            tenantId: staffInvite.tenantId,
+            role: UserRole.STAFF,
+          },
+        }),
+        ...shopStaffCreations,
+        this.prisma.staffInvite.update({
+          where: { id: staffInvite.id },
+          data: { accepted: true },
+        }),
+      ]);
+    } catch (err: any) {
+      console.warn('⚠️  Failed to accept staff invite:', err?.message);
+    }
   }
 }

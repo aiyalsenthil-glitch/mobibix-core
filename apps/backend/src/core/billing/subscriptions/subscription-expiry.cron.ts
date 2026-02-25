@@ -102,9 +102,9 @@ export class SubscriptionExpiryCron {
         try {
           console.log(`[CRON][Expiry] Sending expiry email to ${owner.email}`);
 
-          
-          const module = sub.tenant.tenantType === 'GYM' ? 'GYM' : 'MOBILE_SHOP'; // simple map
-          
+          const module =
+            sub.tenant.tenantType === 'GYM' ? 'GYM' : 'MOBILE_SHOP'; // simple map
+
           await this.eventEmitter.emitAsync(
             'subscription.trial.expiring',
             new SubscriptionTrialExpiringEvent(
@@ -112,8 +112,8 @@ export class SubscriptionExpiryCron {
               module as any,
               new Date(),
               sub,
-              7 // days left (approximated for this logic, technically we queried range 0-7)
-            )
+              7, // days left (approximated for this logic, technically we queried range 0-7)
+            ),
           );
           await this.prisma.tenantSubscription.update({
             where: { id: sub.id },

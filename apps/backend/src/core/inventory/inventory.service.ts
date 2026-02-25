@@ -25,10 +25,6 @@ export class InventoryService {
   }
 
   async createProduct(tenantId: string, dto: CreateProductDto) {
-    console.log(
-      `[InvService] createProduct called for tenant ${tenantId}`,
-      JSON.stringify(dto),
-    );
     // Name is required for creation
     if (!dto.name || !dto.shopId) {
       throw new BadRequestException(
@@ -94,7 +90,6 @@ export class InventoryService {
 
   async updateProduct(tenantId: string, id: string, dto: CreateProductDto) {
     // Fetch existing product to merge updates
-    console.log(`[DEBUG] Updating Product: ID=${id}, Tenant=${tenantId}`);
     const existing = await this.prisma.shopProduct.findFirst({
       where: { id, tenantId },
       select: {
@@ -104,7 +99,6 @@ export class InventoryService {
         isSerialized: true,
       },
     });
-    console.log(`[DEBUG] Found product: ${JSON.stringify(existing)}`);
 
     if (!existing) {
       throw new NotFoundException('Product not found');

@@ -651,4 +651,61 @@ export class StockService {
       };
     });
   }
+
+  async getStockOverview(tenantId: string, shopId?: string) {
+    const products = await this.prisma.shopProduct.findMany({
+      where: {
+        tenantId,
+        isActive: true,
+        ...(shopId ? { shopId } : {}),
+      },
+      select: {
+        id: true,
+        type: true,
+        isSerialized: true,
+        costPrice: true,
+        avgCost: true,
+        salePrice: true,
+        reorderLevel: true,
+        stockEntries: {
+          select: {
+            type: true,
+            quantity: true,
+          },
+        },
+      },
+    });
+
+    let totalProducts = 0;
+    let totalItems = 0;
+    let totalValue = 0;
+    let lowStockItems = 0;
+    let potentialRevenue = 0;
+
+    for (const p of products) {
+      if (p.type === ProductType.SERVICE) continue;
+
+      totalProducts++;
+      const stockQty = p.stockEntries.reduce((sum, e) => {
+        return e.type === 'IN' ? sum + e.quantity : sum - e.quantity;
+      }, 0);
+
+      const count = Math.max(0, stockQty);
+      totalItems += count;
+      totalValue += count * (p.avgCost || p.costPrice || 0);
+      potentialRevenue += count * (p.salePrice || 0);
+
+      if (stockQty <= (p.reorderLevel || 0)) {
+        lowStockItems++;
+      }
+    }
+
+    return {
+      totalProducts,
+      totalItems,
+      totalValue,
+      lowStockItems,
+      potentialRevenue,
+    };
+  }
 }

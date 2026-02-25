@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { LRUCache } from 'lru-cache';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
@@ -45,7 +50,9 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
         this.logger.error(`Failed to initialize Redis: ${err.message}`);
       }
     } else {
-      this.logger.warn('REDIS_HOST not set. Falling back to L1 (Memory) cache only.');
+      this.logger.warn(
+        'REDIS_HOST not set. Falling back to L1 (Memory) cache only.',
+      );
     }
   }
 
@@ -77,7 +84,11 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     return undefined;
   }
 
-  async set<T>(key: string, value: T, ttlMs: number = 1000 * 60 * 5): Promise<void> {
+  async set<T>(
+    key: string,
+    value: T,
+    ttlMs: number = 1000 * 60 * 5,
+  ): Promise<void> {
     // 1. Set L1
     this.l1Cache.set(key, value, { ttl: ttlMs });
 
@@ -99,11 +110,14 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
 
     // 2. Broadcast to other nodes (PubSub)
     if (this.pubsub) {
-      await this.pubsub.publish('cache-invalidation', JSON.stringify({ pattern }));
+      await this.pubsub.publish(
+        'cache-invalidation',
+        JSON.stringify({ pattern }),
+      );
     }
 
-    // 3. Clear L2 (Redis) - Prefix scanning in Redis is expensive, 
-    // usually we'd use sets or different key structures, 
+    // 3. Clear L2 (Redis) - Prefix scanning in Redis is expensive,
+    // usually we'd use sets or different key structures,
     // but for now we'll do simple key-based invalidation if possible or let TTL handle it.
   }
 
@@ -114,7 +128,11 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async getOrSet<T>(key: string, factory: () => Promise<T>, ttlMs?: number): Promise<T> {
+  async getOrSet<T>(
+    key: string,
+    factory: () => Promise<T>,
+    ttlMs?: number,
+  ): Promise<T> {
     const cached = await this.get<T>(key);
     if (cached !== undefined) return cached;
 

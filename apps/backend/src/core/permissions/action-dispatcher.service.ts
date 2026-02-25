@@ -28,20 +28,36 @@ export class ActionDispatcherService {
    * If an ApprovalPolicy requires manager approval, it logs a PENDING request instead.
    * Otherwise, throws ForbiddenException.
    */
-  async dispatch(context: DispatchContext, executeAction: () => Promise<any>): Promise<any> {
+  async dispatch(
+    context: DispatchContext,
+    executeAction: () => Promise<any>,
+  ): Promise<any> {
     const { userId, tenantId, shopId, moduleType, resource, action } = context;
 
     // 1. Can they execute directly?
-    const hasDirectAccess = await this.permissions.hasPermission(userId, tenantId, shopId, moduleType, resource, action);
+    const hasDirectAccess = await this.permissions.hasPermission(
+      userId,
+      tenantId,
+      shopId,
+      moduleType,
+      resource,
+      action,
+    );
     if (hasDirectAccess) {
       return await executeAction();
     }
 
     // 2. Check if there's an approval policy
-    const policy: any = await this.permissions.getApprovalPolicy(resource, action, moduleType);
+    const policy: any = await this.permissions.getApprovalPolicy(
+      resource,
+      action,
+      moduleType,
+    );
     if (!policy || !policy.requiredPermission) {
       // Hard stop, no approval flow defined for this action
-      throw new ForbiddenException(`You do not have permission to perform ${resource}.${action}`);
+      throw new ForbiddenException(
+        `You do not have permission to perform ${resource}.${action}`,
+      );
     }
 
     // 3. Instead of executing, create an ApprovalRequest
@@ -53,24 +69,32 @@ export class ActionDispatcherService {
         actionType: `${resource}.${action}`,
         entityId: context.entityId,
         structuredData: context.payload || {},
-        status: 'PENDING'
-      }
+        status: 'PENDING',
+      },
     });
 
-    this.logger.log(`Created ApprovalRequest ${req.id} for ${resource}.${action}`);
+    this.logger.log(
+      `Created ApprovalRequest ${req.id} for ${resource}.${action}`,
+    );
     return {
       requiresApproval: true,
       approvalRequestId: req.id,
-      message: 'This action requires manager approval. A request has been created.'
+      message:
+        'This action requires manager approval. A request has been created.',
     };
   }
 
   /**
    * Resolves an approval request (APPROVE/REJECT).
-   * Note: The actual execution of the "approved" action logic usually happens 
+   * Note: The actual execution of the "approved" action logic usually happens
    * in the specific service that received the approved callback or a generic job processor.
    */
-  async resolveRequest(requestId: string, resolvedBy: string, status: 'APPROVED' | 'REJECTED', comment?: string) {
+  async resolveRequest(
+    requestId: string,
+    resolvedBy: string,
+    status: 'APPROVED' | 'REJECTED',
+    comment?: string,
+  ) {
     const request = await this.prisma.approvalRequest.findUnique({
       where: { id: requestId },
     });
@@ -90,7 +114,7 @@ export class ActionDispatcherService {
         status,
         resolvedBy,
         ownerComment: comment,
-      }
+      },
     });
   }
 }

@@ -308,10 +308,10 @@ export class SubscriptionsController {
         planId: bought.planId,
         paymentLink: bought.paymentLink,
         REMOVED_PAYMENT_INFRASubscriptionId: bought.subscriptionId,
-        message: bought.paymentLink 
-            ? 'Payment Link generated. Please complete payment.' 
-            : bought.subscriptionId 
-            ? 'Subscription initialized. Please complete authorization.' 
+        message: bought.paymentLink
+          ? 'Payment Link generated. Please complete payment.'
+          : bought.subscriptionId
+            ? 'Subscription initialized. Please complete authorization.'
             : 'Plan activated successfully.',
       };
     }
@@ -398,8 +398,8 @@ export class SubscriptionsController {
       success: true,
       subscriptionId: downgraded.id,
       nextPlanId: downgraded.nextPlanId,
-      message: isImmediate 
-        ? 'Plan downgraded immediately.' 
+      message: isImmediate
+        ? 'Plan downgraded immediately.'
         : 'Plan downgrade scheduled. Changes apply at next renewal.',
     };
   }
@@ -477,6 +477,4 @@ export class SubscriptionsController {
       resolvedModule,
     );
   }
-
-
 }

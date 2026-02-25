@@ -16,7 +16,9 @@ export class PaymentRetryController {
 
   @Post(':id/retry')
   @Roles(UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Manually schedule a retry/dunning attempt for a failed payment' })
+  @ApiOperation({
+    summary: 'Manually schedule a retry/dunning attempt for a failed payment',
+  })
   async manualRetry(@Param('id') id: string) {
     this.logger.log(`[ADMIN] Manual retry requested for payment ${id}`);
     await this.paymentRetryService.scheduleRetry(id);

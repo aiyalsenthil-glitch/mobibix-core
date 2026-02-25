@@ -11,11 +11,11 @@ import { MemberExpiryCron } from './member-expiry.cron';
 @Module({
   imports: [AuthModule, forwardRef(() => PlansModule)],
   providers: [
-    SubscriptionsService, 
-    PlanPriceService, 
+    SubscriptionsService,
+    PlanPriceService,
     RazorpayService,
     SubscriptionExpiryCron,
-    MemberExpiryCron
+    MemberExpiryCron,
   ],
   controllers: [SubscriptionsController],
   exports: [SubscriptionsService, RazorpayService],

@@ -96,7 +96,9 @@ export class PaymentActivationService {
         // Note: invoiceService.createInvoiceForPayment handles its own retry/transaction logic
         // We call it AFTER the nested update to ensure we don't block the core activation
         try {
-          const invoice = await this.invoiceService.createInvoiceForPayment(payment.id);
+          const invoice = await this.invoiceService.createInvoiceForPayment(
+            payment.id,
+          );
           this.logger.log(
             `[INVOICE] ✅ Generated invoice ${invoice.invoiceNumber} for payment ${payment.id}`,
           );

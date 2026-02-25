@@ -91,7 +91,8 @@ export class MobileShopReportsService {
         salesCredit: totalSalesCredit / 100,
         totalPurchases: purchaseTotal / 100,
         totalExpenses: (totalExpenses._sum.amount || 0) / 100,
-        netCashFlow: ((cashIn._sum.amount || 0) - (cashOut._sum.amount || 0)) / 100,
+        netCashFlow:
+          ((cashIn._sum.amount || 0) - (cashOut._sum.amount || 0)) / 100,
         pendingReceivables: totalSalesCredit / 100, // Same as Credit Sales
         pendingPayables: pendingPayables / 100,
       },
@@ -174,7 +175,7 @@ export class MobileShopReportsService {
       for (const item of inv.items) {
         // SERVICE items always have zero cost (100% margin on labor)
         if (item.product?.type === ProductType.SERVICE) {
-          totalProfit! += item.lineTotal - item.gstAmount;
+          totalProfit += item.lineTotal - item.gstAmount;
           continue;
         }
 
@@ -195,7 +196,7 @@ export class MobileShopReportsService {
         }
 
         // Profit = total net revenue - (cost * quantity)
-        totalProfit! += item.lineTotal - item.gstAmount - cost * item.quantity;
+        totalProfit += item.lineTotal - item.gstAmount - cost * item.quantity;
       }
 
       if (!isProfitValid) totalProfit = null;

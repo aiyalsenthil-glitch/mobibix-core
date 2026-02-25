@@ -51,7 +51,9 @@ export class RolesGuard implements CanActivate {
     });
 
     if (!hasRole) {
-      throw new ForbiddenException(`Insufficient role. Required one of: ${requiredRoles.join(', ')}`);
+      throw new ForbiddenException(
+        `Insufficient role. Required one of: ${requiredRoles.join(', ')}`,
+      );
     }
 
     return true;

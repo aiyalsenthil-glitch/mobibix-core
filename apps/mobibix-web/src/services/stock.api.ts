@@ -87,3 +87,25 @@ export async function getNegativeStockReport(
 
   return extractData(response);
 }
+/**
+ * Get stock overview KPIs
+ */
+export async function getStockOverview(
+  shopId?: string,
+): Promise<{
+  totalProducts: number;
+  totalItems: number;
+  totalValue: number;
+  lowStockItems: number;
+  potentialRevenue: number;
+}> {
+  const params = shopId ? `?shopId=${encodeURIComponent(shopId)}` : "";
+  const response = await authenticatedFetch(`/mobileshop/stock/overview${params}`);
+
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error(error.message || "Failed to fetch stock overview");
+  }
+
+  return extractData(response);
+}

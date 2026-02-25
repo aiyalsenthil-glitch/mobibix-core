@@ -149,7 +149,7 @@ export class ReceiptsService {
     const where: any = {
       tenantId,
     };
-    
+
     if (shopId) {
       where.shopId = shopId;
     }
@@ -206,7 +206,7 @@ export class ReceiptsService {
       OR: [{ id: idOrReceiptId }, { receiptId: idOrReceiptId }],
       tenantId,
     };
-    
+
     if (shopId) {
       whereClause.shopId = shopId;
     }

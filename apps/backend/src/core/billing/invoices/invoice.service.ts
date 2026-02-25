@@ -20,7 +20,7 @@ export class InvoiceService {
     const year = new Date().getFullYear();
     const prefix = `INV-${year}-`;
 
-    // Get last invoice for current year with a lock if possible (via raw query if needed, 
+    // Get last invoice for current year with a lock if possible (via raw query if needed,
     // but here we rely on the transaction and unique constraint retry in the caller)
     const lastInvoice = await tx.subscriptionInvoice.findFirst({
       where: {
@@ -79,96 +79,112 @@ export class InvoiceService {
 
     while (retries < maxRetries) {
       try {
-        return await this.prisma.$transaction(async (tx) => {
-          const payment = await tx.payment.findUnique({
-            where: { id: paymentId },
-            include: {
-              tenant: {
-                select: {
-                  id: true,
-                  name: true,
-                  contactPhone: true,
-                  code: true,
+        return await this.prisma.$transaction(
+          async (tx) => {
+            const payment = await tx.payment.findUnique({
+              where: { id: paymentId },
+              include: {
+                tenant: {
+                  select: {
+                    id: true,
+                    name: true,
+                    contactPhone: true,
+                    code: true,
+                  },
                 },
               },
-            },
-          });
+            });
 
-          if (!payment) {
-            throw new NotFoundException('Payment not found');
-          }
+            if (!payment) {
+              throw new NotFoundException('Payment not found');
+            }
 
-          // Check if invoice already exists
-          const existing = await tx.subscriptionInvoice.findUnique({
-            where: { paymentId },
-          });
+            // Check if invoice already exists
+            const existing = await tx.subscriptionInvoice.findUnique({
+              where: { paymentId },
+            });
 
-          if (existing) {
-            this.logger.log(`Invoice already exists for payment ${paymentId}`);
-            return existing;
-          }
+            if (existing) {
+              this.logger.log(
+                `Invoice already exists for payment ${paymentId}`,
+              );
+              return existing;
+            }
 
-          // Get plan details
-          const plan = await tx.plan.findUnique({
-            where: { id: payment.planId },
-            select: {
-              id: true,
-              name: true,
-              module: true,
-              code: true,
-            },
-          });
-
-          const invoiceNumber = await this.generateInvoiceNumber(tx);
-
-          // Calculate GST (assuming intra-state for now)
-          const gst = this.calculateGST(payment.amount, false);
-          const total = payment.amount + gst.cgst + gst.sgst + gst.igst;
-
-          // Create invoice
-          const invoice = await tx.subscriptionInvoice.create({
-            data: {
-              invoiceNumber,
-              tenant: { connect: { id: payment.tenantId } },
-              payment: { connect: { id: payment.id } },
-              gstin: process.env.COMPANY_GSTIN || null,
-              sacCode: '998314', // SAC for subscription services
-              invoiceDate: new Date(),
-              amount: payment.amount,
-              cgst: gst.cgst,
-              sgst: gst.sgst,
-              igst: gst.igst,
-              total,
-              description: `${plan?.name || 'Plan'} - ${payment.billingCycle}`,
-              planSnapshot: {
-                planId: plan?.id,
-                planName: plan?.name,
-                module: plan?.module,
-                billingCycle: payment.billingCycle,
+            // Get plan details
+            const plan = await tx.plan.findUnique({
+              where: { id: payment.planId },
+              select: {
+                id: true,
+                name: true,
+                module: true,
+                code: true,
               },
-              status: 'DRAFT' as any,
-            },
-          });
+            });
 
-          this.logger.log(`✅ Invoice ${invoiceNumber} created for payment ${paymentId}`);
-          return invoice;
-        }, {
-          isolationLevel: 'Serializable', // Use Serializable to catch conflicts
-        });
+            const invoiceNumber = await this.generateInvoiceNumber(tx);
+
+            // Calculate GST (assuming intra-state for now)
+            const gst = this.calculateGST(payment.amount, false);
+            const total = payment.amount + gst.cgst + gst.sgst + gst.igst;
+
+            // Create invoice
+            const invoice = await tx.subscriptionInvoice.create({
+              data: {
+                invoiceNumber,
+                tenant: { connect: { id: payment.tenantId } },
+                payment: { connect: { id: payment.id } },
+                gstin: process.env.COMPANY_GSTIN || null,
+                sacCode: '998314', // SAC for subscription services
+                invoiceDate: new Date(),
+                amount: payment.amount,
+                cgst: gst.cgst,
+                sgst: gst.sgst,
+                igst: gst.igst,
+                total,
+                description: `${plan?.name || 'Plan'} - ${payment.billingCycle}`,
+                planSnapshot: {
+                  planId: plan?.id,
+                  planName: plan?.name,
+                  module: plan?.module,
+                  billingCycle: payment.billingCycle,
+                },
+                status: 'DRAFT' as any,
+              },
+            });
+
+            this.logger.log(
+              `✅ Invoice ${invoiceNumber} created for payment ${paymentId}`,
+            );
+            return invoice;
+          },
+          {
+            isolationLevel: 'Serializable', // Use Serializable to catch conflicts
+          },
+        );
       } catch (error: any) {
         // Check for Prisma unique constraint violation (P2002)
-        if (error.code === 'P2002' && error.meta?.target?.includes('invoiceNumber')) {
+        if (
+          error.code === 'P2002' &&
+          error.meta?.target?.includes('invoiceNumber')
+        ) {
           retries++;
-          this.logger.warn(`Invoice number collision, retry ${retries}/${maxRetries}...`);
+          this.logger.warn(
+            `Invoice number collision, retry ${retries}/${maxRetries}...`,
+          );
           // Small random delay before retry
-          await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.random() * 100),
+          );
           continue;
         }
         throw error;
       }
     }
 
-    throw new Error('Failed to generate unique invoice number after multiple retries');
+    throw new Error(
+      'Failed to generate unique invoice number after multiple retries',
+    );
   }
 
   /**
@@ -293,7 +309,7 @@ export class InvoiceService {
 
         doc
           .text('SGST (9%):', 400, taxTop + 30, { width: 80, align: 'right' })
-          .text(`₹${(invoice.sgst! / 100).toFixed(2)}`, 480, taxTop + 30, {
+          .text(`₹${(invoice.sgst / 100).toFixed(2)}`, 480, taxTop + 30, {
             width: 80,
             align: 'right',
           });
@@ -335,12 +351,10 @@ export class InvoiceService {
           750,
           { align: 'center', width: 500 },
         )
-        .text(
-          `Payment ID: ${invoice.payment.id}`,
-          50,
-          765,
-          { align: 'center', width: 500 },
-        );
+        .text(`Payment ID: ${invoice.payment.id}`, 50, 765, {
+          align: 'center',
+          width: 500,
+        });
 
       doc.end();
     });

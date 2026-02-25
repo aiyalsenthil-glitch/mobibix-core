@@ -72,7 +72,8 @@ export class GSTR2Service {
       // Check if ITC eligible (not legacy or legacy verified, AND supplier must be registered)
       const isLegacy = purchase.isLegacyGstApproximation;
       const isVerified = purchase.verifiedAt !== null;
-      const hasGstin = !!purchase.supplierGstin && purchase.supplierGstin.trim() !== "";
+      const hasGstin =
+        !!purchase.supplierGstin && purchase.supplierGstin.trim() !== '';
       const itcEligible = (!isLegacy || (isLegacy && isVerified)) && hasGstin;
 
       if (isLegacy && !isVerified) {
@@ -93,7 +94,7 @@ export class GSTR2Service {
         invoiceDate: purchase.invoiceDate,
         supplierName: purchase.supplierName,
         supplierGstin: purchase.supplierGstin || '',
-        invoiceAmount: purchase.grandTotal || (baseAmount + purchase.totalGst),
+        invoiceAmount: purchase.grandTotal || baseAmount + purchase.totalGst,
         taxableAmount: baseAmount,
         cgstAmount: purchase.cgst || 0,
         sgstAmount: purchase.sgst || 0,
@@ -189,7 +190,9 @@ export class GSTR2Service {
       // Check ITC eligibility
       const isLegacy = item.purchase.isLegacyGstApproximation;
       const isVerified = item.purchase.verifiedAt !== null;
-      const hasGstin = !!item.purchase.supplierGstin && item.purchase.supplierGstin.trim() !== "";
+      const hasGstin =
+        !!item.purchase.supplierGstin &&
+        item.purchase.supplierGstin.trim() !== '';
       const itcEligible = (!isLegacy || (isLegacy && isVerified)) && hasGstin;
 
       const key = item.hsnSac || 'UNKNOWN';
@@ -267,8 +270,9 @@ export class GSTR2Service {
     let legacyUnverifiedIgst = 0;
 
     for (const purchase of purchases) {
-      const hasGstin = !!purchase.supplierGstin && purchase.supplierGstin.trim() !== "";
-      
+      const hasGstin =
+        !!purchase.supplierGstin && purchase.supplierGstin.trim() !== '';
+
       if (purchase.isLegacyGstApproximation && !purchase.verifiedAt) {
         // Unverified legacy - not included in ITC
         legacyUnverifiedCgst += purchase.cgst || 0;

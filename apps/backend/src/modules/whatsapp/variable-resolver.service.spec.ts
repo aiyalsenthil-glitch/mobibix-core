@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { WhatsAppVariableResolver, VariableResolutionContext } from './variable-resolver.service';
+import {
+  WhatsAppVariableResolver,
+  VariableResolutionContext,
+} from './variable-resolver.service';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { WhatsAppModule } from './variable-registry';
 
@@ -24,7 +27,7 @@ describe('WhatsAppVariableResolver Dynamic Links', () => {
 
     resolver = module.get<WhatsAppVariableResolver>(WhatsAppVariableResolver);
     prisma = module.get<PrismaService>(PrismaService);
-    
+
     process.env.FRONTEND_URL = 'https://test.mobibix.in';
   });
 
@@ -38,7 +41,7 @@ describe('WhatsAppVariableResolver Dynamic Links', () => {
 
       const result = await (resolver as any).resolveComputedVariable(
         { key: 'invoiceLink' },
-        context
+        context,
       );
 
       expect(result).toBe('https://test.mobibix.in/print/invoice/inv-123');
@@ -53,7 +56,7 @@ describe('WhatsAppVariableResolver Dynamic Links', () => {
 
       const result = await (resolver as any).resolveComputedVariable(
         { key: 'invoice_link' },
-        context
+        context,
       );
 
       expect(result).toBe('https://test.mobibix.in/print/invoice/inv-123');
@@ -74,7 +77,7 @@ describe('WhatsAppVariableResolver Dynamic Links', () => {
 
       const result = await (resolver as any).resolveComputedVariable(
         { key: 'jobTrackingLink' },
-        context
+        context,
       );
 
       expect(prisma.jobCard.findUnique).toHaveBeenCalledWith({
@@ -97,7 +100,7 @@ describe('WhatsAppVariableResolver Dynamic Links', () => {
 
       const result = await (resolver as any).resolveComputedVariable(
         { key: 'job_tracking_link' },
-        context
+        context,
       );
 
       expect(result).toBe('https://test.mobibix.in/track/token-456');

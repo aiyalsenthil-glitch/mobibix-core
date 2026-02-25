@@ -3,7 +3,6 @@ import { ThrottlerGuard, ThrottlerException } from '@nestjs/throttler';
 
 @Injectable()
 export class CustomThrottlerGuard extends ThrottlerGuard {
-
   /**
    * Override to support user-based rate limiting in addition to IP
    */

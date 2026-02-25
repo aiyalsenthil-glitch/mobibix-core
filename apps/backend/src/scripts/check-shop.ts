@@ -1,4 +1,3 @@
-
 import { PrismaClient } from '@prisma/client';
 import * as dotenv from 'dotenv';
 dotenv.config();
@@ -11,7 +10,12 @@ async function checkShop() {
 
   const shop = await prisma.shop.findUnique({
     where: { id: shopId },
-    select: { id: true, name: true, tenantId: true, tenant: { select: { name: true, code: true } } }
+    select: {
+      id: true,
+      name: true,
+      tenantId: true,
+      tenant: { select: { name: true, code: true } },
+    },
   });
 
   console.log('Shop:', shop);
@@ -19,13 +23,13 @@ async function checkShop() {
   if (shop) {
     // Check if there are other tenants
     const otherShops = await prisma.shop.findMany({
-        take: 5,
-        select: { id: true, name: true, tenantId: true }
+      take: 5,
+      select: { id: true, name: true, tenantId: true },
     });
     console.log('Other Shops Sample:', otherShops);
   }
 }
 
 checkShop()
-  .catch(e => console.error(e))
+  .catch((e) => console.error(e))
   .finally(async () => await prisma.$disconnect());

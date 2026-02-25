@@ -8,5 +8,8 @@ export interface RequiredPermission {
 }
 
 export const PERMISSION_KEY = 'permissions';
-export const RequirePermission = (module: ModuleType, resource: string, action: string) =>
-  SetMetadata(PERMISSION_KEY, { module, resource, action });
+export const RequirePermission = (
+  module: ModuleType,
+  resource: string,
+  action: string,
+) => SetMetadata(PERMISSION_KEY, { module, resource, action });

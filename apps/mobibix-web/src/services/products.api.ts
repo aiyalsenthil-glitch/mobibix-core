@@ -270,3 +270,45 @@ export async function getStockHistory(
   const data = await extractData(response);
   return Array.isArray(data) ? data : data.data || [];
 }
+
+/**
+ * Import products from CSV/Excel file
+ */
+export async function importProducts(
+  shopId: string,
+  file: File,
+): Promise<{ imported: number; errors: string[] }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("shopId", shopId);
+
+  const response = await authenticatedFetch("/mobileshop/products/import", {
+    method: "POST",
+    body: formData,
+    // Don't set Content-Type — browser sets multipart boundary automatically
+    headers: {},
+  });
+
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error(error.message || "Failed to import products");
+  }
+
+  return extractData(response);
+}
+
+/**
+ * Export products as CSV
+ */
+export async function exportProducts(shopId: string): Promise<Blob> {
+  const response = await authenticatedFetch(
+    `/mobileshop/products/export?shopId=${shopId}`,
+  );
+
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error(error.message || "Failed to export products");
+  }
+
+  return response.blob();
+}

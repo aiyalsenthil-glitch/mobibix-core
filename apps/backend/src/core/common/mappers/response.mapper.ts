@@ -15,7 +15,10 @@ export abstract class BaseResponseMapper<T, R> {
   /**
    * Utility to strip fields from an object
    */
-  protected strip<O extends object, K extends keyof O>(obj: O, keys: K[]): Omit<O, K> {
+  protected strip<O extends object, K extends keyof O>(
+    obj: O,
+    keys: K[],
+  ): Omit<O, K> {
     const clone = { ...obj };
     keys.forEach((key) => delete clone[key]);
     return clone;
@@ -42,6 +45,10 @@ export class GymResponseMapper extends BaseResponseMapper<any, any> {
   map(data: any): any {
     if (!data) return data;
     // Example: Strip private contact info or medical notes for general staff view
-    return this.strip(data, ['emergencyContact', 'medicalNotes', 'privateComment']);
+    return this.strip(data, [
+      'emergencyContact',
+      'medicalNotes',
+      'privateComment',
+    ]);
   }
 }

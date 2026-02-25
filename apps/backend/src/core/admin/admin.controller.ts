@@ -87,8 +87,6 @@ export class AdminController {
       throw new BadRequestException('tenantId and planId are required');
     }
 
-    console.log(`[Admin] Injecting plan for ${tenantId}...`);
-
     // 0. Fetch Plan to get Module
     const plan = await this.prisma.plan.findUnique({ where: { id: planId } });
     if (!plan) throw new BadRequestException('Plan not found');

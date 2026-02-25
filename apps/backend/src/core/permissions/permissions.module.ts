@@ -13,16 +13,16 @@ import { ApprovalsController } from './approvals.controller';
   imports: [PrismaModule, CacheModule],
   controllers: [RolesController, ApprovalsController],
   providers: [
-    PermissionService, 
+    PermissionService,
     ActionDispatcherService,
     BranchAccessGuard,
-    GranularPermissionGuard
+    GranularPermissionGuard,
   ],
   exports: [
-    PermissionService, 
+    PermissionService,
     ActionDispatcherService,
     BranchAccessGuard,
-    GranularPermissionGuard
+    GranularPermissionGuard,
   ],
 })
 export class PermissionsModule {}

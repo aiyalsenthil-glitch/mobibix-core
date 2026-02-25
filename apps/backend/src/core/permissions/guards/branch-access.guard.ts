@@ -16,13 +16,14 @@ export class BranchAccessGuard implements CanActivate {
     const shadowMode = false; // Phase 6: STRICT MODE ON
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    
+
     if (!user || !user.tenantId) {
       return true; // Let other guards handle auth
     }
 
     // Try to find shopId in params, query, or body
-    const shopId = request.params?.shopId || request.query?.shopId || request.body?.shopId;
+    const shopId =
+      request.params?.shopId || request.query?.shopId || request.body?.shopId;
 
     if (!shopId) {
       return true; // No shop context to check

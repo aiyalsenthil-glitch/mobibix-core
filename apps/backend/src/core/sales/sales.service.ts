@@ -155,25 +155,28 @@ export class SalesService {
     }
 
     // 2. Fetch full invoice details with relations
-    const invoice = await this.getInvoiceDetails(invoiceMeta.tenantId, invoiceId);
-    
+    const invoice = await this.getInvoiceDetails(
+      invoiceMeta.tenantId,
+      invoiceId,
+    );
+
     // 3. Fetch Shop Details (Sanitized)
     const shop = await this.prisma.shop.findUnique({
       where: { id: invoice.shopId },
     });
 
     // 4. Fetch Product Details (for names, etc since InvoiceItem doesn't store name)
-    const productIds = invoice.items?.map(i => i.shopProductId) || [];
+    const productIds = invoice.items?.map((i) => i.shopProductId) || [];
     const products = await this.prisma.shopProduct.findMany({
       where: { id: { in: productIds } },
-      select: { 
-        id: true, 
-        name: true, 
-        type: true, 
-        hsnCode: true, 
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        hsnCode: true,
         gstRate: true,
-        isSerialized: true 
-      }
+        isSerialized: true,
+      },
     });
 
     return {
@@ -871,7 +874,7 @@ export class SalesService {
       } else if (status.toString() === 'FINAL') {
         where.status = InvoiceStatus.PAID; // Final in UI = Paid in DB
       } else if (Object.values(InvoiceStatus).includes(status as any)) {
-        where.status = status as InvoiceStatus;
+        where.status = status;
       }
     }
 

@@ -65,7 +65,7 @@ export class SubscriptionGuard implements CanActivate {
 
     // If no module scope specified, allow (backward compatibility for non-module routes)
     if (!moduleScope) {
-      this.logger.debug(
+      this.logger.verbose(
         `No @ModuleScope decorator found - skipping module-specific check for tenant ${tenantId}`,
       );
       return true;
@@ -212,7 +212,7 @@ export class SubscriptionGuard implements CanActivate {
     // Store subscription info in request for later use
     request.subscription = subscription;
 
-    this.logger.debug(
+    this.logger.verbose(
       `Subscription check passed: tenant ${tenantId} has active ${moduleScope} subscription (${subscription.plan.name})`,
     );
 

@@ -172,12 +172,7 @@ export class MobileShopReportsController extends TenantScopedController {
     const from = this.parseDate(startDate, fromDate);
     const to = this.parseDate(endDate, toDate);
 
-    return this.gstReports.getGSTR1B2B(
-      this.getTenantId(req),
-      from,
-      to,
-      shopId,
-    );
+    return this.gstReports.getGSTR1B2B(this.getTenantId(req), from, to, shopId);
   }
 
   @Get('gstr-1/b2c')
@@ -192,12 +187,7 @@ export class MobileShopReportsController extends TenantScopedController {
     const from = this.parseDate(startDate, fromDate);
     const to = this.parseDate(endDate, toDate);
 
-    return this.gstReports.getGSTR1B2C(
-      this.getTenantId(req),
-      from,
-      to,
-      shopId,
-    );
+    return this.gstReports.getGSTR1B2C(this.getTenantId(req), from, to, shopId);
   }
 
   @Get('gstr-2')
@@ -212,12 +202,7 @@ export class MobileShopReportsController extends TenantScopedController {
     const from = this.parseDate(startDate, fromDate);
     const to = this.parseDate(endDate, toDate);
 
-    return this.gstReports.getGSTR2(
-      this.getTenantId(req),
-      from,
-      to,
-      shopId,
-    );
+    return this.gstReports.getGSTR2(this.getTenantId(req), from, to, shopId);
   }
 
   @Get('gstr-1/export')

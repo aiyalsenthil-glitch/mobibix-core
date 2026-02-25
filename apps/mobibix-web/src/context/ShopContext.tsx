@@ -75,10 +75,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const data = await fetchShops();
 
     if (data && data.length > 0) {
-      // Priority: localStorage > first shop (if only one)
       const storedShopId = localStorage.getItem(SELECTED_SHOP_KEY);
 
-      // Validate shopId format (CUID should be alphanumeric, ~25 chars)
+      // Validate stored shopId
       const isValidShopId =
         storedShopId &&
         /^[a-z0-9]{20,30}$/i.test(storedShopId) &&
@@ -87,29 +86,24 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       if (isValidShopId) {
         setSelectedShopId(storedShopId);
       } else {
-        // Invalid or missing shopId - auto-select first shop or clear
-        if (storedShopId) {
-          console.warn(
-            "[ShopContext] Invalid shopId in localStorage, clearing:",
-            storedShopId,
-          );
-          localStorage.removeItem(SELECTED_SHOP_KEY);
-        }
-
-        if (data.length === 1) {
-          // Auto-select if only one shop
-          setSelectedShopId(data[0].id);
-          localStorage.setItem(SELECTED_SHOP_KEY, data[0].id);
-        } else if (data.length > 1) {
-          // Multiple shops but no valid selection - leave as "All Shops" (empty)
-          setSelectedShopId("");
-          localStorage.removeItem(SELECTED_SHOP_KEY);
-        }
+        // Auto-select first shop if none selected or invalid
+        const firstShopId = data[0].id;
+        setSelectedShopId(firstShopId);
+        localStorage.setItem(SELECTED_SHOP_KEY, firstShopId);
       }
     }
 
     setIsInitialized(true);
   };
+
+  // Watch shops and ensure one is selected if available
+  useEffect(() => {
+    if (isInitialized && shops.length > 0 && !selectedShopId) {
+      const firstShopId = shops[0].id;
+      setSelectedShopId(firstShopId);
+      localStorage.setItem(SELECTED_SHOP_KEY, firstShopId);
+    }
+  }, [shops, selectedShopId, isInitialized]);
 
   const selectShop = (shopId: string) => {
     setSelectedShopId(shopId);

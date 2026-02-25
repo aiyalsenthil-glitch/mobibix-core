@@ -45,10 +45,10 @@ export class PlanPriceService {
         },
       },
       select: {
-          price: true,
-          isActive: true,
-          REMOVED_PAYMENT_INFRAPlanId: true
-      }
+        price: true,
+        isActive: true,
+        REMOVED_PAYMENT_INFRAPlanId: true,
+      },
     });
 
     if (planPrice && planPrice.isActive) {

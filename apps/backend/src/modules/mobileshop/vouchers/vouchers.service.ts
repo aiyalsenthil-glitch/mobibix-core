@@ -139,7 +139,7 @@ export class VouchersService {
     const where: any = {
       tenantId,
     };
-    
+
     if (shopId) {
       where.shopId = shopId;
     }

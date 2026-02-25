@@ -128,7 +128,6 @@ export class WhatsAppRemindersService {
             },
           },
         },
-
       });
 
       if (pendingReminders.length === 0) {

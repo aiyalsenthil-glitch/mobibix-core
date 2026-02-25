@@ -34,7 +34,7 @@ export interface BuyPlanInput {
   autoRenew?: boolean;
   billingType?: BillingType;
   initialStatus?: SubscriptionStatus; // Force an initial status (e.g. ACTIVE)
-  skipExternalPayment?: boolean;      // Skip Razorpay link generation
+  skipExternalPayment?: boolean; // Skip Razorpay link generation
 }
 
 export interface UpgradePlanInput {
@@ -107,7 +107,11 @@ export class SubscriptionsService {
    * - Existing subscription → No (error if already active)
    * - Multiple subscriptions → Not allowed (unique per module)
    */
-  async buyPlanPhase1(input: BuyPlanInput): Promise<TenantSubscription & { paymentLink?: string; subscriptionId?: string }> {
+  async buyPlanPhase1(
+    input: BuyPlanInput,
+  ): Promise<
+    TenantSubscription & { paymentLink?: string; subscriptionId?: string }
+  > {
     const {
       tenantId,
       planId,
@@ -155,13 +159,18 @@ export class SubscriptionsService {
     });
 
     if (existingSub) {
-       // Logic for UPGRADE/RENEW exists here, but usually BuyPlan is for new or re-activation.
-       // Current implementation handles Upgrade via specific endpoint, so buyPlan assumes "New" or "Re-activate Expired".
-       
-       if (existingSub.status === SubscriptionStatus.ACTIVE && existingSub.endDate > new Date()) {
-           // Should use upgrade endpoint
-           throw new BadRequestException(`Active subscription already exists. Use upgrade endpoint.`);
-       }
+      // Logic for UPGRADE/RENEW exists here, but usually BuyPlan is for new or re-activation.
+      // Current implementation handles Upgrade via specific endpoint, so buyPlan assumes "New" or "Re-activate Expired".
+
+      if (
+        existingSub.status === SubscriptionStatus.ACTIVE &&
+        existingSub.endDate > new Date()
+      ) {
+        // Should use upgrade endpoint
+        throw new BadRequestException(
+          `Active subscription already exists. Use upgrade endpoint.`,
+        );
+      }
     }
 
     // ───────────────────────────────────────────────
@@ -175,101 +184,107 @@ export class SubscriptionsService {
 
     // 1. MANUAL FLOW (Payment Link)
     if (billingType === BillingType.MANUAL && !skipExternalPayment) {
-        if (priceResponse.price > 0) {
-            // Create Razorpay Payment Link
-            const link = await this.REMOVED_PAYMENT_INFRAService.createPaymentLink(
-                priceResponse.price,
-                'INR',
-                `Subscription for ${plan.name} (${billingCycle})`,
-                {
-                    name: tenant.name,
-                    email: tenant.contactEmail || 'admin@mobibix.com',
-                    contact: tenant.contactPhone || '9999999999',
-                },
-                `sub_config_${Date.now()}` // Temporary reference, will update implementation
-            );
-            providerPaymentLinkId = link.id;
-            paymentLinkUrl = link.short_url;
-        }
-    } 
+      if (priceResponse.price > 0) {
+        // Create Razorpay Payment Link
+        const link = await this.REMOVED_PAYMENT_INFRAService.createPaymentLink(
+          priceResponse.price,
+          'INR',
+          `Subscription for ${plan.name} (${billingCycle})`,
+          {
+            name: tenant.name,
+            email: tenant.contactEmail || 'admin@mobibix.com',
+            contact: tenant.contactPhone || '9999999999',
+          },
+          `sub_config_${Date.now()}`, // Temporary reference, will update implementation
+        );
+        providerPaymentLinkId = link.id;
+        paymentLinkUrl = link.short_url;
+      }
+    }
     // 2. AUTOPAY FLOW (Subscription)
     else if (billingType === BillingType.AUTOPAY && !skipExternalPayment) {
-        // Ensure PlanPrice has REMOVED_PAYMENT_INFRAPlanId
-        if (!priceResponse.REMOVED_PAYMENT_INFRAPlanId) {
-            throw new BadRequestException(`AutoPay not configured for this plan (${plan.name} - ${billingCycle})`);
-        }
-
-        const sub = await this.REMOVED_PAYMENT_INFRAService.createSubscription(
-            priceResponse.REMOVED_PAYMENT_INFRAPlanId,
-            120, // 10 years default
-            Math.floor(startDate.getTime() / 1000) // Start At timestamp (optional)
+      // Ensure PlanPrice has REMOVED_PAYMENT_INFRAPlanId
+      if (!priceResponse.REMOVED_PAYMENT_INFRAPlanId) {
+        throw new BadRequestException(
+          `AutoPay not configured for this plan (${plan.name} - ${billingCycle})`,
         );
-        providerSubscriptionId = sub.id;
-        REMOVED_PAYMENT_INFRASubscriptionId = sub.id;
+      }
+
+      const sub = await this.REMOVED_PAYMENT_INFRAService.createSubscription(
+        priceResponse.REMOVED_PAYMENT_INFRAPlanId,
+        120, // 10 years default
+        Math.floor(startDate.getTime() / 1000), // Start At timestamp (optional)
+      );
+      providerSubscriptionId = sub.id;
+      REMOVED_PAYMENT_INFRASubscriptionId = sub.id;
     }
 
     // 3. Create/Update Subscription in DB
     // Use upsert or logic similar to previous implementation
-    
+
     // Note: If existingSub found (Expired), update it. Else create new.
     // We are setting status to PENDING initially for paid plans.
 
     // Determine initial status
-    const initialStatus = forcedStatus || (priceResponse.price > 0 ? SubscriptionStatus.PENDING : SubscriptionStatus.ACTIVE);
+    const initialStatus =
+      forcedStatus ||
+      (priceResponse.price > 0
+        ? SubscriptionStatus.PENDING
+        : SubscriptionStatus.ACTIVE);
     const endDate = this.calculateEndDate(startDate, billingCycle);
 
     let subscription: TenantSubscription;
 
     if (existingSub) {
-        subscription = await this.prisma.tenantSubscription.update({
-            where: { id: existingSub.id },
-            data: {
-                planId,
-                billingCycle,
-                priceSnapshot: priceResponse.price,
-                autoRenew: billingType === BillingType.AUTOPAY, // Force true for AutoPay
-                // @ts-ignore
-                billingType,
-                paymentStatus: PaymentStatus.PENDING,
-                providerPaymentLinkId,
-                providerSubscriptionId,
-                status: initialStatus,
-                startDate,
-                endDate,
-                updatedAt: new Date(),
-            }
-        });
+      subscription = await this.prisma.tenantSubscription.update({
+        where: { id: existingSub.id },
+        data: {
+          planId,
+          billingCycle,
+          priceSnapshot: priceResponse.price,
+          autoRenew: billingType === BillingType.AUTOPAY, // Force true for AutoPay
+          // @ts-ignore
+          billingType,
+          paymentStatus: PaymentStatus.PENDING,
+          providerPaymentLinkId,
+          providerSubscriptionId,
+          status: initialStatus,
+          startDate,
+          endDate,
+          updatedAt: new Date(),
+        },
+      });
     } else {
-        subscription = await this.prisma.tenantSubscription.create({
-            data: {
-                tenantId,
-                planId,
-                module,
-                billingCycle,
-                priceSnapshot: priceResponse.price,
-                autoRenew: billingType === BillingType.AUTOPAY,
-                billingType,
-                paymentStatus: PaymentStatus.PENDING,
-                providerPaymentLinkId,
-                providerSubscriptionId,
-                status: initialStatus,
-                startDate,
-                endDate,
-            }
-        });
+      subscription = await this.prisma.tenantSubscription.create({
+        data: {
+          tenantId,
+          planId,
+          module,
+          billingCycle,
+          priceSnapshot: priceResponse.price,
+          autoRenew: billingType === BillingType.AUTOPAY,
+          billingType,
+          paymentStatus: PaymentStatus.PENDING,
+          providerPaymentLinkId,
+          providerSubscriptionId,
+          status: initialStatus,
+          startDate,
+          endDate,
+        },
+      });
     }
 
     this.logger.log(
-      `🛒 Initiated purchase ${tenant.name}@${module}: ${billingType} | Status: ${initialStatus}`
+      `🛒 Initiated purchase ${tenant.name}@${module}: ${billingType} | Status: ${initialStatus}`,
     );
 
     // ⚡ Invalidate cache
     this.cacheService.delete(`subscription:${tenantId}:${module}`);
 
     return {
-        ...subscription,
-        paymentLink: paymentLinkUrl,
-        subscriptionId: REMOVED_PAYMENT_INFRASubscriptionId
+      ...subscription,
+      paymentLink: paymentLinkUrl,
+      subscriptionId: REMOVED_PAYMENT_INFRASubscriptionId,
     };
   }
 
@@ -581,7 +596,6 @@ export class SubscriptionsService {
    * 4. renews subscription on success
    */
 
-
   /**
    * BUY ADDON (Phase 1 - New Implementation)
    *
@@ -689,18 +703,24 @@ export class SubscriptionsService {
     }
 
     // Handle AutoPay Cancellation
-    if (!enabled && subscription.billingType === BillingType.AUTOPAY && subscription.providerSubscriptionId) {
-        // Correct behavior: Cancel at Razorpay end
-        await this.REMOVED_PAYMENT_INFRAService.cancelSubscription(subscription.providerSubscriptionId);
+    if (
+      !enabled &&
+      subscription.billingType === BillingType.AUTOPAY &&
+      subscription.providerSubscriptionId
+    ) {
+      // Correct behavior: Cancel at Razorpay end
+      await this.REMOVED_PAYMENT_INFRAService.cancelSubscription(
+        subscription.providerSubscriptionId,
+      );
     }
 
-    // Logic: If enabling, and it was AutoPay but now cancelled? 
+    // Logic: If enabling, and it was AutoPay but now cancelled?
     // Re-enabling a cancelled Razorpay subscription isn't usually possible via simple toggle.
     // User would need to buy/upgrade again.
     // So if billingType is AUTOPAY and we try to enable, check if it's possible?
     // For now, let's allow DB toggle, but Razorpay might remain cancelled.
     // Ideally, we should block re-enabling if Razorpay sub is already cancelled.
-    
+
     // Simplification for Phase 1: Only handle Cancellation trigger.
 
     const updated = await this.prisma.tenantSubscription.update({

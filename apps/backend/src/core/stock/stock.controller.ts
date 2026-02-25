@@ -1,4 +1,4 @@
-import { Controller, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { StockService } from './stock.service';
@@ -10,4 +10,16 @@ import { UserRole } from '@prisma/client';
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class StockController {
   constructor(private readonly service: StockService) {}
+
+  @Get('summary')
+  async getSummary(@Req() req: any, @Query('shopId') shopId?: string) {
+    const tenantId = req.user.tenantId;
+    return await this.service.getStockBalances(tenantId, shopId);
+  }
+
+  @Get('overview')
+  async getOverview(@Req() req: any, @Query('shopId') shopId?: string) {
+    const tenantId = req.user.tenantId;
+    return await this.service.getStockOverview(tenantId, shopId);
+  }
 }

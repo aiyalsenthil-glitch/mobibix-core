@@ -28,7 +28,6 @@ export class CsrfGuard implements CanActivate {
       return true;
     }
 
-
     const csrfCookie = req.cookies?.csrfToken as string | undefined;
     const csrfHeader =
       (req.headers['x-csrf-token'] as string | undefined) ||

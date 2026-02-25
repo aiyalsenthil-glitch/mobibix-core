@@ -147,9 +147,9 @@ async function bootstrap() {
    * 8️⃣ Create NestJS app ON SAME Express instance
    */
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
-    bufferLogs: true, 
+    bufferLogs: true,
   });
-  
+
   // Replace default Nest logger with Pino
   app.useLogger(app.get(Logger));
 

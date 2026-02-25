@@ -499,11 +499,17 @@ export class PurchasesService {
       totalGst: this.fromPaisa(purchase.totalGst),
       grandTotal: this.fromPaisa(purchase.grandTotal),
       paidAmount: this.fromPaisa(purchase.paidAmount),
-      outstandingAmount: this.fromPaisa(purchase.grandTotal - purchase.paidAmount),
+      outstandingAmount: this.fromPaisa(
+        purchase.grandTotal - purchase.paidAmount,
+      ),
       paymentMethod: purchase.paymentMethod,
       paymentReference: purchase.paymentReference,
-      cashAmount: purchase.cashAmount ? this.fromPaisa(purchase.cashAmount) : undefined,
-      upiAmount: purchase.upiAmount ? this.fromPaisa(purchase.upiAmount) : undefined,
+      cashAmount: purchase.cashAmount
+        ? this.fromPaisa(purchase.cashAmount)
+        : undefined,
+      upiAmount: purchase.upiAmount
+        ? this.fromPaisa(purchase.upiAmount)
+        : undefined,
       purchaseType: purchase.purchaseType,
       taxInclusive: purchase.taxInclusive,
       status: purchase.status,

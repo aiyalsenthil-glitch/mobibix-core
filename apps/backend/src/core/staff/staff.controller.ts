@@ -35,7 +35,13 @@ export class StaffController {
   ) {}
 
   // ✅ OWNER: list staff
-  @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard)
+  @UseGuards(
+    JwtAuthGuard,
+    RolesGuard,
+    TenantRequiredGuard,
+    BranchAccessGuard,
+    GranularPermissionGuard,
+  )
   @Permissions(Permission.STAFF_MANAGE)
   @RequirePermission(ModuleType.CORE, 'staff', 'view_all')
   @Get()
@@ -54,7 +60,14 @@ export class StaffController {
   }
 
   // ✅ OWNER: TEMP create staff (staff must have logged in once)
-  @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard, PlanFeatureGuard)
+  @UseGuards(
+    JwtAuthGuard,
+    RolesGuard,
+    TenantRequiredGuard,
+    BranchAccessGuard,
+    GranularPermissionGuard,
+    PlanFeatureGuard,
+  )
   @RequirePlanFeature('staff')
   @Roles(UserRole.OWNER)
   @Post()
@@ -77,12 +90,25 @@ export class StaffController {
   }
 
   // ✅ OWNER: INVITE staff by email (PROPER FLOW)
-  @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard)
+  @UseGuards(
+    JwtAuthGuard,
+    RolesGuard,
+    TenantRequiredGuard,
+    BranchAccessGuard,
+    GranularPermissionGuard,
+  )
   @Roles(UserRole.OWNER)
   @Post('invite')
   async invite(
     @Req() req: any,
-    @Body() body: { email: string; name?: string; phone?: string; roleId?: string; branchIds?: string[] },
+    @Body()
+    body: {
+      email: string;
+      name?: string;
+      phone?: string;
+      roleId?: string;
+      branchIds?: string[];
+    },
   ) {
     return this.staffService.inviteByEmail(
       req.user.tenantId,
@@ -94,7 +120,13 @@ export class StaffController {
       body.branchIds,
     );
   }
-  @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard)
+  @UseGuards(
+    JwtAuthGuard,
+    RolesGuard,
+    TenantRequiredGuard,
+    BranchAccessGuard,
+    GranularPermissionGuard,
+  )
   @Roles(UserRole.OWNER)
   @Get('invites')
   async listInvites(@Req() req: any) {
@@ -110,14 +142,26 @@ export class StaffController {
     return this.staffService.acceptInvite(req.user.sub, token);
   }
   //Staff Invite Revoke
-  @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard)
+  @UseGuards(
+    JwtAuthGuard,
+    RolesGuard,
+    TenantRequiredGuard,
+    BranchAccessGuard,
+    GranularPermissionGuard,
+  )
   @Roles(UserRole.OWNER)
   @Delete('invite/:id')
   async revokeInvite(@Req() req: any, @Param('id') inviteId: string) {
     return this.staffService.revokeInvite(req.user.tenantId, inviteId);
   }
   // ✅ OWNER: Remove staff from tenant
-  @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, BranchAccessGuard, GranularPermissionGuard)
+  @UseGuards(
+    JwtAuthGuard,
+    RolesGuard,
+    TenantRequiredGuard,
+    BranchAccessGuard,
+    GranularPermissionGuard,
+  )
   @Permissions(Permission.STAFF_MANAGE)
   @Delete(':staffUserId')
   async removeStaff(

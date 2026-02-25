@@ -17,8 +17,6 @@ describe('AppController (e2e)', () => {
   });
 
   it('/ (GET) should require auth by default', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(401);
+    return request(app.getHttpServer()).get('/').expect(401);
   });
 });

@@ -54,54 +54,60 @@ export function ImportProductsModal({
   };
 
   const downloadTemplate = () => {
-    const headers = includeStock
-      ? [
-          "Product Name",
-          "Category",
-          "Product Type",
-          "Selling Price",
-          "GST Rate",
-          "HSN Code",
-          "Inventory Tracked",
-          "Opening Stock",
-        ]
-      : [
-          "Product Name",
-          "Category",
-          "Product Type",
-          "Selling Price",
-          "GST Rate",
-          "HSN Code",
-          "Inventory Tracked",
-        ];
+    // Standard headers aligned with backend parser
+    const headers = [
+      "Product Name",
+      "Category",
+      "Product Type",
+      "Selling Price",
+      "Cost Price",
+      "GST Rate",
+      "HSN Code",
+      "SKU",
+      "Opening Stock",
+    ];
 
-    const sampleData = includeStock
-      ? [
-          [
-            "Sample Product",
-            "Electronics",
-            "GOODS",
-            "1000",
-            "18",
-            "8517",
-            "Yes",
-            "50",
-          ],
-        ]
-      : [
-          [
-            "Sample Product",
-            "Electronics",
-            "GOODS",
-            "1000",
-            "18",
-            "8517",
-            "Yes",
-          ],
-        ];
+    const sampleData = [
+      [
+        "iPhone 15 Pro",
+        "Mobile",
+        "GOODS",
+        "129900",
+        "110000",
+        "18",
+        "8517",
+        "IP15P-BK-128",
+        includeStock ? "10" : "0",
+      ],
+      [
+        "Screen Guard",
+        "Accessory",
+        "GOODS",
+        "499",
+        "150",
+        "12",
+        "3926",
+        "ACC-SG-001",
+        includeStock ? "100" : "0",
+      ],
+    ];
 
     const csvContent = [headers, ...sampleData]
-      .map((row) => row.join(","))
+      .map((row) =>
+        row
+          .map((field) => {
+            const stringField = String(field);
+            if (
+              stringField.includes(",") ||
+              stringField.includes('"') ||
+              stringField.includes("\n")
+            ) {
+              return `"${stringField.replace(/"/g, '""')}"`;
+            }
+            return stringField;
+          })
+          .join(","),
+      )
       .join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });

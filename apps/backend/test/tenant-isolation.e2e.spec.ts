@@ -13,11 +13,11 @@ import request from 'supertest';
 describe('Tenant Isolation (E2E)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let adminJwt: string = 'adminJwt';
-  let tenant1Jwt: string = 'tenant1Jwt';
-  let tenant2Jwt: string = 'tenant2Jwt';
-  let tenant1Id: string = 'tenant1Id';
-  let tenant2Id: string = 'tenant2Id';
+  const adminJwt: string = 'adminJwt';
+  const tenant1Jwt: string = 'tenant1Jwt';
+  const tenant2Jwt: string = 'tenant2Jwt';
+  const tenant1Id: string = 'tenant1Id';
+  const tenant2Id: string = 'tenant2Id';
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

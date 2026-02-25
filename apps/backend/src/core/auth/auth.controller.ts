@@ -106,7 +106,9 @@ export class AuthController {
     }
 
     const csrfToken = this.generateCsrfToken();
-    const csrfOptions = this.buildCsrfCookieOptions(result.accessTokenExpiresIn);
+    const csrfOptions = this.buildCsrfCookieOptions(
+      result.accessTokenExpiresIn,
+    );
 
     res.cookie('csrfToken', csrfToken, csrfOptions);
 
@@ -144,7 +146,9 @@ export class AuthController {
     }
 
     const csrfToken = this.generateCsrfToken();
-    const csrfOptions = this.buildCsrfCookieOptions(result.accessTokenExpiresIn);
+    const csrfOptions = this.buildCsrfCookieOptions(
+      result.accessTokenExpiresIn,
+    );
 
     res.cookie('csrfToken', csrfToken, csrfOptions);
 
@@ -181,7 +185,9 @@ export class AuthController {
     }
 
     const csrfToken = this.generateCsrfToken();
-    const csrfOptions = this.buildCsrfCookieOptions(result.accessTokenExpiresIn);
+    const csrfOptions = this.buildCsrfCookieOptions(
+      result.accessTokenExpiresIn,
+    );
 
     res.cookie('csrfToken', csrfToken, csrfOptions);
 

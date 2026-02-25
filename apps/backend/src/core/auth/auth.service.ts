@@ -53,8 +53,14 @@ export class AuthService {
       include: { user: true },
     });
 
-    if (!tokenRecord || tokenRecord.revokedAt || tokenRecord.expiresAt.getTime() <= Date.now()) {
-      throw new UnauthorizedException('Invalid, revoked, or expired refresh token');
+    if (
+      !tokenRecord ||
+      tokenRecord.revokedAt ||
+      tokenRecord.expiresAt.getTime() <= Date.now()
+    ) {
+      throw new UnauthorizedException(
+        'Invalid, revoked, or expired refresh token',
+      );
     }
 
     const user = tokenRecord.user;
@@ -78,9 +84,9 @@ export class AuthService {
       role,
     });
 
-    return { 
-      accessToken, 
-      accessTokenExpiresIn: this.tokenFactory.accessTokenTtlMs 
+    return {
+      accessToken,
+      accessTokenExpiresIn: this.tokenFactory.accessTokenTtlMs,
     };
   }
 
@@ -94,7 +100,8 @@ export class AuthService {
   async loginWithFirebase(REMOVED_AUTH_PROVIDERToken: string, tenantCode?: string) {
     try {
       // 1️⃣ Verify Firebase token
-      const decoded = await this.authVerification.verifyFirebaseToken(REMOVED_AUTH_PROVIDERToken);
+      const decoded =
+        await this.authVerification.verifyFirebaseToken(REMOVED_AUTH_PROVIDERToken);
 
       // 2️⃣ Resolve user and check for invites
       let [user, staffInvite] = await Promise.all([
@@ -120,7 +127,7 @@ export class AuthService {
       const tenantId = activeUserTenant?.tenantId ?? null;
       const userTenantId = activeUserTenant?.id ?? null;
       const role = activeUserTenant?.role ?? user.role;
-      const isSystemOwner = (activeUserTenant as any)?.isSystemOwner ?? false;
+      const isSystemOwner = activeUserTenant?.isSystemOwner ?? false;
 
       // 6️⃣ Issue JWT & Refresh Token
       const token = this.tokenFactory.generateAccessToken({
@@ -135,10 +142,14 @@ export class AuthService {
 
       // 7️⃣ Set Firebase custom claims (fire-and-forget)
       if (tenantId) {
-        this.REMOVED_AUTH_PROVIDERAdmin.setCustomUserClaims(user.REMOVED_AUTH_PROVIDERUid, {
-          tenantId,
-          role,
-        }).catch(err => console.warn('⚠️  Firebase Claims Sync Failed:', err.message));
+        this.REMOVED_AUTH_PROVIDERAdmin
+          .setCustomUserClaims(user.REMOVED_AUTH_PROVIDERUid, {
+            tenantId,
+            role,
+          })
+          .catch((err) =>
+            console.warn('⚠️  Firebase Claims Sync Failed:', err.message),
+          );
       }
 
       return {
@@ -155,21 +166,26 @@ export class AuthService {
           name: user.fullName,
           email: user.email,
         },
-        tenant: activeUserTenant ? {
-          id: activeUserTenant.tenant.id,
-          name: activeUserTenant.tenant.name,
-          code: activeUserTenant.tenant.code,
-        } : null,
+        tenant: activeUserTenant
+          ? {
+              id: activeUserTenant.tenant.id,
+              name: activeUserTenant.tenant.name,
+              code: activeUserTenant.tenant.code,
+            }
+          : null,
         tenantCount: userTenantCount,
       };
     } catch (err) {
-      if (err instanceof UnauthorizedException || err instanceof InternalServerErrorException) {
+      if (
+        err instanceof UnauthorizedException ||
+        err instanceof InternalServerErrorException
+      ) {
         throw err;
       }
-      
+
       console.error('❌ AuthService Error:', err);
       throw new InternalServerErrorException(
-        `Authentication failed: ${err.message || 'Unknown error'}`
+        `Authentication failed: ${err.message || 'Unknown error'}`,
       );
     }
   }
@@ -184,17 +200,25 @@ export class AuthService {
     });
 
     if (!user || !user.email) {
-      throw new UnauthorizedException('User not found or missing email address');
+      throw new UnauthorizedException(
+        'User not found or missing email address',
+      );
     }
 
-    const tenantId = user.tenantId || (await this.prisma.userTenant.findFirst({ where: { userId } }))?.tenantId;
+    const tenantId =
+      user.tenantId ||
+      (await this.prisma.userTenant.findFirst({ where: { userId } }))?.tenantId;
 
     if (!tenantId) {
-       console.warn(`[sendVerificationEmail] User ${userId} has no associated tenant context for EmailLog.`);
+      console.warn(
+        `[sendVerificationEmail] User ${userId} has no associated tenant context for EmailLog.`,
+      );
     }
 
     // Generate link directly via Firebase Admin
-    const link = await this.REMOVED_AUTH_PROVIDERAdmin.generateEmailVerificationLink(user.email);
+    const link = await this.REMOVED_AUTH_PROVIDERAdmin.generateEmailVerificationLink(
+      user.email,
+    );
 
     // Send the email using our custom Resend email service with our own templates
     await this.emailService.send({
@@ -209,7 +233,7 @@ export class AuthService {
       data: {
         name: user.fullName || 'User',
         verificationLink: link,
-      }
+      },
     } as any); // Cast as any if we need to bypass strict type for `targetType/recipientType`
   }
 }
