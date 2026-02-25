@@ -31,18 +31,19 @@ android {
         buildConfigField(
             "String",
             "API_BASE_URL",
-            "\"${localProperties.getProperty("API_BASE_URL")}\""
+            "\"${localProperties.getProperty("API_BASE_URL") ?: ""}\""
         )
         buildConfigField(
             "String",
             "PUBLIC_BASE_URL",
-            "\"https://mobibix-api.onrender.com\""
+            "\"${localProperties.getProperty("PUBLIC_BASE_URL") ?: "https://mobibix-api.onrender.com"}\""
         )
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
