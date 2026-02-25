@@ -89,14 +89,14 @@ type LoggerRequest = {
     // 🛡️ Rate Limiting (Multi-Tier)
     ThrottlerModule.forRoot([
       {
-        name: 'default', // Global: 100 requests per minute per IP
+        name: 'default', // Global: 300 requests per minute per IP
         ttl: 60000, // 60 seconds
-        limit: 100,
+        limit: 300,
       },
       {
-        name: 'user', // Authenticated users: 1000 requests per hour
+        name: 'user', // Authenticated users: 1500 requests per hour
         ttl: 3600000, // 1 hour
-        limit: 1000,
+        limit: 1500,
       },
     ]),
 

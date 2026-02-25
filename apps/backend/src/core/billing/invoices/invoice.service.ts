@@ -14,33 +14,19 @@ export class InvoiceService {
    */
   /**
    * Generate next invoice number (sequential, format: INV-YYYY-NNNN)
-   * This is now handled within createInvoiceForPayment with retry logic
+   * This is now handled safely using a PostgreSQL sequence.
    */
   private async generateInvoiceNumber(tx: any): Promise<string> {
     const year = new Date().getFullYear();
     const prefix = `INV-${year}-`;
 
-    // Get last invoice for current year with a lock if possible (via raw query if needed,
-    // but here we rely on the transaction and unique constraint retry in the caller)
-    const lastInvoice = await tx.subscriptionInvoice.findFirst({
-      where: {
-        invoiceNumber: {
-          startsWith: prefix,
-        },
-      },
-      orderBy: {
-        invoiceNumber: 'desc',
-      },
-    });
+    // Atomically get the next value from the Postgres sequence
+    const result = await tx.$queryRaw<[{ nextval: string }]>`
+      SELECT nextval('subscription_invoice_seq')
+    `;
 
-    let sequence = 1;
-    if (lastInvoice) {
-      const parts = lastInvoice.invoiceNumber.split('-');
-      const lastSeq = parseInt(parts[parts.length - 1]);
-      sequence = isNaN(lastSeq) ? 1 : lastSeq + 1;
-    }
-
-    return `${prefix}${sequence.toString().padStart(4, '0')}`;
+    const sequenceNumber = parseInt(result[0].nextval, 10);
+    return `${prefix}${sequenceNumber.toString().padStart(4, '0')}`;
   }
 
   /**
@@ -189,9 +175,10 @@ export class InvoiceService {
 
   /**
    * Generate PDF for an invoice
-   * Returns a Buffer that can be written to file or streamed
+   * If a stream is provided, it writes to the stream and resolves when done.
+   * If no stream is provided, it resolves with a Buffer.
    */
-  async generatePDF(invoiceId: string): Promise<Buffer> {
+  async generatePDF(invoiceId: string, outputStream?: import('stream').Writable): Promise<Buffer | void> {
     const invoice = await this.prisma.subscriptionInvoice.findUnique({
       where: { id: invoiceId },
       include: {
@@ -211,13 +198,18 @@ export class InvoiceService {
     }
 
     return new Promise((resolve, reject) => {
-      const chunks: Buffer[] = [];
       const doc = new PDFDocument({ size: 'A4', margin: 50 });
 
-      // Pipe PDF into buffer
-      doc.on('data', (chunk) => chunks.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', reject);
+      if (outputStream) {
+        doc.pipe(outputStream);
+        outputStream.on('finish', () => resolve());
+        outputStream.on('error', reject);
+      } else {
+        const chunks: Buffer[] = [];
+        doc.on('data', (chunk) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+      }
 
       // --- Header ---
       doc

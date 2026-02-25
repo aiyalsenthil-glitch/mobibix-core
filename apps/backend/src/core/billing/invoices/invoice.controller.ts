@@ -38,18 +38,15 @@ export class InvoiceController {
       throw new NotFoundException('Invoice not found');
     }
 
-    // Generate PDF buffer
-    const pdfBuffer = await this.invoiceService.generatePDF(invoiceId);
-
-    // Set response headers
+    // Set response headers before streaming
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="invoice-${invoice.invoiceNumber}.pdf"`,
     );
 
-    // Send PDF buffer
-    res.send(pdfBuffer);
+    // Generate and stream PDF directly to response
+    await this.invoiceService.generatePDF(invoiceId, res);
   }
 
   /**

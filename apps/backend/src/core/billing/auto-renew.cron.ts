@@ -47,81 +47,69 @@ export class AutoRenewCronService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - lookbackDays);
 
-      // Find all subscriptions ready for renewal (including missed ones)
-      const dueSubs = await this.prisma.tenantSubscription.findMany({
-        where: {
-          status: 'ACTIVE' as SubscriptionStatus,
-          autoRenew: true,
-          endDate: {
-            gte: cutoffDate, // Catch-up window
-            lte: new Date(), // Up to now
-          },
-        },
-        include: {
-          tenant: true,
-          plan: true,
-        },
-      });
+      const P_LIMIT_CONCURRENCY = 5;
+      const CHUNK_SIZE = 50;
 
-      this.logger.log(`Found ${dueSubs.length} subscriptions due for renewal`);
-
-      if (dueSubs.length === 0) {
-        this.logger.log('✅ No subscriptions to renew');
-        return;
-      }
+      // Dynamic import because p-limit is an ESM module and NestJS uses CommonJS
+      const pLimit = (await import('p-limit')).default;
+      const limit = pLimit(P_LIMIT_CONCURRENCY);
 
       let successCount = 0;
       let failCount = 0;
+      let hasMore = true;
+      let lastId: string | undefined = undefined;
 
-      // Process each subscription with retry logic
-      for (const sub of dueSubs) {
-        try {
-          // 🔄 Renew subscription with retry
-          const renewed = await this.renewWithRetry(sub.id);
+      while (hasMore) {
+        // Find all subscriptions ready for renewal using cursor pagination
+        const dueSubs = await this.prisma.tenantSubscription.findMany({
+          where: {
+            status: 'ACTIVE' as SubscriptionStatus,
+            autoRenew: true,
+            endDate: {
+              gte: cutoffDate, // Catch-up window
+              lte: new Date(), // Up to now
+            },
+          },
+          include: {
+            tenant: true,
+            plan: true,
+          },
+          take: CHUNK_SIZE,
+          ...(lastId ? { skip: 1, cursor: { id: lastId } } : {}),
+          orderBy: { id: 'asc' }, // Ensure stable ordering for cursor
+        });
 
-          // Send email notification (disabled - no EmailService yet)
-          /*
-          try {
-            const owner = await this.prisma.userTenant.findFirst({
-              where: {
-                tenantId: sub.tenantId,
-                role: 'OWNER',
-              },
-              include: { user: true },
-            });
+        if (dueSubs.length === 0) {
+          hasMore = false;
+          break;
+        }
 
-            if (owner?.user?.email) {
-              await emailService.send({
-                to: owner.user.email,
-                subject: `Subscription Renewed - ${sub.tenant.name}`,
-                template: 'subscription-renewed',
-                context: {
-                  tenantName: sub.tenant.name,
-                  planName: sub.plan.name,
-                  billingCycle: renewed.billingCycle,
-                  price: `₹${renewed.priceSnapshot ? renewed.priceSnapshot / 100 : 'N/A'}`,
-                  nextExpiry: renewed.endDate.toLocaleDateString(),
-                },
-              });
+        this.logger.log(`Processing chunk of ${dueSubs.length} subscriptions...`);
+
+        // Process chunk concurrently but limited
+        const promises = dueSubs.map((sub) =>
+          limit(async () => {
+            try {
+              // 🔄 Renew subscription with retry
+              const renewed = await this.renewWithRetry(sub.id);
+              
+              successCount++;
+              this.logger.log(`✅ Renewed ${sub.tenant.name}@${sub.module} (${sub.plan.name})`);
+            } catch (err) {
+              failCount++;
+              this.logger.error(
+                `❌ Failed to renew ${sub.tenant.name}@${sub.module}: ${err instanceof Error ? err.message : err}`,
+              );
             }
-          } catch (emailErr) {
-            this.logger.warn(
-              `Failed to send renewal email for ${sub.tenant.name}: ${emailErr}`,
-            );
-            // Don't fail the renewal if email fails
-          }
-          */
+          }),
+        );
 
-          successCount++;
-          this.logger.log(
-            `✅ Renewed ${sub.tenant.name}@${sub.module} (${sub.plan.name})`,
-          );
-        } catch (err) {
-          failCount++;
-          this.logger.error(
-            `❌ Failed to renew ${sub.tenant.name}@${sub.module}: ${err instanceof Error ? err.message : err}`,
-          );
-          // Continue with next subscription
+        await Promise.all(promises);
+
+        if (dueSubs.length < CHUNK_SIZE) {
+          hasMore = false;
+        } else {
+          lastId = dueSubs[dueSubs.length - 1].id;
         }
       }
 

@@ -17,6 +17,9 @@ import {
   BillingType,
 } from '@prisma/client';
 
+import { SubscriptionsService } from './subscriptions/subscriptions.service';
+import { InvoiceService } from './invoices/invoice.service';
+
 @Controller('billing/webhook/REMOVED_PAYMENT_INFRA')
 export class RazorpayWebhookController {
   private readonly logger = new Logger(RazorpayWebhookController.name);
@@ -25,6 +28,8 @@ export class RazorpayWebhookController {
     private readonly REMOVED_PAYMENT_INFRAService: RazorpayService,
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly subscriptionsService: SubscriptionsService,
+    private readonly invoiceService: InvoiceService,
   ) {}
 
   @Post()
@@ -46,7 +51,33 @@ export class RazorpayWebhookController {
     }
 
     const event = body.event;
-    this.logger.log(`Received Razorpay Webhook: ${event}`);
+    const eventId = body.headers?.['x-REMOVED_PAYMENT_INFRA-event-id'] || body.id; // Usually available in header or body
+
+    this.logger.log(`Received Razorpay Webhook: ${event} [${eventId}]`);
+
+    if (!eventId) {
+      this.logger.warn(`Webhook missing event ID, forcing processing...`);
+    } else {
+      try {
+        // Enforce Idempotency using the new Postgres WebhookEvent table
+        await this.prisma.webhookEvent.create({
+          data: {
+            provider: 'RAZORPAY',
+            eventType: event,
+            referenceId: eventId,
+            status: 'PROCESSING',
+            payload: body.payload || {}
+          },
+        });
+      } catch (err: any) {
+        if (err.code === 'P2002') {
+          this.logger.log(`Idempotent Ignore: Webhook ${eventId} already processed.`);
+          return { status: 'ok', message: 'Already processed' };
+        }
+        // If it's a different DB error, we can attempt to continue or throw
+        this.logger.error(`Failed to lock webhook event ${eventId}`, err);
+      }
+    }
 
     try {
       switch (event) {
@@ -90,8 +121,24 @@ export class RazorpayWebhookController {
         default:
           this.logger.log(`Unhandled event: ${event}`);
       }
+      // Mark webhook as processed
+      if (eventId) {
+        await this.prisma.webhookEvent.updateMany({
+          where: { provider: 'RAZORPAY', referenceId: eventId },
+          data: { status: 'SUCCESS', processedAt: new Date() },
+        }).catch(err => this.logger.error('Failed to update processed status', err));
+      }
+
     } catch (err) {
       this.logger.error(`Error handling webhook ${event}`, err);
+
+      if (eventId) {
+        await this.prisma.webhookEvent.updateMany({
+          where: { provider: 'RAZORPAY', referenceId: eventId },
+          data: { status: 'FAILED', error: err.message },
+        }).catch(err => this.logger.error('Failed to log error status', err));
+      }
+
       // Return 200 to acknowledge webhook even if processing fails to prevent retries
       return { status: 'error', message: err.message };
     }
@@ -104,63 +151,68 @@ export class RazorpayWebhookController {
   // -------------------------------------------------------------------------
 
   private async handlePaymentCaptured(payment: any) {
-    // Check if this payment is for a Payment Link
-    // Notes: payment entity has 'description' and possibly notes.
-    // If we used payment links, we might need to look up via providerPaymentLinkId if stored via link ID?
-    // Razorpay Payment Link ID is 'plink_...'
-    // The payment entity might reference it?
-    // Actually, createPaymentLink returns an ID.
-    // When payment is captured, the payload contains payment entity.
-    // Does it link back to plink?
-    // Usually 'notes' or 'description' match?
-    // Wait, the payment link object itself has a 'payment_id' after payment.
-    // BUT we stored 'providerPaymentLinkId' (plink_...) in DB.
-    // We need to match this payment to that link OR match by notes using tenantId/subId?
+    this.logger.log(`Payment Captured: ${payment.id} for ₹${payment.amount / 100}`);
 
-    // BETTER STRATEGY: Use notes for everything.
-    // But refactoring stored ID: we have `providerPaymentLinkId`.
-    // The webhook for payment link updates is valid?
-    // Razorpay sends `payment_link.paid` event? Or `payment.captured`?
-    // If utilizing Payment Links, we should listen to `payment_link.paid` or `payment_link.updated`.
+    // If there is an associated payment link for this payment
+    // We look up the TenantSubscription by providerPaymentLinkId
+    const paymentLinkId = payment.payment_link_id; // Might or might not exist directly on payment entity based on Razorpay integration version
 
-    // However, if we only listen to `payment.captured`, we need to link it.
-    // Let's assume we rely on `payment_link.paid`?
-    // But user prompt listed: "payment.captured -> mark SUCCESS".
+    // We can also lookup our own internal 'Payment' record first
+    const internalPayment = await this.prisma.payment.findFirst({
+      where: { providerPaymentId: payment.id },
+      include: { tenant: true }
+    });
 
-    // Let's check if `payment.notes` has reference.
-    const notes = payment.notes || {};
-    // We didn't explicitly set notes in createPaymentLink call?
-    // We set `reference_id` in createPaymentLink.
-    // Payment entity *might* have it?
+    if (internalPayment) {
+        // Activate standard manual payment
+        await this.prisma.payment.update({
+            where: { id: internalPayment.id },
+            data: { status: 'SUCCESS' }
+        });
 
-    // If we can't easily link, we might need to fetch the payment link details or use `payment_link.paid` event.
-    // For now, let's assume `description` helps or look for `notes`.
+        const activeSub = await this.prisma.tenantSubscription.findFirst({
+            where: { tenantId: internalPayment.tenantId, planId: internalPayment.planId, status: 'PENDING' },
+            orderBy: { createdAt: 'desc' }
+        });
 
-    // Actually, `providerPaymentLinkId` is the link ID.
-    // If the event provided is just `payment.captured`, we might search via email/contact? Risky.
+        if (activeSub) {
+             await this.prisma.tenantSubscription.update({
+                where: { id: activeSub.id },
+                data: {
+                  status: SubscriptionStatus.ACTIVE,
+                  paymentStatus: PaymentStatus.SUCCESS,
+                  updatedAt: new Date(),
+                  startDate: new Date(),
+                  endDate: this.subscriptionsService['calculateEndDate'](new Date(), activeSub.billingCycle || 'MONTHLY') // Accessing protected/public equivalent calc
+                },
+             });
+             this.logger.log(`✅ TenantSubscription ${activeSub.id} activated (Manual).`);
+        }
 
-    // Strategy: Search TenantSubscription where `providerPaymentLinkId` matches `payment.payment_link_id`?
-    // Does payment entity have `payment_link_id`? Unlikely directly.
+        // Generate Invoice
+        try {
+            await this.invoiceService.createInvoiceForPayment(internalPayment.id);
+        } catch(invErr) {
+            this.logger.error(`Failed to generate invoice for payment ${internalPayment.id}`, invErr);
+        }
 
-    // Let's try to find subscription by Reference ID (if passed) or Notes.
-    // Our logic used `sub_config_${Date.now()}` as reference_id.
+    } else if (paymentLinkId) {
+         const subscription = await this.prisma.tenantSubscription.findFirst({
+            where: { providerPaymentLinkId: paymentLinkId }
+         });
 
-    // If `payment_link.paid` event exists, use that.
-    // Assuming `payment.captured` for manual payments via standard checkout (if used later).
-
-    // Let's skip `payment.captured` logic unless we are sure.
-    // BUT, the Requirement said: "MANUAL: payment.captured -> mark SUCCESS".
-    // I will try to find the subscription by `providerPaymentLinkId` if possible,
-    // or assume `payment.captured` payload has info.
-
-    // Let's query assuming we can match.
-    // For now, I'll implement query by `status: PENDING` and `tenant`? No.
-
-    this.logger.log(
-      `Payment Captured: ${payment.id} for ₹${payment.amount / 100}`,
-    );
-
-    // Fallback: If we can't link, log warn.
+         if (subscription) {
+            await this.prisma.tenantSubscription.update({
+                where: { id: subscription.id },
+                data: {
+                  status: SubscriptionStatus.ACTIVE,
+                  paymentStatus: PaymentStatus.SUCCESS,
+                  updatedAt: new Date(),
+                },
+            });
+            this.logger.log(`✅ TenantSubscription ${subscription.id} activated (PaymentLink).`);
+         }
+    }
   }
 
   private async handleSubscriptionActivated(subEntity: any) {
@@ -204,26 +256,38 @@ export class RazorpayWebhookController {
 
     const subscription = await this.prisma.tenantSubscription.findFirst({
       where: { providerSubscriptionId: subId },
+      orderBy: { createdAt: 'desc' } // ensure we grab the most recent if dupes exist
     });
 
     if (subscription) {
-      // Extend validity
-      await this.prisma.tenantSubscription.update({
-        where: { id: subscription.id },
-        data: {
-          status: SubscriptionStatus.ACTIVE,
-          autopayStatus: AutopayStatus.ACTIVE,
-          paymentStatus: PaymentStatus.SUCCESS,
-          endDate: subEntity.current_end
-            ? new Date(subEntity.current_end * 1000)
-            : undefined,
-          lastRenewedAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-      this.logger.log(
-        `✅ TenantSubscription ${subscription.id} renewed (AutoPay).`,
-      );
+      // Instead of mutating the old row which destroys billing history ledger,
+      // we must use the official SubscriptionsService.renewSubscription logic to generate a new row.
+
+      try {
+        await this.subscriptionsService.renewSubscription(subscription.id);
+        this.logger.log(
+          `✅ TenantSubscription ${subscription.id} renewed (AutoPay webhook ledger action).`,
+        );
+
+        // Retrieve the newly created subscription to attach the provider tracking back
+        const latestSub = await this.prisma.tenantSubscription.findFirst({
+            where: { tenantId: subscription.tenantId, module: subscription.module, status: 'ACTIVE' },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        if (latestSub && latestSub.id !== subscription.id) {
+            await this.prisma.tenantSubscription.update({
+                where: { id: latestSub.id },
+                data: {
+                    providerSubscriptionId: subscription.providerSubscriptionId, 
+                    autopayStatus: AutopayStatus.ACTIVE,
+                    paymentStatus: PaymentStatus.SUCCESS
+                }
+            });
+        }
+      } catch (renewalErr) {
+          this.logger.error(`Sub renewal failed for ${subscription.id} via webhook`, renewalErr);
+      }
     }
   }
 
@@ -256,7 +320,18 @@ export class RazorpayWebhookController {
   }
 
   private async handlePaymentFailed(payment: any) {
-    // Logic to find subscription and mark payment as failed.
     this.logger.warn(`Payment Failed key: ${payment.id}`);
+    
+    // Attempt internal cleanup
+    const internalPayment = await this.prisma.payment.findFirst({
+        where: { providerPaymentId: payment.id }
+    });
+
+    if (internalPayment) {
+        await this.prisma.payment.update({
+            where: { id: internalPayment.id },
+            data: { status: 'FAILED' }
+        });
+    }
   }
 }
