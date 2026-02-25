@@ -12,6 +12,8 @@ import { AdminAnalyticsController } from './analytics/admin-analytics.controller
 import { AdminTenantController } from './tenant/admin-tenant.controller';
 import { AdminMdmController } from './mdm/admin-mdm.controller';
 import { AdminSystemController } from './system/admin-system.controller';
+import { AdminCorsController } from './cors/admin-cors.controller';
+import { AdminCorsService } from './cors/admin-cors.service';
 
 @Module({
   imports: [AuthModule, TenantModule, BillingModule, PlansModule, AuditModule],
@@ -24,6 +26,10 @@ import { AdminSystemController } from './system/admin-system.controller';
     AdminTenantController,
     AdminMdmController,
     AdminSystemController,
+    AdminCorsController,
   ],
+  providers: [AdminCorsService],
+  exports: [AdminCorsService],
 })
 export class AdminModule {}
+

@@ -20,6 +20,50 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ThrottlerExceptionFilter } from './common/filters/throttler-exception.filter';
 import { validateEnv } from './config/env.validation';
 
+// ─── Hardcoded fallback origins (used when DB is empty / first boot) ──────────
+const FALLBACK_ORIGINS = [
+  'http://localhost_REPLACED:3000',
+  'http://localhost_REPLACED:3001',
+  'http://localhost_REPLACED:3002',
+  'http://localhost_REPLACED:3003',
+  'http://localhost_REPLACED:3004',
+  'http://localhost_REPLACED:3005',
+  'http://localhost_REPLACED:5200',
+  'http://10.0.2.2:3000',
+  'https://mobibix.in',
+  'https://www.mobibix.in',
+  'https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com',
+  'https://gym-saas-cxg5.onrender.com',
+  'https://marlen-unarmed-subcentrally.ngrok-free.dev',
+];
+
+/** Load allowed origins from DB; seed defaults on first run */
+async function loadCorsOrigins(prisma: PrismaService): Promise<string[]> {
+  try {
+    const rows = await prisma.corsAllowedOrigin.findMany({
+      where: { isEnabled: true },
+      select: { origin: true },
+    });
+    if (rows.length > 0) {
+      return rows.map((r) => r.origin);
+    }
+    // First boot — seed defaults into DB so admin can manage them from UI
+    await prisma.corsAllowedOrigin.createMany({
+      data: FALLBACK_ORIGINS.map((origin) => ({
+        origin,
+        label: origin.startsWith('http://localhost') ? 'Local Dev' : 'Default',
+        isEnabled: true,
+      })),
+      skipDuplicates: true,
+    });
+    console.log(`🌐 Seeded ${FALLBACK_ORIGINS.length} default CORS origins into DB`);
+    return FALLBACK_ORIGINS;
+  } catch (err) {
+    console.warn('⚠️  Could not load CORS origins from DB, using fallback:', err);
+    return FALLBACK_ORIGINS;
+  }
+}
+
 // Force Hot Reload: Public Invoice Fix
 
 async function bootstrap() {
@@ -37,10 +81,16 @@ async function bootstrap() {
     tracesSampleRate: 1.0, // Capture 100% of transactions
     profilesSampleRate: 1.0, // Capture 100% of profiles
   });
+
   /**
    * 1️⃣ Create raw Express server
    */
   const server = express();
+
+  // 🌐 Pre-warm Prisma to load CORS origins before Express middleware attaches
+  const tempPrisma = new PrismaService();
+  const allowedOrigins = await loadCorsOrigins(tempPrisma);
+  await tempPrisma.$disconnect();
 
   /**
    * 🔥 2️⃣ Enable raw body for Razorpay webhook
@@ -79,30 +129,18 @@ async function bootstrap() {
   );
 
   /**
-   * 4️⃣ Enable CORS at Express level
+   * 4️⃣ Enable CORS at Express level — origins loaded from DB (admin-managed)
    */
   server.use(
     cors({
-      origin: [
-        'http://localhost_REPLACED:3000',
-        'http://localhost_REPLACED:3001',
-        'http://localhost_REPLACED:3002',
-        'http://localhost_REPLACED:3003',
-        'http://localhost_REPLACED:3004',
-        'http://localhost_REPLACED:3005',
-        'http://localhost_REPLACED:3006',
-        'http://localhost_REPLACED:3007',
-        'http://localhost_REPLACED:3008',
-        'http://localhost_REPLACED:3009',
-        'http://localhost_REPLACED:3010',
-        'http://localhost_REPLACED:5200',
-        'https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com',
-        'https://mobibix.in',
-        'https://www.mobibix.in',
-        'https://gym-saas-cxg5.onrender.com',
-        'http://10.0.2.2:3000',
-        'https://marlen-unarmed-subcentrally.ngrok-free.dev',
-      ],
+      origin: (requestOrigin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
+        if (!requestOrigin) return callback(null, true);
+        if (allowedOrigins.includes(requestOrigin)) {
+          return callback(null, true);
+        }
+        callback(new Error(`CORS: origin '${requestOrigin}' not allowed`));
+      },
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: [
         'Authorization',
@@ -188,20 +226,10 @@ async function bootstrap() {
   );
 
   /**
-   * 9️⃣ Enable Nest CORS (safe)
+   * 9️⃣ CORS is handled at the Express level (step 4️⃣) with DB-driven origins.
+   * Do NOT call app.enableCors() here — it would override the strict allowlist
+   * with `origin: true` (accept all), defeating the security model.
    */
-  app.enableCors({
-    origin: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Authorization',
-      'Content-Type',
-      'Accept',
-      'X-Requested-With',
-      'X-CSRF-Token',
-    ],
-    credentials: true,
-  });
 
   /**
    * 🔟 Start server

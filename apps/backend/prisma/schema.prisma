@@ -2259,3 +2259,15 @@ model ApprovalRequest {
   @@index([tenantId, shopId])
   @@index([status])
 }
+
+// ─── CORS Management ─────────────────────────────────────────────────────────
+model CorsAllowedOrigin {
+  id        String   @id @default(cuid())
+  origin    String   @unique
+  label     String?  // Human-readable label e.g. "Gympilot Production"
+  isEnabled Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isEnabled])
+}
