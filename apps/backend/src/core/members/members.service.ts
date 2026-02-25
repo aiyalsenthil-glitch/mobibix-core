@@ -889,19 +889,22 @@ export class MembersService {
     return member;
   }
 
-  //delete member
+  // delete member
   async deleteMember(user: any, memberId: string) {
     const member = await this.prisma.member.findFirst({
       where: {
         id: memberId,
         tenantId: user.tenantId,
       },
-      select: { id: true },
+      select: { id: true, phone: true },
     });
 
     if (!member) {
       throw new NotFoundException('Member not found');
     }
+
+    const deleteSuffix = `-del-${Date.now()}`;
+    const newPhone = member.phone ? `${member.phone.substring(0, 15 - deleteSuffix.length)}${deleteSuffix}` : undefined;
 
     await this.prisma.member.update({
       where: {
@@ -912,6 +915,7 @@ export class MembersService {
       },
       data: {
         isActive: false,
+        phone: newPhone,
         ...softDeleteData(user.sub ?? user.id ?? user.userId ?? 'system'),
       },
     });
