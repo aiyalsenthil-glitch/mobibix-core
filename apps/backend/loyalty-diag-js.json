@@ -1,0 +1,80 @@
+{
+  "summary": [
+    {
+      "_sum": {
+        "points": 58
+      },
+      "_count": {
+        "_all": 5
+      },
+      "customerId": "cmlmempte000118le1ydvptbc"
+    }
+  ],
+  "latest": [
+    {
+      "id": "cmm1zlbmn001aa8lesxpw99uv",
+      "tenantId": "cmlmce5ur00046cleu97zfp1i",
+      "customerId": "cmlmempte000118le1ydvptbc",
+      "points": 15,
+      "type": "EARN",
+      "source": "INVOICE",
+      "invoiceId": "cmm1zlb330016a8le9g942zyy",
+      "reversalOf": null,
+      "note": "Earned 15 points from invoice AT-S-2526-0011 (₹1500)",
+      "createdBy": null,
+      "createdAt": "2026-02-25T12:04:29.087Z"
+    },
+    {
+      "id": "cmm1zcckc0012a8let7u23dvs",
+      "tenantId": "cmlmce5ur00046cleu97zfp1i",
+      "customerId": "cmlmempte000118le1ydvptbc",
+      "points": 1,
+      "type": "EARN",
+      "source": "INVOICE",
+      "invoiceId": "cmm1zcc0e000ya8ler0fwy8gu",
+      "reversalOf": null,
+      "note": "Earned 1 points from invoice AT-S-2526-0010 (₹150)",
+      "createdBy": null,
+      "createdAt": "2026-02-25T11:57:30.396Z"
+    },
+    {
+      "id": "cmlti8ek9000q27hadsk1y74r",
+      "tenantId": "cmlmce5ur00046cleu97zfp1i",
+      "customerId": "cmlmempte000118le1ydvptbc",
+      "points": 12,
+      "type": "EARN",
+      "source": "INVOICE",
+      "invoiceId": "cmlti8dwh000m27hayixcfpn2",
+      "reversalOf": null,
+      "note": "Earned 12 points from invoice HP-S-2526-0001 (₹1271.19)",
+      "createdBy": null,
+      "createdAt": "2026-02-19T13:36:23.481Z"
+    },
+    {
+      "id": "cmlti5aot000i27haniuu2tow",
+      "tenantId": "cmlmce5ur00046cleu97zfp1i",
+      "customerId": "cmlmempte000118le1ydvptbc",
+      "points": 15,
+      "type": "EARN",
+      "source": "INVOICE",
+      "invoiceId": "cmlti59yg000e27ha4xmgyga4",
+      "reversalOf": null,
+      "note": "Earned 15 points from invoice AT-S-2526-0008 (₹1500)",
+      "createdBy": null,
+      "createdAt": "2026-02-19T13:33:58.493Z"
+    },
+    {
+      "id": "cmlqfvki3000g5wle1jnbowpm",
+      "tenantId": "cmlmce5ur00046cleu97zfp1i",
+      "customerId": "cmlmempte000118le1ydvptbc",
+      "points": 15,
+      "type": "EARN",
+      "source": "INVOICE",
+      "invoiceId": "cmlqfvjzf000c5wlecka0r2hy",
+      "reversalOf": null,
+      "note": "Earned 15 points from invoice AT-S-2526-0007 (₹1500)",
+      "createdBy": null,
+      "createdAt": "2026-02-17T10:07:06.891Z"
+    }
+  ]
+}
