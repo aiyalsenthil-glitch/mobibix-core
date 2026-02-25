@@ -92,7 +92,7 @@ export interface PaymentRecord {
  * Get payment history for current tenant
  */
 export async function getPaymentHistory(): Promise<PaymentRecord[]> {
-  const response = await authenticatedFetch("/billing/payments/history");
+  const response = await authenticatedFetch("/payments/history");
 
   if (!response.ok) {
     const error = await extractData(response);
@@ -107,7 +107,7 @@ export async function getPaymentHistory(): Promise<PaymentRecord[]> {
  * Retry a failed payment
  */
 export async function retryPayment(paymentId: string): Promise<Record<string, unknown>> {
-  const response = await authenticatedFetch(`/billing/payments/${paymentId}/retry`, {
+  const response = await authenticatedFetch(`/payments/${paymentId}/retry`, {
     method: "POST",
   });
 

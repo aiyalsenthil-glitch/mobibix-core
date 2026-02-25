@@ -16,6 +16,8 @@ import {
 import DowngradeBlockerModal from "./DowngradeBlockerModal";
 import { Check, AlertCircle, Loader2, Zap, Shield, Crown, CreditCard, RefreshCw } from "lucide-react";
 
+import { PaymentHistory } from "@/components/billing/PaymentHistory";
+
 // Marketing features mapping
 const PLAN_MARKETING_FEATURES: Record<string, string[]> = {
   "MobiBix Trial": [
@@ -57,6 +59,7 @@ const PLAN_MARKETING_FEATURES: Record<string, string[]> = {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"SUBSCRIPTION" | "BILLING">("SUBSCRIPTION");
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -241,12 +244,36 @@ export default function SettingsPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Subscription & Billing
+            Settings
           </h1>
           <p className="text-gray-500">
-            Manage your plan, billing cycle, and payment settings.
+            Manage your plan, billing history, and system configurations.
           </p>
         </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="flex items-center gap-1 bg-gray-100 dark:bg-stone-900 p-1 rounded-xl mb-8 w-fit border border-gray-200 dark:border-stone-800">
+        <button
+          onClick={() => setActiveTab("SUBSCRIPTION")}
+          className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+            activeTab === "SUBSCRIPTION"
+              ? "bg-white dark:bg-stone-800 text-teal-600 dark:text-teal-400 shadow-sm"
+              : "text-gray-500 hover:text-gray-700 dark:hover:text-stone-300"
+          }`}
+        >
+          Subscription Plan
+        </button>
+        <button
+          onClick={() => setActiveTab("BILLING")}
+          className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+            activeTab === "BILLING"
+              ? "bg-white dark:bg-stone-800 text-teal-600 dark:text-teal-400 shadow-sm"
+              : "text-gray-500 hover:text-gray-700 dark:hover:text-stone-300"
+          }`}
+        >
+          Payment History
+        </button>
       </div>
 
       {error && (
@@ -255,6 +282,13 @@ export default function SettingsPage() {
           {error}
         </div>
       )}
+
+      {activeTab === "BILLING" ? (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <PaymentHistory />
+        </div>
+      ) : (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
 
       {/* Current Subscription Card */}
       {subscription && (
@@ -495,6 +529,8 @@ export default function SettingsPage() {
         blockers={downgradeBlockers}
         targetPlanName={targetPlanForDowngrade?.displayName || "Selected Plan"}
       />
+        </div>
+      )}
     </div>
     </>
   );

@@ -42,11 +42,9 @@ const navItems: NavItem[] = [
   { label: "Purchases", href: "/purchases", icon: Inbox },
   { label: "Sales Receipts", href: "/receipts", icon: CreditCard },
   { label: "Reports", href: "/reports", icon: LineChart },
-  { label: "Billing History", href: "/payments", icon: Wallet },
   { label: "Shops", href: "/shops", icon: Store },
   { label: "Staff Management", href: "/staff-management", icon: ShieldCheck },
   { label: "Settings", href: "/settings", icon: Settings },
-  { label: "Loyalty", href: "/settings/loyalty", icon: Gift },
 ];
 
 // ... imports
