@@ -438,20 +438,36 @@ export class InvoiceService {
   }
 
   /**
-   * Get all invoices for a tenant
+   * Get all invoices for a tenant (Paginated)
    */
-  async getInvoicesForTenant(tenantId: string) {
-    return this.prisma.subscriptionInvoice.findMany({
-      where: { tenantId },
-      orderBy: { invoiceDate: 'desc' },
-      include: {
-        payment: {
-          select: {
-            status: true,
-            amount: true,
+  async getInvoicesForTenant(tenantId: string, page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.subscriptionInvoice.findMany({
+        where: { tenantId },
+        orderBy: { invoiceDate: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          payment: {
+            select: {
+              status: true,
+              amount: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.subscriptionInvoice.count({ where: { tenantId } }),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasMore: skip + items.length < total,
+    };
   }
 }

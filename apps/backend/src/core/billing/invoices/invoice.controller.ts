@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Param,
+  Query,
   Res,
   NotFoundException,
   UseGuards,
@@ -77,10 +78,18 @@ export class InvoiceController {
    * GET /billing/invoices
    */
   @Get()
-  async listInvoices(@CurrentUser() user: User) {
+  async listInvoices(
+    @CurrentUser() user: User,
+    @Query('page') pageStr?: string,
+    @Query('limit') limitStr?: string,
+  ) {
     if (!user.tenantId) {
       throw new NotFoundException('User not associated with any tenant');
     }
-    return this.invoiceService.getInvoicesForTenant(user.tenantId);
+    
+    const page = pageStr ? parseInt(pageStr, 10) : 1;
+    const limit = limitStr ? parseInt(limitStr, 10) : 10;
+    
+    return this.invoiceService.getInvoicesForTenant(user.tenantId, page, limit);
   }
 }
