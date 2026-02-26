@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, UseGuards, Req, Query } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Permissions } from '../../../core/auth/decorators/permissions.decorator';
 import { Permission } from '../../../core/auth/permissions.enum';
@@ -19,5 +19,19 @@ export class GymDashboardController {
   @Get('owner')
   getOwnerDashboard(@Req() req: any) {
     return this.dashboardService.getOwnerDashboard(req.user.tenantId);
+  }
+
+  @Permissions(Permission.DASHBOARD_VIEW)
+  @Get('revenue-chart')
+  getRevenueChart(@Req() req: any, @Query('days') days?: string) {
+    const numDays = days ? parseInt(days, 10) : 30;
+    return this.dashboardService.getRevenueChart(req.user.tenantId, numDays);
+  }
+
+  @Permissions(Permission.DASHBOARD_VIEW)
+  @Get('attendance-heatmap')
+  getAttendanceHeatmap(@Req() req: any, @Query('days') days?: string) {
+    const numDays = days ? parseInt(days, 10) : 30;
+    return this.dashboardService.getAttendanceHeatmap(req.user.tenantId, numDays);
   }
 }

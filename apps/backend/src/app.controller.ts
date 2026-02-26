@@ -1,7 +1,8 @@
-import { Controller, Get, Head, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Head, Req, UseGuards, VERSION_NEUTRAL } from '@nestjs/common';
 import { AppService } from './app.service';
 import { JwtAuthGuard } from './core/auth/guards/jwt-auth.guard';
 import { Roles } from './core/auth/decorators/roles.decorator';
+import { Public } from './core/auth/decorators/public.decorator';
 import type { Request } from 'express';
 import type { UserContext } from './app.service';
 
@@ -12,7 +13,7 @@ type AppRequest = Request & {
   };
 };
 
-@Controller() // <-- IMPORTANT: empty, no 'auth'
+@Controller({ version: VERSION_NEUTRAL }) // <-- IMPORTANT: empty, no 'auth'
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
@@ -20,6 +21,15 @@ export class AppController {
   @Head()
   root() {
     return { status: 'Backend is running' };
+  }
+
+  @Public()
+  @Get('health')
+  getHealth(): { status: string; timestamp: string } {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   @UseGuards(JwtAuthGuard)

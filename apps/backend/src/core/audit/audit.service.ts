@@ -24,4 +24,15 @@ export class AuditService {
       },
     });
   }
+
+  async getTenantLogs(tenantId: string, limit = 50) {
+    return this.prisma.auditLog.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        user: { select: { fullName: true, email: true } },
+      },
+    });
+  }
 }

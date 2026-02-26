@@ -52,18 +52,27 @@ export class RazorpayWebhookController {
       }
     }
 
+    const event = body.event;
+    const eventId = body.headers?.['x-REMOVED_PAYMENT_INFRA-event-id'] || body.id;
+    const startTime = performance.now();
+
+    const logData = {
+      event,
+      eventId,
+      processor: 'RazorpayWebhookController',
+      status: 'RECEIVED'
+    };
+
     if (!isValid) {
-      this.logger.warn('Invalid Razorpay Webhook Signature');
+      const durationMs = Math.round(performance.now() - startTime);
+      this.logger.warn(JSON.stringify({ ...logData, status: 'INVALID_SIGNATURE', durationMs, message: 'Invalid Razorpay Webhook Signature' }));
       throw new BadRequestException('Invalid signature');
     }
 
-    const event = body.event;
-    const eventId = body.headers?.['x-REMOVED_PAYMENT_INFRA-event-id'] || body.id;
-
-    this.logger.log(`Received Razorpay Webhook: ${event} [${eventId}]`);
+    this.logger.log(JSON.stringify(logData));
 
     if (!eventId) {
-      this.logger.warn(`Webhook missing event ID, falling back to direct push...`);
+      this.logger.warn(JSON.stringify({ ...logData, status: 'NO_EVENT_ID', message: 'Webhook missing event ID, falling back to direct push...' }));
     } else {
       try {
         await this.prisma.webhookEvent.create({
@@ -77,10 +86,10 @@ export class RazorpayWebhookController {
         });
       } catch (err: any) {
         if (err.code === 'P2002') {
-          this.logger.log(`Idempotent Ignore: Webhook ${eventId} already processed.`);
+          this.logger.log(JSON.stringify({ ...logData, status: 'IDEMPOTENT_IGNORE', message: 'Already processed' }));
           return { status: 'ok', message: 'Already processed' };
         }
-        this.logger.error(`Failed to lock webhook event ${eventId}`, err);
+        this.logger.error(JSON.stringify({ ...logData, status: 'DB_LOCK_FAILED', error: err.message }));
       }
     }
 
@@ -99,9 +108,11 @@ export class RazorpayWebhookController {
         removeOnComplete: true,
       });
 
-      this.logger.log(`Enqueued webhook event ${eventId} to BullMQ.`);
+      const durationMs = Math.round(performance.now() - startTime);
+      this.logger.log(JSON.stringify({ ...logData, status: 'QUEUED', durationMs, message: `Enqueued webhook event ${eventId} to BullMQ.` }));
     } catch (err: any) {
-      this.logger.error(`Failed to enqueue webhook ${eventId}`, err);
+      const durationMs = Math.round(performance.now() - startTime);
+      this.logger.error(JSON.stringify({ ...logData, status: 'QUEUE_FAILED', durationMs, error: err.message }));
       
       if (eventId) {
         await this.prisma.webhookEvent.updateMany({

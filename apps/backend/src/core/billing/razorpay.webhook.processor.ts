@@ -1,5 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
+import { Counter } from 'prom-client';
 import { Logger } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions/subscriptions.service';
 import { InvoiceService } from './invoices/invoice.service';
@@ -20,14 +22,25 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly invoiceService: InvoiceService,
     private readonly emailService: EmailService,
+    @InjectMetric('webhooks_processed_total')
+    private readonly webhooksProcessedCounter: Counter<string>,
   ) {
     super();
   }
 
   async process(job: Job<any>): Promise<any> {
     const { event, eventId, payload } = job.data;
+    const startTime = performance.now();
     
-    this.logger.log(`Processing Webhook Job ${job.id} for event ${event} [${eventId}]`);
+    // Structured log entry
+    const logData: any = {
+      event,
+      eventId,
+      processor: 'RazorpayWebhookProcessor',
+      status: 'STARTED'
+    };
+    
+    this.logger.log(JSON.stringify(logData));
 
     try {
       switch (event) {
@@ -73,11 +86,17 @@ export class RazorpayWebhookProcessor extends WorkerHost {
         await this.prisma.webhookEvent.updateMany({
           where: { provider: 'RAZORPAY', referenceId: eventId },
           data: { status: 'SUCCESS', processedAt: new Date() },
-        }).catch(err => this.logger.error('Failed to update processed status', err));
+        }).catch(err => this.logger.error(JSON.stringify({ ...logData, status: 'DB_UPDATE_FAILED', error: err.message })));
       }
 
+      this.webhooksProcessedCounter.inc({ event });
+
+      const durationMs = Math.round(performance.now() - startTime);
+      this.logger.log(JSON.stringify({ ...logData, status: 'COMPLETED', durationMs }));
+
     } catch (err: any) {
-      this.logger.error(`Error handling webhook ${event} inside processor`, err);
+      const durationMs = Math.round(performance.now() - startTime);
+      this.logger.error(JSON.stringify({ ...logData, status: 'FAILED', durationMs, error: err.message }), err?.stack);
 
       if (eventId) {
         await this.prisma.webhookEvent.updateMany({

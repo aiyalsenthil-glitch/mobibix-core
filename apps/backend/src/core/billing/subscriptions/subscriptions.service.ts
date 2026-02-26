@@ -5,6 +5,8 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
+import { Counter } from 'prom-client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CacheService } from '../../cache/cache.service';
 import {
@@ -71,6 +73,10 @@ export class SubscriptionsService {
     private readonly cacheService: CacheService,
     // private readonly paymentGatewayService: PaymentGatewayService,
     private readonly REMOVED_PAYMENT_INFRAService: RazorpayService,
+    @InjectMetric('renewals_success_total')
+    private readonly renewalsSuccessCounter: Counter<string>,
+    @InjectMetric('renewals_failed_total')
+    private readonly renewalsFailedCounter: Counter<string>,
   ) {}
 
   // =========================================================================
@@ -583,6 +589,8 @@ export class SubscriptionsService {
     this.cacheService.delete(
       `subscription:${current.tenantId}:${current.module}`,
     );
+
+    this.renewalsSuccessCounter.inc({ planId: nextPlanId });
 
     return renewed;
   }

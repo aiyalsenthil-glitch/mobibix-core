@@ -3,6 +3,8 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { EmailService } from '../../../common/email/email.service';
 import PDFDocument from 'pdfkit';
 import { Readable } from 'stream';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
+import { Counter } from 'prom-client';
 
 @Injectable()
 export class InvoiceService {
@@ -11,6 +13,8 @@ export class InvoiceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    @InjectMetric('invoices_generated_total')
+    private readonly invoicesGeneratedCounter: Counter<string>,
   ) {}
 
   /**

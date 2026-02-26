@@ -2,6 +2,7 @@ import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
 import { LoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'crypto';
@@ -55,6 +56,8 @@ type LoggerRequest = {
       isGlobal: true,
       envFilePath: '.env',
     }),
+    
+    PrometheusModule.register(),
 
     // 🚀 BullMQ Redis Connection
     BullModule.forRootAsync({

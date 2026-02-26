@@ -251,4 +251,68 @@ export class GymDashboardService {
       expectedAmount,
     };
   }
+
+  async getRevenueChart(tenantId: string, days: number = 30) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const payments = await this.prisma.memberPayment.findMany({
+      where: {
+        tenantId,
+        createdAt: { gte: startDate },
+        status: { in: ['PAID', 'PARTIAL'] }
+      },
+      select: { amount: true, createdAt: true }
+    });
+
+    const chartData: Record<string, number> = {};
+    for (let i = 0; i < days; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        chartData[dateStr] = 0;
+    }
+
+    for (const p of payments) {
+        const dateStr = p.createdAt.toISOString().split('T')[0];
+        if (chartData[dateStr] !== undefined) {
+            chartData[dateStr] += p.amount;
+        }
+    }
+
+    return Object.entries(chartData).map(([date, revenue]) => ({ date, revenue })).sort((a,b) => a.date.localeCompare(b.date));
+  }
+
+  async getAttendanceHeatmap(tenantId: string, days: number = 30) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const attendances = await this.prisma.gymAttendance.findMany({
+      where: {
+        tenantId,
+        checkInTime: { gte: startDate }
+      },
+      select: { checkInTime: true }
+    });
+
+    const heatmap: Record<string, number> = {};
+    for (let i = 0; i < days; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        heatmap[dateStr] = 0;
+    }
+
+    for (const a of attendances) {
+        if (!a.checkInTime) continue;
+        const dateStr = a.checkInTime.toISOString().split('T')[0];
+        if (heatmap[dateStr] !== undefined) {
+            heatmap[dateStr]++;
+        }
+    }
+
+    return Object.entries(heatmap).map(([date, count]) => ({ date, count })).sort((a,b) => a.date.localeCompare(b.date));
+  }
 }

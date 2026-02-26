@@ -14,6 +14,7 @@ import { AutoRenewCronService } from './auto-renew.cron';
 import { PaymentExpiryCronService } from './payment-expiry.cron';
 import { BullModule } from '@nestjs/bullmq';
 import { RazorpayWebhookProcessor } from './REMOVED_PAYMENT_INFRA.webhook.processor';
+import { billingMetricsProviders } from './metrics.providers';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { RazorpayWebhookProcessor } from './REMOVED_PAYMENT_INFRA.webhook.proces
     AutoRenewCronService,
     PaymentExpiryCronService,
     RazorpayWebhookProcessor,
+    ...billingMetricsProviders,
   ],
   controllers: [RazorpayWebhookController],
   exports: [
