@@ -12,8 +12,8 @@ export class PaymentExpiryCronService {
   /**
    * Run every hour
    * Finds pending payments that have expired and marks them as FAILED/EXPIRED
+   * NOTE: Extracted from internal @Cron to a designated K8s CronJob
    */
-  @Cron(CronExpression.EVERY_HOUR)
   async expireStalePayments() {
     this.logger.log('🔄 Checking for expired pending payments...');
 

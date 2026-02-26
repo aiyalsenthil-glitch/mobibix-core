@@ -32,6 +32,7 @@ import { CustomerTimelineModule } from './core/timeline/customer-timeline.module
 import { LoyaltyModule } from './core/loyalty/loyalty.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { BullModule } from '@nestjs/bullmq';
 
 import { EventEmitterModule } from '@nestjs/event-emitter';
 
@@ -53,6 +54,18 @@ type LoggerRequest = {
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+
+    // 🚀 BullMQ Redis Connection
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: () => ({
+        connection: {
+          host: process.env.REDIS_HOST || 'localhost',
+          port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
+          password: process.env.REDIS_PASSWORD || undefined,
+        },
+      }),
     }),
 
     // 🔬 Distributed Systems Observability (Structured JSON Logs)

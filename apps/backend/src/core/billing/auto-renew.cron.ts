@@ -36,8 +36,8 @@ export class AutoRenewCronService {
   /**
    * Run daily at 2 AM
    * Processes all subscriptions due for renewal
+   * NOTE: Extracted from internal @Cron to a designated K8s CronJob
    */
-  @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async autoRenewSubscriptions() {
     this.logger.log('🔄 Starting auto-renew cycle...');
 
