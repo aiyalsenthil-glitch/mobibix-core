@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
+import { EmailService } from '../../../common/email/email.service';
 import PDFDocument from 'pdfkit';
 import { Readable } from 'stream';
 
@@ -7,7 +8,10 @@ import { Readable } from 'stream';
 export class InvoiceService {
   private readonly logger = new Logger(InvoiceService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   /**
    * Generate next invoice number (sequential, format: INV-YYYY-NNNN)
@@ -75,6 +79,7 @@ export class InvoiceService {
                     id: true,
                     name: true,
                     contactPhone: true,
+                    contactEmail: true,
                     code: true,
                   },
                 },
@@ -135,13 +140,54 @@ export class InvoiceService {
                   module: plan?.module,
                   billingCycle: payment.billingCycle,
                 },
-                status: 'DRAFT' as any,
+                status: 'FINALIZED' as any,
               },
             });
 
             this.logger.log(
-              `✅ Invoice ${invoiceNumber} created for payment ${paymentId}`,
+              `✅ Invoice ${invoiceNumber} created and FINALIZED for payment ${paymentId}`,
             );
+
+            // Send GST Invoice Email
+            if (payment.tenant.contactEmail) {
+              try {
+                // We generate the PDF buffer to attach it to the email
+                const pdfBuffer = await this.generatePDF(invoice.id) as Buffer;
+
+                await this.emailService.send({
+                  tenantId: payment.tenant.id,
+                  recipientType: 'TENANT',
+                  emailType: 'PAYMENT_SUCCESS',
+                  referenceId: invoice.id,
+                  module: plan?.module || 'GYM',
+                  to: payment.tenant.contactEmail,
+                  subject: `Tax Invoice ${invoice.invoiceNumber} - GymPilot`,
+                  data: {
+                    tenantName: payment.tenant.name,
+                    amount: total,
+                    invoiceNumber: invoice.invoiceNumber,
+                  },
+                  attachments: [
+                    {
+                      filename: `${invoice.invoiceNumber}.pdf`,
+                      content: pdfBuffer,
+                    },
+                  ],
+                });
+                
+                // Mark as sent
+                await tx.subscriptionInvoice.update({
+                  where: { id: invoice.id },
+                  data: {
+                    emailSent: true,
+                    emailSentAt: new Date(),
+                  },
+                });
+              } catch (emailErr) {
+                this.logger.error(`Failed to send invoice email to ${payment.tenant.contactEmail}`, emailErr);
+              }
+            }
+
             return invoice;
           },
           {
@@ -186,6 +232,7 @@ export class InvoiceService {
           select: {
             name: true,
             contactPhone: true,
+            contactEmail: true,
             code: true,
           },
         },
@@ -224,12 +271,17 @@ export class InvoiceService {
       doc
         .fontSize(10)
         .text(`Invoice #: ${invoice.invoiceNumber}`, 400, 45)
-        .text(
-          `Date: ${invoice.invoiceDate.toLocaleDateString('en-IN')}`,
-          400,
-          60,
-        )
-        .text(`SAC Code: ${invoice.sacCode}`, 400, 75);
+        .text(`Date: ${invoice.invoiceDate.toLocaleDateString('en-IN')}`, 400, 60)
+        .text(`SAC Code: 998314 (IT/Digital Services)`, 400, 75);
+
+      // QR Code Placeholder (IRN)
+      doc
+        .strokeColor('#cccccc')
+        .lineWidth(1)
+        .rect(480, 20, 60, 60)
+        .stroke()
+        .fontSize(6)
+        .text('QR Placeholder', 485, 45, { width: 50, align: 'center' });
 
       // Line separator
       doc
