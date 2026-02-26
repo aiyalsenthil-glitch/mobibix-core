@@ -12,6 +12,7 @@ import com.aiyal.mobibix.domain.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -40,14 +41,26 @@ class ProductViewModel @Inject constructor(
         
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            
+            // Observe local database
+            launch {
+                productRepository.getLocalProducts(shopId)
+                    .catch { e ->
+                        _uiState.value = _uiState.value.copy(error = e.message ?: "Failed to load local products")
+                    }
+                    .collect { products ->
+                        allProducts = products
+                        filterProducts(_uiState.value.searchQuery)
+                    }
+            }
+
+            // Sync from network
             try {
-                val response = productRepository.getProducts(shopId, skip = 0, take = 100)
-                allProducts = response.data
-                filterProducts(_uiState.value.searchQuery)
+                productRepository.syncProducts(shopId)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Failed to load products"
+                    error = "Offline mode. Showing cached data."
                 )
             }
         }

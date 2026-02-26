@@ -1,5 +1,6 @@
 [versions]
 agp = "8.13.2"
+crashlytics = "3.0.1"
 vico = "1.15.0"
 kotlin = "2.0.21"
 coreKtx = "1.17.0"
@@ -27,6 +28,7 @@ camerax = "1.4.0"
 mlkit_barcode = "17.3.0"
 accompanist = "0.34.0"
 REMOVED_PAYMENT_INFRA = "1.6.40"
+room = "2.6.1"
 
 
 
@@ -67,6 +69,7 @@ navigation-compose = { group = "androidx.navigation", name = "navigation-compose
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 REMOVED_AUTH_PROVIDER-auth = { group = "com.google.REMOVED_AUTH_PROVIDER", name = "REMOVED_AUTH_PROVIDER-auth-ktx", version.ref = "REMOVED_AUTH_PROVIDER_auth" }
 REMOVED_AUTH_PROVIDER-bom = { group = "com.google.REMOVED_AUTH_PROVIDER", name = "REMOVED_AUTH_PROVIDER-bom", version.ref = "REMOVED_AUTH_PROVIDERBom"}
+REMOVED_AUTH_PROVIDER-crashlytics = { group = "com.google.REMOVED_AUTH_PROVIDER", name = "REMOVED_AUTH_PROVIDER-crashlytics" }
 
 credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
 credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
@@ -76,6 +79,9 @@ androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
 vico-core = { group = "com.patrykandpatrick.vico", name = "core", version.ref = "vico" }
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 REMOVED_PAYMENT_INFRA-checkout = { group = "com.REMOVED_PAYMENT_INFRA", name = "checkout", version.ref = "REMOVED_PAYMENT_INFRA" }
 
 
@@ -86,4 +92,4 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 hilt-android-plugin = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 google-services-plugin = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 ksp = { id = "com.google.devtools.ksp", version = "2.0.21-1.0.28" }
-
+crashlytics-plugin = { id = "com.google.REMOVED_AUTH_PROVIDER.crashlytics", version.ref = "crashlytics" }

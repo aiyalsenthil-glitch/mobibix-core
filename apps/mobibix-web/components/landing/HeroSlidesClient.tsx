@@ -394,8 +394,13 @@ export function HeroSlidesClient() {
                   <div className="absolute inset-0 bg-primary z-0" />
                   <span className="relative z-10 flex items-center justify-center gap-2">Start Free <ArrowIcon /></span>
                 </Link>
-                <a href="#" className="w-full md:w-auto px-8 py-4 rounded border border-border text-foreground font-medium text-sm hover:bg-muted transition-all duration-300 hover:border-border/80 text-center">
-                  Schedule a Demo
+                <a
+                  href="https://wa.me/918838822461?text=Hi%2C%20I%27d%20like%20to%20schedule%20a%20MobiBix%20demo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full md:w-auto px-8 py-4 rounded border border-border text-foreground font-medium text-sm hover:bg-muted transition-all duration-300 hover:border-border/80 text-center"
+                >
+                  Chat on WhatsApp
                 </a>
               </div>
               <p className="mt-8 text-xs text-muted-foreground">14-day free trial · No credit card required · Cancel anytime</p>
@@ -436,9 +441,9 @@ export function HeroSlidesClient() {
                 <span className="text-sm font-medium uppercase tracking-[0.25em] text-foreground">MobiBix</span>
               </div>
               <div className="flex flex-wrap justify-center gap-6 text-xs text-muted-foreground">
-                <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-                <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-                <a href="#" className="hover:text-foreground transition-colors">Support</a>
+                <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+                <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+                <a href="mailto:support@REMOVED_DOMAIN" className="hover:text-foreground transition-colors">Support</a>
               </div>
             </div>
             <div className="mt-4 pt-4 border-t border-border/50 text-center text-muted-foreground text-[10px] uppercase tracking-widest">
