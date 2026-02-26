@@ -21,6 +21,7 @@ import {
 
 import { SubscriptionsService } from './subscriptions/subscriptions.service';
 import { InvoiceService } from './invoices/invoice.service';
+import { EmailService } from '../../common/email/email.service';
 
 @Controller('billing/webhook/REMOVED_PAYMENT_INFRA')
 export class RazorpayWebhookController {
@@ -32,6 +33,7 @@ export class RazorpayWebhookController {
     private readonly configService: ConfigService,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly invoiceService: InvoiceService,
+    private readonly emailService: EmailService,
   ) {}
 
   @Post()
@@ -174,7 +176,7 @@ export class RazorpayWebhookController {
         });
 
         if (activeSub) {
-             const endDate = this.subscriptionsService['calculateEndDate'](new Date(), activeSub.billingCycle || 'MONTHLY');
+             const endDate = this.subscriptionsService.calculateEndDate(new Date(), activeSub.billingCycle || 'MONTHLY');
              
              await this.prisma.$transaction(async (tx) => {
                  await tx.payment.update({
@@ -338,14 +340,37 @@ export class RazorpayWebhookController {
     const subId = subEntity.id;
     this.logger.warn(`Subscription Halted: ${subId}`);
 
-    await this.prisma.tenantSubscription.updateMany({
-      where: { providerSubscriptionId: subId },
-      data: {
-        autopayStatus: AutopayStatus.HALTED,
-        paymentStatus: PaymentStatus.FAILED, // Usually implies payment failure
-        updatedAt: new Date(),
-      },
+    const subscription = await this.prisma.tenantSubscription.findFirst({
+        where: { providerSubscriptionId: subId },
+        include: { tenant: true }
     });
+
+    if (subscription) {
+      await this.prisma.tenantSubscription.update({
+        where: { id: subscription.id },
+        data: {
+          autopayStatus: AutopayStatus.HALTED,
+          paymentStatus: PaymentStatus.FAILED, // Usually implies payment failure
+          updatedAt: new Date(),
+        },
+      });
+
+      if (subscription.tenant?.contactEmail) {
+        await this.emailService.send({
+          tenantId: subscription.tenantId,
+          recipientType: 'TENANT',
+          emailType: 'SUBSCRIPTION_HALTED',
+          referenceId: subscription.id,
+          module: subscription.module,
+          to: subscription.tenant.contactEmail,
+          subject: 'Action Required: Your subscription has been suspended',
+          data: {
+            name: subscription.tenant.name,
+            billingLink: `https://${subscription.module === 'MOBILE_SHOP' ? 'app.REMOVED_DOMAIN' : 'mobibix.in'}/billing`,
+          }
+        });
+      }
+    }
   }
 
   private async handleSubscriptionCancelled(subEntity: any) {
@@ -400,6 +425,24 @@ export class RazorpayWebhookController {
                     `⚠️ Subscription ${activeSub.id} moved to PAST_DUE ` +
                     `(tenant: ${internalPayment.tenant?.name})`
                 );
+
+                if (internalPayment.tenant?.contactEmail) {
+                    await this.emailService.send({
+                        tenantId: internalPayment.tenantId,
+                        recipientType: 'TENANT',
+                        emailType: 'PAYMENT_FAILED',
+                        referenceId: internalPayment.id,
+                        module: activeSub.module,
+                        to: internalPayment.tenant.contactEmail,
+                        subject: 'Payment Failed',
+                        data: {
+                            tenantName: internalPayment.tenant.name,
+                            planName: activeSub.planId, // Simplified for now
+                            retryCount: 1,
+                            payLink: `https://${activeSub.module === 'MOBILE_SHOP' ? 'app.REMOVED_DOMAIN' : 'mobibix.in'}/billing`,
+                        }
+                    });
+                }
             }
         });
     }
