@@ -11,7 +11,8 @@ import { PlanRulesService } from './plan-rules.service';
 import { PlanMappingService } from './plan-mapping.service';
 import { RazorpayWebhookController } from './REMOVED_PAYMENT_INFRA.webhook.controller';
 import { AutoRenewCronService } from './auto-renew.cron';
-import { PaymentExpiryCronService } from './payment-expiry.cron';
+// NOTE: PaymentExpiryCronService removed — payments.module registers PaymentCleanupCron for this (avoids duplicate)
+
 import { BullModule } from '@nestjs/bullmq';
 import { RazorpayWebhookProcessor } from './REMOVED_PAYMENT_INFRA.webhook.processor';
 import { billingMetricsProviders } from './metrics.providers';
@@ -33,7 +34,7 @@ import { billingMetricsProviders } from './metrics.providers';
     PlanRulesService,
     PlanMappingService,
     AutoRenewCronService,
-    PaymentExpiryCronService,
+    // PaymentExpiryCronService REMOVED — duplicate of PaymentCleanupCron in payments.module
     RazorpayWebhookProcessor,
     ...billingMetricsProviders,
   ],

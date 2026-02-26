@@ -60,6 +60,28 @@ fun BillingScreen(
         viewModel.loadData()
     }
 
+    // Show grace period dialog automatically when PAST_DUE or ≤ 3 days left
+    val gracePlan = uiState.currentPlan
+    var showGraceDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(gracePlan) {
+        if (gracePlan != null) {
+            val isPastDue = gracePlan.subscriptionStatus == "PAST_DUE"
+            val isExpiringSoon = gracePlan.daysLeft in 0..3
+            if (isPastDue || isExpiringSoon) {
+                showGraceDialog = true
+            }
+        }
+    }
+
+    if (showGraceDialog && gracePlan != null) {
+        GracePeriodDialog(
+            daysLeft = gracePlan.daysLeft,
+            isPastDue = gracePlan.subscriptionStatus == "PAST_DUE",
+            onGoToBilling = { /* Already on billing screen */ },
+            onDismiss = { showGraceDialog = false }
+        )
+    }
+
     LaunchedEffect(viewModel.events) {
         viewModel.events.collectLatest { event ->
             when (event) {
