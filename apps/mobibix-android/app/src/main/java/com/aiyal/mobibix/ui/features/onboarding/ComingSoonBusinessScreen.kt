@@ -37,7 +37,7 @@ fun ComingSoonBusinessScreen(navController: NavController) {
         Button(
             onClick = {
                 scope.launch {
-                    tokenStore.clearToken()
+                    tokenStore.clear()
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }

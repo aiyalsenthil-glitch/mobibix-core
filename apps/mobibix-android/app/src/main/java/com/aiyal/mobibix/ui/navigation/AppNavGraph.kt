@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.runtime.collectAsState
 import kotlinx.coroutines.launch
 import com.aiyal.mobibix.core.app.AppState
 import com.aiyal.mobibix.core.auth.AuthEntryPoint

@@ -14,7 +14,7 @@ import javax.inject.Inject
 import com.aiyal.mobibix.domain.ShopRepository
 import com.aiyal.mobibix.domain.model.Role
 import com.aiyal.mobibix.domain.repository.RolesRepository
-import com.aiyal.mobibix.data.network.ShopResponse
+import com.aiyal.mobibix.data.network.Shop
 import kotlinx.coroutines.async
 
 data class StaffUiState(
@@ -22,7 +22,7 @@ data class StaffUiState(
     val staff: List<StaffResponse> = emptyList(),
     val invites: List<InviteResponse> = emptyList(),
     val roles: List<Role> = emptyList(),
-    val shops: List<ShopResponse> = emptyList(),
+    val shops: List<Shop> = emptyList(),
     val error: String? = null
 )
 
@@ -47,7 +47,7 @@ class StaffViewModel @Inject constructor(
                 val staffDeferred = async { staffRepository.getStaff() }
                 val invitesDeferred = async { staffRepository.getInvites() }
                 val rolesDeferred = async { rolesRepository.listRoles() }
-                val shopsDeferred = async { shopRepository.getShops() }
+                val shopsDeferred = async { shopRepository.getMyShops() }
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
