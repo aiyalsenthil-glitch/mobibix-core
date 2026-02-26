@@ -22,7 +22,7 @@ fun AppBottomNavigationBar(navController: NavController) {
     )
 
     NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = Color.White,
         tonalElevation = 8.dp,
         modifier = Modifier.height(72.dp)
     ) {
@@ -41,8 +41,8 @@ fun AppBottomNavigationBar(navController: NavController) {
                 label = {
                     Text(
                         item.label,
-                        fontSize = 11.sp,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                        fontSize = 12.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                     )
                 },
                 selected = selected,
@@ -58,11 +58,11 @@ fun AppBottomNavigationBar(navController: NavController) {
                     }
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    selectedIconColor = Color(0xFF00C896), // Brand Primary
+                    selectedTextColor = Color(0xFF00C896),
+                    unselectedIconColor = Color(0xFF9CA3AF), // Tailwind Gray-400
+                    unselectedTextColor = Color(0xFF9CA3AF),
+                    indicatorColor = Color(0xFF00C896).copy(alpha = 0.15f)
                 )
             )
         }

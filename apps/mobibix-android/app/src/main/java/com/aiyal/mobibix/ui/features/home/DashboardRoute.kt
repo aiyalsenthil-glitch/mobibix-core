@@ -10,6 +10,9 @@ import com.aiyal.mobibix.core.app.AppState
 fun DashboardRoute(
     appState: AppState,
     navController: NavController, // For navigation actions
+    onNavigateToJobs: () -> Unit = {},
+    onNavigateToInventory: () -> Unit = {},
+    onNavigateToNegativeStock: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val onLogout = {
@@ -32,8 +35,9 @@ fun DashboardRoute(
             state = viewModel.ownerState.value,
             onShopSelected = { shopId -> viewModel.loadOwnerDashboard(shopId) },
             // onLogout is handled by the main Scaffold's TopBar now
-            onNavigateToJobs = { navController.navigate("job_list") },
-            onNavigateToInventory = { /* TODO: navController.navigate("inventory_list") */ },
+            onNavigateToJobs = onNavigateToJobs,
+            onNavigateToInventory = onNavigateToInventory,
+            onNavigateToNegativeStock = onNavigateToNegativeStock,
             // onNavigateToStaff is handled by the 'More' tab now
             onNavigateToNewSale = { /* TODO: navController.navigate("new_sale") */ },
             onNavigateToNewPurchase = { /* TODO: navController.navigate("new_purchase") */ }
