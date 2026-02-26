@@ -69,6 +69,20 @@ type LoggerRequest = {
           }
           return requestId ?? randomUUID();
         },
+        // ✂️ Strip verbose/sensitive fields from every log entry
+        serializers: {
+          req: (req) => ({
+            id: req.id,
+            method: req.method,
+            url: req.url,
+            // Only keep non-sensitive, useful headers
+            remoteAddress: req.remoteAddress,
+            remotePort: req.remotePort,
+          }),
+          res: (res) => ({
+            statusCode: res.statusCode,
+          }),
+        },
         // Format beautifully in dev, raw JSON in prod
         transport:
           process.env.NODE_ENV !== 'production'

@@ -25,6 +25,18 @@ export class PerformanceInterceptor implements NestInterceptor {
   private readonly slowThreshold = 1000; // 1 second
   private readonly verySlowThreshold = 3000; // 3 seconds
 
+  /**
+   * Endpoints that call external APIs (Google, Razorpay, etc.)
+   * Skip SLOW warnings for these — latency is determined by the 3rd-party service.
+   */
+  private readonly externalBoundPaths = [
+    '/api/auth/google/exchange',
+    '/api/auth/google',
+    '/api/payments/webhook',
+    '/api/payments/create',
+    '/api/payments/retry',
+  ];
+
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
     const { method, url } = request;
@@ -34,6 +46,10 @@ export class PerformanceInterceptor implements NestInterceptor {
       tap(() => {
         const duration = Date.now() - start;
         const message = `${method} ${url} - ${duration}ms`;
+
+        // Skip slow-log for external-bound endpoints — their latency is the 3rd party's
+        const isExternal = this.externalBoundPaths.some((p) => url?.includes(p));
+        if (isExternal) return;
 
         if (duration > this.verySlowThreshold) {
           // Very slow - ERROR level
