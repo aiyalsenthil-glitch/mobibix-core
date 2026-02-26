@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.hilt.android.plugin)
     alias(libs.plugins.google.services.plugin)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.crashlytics.plugin)
 }
 
 val localProperties = Properties()
@@ -100,6 +101,7 @@ dependencies {
     // Firebase
     implementation(platform(libs.REMOVED_AUTH_PROVIDER.bom))
     implementation(libs.REMOVED_AUTH_PROVIDER.auth)
+    implementation(libs.REMOVED_AUTH_PROVIDER.crashlytics)
     
     // Credential Manager
     implementation(libs.credentials)
