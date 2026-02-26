@@ -18,6 +18,8 @@ import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { UserRole, ModuleType } from '@prisma/client';
 import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
+import { Public } from '../../../core/auth/decorators/public.decorator';
+import { KioskAuthGuard } from '../../../core/auth/guards/kiosk-auth.guard';
 
 @UseGuards(
   JwtAuthGuard,
@@ -94,6 +96,20 @@ export class GymAttendanceController {
       body.tenantCode,
       body.phone,
     );
+  }
+
+  /**
+   * POST /gym/attendance/kiosk/check/:tenantId
+   * Kiosk Mode check-in: uses kioskToken and phone
+   */
+  @Public()
+  @UseGuards(KioskAuthGuard)
+  @Post('kiosk/check/:tenantId')
+  markKioskAttendance(
+    @Param('tenantId') tenantId: string,
+    @Body('phone') phone: string,
+  ) {
+    return this.attendanceService.checkInOrOutByPhone(tenantId, phone);
   }
   // ========================
   // CHECKIN CHEKOUT BY STAFF
