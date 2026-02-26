@@ -28,6 +28,13 @@ export class CsrfGuard implements CanActivate {
       return true;
     }
 
+    // CSRF attacks target Cookie-based sessions because browsers automatically
+    // attach cookies. If the client is explicitly sending an Authorization Bearer header
+    // (like our mobile app), they are immune to CSRF.
+    if (req.headers.authorization?.startsWith('Bearer ')) {
+      return true;
+    }
+
     const csrfCookie = req.cookies?.csrfToken as string | undefined;
     const csrfHeader =
       (req.headers['x-csrf-token'] as string | undefined) ||

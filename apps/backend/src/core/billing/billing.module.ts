@@ -12,6 +12,8 @@ import { PlanMappingService } from './plan-mapping.service';
 import { RazorpayWebhookController } from './REMOVED_PAYMENT_INFRA.webhook.controller';
 import { AutoRenewCronService } from './auto-renew.cron';
 import { PaymentExpiryCronService } from './payment-expiry.cron';
+import { BullModule } from '@nestjs/bullmq';
+import { RazorpayWebhookProcessor } from './REMOVED_PAYMENT_INFRA.webhook.processor';
 
 @Module({
   imports: [
@@ -20,6 +22,9 @@ import { PaymentExpiryCronService } from './payment-expiry.cron';
     PaymentsModule, // ✅ CORRECT
     InvoiceModule,
     MailModule,
+    BullModule.registerQueue({
+      name: 'REMOVED_PAYMENT_INFRA-webhooks',
+    }),
   ],
   providers: [
     SubscriptionGuard,
@@ -28,6 +33,7 @@ import { PaymentExpiryCronService } from './payment-expiry.cron';
     PlanMappingService,
     AutoRenewCronService,
     PaymentExpiryCronService,
+    RazorpayWebhookProcessor,
   ],
   controllers: [RazorpayWebhookController],
   exports: [
