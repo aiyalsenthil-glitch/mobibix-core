@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { HeroSlidesClient } from "@/components/landing/HeroSlidesClient";
+import { HeroSlidesClient } from "../../../components/landing/HeroSlidesClient";
 
 const competitors: Record<string, { name: string, weakness: string }> = {
   "vyapar": { name: "Vyapar", weakness: "generic stock tracking, not built for IMEI and mobile repairs" },

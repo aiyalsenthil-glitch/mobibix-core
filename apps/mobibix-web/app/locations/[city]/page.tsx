@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { HeroSlidesClient } from "@/components/landing/HeroSlidesClient";
+import { HeroSlidesClient } from "../../../components/landing/HeroSlidesClient";
 import Link from "next/link";
 
 export async function generateMetadata({ params }: { params: { city: string } }): Promise<Metadata> {
