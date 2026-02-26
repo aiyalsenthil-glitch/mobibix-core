@@ -130,6 +130,10 @@ dependencies {
     implementation(libs.vico.core)
     implementation(libs.REMOVED_PAYMENT_INFRA.checkout)
 
+    // Room Database
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
