@@ -20,5 +20,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.7,
     },
+    ...["vyapar", "khatabook", "mybillbook"].map((c) => ({
+      url: `https://REMOVED_DOMAIN/compare/${c}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })),
+    ...["mumbai", "delhi", "bengaluru", "chennai", "hyderabad", "pune", "kochi"].map((city) => ({
+      url: `https://REMOVED_DOMAIN/locations/${city}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
   ];
 }
