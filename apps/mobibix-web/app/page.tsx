@@ -25,5 +25,31 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
-  return <HeroSlidesClient />;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "MobiBix",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web, Android",
+    offers: { "@type": "Offer", priceCurrency: "INR", price: "0" },
+    description:
+      "Mobile Shop POS and Retail OS for Indian mobile retailers. Manage IMEI tracking, repairs, and GST billing.",
+    url: "https://REMOVED_DOMAIN",
+    inLanguage: "en-IN",
+    publisher: {
+      "@type": "Organization",
+      name: "MobiBix",
+      url: "https://REMOVED_DOMAIN",
+    },
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <HeroSlidesClient />
+    </>
+  );
 }

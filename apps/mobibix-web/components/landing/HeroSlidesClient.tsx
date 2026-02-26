@@ -394,8 +394,13 @@ export function HeroSlidesClient() {
                   <div className="absolute inset-0 bg-primary z-0" />
                   <span className="relative z-10 flex items-center justify-center gap-2">Start Free <ArrowIcon /></span>
                 </Link>
-                <a href="#" className="w-full md:w-auto px-8 py-4 rounded border border-border text-foreground font-medium text-sm hover:bg-muted transition-all duration-300 hover:border-border/80 text-center">
-                  Schedule a Demo
+                <a
+                  href="https://wa.me/919999999999?text=Hi%2C%20I%27d%20like%20to%20schedule%20a%20MobiBix%20demo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full md:w-auto px-8 py-4 rounded border border-border text-foreground font-medium text-sm hover:bg-muted transition-all duration-300 hover:border-border/80 text-center"
+                >
+                  Chat on WhatsApp
                 </a>
               </div>
               <p className="mt-8 text-xs text-muted-foreground">14-day free trial · No credit card required · Cancel anytime</p>

@@ -49,7 +49,7 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
             <div className="flex flex-col">
               <span className="text-lg font-bold">MobiBix</span>
               <span className="text-[10px] text-muted-foreground leading-none">
-                Digital Retail Platform
+                Mobile Shop OS
               </span>
             </div>
           </div>
