@@ -5,11 +5,12 @@ import { Providers } from "./providers";
 import FacebookSDK from "../components/FacebookSDK";
 
 export const metadata = {
-  title: "MobiBix – Digital Retail Platform",
-  description: "Mobile shop ERP & repair management platform",
-  icons: {
-    icon: "/assets/mobibix-app-icon.png",
-  },
+  title: "MobiBix — Mobile Shop POS & Management Platform",
+  description:
+    "Run your mobile shop smarter. IMEI tracking, repair management, GST billing and customer records — all in one platform built for Indian mobile retailers.",
+  metadataBase: new URL("https://REMOVED_DOMAIN"),
+  alternates: { canonical: "/" },
+  icons: { icon: "/assets/mobibix-app-icon.png" },
 };
 export const playfair = Playfair_Display({
   subsets: ["latin"],
