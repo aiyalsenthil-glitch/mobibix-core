@@ -176,7 +176,7 @@ export default function PricingPage() {
                   </div>
 
                   <Link
-                    href="/auth"
+                    href={`/auth?plan=${plan.id}&billing=${billingCycle}`}
                     className={`block w-full text-center px-6 py-3 rounded-lg font-semibold transition-all mb-6 ${
                       isPro
                         ? "bg-gradient-to-r from-teal-500 to-cyan-400 text-white hover:from-teal-600 hover:to-cyan-500"
