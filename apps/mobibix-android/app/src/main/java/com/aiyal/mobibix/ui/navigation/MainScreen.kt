@@ -108,7 +108,28 @@ fun MainScreen(
                     HomeScreen(
                         appState = appState,
                         navController = mainNavController,
-                        onOpenDrawer = { scope.launch { drawerState.open() } }
+                        onOpenDrawer = { scope.launch { drawerState.open() } },
+                        onNavigateToJobs = {
+                            nestedNavController.navigate(BottomNavItem.Repair.route) {
+                                nestedNavController.graph.startDestinationRoute?.let { route ->
+                                    popUpTo(route) { saveState = true }
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        onNavigateToInventory = {
+                            nestedNavController.navigate(BottomNavItem.Inventory.route) {
+                                nestedNavController.graph.startDestinationRoute?.let { route ->
+                                    popUpTo(route) { saveState = true }
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        onNavigateToNegativeStock = {
+                            mainNavController.navigate("negative_stock")
+                        }
                     )
                 }
                 composable(BottomNavItem.Sales.route) {

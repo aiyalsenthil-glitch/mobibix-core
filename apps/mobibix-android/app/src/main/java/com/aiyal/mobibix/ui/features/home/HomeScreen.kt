@@ -11,6 +11,9 @@ fun HomeScreen(
     appState: AppState,
     navController: NavController,
     onOpenDrawer: () -> Unit = {},
+    onNavigateToJobs: () -> Unit = {},
+    onNavigateToInventory: () -> Unit = {},
+    onNavigateToNegativeStock: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val isSystemOwner = when(appState) {
@@ -27,8 +30,9 @@ fun HomeScreen(
         OwnerDashboardScreen(
             state = viewModel.ownerState.value,
             onShopSelected = { shopId -> viewModel.loadOwnerDashboard(shopId) },
-            onNavigateToJobs = { navController.navigate("job_list") },
-            onNavigateToInventory = { /* TODO: Navigate to inventory */ },
+            onNavigateToJobs = onNavigateToJobs,
+            onNavigateToInventory = onNavigateToInventory,
+            onNavigateToNegativeStock = onNavigateToNegativeStock,
             onNavigateToNewSale = { /* TODO: Navigate to new sale */ },
             onNavigateToNewPurchase = { /* TODO: Navigate to new purchase */ },
             onNavigateToReports = { navController.navigate("reports") },

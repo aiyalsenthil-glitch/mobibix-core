@@ -7,6 +7,7 @@ import { PlansModule } from '../plans/plans.module';
 import { RazorpayService } from '../REMOVED_PAYMENT_INFRA.service';
 import { SubscriptionExpiryCron } from './subscription-expiry.cron';
 import { MemberExpiryCron } from './member-expiry.cron';
+import { makeCounterProvider } from '@willsoto/nestjs-prometheus';
 
 @Module({
   imports: [AuthModule, forwardRef(() => PlansModule)],
@@ -16,6 +17,14 @@ import { MemberExpiryCron } from './member-expiry.cron';
     RazorpayService,
     SubscriptionExpiryCron,
     MemberExpiryCron,
+    makeCounterProvider({
+      name: 'renewals_success_total',
+      help: 'Total number of successful renewals',
+    }),
+    makeCounterProvider({
+      name: 'renewals_failed_total',
+      help: 'Total number of failed renewals',
+    }),
   ],
   controllers: [SubscriptionsController],
   exports: [SubscriptionsService, RazorpayService],
