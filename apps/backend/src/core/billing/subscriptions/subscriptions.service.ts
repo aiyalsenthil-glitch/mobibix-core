@@ -81,7 +81,7 @@ export class SubscriptionsService {
    * Calculate end date based on billing cycle
    * Supports MONTHLY, QUARTERLY, YEARLY
    */
-  private calculateEndDate(startDate: Date, billingCycle: BillingCycle): Date {
+  public calculateEndDate(startDate: Date, billingCycle: BillingCycle): Date {
     switch (billingCycle) {
       case BillingCycle.MONTHLY:
         return addMonths(startDate, 1);
