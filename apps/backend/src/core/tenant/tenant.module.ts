@@ -7,9 +7,10 @@ import { AuthModule } from '../auth/auth.module';
 import { BillingModule } from '../billing/billing.module';
 import { PlansModule } from '../billing/plans/plans.module';
 import { UsageSnapshotService } from '../analytics/usage-snapshot.service';
+import { PartnersModule } from '../../modules/partners/partners.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, BillingModule, PlansModule],
+  imports: [PrismaModule, AuthModule, BillingModule, PlansModule, PartnersModule],
   controllers: [TenantController, TenantUsageController],
   providers: [TenantService, UsageSnapshotService],
   exports: [TenantService, UsageSnapshotService], // 👈 THIS IS THE KEY LINE

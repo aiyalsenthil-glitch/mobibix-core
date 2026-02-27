@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Settings,
   Gift,
+  ShoppingBag,
 } from "lucide-react";
 
 interface NavItem {
@@ -36,6 +37,7 @@ const navItems: NavItem[] = [
   { label: "Job Cards", href: "/jobcards", icon: Wrench },
   { label: "Products", href: "/products", icon: Tags },
   { label: "Inventory", href: "/inventory", icon: PackageSearch },
+  { label: "Restock", href: "/restock", icon: ShoppingBag },
   { label: "Customers", href: "/customers", icon: Users },
   { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare },
   { label: "Suppliers", href: "/suppliers", icon: Truck },

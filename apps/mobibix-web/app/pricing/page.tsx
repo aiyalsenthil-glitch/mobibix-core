@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PricingToggleClient } from "../../components/pricing/PricingToggleClient";
 
 export const metadata: Metadata = {
-  title: "Pricing — MobiBix Mobile Shop POS Software",
+  title: "Pricing — MobiBix Mobile Shop OS",
   description:
     "Simple, transparent pricing for Indian mobile shop owners. Start free for 14 days — no credit card required.",
 };
@@ -44,8 +44,10 @@ async function fetchPricing(): Promise<Plan[]> {
       { next: { revalidate: 3600 } }
     );
     if (!res.ok) return [];
-    const data = await res.json();
-    return data?.MOBILE_SHOP ?? [];
+    const json = await res.json();
+    // Wrap handling: Backend returns { success: true, data: { MOBILE_SHOP: [...] } }
+    const plans = json?.data?.MOBILE_SHOP ?? json?.MOBILE_SHOP ?? [];
+    return plans;
   } catch {
     return [];
   }

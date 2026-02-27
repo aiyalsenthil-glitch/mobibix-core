@@ -49,10 +49,7 @@
     "@react-email/render": "^2.0.4",
     "@sentry/nestjs": "^9.20.0",
     "@sentry/profiling-node": "^9.20.0",
-    "@types/compression": "^1.8.1",
-    "@types/pdfkit": "^0.17.5",
-    "@willsoto/nestjs-prometheus": "^6.0.2",
-    "axios": "^1.13.4",
+    "bcrypt": "^6.0.0",
     "bullmq": "^5.70.1",
     "cache-manager": "^7.2.8",
     "class-transformer": "^0.5.1",
@@ -81,7 +78,11 @@
     "reflect-metadata": "^0.2.2",
     "resend": "^6.6.0",
     "rxjs": "^7.8.1",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "@types/compression": "^1.8.1",
+    "@types/pdfkit": "^0.17.5",
+    "@willsoto/nestjs-prometheus": "^6.0.2",
+    "axios": "^1.13.4"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^0.1.0",
@@ -89,6 +90,7 @@
     "@nestjs/cli": "^11.0.16",
     "@nestjs/schematics": "^10.1.4",
     "@nestjs/testing": "^11.0.1",
+    "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",

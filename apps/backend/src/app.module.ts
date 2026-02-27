@@ -23,6 +23,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { GymAppModule } from './modules/gymapp/gym-app.module';
 import { MobileShopModule } from './modules/mobileshop/mobileshop.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
+import { PartnersModule } from './modules/partners/partners.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { CacheModule as CustomCacheModule } from './core/cache/cache.module';
 import { SuppliersModule } from './core/suppliers/suppliers.module';

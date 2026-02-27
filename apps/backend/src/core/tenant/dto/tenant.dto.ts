@@ -60,6 +60,10 @@ export class CreateTenantDto {
   @IsOptional()
   @IsString()
   timezone?: string;
+
+  @IsOptional()
+  @IsString()
+  promoCode?: string;
 }
 
 export class UpdateTenantSettingsDto {

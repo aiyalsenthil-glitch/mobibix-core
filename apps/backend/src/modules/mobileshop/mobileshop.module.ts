@@ -6,6 +6,7 @@ import { ReceiptsModule } from './receipts/receipts.module';
 import { VouchersModule } from './vouchers/vouchers.module';
 import { CrmIntegrationModule } from './crm-integration.module';
 import { MobileShopReportsModule } from './reports/reports.module';
+import { B2BModule } from './b2b/b2b.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { MobileShopReportsModule } from './reports/reports.module';
     VouchersModule,
     CrmIntegrationModule,
     MobileShopReportsModule,
+    B2BModule,
   ],
 })
 export class MobileShopModule {}

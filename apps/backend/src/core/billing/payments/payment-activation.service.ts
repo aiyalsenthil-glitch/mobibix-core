@@ -48,6 +48,7 @@ export class PaymentActivationService {
           planId: true,
           billingCycle: true,
           status: true,
+          amount: true,
           providerOrderId: true,
         },
       });
@@ -91,6 +92,49 @@ export class PaymentActivationService {
         this.logger.log(
           `[PAYMENT] ✅ Activation complete: Payment ${payment.id} → Subscription ${subscription.id}`,
         );
+
+        // Module 6: Partner Referral & Commission Logic
+        try {
+          const tenant = await tx.tenant.findUnique({
+            where: { id: payment.tenantId },
+            select: { partnerId: true },
+          });
+
+          if (tenant?.partnerId) {
+            const partner = await tx.partner.findUnique({
+              where: { id: tenant.partnerId },
+            });
+
+            if (partner && partner.status === 'APPROVED') {
+              const commissionAmount = (payment.amount * partner.commissionPercentage) / 100;
+
+              await tx.partnerReferral.create({
+                data: {
+                  partnerId: partner.id,
+                  tenantId: payment.tenantId,
+                  subscriptionPlan: plan.name,
+                  subscriptionAmount: payment.amount,
+                  commissionPercentage: partner.commissionPercentage,
+                  commissionAmount: commissionAmount,
+                  status: 'CONFIRMED', // Auto-confirm on payment success
+                  confirmedAt: new Date(),
+                },
+              });
+
+              await tx.partner.update({
+                where: { id: partner.id },
+                data: {
+                  totalEarned: { increment: commissionAmount },
+                },
+              });
+
+              this.logger.log(`💰 Partner Commission Generated: ₹${commissionAmount} for Partner ${partner.id}`);
+            }
+          }
+        } catch (partnerErr) {
+          this.logger.error(`[PARTNER] ⚠️ Failed to process commission for payment ${payment.id}`, partnerErr);
+          // Don't fail the payment activation if partner logic fails
+        }
 
         // ✅ GENERATE INVOICE (Called separately but inside this flow's logic)
         // Note: invoiceService.createInvoiceForPayment handles its own retry/transaction logic

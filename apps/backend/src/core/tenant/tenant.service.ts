@@ -14,8 +14,8 @@ import { UserRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PLAN_CAPABILITIES } from '../billing/plan-capabilities';
 import { PlanRulesService } from '../billing/plan-rules.service';
+import { PartnersService } from '../../modules/partners/partners.service';
 import { normalizePhone } from '../../common/utils/phone.util';
-// import { EmailService } from '../../common/email/email.service'; <-- Removed direct usage
 import { getCreateAudit } from '../audit/audit.helper';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TenantWelcomeEvent } from '../../common/email/email.events';
@@ -31,6 +31,7 @@ export class TenantService {
     private readonly jwtService: JwtService,
     private readonly planRulesService: PlanRulesService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly partnersService: PartnersService,
   ) {}
 
   /**
@@ -146,6 +147,50 @@ export class TenantService {
     this.logger.log(
       `✅ Tenant onboarding completed: ${tenant.name} (${tenant.code}) for user ${userId}`,
     );
+
+    // Module 1: Apply Promo Code Logic
+    if (dto.promoCode) {
+      try {
+        await this.partnersService.applyPromoToTenant(dto.promoCode, tenant.id);
+        
+        const promo = await this.prisma.promoCode.findUnique({
+          where: { code: dto.promoCode }
+        });
+
+        if (promo?.type === 'FREE_TRIAL') {
+           // Set plan = PRO and extend duration
+           const proPlan = await this.prisma.plan.findFirst({
+             where: { 
+               code: 'PRO',
+               module: effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM'
+             }
+           });
+
+           if (proPlan) {
+             const newEndDate = new Date();
+             newEndDate.setDate(newEndDate.getDate() + promo.durationDays);
+
+             await this.prisma.tenantSubscription.update({
+               where: {
+                 tenantId_module: {
+                   tenantId: tenant.id,
+                   module: effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM'
+                 }
+               },
+               data: {
+                 planId: proPlan.id,
+                 endDate: newEndDate,
+                 status: 'ACTIVE' // Activate immediately for 3 months free
+               }
+             });
+             this.logger.log(`🎁 Applied FREE_TRIAL promo ${dto.promoCode}: Plan=PRO, Days=${promo.durationDays}`);
+           }
+        }
+      } catch (err) {
+        this.logger.error(`Failed to apply promo code ${dto.promoCode}: ${err.message}`);
+        // Don't fail the whole onboarding if promo fails
+      }
+    }
 
     return { tenant, userTenant };
   }

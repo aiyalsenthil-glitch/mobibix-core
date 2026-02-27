@@ -101,6 +101,14 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
           >
             📦 Inventory
           </Link>
+          <Link
+            href="/restock"
+            className={`block px-4 py-3 rounded-lg transition-all ${
+              isActive("/restock") ? navItemActive : navItemInactive
+            }`}
+          >
+            🚀 Restock
+          </Link>
 
           {/* More Menu */}
           <div>
