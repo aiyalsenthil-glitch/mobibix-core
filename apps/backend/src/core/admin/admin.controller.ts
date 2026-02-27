@@ -645,7 +645,18 @@ export class AdminController {
   // TENANT IMPERSONATION (ADMIN)
   // ─────────────────────────────────────────────
   @Post('tenants/:id/impersonate')
-  async impersonateTenant(@Param('id') tenantId: string) {
+  async impersonateTenant(@Param('id') tenantId: string, @Req() req: any) {
+    const adminUserId = req.user.sub || req.user.id;
+
+    // Check if actor is SUPER_ADMIN
+    const adminUser = await this.prisma.adminUser.findUnique({
+      where: { userId: adminUserId },
+    });
+
+    if (!adminUser || adminUser.role !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('Only SUPER_ADMIN can impersonate tenants');
+    }
+
     // 1. Find the owner of the tenant
     const ownerRecord = await this.prisma.userTenant.findFirst({
       where: {
@@ -660,24 +671,29 @@ export class AdminController {
       throw new NotFoundException('No eligible owner found for impersonation');
     }
 
-    // 2. Issue JWT for the target user context
-    const token = this.tenantService.issueJwt({
-      userId: ownerRecord.userId,
-      tenantId: ownerRecord.tenantId,
-      userTenantId: ownerRecord.id,
-      role: ownerRecord.role,
-    });
+    // 2. Issue short-lived JWT for the target user context (15m)
+    const token = await this.tenantService.issueJwt(
+      {
+        userId: ownerRecord.userId,
+        tenantId: ownerRecord.tenantId,
+        userTenantId: ownerRecord.id,
+        role: ownerRecord.role,
+      },
+      '15m',
+    );
 
-    // 3. Log the action (Platform Audit)
+    // 3. Log the action (Platform Audit) with IP and target details
     await this.prisma.platformAuditLog.create({
       data: {
-        userId: (ownerRecord.user as any).id, // Fix later if needed, but usually context user from guard
+        userId: adminUserId,
         action: 'IMPERSONATE_TENANT',
         entity: 'TENANT',
         entityId: tenantId,
         meta: {
           tenantCode: ownerRecord.tenant.code,
           targetUser: ownerRecord.user.email,
+          ip: req.ip || req.connection?.remoteAddress,
+          expiresIn: '15m',
         },
       },
     });
@@ -690,6 +706,7 @@ export class AdminController {
         role: ownerRecord.role,
         tenantId: ownerRecord.tenantId,
       },
+      expiresIn: 900, // 15 minutes
     };
   }
 

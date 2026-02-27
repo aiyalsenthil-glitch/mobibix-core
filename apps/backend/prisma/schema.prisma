@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -21,6 +21,8 @@ enum AutopayStatus {
 }
 
 model Tenant {
+  lastLoginAt DateTime?
+
   id                 String            @id @default(cuid())
   name               String
   legalName          String?
@@ -50,61 +52,63 @@ model Tenant {
   deletedAt          DateTime?
   deletedBy          String?
 
-  kioskToken               String?               @unique
+  kioskToken               String?                 @unique
   enabledModules           ModuleType[] // Gates what permissions a tenant can assign to roles
-  maxMembers               Int                   @default(50)
-  whatsappEnabled          Boolean               @default(true)
-  whatsappCrmEnabled       Boolean               @default(false)
+  maxMembers               Int                     @default(50)
+  whatsappEnabled          Boolean                 @default(true)
+  whatsappCrmEnabled       Boolean                 @default(false)
   whatsappPhoneNumberId    String?
   whatsappBusinessId       String?
   whatsappWabaId           String?
   whatsappReminderNumberId String? // Added for Phase 1
-  whatsappReminderNumber   WhatsAppNumber?       @relation("TenantReminderNumber", fields: [whatsappReminderNumberId], references: [id])
+  whatsappReminderNumber   WhatsAppNumber?         @relation("TenantReminderNumber", fields: [whatsappReminderNumberId], references: [id])
   auditLogs                AuditLog[]
-  parties                  Party[]               @relation("TenantParties")
-  customerAlerts           CustomerAlert[]       @relation("TenantCustomerAlerts")
-  customerFollowUps        CustomerFollowUp[]    @relation("TenantCustomerFollowUps")
-  customerReminders        CustomerReminder[]    @relation("TenantCustomerReminders")
+  parties                  Party[]                 @relation("TenantParties")
+  customerAlerts           CustomerAlert[]         @relation("TenantCustomerAlerts")
+  customerFollowUps        CustomerFollowUp[]      @relation("TenantCustomerFollowUps")
+  customerReminders        CustomerReminder[]      @relation("TenantCustomerReminders")
   financialEntries         FinancialEntry[]
   imeis                    IMEI[]
-  invoices                 Invoice[]             @relation("TenantInvoices")
-  jobCards                 JobCard[]             @relation("TenantJobCards")
+  invoices                 Invoice[]               @relation("TenantInvoices")
+  jobCards                 JobCard[]               @relation("TenantJobCards")
   ledgerAccounts           LedgerAccount[]
   ledgerCustomers          LedgerCustomer[]
   ledgerPayments           LedgerPayment[]
-  supplierPayments         SupplierPayment[]     @relation("TenantSupplierPayments")
+  supplierPayments         SupplierPayment[]       @relation("TenantSupplierPayments")
   loyaltyConfig            LoyaltyConfig?
   loyaltyTransactions      LoyaltyTransaction[]
-  members                  Member[]              @relation("TenantMembers")
+  members                  Member[]                @relation("TenantMembers")
   payments                 Payment[]
-  subscriptionInvoices     SubscriptionInvoice[] @relation("TenantToSubscriptionInvoice")
-  paymentVouchers          PaymentVoucher[]      @relation("TenantPaymentVouchers")
-  purchases                Purchase[]            @relation("TenantPurchases")
-  purchaseOrders           PurchaseOrder[]       @relation("TenantPurchaseOrders")
-  quotations               Quotation[]           @relation("TenantQuotations")
-  receipts                 Receipt[]             @relation("TenantReceipts")
+  subscriptionInvoices     SubscriptionInvoice[]   @relation("TenantToSubscriptionInvoice")
+  paymentVouchers          PaymentVoucher[]        @relation("TenantPaymentVouchers")
+  purchases                Purchase[]              @relation("TenantPurchases")
+  purchaseOrders           PurchaseOrder[]         @relation("TenantPurchaseOrders")
+  quotations               Quotation[]             @relation("TenantQuotations")
+  receipts                 Receipt[]               @relation("TenantReceipts")
   shops                    Shop[]
   shopProducts             ShopProduct[]
   shopStaffs               ShopStaff[]
   stockCorrections         StockCorrection[]
-  stockEntries             StockLedger[]         @relation("TenantStockEntries")
+  stockEntries             StockLedger[]           @relation("TenantStockEntries")
   subscription             TenantSubscription[]
   users                    User[]
   userTenants              UserTenant[]
   whatsAppCampaigns        WhatsAppCampaign[]
   whatsAppUsage            WhatsAppDailyUsage[]
   usageSnapshots           UsageSnapshot[]
-  featureFlags             FeatureFlag[]         @relation("TenantFeatureFlags")
+  featureFlags             FeatureFlag[]           @relation("TenantFeatureFlags")
   emailLogs                EmailLog[]
   roles                    Role[]
   approvalRequests         ApprovalRequest[]
   distributorLinks         DistributorTenantLink[]
   b2bPurchaseOrders        B2BPurchaseOrder[]
-  
-  partnerId                String?
-  partner                  Partner?              @relation(fields: [partnerId], references: [id])
-  promoCodeId              String?
-  appliedPromoCode         PromoCode?            @relation(fields: [promoCodeId], references: [id])
+
+  partnerId        String?
+  partner          Partner?     @relation(fields: [partnerId], references: [id])
+  promoCodeId      String?
+  appliedPromoCode PromoCode?   @relation(fields: [promoCodeId], references: [id])
+  promoUsages      PromoUsage[]
+  aiUsageLogs      AiUsageLog[]
 }
 
 model BusinessCategory {
@@ -168,6 +172,8 @@ model User {
   emailLogs          EmailLog[]
   requestedApprovals ApprovalRequest[]  @relation("RequestedApprovals")
   resolvedApprovals  ApprovalRequest[]  @relation("ResolvedApprovals")
+  promoUsages        PromoUsage[]
+  adminUser          AdminUser?
 
   @@index([REMOVED_AUTH_PROVIDERUid])
   @@index([email])
@@ -227,6 +233,7 @@ model Member {
   @@index([tenantId])
   @@index([tenantId, deletedAt]) // Soft Delete Optimization
   @@index([fullName]) // Search Optimization
+  @@map("gp_member")
 }
 
 model Party {
@@ -274,6 +281,7 @@ model Party {
   @@index([tenantId])
   @@index([tenantId, deletedAt])
   @@index([name])
+  @@map("mb_party")
 }
 
 model CustomerFollowUp {
@@ -301,6 +309,7 @@ model CustomerFollowUp {
   @@index([followUpAt])
   @@index([status])
   @@index([tenantId, assignedToUserId, status, followUpAt])
+  @@map("mb_customer_follow_up")
 }
 
 model CustomerReminder {
@@ -327,6 +336,7 @@ model CustomerReminder {
   @@index([scheduledAt])
   @@index([status, channel, scheduledAt]) // Optimized for cron reminder fetch
   @@index([tenantId, status, scheduledAt]) // Composite for fetching pending reminders by time
+  @@map("mb_customer_reminder")
 }
 
 model LoyaltyConfig {
@@ -362,6 +372,7 @@ model LoyaltyConfig {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  @@map("mb_loyalty_config")
 }
 
 model LoyaltyTransaction {
@@ -392,6 +403,7 @@ model LoyaltyTransaction {
   @@index([invoiceId])
   @@index([reversalOf])
   @@index([createdAt])
+  @@map("mb_loyalty_transaction")
 }
 
 model CustomerAlert {
@@ -412,6 +424,7 @@ model CustomerAlert {
   @@index([severity])
   @@index([resolved])
   @@index([createdAt])
+  @@map("mb_customer_alert")
 }
 
 model LedgerCustomer {
@@ -428,6 +441,7 @@ model LedgerCustomer {
 
   @@unique([tenantId, phone])
   @@index([tenantId])
+  @@map("lg_ledger_customer")
 }
 
 model LedgerAccount {
@@ -449,6 +463,7 @@ model LedgerAccount {
 
   @@index([tenantId])
   @@index([customerId])
+  @@map("lg_ledger_account")
 }
 
 model LedgerCollection {
@@ -467,6 +482,7 @@ model LedgerCollection {
 
   @@index([tenantId])
   @@index([ledgerId])
+  @@map("lg_ledger_collection")
 }
 
 model LedgerPayment {
@@ -492,6 +508,7 @@ model LedgerPayment {
   @@index([customerId])
   @@index([collectionId])
   @@index([collectedBy])
+  @@map("lg_ledger_payment")
 }
 
 model StaffInvite {
@@ -531,6 +548,7 @@ model MemberPayment {
 
   @@index([tenantId])
   @@index([memberId])
+  @@map("gp_member_payment")
 }
 
 model Plan {
@@ -629,6 +647,7 @@ model TenantSubscription {
   @@index([autoRenew])
   @@index([providerSubscriptionId])
   @@index([providerPaymentLinkId])
+  @@index([status, module])
 }
 
 model SubscriptionAddon {
@@ -659,6 +678,7 @@ model Payment {
   id                  String               @id @default(cuid())
   tenantId            String
   planId              String
+  module              ModuleType           @default(MOBILE_SHOP)
   billingCycle        BillingCycle
   priceSnapshot       Int
   amount              Int
@@ -680,6 +700,7 @@ model Payment {
   @@index([tenantId])
   @@index([status])
   @@index([expiresAt])
+  @@index([module, createdAt(sort: Desc)])
 }
 
 model PaymentRetry {
@@ -781,6 +802,7 @@ model PlatformAuditLog {
   user      User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
+  @@index([createdAt(sort: Desc)])
 }
 
 model GymMembership {
@@ -796,6 +818,7 @@ model GymMembership {
 
   @@index([tenantId])
   @@index([memberId])
+  @@map("gp_gym_membership")
 }
 
 model WhatsAppSetting {
@@ -1011,6 +1034,7 @@ model GymAttendance {
 
   @@index([tenantId])
   @@index([memberId])
+  @@map("gp_gym_attendance")
 }
 
 model Shop {
@@ -1074,6 +1098,7 @@ model Shop {
   @@unique([tenantId, invoicePrefix])
   @@index([tenantId])
   @@index([tenantId, deletedAt])
+  @@map("mb_shop")
 }
 
 model ShopDocumentSetting {
@@ -1096,6 +1121,7 @@ model ShopDocumentSetting {
   @@unique([shopId, documentType])
   @@index([shopId])
   @@index([documentType])
+  @@map("mb_shop_document_setting")
 }
 
 model ShopStaff {
@@ -1117,6 +1143,7 @@ model ShopStaff {
   @@unique([userId, tenantId, shopId])
   @@index([tenantId])
   @@index([shopId])
+  @@map("mb_shop_staff")
 }
 
 model JobCard {
@@ -1177,6 +1204,7 @@ model JobCard {
   @@index([customerId])
   @@index([tenantId, shopId, status, createdAt])
   @@index([shopId, createdAt(sort: Desc)])
+  @@map("mb_job_card")
 }
 
 model HSNCode {
@@ -1188,6 +1216,8 @@ model HSNCode {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   hsnProducts GlobalProduct[]
+
+  @@map("mb_h_s_n_code")
 }
 
 model ProductCategory {
@@ -1195,6 +1225,8 @@ model ProductCategory {
   name             String          @unique
   createdAt        DateTime        @default(now())
   categoryProducts GlobalProduct[]
+
+  @@map("mb_product_category")
 }
 
 model GlobalProduct {
@@ -1211,6 +1243,7 @@ model GlobalProduct {
   @@unique([name, categoryId])
   @@index([categoryId])
   @@index([hsnId])
+  @@map("mb_global_product")
 }
 
 model ShopProduct {
@@ -1250,6 +1283,7 @@ model ShopProduct {
   @@index([shopId])
   @@index([globalProductId])
   @@index([tenantId, shopId, isActive])
+  @@map("mb_shop_product")
 }
 
 model IMEI {
@@ -1277,6 +1311,7 @@ model IMEI {
   @@index([invoiceId])
   @@index([status])
   @@index([transferredToShopId])
+  @@map("mb_i_m_e_i")
 }
 
 model StockLedger {
@@ -1299,6 +1334,7 @@ model StockLedger {
   @@index([shopProductId, createdAt])
   @@index([tenantId, shopId, type])
   @@index([referenceType, referenceId])
+  @@map("mb_stock_ledger")
 }
 
 model StockCorrection {
@@ -1318,6 +1354,7 @@ model StockCorrection {
   @@index([tenantId, shopId])
   @@index([shopProductId])
   @@index([createdAt])
+  @@map("mb_stock_correction")
 }
 
 model Invoice {
@@ -1369,6 +1406,7 @@ model Invoice {
   @@index([customerId])
   @@index([tenantId, shopId, createdAt])
   @@index([tenantId, deletedAt])
+  @@map("mb_invoice")
 }
 
 model InvoiceItem {
@@ -1391,6 +1429,7 @@ model InvoiceItem {
   product       ShopProduct @relation(fields: [shopProductId], references: [id])
 
   @@index([invoiceId])
+  @@map("mb_invoice_item")
 }
 
 model JobCardPart {
@@ -1407,6 +1446,7 @@ model JobCardPart {
   @@unique([jobCardId, shopProductId])
   @@index([jobCardId])
   @@index([shopProductId])
+  @@map("mb_job_card_part")
 }
 
 model FinancialEntry {
@@ -1425,6 +1465,7 @@ model FinancialEntry {
 
   @@index([tenantId])
   @@index([shopId])
+  @@map("mb_financial_entry")
 }
 
 model Purchase {
@@ -1470,6 +1511,7 @@ model Purchase {
   @@index([tenantId])
   @@index([shopId])
   @@index([globalSupplierId])
+  @@map("mb_purchase")
 }
 
 model PurchaseItem {
@@ -1495,6 +1537,7 @@ model PurchaseItem {
 
   @@index([purchaseId])
   @@index([shopProductId])
+  @@map("mb_purchase_item")
 }
 
 model SupplierPayment {
@@ -1517,6 +1560,7 @@ model SupplierPayment {
   @@index([tenantId])
   @@index([shopId])
   @@index([purchaseId])
+  @@map("mb_supplier_payment")
 }
 
 model Receipt {
@@ -1550,6 +1594,7 @@ model Receipt {
   @@index([customerId])
   @@index([linkedInvoiceId])
   @@index([linkedJobCardId])
+  @@map("mb_receipt")
 }
 
 model PaymentVoucher {
@@ -1577,6 +1622,7 @@ model PaymentVoucher {
 
   @@index([tenantId])
   @@index([shopId])
+  @@map("mb_payment_voucher")
 }
 
 model AdvanceApplication {
@@ -1591,6 +1637,7 @@ model AdvanceApplication {
   @@unique([advanceVoucherId, purchaseId])
   @@index([advanceVoucherId])
   @@index([purchaseId])
+  @@map("mb_advance_application")
 }
 
 model Quotation {
@@ -1617,6 +1664,7 @@ model Quotation {
   @@unique([shopId, quotationNumber])
   @@index([tenantId])
   @@index([shopId])
+  @@map("mb_quotation")
 }
 
 model QuotationItem {
@@ -1629,6 +1677,7 @@ model QuotationItem {
   quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
 
   @@index([quotationId])
+  @@map("mb_quotation_item")
 }
 
 model PurchaseOrder {
@@ -1654,6 +1703,7 @@ model PurchaseOrder {
   @@unique([shopId, poNumber])
   @@index([tenantId])
   @@index([shopId])
+  @@map("mb_purchase_order")
 }
 
 model PurchaseOrderItem {
@@ -1667,6 +1717,7 @@ model PurchaseOrderItem {
   po               PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
 
   @@index([poId])
+  @@map("mb_purchase_order_item")
 }
 
 enum ProductType {
@@ -2272,7 +2323,7 @@ model ApprovalRequest {
 model CorsAllowedOrigin {
   id        String   @id @default(cuid())
   origin    String   @unique
-  label     String?  // Human-readable label e.g. "Gympilot Production"
+  label     String? // Human-readable label e.g. "Gympilot Production"
   isEnabled Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2283,35 +2334,38 @@ model CorsAllowedOrigin {
 // ─── B2B Wholesale Portal ───────────────────────────────────────────────────
 
 model Distributor {
-  id             String    @id @default(cuid())
-  name           String
-  gstNumber      String?
-  contactPhone   String?
-  address        String?
-  city           String?
-  state          String?
-  
+  id           String  @id @default(cuid())
+  name         String
+  gstNumber    String?
+  contactPhone String?
+  address      String?
+  city         String?
+  state        String?
+
   // Relations
   catalogs       WholesaleCatalog[]
   networkLinks   DistributorTenantLink[]
   purchaseOrders B2BPurchaseOrder[]
-  
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("mb_distributor")
 }
 
 model DistributorTenantLink {
-  id            String      @id @default(cuid())
+  id            String     @id @default(cuid())
   tenantId      String
   distributorId String
-  status        LinkStatus  @default(PENDING)
-  
-  tenant        Tenant      @relation(fields: [tenantId], references: [id])
-  distributor   Distributor @relation(fields: [distributorId], references: [id])
-  
-  createdAt     DateTime    @default(now())
-  
+  status        LinkStatus @default(PENDING)
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  distributor Distributor @relation(fields: [distributorId], references: [id])
+
+  createdAt DateTime @default(now())
+
   @@unique([tenantId, distributorId])
+  @@map("mb_distributor_tenant_link")
 }
 
 enum LinkStatus {
@@ -2321,47 +2375,53 @@ enum LinkStatus {
 }
 
 model WholesaleCatalog {
-  id             String    @id @default(cuid())
+  id             String @id @default(cuid())
   distributorId  String
   sku            String
   productName    String
   category       String
   wholesalePrice Float
-  moq            Int       @default(1)
-  stockAvailable Int       @default(0)
-  
-  distributor    Distributor @relation(fields: [distributorId], references: [id])
-  orderItems     B2BOrderItem[]
-  
-  updatedAt      DateTime  @updatedAt
+  moq            Int    @default(1)
+  stockAvailable Int    @default(0)
+
+  distributor Distributor    @relation(fields: [distributorId], references: [id])
+  orderItems  B2BOrderItem[]
+
+  updatedAt DateTime @updatedAt
+
+  @@map("mb_wholesale_catalog")
 }
 
 model B2BPurchaseOrder {
-  id             String    @id @default(cuid())
-  poNumber       String    @unique
-  tenantId       String
-  distributorId  String
-  status         B2BPOStatus  @default(SUBMITTED)
-  totalAmount    Float
-  
-  tenant         Tenant      @relation(fields: [tenantId], references: [id])
-  distributor    Distributor @relation(fields: [distributorId], references: [id])
-  items          B2BOrderItem[]
-  
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id            String      @id @default(cuid())
+  poNumber      String      @unique
+  tenantId      String
+  distributorId String
+  status        B2BPOStatus @default(SUBMITTED)
+  totalAmount   Float
+
+  tenant      Tenant         @relation(fields: [tenantId], references: [id])
+  distributor Distributor    @relation(fields: [distributorId], references: [id])
+  items       B2BOrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("mb_b2_b_purchase_order")
 }
 
 model B2BOrderItem {
-  id              String           @id @default(cuid())
+  id              String @id @default(cuid())
   purchaseOrderId String
   catalogItemId   String
   quantity        Int
   unitPrice       Float
   totalPrice      Float
-  
-  purchaseOrder   B2BPurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  catalogItem     WholesaleCatalog @relation(fields: [catalogItemId], references: [id])
+
+  purchaseOrder B2BPurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  catalogItem   WholesaleCatalog @relation(fields: [catalogItemId], references: [id])
+
+  @@map("mb_b2_b_order_item")
 }
 
 enum B2BPOStatus {
@@ -2375,29 +2435,29 @@ enum B2BPOStatus {
 // ─── Partner & Promo System ────────────────────────────────────────────────
 
 model Partner {
-  id                    String            @id @default(cuid())
-  businessName          String
-  contactPerson         String
-  email                 String            @unique
-  phone                 String
-  partnerType           PartnerType
-  region                String?
-  status                PartnerStatus     @default(PENDING)
-  referralCode          String            @unique
-  commissionPercentage  Float             @default(0)
-  totalEarned           Float             @default(0)
-  totalPaid             Float             @default(0)
-  passwordHash          String
-  
+  id                   String        @id @default(cuid())
+  businessName         String
+  contactPerson        String
+  email                String        @unique
+  phone                String
+  partnerType          PartnerType
+  region               String?
+  status               PartnerStatus @default(PENDING)
+  referralCode         String        @unique
+  commissionPercentage Float         @default(0)
+  totalEarned          Float         @default(0)
+  totalPaid            Float         @default(0)
+  passwordHash         String
+
   // Relations
-  referredTenants       Tenant[]
-  promoCodes            PromoCode[]
-  referrals             PartnerReferral[]
-  
-  approvedAt            DateTime?
-  approvedByAdminId     String?
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
+  referredTenants Tenant[]
+  promoCodes      PromoCode[]
+  referrals       PartnerReferral[]
+
+  approvedAt        DateTime?
+  approvedByAdminId String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 enum PartnerType {
@@ -2413,24 +2473,25 @@ enum PartnerStatus {
 }
 
 model PromoCode {
-  id                  String          @id @default(cuid())
-  code                String          @unique
-  description         String?
-  type                PromoCodeType
-  durationDays        Int
-  discountPercentage  Float?
-  maxUses             Int             @default(500)
-  usedCount           Int             @default(0)
-  expiresAt           DateTime?
-  isActive            Boolean         @default(true)
-  
+  id                 String        @id @default(cuid())
+  code               String        @unique
+  description        String?
+  type               PromoCodeType
+  durationDays       Int
+  discountPercentage Float?
+  maxUses            Int           @default(500)
+  usedCount          Int           @default(0)
+  expiresAt          DateTime?
+  isActive           Boolean       @default(true)
+
   // Relations
-  partnerId           String?
-  partner             Partner?        @relation(fields: [partnerId], references: [id])
-  usedByTenants       Tenant[]
-  
-  createdByAdminId    String?
-  createdAt           DateTime        @default(now())
+  partnerId     String?
+  partner       Partner? @relation(fields: [partnerId], references: [id])
+  usedByTenants Tenant[]
+
+  createdByAdminId String?
+  createdAt        DateTime     @default(now())
+  usages           PromoUsage[]
 }
 
 enum PromoCodeType {
@@ -2439,20 +2500,22 @@ enum PromoCodeType {
 }
 
 model PartnerReferral {
-  id                    String          @id @default(cuid())
-  partnerId             String
-  tenantId              String
-  subscriptionPlan      String
-  subscriptionAmount    Float
-  commissionPercentage  Float
-  commissionAmount      Float
-  status                ReferralStatus  @default(PENDING)
-  
-  partner               Partner         @relation(fields: [partnerId], references: [id])
-  
-  confirmedAt           DateTime?
-  paidAt                DateTime?
-  createdAt             DateTime        @default(now())
+  id                   String         @id @default(cuid())
+  partnerId            String
+  tenantId             String
+  subscriptionPlan     String
+  subscriptionAmount   Float
+  commissionPercentage Float
+  commissionAmount     Float
+  status               ReferralStatus @default(PENDING)
+
+  partner Partner @relation(fields: [partnerId], references: [id])
+
+  confirmedAt DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@map("mb_partner_referral")
 }
 
 enum ReferralStatus {
@@ -2461,3 +2524,57 @@ enum ReferralStatus {
   PAID
 }
 
+enum AdminRole {
+  SUPER_ADMIN
+  FINANCE_ADMIN
+  SUPPORT_ADMIN
+  PRODUCT_ADMIN
+}
+
+model AdminUser {
+  id           String      @id @default(cuid())
+  userId       String      @unique
+  role         AdminRole   @default(PRODUCT_ADMIN)
+  productScope ModuleType?
+  createdAt    DateTime    @default(now())
+  user         User        @relation(fields: [userId], references: [id])
+
+  @@index([role])
+}
+
+model AiUsageLog {
+  id               String     @id @default(cuid())
+  tenantId         String
+  module           ModuleType
+  feature          String
+  model            String
+  promptTokens     Int
+  completionTokens Int
+  totalTokens      Int
+  costUsd          Float
+  createdAt        DateTime   @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([module, createdAt])
+  @@map("ai_usage_logs")
+}
+
+model PromoUsage {
+  id        String   @id @default(cuid())
+  promoId   String
+  userId    String
+  tenantId  String
+  createdAt DateTime @default(now())
+
+  promo  PromoCode @relation(fields: [promoId], references: [id])
+  user   User      @relation(fields: [userId], references: [id])
+  tenant Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@unique([promoId, userId])
+  @@index([promoId])
+  @@index([userId])
+  @@index([tenantId])
+  @@map("promo_usages")
+}
