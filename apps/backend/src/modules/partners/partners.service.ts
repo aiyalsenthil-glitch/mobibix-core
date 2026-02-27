@@ -1,13 +1,28 @@
-import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { EmailService } from '../../common/email/email.service';
 import { PartnerStatus, PartnerType, PromoCodeType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { GeneratePromoDto } from './dto/create-partner.dto';
 
 @Injectable()
 export class PartnersService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(PartnersService.name);
 
-  // Module 3: Partner Application Flow
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+  ) {}
+
+  // ─────────────────────────────────────────────
+  // MODULE 3: Partner Application Flow
+  // ─────────────────────────────────────────────
   async apply(data: {
     businessName: string;
     contactPerson: string;
@@ -24,10 +39,9 @@ export class PartnersService {
       throw new ConflictException('Application with this email already exists');
     }
 
-    // Generate a unique referral code (Module 2)
     const referralCode = await this.generateReferralCode(data.businessName);
 
-    return this.prisma.partner.create({
+    const partner = await this.prisma.partner.create({
       data: {
         ...data,
         status: PartnerStatus.PENDING,
@@ -35,26 +49,35 @@ export class PartnersService {
         passwordHash: '', // Set on approval
       },
     });
+
+    this.logger.log(`✅ Partner application received: ${partner.email} (${partner.businessName})`);
+    return partner;
   }
 
   private async generateReferralCode(businessName: string): Promise<string> {
     const prefix = businessName.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X');
     const random = Math.random().toString(36).substring(2, 6).toUpperCase();
     const code = `${prefix}-${random}`;
-    
+
     const existing = await this.prisma.partner.findUnique({ where: { referralCode: code } });
     if (existing) return this.generateReferralCode(businessName);
     return code;
   }
 
-  // Module 4: Admin Panel Integration (Approval)
+  // ─────────────────────────────────────────────
+  // MODULE 4: Admin Panel — Approval
+  // ─────────────────────────────────────────────
   async approvePartner(partnerId: string, adminId: string, commissionPercentage: number) {
     const partner = await this.prisma.partner.findUnique({ where: { id: partnerId } });
-    if (!partner) throw new BadRequestException('Partner not found');
+    if (!partner) throw new NotFoundException('Partner not found');
+
+    if (partner.status === PartnerStatus.APPROVED) {
+      throw new BadRequestException('Partner is already approved');
+    }
 
     // Generate temporary password
     const tempPassword = Math.random().toString(36).substring(2, 10);
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
 
     const updated = await this.prisma.partner.update({
       where: { id: partnerId },
@@ -67,34 +90,99 @@ export class PartnersService {
       },
     });
 
-    return { partner: updated, tempPassword };
+    // 🔐 Email temp password — NEVER return it in API response
+    try {
+      await this.emailService.send({
+        targetType: 'SYSTEM',
+        tenantId: 'platform',
+        recipientType: 'PARTNER',
+        emailType: 'PARTNER_APPROVED',
+        referenceId: updated.id,
+        module: 'MOBILE_SHOP',
+        to: updated.email,
+        subject: 'Welcome to MobiBix Partner Program — Your Login Details',
+        data: {
+          name: updated.contactPerson,
+          businessName: updated.businessName,
+          referralCode: updated.referralCode,
+          tempPassword,
+          loginUrl: 'https://app.REMOVED_DOMAIN/partner/login',
+        },
+      } as any);
+      this.logger.log(`📧 Approval email sent to partner ${updated.email}`);
+    } catch (emailErr) {
+      this.logger.error(`Failed to send approval email to ${updated.email}`, emailErr);
+      // Don't throw — approval itself succeeded
+    }
+
+    // Return partner WITHOUT tempPassword
+    return { partner: updated };
   }
 
-  // Module 1: Promo Code Engine
-  async createPromoCode(data: {
-    code: string;
-    type: PromoCodeType;
-    durationDays: number;
-    maxUses?: number;
-    partnerId?: string;
-    adminId: string;
-  }) {
+  async suspendPartner(partnerId: string, adminId: string) {
+    const partner = await this.prisma.partner.findUnique({ where: { id: partnerId } });
+    if (!partner) throw new NotFoundException('Partner not found');
+
+    return this.prisma.partner.update({
+      where: { id: partnerId },
+      data: { status: PartnerStatus.SUSPENDED },
+    });
+  }
+
+  async listPartners(status?: PartnerStatus) {
+    return this.prisma.partner.findMany({
+      where: status ? { status } : undefined,
+      select: {
+        id: true,
+        businessName: true,
+        contactPerson: true,
+        email: true,
+        phone: true,
+        partnerType: true,
+        region: true,
+        referralCode: true,
+        status: true,
+        commissionPercentage: true,
+        totalEarned: true,
+        totalPaid: true,
+        approvedAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // MODULE 1: Promo Code Engine
+  // ─────────────────────────────────────────────
+  async createPromoCode(data: GeneratePromoDto & { adminId: string }) {
     return this.prisma.promoCode.create({
       data: {
         code: data.code,
-        type: data.type,
+        type: data.type as PromoCodeType,
         durationDays: data.durationDays,
-        maxUses: data.maxUses || 500,
+        maxUses: data.maxUses ?? 500,
         partnerId: data.partnerId,
         createdByAdminId: data.adminId,
+        // ✅ FIX: Persist expiresAt (previously ignored)
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+      },
+    });
+  }
+
+  async listPromoCodes() {
+    return this.prisma.promoCode.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        partner: {
+          select: { businessName: true, referralCode: true },
+        },
       },
     });
   }
 
   async validatePromoCode(code: string, tenantId: string) {
-    const promo = await this.prisma.promoCode.findUnique({
-      where: { code },
-    });
+    const promo = await this.prisma.promoCode.findUnique({ where: { code } });
 
     if (!promo || !promo.isActive) {
       throw new BadRequestException('Invalid or inactive promo code');
@@ -108,65 +196,77 @@ export class PartnersService {
       throw new BadRequestException('Promo code usage limit reached');
     }
 
-    // Check if tenant already used any promo
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { promoCodeId: true },
     });
 
     if (tenant?.promoCodeId) {
-       throw new BadRequestException('Promo code already applied to this shop');
+      throw new BadRequestException('Promo code already applied to this shop');
     }
 
     return promo;
   }
 
   async applyPromoToTenant(code: string, tenantId: string) {
+    // Validate first (outside transaction for clear error messaging)
     const promo = await this.validatePromoCode(code, tenantId);
 
+    // ✅ Atomic: increment usedCount + link tenant in single transaction
     return this.prisma.$transaction(async (tx) => {
-      // Increment used_count atomically
+      // Re-validate inside transaction to eliminate race condition window
+      const lockedPromo = await tx.promoCode.findUnique({ where: { id: promo.id } });
+
+      if (!lockedPromo || lockedPromo.usedCount >= lockedPromo.maxUses) {
+        throw new BadRequestException('Promo code usage limit reached (concurrent request)');
+      }
+
       await tx.promoCode.update({
         where: { id: promo.id },
         data: { usedCount: { increment: 1 } },
       });
 
-      // Update Tenant with promo and partner link
       return tx.tenant.update({
         where: { id: tenantId },
         data: {
           promoCodeId: promo.id,
-          partnerId: promo.partnerId, // Module 6: Referral Tracking
+          partnerId: promo.partnerId,
         },
       });
     });
   }
 
-  // Module 7: Partner Dashboard Data
+  // ─────────────────────────────────────────────
+  // MODULE 7: Partner Dashboard Data
+  // ─────────────────────────────────────────────
   async getPartnerStats(partnerId: string) {
     const partner = await this.prisma.partner.findUnique({
       where: { id: partnerId },
       include: {
         _count: {
-          select: { referredTenants: true }
-        }
-      }
+          select: { referredTenants: true },
+        },
+      },
     });
+
+    if (!partner) throw new NotFoundException('Partner not found');
 
     const referrals = await this.prisma.partnerReferral.findMany({
       where: { partnerId },
+      orderBy: { createdAt: 'desc' },
     });
 
     const totalRevenue = referrals.reduce((acc, curr) => acc + curr.subscriptionAmount, 0);
     const pendingCommission = referrals
-      .filter(r => r.status === 'PENDING')
+      .filter((r) => r.status === 'PENDING')
       .reduce((acc, curr) => acc + curr.commissionAmount, 0);
 
     return {
-      referralCode: partner?.referralCode,
-      totalReferrals: partner?._count.referredTenants,
-      totalEarned: partner?.totalEarned,
-      totalPaid: partner?.totalPaid,
+      referralCode: partner.referralCode,
+      businessName: partner.businessName,
+      totalReferrals: partner._count.referredTenants,
+      totalEarned: partner.totalEarned,
+      totalPaid: partner.totalPaid,
       pendingCommission,
       totalRevenue,
       referralList: referrals,

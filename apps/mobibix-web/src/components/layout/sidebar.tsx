@@ -37,7 +37,11 @@ const navItems: NavItem[] = [
   { label: "Job Cards", href: "/jobcards", icon: Wrench },
   { label: "Products", href: "/products", icon: Tags },
   { label: "Inventory", href: "/inventory", icon: PackageSearch },
-  { label: "Restock", href: "/restock", icon: ShoppingBag },
+  // 🔒 Restock (B2B Wholesale): hidden until backend is wired
+  // Enable via NEXT_PUBLIC_ENABLE_RESTOCK=true in .env
+  ...(process.env.NEXT_PUBLIC_ENABLE_RESTOCK === 'true'
+    ? [{ label: "Restock", href: "/restock", icon: ShoppingBag }]
+    : []),
   { label: "Customers", href: "/customers", icon: Users },
   { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare },
   { label: "Suppliers", href: "/suppliers", icon: Truck },

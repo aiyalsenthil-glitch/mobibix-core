@@ -190,7 +190,7 @@ type LoggerRequest = {
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(rawBodyMiddleware).forRoutes({
-      path: 'payments/webhook',
+      path: 'billing/webhook/REMOVED_PAYMENT_INFRA',
       method: RequestMethod.POST,
     });
   }

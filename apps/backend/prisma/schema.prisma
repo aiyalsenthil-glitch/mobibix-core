@@ -2470,6 +2470,7 @@ enum PartnerStatus {
   PENDING
   APPROVED
   REJECTED
+  SUSPENDED
 }
 
 model PromoCode {

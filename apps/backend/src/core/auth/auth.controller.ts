@@ -212,20 +212,7 @@ export class AuthController {
     return { success: true };
   }
 
-  @Public()
-  @Get('debug/REMOVED_AUTH_PROVIDER-claims')
-  async debugFirebaseClaims(@Req() req: any) {
-    const authHeader = req.headers.authorization;
 
-    if (!authHeader?.startsWith('Bearer ')) {
-      return { error: 'Missing Authorization Bearer token' };
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const decoded = await this.REMOVED_AUTH_PROVIDERAdmin.verifyIdToken(token);
-
-    return decoded;
-  }
 
   @UseGuards(JwtAuthGuard)
   @Post('send-verification-email')

@@ -13,6 +13,7 @@ import { FirebaseAdminService } from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROV
 import { AuthVerificationService } from './services/auth-verification.service';
 import { UserResolutionService } from './services/user-resolution.service';
 import { TokenFactoryService } from './services/token-factory.service';
+import { RefreshTokenCleanupCron } from './services/refresh-token-cleanup.cron';
 
 @Module({
   imports: [
@@ -37,17 +38,19 @@ import { TokenFactoryService } from './services/token-factory.service';
     AuthVerificationService,
     UserResolutionService,
     TokenFactoryService,
-    JwtAuthGuard, // 🔥 PROVIDE HERE
+    RefreshTokenCleanupCron, // ✅ Weekly token cleanup
+    JwtAuthGuard,
     RolesGuard,
     JwtStrategy,
     PrismaService,
     FirebaseAdminService,
   ],
   exports: [
-    JwtAuthGuard, // 🔥 EXPORT GUARD
+    JwtAuthGuard,
     RolesGuard,
     JwtModule,
-    PassportModule, // 🔥 EXPORT JwtService
+    PassportModule,
   ],
 })
 export class AuthModule {}
+
