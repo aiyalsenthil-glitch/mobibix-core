@@ -42,7 +42,15 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(authInterceptor: AuthInterceptor, shopInterceptor: ShopInterceptor): OkHttpClient {
+    fun provideMobiResponseInterceptor(): MobiResponseInterceptor = MobiResponseInterceptor()
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(
+        authInterceptor: AuthInterceptor, 
+        shopInterceptor: ShopInterceptor,
+        mobiResponseInterceptor: MobiResponseInterceptor
+    ): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BODY
@@ -54,6 +62,7 @@ object NetworkModule {
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .addInterceptor(shopInterceptor)
+            .addInterceptor(mobiResponseInterceptor) // Unwrap {success, data}
             .addInterceptor(loggingInterceptor)
             .build()
     }

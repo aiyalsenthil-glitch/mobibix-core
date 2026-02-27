@@ -68,19 +68,19 @@ interface ReportApi {
         @Query("endDate") endDate: String?
     ): ProfitSummaryResponse
 
-    @GET("api/mobileshop/reports/tax")
+    @GET("api/mobileshop/reports/gstr-1/b2b")
     suspend fun getTaxReport(
         @Query("shopId") shopId: String?,
         @Query("startDate") startDate: String?,
         @Query("endDate") endDate: String?
     ): List<TaxReportItem>
 
-    @GET("api/mobileshop/reports/receivables")
+    @GET("api/mobileshop/reports/receivables-aging")
     suspend fun getReceivables(
         @Query("shopId") shopId: String?
     ): List<OutstandingItem>
 
-    @GET("api/mobileshop/reports/payables")
+    @GET("api/mobileshop/reports/payables-aging")
     suspend fun getPayables(
         @Query("shopId") shopId: String?
     ): List<OutstandingItem>

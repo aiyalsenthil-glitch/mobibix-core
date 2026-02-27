@@ -32,12 +32,12 @@ data class SupplierListResponse(
 )
 
 interface SupplierApi {
-    @GET("api/mobileshop/suppliers")
+    @GET("api/suppliers")
     suspend fun listSuppliers(): List<Supplier> // Backend sometimes returns array directly
 
-    @POST("api/mobileshop/suppliers")
+    @POST("api/suppliers")
     suspend fun createSupplier(@Body data: CreateSupplierDto): Supplier
 
-    @GET("api/mobileshop/suppliers/{id}")
+    @GET("api/suppliers/{id}")
     suspend fun getSupplier(@Path("id") id: String): Supplier
 }

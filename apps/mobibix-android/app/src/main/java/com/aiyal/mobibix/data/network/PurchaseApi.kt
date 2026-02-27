@@ -84,7 +84,7 @@ data class PurchaseListResponse(
 )
 
 interface PurchaseApi {
-    @GET("api/mobileshop/purchases")
+    @GET("api/purchases")
     suspend fun listPurchases(
         @Query("shopId") shopId: String,
         @Query("status") status: PurchaseStatus? = null,
@@ -93,15 +93,15 @@ interface PurchaseApi {
         @Query("take") take: Int? = null
     ): PurchaseListResponse
 
-    @GET("api/mobileshop/purchases/{id}")
+    @GET("api/purchases/{id}")
     suspend fun getPurchase(@Path("id") id: String): Purchase
 
-    @POST("api/mobileshop/purchases")
+    @POST("api/purchases")
     suspend fun createPurchase(@Body data: CreatePurchaseDto): Purchase
 
-    @POST("api/mobileshop/purchases/{id}/submit")
+    @POST("api/purchases/{id}/submit")
     suspend fun submitPurchase(@Path("id") id: String): Any
 
-    @POST("api/mobileshop/purchases/{id}/pay")
+    @POST("api/purchases/{id}/pay")
     suspend fun recordPayment(@Path("id") id: String, @Body data: RecordPaymentDto): Purchase
 }

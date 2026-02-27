@@ -45,7 +45,7 @@ data class VouchersListResponse(
 )
 
 interface VoucherApi {
-    @GET("api/mobileshop/vouchers")
+    @GET("api/vouchers")
     suspend fun getVouchers(
         @Query("startDate") startDate: String? = null,
         @Query("endDate") endDate: String? = null,
@@ -56,9 +56,9 @@ interface VoucherApi {
         @Query("take") take: Int? = null
     ): VouchersListResponse
 
-    @POST("api/mobileshop/vouchers")
+    @POST("api/vouchers")
     suspend fun createVoucher(@Body request: CreateVoucherRequest): PaymentVoucher
 
-    @POST("api/mobileshop/vouchers/{id}/cancel")
+    @POST("api/vouchers/{id}/cancel")
     suspend fun cancelVoucher(@Path("id") id: String, @Body body: Map<String, String>): PaymentVoucher
 }
