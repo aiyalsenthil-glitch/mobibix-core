@@ -4,6 +4,7 @@ import {
   ConflictException,
   Logger,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { EmailService } from '../../common/email/email.service';
@@ -208,10 +209,34 @@ export class PartnersService {
     return promo;
   }
 
-<<<<<<< Updated upstream
-  async applyPromoToTenant(code: string, tenantId: string) {
+  async applyPromoToTenant(code: string, tenantId: string, userId?: string) {
     // Validate first (outside transaction for clear error messaging)
     const promo = await this.validatePromoCode(code, tenantId);
+
+    if (userId) {
+      // Get user details to check for cross-product usage via email or phone
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (!user) throw new BadRequestException('User not found');
+
+      // 1. Check if this specific userId has used this promo before (cross-product)
+      const existingUse = await this.prisma.promoUsage.findFirst({
+        where: {
+          promoId: promo.id,
+          OR: [
+            { userId: userId },
+            // Check by email if user has one
+            user.email ? { user: { email: user.email } } : { id: 'impossible_id' },
+            // Check by phone if user has one
+            user.phone ? { user: { phone: user.phone } } : { id: 'impossible_id' }
+          ]
+        },
+        include: { user: true }
+      });
+
+      if (existingUse) {
+        throw new ForbiddenException('Promo already redeemed by this account');
+      }
+    }
 
     // ✅ Atomic: increment usedCount + link tenant in single transaction
     return this.prisma.$transaction(async (tx) => {
@@ -222,45 +247,18 @@ export class PartnersService {
         throw new BadRequestException('Promo code usage limit reached (concurrent request)');
       }
 
-=======
-  async applyPromoToTenant(code: string, tenantId: string, userId: string) {
-    const promo = await this.validatePromoCode(code, tenantId);
+      if (userId) {
+        // Create PromoUsage record
+        await tx.promoUsage.create({
+          data: {
+            promoId: promo.id,
+            userId: userId,
+            tenantId: tenantId,
+          }
+        });
+      }
 
-    // Get user details to check for cross-product usage via email or phone
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new BadRequestException('User not found');
-
-    // 1. Check if this specific userId has used this promo before (cross-product)
-    const existingUse = await this.prisma.promoUsage.findFirst({
-      where: {
-        promoId: promo.id,
-        OR: [
-          { userId: userId },
-          // Check by email if user has one
-          user.email ? { user: { email: user.email } } : { id: 'impossible_id' },
-          // Check by phone if user has one
-          user.phone ? { user: { phone: user.phone } } : { id: 'impossible_id' }
-        ]
-      },
-      include: { user: true }
-    });
-
-    if (existingUse) {
-      throw new ConflictException('Promo already redeemed by this account');
-    }
-
-    return this.prisma.$transaction(async (tx) => {
-      // Create PromoUsage record
-      await tx.promoUsage.create({
-        data: {
-          promoId: promo.id,
-          userId: userId,
-          tenantId: tenantId,
-        }
-      });
-
-      // Increment used_count atomically
->>>>>>> Stashed changes
+      // Increment usedCount atomically
       await tx.promoCode.update({
         where: { id: promo.id },
         data: { usedCount: { increment: 1 } },
