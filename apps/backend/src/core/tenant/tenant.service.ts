@@ -151,7 +151,7 @@ export class TenantService {
     // Module 1: Apply Promo Code Logic
     if (dto.promoCode) {
       try {
-        await this.partnersService.applyPromoToTenant(dto.promoCode, tenant.id);
+        await this.partnersService.applyPromoToTenant(dto.promoCode, tenant.id, userId);
         
         const promo = await this.prisma.promoCode.findUnique({
           where: { code: dto.promoCode }
