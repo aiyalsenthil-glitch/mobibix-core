@@ -210,60 +210,51 @@ export class PartnersService {
   }
 
   async applyPromoToTenant(code: string, tenantId: string, userId?: string) {
-    // Validate first (outside transaction for clear error messaging)
+    // Validate first (outside transaction for clear error messages)
     const promo = await this.validatePromoCode(code, tenantId);
 
+    // Cross-account abuse check: same user can't use same promo via different accounts
     if (userId) {
-      // Get user details to check for cross-product usage via email or phone
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (!user) throw new BadRequestException('User not found');
 
-      // 1. Check if this specific userId has used this promo before (cross-product)
       const existingUse = await this.prisma.promoUsage.findFirst({
         where: {
           promoId: promo.id,
           OR: [
-            { userId: userId },
-            // Check by email if user has one
-            user.email ? { user: { email: user.email } } : { id: 'impossible_id' },
-            // Check by phone if user has one
-            user.phone ? { user: { phone: user.phone } } : { id: 'impossible_id' }
-          ]
+            { userId },
+            ...(user.email ? [{ user: { email: user.email } }] : []),
+            ...(user.phone ? [{ user: { phone: user.phone } }] : []),
+          ],
         },
-        include: { user: true }
       });
 
       if (existingUse) {
-        throw new ForbiddenException('Promo already redeemed by this account');
+        throw new ForbiddenException('Promo code already redeemed by this account');
       }
     }
 
-    // ✅ Atomic: increment usedCount + link tenant in single transaction
+    // ✅ Atomic: all writes in one transaction + double-lock against concurrent requests
     return this.prisma.$transaction(async (tx) => {
-      // Re-validate inside transaction to eliminate race condition window
+      // Re-check inside transaction to close the race window between validate and write
       const lockedPromo = await tx.promoCode.findUnique({ where: { id: promo.id } });
-
       if (!lockedPromo || lockedPromo.usedCount >= lockedPromo.maxUses) {
         throw new BadRequestException('Promo code usage limit reached (concurrent request)');
       }
 
       if (userId) {
-        // Create PromoUsage record
+        // Record usage (@@unique[promoId, userId] acts as a DB-level duplicate guard)
         await tx.promoUsage.create({
-          data: {
-            promoId: promo.id,
-            userId: userId,
-            tenantId: tenantId,
-          }
+          data: { promoId: promo.id, userId, tenantId },
         });
       }
-
       // Increment usedCount atomically
       await tx.promoCode.update({
         where: { id: promo.id },
         data: { usedCount: { increment: 1 } },
       });
 
+      // Link promo + partner to tenant
       return tx.tenant.update({
         where: { id: tenantId },
         data: {

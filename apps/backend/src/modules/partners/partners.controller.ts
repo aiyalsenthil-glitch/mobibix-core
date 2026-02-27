@@ -101,8 +101,8 @@ export class PartnersController {
   @SkipSubscriptionCheck()
   @Post('promo/apply')
   async applyPromo(@Body() dto: ApplyPromoDto, @Request() req: any) {
-    // tenantId MUST come from authenticated JWT — not from request body
-    const tenantId = req.user.tenantId;
-    return this.partnersService.applyPromoToTenant(dto.code, tenantId);
+    // tenantId AND userId MUST come from authenticated JWT — not from request body
+    const { tenantId, userId } = req.user;
+    return this.partnersService.applyPromoToTenant(dto.code, tenantId, userId);
   }
 }
