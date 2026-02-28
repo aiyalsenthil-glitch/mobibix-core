@@ -853,16 +853,16 @@ export class SalesService {
         select: { id: true, imei: true, status: true, shopProductId: true }
       });
 
-      const unreturnableImeis = linkedImeis.filter(i => i.status !== IMEIStatus.SOLD);
-      if (unreturnableImeis.length > 0) {
-        throw new BadRequestException('Cannot cancel invoice: One or more linked devices have been altered (e.g. Scrapped or Returned).');
-      }
-
       if (linkedImeis.length > 0) {
-        await tx.iMEI.updateMany({
-          where: { invoiceId: invoice.id },
-          data: { invoiceId: null, status: IMEIStatus.IN_STOCK, soldAt: null },
+        // Enforce Optimistic Locking during reversion
+        const updateResult = await tx.iMEI.updateMany({
+          where: { invoiceId: invoice.id, status: 'SOLD' },
+          data: { invoiceId: null, status: 'IN_STOCK', soldAt: null },
         });
+
+        if (updateResult.count !== linkedImeis.length) {
+          throw new BadRequestException('Cannot cancel invoice: One or more linked devices have been altered concurrently (e.g. Scrapped or Returned).');
+        }
       }
 
       // 3. Revert Stock via Ledger Entries (Bypass recordStockIn to avoid IMEI creation throws)

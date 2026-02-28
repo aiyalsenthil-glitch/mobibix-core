@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { type Party } from "@/services/parties.api";
 import { type ShopProduct } from "@/services/products.api";
+import { normalizeStateCode } from "@/lib/state-normalizer";
 
 export interface ProductItem {
   id: string;
@@ -29,9 +30,10 @@ export interface SplitPayment {
 
 interface UseInvoiceFormProps {
   shopGstEnabled?: boolean;
+  shopState?: string; // Added shopState prop
 }
 
-export function useInvoiceForm({ shopGstEnabled = false }: UseInvoiceFormProps = {}) {
+export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoiceFormProps = {}) {
   // Customer State
   const [selectedCustomer, setSelectedCustomer] = useState<Party | null>(null);
 
@@ -172,6 +174,15 @@ export function useInvoiceForm({ shopGstEnabled = false }: UseInvoiceFormProps =
 
   const totalGst = items.reduce((sum, item) => sum + item.gstAmount, 0);
   const grandTotal = subtotal + totalGst;
+  const shopStateNormalized = normalizeStateCode(shopState);
+  const customerStateNormalized = normalizeStateCode(selectedCustomer?.state);
+
+  const isInterState = Boolean(
+    shopGstEnabled &&
+    shopStateNormalized &&
+    customerStateNormalized &&
+    shopStateNormalized !== customerStateNormalized
+  );
 
   return {
     selectedCustomer,
@@ -192,6 +203,7 @@ export function useInvoiceForm({ shopGstEnabled = false }: UseInvoiceFormProps =
       subtotal,
       totalGst,
       grandTotal,
-    }
+    },
+    isInterState,
   };
 }

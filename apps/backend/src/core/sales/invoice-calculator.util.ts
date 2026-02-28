@@ -1,3 +1,5 @@
+import { normalizeStateCode } from './state-normalizer.util';
+
 export interface InvoiceLineInput {
   shopProductId: string;
   quantity: number;
@@ -115,8 +117,12 @@ export function calculateInvoiceTotals(
 
   if (isIndianGSTInvoice && gstAmountPaisa > 0) {
     // Both state codes must be present, valid, and identical to be local.
-    const isInterState =
-      shopStateCode && customerStateCode && shopStateCode !== customerStateCode;
+    // Normalize state codes to handle "Tamilnadu" == "Tamil Nadu" vs "TN"
+    const isInterState = Boolean(
+      shopStateCode && 
+      customerStateCode && 
+      normalizeStateCode(shopStateCode) !== normalizeStateCode(customerStateCode)
+    );
 
     if (isInterState) {
       igstPaisa = gstAmountPaisa;

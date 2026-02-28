@@ -34,11 +34,45 @@ export class B2BService {
   // Fetch Catalogs for a Retailer
   async getAvailableWholesaleItems(tenantId: string) {
     // Only fetch from APPROVED distributors
-    const links = await this.prisma.distributorTenantLink.findMany({
+    let links = await this.prisma.distributorTenantLink.findMany({
       where: { tenantId, status: 'APPROVED' },
       select: { distributorId: true }
     });
     
+    // Auto-Seed Demo Distributor for MVP if none linked
+    if (links.length === 0) {
+      let demoDist = await this.prisma.distributor.findFirst({
+        where: { name: 'Mobibix Global Supply' }
+      });
+      if (!demoDist) {
+        demoDist = await this.prisma.distributor.create({
+          data: {
+            name: 'Mobibix Global Supply',
+            city: 'HQ',
+            catalogs: {
+              create: [
+                { sku: 'AC-101', productName: 'iPhone 15 Pro Max Screen Guard (11D Glass)', category: 'Accessories', wholesalePrice: 85, moq: 50, stockAvailable: 1000 },
+                { sku: 'CH-202', productName: 'Samsung 25W Fast Charger (Original Pkg)', category: 'Chargers', wholesalePrice: 450, moq: 10, stockAvailable: 500 },
+                { sku: 'CS-303', productName: 'Premium iPhone Silicon Case - Midnight Blue', category: 'Cases', wholesalePrice: 180, moq: 100, stockAvailable: 250 },
+                { sku: 'SP-404', productName: 'Redmi Note 12 Battery Replacement', category: 'Spares', wholesalePrice: 650, moq: 5, stockAvailable: 50 },
+                { sku: 'CB-505', productName: 'Universal USB-C to USB-C Cable (1m)', category: 'Cables', wholesalePrice: 45, moq: 100, stockAvailable: 2000 },
+              ]
+            }
+          }
+        });
+      }
+
+      await this.prisma.distributorTenantLink.create({
+        data: {
+          tenantId,
+          distributorId: demoDist.id,
+          status: 'APPROVED'
+        }
+      });
+      
+      links = [{ distributorId: demoDist.id }];
+    }
+
     const distributorIds = links.map(l => l.distributorId);
     
     return this.prisma.wholesaleCatalog.findMany({

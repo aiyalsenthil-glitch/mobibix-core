@@ -50,7 +50,11 @@ export default function CreateInvoicePage() {
     removeItem,
     updateItem,
     totals: { subtotal, totalGst, grandTotal },
-  } = useInvoiceForm({ shopGstEnabled: selectedShop?.gstEnabled });
+    isInterState,
+  } = useInvoiceForm({ 
+    shopGstEnabled: selectedShop?.gstEnabled,
+    shopState: selectedShop?.state 
+  });
 
   const [products, setProducts] = useState<ShopProduct[]>([]);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -120,11 +124,6 @@ export default function CreateInvoicePage() {
     setIsProductModalOpen(false);
     if (selectedShopId) loadProducts(selectedShopId);
   };
-
-  const isInterState =
-    selectedShop &&
-    selectedCustomer &&
-    selectedShop.state !== selectedCustomer.state;
 
   const handleSubmit = async () => {
     if (!selectedShop) {
