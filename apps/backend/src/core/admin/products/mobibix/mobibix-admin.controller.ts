@@ -12,6 +12,36 @@ import { PrismaService } from '../../../prisma/prisma.service';
 export class MobibixAdminController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @Get('stats')
+  async getStats() {
+    const [tenants, subscriptions] = await Promise.all([
+      this.prisma.tenant.count({ where: { tenantType: 'MOBILE_SHOP' } }),
+      this.prisma.tenantSubscription.findMany({
+        where: { module: 'MOBILE_SHOP' },
+        select: { status: true, priceSnapshot: true, billingCycle: true }
+      })
+    ]);
+
+    const activeCount = subscriptions.filter(s => s.status === 'ACTIVE').length;
+    const trialCount = subscriptions.filter(s => s.status === 'TRIAL').length;
+    
+    const mrr = subscriptions.reduce((acc, s) => {
+      if (s.status !== 'ACTIVE') return acc;
+      const price = Number(s.priceSnapshot) || 0;
+      if (s.billingCycle === 'MONTHLY') return acc + price;
+      if (s.billingCycle === 'QUARTERLY') return acc + (price / 3);
+      if (s.billingCycle === 'YEARLY') return acc + (price / 12);
+      return acc;
+    }, 0);
+
+    return {
+      totalTenants: tenants,
+      activeTenants: activeCount,
+      trialTenants: trialCount,
+      mrrpaise: Math.round(mrr)
+    };
+  }
+
   @Get('tenants')
   async getTenants() {
     return this.prisma.tenant.findMany({
