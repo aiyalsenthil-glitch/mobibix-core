@@ -8,6 +8,7 @@ import {
   InvoiceStatus,
 } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
+import { assertGstinFormat } from '../../common/utils/gstin.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { StockService } from '../stock/stock.service';
 import { SalesInvoiceDto, SalesInvoiceItemDto } from './dto/sales-invoice.dto';
@@ -440,11 +441,27 @@ export class SalesService {
       // Get shop details
       const shop = await tx.shop.findFirst({
         where: { id: dto.shopId, tenantId },
-        select: { id: true, gstEnabled: true, state: true },
+        select: { id: true, gstEnabled: true, gstNumber: true, state: true }, // gstNumber added for P0 HSN/GSTIN guards
       });
 
       if (!shop) {
         throw new BadRequestException('Shop not found after validation');
+      }
+
+      // ─── P0: Seller GSTIN Guard (mirrors billing.service.ts createInvoice) ───────────────
+      if (shop.gstEnabled) {
+        if (!shop.gstNumber) {
+          throw new BadRequestException(
+            'Shop GSTIN is required to update a GST Tax Invoice. ' +
+            'Please configure GSTIN in Shop Settings.',
+          );
+        }
+        assertGstinFormat(shop.gstNumber, 'Shop GSTIN');
+      }
+
+      // ─── P1: Buyer GSTIN Format Validation ───────────────────────────────────────
+      if (dto.customerGstin) {
+        assertGstinFormat(dto.customerGstin, 'Customer GSTIN');
       }
 
       // 2. Revert Stock (IN)
@@ -529,6 +546,22 @@ export class SalesService {
       const productHsnMap = new Map(
         products.map((p) => [p.id, p.hsnCode || null]),
       );
+
+      // ─── P0: HSN/SAC Enforcement for GST Invoices (mirrors billing.service.ts) ──────────
+      const isGstInvoice = shop.gstEnabled && !!shop.state;
+      if (isGstInvoice) {
+        for (const item of dto.items) {
+          const hsnCode = productHsnMap.get(item.shopProductId);
+          if (!hsnCode || hsnCode.trim() === '') {
+            const product = productMap.get(item.shopProductId);
+            throw new BadRequestException(
+              `HSN/SAC code is mandatory on every line of a GST Tax Invoice. ` +
+              `Missing for product: "${product?.name || item.shopProductId}". ` +
+              `Please update the product catalogue with the correct HSN/SAC code.`,
+            );
+          }
+        }
+      }
       // 5. IMEI and Serial Number Validations (Update Flow)
       const newAllImeis: string[] = [];
       const newAllSerials: string[] = [];
@@ -613,7 +646,7 @@ export class SalesService {
       }));
 
       const calc = calculateInvoiceTotals(lineInputs, {
-        isIndianGSTInvoice: shop.gstEnabled && shop.state !== '', // Simplified check
+        isIndianGSTInvoice: shop.gstEnabled && !!shop.state, // P0 fix: !!shop.state handles null/empty
         pricesIncludeTax: !!dto.pricesIncludeTax,
         shopStateCode: shop.state,
         customerStateCode: dto.customerState,
@@ -691,6 +724,9 @@ export class SalesService {
           customerGstin: dto.customerGstin,
           subTotal: calc.subTotalPaisa,
           gstAmount: calc.gstAmountPaisa,
+          cgst: calc.cgstPaisa,         // P0 fix: persist CGST breakdown on edit
+          sgst: calc.sgstPaisa,         // P0 fix: persist SGST breakdown on edit
+          igst: calc.igstPaisa,         // P0 fix: persist IGST breakdown on edit
           totalAmount: totalAmountPaisa,
           paymentMode: primaryPaymentMode,
           status: invoiceStatus,
@@ -1166,6 +1202,7 @@ export class SalesService {
     return {
       id: invoice.id,
       shopId: invoice.shopId,
+      shopGstin: invoice.shopGstin ?? null,  // P0: seller GSTIN for invoice print
       invoiceNumber: invoice.invoiceNumber,
       status: invoice.status,
       invoiceDate: invoice.invoiceDate,
@@ -1251,10 +1288,15 @@ export class SalesService {
         customerName: true,
         totalAmount: true,
         status: true,
+        shopGstin: true,             // P0: seller GSTIN for print verification
+        customerGstin: true,         // buyer GSTIN for B2B ITC verification
         shop: {
           select: {
             name: true,
             phone: true,
+            gstNumber: true,         // live shop GSTIN (fallback if shopGstin null)
+            addressLine1: true,
+            state: true,
           },
         },
         items: {
@@ -1278,15 +1320,21 @@ export class SalesService {
       invoiceNumber: invoice.invoiceNumber,
       invoiceDate: invoice.invoiceDate,
       customerName: invoice.customerName,
-      totalAmount: this.fromPaisa(invoice.totalAmount), // Fix: Paisa -> Rupee
+      totalAmount: this.fromPaisa(invoice.totalAmount),
       status: invoice.status,
+      // P0: GST fields for buyer ITC verification and seller identity
+      shopGstin: invoice.shopGstin ?? null,
+      customerGstin: invoice.customerGstin ?? null,
       shopName: invoice.shop.name,
       shopPhone: invoice.shop.phone,
+      shopGstNumber: invoice.shop.gstNumber ?? null,   // live fallback in case shopGstin null on old invoices
+      shopAddress: invoice.shop.addressLine1 ?? null,
+      shopState: invoice.shop.state ?? null,
       items: invoice.items.map((item) => ({
         description: item.product.name,
         quantity: item.quantity,
-        rate: item.rate, // Keeping rate as is, assuming it's unit price (Review if needed)
-        total: this.fromPaisa(item.lineTotal), // Fix: Paisa -> Rupee
+        rate: item.rate,
+        total: this.fromPaisa(item.lineTotal),
       })),
     };
   }

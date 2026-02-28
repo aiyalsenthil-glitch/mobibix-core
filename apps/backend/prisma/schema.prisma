@@ -1371,6 +1371,7 @@ model Invoice {
   customerPhone   String?
   customerGstin   String?
   customerState   String?
+  shopGstin       String?       // P0 GST Compliance: seller GSTIN snapshot at invoice time
   subTotal        Int
   gstAmount       Int
   cgst            Int?

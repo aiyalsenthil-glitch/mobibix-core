@@ -56,7 +56,9 @@ export function calculateInvoiceTotals(
 
   for (const input of inputs) {
     const gstRate = input.gstRate < 0 ? 0 : input.gstRate;
-    const hsnCode = input.hsnCode || '';
+    // hsnCode is validated upstream (billing.service) for GST invoices.
+    // We preserve whatever arrives; empty string is intentional for non-GST products.
+    const hsnCode = input.hsnCode ?? '';
 
     const effectiveGstRate =
       isIndianGSTInvoice && gstRate > 0 && gstRate <= 100 ? gstRate : 0;

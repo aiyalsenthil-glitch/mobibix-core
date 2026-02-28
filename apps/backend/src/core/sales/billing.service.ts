@@ -15,6 +15,7 @@ import {
   calculateInvoiceTotals,
   InvoiceLineInput,
 } from './invoice-calculator.util';
+import { assertGstinFormat } from '../../common/utils/gstin.util';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface BillingItem {
@@ -96,6 +97,7 @@ export class BillingService {
         select: {
           id: true,
           gstEnabled: true,
+          gstNumber: true,           // P0: seller GSTIN
           state: true,
           receiptPrintCounter: true,
         },
@@ -103,11 +105,39 @@ export class BillingService {
 
     if (!shop) throw new BadRequestException('Shop not found');
 
+    // ─── P0: Seller GSTIN Validation ──────────────────────────────────────
+    if (shop.gstEnabled) {
+      if (!shop.gstNumber) {
+        throw new BadRequestException(
+          'Shop GSTIN is required to issue a GST Tax Invoice. ' +
+          'Please configure GSTIN in Shop Settings before creating a GST invoice.',
+        );
+      }
+      assertGstinFormat(shop.gstNumber, 'Shop GSTIN');
+    }
+
+    // ─── P1: Buyer GSTIN Format Validation ────────────────────────────────
+    if (options.customerGstin) {
+      assertGstinFormat(options.customerGstin, 'Customer GSTIN');
+    }
+
     // 2. Validate Items & Compliance
     const isIndianGSTInvoice = shop.gstEnabled && !!shop.state;
-  const lineInputs: InvoiceLineInput[] = items.map((item) => {
-      // Optional strict check skipped here
 
+    // ─── P0: HSN/SAC Enforcement for GST Invoices ─────────────────────────
+    if (isIndianGSTInvoice) {
+      for (const item of items) {
+        if (!item.hsnCode || item.hsnCode.trim() === '') {
+          throw new BadRequestException(
+            `HSN/SAC code is mandatory on every line of a GST Tax Invoice. ` +
+            `Missing for product: "${item.name || item.shopProductId}". ` +
+            `Please update the product catalogue with the correct HSN/SAC code.`,
+          );
+        }
+      }
+    }
+
+    const lineInputs: InvoiceLineInput[] = items.map((item) => {
       return {
         shopProductId: item.shopProductId,
         quantity: item.quantity,
@@ -205,6 +235,7 @@ export class BillingService {
         customerPhone: options.customerPhone,
         customerState: options.customerState,
         customerGstin: options.customerGstin,
+        shopGstin: shop.gstEnabled ? (shop.gstNumber ?? null) : null, // P0: seller GSTIN snapshot
         subTotal: calc.subTotalPaisa,
         gstAmount: calc.gstAmountPaisa,
         cgst: calc.cgstPaisa,
