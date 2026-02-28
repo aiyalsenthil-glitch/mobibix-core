@@ -1,0 +1,160 @@
+FAIL test/chaos-v5.e2e-spec.ts
+  Invoice Engine Chaos Destruction Test (Phase 5 Hardening)
+    ├ù Should rollback entire transaction if one step fails (ACID TEST) (99 ms)
+    ├ù Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST) (14 ms)
+    ├ù Should block negative stock even with 10 concurrent requests (STOCK STORM) (2 ms)
+    ├ù Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK) (2 ms)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should rollback entire transaction if one step fails (ACID TEST)
+
+    PrismaClientValidationError: 
+    Invalid `prisma.tenant.create()` invocation in
+    E:\Projects\gym-saas\apps\backend\test\chaos-v5.e2e-spec.ts:36:35
+
+      33 
+      34 beforeEach(async () => {
+      35   // 1. Setup Tenant
+    ΓåÆ 36   tenantA = await prisma.tenant.create({
+             data: {
+               name: "Chaos Gym",
+               code: "CHAOS-1772271404983",
+               legalName: "Chaos Corp",
+               contactPhone: "+91-0000000000",
+           +   tenantType: String
+             }
+           })
+
+    Argument `tenantType` is missing.
+
+      142 |             const start = Date.now();
+      143 |             try {
+    > 144 |               return await query(args);
+          |                      ^
+      145 |             } finally {
+      146 |               const duration = Date.now() - start;
+      147 |               if (duration > 500) {
+
+      at Nn (../node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+      at ei.throwValidationException [as handleRequestError] (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+      at ei.handleAndLogRequestError (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:144:22)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:36:15)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST)
+
+    PrismaClientValidationError: 
+    Invalid `prisma.tenant.create()` invocation in
+    E:\Projects\gym-saas\apps\backend\test\chaos-v5.e2e-spec.ts:36:35
+
+      33 
+      34 beforeEach(async () => {
+      35   // 1. Setup Tenant
+    ΓåÆ 36   tenantA = await prisma.tenant.create({
+             data: {
+               name: "Chaos Gym",
+               code: "CHAOS-1772271405084",
+               legalName: "Chaos Corp",
+               contactPhone: "+91-0000000000",
+           +   tenantType: String
+             }
+           })
+
+    Argument `tenantType` is missing.
+
+      142 |             const start = Date.now();
+      143 |             try {
+    > 144 |               return await query(args);
+          |                      ^
+      145 |             } finally {
+      146 |               const duration = Date.now() - start;
+      147 |               if (duration > 500) {
+
+      at Nn (../node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+      at ei.throwValidationException [as handleRequestError] (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+      at ei.handleAndLogRequestError (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:144:22)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:36:15)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should block negative stock even with 10 concurrent requests (STOCK STORM)
+
+    PrismaClientValidationError: 
+    Invalid `prisma.tenant.create()` invocation in
+    E:\Projects\gym-saas\apps\backend\test\chaos-v5.e2e-spec.ts:36:35
+
+      33 
+      34 beforeEach(async () => {
+      35   // 1. Setup Tenant
+    ΓåÆ 36   tenantA = await prisma.tenant.create({
+             data: {
+               name: "Chaos Gym",
+               code: "CHAOS-1772271405099",
+               legalName: "Chaos Corp",
+               contactPhone: "+91-0000000000",
+           +   tenantType: String
+             }
+           })
+
+    Argument `tenantType` is missing.
+
+      142 |             const start = Date.now();
+      143 |             try {
+    > 144 |               return await query(args);
+          |                      ^
+      145 |             } finally {
+      146 |               const duration = Date.now() - start;
+      147 |               if (duration > 500) {
+
+      at Nn (../node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+      at ei.throwValidationException [as handleRequestError] (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+      at ei.handleAndLogRequestError (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:144:22)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:36:15)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK)
+
+    PrismaClientValidationError: 
+    Invalid `prisma.tenant.create()` invocation in
+    E:\Projects\gym-saas\apps\backend\test\chaos-v5.e2e-spec.ts:36:35
+
+      33 
+      34 beforeEach(async () => {
+      35   // 1. Setup Tenant
+    ΓåÆ 36   tenantA = await prisma.tenant.create({
+             data: {
+               name: "Chaos Gym",
+               code: "CHAOS-1772271405101",
+               legalName: "Chaos Corp",
+               contactPhone: "+91-0000000000",
+           +   tenantType: String
+             }
+           })
+
+    Argument `tenantType` is missing.
+
+      142 |             const start = Date.now();
+      143 |             try {
+    > 144 |               return await query(args);
+          |                      ^
+      145 |             } finally {
+      146 |               const duration = Date.now() - start;
+      147 |               if (duration > 500) {
+
+      at Nn (../node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+      at ei.throwValidationException [as handleRequestError] (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+      at ei.handleAndLogRequestError (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:144:22)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:36:15)
+
+Test Suites: 1 failed, 1 total
+Tests:       4 failed, 4 total
+Snapshots:   0 total
+Time:        4.872 s, estimated 52 s
+Ran all test suites matching test/chaos-v5.e2e-spec.ts.

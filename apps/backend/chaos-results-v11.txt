@@ -1,0 +1,631 @@
+[Nest] 35800  - 28/02/2026, 4:12:18 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopProduct" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at StockService.recordStockOutBatch (E:\Projects\gym-saas\apps\backend\src\core\stock\stock.service.ts:172:9)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:303:9)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopProduct" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 936ms {"data":[{"shopId":"cmm66z5st000jlemgs9e7fjov","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:189:7)
+      at ../src/core/sales/sales.service.ts:361:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:194:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 35800  - 28/02/2026, 4:12:19 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopProduct" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at StockService.recordStockOutBatch (E:\Projects\gym-saas\apps\backend\src\core\stock\stock.service.ts:172:9)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:303:9)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopProduct" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 35800  - 28/02/2026, 4:12:20 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopProduct" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at StockService.recordStockOutBatch (E:\Projects\gym-saas\apps\backend\src\core\stock\stock.service.ts:172:9)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:303:9)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopProduct" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 664ms {"data":[{"shopId":"cmm66z8of0021lemgacu8chjv","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:189:7)
+      at ../src/core/sales/sales.service.ts:361:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:194:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 35800  - 28/02/2026, 4:12:22 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopProduct" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at StockService.recordStockOutBatch (E:\Projects\gym-saas\apps\backend\src\core\stock\stock.service.ts:172:9)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:303:9)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopProduct" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 695ms {"data":[{"shopId":"cmm66z8of0021lemgacu8chjv","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:189:7)
+      at ../src/core/sales/sales.service.ts:361:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:194:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 35800  - 28/02/2026, 4:12:23 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopProduct" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at StockService.recordStockOutBatch (E:\Projects\gym-saas\apps\backend\src\core\stock\stock.service.ts:172:9)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:303:9)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopProduct" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 1295ms {"data":[{"shopId":"cmm66z8of0021lemgacu8chjv","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:189:7)
+      at ../src/core/sales/sales.service.ts:361:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:194:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 35800  - 28/02/2026, 4:12:23 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopProduct" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at StockService.recordStockOutBatch (E:\Projects\gym-saas\apps\backend\src\core\stock\stock.service.ts:172:9)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:303:9)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopProduct" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 1874ms {"data":[{"shopId":"cmm66z8of0021lemgacu8chjv","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:189:7)
+      at ../src/core/sales/sales.service.ts:361:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:194:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 35800  - 28/02/2026, 4:12:24 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopProduct" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at StockService.recordStockOutBatch (E:\Projects\gym-saas\apps\backend\src\core\stock\stock.service.ts:172:9)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:303:9)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopProduct" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 3076ms {"data":[{"shopId":"cmm66z8of0021lemgacu8chjv","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:189:7)
+      at ../src/core/sales/sales.service.ts:361:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:194:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 35800  - 28/02/2026, 4:12:24 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopProduct" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at StockService.recordStockOutBatch (E:\Projects\gym-saas\apps\backend\src\core\stock\stock.service.ts:172:9)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:303:9)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopProduct" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 3112ms {"data":[{"shopId":"cmm66z8of0021lemgacu8chjv","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:189:7)
+      at ../src/core/sales/sales.service.ts:361:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:194:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 35800  - 28/02/2026, 4:12:25 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopProduct" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at StockService.recordStockOutBatch (E:\Projects\gym-saas\apps\backend\src\core\stock\stock.service.ts:172:9)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:303:9)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopProduct" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 3689ms {"data":[{"shopId":"cmm66z8of0021lemgacu8chjv","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:189:7)
+      at ../src/core/sales/sales.service.ts:361:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:194:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 35800  - 28/02/2026, 4:12:26 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopProduct" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at StockService.recordStockOutBatch (E:\Projects\gym-saas\apps\backend\src\core\stock\stock.service.ts:172:9)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:303:9)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopProduct" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 4319ms {"data":[{"shopId":"cmm66z8of0021lemgacu8chjv","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:189:7)
+      at ../src/core/sales/sales.service.ts:361:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:194:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 35800  - 28/02/2026, 4:12:26 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66z8of0021lemgacu8chjv, documentType=SALES_INVOICE
+[Nest] 35800  - 28/02/2026, 4:12:26 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Transaction API error: Transaction not found. Transaction ID is invalid, refers to an old closed transaction Prisma doesn't have information about anymore, or was obtained before disconnecting.
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:146:30)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2028',
+  meta: {
+    error: "Transaction not found. Transaction ID is invalid, refers to an old closed transaction Prisma doesn't have information about anymore, or was obtained before disconnecting."
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 35800  - 28/02/2026, 4:12:26 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Transaction API error: Transaction not found. Transaction ID is invalid, refers to an old closed transaction Prisma doesn't have information about anymore, or was obtained before disconnecting.
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:146:30)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2028',
+  meta: {
+    error: "Transaction not found. Transaction ID is invalid, refers to an old closed transaction Prisma doesn't have information about anymore, or was obtained before disconnecting."
+  },
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 4378ms {"data":[{"shopId":"cmm66z8of0021lemgacu8chjv","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:189:7)
+      at ../src/core/sales/sales.service.ts:361:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:194:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 35800  - 28/02/2026, 4:12:26 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopProduct" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at StockService.recordStockOutBatch (E:\Projects\gym-saas\apps\backend\src\core\stock\stock.service.ts:172:9)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:303:9)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopProduct" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 35800  - 28/02/2026, 4:12:26 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:197:42
+
+  194   );
+  195 
+  196 // 8. Create Invoice
+ΓåÆ 197 const invoice = await prisma.invoice.create(
+Transaction API error: Transaction not found. Transaction ID is invalid, refers to an old closed transaction Prisma doesn't have information about anymore, or was obtained before disconnecting.
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:197:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2028',
+  meta: {
+    modelName: 'Invoice',
+    error: "Transaction not found. Transaction ID is invalid, refers to an old closed transaction Prisma doesn't have information about anymore, or was obtained before disconnecting."
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 35800  - 28/02/2026, 4:12:27 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$executeRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopProduct" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at StockService.recordStockOutBatch (E:\Projects\gym-saas\apps\backend\src\core\stock\stock.service.ts:172:9)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:303:9)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopProduct" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+FAIL test/chaos-v5.e2e-spec.ts (24.843 s)
+  Invoice Engine Chaos Destruction Test (Phase 5 Hardening)
+    ΓêÜ Should rollback entire transaction if one step fails (ACID TEST) (2237 ms)
+    ├ù Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST) (3663 ms)
+    ├ù Should block negative stock even with 10 concurrent requests (STOCK STORM) (5733 ms)
+    ├ù Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK) (2058 ms)
+    ΓêÜ Should block cross-tenant product injection (MULTI-TENANT ATTACK) (1474 ms)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+      261 |
+      262 |     const successCount = results.filter(r => r.status === 201).length;
+    > 263 |     expect(successCount).toBe(1);
+          |                          ^
+      264 |
+      265 |     const invoices = await prisma.invoice.findMany({
+      266 |         where: { tenantId: tenantA.id, status: { not: 'VOIDED' } }
+
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:263:26)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should block negative stock even with 10 concurrent requests (STOCK STORM)
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      269 |   });
+      270 |
+    > 271 |   it('Should block negative stock even with 10 concurrent requests (STOCK STORM)', async () => {
+          |   ^
+      272 |     await prisma.stockLedger.create({
+      273 |       data: {
+      274 |         tenantId: tenantA.id,
+
+      at chaos-v5.e2e-spec.ts:271:3
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:9:1)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 500
+
+      342 |       .send(maliciousPayload);
+      343 |
+    > 344 |     expect(response.status).toBe(201);
+          |                             ^
+      345 |     
+      346 |     const invoiceId = response.body.id;
+      347 |     const item = await prisma.invoiceItem.findFirst({
+
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:344:29)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 2 passed, 5 total
+Snapshots:   0 total
+Time:        25.203 s
+Ran all test suites matching test/chaos-v5.e2e-spec.ts.

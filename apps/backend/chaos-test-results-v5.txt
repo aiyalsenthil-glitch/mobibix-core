@@ -1,0 +1,172 @@
+FAIL test/chaos-v5.e2e-spec.ts (7.815 s)
+  Invoice Engine Chaos Destruction Test (Phase 5 Hardening)
+    ├ù Should rollback entire transaction if one step fails (ACID TEST) (603 ms)
+    ├ù Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST) (324 ms)
+    ├ù Should block negative stock even with 10 concurrent requests (STOCK STORM) (259 ms)
+    ├ù Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK) (255 ms)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should rollback entire transaction if one step fails (ACID TEST)
+
+    PrismaClientValidationError: 
+    Invalid `prisma.shopProduct.create()` invocation in
+    E:\Projects\gym-saas\apps\backend\test\chaos-v5.e2e-spec.ts:104:41
+
+      101 });
+      102 
+      103 // 5. Setup Products
+    ΓåÆ 104 productA = await prisma.shopProduct.create({
+            data: {
+              tenantId: "cmm666ajm0000leh4d4yuf5lg",
+              shopId: "cmm666ars0002leh4gmn4bxx7",
+              name: "Chaos Accessory",
+              isSerialized: false,
+              salePrice: 10000,
+              costPrice: 5000,
+              isActive: true,
+          +   type: ProductType
+            }
+          })
+
+    Argument `type` is missing.
+
+      142 |             const start = Date.now();
+      143 |             try {
+    > 144 |               return await query(args);
+          |                      ^
+      145 |             } finally {
+      146 |               const duration = Date.now() - start;
+      147 |               if (duration > 500) {
+
+      at Nn (../node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+      at ei.throwValidationException [as handleRequestError] (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+      at ei.handleAndLogRequestError (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:144:22)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:104:16)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST)
+
+    PrismaClientValidationError: 
+    Invalid `prisma.shopProduct.create()` invocation in
+    E:\Projects\gym-saas\apps\backend\test\chaos-v5.e2e-spec.ts:104:41
+
+      101 });
+      102 
+      103 // 5. Setup Products
+    ΓåÆ 104 productA = await prisma.shopProduct.create({
+            data: {
+              tenantId: "cmm666b0c0009leh4asg875kt",
+              shopId: "cmm666b3j000bleh46assyz1y",
+              name: "Chaos Accessory",
+              isSerialized: false,
+              salePrice: 10000,
+              costPrice: 5000,
+              isActive: true,
+          +   type: ProductType
+            }
+          })
+
+    Argument `type` is missing.
+
+      142 |             const start = Date.now();
+      143 |             try {
+    > 144 |               return await query(args);
+          |                      ^
+      145 |             } finally {
+      146 |               const duration = Date.now() - start;
+      147 |               if (duration > 500) {
+
+      at Nn (../node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+      at ei.throwValidationException [as handleRequestError] (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+      at ei.handleAndLogRequestError (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:144:22)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:104:16)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should block negative stock even with 10 concurrent requests (STOCK STORM)
+
+    PrismaClientValidationError: 
+    Invalid `prisma.shopProduct.create()` invocation in
+    E:\Projects\gym-saas\apps\backend\test\chaos-v5.e2e-spec.ts:104:41
+
+      101 });
+      102 
+      103 // 5. Setup Products
+    ΓåÆ 104 productA = await prisma.shopProduct.create({
+            data: {
+              tenantId: "cmm666b9b000ileh4ryqtoylc",
+              shopId: "cmm666bar000kleh4dg0zegvl",
+              name: "Chaos Accessory",
+              isSerialized: false,
+              salePrice: 10000,
+              costPrice: 5000,
+              isActive: true,
+          +   type: ProductType
+            }
+          })
+
+    Argument `type` is missing.
+
+      142 |             const start = Date.now();
+      143 |             try {
+    > 144 |               return await query(args);
+          |                      ^
+      145 |             } finally {
+      146 |               const duration = Date.now() - start;
+      147 |               if (duration > 500) {
+
+      at Nn (../node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+      at ei.throwValidationException [as handleRequestError] (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+      at ei.handleAndLogRequestError (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:144:22)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:104:16)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK)
+
+    PrismaClientValidationError: 
+    Invalid `prisma.shopProduct.create()` invocation in
+    E:\Projects\gym-saas\apps\backend\test\chaos-v5.e2e-spec.ts:104:41
+
+      101 });
+      102 
+      103 // 5. Setup Products
+    ΓåÆ 104 productA = await prisma.shopProduct.create({
+            data: {
+              tenantId: "cmm666bgi000rleh4ye3uggen",
+              shopId: "cmm666bhy000tleh4zhs6rt03",
+              name: "Chaos Accessory",
+              isSerialized: false,
+              salePrice: 10000,
+              costPrice: 5000,
+              isActive: true,
+          +   type: ProductType
+            }
+          })
+
+    Argument `type` is missing.
+
+      142 |             const start = Date.now();
+      143 |             try {
+    > 144 |               return await query(args);
+          |                      ^
+      145 |             } finally {
+      146 |               const duration = Date.now() - start;
+      147 |               if (duration > 500) {
+
+      at Nn (../node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+      at ei.throwValidationException [as handleRequestError] (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+      at ei.handleAndLogRequestError (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:144:22)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:104:16)
+
+Test Suites: 1 failed, 1 total
+Tests:       4 failed, 4 total
+Snapshots:   0 total
+Time:        8.123 s, estimated 9 s
+Ran all test suites matching test/chaos-v5.e2e-spec.ts.

@@ -1,0 +1,722 @@
+[Nest] 44652  - 28/02/2026, 4:10:46 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66x7et000jlegcrr7sgroh, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:46 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:46 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:47 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66x7et000jlegcrr7sgroh, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:47 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:47 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66x7et000jlegcrr7sgroh, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:47 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:47 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:47 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:48 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66x90y000ylegc42l6dd46, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:48 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:48 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66x90y000ylegc42l6dd46, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:48 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:48 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66x90y000ylegc42l6dd46, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:48 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:48 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:48 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:48 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66x90y000ylegc42l6dd46, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66x90y000ylegc42l6dd46, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66x90y000ylegc42l6dd46, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66x90y000ylegc42l6dd46, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66x90y000ylegc42l6dd46, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66x90y000ylegc42l6dd46, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66x90y000ylegc42l6dd46, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:49 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:50 pm   ERROR [DocumentNumberService] Failed to generate document number for shopId=cmm66xal6001dlegcy5atu8jn, documentType=SALES_INVOICE
+[Nest] 44652  - 28/02/2026, 4:10:50 pm   ERROR [DocumentNumberService] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+[Nest] 44652  - 28/02/2026, 4:10:50 pm   ERROR [ExceptionsHandler] PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "ShopDocumentSetting" does not exist`
+    at ei.handleRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at DocumentNumberService.generateDocumentNumberInternal (E:\Projects\gym-saas\apps\backend\src\common\services\document-number.service.ts:101:21)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:189:7)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:361:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:194:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  code: 'P2010',
+  meta: {
+    code: '42P01',
+    message: 'relation "ShopDocumentSetting" does not exist'
+  },
+  clientVersion: '6.19.2'
+}
+FAIL test/chaos-v5.e2e-spec.ts (19.14 s)
+  Invoice Engine Chaos Destruction Test (Phase 5 Hardening)
+    ΓêÜ Should rollback entire transaction if one step fails (ACID TEST) (2044 ms)
+    ├ù Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST) (2061 ms)
+    ├ù Should block negative stock even with 10 concurrent requests (STOCK STORM) (1915 ms)
+    ├ù Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK) (1476 ms)
+    ΓêÜ Should block cross-tenant product injection (MULTI-TENANT ATTACK) (1549 ms)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+      261 |
+      262 |     const successCount = results.filter(r => r.status === 201).length;
+    > 263 |     expect(successCount).toBe(1);
+          |                          ^
+      264 |
+      265 |     const invoices = await prisma.invoice.findMany({
+      266 |         where: { tenantId: tenantA.id, status: { not: 'VOIDED' } }
+
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:263:26)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should block negative stock even with 10 concurrent requests (STOCK STORM)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 0
+
+      304 |
+      305 |     const successCount = results.filter(r => r.status === 201).length;
+    > 306 |     expect(successCount).toBe(5);
+          |                          ^
+      307 |
+      308 |     const aggregates = await prisma.stockLedger.groupBy({
+      309 |         by: ['type'],
+
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:306:26)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 500
+
+      342 |       .send(maliciousPayload);
+      343 |
+    > 344 |     expect(response.status).toBe(201);
+          |                             ^
+      345 |     
+      346 |     const invoiceId = response.body.id;
+      347 |     const item = await prisma.invoiceItem.findFirst({
+
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:344:29)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 2 passed, 5 total
+Snapshots:   0 total
+Time:        19.47 s
+Ran all test suites matching test/chaos-v5.e2e-spec.ts.

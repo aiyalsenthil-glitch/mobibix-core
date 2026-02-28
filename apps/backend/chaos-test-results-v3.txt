@@ -1,0 +1,164 @@
+FAIL test/chaos-v5.e2e-spec.ts (7.117 s)
+  Invoice Engine Chaos Destruction Test (Phase 5 Hardening)
+    ├ù Should rollback entire transaction if one step fails (ACID TEST) (455 ms)
+    ├ù Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST) (121 ms)
+    ├ù Should block negative stock even with 10 concurrent requests (STOCK STORM) (55 ms)
+    ├ù Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK) (54 ms)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should rollback entire transaction if one step fails (ACID TEST)
+
+    PrismaClientValidationError: 
+    Invalid `prisma.shop.create()` invocation in
+    E:\Projects\gym-saas\apps\backend\test\chaos-v5.e2e-spec.ts:52:31
+
+      49 tenantIds.push(tenantA.id);
+      50 
+      51 // 2. Setup Shop
+    ΓåÆ 52 shopA = await prisma.shop.create({
+           data: {
+             tenantId: "cmm64puab0000lem0anxcvpxq",
+             name: "Chaos Shop",
+             state: "Tamil Nadu",
+             gstEnabled: true,
+             phone: "0000000000",
+         +   addressLine1: String
+           }
+         })
+
+    Argument `addressLine1` is missing.
+
+      142 |             const start = Date.now();
+      143 |             try {
+    > 144 |               return await query(args);
+          |                      ^
+      145 |             } finally {
+      146 |               const duration = Date.now() - start;
+      147 |               if (duration > 500) {
+
+      at Nn (../node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+      at ei.throwValidationException [as handleRequestError] (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+      at ei.handleAndLogRequestError (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:144:22)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:52:13)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST)
+
+    PrismaClientValidationError: 
+    Invalid `prisma.shop.create()` invocation in
+    E:\Projects\gym-saas\apps\backend\test\chaos-v5.e2e-spec.ts:52:31
+
+      49 tenantIds.push(tenantA.id);
+      50 
+      51 // 2. Setup Shop
+    ΓåÆ 52 shopA = await prisma.shop.create({
+           data: {
+             tenantId: "cmm64pun10003lem08prq0d2m",
+             name: "Chaos Shop",
+             state: "Tamil Nadu",
+             gstEnabled: true,
+             phone: "0000000000",
+         +   addressLine1: String
+           }
+         })
+
+    Argument `addressLine1` is missing.
+
+      142 |             const start = Date.now();
+      143 |             try {
+    > 144 |               return await query(args);
+          |                      ^
+      145 |             } finally {
+      146 |               const duration = Date.now() - start;
+      147 |               if (duration > 500) {
+
+      at Nn (../node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+      at ei.throwValidationException [as handleRequestError] (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+      at ei.handleAndLogRequestError (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:144:22)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:52:13)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should block negative stock even with 10 concurrent requests (STOCK STORM)
+
+    PrismaClientValidationError: 
+    Invalid `prisma.shop.create()` invocation in
+    E:\Projects\gym-saas\apps\backend\test\chaos-v5.e2e-spec.ts:52:31
+
+      49 tenantIds.push(tenantA.id);
+      50 
+      51 // 2. Setup Shop
+    ΓåÆ 52 shopA = await prisma.shop.create({
+           data: {
+             tenantId: "cmm64puqf0006lem09juvqvhu",
+             name: "Chaos Shop",
+             state: "Tamil Nadu",
+             gstEnabled: true,
+             phone: "0000000000",
+         +   addressLine1: String
+           }
+         })
+
+    Argument `addressLine1` is missing.
+
+      142 |             const start = Date.now();
+      143 |             try {
+    > 144 |               return await query(args);
+          |                      ^
+      145 |             } finally {
+      146 |               const duration = Date.now() - start;
+      147 |               if (duration > 500) {
+
+      at Nn (../node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+      at ei.throwValidationException [as handleRequestError] (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+      at ei.handleAndLogRequestError (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:144:22)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:52:13)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK)
+
+    PrismaClientValidationError: 
+    Invalid `prisma.shop.create()` invocation in
+    E:\Projects\gym-saas\apps\backend\test\chaos-v5.e2e-spec.ts:52:31
+
+      49 tenantIds.push(tenantA.id);
+      50 
+      51 // 2. Setup Shop
+    ΓåÆ 52 shopA = await prisma.shop.create({
+           data: {
+             tenantId: "cmm64pury0009lem06jbkuxdc",
+             name: "Chaos Shop",
+             state: "Tamil Nadu",
+             gstEnabled: true,
+             phone: "0000000000",
+         +   addressLine1: String
+           }
+         })
+
+    Argument `addressLine1` is missing.
+
+      142 |             const start = Date.now();
+      143 |             try {
+    > 144 |               return await query(args);
+          |                      ^
+      145 |             } finally {
+      146 |               const duration = Date.now() - start;
+      147 |               if (duration > 500) {
+
+      at Nn (../node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+      at ei.throwValidationException [as handleRequestError] (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+      at ei.handleAndLogRequestError (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+      at ei.request (../node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:144:22)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:52:13)
+
+Test Suites: 1 failed, 1 total
+Tests:       4 failed, 4 total
+Snapshots:   0 total
+Time:        7.428 s
+Ran all test suites matching test/chaos-v5.e2e-spec.ts.

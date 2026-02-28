@@ -1,0 +1,80 @@
+FAIL test/chaos-v5.e2e-spec.ts (11.669 s)
+  Invoice Engine Chaos Destruction Test (Phase 5 Hardening)
+    ├ù Should rollback entire transaction if one step fails (ACID TEST) (1371 ms)
+    ├ù Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST) (965 ms)
+    ├ù Should block negative stock even with 10 concurrent requests (STOCK STORM) (905 ms)
+    ├ù Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK) (568 ms)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should rollback entire transaction if one step fails (ACID TEST)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 403
+
+      184 |       .send(badPayload);
+      185 |
+    > 186 |     expect(response.status).toBe(400); 
+          |                             ^
+      187 |     
+      188 |     const imei = await prisma.iMEI.findUnique({
+      189 |       where: {
+
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:186:29)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+      233 |
+      234 |     const successCount = results.filter(r => r.status === 201).length;
+    > 235 |     expect(successCount).toBe(1);
+          |                          ^
+      236 |
+      237 |     const invoices = await prisma.invoice.findMany({
+      238 |         where: { tenantId: tenantA.id, status: { not: 'VOIDED' } }
+
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:235:26)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should block negative stock even with 10 concurrent requests (STOCK STORM)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 0
+
+      276 |
+      277 |     const successCount = results.filter(r => r.status === 201).length;
+    > 278 |     expect(successCount).toBe(5);
+          |                          ^
+      279 |
+      280 |     const aggregates = await prisma.stockLedger.groupBy({
+      281 |         by: ['type'],
+
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:278:26)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 403
+
+      314 |       .send(maliciousPayload);
+      315 |
+    > 316 |     expect(response.status).toBe(201);
+          |                             ^
+      317 |     
+      318 |     const invoiceId = response.body.id;
+      319 |     const item = await prisma.invoiceItem.findFirst({
+
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:316:29)
+
+Test Suites: 1 failed, 1 total
+Tests:       4 failed, 4 total
+Snapshots:   0 total
+Time:        11.989 s
+Ran all test suites matching test/chaos-v5.e2e-spec.ts.
