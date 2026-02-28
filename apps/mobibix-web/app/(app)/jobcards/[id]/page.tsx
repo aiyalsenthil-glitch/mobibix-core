@@ -42,7 +42,28 @@ const STATUS_COLORS: Record<JobStatus, string> = {
     "bg-rose-200 text-rose-900 border-rose-400 dark:bg-rose-500/20 dark:text-rose-200",
   RETURNED:
     "bg-pink-200 text-pink-900 border-pink-400 dark:bg-pink-500/20 dark:text-pink-200",
+  SCRAPPED:
+    "bg-stone-300 text-stone-900 border-stone-500 dark:bg-stone-500/20 dark:text-stone-300",
 };
+
+const VALID_TRANSITIONS: Record<JobStatus, JobStatus[]> = {
+  RECEIVED: ["ASSIGNED", "DIAGNOSING", "CANCELLED"],
+  ASSIGNED: ["DIAGNOSING", "CANCELLED"],
+  DIAGNOSING: ["WAITING_APPROVAL", "WAITING_FOR_PARTS", "IN_PROGRESS", "CANCELLED"],
+  WAITING_APPROVAL: ["APPROVED", "CANCELLED"],
+  APPROVED: ["WAITING_FOR_PARTS", "IN_PROGRESS", "CANCELLED"],
+  WAITING_FOR_PARTS: ["IN_PROGRESS", "CANCELLED"],
+  IN_PROGRESS: ["READY", "WAITING_FOR_PARTS", "CANCELLED", "SCRAPPED"],
+  READY: ["DELIVERED", "RETURNED", "IN_PROGRESS", "SCRAPPED"],
+  DELIVERED: [], // Terminal state
+  CANCELLED: [], // Terminal state
+  RETURNED: [], // Terminal state
+  SCRAPPED: [], // Terminal state
+};
+
+function getAllowedTransitions(currentStatus: JobStatus): JobStatus[] {
+  return VALID_TRANSITIONS[currentStatus] || [];
+}
 
 import { RepairBillingModal } from "@/components/repair/RepairBillingModal";
 import { generateRepairBill } from "@/services/jobcard.api";
@@ -51,7 +72,7 @@ export default function JobCardDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { authUser: user } = useAuth(); // To check role
-  const { selectedShopId } = useShop();
+  const { selectedShopId, selectedShop } = useShop();
   const [isAddPartModalOpen, setIsAddPartModalOpen] = useState(false);
   const [isReadyConfirmOpen, setIsReadyConfirmOpen] = useState(false);
   const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
@@ -107,10 +128,25 @@ export default function JobCardDetailPage() {
     if (!job || !selectedShopId) return;
 
     // 🛡️ CANCEL CONFIRMATION
-    if (status === "CANCELLED") {
+    if (["CANCELLED", "RETURNED", "SCRAPPED"].includes(status)) {
+      const advancePaid = job.advancePaid || 0;
+      if (advancePaid > 0) {
+        const refundConfirm = confirm(
+          `This job has an active advance of ₹${advancePaid}. To move it to ${status}, the advance must be refunded.\n\nClick OK to automatically log a CASH refund of ₹${advancePaid} and proceed.`
+        );
+        if (!refundConfirm) return;
+        try {
+          await updateJobCardStatus(selectedShopId, job.id, status, { amount: advancePaid, mode: "CASH" });
+          reload();
+        } catch (err: any) {
+          alert(err.message || "Failed to update status");
+        }
+        return;
+      }
+
       if (
         !confirm(
-          "Cancel this job? Any linked invoice will be voided. This action cannot be easily undone.",
+          `Move job to ${status}? Any linked invoice will be voided. This action cannot be easily undone.`
         )
       ) {
         return;
@@ -283,15 +319,28 @@ export default function JobCardDetailPage() {
           ) : (
             <>
               {job.status === "DELIVERED" &&
-                (job.warrantyDuration || 0) > 0 && (
-                  <button
-                    onClick={() => setIsWarrantyConfirmOpen(true)}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold transition"
-                    title="Create a free rework job under warranty"
-                  >
-                    🛡️ Warranty Job
-                  </button>
-                )}
+                (job.warrantyDuration || 0) > 0 &&
+                (() => {
+                  const isWarrantyEnabled = (selectedShop as any)?.headerConfig?.enableWarrantyJobs;
+                  if (!isWarrantyEnabled) return null;
+                  
+                  const deliveredAt = (job as any).deliveredAt ? new Date((job as any).deliveredAt) : null;
+                  if (deliveredAt) {
+                    const expiryDate = new Date(deliveredAt);
+                    expiryDate.setDate(expiryDate.getDate() + (job.warrantyDuration || 0));
+                    if (new Date() > expiryDate) return null; // Expired
+                  }
+                  
+                  return (
+                    <button
+                      onClick={() => setIsWarrantyConfirmOpen(true)}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold transition"
+                      title="Create a free rework job under warranty"
+                    >
+                      🛡️ Warranty Job
+                    </button>
+                  );
+                })()}
               {job.status !== "READY" &&
                 job.status !== "DELIVERED" &&
                 job.status !== "RETURNED" && (
@@ -303,32 +352,28 @@ export default function JobCardDetailPage() {
                   </button>
                 )}
 
-              {job.status !== "DELIVERED" && job.status !== "RETURNED" && (
-                <select
-                  value={job.status}
-                  onChange={(e) =>
-                    handleStatusChange(e.target.value as JobStatus)
-                  }
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg font-bold cursor-pointer outline-none transition"
-                >
-                  <option value={job.status} disabled>
-                    Change Status
-                  </option>
-                  {[
-                    "RECEIVED",
-                    "ASSIGNED",
-                    "DIAGNOSING",
-                    "WAITING_APPROVAL",
-                    "APPROVED",
-                    "WAITING_FOR_PARTS",
-                    "IN_PROGRESS",
-                  ].map((s) => (
-                    <option key={s} value={s}>
-                      {s.replace(/_/g, " ")}
-                    </option>
-                  ))}
-                  <option value="CANCELLED">CANCEL Job</option>
-                </select>
+              {job.status !== "DELIVERED" && job.status !== "RETURNED" && job.status !== "SCRAPPED" && job.status !== "CANCELLED" && (
+                (() => {
+                  const allowedTransitions = getAllowedTransitions(job.status);
+                  if (allowedTransitions.length === 0) return null;
+                  
+                  return (
+                    <select
+                      value={job.status}
+                      onChange={(e) => handleStatusChange(e.target.value as JobStatus)}
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg font-bold cursor-pointer outline-none transition"
+                    >
+                      <option value={job.status} disabled>
+                        Change Status
+                      </option>
+                      {allowedTransitions.map((s) => (
+                        <option key={s} value={s}>
+                          {s === "CANCELLED" || s === "SCRAPPED" || s === "RETURNED" ? `${s} Job` : (s as string).replace(/_/g, " ")}
+                        </option>
+                      ))}
+                    </select>
+                  );
+                })()
               )}
               {job.status === "READY" &&
                 !job.invoices?.some((i) => i.status !== "VOIDED") && (
@@ -393,13 +438,7 @@ export default function JobCardDetailPage() {
               <h2 className="text-lg font-bold dark:text-white">
                 Parts & Material
               </h2>
-              {[
-                "RECEIVED",
-                "ASSIGNED",
-                "DIAGNOSING",
-                "IN_PROGRESS",
-                "WAITING_FOR_PARTS",
-              ].includes(job.status) && (
+              {!["READY", "DELIVERED", "CANCELLED", "RETURNED", "SCRAPPED"].includes(job.status) && (
                 <button
                   onClick={() => setIsAddPartModalOpen(true)}
                   className="px-3 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-lg text-sm font-semibold hover:bg-teal-100 transition"
@@ -448,13 +487,15 @@ export default function JobCardDetailPage() {
                           ).toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => handleRemovePart(part.id)}
-                            className="text-red-500 hover:text-red-700"
-                            title="Remove Part (Restores Stock)"
-                          >
-                            ✕
-                          </button>
+                          {!["READY", "DELIVERED", "CANCELLED", "RETURNED", "SCRAPPED"].includes(job.status) && (
+                            <button
+                              onClick={() => handleRemovePart(part.id)}
+                              className="text-red-500 hover:text-red-700"
+                              title="Remove Part (Restores Stock)"
+                            >
+                              ✕
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

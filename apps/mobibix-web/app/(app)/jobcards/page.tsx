@@ -68,6 +68,7 @@ const STATUS_OPTIONS: JobStatus[] = [
   "DELIVERED",
   "CANCELLED",
   "RETURNED",
+  "SCRAPPED",
 ];
 
 const STATUS_COLORS: Record<JobStatus, string> = {
@@ -93,6 +94,8 @@ const STATUS_COLORS: Record<JobStatus, string> = {
     "bg-rose-200 text-rose-900 border-rose-400 dark:bg-rose-500/20 dark:text-rose-200 dark:border-rose-500/50",
   RETURNED:
     "bg-pink-200 text-pink-900 border-pink-400 dark:bg-pink-500/20 dark:text-pink-200 dark:border-pink-500/50",
+  SCRAPPED:
+    "bg-stone-300 text-stone-900 border-stone-500 dark:bg-stone-500/20 dark:text-stone-300 dark:border-stone-500/50",
 };
 
 /**
@@ -111,11 +114,12 @@ const VALID_TRANSITIONS: Record<JobStatus, JobStatus[]> = {
   WAITING_APPROVAL: ["APPROVED", "CANCELLED"],
   APPROVED: ["WAITING_FOR_PARTS", "IN_PROGRESS", "CANCELLED"],
   WAITING_FOR_PARTS: ["IN_PROGRESS", "CANCELLED"],
-  IN_PROGRESS: ["READY", "WAITING_FOR_PARTS", "CANCELLED"],
-  READY: ["DELIVERED", "RETURNED", "IN_PROGRESS"],
+  IN_PROGRESS: ["READY", "WAITING_FOR_PARTS", "CANCELLED", "SCRAPPED"],
+  READY: ["DELIVERED", "RETURNED", "IN_PROGRESS", "SCRAPPED"],
   DELIVERED: [], // Terminal state
   CANCELLED: [], // Terminal state
   RETURNED: [], // Terminal state
+  SCRAPPED: [], // Terminal state
 };
 
 /**
@@ -219,6 +223,23 @@ export default function JobCardsPage() {
   );
 
   const handleStatusChange = async (job: JobCard, status: JobStatus) => {
+    // 💸 ADVANCE REFUND CHECK FOR CANCELLATION
+    if (["CANCELLED", "RETURNED", "SCRAPPED"].includes(status)) {
+      const advancePaid = job.advancePaid || 0;
+      if (advancePaid > 0) {
+        const refundConfirm = confirm(
+          `This job has an active advance of ₹${advancePaid}. To move it to ${status}, the advance must be refunded.\n\nClick OK to automatically log a CASH refund of ₹${advancePaid} and proceed.`
+        );
+        if (!refundConfirm) return;
+        try {
+          await updateJobCardStatus(selectedShopId, job.id, status, { amount: advancePaid, mode: "CASH" });
+          reload();
+        } catch (err: any) {
+          alert(err.message || "Failed to update status");
+        }
+        return;
+      }
+    }
     // 🚨 CRITICAL VALIDATION
     if (status === "READY") {
       if (!job.finalCost && !job.estimatedCost) {
@@ -576,6 +597,7 @@ export default function JobCardsPage() {
                           "DELIVERED",
                           "CANCELLED",
                           "RETURNED",
+                          "SCRAPPED",
                         ].includes(job.status) && (
                           <button
                             onClick={() => setSelectedJobForPart(job)}
@@ -592,6 +614,7 @@ export default function JobCardsPage() {
                           "DELIVERED",
                           "CANCELLED",
                           "RETURNED",
+                          "SCRAPPED",
                         ].includes(job.status) && (
                           <button
                             onClick={() => setBillingJob(job)}
