@@ -1,10 +1,10 @@
 import { Controller, Get, Post, Body, UseGuards, Req } from '@nestjs/common';
-import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
-import { AdminRolesGuard } from '../../guards/admin-roles.guard';
-import { AdminRoles } from '../../decorators/admin.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AdminRolesGuard } from '../guards/admin-roles.guard';
+import { AdminRoles } from '../decorators/admin.decorator';
 import { AdminRole, ModuleType } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { AdminCacheService } from '../../cache/admin-cache.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { AdminCacheService } from '../cache/admin-cache.service';
 
 @Controller('admin/investor')
 @UseGuards(JwtAuthGuard, AdminRolesGuard)
@@ -124,7 +124,7 @@ export class InvestorController {
 
   @Post('projection/simulate')
   async simulate(@Body() inputs: any) {
-    const months = [];
+    const months: any[] = [];
     let active = inputs.currentActiveTenants;
     const arpu = inputs.arpu || 1000;
     const churnRate = inputs.monthlyChurnRate || 0.04;

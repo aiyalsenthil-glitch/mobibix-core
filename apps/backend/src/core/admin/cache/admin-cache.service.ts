@@ -34,4 +34,14 @@ export class AdminCacheService {
         }
     }
   }
+
+  async getOrSet<T>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T> {
+    const cached = await this.get<T>(key);
+    if (cached !== undefined && cached !== null) {
+      return cached;
+    }
+    const result = await factory();
+    await this.set(key, result, ttl);
+    return result;
+  }
 }
