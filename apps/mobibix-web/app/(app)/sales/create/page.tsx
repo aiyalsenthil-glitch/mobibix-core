@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { listProducts, type ShopProduct } from "@/services/products.api";
 import { getStockBalances } from "@/services/stock.api";
-import { createInvoice } from "@/services/sales.api";
+import { createInvoice, type CreateInvoiceDto } from "@/services/sales.api";
 import { useShop } from "@/context/ShopContext";
 import { CustomerModal } from "../../customers/CustomerModal";
 import { ProductModal } from "../../products/ProductModal";
@@ -195,21 +195,21 @@ export default function CreateInvoicePage() {
       }
 
       // Prepare payload
-      const payload: any = {
+      const payload: CreateInvoiceDto = {
         shopId: selectedShop.id,
         customerId: selectedCustomer.id,
         customerName: selectedCustomer.name,
         customerPhone: selectedCustomer.phone,
         customerState: selectedCustomer.state,
         customerGstin: selectedCustomer.gstNumber,
-        invoiceDate, // Add invoice Date
+        invoiceDate,
         pricesIncludeTax,
         items: items.map((item) => ({
           shopProductId: item.shopProductId,
           quantity: item.quantity,
           rate: item.rate,
           gstRate: item.gstRate,
-          gstAmount: item.gstAmount,
+          // gstAmount intentionally omitted — backend recalculates
           imeis: item.imeis && item.imeis.length > 0 ? item.imeis : undefined,
           serialNumbers: item.serialNumbers && item.serialNumbers.length > 0 ? item.serialNumbers : undefined,
           warrantyDays: item.warrantyDays,
@@ -249,6 +249,7 @@ export default function CreateInvoicePage() {
             `Please add a purchase or set the cost manually before selling.`,
         );
       } else if (msg.includes("Insufficient stock")) {
+        setImeiHighlight(false); // reset stale IMEI highlight — this is a stock problem
         setError("Insufficient stock. Please add purchase or reduce quantity.");
       } else if (msg.includes("Serialized products require IMEI")) {
         setError(
@@ -259,7 +260,8 @@ export default function CreateInvoicePage() {
         setError("One or more IMEIs are already sold or unavailable.");
         setImeiHighlight(true);
       } else {
-        // Show backend message verbatim for other errors
+        // Generic backend error — reset IMEI highlight, show message verbatim
+        setImeiHighlight(false);
         setError(msg);
       }
     } finally {

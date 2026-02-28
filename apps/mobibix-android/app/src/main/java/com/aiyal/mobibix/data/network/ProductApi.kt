@@ -19,10 +19,14 @@ data class ShopProduct(
     val id: String,
     val name: String,
     val category: String?,
-    val salePrice: Int?, // In paise
-    val costPrice: Int?, // In paise
-    val stockQty: Int,   // Derived from stock entries
-    val sku: String?
+    val salePrice: Int?,     // In paise
+    val costPrice: Int?,     // In paise
+    val stockQty: Int,       // Derived from stock entries
+    val sku: String?,
+    val gstRate: Double?,    // GST rate as percentage e.g. 0.0, 5.0, 12.0, 18.0, 28.0
+    val hsnCode: String?,    // HSN/SAC code — required for GST invoices
+    val isSerialized: Boolean = false, // Whether product tracks individual IMEI/serials
+    val warrantyDays: Int? = null      // Default warranty in days
 )
 
 data class CreateProductRequest(

@@ -16,7 +16,8 @@ export interface ProductItem {
   imeis: string[];
   serialNumbers: string[];
   warrantyDays?: number;
-  warrantyEndAt?: string;
+  /** Read-only. Computed server-side from warrantyDays + invoiceDate. Never send in payload. */
+  readonly warrantyEndAt?: string;
   costPrice: number | null;
 }
 

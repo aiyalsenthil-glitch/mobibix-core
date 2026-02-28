@@ -27,9 +27,12 @@ export class SalesInvoiceItemDto {
   @Max(100)
   gstRate: number; // GST rate percentage (frontend-calculated)
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  gstAmount: number; // GST amount (frontend-calculated)
+  // Frontend preview value — backend IGNORES this and recalculates via calculateInvoiceTotals().
+  // Kept optional for backward compatibility with existing clients.
+  gstAmount?: number;
 
   @IsOptional()
   @IsArray()

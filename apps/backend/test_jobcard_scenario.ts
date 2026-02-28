@@ -120,10 +120,14 @@ async function bootstrap() {
       console.error(`🔴 FAIL: Invoice generation anomaly`, invoice);
     }
 
-    await prisma.invoice.update({
-      where: { id: invoice.id },
-      data: { status: 'PAID' }
-    });
+    if (!invoice) {
+      console.error(`🔴 FAIL: Could not find invoice to mark as PAID`);
+    } else {
+      await prisma.invoice.update({
+        where: { id: invoice.id },
+        data: { status: 'PAID' }
+      });
+    }
 
     // 4️⃣ TRANSITION TO DELIVERED AND VERIFY DELIVERED_AT ANCHOR
     console.log(`\n--- 📦 DELIVERY & TIMESTAMP VERIFICATION ---`);

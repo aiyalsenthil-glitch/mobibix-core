@@ -35,6 +35,7 @@ export interface SalesInvoice {
   paymentStatus?: PaymentStatus;
   customerState?: string;
   customerGstin?: string;
+  shopGstin?: string;        // P0 GST: seller GSTIN snapshot — returned by getInvoiceDetails()
   createdAt: string | Date;
   updatedAt: string | Date;
 
@@ -89,10 +90,12 @@ export interface InvoiceItemDetail {
 export interface InvoiceItem {
   shopProductId: string;
   quantity: number;
-  rate: number;
-  gstRate: number; // GST rate percentage (0, 5, 18, 28, or custom)
-  gstAmount: number; // Calculated GST amount
-  imeis?: string[]; // Serialized IMEIs when applicable
+  rate: number;             // Unit price in Rupees
+  gstRate: number;          // GST rate as percentage (0, 5, 12, 18, 28)
+  gstAmount?: number;       // Optional preview value — backend recalculates; do not rely on this
+  imeis?: string[];         // IMEI numbers for serialized products
+  warrantyDays?: number;    // Warranty duration; backend computes warrantyEndAt server-side
+  serialNumbers?: string[]; // Non-IMEI serial numbers
 }
 
 export interface CreateInvoiceDto {
@@ -100,9 +103,10 @@ export interface CreateInvoiceDto {
   customerId?: string;
   customerName: string;
   customerPhone?: string;
-  customerState?: string;
-  customerGstin?: string;
-  paymentMode: PaymentMode;
+  customerState?: string;   // Raw state name or 2-letter code; backend normalises
+  customerGstin?: string;   // Buyer GSTIN — validated as 15-char format by backend
+  invoiceDate?: string;     // ISO date string (e.g. '2026-02-28'); defaults to now
+  paymentMode?: PaymentMode; // Optional — use paymentMethods[] for split payments
   items: InvoiceItem[];
   pricesIncludeTax?: boolean;
   paymentMethods?: {
