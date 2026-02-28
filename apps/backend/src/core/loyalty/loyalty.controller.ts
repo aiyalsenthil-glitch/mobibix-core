@@ -4,6 +4,7 @@ import {
   Post,
   Put,
   Body,
+  Query,
   UseGuards,
   Req,
   Param,
@@ -47,6 +48,39 @@ interface UpdateLoyaltyConfigDto {
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class LoyaltyController {
   constructor(private loyaltyService: LoyaltyService) {}
+  
+  /**
+   * Get all loyalty transactions for the tenant (Dashboard view)
+   */
+  @Get('transactions')
+  async getAllTransactions(@Req() req: any) {
+    const tenantId = req.user.tenantId;
+    const transactions = await this.loyaltyService.getTransactionHistory(
+      tenantId,
+      undefined,
+      100,
+    );
+    return { transactions };
+  }
+  
+  /**
+   * Get global loyalty statistics for the tenant
+   */
+  @Get('summary')
+  async getSummary(
+    @Req() req: any,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string
+  ) {
+    const tenantId = req.user.tenantId;
+    
+    // Default to current month if dates not provided
+    const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const end = endDate ? new Date(endDate) : new Date();
+
+    const stats = await this.loyaltyService.getTenantStats(tenantId, start, end);
+    return stats;
+  }
 
   /**
    * Get customer's current loyalty balance

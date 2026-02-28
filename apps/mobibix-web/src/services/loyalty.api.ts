@@ -49,6 +49,55 @@ export interface LoyaltyTransaction {
   note?: string;
   createdBy?: string;
   createdAt: string | Date;
+  customer?: {
+    name: string;
+  };
+}
+
+export interface LoyaltySummary {
+  totalPointsIssued: number;
+  totalPointsRedeemed: number;
+  netPointsBalance: number;
+  activeCustomersWithPoints: number;
+}
+
+/**
+ * Get tenant's loyalty summary stats
+ */
+export async function getLoyaltySummary(
+  startDate?: string,
+  endDate?: string,
+): Promise<LoyaltySummary | null> {
+  try {
+    let url = `/loyalty/summary`;
+    const params = new URLSearchParams();
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+    if (params.toString()) url += `?${params.toString()}`;
+
+    const response = await authenticatedFetch(url);
+    if (!response.ok) return null;
+    const data = await extractData(response);
+    return data;
+  } catch (error) {
+    console.error("Error fetching loyalty summary:", error);
+    return null;
+  }
+}
+
+/**
+ * Get all loyalty transactions for the tenant
+ */
+export async function getAllLoyaltyTransactions(): Promise<LoyaltyTransaction[]> {
+  try {
+    const response = await authenticatedFetch(`/loyalty/transactions`);
+    if (!response.ok) return [];
+    const data = await extractData(response);
+    return data.transactions || [];
+  } catch (error) {
+    console.error("Error fetching all loyalty transactions:", error);
+    return [];
+  }
 }
 
 /**

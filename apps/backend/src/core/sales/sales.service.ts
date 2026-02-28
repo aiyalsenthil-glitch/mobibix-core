@@ -355,6 +355,7 @@ export class SalesService {
         pricesIncludeTax: !!dto.pricesIncludeTax,
         invoiceDate: dto.invoiceDate ? new Date(dto.invoiceDate) : undefined,
         referenceType: 'SALE',
+        loyaltyPointsRedeemed: dto.loyaltyPointsRedeemed,
         // skipStockUpdate: false, // Default
       };
 

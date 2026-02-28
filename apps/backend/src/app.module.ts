@@ -108,10 +108,10 @@ type LoggerRequest = {
                 options: { singleLine: true, colorize: true },
               }
             : undefined,
-        customProps: (req: LoggerRequest) => {
+        customProps: (req: any) => {
           return {
             tenantId: req.user?.tenantId || 'anonymous',
-            userId: req.user?.userId || 'unauthenticated',
+            userId: req.user?.sub || 'unauthenticated',
           };
         },
       },

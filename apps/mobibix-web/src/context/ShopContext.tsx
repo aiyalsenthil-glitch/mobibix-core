@@ -8,6 +8,7 @@ import React, {
   useCallback,
 } from "react";
 import { listShops, type Shop } from "@/services/shops.api";
+import { useAuth } from "@/hooks/useAuth";
 import { hasSessionHint } from "@/services/auth.api";
 
 interface ShopContextType {
@@ -33,8 +34,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  const { authUser, isLoading: authLoading } = useAuth();
+
   // Fetch shops from API
   const fetchShops = useCallback(async () => {
+    if (!authUser?.tenantId) {
+      setShops([]);
+      setIsLoadingShops(false);
+      return null;
+    }
+
     try {
       setIsLoadingShops(true);
       setError(null);
@@ -58,18 +67,20 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoadingShops(false);
     }
-  }, []);
+  }, [authUser?.tenantId]);
 
   // Initialize shops after login (only once)
   useEffect(() => {
-    const hasSession = hasSessionHint();
-    if (hasSession && !isInitialized) {
+    if (authLoading) return;
+
+    if (authUser?.tenantId && !isInitialized) {
       initializeShops();
-    } else if (!hasSession) {
+    } else if (!authLoading && !authUser?.tenantId) {
+      setShops([]);
       setIsLoadingShops(false);
       setIsInitialized(true);
     }
-  }, []);
+  }, [authUser?.tenantId, authLoading, isInitialized]);
 
   const initializeShops = async () => {
     const data = await fetchShops();

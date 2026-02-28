@@ -110,16 +110,25 @@ export class LoyaltyService {
    */
   async getTransactionHistory(
     tenantId: string,
-    customerId: string,
+    customerId?: string,
     limit = 50,
   ) {
+    const where: any = { tenantId };
+    if (customerId) {
+      where.customerId = customerId;
+    }
+
     return this.prisma.loyaltyTransaction.findMany({
-      where: {
-        tenantId,
-        customerId,
-      },
+      where,
       orderBy: { createdAt: 'desc' },
       take: limit,
+      include: {
+        customer: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
   }
 

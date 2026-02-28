@@ -3,18 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
-import {
-  getSubscription,
-  getAvailablePlans,
-  upgradeSubscription,
-  downgradeSubscription,
-  checkDowngradeEligibility,
-  toggleAutoRenew,
-  type SubscriptionDetails,
-  type Plan,
-} from "@/services/tenant.api";
+import { getSubscription, getAvailablePlans, upgradeSubscription, downgradeSubscription, checkDowngradeEligibility, toggleAutoRenew, type SubscriptionDetails, type Plan } from "@/services/tenant.api";
+import { getLoyaltyConfig, LoyaltyConfig } from "@/services/loyalty.api";
 import DowngradeBlockerModal from "./DowngradeBlockerModal";
-import { Check, AlertCircle, Loader2, Zap, Shield, Crown, CreditCard, RefreshCw } from "lucide-react";
+import { Check, AlertCircle, Loader2, Zap, Shield, Crown, CreditCard, RefreshCw, Gift } from "lucide-react";
+import { LoyaltySettings } from "@/components/loyalty/LoyaltySettings";
 
 import { PaymentHistory } from "@/components/billing/PaymentHistory";
 
@@ -59,8 +52,9 @@ const PLAN_MARKETING_FEATURES: Record<string, string[]> = {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"SUBSCRIPTION" | "BILLING">("SUBSCRIPTION");
+  const [activeTab, setActiveTab] = useState<"SUBSCRIPTION" | "BILLING" | "LOYALTY">("SUBSCRIPTION");
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null);
+  const [loyaltyConfig, setLoyaltyConfig] = useState<LoyaltyConfig | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,12 +71,14 @@ export default function SettingsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [subData, plansData] = await Promise.all([
+      const [subData, plansData, loyaltyData] = await Promise.all([
         getSubscription(),
         getAvailablePlans(),
+        getLoyaltyConfig(),
       ]);
       setSubscription(subData.current);
       setPlans(plansData);
+      setLoyaltyConfig(loyaltyData);
       
       // smart default: if current is manual and autoRenew is false, maybe default to MANUAL?
       // But we prefer AUTOPAY. Keep default AUTOPAY.
@@ -274,6 +270,16 @@ export default function SettingsPage() {
         >
           Payment History
         </button>
+        <button
+          onClick={() => setActiveTab("LOYALTY")}
+          className={`px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+            activeTab === "LOYALTY"
+              ? "bg-white dark:bg-stone-800 text-teal-600 dark:text-teal-400 shadow-sm"
+              : "text-gray-500 hover:text-gray-700 dark:hover:text-stone-300"
+          }`}
+        >
+          <Gift size={16} /> Loyalty Rewards
+        </button>
       </div>
 
       {error && (
@@ -286,6 +292,10 @@ export default function SettingsPage() {
       {activeTab === "BILLING" ? (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           <PaymentHistory />
+        </div>
+      ) : activeTab === "LOYALTY" ? (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <LoyaltySettings initialConfig={loyaltyConfig} />
         </div>
       ) : (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">

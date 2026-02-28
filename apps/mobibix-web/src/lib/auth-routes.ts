@@ -8,11 +8,11 @@ import type {
 export function getRoleRedirect(user: AuthUserPayload): string {
   // Owners without a tenant must complete setup
   if (user.isSystemOwner && !user.tenantId) {
-    return "/setup-business";
+    return "/onboarding";
   }
   
   // Everyone else goes to dashboard if they have a tenant, or setup if they somehow don't
-  return user.tenantId ? "/dashboard" : "/setup-business";
+  return user.tenantId ? "/dashboard" : "/onboarding";
 }
 
 // Post-login routing using backend response (tenant counts)
@@ -30,7 +30,7 @@ export function getPostLoginRedirect(response: ExchangeTokenResponse): string {
   const tenantId = tenant?.id ?? tenants?.[0]?.id ?? user.tenantId;
   // Owners without a tenant must complete setup
   if (user.isSystemOwner && (!tenantId || tenantId === "")) {
-    return "/setup-business";
+    return "/onboarding";
   }
 
   // Everyone else goes to dashboard if they have a tenant, else onboarding
