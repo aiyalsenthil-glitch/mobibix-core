@@ -27,6 +27,7 @@ import { DashboardController } from './dashboard/dashboard.controller';
 import { MobibixAdminController } from './products/mobibix/mobibix-admin.controller';
 import { GympilotAdminController } from './products/mobibix/mobibix-admin.controller';
 import { RevenueAdminController } from './revenue/revenue-admin.controller';
+import { InvestorController } from './investor/investor.controller';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { RevenueAdminController } from './revenue/revenue-admin.controller';
     MobibixAdminController,
     GympilotAdminController,
     RevenueAdminController,
+    InvestorController,
   ],
   providers: [
     AdminCorsService,
