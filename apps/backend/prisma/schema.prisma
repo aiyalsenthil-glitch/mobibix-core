@@ -1268,6 +1268,8 @@ model ShopProduct {
   barcode          String?
   sku              String? // Stock Keeping Unit (internal identifier)
   location         String?
+  warrantyDays     Int?    // Default warranty days for sales
+  
   imeis            IMEI[]
   invoiceItems     InvoiceItem[]
   purchaseItems    PurchaseItem[]
@@ -1425,6 +1427,12 @@ model InvoiceItem {
   sgstAmount    Int?
   igstAmount    Int?
   lineTotal     Int
+  
+  // Warranty & Tracking
+  warrantyDays  Int?
+  warrantyEndAt DateTime?
+  serialNumbers String[]    @default([])
+
   invoice       Invoice     @relation(fields: [invoiceId], references: [id])
   product       ShopProduct @relation(fields: [shopProductId], references: [id])
 
@@ -1966,11 +1974,15 @@ enum POStatus {
 
 enum IMEIStatus {
   IN_STOCK
+  RESERVED
   SOLD
-  RETURNED
-  DAMAGED
+  RETURNED       // Legacy
+  RETURNED_GOOD
+  RETURNED_DAMAGED
+  DAMAGED        // Legacy
   TRANSFERRED
   LOST
+  SCRAPPED
 }
 
 enum DocumentType {

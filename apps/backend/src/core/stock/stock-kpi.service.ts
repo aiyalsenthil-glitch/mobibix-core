@@ -81,7 +81,7 @@ export class StockKpiService {
           }>
         >`
           SELECT "shopProductId", SUM(CASE WHEN "type" = 'IN' THEN "quantity" ELSE -"quantity" END) as "balance"
-          FROM "StockLedger"
+          FROM "mb_stock_ledger"
           WHERE "tenantId" = ${tenantId} AND "shopId" = ${shopId}
           GROUP BY "shopProductId"
         `;

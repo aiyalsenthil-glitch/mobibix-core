@@ -101,15 +101,9 @@ export function InvoiceItemModal({
   const filteredProducts = search
     ? products.filter(
         (p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()) &&
-          (p.type === "SPARE" || p.type === "SERVICE"),
+          p.name.toLowerCase().includes(search.toLowerCase()),
       )
-    : products.filter((p) => p.type === "SPARE" || p.type === "SERVICE"); // Show spares by default even without search? Or keep empty?
-  // Usually empty is better for large lists, but user wants to see "only spare parts".
-  // Let's stick to search-based but also maybe allow listing all if search is empty?
-  // Current logic returns [] if search is empty.
-  // The user said "add product must list only spare parts".
-  // I will keep it search based for performance, but enforce the type filter.
+    : products;
 
   const handleSelectProduct = (product: ShopProduct) => {
     setSelectedProduct(product);

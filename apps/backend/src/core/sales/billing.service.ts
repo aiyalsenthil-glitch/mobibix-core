@@ -27,6 +27,9 @@ export interface BillingItem {
   costPrice?: number; // For Stock Valuation
   productType?: ProductType;
   imeis?: string[];
+  serialNumbers?: string[];
+  warrantyDays?: number;
+  warrantyEndAt?: Date;
   isSerialized?: boolean;
 }
 
@@ -102,18 +105,13 @@ export class BillingService {
 
     // 2. Validate Items & Compliance
     const isIndianGSTInvoice = shop.gstEnabled && !!shop.state;
-    const lineInputs: InvoiceLineInput[] = items.map((item) => {
-      if (
-        shop.gstEnabled &&
-        item.gstRate <= 0 &&
-        process.env.STRICT_GST === 'true'
-      ) {
-        // Optional strict check
-      }
+  const lineInputs: InvoiceLineInput[] = items.map((item) => {
+      // Optional strict check skipped here
+
       return {
         shopProductId: item.shopProductId,
         quantity: item.quantity,
-        rate: item.rate,
+        ratePaisa: this.toPaisa(item.rate), // Input sent as Paise to strict calculator
         gstRate: item.gstRate,
         hsnCode: item.hsnCode,
       };
@@ -123,24 +121,30 @@ export class BillingService {
     const calc = calculateInvoiceTotals(lineInputs, {
       isIndianGSTInvoice: !!isIndianGSTInvoice,
       pricesIncludeTax: !!options.pricesIncludeTax,
-      shopState: shop.state,
-      customerState: options.customerState,
+      shopStateCode: shop.state,
+      customerStateCode: options.customerState,
       customerGstin: options.customerGstin,
     });
 
     // 4. Map Lines for DB
-    const invoiceItemsData = calc.lines.map((line, idx) => ({
-      shopProductId: line.shopProductId,
-      quantity: line.quantity,
-      rate: Math.round(line.rate), // Integers for rate? SalesService uses it.
-      hsnCode: line.hsnCode,
-      gstRate: line.gstRate,
-      gstAmount: this.toPaisa(line.gstAmount),
-      lineTotal: this.toPaisa(line.lineTotal),
-    }));
+    const invoiceItemsData = calc.lines.map((line) => {
+      const parentItem = items.find(i => i.shopProductId === line.shopProductId);
+      return {
+        shopProductId: line.shopProductId,
+        quantity: line.quantity,
+        rate: line.ratePaisa,
+        hsnCode: line.hsnCode,
+        gstRate: line.gstRate,
+        gstAmount: line.gstAmountPaisa,
+        lineTotal: line.lineTotalPaisa,
+        warrantyDays: parentItem?.warrantyDays,
+        warrantyEndAt: parentItem?.warrantyEndAt,
+        serialNumbers: parentItem?.serialNumbers || [],
+      };
+    });
 
     // 5. Calculate Total Amount
-    const totalAmountPaisa = this.toPaisa(calc.subTotal + calc.gstAmount);
+    const totalAmountPaisa = calc.subTotalPaisa + calc.gstAmountPaisa;
 
     // 6. Payment Status
     let totalPaidPaisa = 0;
@@ -193,11 +197,11 @@ export class BillingService {
         customerPhone: options.customerPhone,
         customerState: options.customerState,
         customerGstin: options.customerGstin,
-        subTotal: this.toPaisa(calc.subTotal),
-        gstAmount: this.toPaisa(calc.gstAmount),
-        cgst: this.toPaisa(calc.cgst),
-        sgst: this.toPaisa(calc.sgst),
-        igst: this.toPaisa(calc.igst),
+        subTotal: calc.subTotalPaisa,
+        gstAmount: calc.gstAmountPaisa,
+        cgst: calc.cgstPaisa,
+        sgst: calc.sgstPaisa,
+        igst: calc.igstPaisa,
         totalAmount: totalAmountPaisa,
         paymentMode: options.paymentMode,
         status,

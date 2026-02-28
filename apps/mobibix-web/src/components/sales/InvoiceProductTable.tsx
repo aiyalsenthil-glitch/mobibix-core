@@ -10,7 +10,7 @@ interface InvoiceProductTableProps {
   onPricesIncludeTaxChange: (checked: boolean) => void;
   onUpdateItem: (
     id: string,
-    field: keyof ProductItem | "imeisText",
+    field: keyof ProductItem | "imeisText" | "serialNumbersText",
     value: any,
     products: ShopProduct[],
   ) => void;
@@ -197,9 +197,12 @@ export function InvoiceProductTable({
             {items.map((item, index) => {
               const product = products.find((p) => p.id === item.shopProductId);
               const isSerialized = product?.isSerialized;
+              const isDevice = product?.type === "DEVICE";
+              const currentTrackingArray = isDevice ? (item.imeis || []) : (item.serialNumbers || []);
+              
               const hasIMEMismatch =
                 isSerialized &&
-                (!item.imeis || item.imeis.length !== item.quantity);
+                currentTrackingArray.length !== item.quantity;
 
               return (
                 <tr
@@ -300,13 +303,13 @@ export function InvoiceProductTable({
                         )
                       : null}
 
-                    {/* IMEI Input for Serialized Products */}
+                    {/* Tracking Input for Serialized Products */}
                     {isSerialized && (
                       <div className="mt-2">
                         <label
                           className={`text-[10px] font-bold uppercase tracking-wider mb-1 block ${hasIMEMismatch && imeiHighlight ? "text-red-600" : "text-gray-500"}`}
                         >
-                          Serial Numbers / IMEIs (Enter {item.quantity})
+                          {isDevice ? "IMEIs" : "Serial Numbers"} (Enter {item.quantity})
                         </label>
                         <textarea
                           className={`w-full text-xs p-2 rounded border focus:outline-none focus:ring-1 ${
@@ -315,12 +318,12 @@ export function InvoiceProductTable({
                               : "border-gray-200 bg-gray-50 focus:border-blue-500 focus:ring-blue-200"
                           }`}
                           rows={Math.min(item.quantity, 4) || 2}
-                          placeholder="Enter/Scan IMEIs (one per line or comma separated)"
-                          value={item.imeis?.join("\n") || ""}
+                          placeholder={`Enter/Scan ${isDevice ? "IMEIs" : "Serial Numbers"} (one per line or comma separated)`}
+                          value={currentTrackingArray.join("\n") || ""}
                           onChange={(e) =>
                             onUpdateItem(
                               item.id,
-                              "imeisText",
+                              isDevice ? "imeisText" : "serialNumbersText",
                               e.target.value,
                               products,
                             )
@@ -328,9 +331,9 @@ export function InvoiceProductTable({
                         />
                         <div className="flex justify-between mt-1">
                           <span
-                            className={`text-[10px] ${item.imeis?.length === item.quantity ? "text-green-600" : "text-orange-500"}`}
+                            className={`text-[10px] ${currentTrackingArray.length === item.quantity ? "text-green-600" : "text-orange-500"}`}
                           >
-                            Count: {item.imeis?.length || 0} / {item.quantity}
+                            Count: {currentTrackingArray.length} / {item.quantity}
                           </span>
                         </div>
                       </div>
@@ -352,20 +355,39 @@ export function InvoiceProductTable({
                     />
                   </td>
                   <td className="px-4 py-4 align-top">
-                    <input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) =>
-                        onUpdateItem(
-                          item.id,
-                          "quantity",
-                          parseFloat(e.target.value) || 0,
-                          products,
-                        )
-                      }
-                      className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 outline-none text-sm py-1"
-                    />
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) =>
+                          onUpdateItem(
+                            item.id,
+                            "quantity",
+                            parseFloat(e.target.value) || 0,
+                            products,
+                          )
+                        }
+                        className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 outline-none text-sm py-1"
+                      />
+                      <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-1">
+                         <span>Wrty (Days):</span>
+                         <input 
+                           type="number"
+                           value={item.warrantyDays ?? ""}
+                           onChange={(e) => 
+                             onUpdateItem(
+                               item.id,
+                               "warrantyDays",
+                               e.target.value ? parseInt(e.target.value) : undefined,
+                               products
+                             )
+                           }
+                           placeholder="0"
+                           className="w-12 bg-gray-50 dark:bg-gray-800 border-none outline-none rounded text-center"
+                         />
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-4 align-top">
                     <input
@@ -438,16 +460,19 @@ export function InvoiceProductTable({
         </button>
       </div>
 
-      {/* Missing IMEI Alert */}
+      {/* Missing Tracking Arrays Alert */}
       {imeiHighlight &&
         items.some(
-          (i) =>
-            products.find((p) => p.id === i.shopProductId)?.isSerialized &&
-            (!i.imeis || i.imeis.length !== i.quantity),
+          (i) => {
+            const p = products.find((prod) => prod.id === i.shopProductId);
+            if (!p?.isSerialized) return false;
+            const tracking = p.type === "DEVICE" ? i.imeis : i.serialNumbers;
+            return !tracking || tracking.length !== i.quantity;
+          }
         ) && (
           <div className="mt-4 bg-amber-50 text-amber-800 text-xs px-3 py-2 rounded">
             ⚠️ Please ensure all serialized products have the correct number of
-            IMEIs entered.
+            IMEIs or Serial Numbers entered.
           </div>
         )}
     </div>

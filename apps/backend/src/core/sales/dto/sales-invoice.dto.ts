@@ -35,6 +35,19 @@ export class SalesInvoiceItemDto {
   @IsArray()
   @ArrayNotEmpty()
   imeis?: string[]; // IMEI list for MOBILE products
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  warrantyDays?: number;
+
+  @IsOptional()
+  @IsString()
+  warrantyEndAt?: string; // ISO date string
+
+  @IsOptional()
+  @IsArray()
+  serialNumbers?: string[]; // Non-IMEI serial numbers
 }
 
 export class PaymentMethodDto {

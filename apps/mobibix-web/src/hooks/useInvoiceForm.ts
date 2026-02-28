@@ -13,6 +13,9 @@ export interface ProductItem {
   gstAmount: number;
   total: number;
   imeis: string[];
+  serialNumbers: string[];
+  warrantyDays?: number;
+  warrantyEndAt?: string;
   costPrice: number | null;
 }
 
@@ -62,6 +65,7 @@ export function useInvoiceForm({ shopGstEnabled = false }: UseInvoiceFormProps =
         gstAmount: 0,
         total: 0,
         imeis: [],
+        serialNumbers: [],
         costPrice: null,
       },
     ]);
@@ -72,7 +76,7 @@ export function useInvoiceForm({ shopGstEnabled = false }: UseInvoiceFormProps =
   }, []);
 
   const updateItem = useCallback(
-    (id: string, field: keyof ProductItem | "imeisText", value: any, products: ShopProduct[] = []) => {
+    (id: string, field: keyof ProductItem | "imeisText" | "serialNumbersText", value: any, products: ShopProduct[] = []) => {
       setItems((prev) =>
         prev.map((item) => {
           if (item.id === id) {
@@ -87,7 +91,9 @@ export function useInvoiceForm({ shopGstEnabled = false }: UseInvoiceFormProps =
                 updated.hsnSac = product.hsnCode || "";
                 updated.gstRate = shopGstEnabled ? product.gstRate || 18 : 0;
                 updated.costPrice = product.costPrice ?? null;
+                updated.warrantyDays = product.warrantyDays ?? undefined;
                 updated.imeis = []; // Reset IMEIs
+                updated.serialNumbers = []; // Reset Serials
               }
             }
 
@@ -117,6 +123,12 @@ export function useInvoiceForm({ shopGstEnabled = false }: UseInvoiceFormProps =
             if (field === "imeisText") {
               const text: string = value || "";
               updated.imeis = text.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean);
+            }
+
+            // Parse Serial Numbers from text
+            if (field === "serialNumbersText" as any) {
+              const text: string = value || "";
+              updated.serialNumbers = text.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean);
             }
 
             return updated;

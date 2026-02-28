@@ -25,6 +25,7 @@ export interface ShopProduct {
   avgCost?: number; // Weighted Average Cost (WAC) - calculated on every stock IN
   isActive: boolean; // Can this shop sell this product?
   isSerialized: boolean; // Track by IMEI (true) or bulk quantity (false)
+  warrantyDays?: number; // Warranty coverage duration
 
   // Tax & Compliance (Shop-level override or inherited)
   hsnCode?: string;
