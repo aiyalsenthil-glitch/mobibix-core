@@ -42,10 +42,6 @@ export class SalesInvoiceItemDto {
   warrantyDays?: number;
 
   @IsOptional()
-  @IsString()
-  warrantyEndAt?: string; // ISO date string
-
-  @IsOptional()
   @IsArray()
   serialNumbers?: string[]; // Non-IMEI serial numbers
 }

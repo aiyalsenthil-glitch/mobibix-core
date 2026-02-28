@@ -126,9 +126,18 @@ export class BillingService {
       customerGstin: options.customerGstin,
     });
 
+    const invoiceDate = options.invoiceDate || new Date();
+
     // 4. Map Lines for DB
     const invoiceItemsData = calc.lines.map((line) => {
       const parentItem = items.find(i => i.shopProductId === line.shopProductId);
+      
+      let warrantyEndAt: Date | undefined;
+      if (parentItem?.warrantyDays && parentItem.warrantyDays > 0) {
+        warrantyEndAt = new Date(invoiceDate);
+        warrantyEndAt.setDate(warrantyEndAt.getDate() + parentItem.warrantyDays);
+      }
+
       return {
         shopProductId: line.shopProductId,
         quantity: line.quantity,
@@ -138,7 +147,7 @@ export class BillingService {
         gstAmount: line.gstAmountPaisa,
         lineTotal: line.lineTotalPaisa,
         warrantyDays: parentItem?.warrantyDays,
-        warrantyEndAt: parentItem?.warrantyEndAt,
+        warrantyEndAt: warrantyEndAt,
         serialNumbers: parentItem?.serialNumbers || [],
       };
     });
@@ -176,7 +185,6 @@ export class BillingService {
     }
 
     // 7. Generate Invoice Number
-    const invoiceDate = options.invoiceDate || new Date();
     const invoiceNumber =
       await this.documentNumberService.generateDocumentNumber(
         shopId,
@@ -305,10 +313,15 @@ export class BillingService {
       // IMEI Updates
       const allImeis = items.flatMap((i) => i.imeis || []);
       if (allImeis.length > 0) {
-        await prisma.iMEI.updateMany({
-          where: { imei: { in: allImeis }, tenantId },
+        const updateResult = await prisma.iMEI.updateMany({
+          where: { imei: { in: allImeis }, tenantId, status: 'IN_STOCK' }, // Optimistic Lock
           data: { invoiceId: invoice.id, status: 'SOLD', soldAt: new Date() },
         });
+
+        // If the number of rows updated doesn't match the number of IMEIs, one or more were sold concurrently
+        if (updateResult.count !== allImeis.length) {
+          throw new BadRequestException('Concurrency Error: One or more IMEIs are no longer IN_STOCK');
+        }
       }
     }
 
