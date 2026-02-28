@@ -34,13 +34,16 @@ data class PaginatedShopResponse(
     val data: List<Shop> = emptyList()
 )
 
-// Updated to include gstEnabled
+// Updated to include gstEnabled, gstNumber (matches backend field name exactly)
 data class ShopDetails(
     val name: String,
     val address: String,
+    val addressLine1: String? = null,  // Granular address — prefer over address
+    val city: String? = null,
+    val state: String? = null,         // Raw state string e.g. "Tamil Nadu" or "TN"
     val phone: String,
-    val gstin: String?,
-    val gstEnabled: Boolean, // Added for the new requirement
+    val gstNumber: String?,            // Backend field is gstNumber NOT gstin — must match exactly
+    val gstEnabled: Boolean,
     val invoiceFooter: String?,
     val terms: List<String>?,
     val logoUrl: String?
@@ -51,7 +54,7 @@ data class UpdateShopRequest(
     val name: String,
     val address: String,
     val phone: String,
-    val gstin: String?,
+    val gstNumber: String?,    // Backend field is gstNumber
     val invoiceFooter: String?,
     val terms: List<String>
 )

@@ -26,14 +26,24 @@ import com.aiyal.mobibix.data.network.InvoiceDetails
 @Composable
 fun InvoiceDetailsScreen(
     invoiceId: String,
+    shopId: String,          // A7 FIX: needed to load shop for invoice print
     navController: NavController,
     viewModel: SalesViewModel = hiltViewModel(),
     canCancel: Boolean
 ) {
-    val state by viewModel.invoiceDetails.collectAsState()
+    val state by viewModel.invoiceWithShop.collectAsState()
+    val cancelError by viewModel.cancelError.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(cancelError) {
+        cancelError?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearCancelError()
+        }
+    }
 
     LaunchedEffect(invoiceId) {
-        viewModel.loadInvoiceDetails(invoiceId)
+        viewModel.loadInvoiceDetails(invoiceId, shopId) // A7: pass shopId for print
     }
 
     if (state == null) {
@@ -43,10 +53,11 @@ fun InvoiceDetailsScreen(
         return
     }
 
-    val invoice = state!!
+    val invoice = state!!.invoice
     val context = LocalContext.current
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Invoice #${invoice.invoiceNumber}") },
@@ -80,9 +91,9 @@ fun InvoiceDetailsScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("${item.productName}", style = MaterialTheme.typography.bodyLarge)
-                        Text("${item.quantity} x ₹${item.rate}", style = MaterialTheme.typography.bodySmall)
+                Text("${item.quantity} x ₹${"%,.2f".format(item.rate)}", style = MaterialTheme.typography.bodySmall)
                     }
-                    Text("₹${item.lineTotal}", style = MaterialTheme.typography.bodyLarge)
+                    Text("₹${"%,.2f".format(item.lineTotal)}", style = MaterialTheme.typography.bodyLarge)
                 }
                 Spacer(Modifier.height(4.dp))
             }
@@ -96,7 +107,7 @@ fun InvoiceDetailsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                  Text("Sub Total:")
-                 Text("₹${invoice.subTotal}")
+                 Text("₹${"%,.2f".format(invoice.subTotal)}")
             }
             if (invoice.gstAmount > 0) {
                  Row(
@@ -104,7 +115,7 @@ fun InvoiceDetailsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                      Text("GST:")
-                     Text("₹${invoice.gstAmount}")
+                     Text("₹${"%,.2f".format(invoice.gstAmount)}")
                 }
             }
             Row(
@@ -112,7 +123,7 @@ fun InvoiceDetailsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                  Text("Total:", style = MaterialTheme.typography.titleMedium)
-                 Text("₹${invoice.totalAmount}", style = MaterialTheme.typography.titleMedium)
+                 Text("₹${"%,.2f".format(invoice.totalAmount)}", style = MaterialTheme.typography.titleMedium)
             }
 
             Spacer(Modifier.height(24.dp))

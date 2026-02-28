@@ -95,7 +95,7 @@ fun SalesInvoiceFormScreen(
                 )
             }
             Spacer(Modifier.height(8.dp))
-            Button(onClick = { items.add(InvoiceItemUi(gstRate = if(gstEnabled) 5f else 0f)) }, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { items.add(InvoiceItemUi(gstRate = 0.0)) }, modifier = Modifier.fillMaxWidth()) {
                 Text("+ Add Item")
             }
             
@@ -103,17 +103,17 @@ fun SalesInvoiceFormScreen(
             
             val subTotal = items.sumOf { it.quantity * it.rate }
             val gstTotal = items.sumOf {
-                val rate = if (it.gstRate == -1f) it.customGstRate ?: 0f else it.gstRate
-                ((it.quantity * it.rate) * rate / 100).roundToInt()
+                val rate = if (it.gstRate == -1.0) it.customGstRate ?: 0.0 else it.gstRate
+                it.quantity * it.rate * rate / 100.0
             }
             val grandTotal = subTotal + gstTotal
 
-            Text("Sub Total: ₹$subTotal", style = MaterialTheme.typography.bodyLarge)
+            Text("Sub Total: ₹${"%,.2f".format(subTotal)}", style = MaterialTheme.typography.bodyLarge)
             if (gstEnabled) {
-                Text("GST: ₹$gstTotal", style = MaterialTheme.typography.bodyLarge)
+                Text("GST: ₹${"%,.2f".format(gstTotal)}", style = MaterialTheme.typography.bodyLarge)
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            Text("Total: ₹$grandTotal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Total: ₹${"%,.2f".format(grandTotal)}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             
             Spacer(Modifier.height(16.dp))
 
@@ -136,16 +136,14 @@ fun SalesInvoiceFormScreen(
                         customerPhone = customerPhone.takeIf { it.isNotBlank() },
                         paymentMode = paymentMode,
                         items = items.map {
-                            val appliedGstRate = if (it.gstRate == -1f) it.customGstRate ?: 0f else it.gstRate
-                            val lineBase = it.quantity * it.rate
-                            val gstAmount = (lineBase * appliedGstRate / 100).roundToInt()
+                            val appliedGstRate = if (it.gstRate == -1.0) it.customGstRate ?: 0.0 else it.gstRate
                             InvoiceItemRequest(
                                 shopProductId = it.productId!!,
                                 quantity = it.quantity,
-                                rate = it.rate,
-                                gstRate = appliedGstRate,
-                                gstAmount = gstAmount,
-                                lineTotal = lineBase + gstAmount
+                                rate = it.rate,          // Already in Rupees (salePrice/100)
+                                gstRate = appliedGstRate // Double — no Float precision issues
+                                // lineTotal intentionally omitted — not in backend DTO
+                                // gstAmount intentionally omitted — backend recalculates
                             )
                         }
                     )

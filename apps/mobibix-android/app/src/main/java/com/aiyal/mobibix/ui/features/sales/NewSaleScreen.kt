@@ -131,8 +131,8 @@ fun NewSaleScreen(
                             RadioButton(selected = paymentMode == "CASH", onClick = { paymentMode = "CASH" })
                             Text("Cash")
                             Spacer(modifier = Modifier.size(16.dp))
-                            RadioButton(selected = paymentMode == "ONLINE", onClick = { paymentMode = "ONLINE" })
-                            Text("Online")
+                            RadioButton(selected = paymentMode == "UPI", onClick = { paymentMode = "UPI" })
+                            Text("UPI")  // ONLINE is not a valid backend PaymentMode
                         }
                     }
                 }
@@ -150,16 +150,14 @@ fun NewSaleScreen(
                             paymentMode = paymentMode,
                             items = items.mapNotNull { item ->
                                 item.productId?.let {
-                                    val appliedGstRate = if (item.gstRate == -1f) item.customGstRate ?: 0f else item.gstRate
-                                    val lineBase = item.quantity * item.rate
-                                    val gstAmount = (lineBase * appliedGstRate / 100).roundToInt()
+                                    val appliedGstRate = if (item.gstRate == -1.0) item.customGstRate ?: 0.0 else item.gstRate
                                     InvoiceItemRequest(
                                         shopProductId = it,
                                         quantity = item.quantity,
-                                        rate = item.rate,
-                                        gstRate = appliedGstRate,
-                                        gstAmount = gstAmount,
-                                        lineTotal = lineBase + gstAmount
+                                        rate = item.rate,        // Already in Rupees (salePrice/100)
+                                        gstRate = appliedGstRate // Double — no Float precision issues
+                                        // lineTotal intentionally omitted — not in backend DTO
+                                        // gstAmount intentionally omitted — backend recalculates
                                     )
                                 }
                             }

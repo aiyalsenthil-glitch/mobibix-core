@@ -31,15 +31,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.aiyal.mobibix.data.network.ShopProduct
-import kotlin.math.roundToInt
 
 data class InvoiceItemUi(
     var productId: String? = null,
-    var productName: String? = null, // Added this field
+    var productName: String? = null,
     var quantity: Int = 1,
-    var rate: Int = 0,
-    var gstRate: Float = 0f,
-    var customGstRate: Float? = null
+    var rate: Double = 0.0,          // Rate in RUPEES (salePrice / 100) — NOT Paisa
+    var gstRate: Double = 0.0,       // GST rate as percentage from product (not hardcoded)
+    var customGstRate: Double? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,10 +53,10 @@ fun InvoiceItemRow(
     var expanded by remember { mutableStateOf(false) }
     val selectedProduct = products.find { it.id == item.productId }
 
-    val appliedGstRate = if (item.gstRate == -1f) item.customGstRate ?: 0f else item.gstRate
-    val lineBase = item.quantity * item.rate
-    val gstAmount = (lineBase * appliedGstRate / 100).roundToInt()
-    val lineTotal = lineBase + gstAmount
+    val appliedGstRate = if (item.gstRate == -1.0) item.customGstRate ?: 0.0 else item.gstRate
+    val lineBase: Double = item.quantity * item.rate
+    val gstAmount: Double = lineBase * appliedGstRate / 100.0
+    val lineTotal: Double = lineBase + gstAmount
 
     Column(
         modifier = Modifier
@@ -83,7 +82,11 @@ fun InvoiceItemRow(
                             onItemChange(item.copy(
                                 productId = product.id,
                                 productName = product.name,
-                                rate = product.salePrice ?: 0
+                                // A1 FIX: salePrice is in Paisa — divide by 100 to get Rupees for backend
+                                rate = (product.salePrice ?: 0) / 100.0,
+                                // A8 FIX: use product-specific gstRate, fallback to 0 if not set
+                                gstRate = product.gstRate ?: 0.0,
+                                customGstRate = null
                             ))
                             expanded = false
                         }
@@ -95,7 +98,7 @@ fun InvoiceItemRow(
         Row {
             OutlinedTextField(value = item.quantity.toString(), onValueChange = { onItemChange(item.copy(quantity = it.toIntOrNull()?.coerceAtLeast(1) ?: 1)) }, label = { Text("Qty") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
             Spacer(Modifier.width(8.dp))
-            OutlinedTextField(value = item.rate.toString(), onValueChange = { onItemChange(item.copy(rate = it.toIntOrNull()?.coerceAtLeast(0) ?: 0)) }, label = { Text("Rate") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            OutlinedTextField(value = item.rate.toString(), onValueChange = { onItemChange(item.copy(rate = it.toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0)) }, label = { Text("Rate (₹)") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
         }
         if (gstEnabled) {
             Spacer(Modifier.height(8.dp))
@@ -115,13 +118,14 @@ fun InvoiceItemRow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GstSelector(item: InvoiceItemUi, onItemChange: (InvoiceItemUi) -> Unit) {
-    val gstOptions = listOf("0%", "5%", "18%", "28%", "Other")
+    val gstOptions = listOf("0%", "5%", "12%", "18%", "28%", "Other")
     var expanded by remember { mutableStateOf(false) }
     val selectedLabel = when (item.gstRate) {
-        0f -> "0%"
-        5f -> "5%"
-        18f -> "18%"
-        28f -> "28%"
+        0.0  -> "0%"
+        5.0  -> "5%"
+        12.0 -> "12%"
+        18.0 -> "18%"
+        28.0 -> "28%"
         else -> "Other"
     }
 
@@ -142,11 +146,12 @@ private fun GstSelector(item: InvoiceItemUi, onItemChange: (InvoiceItemUi) -> Un
                             text = { Text(label) },
                             onClick = {
                                 val newGstRate = when (label) {
-                                    "0%" -> 0f
-                                    "5%" -> 5f
-                                    "18%" -> 18f
-                                    "28%" -> 28f
-                                    else -> -1f
+                                    "0%"  -> 0.0
+                                    "5%"  -> 5.0
+                                    "12%" -> 12.0
+                                    "18%" -> 18.0
+                                    "28%" -> 28.0
+                                    else  -> -1.0  // "Other" sentinel
                                 }
                                 onItemChange(item.copy(gstRate = newGstRate))
                                 expanded = false
@@ -157,10 +162,10 @@ private fun GstSelector(item: InvoiceItemUi, onItemChange: (InvoiceItemUi) -> Un
             }
         }
 
-        if (item.gstRate == -1f) {
+        if (item.gstRate == -1.0) {
             OutlinedTextField(
                 value = item.customGstRate?.toString() ?: "",
-                onValueChange = { onItemChange(item.copy(customGstRate = it.toFloatOrNull())) },
+                onValueChange = { onItemChange(item.copy(customGstRate = it.toDoubleOrNull())) },
                 label = { Text("Custom %") },
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)

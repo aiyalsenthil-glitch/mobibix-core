@@ -14,7 +14,7 @@ class JobStatusAdapter : JsonDeserializer<JobStatus> {
             JobStatus.valueOf(json.asString)
         } catch (e: IllegalArgumentException) {
             // Handle unknown status gracefully, perhaps default to a known state or throw an exception
-            JobStatus.RECEIVED // Default to RECEIVED if status is unknown
+            JobStatus.UNKNOWN // Fallback for future statuses — prevents crash when backend adds new states
         }
     }
 }
