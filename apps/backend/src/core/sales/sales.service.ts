@@ -277,6 +277,20 @@ export class SalesService {
         }
       }
 
+      // Check Serial Numbers Uniqueness
+      if (allSerials.length > 0) {
+        const existingSerials = await tx.invoiceItem.findMany({
+          where: {
+            invoice: { tenantId, status: { not: 'VOIDED' } },
+            serialNumbers: { hasSome: allSerials },
+          },
+          select: { id: true, serialNumbers: true },
+        });
+        if (existingSerials.length > 0) {
+          throw new BadRequestException('One or more Serial Numbers have already been sold');
+        }
+      }
+
       // Check IMEI Availability (Safe check)
       if (allImeis.length > 0) {
         const imeiRecords = await tx.iMEI.findMany({
@@ -319,7 +333,6 @@ export class SalesService {
           imeis: item.imeis,
           serialNumbers: item.serialNumbers,
           warrantyDays: item.warrantyDays ?? (product as any)?.warrantyDays ?? undefined,
-          warrantyEndAt: item.warrantyEndAt ? new Date(item.warrantyEndAt) : undefined,
           isSerialized: product?.isSerialized,
         };
       });
@@ -518,6 +531,7 @@ export class SalesService {
       );
       // 5. IMEI and Serial Number Validations (Update Flow)
       const newAllImeis: string[] = [];
+      const newAllSerials: string[] = [];
       const newImeisByProduct = new Map<string, string[]>();
 
       for (const item of dto.items) {
@@ -542,10 +556,27 @@ export class SalesService {
             newAllImeis.push(...item.imeis!);
             newImeisByProduct.set(item.shopProductId, item.imeis!);
           }
+          if (hasSerials) {
+            newAllSerials.push(...item.serialNumbers!);
+          }
         } else {
           if (hasImeis || hasSerials) {
             throw new BadRequestException(`Non-serialized product cannot have IMEIs or Serial Numbers`);
           }
+        }
+      }
+
+      if (newAllSerials.length > 0) {
+        // Check Serial Numbers Uniqueness
+        const existingSerials = await tx.invoiceItem.findMany({
+          where: {
+            invoice: { tenantId, status: { not: 'VOIDED' }, id: { not: invoiceId } },
+            serialNumbers: { hasSome: newAllSerials },
+          },
+          select: { id: true, serialNumbers: true },
+        });
+        if (existingSerials.length > 0) {
+          throw new BadRequestException('One or more Serial Numbers have already been sold');
         }
       }
 
@@ -632,10 +663,7 @@ export class SalesService {
         
         let warrantyDays = inputItem?.warrantyDays ?? (prod as any)?.warrantyDays;
         let warrantyEndAt: Date | undefined;
-
-        if (inputItem?.warrantyEndAt) {
-          warrantyEndAt = new Date(inputItem.warrantyEndAt);
-        } else if (warrantyDays !== undefined && warrantyDays > 0) {
+        if (warrantyDays !== undefined && warrantyDays > 0) {
           warrantyEndAt = new Date(invoiceDateActual);
           warrantyEndAt.setDate(warrantyEndAt.getDate() + warrantyDays);
         }
@@ -819,23 +847,51 @@ export class SalesService {
         );
       }
 
-      // 2. Revert Stock
-      for (const item of invoice.items) {
-        await this.stockService.recordStockIn(
-          tenantId,
-          invoice.shopId,
-          item.shopProductId,
-          item.quantity,
-          'ADJUSTMENT',
-          item.id,
-        );
+      // 2. Validate & Revert IMEIs
+      const linkedImeis = await tx.iMEI.findMany({
+        where: { invoiceId: invoice.id },
+        select: { id: true, imei: true, status: true, shopProductId: true }
+      });
+
+      const unreturnableImeis = linkedImeis.filter(i => i.status !== IMEIStatus.SOLD);
+      if (unreturnableImeis.length > 0) {
+        throw new BadRequestException('Cannot cancel invoice: One or more linked devices have been altered (e.g. Scrapped or Returned).');
       }
 
-      // 3. Revert IMEIs
-      await tx.iMEI.updateMany({
-        where: { invoiceId: invoice.id },
-        data: { invoiceId: null, status: IMEIStatus.IN_STOCK, soldAt: null },
+      if (linkedImeis.length > 0) {
+        await tx.iMEI.updateMany({
+          where: { invoiceId: invoice.id },
+          data: { invoiceId: null, status: IMEIStatus.IN_STOCK, soldAt: null },
+        });
+      }
+
+      // 3. Revert Stock via Ledger Entries (Bypass recordStockIn to avoid IMEI creation throws)
+      const products = await tx.shopProduct.findMany({
+        where: { id: { in: invoice.items.map((i) => i.shopProductId) } },
+        select: { id: true, type: true, isSerialized: true, costPrice: true },
       });
+      const prodMap = new Map(products.map((p) => [p.id, p]));
+
+      const ledgerEntries: any[] = [];
+      for (const item of invoice.items) {
+        const prod = prodMap.get(item.shopProductId);
+        if (prod && prod.type !== 'SERVICE' && !prod.isSerialized) {
+          ledgerEntries.push({
+            tenantId,
+            shopId: invoice.shopId,
+            shopProductId: item.shopProductId,
+            type: 'IN' as const,
+            quantity: item.quantity,
+            referenceType: 'ADJUSTMENT' as const,
+            referenceId: item.id,
+            costPerUnit: prod.costPrice || null,
+          });
+        }
+      }
+
+      if (ledgerEntries.length > 0) {
+        await tx.stockLedger.createMany({ data: ledgerEntries });
+      }
 
       // 4. Cancel Receipts
       await tx.receipt.updateMany({

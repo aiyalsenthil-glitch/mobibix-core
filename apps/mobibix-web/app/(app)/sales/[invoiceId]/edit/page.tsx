@@ -223,7 +223,6 @@ export default function EditInvoicePage() {
           imeis: item.imeis && item.imeis.length > 0 ? item.imeis : undefined,
           serialNumbers: item.serialNumbers && item.serialNumbers.length > 0 ? item.serialNumbers : undefined,
           warrantyDays: item.warrantyDays,
-          warrantyEndAt: item.warrantyEndAt,
         })),
       };
 
