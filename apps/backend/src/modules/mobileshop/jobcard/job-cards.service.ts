@@ -877,7 +877,12 @@ export class JobCardsService {
     if (dto.diagnosticCharge !== undefined)
       data.diagnosticCharge = dto.diagnosticCharge;
     if (dto.advancePaid !== undefined) data.advancePaid = dto.advancePaid;
-    if (dto.laborCharge !== undefined) data.laborCharge = dto.laborCharge;
+    if (dto.laborCharge !== undefined) {
+      if (dto.laborCharge < 0) {
+        throw new BadRequestException('Labor charge cannot be negative');
+      }
+      data.laborCharge = dto.laborCharge;
+    }
     if (dto.billType !== undefined) data.billType = dto.billType;
     if (dto.estimatedDelivery !== undefined)
       data.estimatedDelivery = dto.estimatedDelivery
@@ -1045,14 +1050,14 @@ export class JobCardsService {
 
     return this.prisma.$transaction(async (tx) => {
       // 3️⃣ HANDLE CANCELLATION / RETURN RISK MITIGATION
-      if (['CANCELLED', 'RETURNED'].includes(newStatus)) {
+      if (['CANCELLED', 'RETURNED', 'SCRAPPED'].includes(newStatus)) {
         // [Risk F-02] Finance Reconciliation
         const advancePaid = job.advancePaid || 0;
 
         if (advancePaid > 0) {
           if (!refundDetails) {
             throw new BadRequestException(
-              `Cannot cancel job with active advances (₹${advancePaid}). Refund details required.`,
+              `Cannot move job to ${newStatus} with active advances (₹${advancePaid}). Refund details required.`,
             );
           }
 
@@ -1075,7 +1080,7 @@ export class JobCardsService {
               mode: refundDetails.mode,
               referenceType: FinanceRefType.JOBCARD_ADVANCE,
               referenceId: job.id,
-              note: `Advance refund on Cancellation of Job ${job.jobNumber}`,
+              note: `Advance refund on Transition to ${newStatus} for Job ${job.jobNumber}`,
             },
           });
 
@@ -1117,9 +1122,9 @@ export class JobCardsService {
       // 4️⃣ Handle status-specific business logic
       if (newStatus === 'READY') {
         // 🚨 CRITICAL VALIDATION: Cannot mark READY without cost
-        if (!job.finalCost && !job.estimatedCost) {
+        if (!job.finalCost && !job.estimatedCost && !job.laborCharge) {
           throw new BadRequestException(
-            'Cannot mark job READY without cost. Please add Final Cost or Estimated Cost first.',
+            'Cannot mark job READY without cost. Please add Final Cost, Estimated Cost, or Labor Charge first.',
           );
         }
 
@@ -1458,14 +1463,11 @@ export class JobCardsService {
     });
 
     for (const invoice of invoices) {
-      if (invoice.status === InvoiceStatus.PAID) {
+      if (invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.PARTIALLY_PAID) {
         // [Risk F-03] Avoid voiding paid invoices without explicit refund flow
-        // In updateStatus, we already handle advance refunds if cancelled/returned.
-        // If it's a full invoice, we should probably warn or skip.
-        console.log(
-          `⚠️ Skipping void for PAID invoice ${invoice.invoiceNumber}. Requires manual reversal or credit note.`,
+        throw new BadRequestException(
+          `Cannot automatically void invoice ${invoice.invoiceNumber}. The invoice has payments against it. Please reconcile or refund the invoice explicitly before terminating this job.`,
         );
-        continue;
       }
 
       await prisma.invoice.update({
