@@ -324,7 +324,7 @@ export default function OnboardingPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>GST / Tax Registration Number</Label>
+                  <Label>GST / Tax Registration Number (Optional)</Label>
                   <Input 
                     name="gstNumber" 
                     value={formData.gstNumber || ""} 

@@ -243,7 +243,7 @@ fun TenantRequiredScreen(
         OutlinedTextField(
             value = gstNumber,
             onValueChange = { gstNumber = it },
-            label = { Text("GST / Tax Registration") },
+            label = { Text("GST / Tax Registration (Optional)") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )

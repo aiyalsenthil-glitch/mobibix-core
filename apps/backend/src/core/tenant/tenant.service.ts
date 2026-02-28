@@ -19,6 +19,7 @@ import { normalizePhone } from '../../common/utils/phone.util';
 import { getCreateAudit } from '../audit/audit.helper';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TenantWelcomeEvent } from '../../common/email/email.events';
+import { DocumentNumberService } from '../../common/services/document-number.service';
 
 @Injectable()
 export class TenantService {
@@ -32,6 +33,7 @@ export class TenantService {
     private readonly planRulesService: PlanRulesService,
     private readonly eventEmitter: EventEmitter2,
     private readonly partnersService: PartnersService,
+    private readonly docNumberService: DocumentNumberService,
   ) {}
 
   /**
@@ -147,6 +149,36 @@ export class TenantService {
     this.logger.log(
       `✅ Tenant onboarding completed: ${tenant.name} (${tenant.code}) for user ${userId}`,
     );
+
+    // --- AUTO-CREATE FIRST SHOP ---
+    if (effectiveTenantType === 'MOBILE_SHOP') {
+      try {
+        const invoicePrefix = dto.name.substring(0, 3).toUpperCase();
+        const firstShop = await this.prisma.shop.create({
+          data: {
+            tenantId: tenant.id,
+            name: `${dto.name} - Main Branch`,
+            phone: dto.contactPhone || '',
+            addressLine1: dto.addressLine1,
+            city: dto.city,
+            state: dto.state,
+            pincode: dto.pincode,
+            invoicePrefix: invoicePrefix,
+            gstNumber: dto.gstNumber,
+            gstEnabled: !!dto.gstNumber,
+            isActive: true, // Auto activate
+          },
+        });
+
+        await this.docNumberService.initializeShopDocumentSettings(
+          firstShop.id,
+          invoicePrefix,
+        );
+        this.logger.log(`✅ Auto-created first shop for tenant ${tenant.id} (${firstShop.id})`);
+      } catch (err: any) {
+        this.logger.error(`Failed to auto-create first shop for ${tenant.id}: ${err.message}`);
+      }
+    }
 
     // Module 1: Apply Promo Code Logic
     if (dto.promoCode) {
