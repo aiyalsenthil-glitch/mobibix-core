@@ -103,4 +103,9 @@ export class SalesInvoiceDto {
   @IsOptional()
   @IsBoolean()
   pricesIncludeTax?: boolean; // Whether displayed prices include GST
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  loyaltyPointsRedeemed?: number;
 }

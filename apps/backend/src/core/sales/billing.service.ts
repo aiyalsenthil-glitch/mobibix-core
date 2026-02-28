@@ -17,6 +17,7 @@ import {
 } from './invoice-calculator.util';
 import { assertGstinFormat } from '../../common/utils/gstin.util';
 import { v4 as uuidv4 } from 'uuid';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 
 export interface BillingItem {
   shopProductId: string;
@@ -59,6 +60,8 @@ export interface CreateInvoiceOptions {
   skipStockUpdate?: boolean; // For Repair (stock already consumed)
   skipReceipt?: boolean; // If strictly credit?
 
+  loyaltyPointsRedeemed?: number;
+
   shop?: any; // Optional: Pass already fetched shop to avoid redundant lookup
 }
 
@@ -71,6 +74,7 @@ export class BillingService {
     private readonly stockService: StockService,
     private readonly receiptsService: ReceiptsService,
     private readonly documentNumberService: DocumentNumberService,
+    private readonly loyaltyService: LoyaltyService,
   ) {}
 
   private toPaisa(amount: number): number {
@@ -146,6 +150,40 @@ export class BillingService {
         hsnCode: item.hsnCode,
       };
     });
+
+    // 2b. Handle Loyalty Redemption (PRE-CALCULATION)
+    let loyaltyDiscountPaise = 0;
+    if (options.loyaltyPointsRedeemed && options.loyaltyPointsRedeemed > 0 && options.customerId) {
+        // First calculation to get base subtotal for validation
+        const baseCalc = calculateInvoiceTotals(lineInputs, {
+            isIndianGSTInvoice: !!isIndianGSTInvoice,
+            pricesIncludeTax: !!options.pricesIncludeTax,
+            shopStateCode: shop.state,
+            customerStateCode: options.customerState,
+            customerGstin: options.customerGstin,
+        });
+
+        const validation = await this.loyaltyService.validateRedemption(
+            tenantId,
+            options.customerId,
+            options.loyaltyPointsRedeemed,
+            baseCalc.subTotalPaisa,
+        );
+
+        if (validation.success) {
+            loyaltyDiscountPaise = validation.discountPaise;
+            // Add negative line item for discount
+            lineInputs.push({
+                shopProductId: 'LOYALTY_REDEMPTION',
+                quantity: 1,
+                ratePaisa: -loyaltyDiscountPaise,
+                gstRate: 0,
+                hsnCode: '99', // SAC for services/discounts
+            });
+        } else {
+            throw new BadRequestException(`Loyalty redemption failed: ${validation.error}`);
+        }
+    }
 
     // 3. Calculate Totals
     const calc = calculateInvoiceTotals(lineInputs, {
@@ -354,6 +392,19 @@ export class BillingService {
           throw new BadRequestException('Concurrency Error: One or more IMEIs are no longer IN_STOCK');
         }
       }
+    }
+
+
+
+    // 12. Complete Redemption Transaction
+    if (loyaltyDiscountPaise > 0 && options.loyaltyPointsRedeemed && options.customerId) {
+        await this.loyaltyService.redeemPoints(
+            tenantId,
+            options.customerId,
+            options.loyaltyPointsRedeemed,
+            invoice.id,
+            invoice.invoiceNumber
+        );
     }
 
     return invoice;

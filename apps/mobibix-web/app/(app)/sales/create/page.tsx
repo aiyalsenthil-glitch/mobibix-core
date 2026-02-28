@@ -12,6 +12,8 @@ import { useInvoiceForm } from "@/hooks/useInvoiceForm";
 import { InvoiceCustomerSelector } from "@/components/sales/InvoiceCustomerSelector";
 import { InvoiceProductTable } from "@/components/sales/InvoiceProductTable";
 import { Trash2 } from "lucide-react";
+import { LoyaltyRedemptionInput } from "@/components/loyalty/LoyaltyRedemptionInput";
+import { getCustomerLoyaltyBalance } from "@/services/loyalty.api";
 
 export default function CreateInvoicePage() {
   const router = useRouter();
@@ -50,6 +52,7 @@ export default function CreateInvoicePage() {
     removeItem,
     updateItem,
     totals: { subtotal, totalGst, grandTotal },
+    loyalty,
     isInterState,
   } = useInvoiceForm({ 
     shopGstEnabled: selectedShop?.gstEnabled,
@@ -109,6 +112,19 @@ export default function CreateInvoicePage() {
       console.error("Failed to load products:", err);
     }
   };
+
+  // Fetch Loyalty Balance when customer changes
+  useEffect(() => {
+    if (selectedCustomer?.id) {
+      getCustomerLoyaltyBalance(selectedCustomer.id).then((balance) => {
+        loyalty.setBalance(balance);
+      });
+    } else {
+      loyalty.setBalance(0);
+      loyalty.setPoints(0);
+      loyalty.setDiscount(0);
+    }
+  }, [selectedCustomer?.id]);
 
   const handleCustomerModalClose = () => {
     setIsCustomerModalOpen(false);
@@ -214,6 +230,7 @@ export default function CreateInvoicePage() {
           serialNumbers: item.serialNumbers && item.serialNumbers.length > 0 ? item.serialNumbers : undefined,
           warrantyDays: item.warrantyDays,
         })),
+        loyaltyPointsRedeemed: loyalty.points > 0 ? loyalty.points : undefined,
       };
 
       // Handle Payment Modes
@@ -425,6 +442,25 @@ export default function CreateInvoicePage() {
               onRemoveItem={removeItem}
               onNewProduct={() => setIsProductModalOpen(true)}
               imeiHighlight={imeiHighlight}
+            />
+          </div>
+
+          {/* Loyalty Redemption */}
+          <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Loyalty Rewards
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Redeem customer loyalty points for an instant discount.
+              </p>
+            </div>
+            <LoyaltyRedemptionInput
+              customerId={selectedCustomer?.id}
+              balance={loyalty.balance}
+              invoiceSubTotal={Math.round(subtotal * 100)} // In Paisa
+              onRedemptionChange={loyalty.setPoints}
+              onDiscountChange={(discountPaise) => loyalty.setDiscount(discountPaise / 100)}
             />
           </div>
         </div>

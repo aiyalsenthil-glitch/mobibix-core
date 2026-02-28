@@ -53,6 +53,11 @@ export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoice
     { id: crypto.randomUUID(), mode: "CASH", amount: "" },
   ]);
 
+  // Loyalty Redemption State
+  const [loyaltyPoints, setLoyaltyPoints] = useState<number>(0);
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState<number>(0); // In Rupees
+  const [customerBalance, setCustomerBalance] = useState<number>(0);
+
   // Actions
   const addItem = useCallback(() => {
     setItems((prev) => [
@@ -174,7 +179,7 @@ export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoice
   }, 0);
 
   const totalGst = items.reduce((sum, item) => sum + item.gstAmount, 0);
-  const grandTotal = subtotal + totalGst;
+  const grandTotal = Math.max(0, subtotal + totalGst - loyaltyDiscount);
   const shopStateNormalized = normalizeStateCode(shopState);
   const customerStateNormalized = normalizeStateCode(selectedCustomer?.state);
 
@@ -204,6 +209,14 @@ export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoice
       subtotal,
       totalGst,
       grandTotal,
+    },
+    loyalty: {
+      points: loyaltyPoints,
+      setPoints: setLoyaltyPoints,
+      discount: loyaltyDiscount,
+      setDiscount: setLoyaltyDiscount,
+      balance: customerBalance,
+      setBalance: setCustomerBalance,
     },
     isInterState,
   };
