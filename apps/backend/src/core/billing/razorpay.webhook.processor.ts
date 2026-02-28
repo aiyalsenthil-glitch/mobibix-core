@@ -12,6 +12,7 @@ import {
   PaymentStatus,
   AutopayStatus,
 } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Processor('REMOVED_PAYMENT_INFRA-webhooks')
 export class RazorpayWebhookProcessor extends WorkerHost {
@@ -24,6 +25,7 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     private readonly emailService: EmailService,
     @InjectMetric('webhooks_processed_total')
     private readonly webhooksProcessedCounter: Counter<string>,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     super();
   }
@@ -164,6 +166,13 @@ export class RazorpayWebhookProcessor extends WorkerHost {
             this.logger.error(`Failed to generate invoice for payment ${internalPayment.id}`, invErr);
         }
 
+        // Trigger Cache Refresh
+        try {
+            await this.eventEmitter.emitAsync('payment.webhook.success', { paymentId: internalPayment.id });
+        } catch (evtErr) {
+            this.logger.error(`Failed to emit payment.webhook.success for ${internalPayment.id}`, evtErr);
+        }
+
     } else if (paymentLinkId) {
          const subscription = await this.prisma.tenantSubscription.findFirst({
             where: { providerPaymentLinkId: paymentLinkId }
@@ -275,6 +284,13 @@ export class RazorpayWebhookProcessor extends WorkerHost {
             this.logger.log(`✅ Invoice generated for AutoPay payment ${internalPayment.id}`);
         } catch(invErr) {
             this.logger.error(`Failed to generate invoice for AutoPay payment ${internalPayment.id}`, invErr);
+        }
+
+        // Trigger Cache Refresh
+        try {
+            await this.eventEmitter.emitAsync('payment.webhook.success', { paymentId: internalPayment.id });
+        } catch (evtErr) {
+            this.logger.error(`Failed to emit payment.webhook.success for ${internalPayment.id}`, evtErr);
         }
 
       } catch (renewalErr) {

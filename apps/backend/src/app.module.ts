@@ -150,10 +150,16 @@ type LoggerRequest = {
     HealthModule,
     MobileShopModule,
     LedgerModule,
-    CacheModule.register({
+    CacheModule.registerAsync({
       isGlobal: true,
-      ttl: 60,
-      max: 1000,
+      imports: [ConfigModule],
+      useFactory: () => ({
+        store: require('cache-manager-ioredis'),
+        host: process.env.REDIS_HOST || 'localhost',
+        port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
+        password: process.env.REDIS_PASSWORD || undefined,
+        ttl: 60,
+      }),
     }),
   ],
   controllers: [AppController],

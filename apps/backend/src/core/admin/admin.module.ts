@@ -14,9 +14,26 @@ import { AdminMdmController } from './mdm/admin-mdm.controller';
 import { AdminSystemController } from './system/admin-system.controller';
 import { AdminCorsController } from './cors/admin-cors.controller';
 import { AdminCorsService } from './cors/admin-cors.service';
+import { BullModule } from '@nestjs/bullmq';
+import { AdminCacheService } from './cache/admin-cache.service';
+import { AdminJobsCronService } from './jobs/admin-jobs.cron';
+import { RefreshKpiCacheJob } from './jobs/refresh-kpi-cache.job';
+import { DashboardController } from './dashboard/dashboard.controller';
+import { MobibixAdminController } from './products/mobibix/mobibix-admin.controller';
+import { GympilotAdminController } from './products/mobibix/mobibix-admin.controller';
+import { RevenueAdminController } from './revenue/revenue-admin.controller';
 
 @Module({
-  imports: [AuthModule, TenantModule, BillingModule, PlansModule, AuditModule],
+  imports: [
+    AuthModule, 
+    TenantModule, 
+    BillingModule, 
+    PlansModule, 
+    AuditModule,
+    BullModule.registerQueue({
+      name: 'admin-jobs',
+    }),
+  ],
   controllers: [
     AdminController,
     AdminWebhooksController,
@@ -27,9 +44,18 @@ import { AdminCorsService } from './cors/admin-cors.service';
     AdminMdmController,
     AdminSystemController,
     AdminCorsController,
+    DashboardController,
+    MobibixAdminController,
+    GympilotAdminController,
+    RevenueAdminController,
   ],
-  providers: [AdminCorsService],
-  exports: [AdminCorsService],
+  providers: [
+    AdminCorsService,
+    AdminCacheService,
+    AdminJobsCronService,
+    RefreshKpiCacheJob,
+  ],
+  exports: [AdminCorsService, AdminCacheService],
 })
 export class AdminModule {}
 
