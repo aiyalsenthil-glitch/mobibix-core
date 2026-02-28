@@ -14,7 +14,8 @@ export type JobStatus =
   | "READY"
   | "DELIVERED"
   | "CANCELLED"
-  | "RETURNED";
+  | "RETURNED"
+  | "SCRAPPED";
 
 export interface JobCard {
   id: string;
@@ -134,6 +135,7 @@ export interface UpdateJobCardDto {
   billType?: string;
   estimatedDelivery?: Date | string;
   assignedToUserId?: string | null;
+  laborCharge?: number;
 }
 
 /**
@@ -233,12 +235,13 @@ export async function updateJobCardStatus(
   shopId: string,
   jobCardId: string,
   status: JobStatus,
+  refundDetails?: { amount: number; mode: string },
 ): Promise<JobCard> {
   const response = await authenticatedFetch(
     `/mobileshop/shops/${shopId}/job-cards/${jobCardId}/status`,
     {
       method: "PATCH",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, refundDetails }),
     },
   );
 

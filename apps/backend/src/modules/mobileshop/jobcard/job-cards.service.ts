@@ -582,8 +582,8 @@ export class JobCardsService {
         `Job card not found: ${jobId} in shop ${shopId}`,
       );
 
-    // 🛡️ GUARD: Cannot add parts after READY
-    if (['READY', 'DELIVERED', 'CANCELLED', 'RETURNED'].includes(job.status)) {
+    // 🛡️ GUARD: Cannot add parts after READY or terminal states
+    if (['READY', 'DELIVERED', 'CANCELLED', 'RETURNED', 'SCRAPPED'].includes(job.status)) {
       throw new BadRequestException(
         'Cannot add parts: Job has moved past the parts stage. Create a new job or use credit note for changes.',
       );
@@ -745,8 +745,8 @@ export class JobCardsService {
     });
     if (!job) throw new NotFoundException('Job not found');
 
-    // 🛡️ GUARD: Cannot remove parts after READY
-    if (['READY', 'DELIVERED', 'CANCELLED'].includes(job.status)) {
+    // 🛡️ GUARD: Cannot remove parts after READY or terminal states
+    if (['READY', 'DELIVERED', 'CANCELLED', 'RETURNED', 'SCRAPPED'].includes(job.status)) {
       throw new BadRequestException(
         'Cannot remove parts: Job has moved past the parts stage. Create a new job or use credit note for changes.',
       );
@@ -820,7 +820,7 @@ export class JobCardsService {
       throw new BadRequestException('Job not found');
     }
 
-    if (['DELIVERED', 'CANCELLED'].includes(job.status)) {
+    if (['DELIVERED', 'CANCELLED', 'RETURNED', 'SCRAPPED'].includes(job.status)) {
       throw new BadRequestException('Job is locked');
     }
 
