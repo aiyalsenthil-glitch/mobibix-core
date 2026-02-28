@@ -20,11 +20,12 @@ class JobViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(JobListUiState())
     val uiState: StateFlow<JobListUiState> = _uiState.asStateFlow()
 
+    // Holds the complete un-filtered list for accurate count badges
     private var allJobs: List<JobCardResponse> = emptyList()
 
     fun loadJobs(shopId: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(loading = true)
+            _uiState.value = _uiState.value.copy(loading = true, error = null)
             try {
                 val jobs = repository.getJobs(shopId)
                 allJobs = jobs
@@ -57,17 +58,17 @@ class JobViewModel @Inject constructor(
                 job.jobNumber.contains(query, ignoreCase = true) ||
                 job.customerName.contains(query, ignoreCase = true) ||
                 job.customerPhone.contains(query, ignoreCase = true) ||
-                (job.deviceModel.contains(query, ignoreCase = true))
+                job.deviceModel.contains(query, ignoreCase = true) ||
+                (job.deviceSerial?.contains(query, ignoreCase = true) == true)
             }
-            
-            val matchesStatus = if (status == null) true else job.status == status
-            
+            val matchesStatus = status == null || job.status == status
             matchesQuery && matchesStatus
         }
 
         _uiState.value = _uiState.value.copy(
             loading = false,
-            jobs = filtered,
+            jobs = allJobs,           // full list — used for count badges per status
+            filteredJobs = filtered,  // filtered list — displayed in the LazyColumn
             error = null
         )
     }
@@ -75,7 +76,8 @@ class JobViewModel @Inject constructor(
 
 data class JobListUiState(
     val loading: Boolean = false,
-    val jobs: List<JobCardResponse> = emptyList(),
+    val jobs: List<JobCardResponse> = emptyList(),          // All jobs (for count badges)
+    val filteredJobs: List<JobCardResponse> = emptyList(),  // Filtered for display
     val error: String? = null,
     val searchQuery: String = "",
     val statusFilter: JobStatus? = null

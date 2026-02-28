@@ -1,5 +1,6 @@
 package com.aiyal.mobibix.ui.features.jobs
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,11 +10,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,6 +27,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.aiyal.mobibix.data.network.JobCardResponse
 import com.aiyal.mobibix.model.JobStatus
+import java.text.NumberFormat
+import java.util.Locale
 
 private val TealAccent = Color(0xFF00C896)
 
@@ -43,14 +49,14 @@ fun JobListScreen(
     Scaffold(
         floatingActionButton = {
             if (isOwner) {
-                FloatingActionButton(
+                ExtendedFloatingActionButton(
                     onClick = { navController.navigate("create_job") },
                     containerColor = TealAccent,
                     contentColor = Color.White,
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Create Job")
-                }
+                    shape = RoundedCornerShape(16.dp),
+                    icon = { Icon(Icons.Filled.Add, null) },
+                    text = { Text("New Job", fontWeight = FontWeight.Bold) }
+                )
             }
         }
     ) { paddingValues ->
@@ -60,17 +66,10 @@ fun JobListScreen(
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // ── Premium Header ──
-            Surface(
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            // ── Header ──
+            Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                    Text(
-                        "Job Cards",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text("Job Cards", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Text(
                         "Track and manage repair jobs",
                         style = MaterialTheme.typography.bodySmall,
@@ -79,80 +78,112 @@ fun JobListScreen(
                 }
             }
 
-            // ── Search & Filter ──
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                OutlinedTextField(
-                    value = uiState.searchQuery,
-                    onValueChange = viewModel::onSearchQueryChanged,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    placeholder = { Text("Search by No, Customer, Device") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(14.dp)
-                )
-                LazyRow(
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    item {
-                        FilterChip(
-                            selected = uiState.statusFilter == null,
-                            onClick = { viewModel.onStatusFilterChanged(null) },
-                            label = { Text("All") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = TealAccent.copy(alpha = 0.15f),
-                                selectedLabelColor = TealAccent
-                            )
+            // ── Search ──
+            OutlinedTextField(
+                value = uiState.searchQuery,
+                onValueChange = viewModel::onSearchQueryChanged,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("Search by No., Customer, Device") },
+                leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp)
+            )
+
+            // ── Status filter chips with count badges ──
+            val jobCountByStatus = uiState.jobs.groupBy { it.status }.mapValues { it.value.size }
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    FilterChip(
+                        selected = uiState.statusFilter == null,
+                        onClick = { viewModel.onStatusFilterChanged(null) },
+                        label = { Text("All (${uiState.jobs.size})") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = TealAccent.copy(alpha = 0.15f),
+                            selectedLabelColor = TealAccent
                         )
-                    }
-                    items(JobStatus.values()) { status ->
-                        FilterChip(
-                            selected = uiState.statusFilter == status,
-                            onClick = { viewModel.onStatusFilterChanged(status) },
-                            label = { Text(status.name.replace("_", " ")) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = TealAccent.copy(alpha = 0.15f),
-                                selectedLabelColor = TealAccent
+                    )
+                }
+                items(JobStatus.entries.toTypedArray()) { status ->
+                    val count = jobCountByStatus[status] ?: 0
+                    FilterChip(
+                        selected = uiState.statusFilter == status,
+                        onClick = { viewModel.onStatusFilterChanged(status) },
+                        label = {
+                            Text(
+                                if (count > 0) "${status.name.replace("_", " ")} ($count)"
+                                else status.name.replace("_", " ")
                             )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = TealAccent.copy(alpha = 0.15f),
+                            selectedLabelColor = TealAccent
                         )
-                    }
+                    )
                 }
             }
 
             // ── Content ──
-            Box(modifier = Modifier.fillMaxSize()) {
-                if (uiState.loading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = TealAccent
-                    )
-                } else if (uiState.error != null) {
-                    Text(
-                        text = uiState.error!!,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center).padding(16.dp)
-                    )
-                } else if (uiState.jobs.isEmpty()) {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("No jobs found", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(8.dp))
-                        Text("Tap + to create a new job", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+            PullToRefreshBox(
+                isRefreshing = uiState.loading,
+                onRefresh = { viewModel.loadJobs(shopId) },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                when {
+                    uiState.loading -> {
+                        LazyColumn(
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(5) { ShimmerJobCard() }
+                        }
                     }
-                } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(uiState.jobs) { job ->
-                            PremiumJobCard(
-                                job = job,
-                                onClick = { navController.navigate("job_detail/${job.id}") }
+                    uiState.error != null -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize().padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Outlined.CloudOff, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.outlineVariant)
+                            Spacer(Modifier.height(12.dp))
+                            Text("Couldn't load jobs", style = MaterialTheme.typography.titleMedium)
+                            Text(uiState.error ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(16.dp))
+                            Button(onClick = { viewModel.loadJobs(shopId) }) { Text("Retry") }
+                        }
+                    }
+                    uiState.filteredJobs.isEmpty() -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize().padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Outlined.Inbox, null, Modifier.size(56.dp), tint = MaterialTheme.colorScheme.outlineVariant)
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                if (uiState.statusFilter != null || uiState.searchQuery.isNotBlank()) "No jobs match your filter"
+                                else "No jobs yet",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            Text("Tap + to create a new job", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                        }
+                    }
+                    else -> {
+                        LazyColumn(
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp, bottom = 88.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(uiState.filteredJobs, key = { it.id }) { job ->
+                                PremiumJobCard(
+                                    job = job,
+                                    onClick = { navController.navigate("job_detail/${job.id}") }
+                                )
+                            }
                         }
                     }
                 }
@@ -161,76 +192,124 @@ fun JobListScreen(
     }
 }
 
+// ─── Shimmer skeleton ────────────────────────
+@Composable
+private fun ShimmerJobCard() {
+    val shimmerColors = listOf(
+        MaterialTheme.colorScheme.surfaceVariant.copy(0.8f),
+        MaterialTheme.colorScheme.surfaceVariant.copy(0.4f),
+        MaterialTheme.colorScheme.surfaceVariant.copy(0.8f)
+    )
+    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
+    val offsetX by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1000f,
+        animationSpec = infiniteRepeatable(tween(1200, easing = LinearEasing)), label = "shimmer"
+    )
+    val brush = Brush.linearGradient(
+        shimmerColors,
+        start = Offset(offsetX, 0f), end = Offset(offsetX + 300f, 0f)
+    )
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                Box(Modifier.height(18.dp).width(80.dp).background(brush, RoundedCornerShape(4.dp)))
+                Box(Modifier.height(18.dp).width(60.dp).background(brush, RoundedCornerShape(8.dp)))
+            }
+            Box(Modifier.height(16.dp).fillMaxWidth(0.6f).background(brush, RoundedCornerShape(4.dp)))
+            Box(Modifier.height(14.dp).fillMaxWidth(0.45f).background(brush, RoundedCornerShape(4.dp)))
+            Box(Modifier.height(12.dp).fillMaxWidth(0.8f).background(brush, RoundedCornerShape(4.dp)))
+        }
+    }
+}
+
+// ─── Job card with financials row ────────────
 @Composable
 fun PremiumJobCard(job: JobCardResponse, onClick: () -> Unit) {
+    val formatter = NumberFormat.getCurrencyInstance(Locale.Builder().setLanguage("en").setRegion("IN").build())
+
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // ── Top row: job number + status chip ──
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "#${job.jobNumber}",
+                    "#${job.jobNumber}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                PremiumStatusChip(status = job.status.name)
+                JobStatusChip(job.status)
             }
-            Spacer(modifier = Modifier.height(10.dp))
+
+            // ── Customer & device ──
             Text(
-                text = job.customerName,
+                job.customerName,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "${job.deviceBrand} ${job.deviceModel} • ${job.deviceType}",
+                "${job.deviceBrand} ${job.deviceModel} · ${job.deviceType}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = job.customerComplaint,
+                job.customerComplaint,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-        }
-    }
-}
 
-@Composable
-fun PremiumStatusChip(status: String) {
-    val (bgColor, textColor) = when (status.uppercase()) {
-        "IN_PROGRESS", "RECEIVED" -> TealAccent.copy(alpha = 0.12f) to TealAccent
-        "WAITING_FOR_PARTS" -> Color(0xFFF59E0B).copy(alpha = 0.12f) to Color(0xFFF59E0B)
-        "READY", "COMPLETED" -> Color(0xFF3B82F6).copy(alpha = 0.12f) to Color(0xFF3B82F6)
-        "DELIVERED" -> Color(0xFF8B5CF6).copy(alpha = 0.12f) to Color(0xFF8B5CF6)
-        "CANCELLED" -> Color(0xFFEF4444).copy(alpha = 0.12f) to Color(0xFFEF4444)
-        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.12f) to MaterialTheme.colorScheme.outline
-    }
-    Surface(
-        color = bgColor,
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Text(
-            status.replace("_", " "),
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = textColor
-        )
+            // ── Financial summary row ──
+            val hasFinancials = (job.estimatedCost ?: 0.0) > 0 || job.advancePaid > 0
+            if (hasFinancials) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(0.5f))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    job.estimatedCost?.let { cost ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Outlined.CurrencyRupee, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(formatter.format(cost), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    if (job.advancePaid > 0) {
+                        Surface(
+                            color = TealAccent.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                "Adv: ${formatter.format(job.advancePaid)}",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TealAccent,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                    job.estimatedDelivery?.takeIf { it.isNotBlank() }?.let { del ->
+                        Spacer(Modifier.weight(1f))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Outlined.CalendarToday, null, Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(del.take(10), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
