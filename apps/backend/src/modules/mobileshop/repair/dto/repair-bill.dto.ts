@@ -93,4 +93,9 @@ export class RepairBillDto {
   @IsBoolean()
   @IsOptional()
   deliverImmediately?: boolean;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  loyaltyPointsRedeemed?: number;
 }

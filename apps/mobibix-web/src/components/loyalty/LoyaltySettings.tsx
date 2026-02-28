@@ -40,8 +40,15 @@ export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
 
   const handleChange = (field: keyof LoyaltyConfig, value: string) => {
     if (!config) return;
-    const numValue = field === 'pointValueInRupees' ? parseFloat(value) : parseInt(value);
-    setConfig({ ...config, [field]: isNaN(numValue) ? 0 : numValue });
+    let numValue: any;
+    if (field === 'pointValueInRupees') {
+      numValue = parseFloat(value);
+    } else if (field === 'expiryDays' || field === 'minInvoiceForEarn') {
+      numValue = value === "" ? null : parseInt(value);
+    } else {
+      numValue = parseInt(value);
+    }
+    setConfig({ ...config, [field]: isNaN(numValue) && numValue !== null ? 0 : numValue });
   };
 
   const handleSave = async () => {
@@ -154,6 +161,21 @@ export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
               />
               <p className="text-[10px] text-muted-foreground italic">Number of points awarded per unit spent.</p>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="minInvoice">Min Invoice Value (₹)</Label>
+              <div className="relative">
+                <Input
+                  id="minInvoice"
+                  type="number"
+                  value={config.minInvoiceForEarn ? config.minInvoiceForEarn / 100 : ""}
+                  onChange={(e) => handleChange('minInvoiceForEarn', e.target.value === "" ? "" : (parseInt(e.target.value) * 100).toString())}
+                  className="pl-8"
+                  placeholder="No minimum"
+                />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">₹</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground italic">Minimum bill value required to earn any points.</p>
+            </div>
             <div className="p-3 bg-amber-50 dark:bg-amber-900/10 rounded-lg border border-amber-100 dark:border-amber-800">
                <p className="text-xs text-amber-700 dark:text-amber-400 font-medium leading-relaxed">
                   Current Rule: Spend <span className="font-bold">₹{config.earnAmountPerPoint/100}</span> to earn <span className="font-bold">{config.pointsPerEarnUnit} point{config.pointsPerEarnUnit !== 1 ? 's' : ''}</span>.
@@ -200,6 +222,17 @@ export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">%</span>
               </div>
               <p className="text-[10px] text-muted-foreground italic">Maximum percentage of bill value that can be paid via points.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="expiryDays">Points Expiry (Days)</Label>
+              <Input
+                id="expiryDays"
+                type="number"
+                value={config.expiryDays || ""}
+                onChange={(e) => handleChange('expiryDays', e.target.value)}
+                placeholder="Never expires"
+              />
+              <p className="text-[10px] text-muted-foreground italic">Points will automatically expire after these many days.</p>
             </div>
           </CardContent>
         </Card>

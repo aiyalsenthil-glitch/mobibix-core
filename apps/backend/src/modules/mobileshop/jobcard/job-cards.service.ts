@@ -966,7 +966,7 @@ export class JobCardsService {
   async list(
     user,
     shopId: string,
-    filters?: { status?: JobStatus; customerName?: string },
+    filters?: { status?: JobStatus; search?: string },
   ) {
     try {
       await this.assertAccess(user, shopId);
@@ -983,17 +983,22 @@ export class JobCardsService {
       throw e;
     }
 
-    const where: Prisma.JobCardWhereInput = { shopId };
+    const where: Prisma.JobCardWhereInput = { 
+      tenantId: user.tenantId,
+      shopId 
+    };
 
     if (filters?.status) {
       where.status = filters.status;
     }
 
-    if (filters?.customerName) {
-      where.customerName = {
-        contains: filters.customerName,
-        mode: 'insensitive',
-      };
+    if (filters?.search) {
+      const search = filters.search.trim();
+      where.OR = [
+        { customerName: { contains: search, mode: 'insensitive' } },
+        { customerPhone: { contains: search, mode: 'insensitive' } },
+        { jobNumber: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     const jobCards = await this.prisma.jobCard.findMany({
@@ -1004,14 +1009,6 @@ export class JobCardsService {
         parts: user.role === 'OWNER' ? { include: { product: true } } : false,
       },
     });
-
-    // If Owner, map to include profit?
-    if (user.role === 'OWNER') {
-      // This might be expensive for list.
-      // But required? "Profit visible to OWNER only". implicit in details.
-      // User didn't strictly say "In list view".
-      // I'll skip profit in list for performance unless requested.
-    }
 
     return { jobCards, empty: false };
   }

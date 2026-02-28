@@ -94,7 +94,7 @@ export class LoyaltyService {
      */
     const result = await this.prisma.$queryRaw<Array<{ balance: number }>>`
       SELECT COALESCE(SUM(points), 0)::int as balance
-      FROM "LoyaltyTransaction"
+      FROM "mb_loyalty_transaction"
       WHERE "tenantId" = ${tenantId}
       AND "customerId" = ${customerId}
     `;
@@ -464,7 +464,7 @@ export class LoyaltyService {
         SELECT COUNT(DISTINCT "customerId") as count
         FROM (
           SELECT "customerId", SUM("points") as balance
-          FROM "LoyaltyTransaction"
+          FROM "mb_loyalty_transaction"
           WHERE "tenantId" = ${tenantId}
           GROUP BY "customerId"
           HAVING SUM("points") > 0

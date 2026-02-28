@@ -10,7 +10,6 @@ import {
 } from "@/services/shops.api";
 import { ShopDocumentSettings } from "@/components/shops/ShopDocumentSettings";
 import { ShopPrintSettings } from "@/components/shops/ShopPrintSettings";
-import { ShopLoyaltySettings } from "@/components/shops/ShopLoyaltySettings";
 import { StaffList } from "@/components/staff/StaffList";
 import { useRouter } from "next/navigation";
 
@@ -21,7 +20,7 @@ interface ShopSettingsViewProps {
 export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<
-    "GENERAL" | "PRINT" | "BANK" | "DOCUMENT" | "STAFF" | "LOYALTY"
+    "GENERAL" | "PRINT" | "BANK" | "DOCUMENT" | "STAFF"
   >("GENERAL");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -248,16 +247,6 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
         >
           Staff Management
         </button>
-        <button
-          onClick={() => setActiveTab("LOYALTY")}
-          className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
-            activeTab === "LOYALTY"
-              ? "border-teal-500 text-teal-600 dark:text-teal-400"
-              : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-          }`}
-        >
-          Loyalty Points
-        </button>
       </div>
 
       {/* Content Area */}
@@ -274,11 +263,6 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
         <ShopDocumentSettings shopId={shopId} />
       ) : activeTab === "STAFF" ? (
         <StaffList />
-      ) : activeTab === "LOYALTY" ? (
-        <ShopLoyaltySettings
-          shopId={shopId}
-          onUpdate={() => window.dispatchEvent(new CustomEvent("shopUpdated"))}
-        />
       ) : activeTab === "BANK" ? (
         <div className="bg-white dark:bg-stone-900/50 border border-gray-200 dark:border-white/5 rounded-xl p-8 animate-fade-in shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-8">

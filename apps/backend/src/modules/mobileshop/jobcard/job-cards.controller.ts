@@ -46,9 +46,9 @@ export class JobCardsController extends TenantScopedController {
     @Param('shopId') shopId: string,
     @Req() req: any,
     @Query('status') status?: JobStatus,
-    @Query('customerName') customerName?: string,
+    @Query('search') search?: string,
   ) {
-    return this.service.list(req.user, shopId, { status, customerName });
+    return this.service.list(req.user, shopId, { status, search });
   }
   @Get(':id')
   getOne(

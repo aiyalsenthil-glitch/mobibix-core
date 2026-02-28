@@ -272,6 +272,7 @@ export class RepairService {
         skipStockUpdate: false, // ERP-Correct: Stock now consumed ONLY on Invoice confirm
         skipReceipt: false,
         shop, // Passing shop object to avoid redundant lookup
+        loyaltyPointsRedeemed: dto.loyaltyPointsRedeemed,
       };
 
       const invoice = await this.billingService.createInvoice(options, tx);

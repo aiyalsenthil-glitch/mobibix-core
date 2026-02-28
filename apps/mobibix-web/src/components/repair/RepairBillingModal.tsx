@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { JobCard, RepairBillDto } from "@/services/jobcard.api";
+import { getCustomerLoyaltyBalance } from "@/services/loyalty.api";
+import { LoyaltyRedemptionInput } from "@/components/loyalty/LoyaltyRedemptionInput";
 
 interface RepairBillingModalProps {
   isOpen: boolean;
@@ -27,6 +29,11 @@ export function RepairBillingModal({
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false);
   const [deliverImmediately, setDeliverImmediately] = useState(false);
 
+  // Loyalty State
+  const [loyaltyBalance, setLoyaltyBalance] = useState<number>(0);
+  const [pointsRedeemed, setPointsRedeemed] = useState<number>(0);
+  const [loyaltyDiscountPaise, setLoyaltyDiscountPaise] = useState<number>(0);
+
   // Helper for currency format
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -35,13 +42,16 @@ export function RepairBillingModal({
     }).format(amount);
   };
 
-  // Initialize service charge
   useEffect(() => {
-      if (isOpen && job) {
-        // ERP-Correct: Service Amount is independent of Parts
-        // Default to estimatedCost or diagnosticCharge
-        const initialService = job.estimatedCost || job.diagnosticCharge || 0;
-        setServiceAmount(initialService);
+    if (isOpen && job) {
+      // ERP-Correct: Service Amount is independent of Parts
+      const initialService = job.estimatedCost || job.diagnosticCharge || 0;
+      setServiceAmount(initialService);
+
+      // Fetch loyalty balance if customer exists
+      if (job.customerId) {
+        getCustomerLoyaltyBalance(job.customerId).then(setLoyaltyBalance);
+      }
     }
   }, [isOpen, job]);
 
@@ -69,7 +79,8 @@ export function RepairBillingModal({
             rate: (p.product?.salePrice || 0) / 100,
             gstRate: billingMode === "WITH_GST" ? (p.product?.gstRate || 0) : 0
         })),
-        deliverImmediately
+        deliverImmediately,
+        loyaltyPointsRedeemed: pointsRedeemed > 0 ? pointsRedeemed : undefined
       };
 
       await onSubmit(dto);
@@ -95,7 +106,8 @@ export function RepairBillingModal({
   
   const total = partsTotal + serviceTotal + tax;
   const advance = job.advancePaid || 0; 
-  const payable = Math.max(0, total - advance);
+  const loyaltyDiscount = loyaltyDiscountPaise / 100;
+  const payable = Math.max(0, total - advance - loyaltyDiscount);
 
   if (!isOpen) return null;
 
@@ -218,18 +230,37 @@ export function RepairBillingModal({
                     <span>{formatCurrency(total)}</span>
                 </div>
                 
-                {advance > 0 && (
-                     <div className="flex justify-between text-teal-600 font-medium pt-2">
-                        <span>Less: Advance Paid</span>
-                        <span>- {formatCurrency(advance)}</span>
-                    </div>
-                )}
-                 <div className="flex justify-between font-bold text-xl text-indigo-600 pt-2 border-t border-dashed border-gray-300 mt-2">
-                    <span>Payable Now</span>
-                    <span>{formatCurrency(payable)}</span>
-                </div>
-             </div>
-          </div>
+                 {advance > 0 && (
+                      <div className="flex justify-between text-teal-600 font-medium pt-2">
+                         <span>Less: Advance Paid</span>
+                         <span>- {formatCurrency(advance)}</span>
+                     </div>
+                 )}
+                 {loyaltyDiscount > 0 && (
+                      <div className="flex justify-between text-blue-600 font-medium pt-1">
+                         <span>Less: Loyalty Discount</span>
+                         <span>- {formatCurrency(loyaltyDiscount)}</span>
+                     </div>
+                 )}
+                  <div className="flex justify-between font-bold text-xl text-indigo-600 pt-2 border-t border-dashed border-gray-300 mt-2">
+                     <span>Payable Now</span>
+                     <span>{formatCurrency(payable)}</span>
+                 </div>
+              </div>
+           </div>
+
+           {/* Loyalty Redemption */}
+           {job.customerId && (
+              <div className="mb-6">
+                <LoyaltyRedemptionInput 
+                  customerId={job.customerId}
+                  balance={loyaltyBalance}
+                  invoiceSubTotal={(partsTotal + serviceTotal) * 100} // Paisa
+                  onRedemptionChange={setPointsRedeemed}
+                  onDiscountChange={setLoyaltyDiscountPaise}
+                />
+              </div>
+           )}
 
           <div className="flex justify-end gap-3">
             <button

@@ -423,6 +423,7 @@ export interface RepairBillDto {
   paymentMode: string;
   pricesIncludeTax?: boolean;
   deliverImmediately?: boolean;
+  loyaltyPointsRedeemed?: number;
 }
 
 /**
