@@ -12,6 +12,9 @@ import { AdminAnalyticsController } from './analytics/admin-analytics.controller
 import { AdminTenantController } from './tenant/admin-tenant.controller';
 import { AdminMdmController } from './mdm/admin-mdm.controller';
 import { AdminSystemController } from './system/admin-system.controller';
+import { AdminUserController } from './system/admin-user.controller';
+import { AdminPartnerController } from './partners/admin-partner.controller';
+import { AdminAiController } from './analytics/admin-ai.controller';
 import { AdminCorsController } from './cors/admin-cors.controller';
 import { AdminCorsService } from './cors/admin-cors.service';
 import { BullModule } from '@nestjs/bullmq';
@@ -43,6 +46,9 @@ import { RevenueAdminController } from './revenue/revenue-admin.controller';
     AdminTenantController,
     AdminMdmController,
     AdminSystemController,
+    AdminUserController,
+    AdminPartnerController,
+    AdminAiController,
     AdminCorsController,
     DashboardController,
     MobibixAdminController,
