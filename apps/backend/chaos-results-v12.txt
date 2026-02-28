@@ -1,0 +1,1326 @@
+[Nest] 47964  - 28/02/2026, 4:22:15 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67bxwt000fle0cfvdhq2wr",
+          shopId: "cmm67by43000jle0cu2z6wk0g",
+          customerId: "cmm67bybe000nle0cl6lz665i",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:14.430Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 1000000,
+          gstAmount: 180000,
+          cgst: 90000,
+          sgst: 90000,
+          igst: 0,
+          totalAmount: 1180000,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67byf3000rle0cfprbj4lr",
+                quantity: 1,
+                rate: 1000000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 180000,
+                lineTotal: 1180000,
+                warrantyDays: undefined,
+                warrantyEndAt: undefined,
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+[Nest] 47964  - 28/02/2026, 4:22:15 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67bxwt000fle0cfvdhq2wr",
+          shopId: "cmm67by43000jle0cu2z6wk0g",
+          customerId: "cmm67bybe000nle0cl6lz665i",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:15.046Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 1000000,
+          gstAmount: 180000,
+          cgst: 90000,
+          sgst: 90000,
+          igst: 0,
+          totalAmount: 1180000,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67byf3000rle0cfprbj4lr",
+                quantity: 1,
+                rate: 1000000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 180000,
+                lineTotal: 1180000,
+                warrantyDays: undefined,
+                warrantyEndAt: undefined,
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+[Nest] 47964  - 28/02/2026, 4:22:15 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67bxwt000fle0cfvdhq2wr",
+          shopId: "cmm67by43000jle0cu2z6wk0g",
+          customerId: "cmm67bybe000nle0cl6lz665i",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:15.048Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 1000000,
+          gstAmount: 180000,
+          cgst: 90000,
+          sgst: 90000,
+          igst: 0,
+          totalAmount: 1180000,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67byf3000rle0cfprbj4lr",
+                quantity: 1,
+                rate: 1000000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 180000,
+                lineTotal: 1180000,
+                warrantyDays: undefined,
+                warrantyEndAt: undefined,
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+[Nest] 47964  - 28/02/2026, 4:22:17 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67bzy2001ole0cmkygbnbk",
+          shopId: "cmm67c05d001sle0ctayefpuk",
+          customerId: "cmm67c0cn001wle0cafhdfddw",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:16.957Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 10000,
+          gstAmount: 1800,
+          cgst: 900,
+          sgst: 900,
+          igst: 0,
+          totalAmount: 11800,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67c0eh001yle0c0ufzwdyf",
+                quantity: 1,
+                rate: 10000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 1800,
+                lineTotal: 11800,
+                warrantyDays: undefined,
+                warrantyEndAt: undefined,
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+[Nest] 47964  - 28/02/2026, 4:22:17 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67bzy2001ole0cmkygbnbk",
+          shopId: "cmm67c05d001sle0ctayefpuk",
+          customerId: "cmm67c0cn001wle0cafhdfddw",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:17.017Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 10000,
+          gstAmount: 1800,
+          cgst: 900,
+          sgst: 900,
+          igst: 0,
+          totalAmount: 11800,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67c0eh001yle0c0ufzwdyf",
+                quantity: 1,
+                rate: 10000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 1800,
+                lineTotal: 11800,
+                warrantyDays: undefined,
+                warrantyEndAt: undefined,
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 536ms {"data":[{"shopId":"cmm67c05d001sle0ctayefpuk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at ../src/core/sales/sales.service.ts:362:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 47964  - 28/02/2026, 4:22:17 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67bzy2001ole0cmkygbnbk",
+          shopId: "cmm67c05d001sle0ctayefpuk",
+          customerId: "cmm67c0cn001wle0cafhdfddw",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:16.955Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 10000,
+          gstAmount: 1800,
+          cgst: 900,
+          sgst: 900,
+          igst: 0,
+          totalAmount: 11800,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67c0eh001yle0c0ufzwdyf",
+                quantity: 1,
+                rate: 10000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 1800,
+                lineTotal: 11800,
+                warrantyDays: undefined,
+                warrantyEndAt: undefined,
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+[Nest] 47964  - 28/02/2026, 4:22:18 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67bzy2001ole0cmkygbnbk",
+          shopId: "cmm67c05d001sle0ctayefpuk",
+          customerId: "cmm67c0cn001wle0cafhdfddw",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:17.536Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 10000,
+          gstAmount: 1800,
+          cgst: 900,
+          sgst: 900,
+          igst: 0,
+          totalAmount: 11800,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67c0eh001yle0c0ufzwdyf",
+                quantity: 1,
+                rate: 10000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 1800,
+                lineTotal: 11800,
+                warrantyDays: undefined,
+                warrantyEndAt: undefined,
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+[Nest] 47964  - 28/02/2026, 4:22:18 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67bzy2001ole0cmkygbnbk",
+          shopId: "cmm67c05d001sle0ctayefpuk",
+          customerId: "cmm67c0cn001wle0cafhdfddw",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:17.536Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 10000,
+          gstAmount: 1800,
+          cgst: 900,
+          sgst: 900,
+          igst: 0,
+          totalAmount: 11800,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67c0eh001yle0c0ufzwdyf",
+                quantity: 1,
+                rate: 10000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 1800,
+                lineTotal: 11800,
+                warrantyDays: undefined,
+                warrantyEndAt: undefined,
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 613ms {"data":[{"shopId":"cmm67c05d001sle0ctayefpuk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at ../src/core/sales/sales.service.ts:362:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 819ms {"data":[{"shopId":"cmm67c05d001sle0ctayefpuk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at ../src/core/sales/sales.service.ts:362:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 47964  - 28/02/2026, 4:22:18 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67bzy2001ole0cmkygbnbk",
+          shopId: "cmm67c05d001sle0ctayefpuk",
+          customerId: "cmm67c0cn001wle0cafhdfddw",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:17.537Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 10000,
+          gstAmount: 1800,
+          cgst: 900,
+          sgst: 900,
+          igst: 0,
+          totalAmount: 11800,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67c0eh001yle0c0ufzwdyf",
+                quantity: 1,
+                rate: 10000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 1800,
+                lineTotal: 11800,
+                warrantyDays: undefined,
+                warrantyEndAt: undefined,
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+[Nest] 47964  - 28/02/2026, 4:22:18 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67bzy2001ole0cmkygbnbk",
+          shopId: "cmm67c05d001sle0ctayefpuk",
+          customerId: "cmm67c0cn001wle0cafhdfddw",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:17.549Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 10000,
+          gstAmount: 1800,
+          cgst: 900,
+          sgst: 900,
+          igst: 0,
+          totalAmount: 11800,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67c0eh001yle0c0ufzwdyf",
+                quantity: 1,
+                rate: 10000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 1800,
+                lineTotal: 11800,
+                warrantyDays: undefined,
+                warrantyEndAt: undefined,
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 1029ms {"data":[{"shopId":"cmm67c05d001sle0ctayefpuk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at ../src/core/sales/sales.service.ts:362:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 1239ms {"data":[{"shopId":"cmm67c05d001sle0ctayefpuk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at ../src/core/sales/sales.service.ts:362:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 47964  - 28/02/2026, 4:22:18 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67bzy2001ole0cmkygbnbk",
+          shopId: "cmm67c05d001sle0ctayefpuk",
+          customerId: "cmm67c0cn001wle0cafhdfddw",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:17.537Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 10000,
+          gstAmount: 1800,
+          cgst: 900,
+          sgst: 900,
+          igst: 0,
+          totalAmount: 11800,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67c0eh001yle0c0ufzwdyf",
+                quantity: 1,
+                rate: 10000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 1800,
+                lineTotal: 11800,
+                warrantyDays: undefined,
+                warrantyEndAt: undefined,
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 1444ms {"data":[{"shopId":"cmm67c05d001sle0ctayefpuk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at ../src/core/sales/sales.service.ts:362:23
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+[Nest] 47964  - 28/02/2026, 4:22:19 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67bzy2001ole0cmkygbnbk",
+          shopId: "cmm67c05d001sle0ctayefpuk",
+          customerId: "cmm67c0cn001wle0cafhdfddw",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:17.534Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 10000,
+          gstAmount: 1800,
+          cgst: 900,
+          sgst: 900,
+          igst: 0,
+          totalAmount: 11800,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67c0eh001yle0c0ufzwdyf",
+                quantity: 1,
+                rate: 10000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 1800,
+                lineTotal: 11800,
+                warrantyDays: undefined,
+                warrantyEndAt: undefined,
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+[Nest] 47964  - 28/02/2026, 4:22:19 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67bzy2001ole0cmkygbnbk",
+          shopId: "cmm67c05d001sle0ctayefpuk",
+          customerId: "cmm67c0cn001wle0cafhdfddw",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:17.533Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 10000,
+          gstAmount: 1800,
+          cgst: 900,
+          sgst: 900,
+          igst: 0,
+          totalAmount: 11800,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67c0eh001yle0c0ufzwdyf",
+                quantity: 1,
+                rate: 10000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 1800,
+                lineTotal: 11800,
+                warrantyDays: undefined,
+                warrantyEndAt: undefined,
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+[Nest] 47964  - 28/02/2026, 4:22:20 pm   ERROR [ExceptionsHandler] PrismaClientValidationError: 
+Invalid `prisma.invoice.create()` invocation in
+E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:42
+
+  224   );
+  225 
+  226 // 8. Create Invoice
+ΓåÆ 227 const invoice = await prisma.invoice.create({
+        data: {
+          tenantId: "cmm67c2sg004vle0crtgkxs5c",
+          shopId: "cmm67c2xz004zle0cbi8ir3ek",
+          customerId: "cmm67c33k0053le0cc7eykof3",
+          invoiceNumber: "INV-S-2526-0001",
+          invoiceDate: new Date("2026-02-28T10:52:20.416Z"),
+          customerName: "Target Customer",
+          customerPhone: "9999999999",
+          customerState: undefined,
+          customerGstin: undefined,
+          shopGstin: "33AAAAA0000A1Z5",
+          ~~~~~~~~~
+          subTotal: 10000,
+          gstAmount: 1800,
+          cgst: 900,
+          sgst: 900,
+          igst: 0,
+          totalAmount: 11800,
+          paymentMode: "CASH",
+          status: "PAID",
+          jobCardId: undefined,
+          items: {
+            create: [
+              {
+                shopProductId: "cmm67c35f0055le0cy7qjre09",
+                quantity: 1,
+                rate: 10000,
+                hsnCode: "8517",
+                gstRate: 18,
+                gstAmount: 1800,
+                lineTotal: 11800,
+                warrantyDays: 365,
+                warrantyEndAt: new Date("2027-02-28T10:52:20.416Z"),
+                serialNumbers: []
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   financialYear?: String | Null,
+      ?   paidAmount?: Int,
+      ?   cashAmount?: Int | Null,
+      ?   upiAmount?: Int | Null,
+      ?   cardAmount?: Int | Null,
+      ?   invoiceType?: InvoiceType,
+      ?   isGstApplicable?: Boolean,
+      ?   voidReason?: String | Null,
+      ?   voidedAt?: DateTime | Null,
+      ?   createdAt?: DateTime,
+      ?   createdBy?: String | Null,
+      ?   updatedBy?: String | Null,
+      ?   deletedAt?: DateTime | Null,
+      ?   deletedBy?: String | Null,
+      ?   imeis?: IMEIUncheckedCreateNestedManyWithoutInvoiceInput,
+      ?   receipts?: ReceiptUncheckedCreateNestedManyWithoutInvoiceInput
+        }
+      })
+
+Unknown argument `shopGstin`. Available options are marked with ?.
+    at Nn (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\core\errorRendering\throwValidationException.ts:45:9)
+    at ei.throwValidationException [as handleRequestError] (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:202:7)
+    at ei.handleAndLogRequestError (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at Array.$allOperations (E:\Projects\gym-saas\apps\backend\src\core\prisma\prisma.service.ts:144:22)
+    at a (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at BillingService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\billing.service.ts:227:21)
+    at E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:362:23
+    at Proxy._transactionWithCallback (E:\Projects\gym-saas\apps\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:722:18)
+    at SalesService.createInvoice (E:\Projects\gym-saas\apps\backend\src\core\sales\sales.service.ts:195:23)
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:46:28
+    at E:\Projects\gym-saas\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17 {
+  clientVersion: '6.19.2'
+}
+FAIL test/chaos-v5.e2e-spec.ts (54.081 s)
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+      269 |
+      270 |     const successCount = results.filter(r => r.status === 201).length;
+    > 271 |     expect(successCount).toBe(1);
+          |                          ^
+      272 |
+      273 |     const invoices = await prisma.invoice.findMany({
+      274 |         where: { tenantId: tenantA.id, status: { not: 'VOIDED' } }
+
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:271:26)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should block negative stock even with 10 concurrent requests (STOCK STORM)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 0
+
+      314 |
+      315 |     const successCount = results.filter(r => r.status === 201).length;
+    > 316 |     expect(successCount).toBe(5);
+          |                          ^
+      317 |
+      318 |     const aggregates = await prisma.stockLedger.groupBy({
+      319 |         by: ['type'],
+
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:316:26)
+
+  ΓùÅ Invoice Engine Chaos Destruction Test (Phase 5 Hardening) ΓÇ║ Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 500
+
+      354 |       .send(maliciousPayload);
+      355 |
+    > 356 |     expect(response.status).toBe(201);
+          |                             ^
+      357 |     
+      358 |     const invoiceId = response.body.id;
+      359 |     const item = await prisma.invoiceItem.findFirst({
+
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:356:29)
+
+
+  ΓùÅ Test suite failed to run
+
+    thrown: "Exceeded timeout of 5000 ms for a hook.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      157 |   });
+      158 |
+    > 159 |   afterAll(async () => {
+          |   ^
+      160 |     // Bulk cleanup
+      161 |     for (const tid of tenantIds) {
+      162 |       try {
+
+      at chaos-v5.e2e-spec.ts:159:3
+      at Object.<anonymous> (chaos-v5.e2e-spec.ts:9:1)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 2 passed, 5 total
+Snapshots:   0 total
+Time:        55.423 s
+Ran all test suites matching test/chaos-v5.e2e-spec.ts.

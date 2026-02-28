@@ -1,0 +1,253 @@
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 564ms {"data":[{"shopId":"cmm68cxyg000jle58d43hn137","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at invoiceId.prisma.$transaction.timeout (../src/core/sales/sales.service.ts:362:23)
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 638ms {"data":[{"shopId":"cmm68cxyg000jle58d43hn137","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at invoiceId.prisma.$transaction.timeout (../src/core/sales/sales.service.ts:362:23)
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: TenantSubscription.findFirst took 508ms {"where":{"tenantId":"cmm68d1av0022le581q3ncxr8","module":"MOBILE_SHOP","status":{"in":["ACTIVE","TRIAL","PAST_DUE"]}},"include":{"plan":true},"orderBy":[{"status":"asc"},{"startDate":"desc"}]}
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at CacheService.getOrSet (../src/core/cache/cache.service.ts:139:19)
+      at SubscriptionGuard.canActivate (../src/core/auth/guards/subscription.guard.ts:78:26)
+      at GuardsConsumer.tryActivate (../node_modules/@nestjs/core/guards/guards-consumer.js:22:17)
+      at canActivateFn (../node_modules/@nestjs/core/router/router-execution-context.js:135:33)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:42:31
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 531ms {"data":[{"shopId":"cmm68d1ip0026le58a5kmjutk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at invoiceId.prisma.$transaction.timeout (../src/core/sales/sales.service.ts:362:23)
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 533ms {"data":[{"shopId":"cmm68d1ip0026le58a5kmjutk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at invoiceId.prisma.$transaction.timeout (../src/core/sales/sales.service.ts:362:23)
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 534ms {"data":[{"shopId":"cmm68d1ip0026le58a5kmjutk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at invoiceId.prisma.$transaction.timeout (../src/core/sales/sales.service.ts:362:23)
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 536ms {"data":[{"shopId":"cmm68d1ip0026le58a5kmjutk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at invoiceId.prisma.$transaction.timeout (../src/core/sales/sales.service.ts:362:23)
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 1117ms {"data":[{"shopId":"cmm68d1ip0026le58a5kmjutk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at invoiceId.prisma.$transaction.timeout (../src/core/sales/sales.service.ts:362:23)
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 1118ms {"data":[{"shopId":"cmm68d1ip0026le58a5kmjutk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at invoiceId.prisma.$transaction.timeout (../src/core/sales/sales.service.ts:362:23)
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 529ms {"data":[{"shopId":"cmm68d1ip0026le58a5kmjutk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at invoiceId.prisma.$transaction.timeout (../src/core/sales/sales.service.ts:362:23)
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+  console.warn
+    ΓÜá∩╕Å  Slow DB Query: ShopDocumentSetting.createMany took 530ms {"data":[{"shopId":"cmm68d1ip0026le58a5kmjutk","documentType":"SALES_INVOICE","prefix":"INV","separator":"-","documentCode":"S","yearFormat":"FY","numberLength":4,"resetPolicy":"YEARLY"},{"shopId":"cm
+
+    [0m [90m 146 |[39m               [36mconst[39m duration [33m=[39m [33mDate[39m[33m.[39mnow() [33m-[39m start[33m;[39m
+     [90m 147 |[39m               [36mif[39m (duration [33m>[39m [35m500[39m) {
+    [31m[1m>[22m[39m[90m 148 |[39m                 console[33m.[39mwarn(
+     [90m     |[39m                         [31m[1m^[22m[39m
+     [90m 149 |[39m                   [32m`ΓÜá∩╕Å  Slow DB Query: ${model}.${operation} took ${duration}ms`[39m[33m,[39m
+     [90m 150 |[39m                   [33mJSON[39m[33m.[39mstringify(args)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m,[39m
+     [90m 151 |[39m                 )[33m;[39m[0m
+
+      at Array.$allOperations (../src/core/prisma/prisma.service.ts:148:25)
+      at a (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+      at DocumentNumberService.initializeShopDocumentSettings (../src/common/services/document-number.service.ts:395:7)
+      at DocumentNumberService.generateDocumentNumberInternal (../src/common/services/document-number.service.ts:138:9)
+      at BillingService.createInvoice (../src/core/sales/billing.service.ts:219:7)
+      at invoiceId.prisma.$transaction.timeout (../src/core/sales/sales.service.ts:362:23)
+      at Proxy._transactionWithCallback (../node_modules/@prisma/client/src/runtime/getPrismaClient.ts:722:18)
+      at SalesService.createInvoice (../src/core/sales/sales.service.ts:195:23)
+      at ../node_modules/@nestjs/core/router/router-execution-context.js:46:28
+      at ../node_modules/@nestjs/core/router/router-proxy.js:9:17
+
+PASS test/chaos-v5.e2e-spec.ts (34.795 s)
+  Invoice Engine Chaos Destruction Test (Phase 5 Hardening)
+    ΓêÜ Should rollback entire transaction if one step fails (ACID TEST) (2241 ms)
+    ΓêÜ Should prevent double-selling the same IMEI under extreme concurrency (RACE TEST) (4586 ms)
+    ΓêÜ Should block negative stock even with 10 concurrent requests (STOCK STORM) (11578 ms)
+    ΓêÜ Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK) (3338 ms)
+    ΓêÜ Should block cross-tenant product injection (MULTI-TENANT ATTACK) (1559 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       5 passed, 5 total
+Snapshots:   0 total
+Time:        35.101 s
+Ran all test suites matching test/chaos-v5.e2e-spec.ts.

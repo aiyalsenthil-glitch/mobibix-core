@@ -62,12 +62,14 @@ export class JobStatusValidator {
       JobStatus.READY, // 🚨 CRITICAL: Triggers invoice + WhatsApp
       JobStatus.WAITING_FOR_PARTS,
       JobStatus.CANCELLED,
+      JobStatus.SCRAPPED,
     ],
 
     // Ready for pickup - can deliver, return, or re-repair
     [JobStatus.READY]: [
       JobStatus.DELIVERED, // Terminal
       JobStatus.RETURNED, // Terminal
+      JobStatus.SCRAPPED, // Terminal
       JobStatus.IN_PROGRESS, // Re-repair if issue found
     ],
 
@@ -83,6 +85,9 @@ export class JobStatusValidator {
 
     // Terminal state - no further transitions
     [JobStatus.RETURNED]: [],
+    
+    // Terminal state - no further transitions
+    [JobStatus.SCRAPPED]: [],
   };
 
   /**
@@ -115,6 +120,7 @@ export class JobStatusValidator {
       JobStatus.DELIVERED,
       // JobStatus.CANCELLED, // ALLOW REOPENING
       JobStatus.RETURNED,
+      JobStatus.SCRAPPED,
     ];
     return terminalStates.includes(status);
   }
@@ -148,6 +154,7 @@ export class JobStatusValidator {
     const voidableStatuses: JobStatus[] = [
       JobStatus.CANCELLED,
       JobStatus.RETURNED,
+      JobStatus.SCRAPPED,
     ];
     return voidableStatuses.includes(status);
   }

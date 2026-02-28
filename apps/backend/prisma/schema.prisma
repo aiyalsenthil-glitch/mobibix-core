@@ -1167,6 +1167,7 @@ model JobCard {
   diagnosticCharge     Int?          @default(0)
   advancePaid          Int           @default(0)
   finalCost            Int?
+  laborCharge          Int?          @default(0)
   billType             String        @default("WITHOUT_GST")
   estimatedDelivery    DateTime?
   advancePaymentMethod String?
@@ -1189,6 +1190,8 @@ model JobCard {
   status               JobStatus     @default(RECEIVED)
   statusHistory        Json? // Audit trail: [{ from, to, timestamp, userId, reason }]
   notes                String?
+  deliveredAt          DateTime?
+  scrappedAt           DateTime?
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
   customer             Party?        @relation(fields: [customerId], references: [id])
@@ -1805,6 +1808,7 @@ enum JobStatus {
   DELIVERED // Job delivered to customer (terminal)
   CANCELLED // Job cancelled (terminal)
   RETURNED // Job returned without repair (terminal)
+  SCRAPPED // Job scrapped/abandoned (terminal)
 }
 
 enum InvoiceStatus {

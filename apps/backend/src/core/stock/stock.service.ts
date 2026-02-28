@@ -169,7 +169,7 @@ export class StockService {
     if (tx) {
       const sortedIds = [...new Set(productIds)].sort();
       for (const pid of sortedIds) {
-        await tx.$executeRaw`SELECT id FROM "ShopProduct" WHERE id = ${pid} FOR UPDATE`;
+        await tx.$executeRaw`SELECT id FROM "mb_shop_product" WHERE id = ${pid} FOR UPDATE`;
       }
     }
 

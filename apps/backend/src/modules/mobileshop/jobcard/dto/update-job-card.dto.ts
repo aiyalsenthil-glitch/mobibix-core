@@ -64,6 +64,10 @@ export class UpdateJobCardDto {
   advancePaid?: number;
 
   @IsOptional()
+  @IsNumber()
+  laborCharge?: number;
+
+  @IsOptional()
   @IsEnum(['WITH_GST', 'WITHOUT_GST'])
   /**
    * @deprecated Compliance Violation. Do not use.

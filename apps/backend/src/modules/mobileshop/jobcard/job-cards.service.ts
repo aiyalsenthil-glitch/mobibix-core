@@ -487,21 +487,13 @@ export class JobCardsService {
       throw new BadRequestException('This job has no warranty coverage');
     }
 
-    // Check Expiry
-    // logic: deliveredAt + duration (days) >= now
-    // If deliveredAt is missing (bad data), fallback to updatedAt
-    const referenceDate = new Date();
-    // Find the status history regarding delivery? Or assume logic persists.
-    // Schema doesn't have 'deliveredAt' field on JobCard directly?
-    // Wait, checking schema...
-    // Schema has `estimatedDelivery`. `status` is ENUM.
-    // We need to find when it was delivered.
-    // `statusHistory` JSON? Or just use `updatedAt` if status is DELIVERED?
-    // Let's use `updatedAt` for now as proxy for delivery time if status is DELIVERED.
-    // Ideally we parse statusHistory but that's complex JSON.
-    // Valid simplification: If currently DELIVERED, assume updatedAt is the delivery time.
+    // Check Expiry using explicit deliveredAt anchor
+    const deliveredAt = originalJob.deliveredAt;
+    
+    if (!deliveredAt) {
+      throw new BadRequestException('Cannot claim warranty: Original delivery date missing.');
+    }
 
-    const deliveredAt = originalJob.updatedAt;
     const expiryDate = new Date(deliveredAt);
     expiryDate.setDate(expiryDate.getDate() + warrantyDuration);
 
@@ -885,6 +877,7 @@ export class JobCardsService {
     if (dto.diagnosticCharge !== undefined)
       data.diagnosticCharge = dto.diagnosticCharge;
     if (dto.advancePaid !== undefined) data.advancePaid = dto.advancePaid;
+    if (dto.laborCharge !== undefined) data.laborCharge = dto.laborCharge;
     if (dto.billType !== undefined) data.billType = dto.billType;
     if (dto.estimatedDelivery !== undefined)
       data.estimatedDelivery = dto.estimatedDelivery
@@ -1181,7 +1174,7 @@ export class JobCardsService {
         userId: user.sub,
         userName: user.name || user.email,
         refundedAdvance:
-          ['CANCELLED', 'RETURNED'].includes(newStatus) && job.advancePaid > 0
+          ['CANCELLED', 'RETURNED', 'SCRAPPED'].includes(newStatus) && job.advancePaid > 0
             ? job.advancePaid
             : undefined,
       });
@@ -1191,6 +1184,8 @@ export class JobCardsService {
         data: {
           status: newStatus,
           statusHistory,
+          ...(newStatus === 'DELIVERED' && { deliveredAt: new Date() }),
+          ...(newStatus === 'SCRAPPED' && { scrappedAt: new Date() }),
         },
       });
 
@@ -1316,14 +1311,15 @@ export class JobCardsService {
       }
     }
 
-    // 2. Calculate Service Charge (difference between job cost and parts)
-    // Service charge = What customer pays - Cost of parts used
-    const targetTotalPaisa = (job.finalCost || job.estimatedCost || 0) * 100; // Convert to Paisa
-    const partsWithTaxPaisa = partsSubtotalPaisa + partsTaxPaisa;
-    const serviceChargePaisa = Math.max(
-      0,
-      targetTotalPaisa - partsWithTaxPaisa,
-    ); // Never negative
+    // 2. Calculate Service Charge explicitly (no longer residual)
+    const serviceChargePaisa = (job.laborCharge || 0) * 100;
+
+    // Overwrite job.finalCost as visual record of parts+labor
+    const finalCostRupees = Math.round(partsSubtotalPaisa / 100) + (job.laborCharge || 0);
+    await prisma.jobCard.update({
+      where: { id: job.id },
+      data: { finalCost: finalCostRupees },
+    });
 
     // 3. Add ONE service line item if there's a service charge
     let serviceSubtotalPaisa = 0;

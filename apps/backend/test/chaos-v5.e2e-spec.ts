@@ -6,6 +6,8 @@ import { PrismaService } from '../src/core/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { IMEIStatus, ProductType, InvoiceStatus, PaymentMode, PartyType, ModuleType } from '@prisma/client';
 
+jest.setTimeout(30000);
+
 describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -80,6 +82,7 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
         name: 'Chaos Shop',
         state: 'Tamil Nadu',
         gstEnabled: true,
+        gstNumber: '33AABCC1234D1Z5',
         phone: '0000000000',
         addressLine1: 'Chaos Street',
         city: 'Chaos City',
@@ -133,6 +136,7 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
         name: 'Chaos Accessory',
         type: ProductType.GOODS, 
         isSerialized: false,
+        hsnCode: '8517',
         salePrice: 100, // Rupees
         costPrice: 50,
         isActive: true,
@@ -146,12 +150,13 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
         name: 'Chaos Phone',
         type: ProductType.GOODS, 
         isSerialized: true,
+        hsnCode: '8517',
         salePrice: 10000, 
         costPrice: 8000,
         isActive: true,
       },
     });
-  });
+  }, 30000);
 
   afterAll(async () => {
     // Bulk cleanup
@@ -176,7 +181,7 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
         try { await prisma.user.delete({ where: { id: uid } }); } catch (e) {}
     }
     await app.close();
-  });
+  }, 30000);
 
   it('Should rollback entire transaction if one step fails (ACID TEST)', async () => {
     const imeiCode = 'IMEI-CRASH-' + Date.now();
@@ -260,6 +265,7 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
     ]);
 
     const successCount = results.filter(r => r.status === 201).length;
+    if (successCount !== 1) { console.log("RACE TEST FAILED:", results.map(r => ({status: r.status, body: r.body}))); }
     expect(successCount).toBe(1);
 
     const invoices = await prisma.invoice.findMany({
@@ -303,6 +309,7 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
     );
 
     const successCount = results.filter(r => r.status === 201).length;
+    if (successCount !== 5) { console.log("STOCK STORM FAILED:", results.map(r => ({status: r.status, body: r.body}))); }
     expect(successCount).toBe(5);
 
     const aggregates = await prisma.stockLedger.groupBy({
@@ -318,6 +325,17 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
   });
 
   it('Should ignore malicious warrantyEndAt and compute internally (WARRANTY ATTACK)', async () => {
+    // Inject sufficient stock for productA
+    await prisma.stockLedger.create({
+      data: {
+        tenantId: tenantA.id,
+        shopId: shopA.id,
+        shopProductId: productA.id,
+        quantity: 10,
+        type: 'IN',
+        referenceType: 'ADJUSTMENT'
+      }
+    });
     const maliciousPayload = {
         shopId: shopA.id,
         customerId: customerA.id,
@@ -341,6 +359,7 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
       .set('Authorization', `Bearer ${tokenA}`)
       .send(maliciousPayload);
 
+    if (response.status !== 201) { console.log("WARRANTY ATTACK FAILED:", response.body); }
     expect(response.status).toBe(201);
     
     const invoiceId = response.body.id;
@@ -387,6 +406,7 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
           name: 'Victim Phone',
           type: ProductType.GOODS, 
           isSerialized: false, // Easier for this test
+          hsnCode: '8517',
           salePrice: 50000, 
           costPrice: 40000,
           isActive: true,

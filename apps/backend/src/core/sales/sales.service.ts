@@ -361,7 +361,7 @@ export class SalesService {
       // 5. Delegate to BillingService
       const invoice = await this.billingService.createInvoice(options, tx);
       return invoice.id;
-    });
+    }, { timeout: 30000 });
 
     // ⚡ EVENT (InvoiceCreated)
     const created = await this.prisma.invoice.findUnique({
