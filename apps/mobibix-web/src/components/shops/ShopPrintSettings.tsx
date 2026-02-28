@@ -11,6 +11,7 @@ import { InvoiceModern } from "@/components/print/templates/InvoiceModern";
 import { InvoiceCorporate } from "@/components/print/templates/InvoiceCorporate";
 import { InvoiceCompact } from "@/components/print/templates/InvoiceCompact";
 import { InvoiceThermal } from "@/components/print/templates/InvoiceThermal";
+import { InvoiceProfessional } from "@/components/print/templates/InvoiceProfessional";
 import { JobCardClassic } from "@/components/print/templates/JobCardClassic";
 import { JobCardThermal } from "@/components/print/templates/JobCardThermal";
 import { JobCardSimple } from "@/components/print/templates/JobCardSimple";
@@ -26,6 +27,7 @@ const INVOICE_TEMPLATES = [
   { value: "CLASSIC", label: "Classic (Professional A4)", type: "NORMAL" },
   { value: "MODERN", label: "Modern Clean (A4)", type: "NORMAL" },
   { value: "CORPORATE", label: "Corporate Boxed (A4)", type: "NORMAL" },
+  { value: "PROFESSIONAL", label: "Professional Standard (A4)", type: "NORMAL" },
   { value: "COMPACT", label: "Compact (A4/A5)", type: "NORMAL" },
   { value: "SIMPLE", label: "Simple (Grid/Table)", type: "NORMAL" },
   { value: "THERMAL", label: "Thermal Receipt (Standard)", type: "THERMAL" },
@@ -196,6 +198,7 @@ export function ShopPrintSettings({ shop, onUpdate }: ShopPrintSettingsProps) {
         case "CLASSIC": Component = InvoiceClassic; break;
         case "MODERN": Component = InvoiceModern; break;
         case "CORPORATE": Component = InvoiceCorporate; break;
+        case "PROFESSIONAL": Component = InvoiceProfessional; break;
         case "COMPACT": Component = InvoiceCompact; break;
         case "SIMPLE": Component = InvoiceSimple; break;
         case "THERMAL": Component = InvoiceThermal; break;

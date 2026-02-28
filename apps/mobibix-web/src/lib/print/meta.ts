@@ -39,6 +39,16 @@ export const TEMPLATE_META: TemplateMetaMap = {
       description: "Compact roll format for POS printers.",
       previewImage: "/print-previews/invoice-thermal.svg",
     },
+    RECEIPT_THERMAL: {
+      label: "Detailed Receipt (Thermal)",
+      description: "Extended thermal receipt for retail.",
+      previewImage: "/print-previews/invoice-thermal.svg",
+    },
+    PROFESSIONAL: {
+      label: "Professional Standard",
+      description: "Structured template with dedicated tax columns based on legal requirements.",
+      previewImage: "/print-previews/invoice-professional.svg",
+    },
   },
   JOBCARD: {
     CLASSIC: {

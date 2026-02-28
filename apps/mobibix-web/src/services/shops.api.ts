@@ -28,7 +28,7 @@ export interface Shop {
 
   // Print Settings
   invoicePrinterType?: "NORMAL" | "THERMAL";
-  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL" | "SIMPLE" | "RECEIPT_THERMAL";
+  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL" | "SIMPLE" | "RECEIPT_THERMAL" | "PROFESSIONAL";
   jobCardPrinterType?: "NORMAL" | "THERMAL";
   jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL" | "CLASSIC" | "VOUCHER_CLASSIC";
 
@@ -63,7 +63,7 @@ export interface CreateShopDto {
 
   // Default Print Settings
   invoicePrinterType?: "NORMAL" | "THERMAL";
-  invoiceTemplate?: "CLASSIC" | "MODERN" | "THERMAL" | "SIMPLE" | "RECEIPT_THERMAL";
+  invoiceTemplate?: "CLASSIC" | "MODERN" | "THERMAL" | "SIMPLE" | "RECEIPT_THERMAL" | "PROFESSIONAL";
   currency?: string;
 }
 
@@ -101,7 +101,7 @@ export interface UpdateShopSettingsDto {
 
   // Print Settings Updates
   invoicePrinterType?: "NORMAL" | "THERMAL";
-  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL" | "SIMPLE" | "RECEIPT_THERMAL";
+  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL" | "SIMPLE" | "RECEIPT_THERMAL" | "PROFESSIONAL";
   currency?: string;
   jobCardPrinterType?: "NORMAL" | "THERMAL";
   jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL" | "CLASSIC" | "VOUCHER_CLASSIC";

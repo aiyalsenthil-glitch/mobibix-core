@@ -330,7 +330,7 @@ export class MobileShopReportsService {
     >`
       SELECT "shopProductId", 
              SUM(CASE WHEN "type" = 'IN' THEN "quantity" ELSE -"quantity" END) as "balance"
-      FROM "StockLedger"
+      FROM "mb_stock_ledger"
       WHERE "tenantId" = ${tenantId}
       ${shopFilter}
       GROUP BY "shopProductId"
@@ -469,8 +469,8 @@ export class MobileShopReportsService {
       { total_cost: bigint }[]
     >`
       SELECT SUM(sl."quantity" * sl."costPerUnit") as "total_cost"
-      FROM "StockLedger" sl
-      JOIN "Invoice" i ON sl."referenceId" = i."id"
+      FROM "mb_stock_ledger" sl
+      JOIN "mb_invoice" i ON sl."referenceId" = i."id"
       WHERE sl."tenantId" = ${tenantId}
         AND sl."referenceType" = 'SALE'
         AND i."status" != 'VOIDED'
@@ -490,9 +490,9 @@ export class MobileShopReportsService {
       { total_cost: bigint }[]
     >`
       SELECT SUM(sl."quantity" * sl."costPerUnit") as "total_cost"
-      FROM "StockLedger" sl
-      JOIN "JobCard" jc ON sl."referenceId" = jc."id"
-      JOIN "Invoice" i ON jc."id" = i."jobCardId"
+      FROM "mb_stock_ledger" sl
+      JOIN "mb_job_card" jc ON sl."referenceId" = jc."id"
+      JOIN "mb_invoice" i ON jc."id" = i."jobCardId"
       WHERE sl."tenantId" = ${tenantId}
         AND sl."referenceType" = 'REPAIR'
         AND i."status" != 'VOIDED'
