@@ -378,4 +378,4 @@ npx prisma migrate dev --name add_whatsapp_templates_and_automations
 
 ## 📞 Support
 
-For questions about the UI implementation, refer to `apps/whatsapp-master/README.md`
+For questions about the UI implementation, refer to `apps/admin-master/README.md`

@@ -165,7 +165,7 @@ The seed script integrates with:
    - Must run `prisma migrate deploy` first
    - Seed runs after migrations
 
-3. **Admin UI** (`apps/whatsapp-master`)
+3. **Admin UI** (`apps/admin-master`)
    - Settings screen displays seeded defaults
    - Templates screen lists seeded templates
    - Automations screen lists seeded automations
@@ -201,7 +201,7 @@ npx prisma studio
 ### Test 4: Verify in UI
 
 ```bash
-npm run dev  # from apps/whatsapp-master
+npm run dev  # from apps/admin-master
 # Navigate to /settings, /templates, /automations
 ```
 
@@ -222,7 +222,7 @@ npm run dev  # from apps/whatsapp-master
 3. **Test in UI**:
 
    ```bash
-   cd apps/whatsapp-master && npm run dev
+   cd apps/admin-master && npm run dev
    ```
 
 4. **Enable WhatsApp**:

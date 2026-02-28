@@ -847,7 +847,7 @@ if (!appSecret) {
 **Token Storage (Frontend):**
 
 ```typescript
-// apps/whatsapp-master/lib/auth.api.ts:
+// apps/admin-master/lib/auth.api.ts:
 export function storeAccessToken(token: string): void {
   localStorage.setItem('auth_token', token); // ❌ XSS vulnerable
 }

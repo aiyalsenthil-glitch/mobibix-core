@@ -242,4 +242,4 @@ Phone 3:
 
 - Full docs: `WHATSAPP_MULTI_PHONE_IMPLEMENTATION.md`
 - Seed script: `prisma/seed-phone-numbers.ts`
-- Admin UI: `apps/whatsapp-master/app/phone-numbers/page.tsx`
+- Admin UI: `apps/admin-master/app/phone-numbers/page.tsx`

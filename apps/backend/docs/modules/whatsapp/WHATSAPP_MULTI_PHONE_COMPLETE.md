@@ -72,7 +72,7 @@ The WhatsApp Multi-Phone Number system has been **fully implemented and deployed
 
 ### 5. Frontend Admin UI ✅
 
-**File:** `apps/whatsapp-master/app/phone-numbers/page.tsx`
+**File:** `apps/admin-master/app/phone-numbers/page.tsx`
 
 **Features:**
 
@@ -94,7 +94,7 @@ The WhatsApp Multi-Phone Number system has been **fully implemented and deployed
 
 ### 6. Integration & Navigation ✅
 
-**File:** `apps/whatsapp-master/app/settings/page.tsx`
+**File:** `apps/admin-master/app/settings/page.tsx`
 
 - ✅ Added "Phone Numbers" card with link to `/phone-numbers`
 - ✅ Positioned after Testing section
@@ -268,8 +268,8 @@ WhatsAppModule:
 
 ### Frontend
 
-- ✅ `apps/whatsapp-master/app/phone-numbers/page.tsx` - Created (admin UI)
-- ✅ `apps/whatsapp-master/app/settings/page.tsx` - Updated (added link)
+- ✅ `apps/admin-master/app/phone-numbers/page.tsx` - Created (admin UI)
+- ✅ `apps/admin-master/app/settings/page.tsx` - Updated (added link)
 
 ### Documentation
 

@@ -141,7 +141,7 @@ Database
     ├─ WhatsAppTemplate (3 per tenant)
     └─ WhatsAppAutomation (3 per tenant)
     ↓
-Admin UI (apps/whatsapp-master)
+Admin UI (apps/admin-master)
     ├─ Settings screen (displays + edits setting)
     ├─ Templates screen (lists all templates)
     └─ Automations screen (lists all automations)
@@ -227,7 +227,7 @@ npx prisma studio
 ### 3. Test Admin UI
 
 ```bash
-cd apps/whatsapp-master
+cd apps/admin-master
 npm install  # if not already done
 npm run dev
 # Navigate to http://localhost_REPLACED:3000
@@ -280,7 +280,7 @@ npm run dev
 
 1. ✅ **Run seed**: `npm run seed`
 2. ✅ **Verify data**: `npx prisma studio`
-3. ✅ **Start admin UI**: `npm run dev` (whatsapp-master)
+3. ✅ **Start admin UI**: `npm run dev` (admin-master)
 4. ✅ **Enable WhatsApp**: Settings screen
 5. ✅ **Test templates**: Send Message screen
 6. ✅ **Review logs**: Logs screen

@@ -144,15 +144,15 @@ const templates = [
 ## Next Steps After Seeding
 
 1. **Enable WhatsApp**:
-   - Navigate to `/whatsapp-master/settings`
+   - Navigate to `/admin-master/settings`
    - Toggle "Enable WhatsApp" to `true`
 
 2. **Verify Templates**:
-   - Go to `/whatsapp-master/templates`
+   - Go to `/admin-master/templates`
    - Confirm 3 templates are visible
 
 3. **Configure Automations**:
-   - Go to `/whatsapp-master/automations`
+   - Go to `/admin-master/automations`
    - Review trigger-based rules
 
 4. **Test Integration**:
@@ -182,5 +182,5 @@ The seed script uses direct Prisma operations. Backend API must implement:
 
 - Schema: `apps/backend/prisma/schema.prisma`
 - Seed Script: `apps/backend/prisma/seed.ts`
-- Frontend UI: `apps/whatsapp-master/app/`
+- Frontend UI: `apps/admin-master/app/`
 - API Integration: `apps/backend/src/modules/whatsapp-admin/`

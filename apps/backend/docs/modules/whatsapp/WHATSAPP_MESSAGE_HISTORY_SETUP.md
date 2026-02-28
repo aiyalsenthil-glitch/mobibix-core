@@ -116,7 +116,7 @@ Controller:
 
 ### 3. **Frontend Message History Page** ✅
 
-**File:** `apps/whatsapp-master/app/logs/page.tsx`
+**File:** `apps/admin-master/app/logs/page.tsx`
 
 **Features:**
 
@@ -151,7 +151,7 @@ Controller:
 
 ### 4. **Type Updates** ✅
 
-**File:** `apps/whatsapp-master/lib/types.ts`
+**File:** `apps/admin-master/lib/types.ts`
 
 Updated `WhatsAppLog` interface:
 
@@ -400,8 +400,8 @@ Body: {
 | `apps/backend/src/modules/whatsapp/whatsapp.sender.ts`             | Return messageId from API                   |
 | `apps/backend/src/modules/whatsapp/whatsapp.controller.ts`         | Fixed send endpoint to call sender          |
 | `apps/backend/src/modules/whatsapp/whatsapp.webhook.controller.ts` | Implemented webhook handler                 |
-| `apps/whatsapp-master/app/logs/page.tsx`                           | Complete rewrite with new features          |
-| `apps/whatsapp-master/lib/types.ts`                                | Updated WhatsAppLog interface               |
+| `apps/admin-master/app/logs/page.tsx`                           | Complete rewrite with new features          |
+| `apps/admin-master/lib/types.ts`                                | Updated WhatsAppLog interface               |
 
 ---
 

@@ -89,7 +89,7 @@
   - [ ] Backend: Set tokens in httpOnly cookies
   - [ ] Frontend: Remove `localStorage.getItem('auth_token')`
   - [ ] Update all API calls
-  - [ ] Test across all apps (backend, admin, mobibix-web, whatsapp-master)
+  - [ ] Test across all apps (backend, admin, mobibix-web, admin-master)
 
 - [ ] **MEDIUM #12: File Upload Validation** (1 day)
   - [ ] Add file type validators to `products.controller.ts:72`

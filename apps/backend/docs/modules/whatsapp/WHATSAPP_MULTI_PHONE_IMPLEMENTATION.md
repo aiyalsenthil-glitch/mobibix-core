@@ -178,7 +178,7 @@ DELETE /api/whatsapp/phone-numbers/:id        # Delete phone
 
 ### Frontend Admin UI
 
-**File:** `apps/whatsapp-master/app/phone-numbers/page.tsx`
+**File:** `apps/admin-master/app/phone-numbers/page.tsx`
 
 #### Features:
 
@@ -447,8 +447,8 @@ POST /api/whatsapp/phone-numbers/tenant123
 
 ### Frontend
 
-- `apps/whatsapp-master/app/phone-numbers/page.tsx` - Admin UI for phone management
-- `apps/whatsapp-master/app/settings/page.tsx` - Link to phone management
+- `apps/admin-master/app/phone-numbers/page.tsx` - Admin UI for phone management
+- `apps/admin-master/app/settings/page.tsx` - Link to phone management
 
 ### Utilities
 

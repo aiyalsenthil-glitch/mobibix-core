@@ -249,7 +249,7 @@ category: 'UTILITY' | 'MARKETING';
 - [x] Prisma schema already has WhatsAppSetting, WhatsAppTemplate, WhatsAppAutomation
 - [x] Prisma schema has ReminderTriggerType enum
 - [x] Database migrations support new fields (defaultLanguage, dailyLimit, etc.)
-- [x] Admin UI (whatsapp-master) displays seeded defaults
+- [x] Admin UI (admin-master) displays seeded defaults
 - [x] Backend API ready to read/write seeded data
 - [x] Cron jobs will read seeded automations
 - [x] No changes needed to existing code
@@ -276,7 +276,7 @@ npx prisma studio
 
 ```bash
 # 4. Start admin UI
-cd apps/whatsapp-master
+cd apps/admin-master
 npm install  # if needed
 npm run dev
 
@@ -369,7 +369,7 @@ npx prisma studio
 ### Test 4: UI Display
 
 ```bash
-# In whatsapp-master admin UI
+# In admin-master admin UI
 # - Settings screen shows disabled toggle
 # - Templates screen shows 3 templates
 # - Automations screen shows 3 automations
