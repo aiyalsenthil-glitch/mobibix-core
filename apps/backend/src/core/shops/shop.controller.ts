@@ -23,9 +23,12 @@ import {
 import { Roles } from '../auth/decorators/roles.decorator';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { UserRole } from '@prisma/client';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { Permission } from '../auth/permissions.enum';
 
 @Controller('mobileshop/shops')
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, PermissionsGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class ShopController {
   constructor(private readonly shopService: ShopService) {}
@@ -47,6 +50,7 @@ export class ShopController {
   }
 
   @Post()
+  @Permissions(Permission.SHOP_MANAGE)
   create(@Req() req: any, @Body() dto: CreateShopDto) {
     return this.shopService.createShop(req.user.tenantId, req.user.role, dto);
   }
@@ -59,6 +63,7 @@ export class ShopController {
     return this.shopService.getShopById(req.user.tenantId, shopId);
   }
   @Patch(':shopId')
+  @Permissions(Permission.SHOP_MANAGE)
   update(
     @Req() req: any,
     @Param('shopId') shopId: string,
@@ -81,6 +86,7 @@ export class ShopController {
   }
 
   @Patch(':shopId/settings')
+  @Permissions(Permission.SHOP_MANAGE)
   updateSettings(
     @Req() req: any,
     @Param('shopId') shopId: string,
@@ -112,6 +118,7 @@ export class ShopController {
    * Updates document numbering configuration for a specific document type
    */
   @Put(':shopId/document-settings/:documentType')
+  @Permissions(Permission.SHOP_MANAGE)
   updateDocumentSetting(
     @Req() req: any,
     @Param('shopId') shopId: string,

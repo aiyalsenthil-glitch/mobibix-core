@@ -6,7 +6,7 @@ import { randomBytes } from 'crypto';
 @Injectable()
 export class TokenFactoryService {
   public readonly refreshTokenTtlMs = 30 * 24 * 60 * 60 * 1000;
-  public readonly accessTokenTtlMs = 7 * 24 * 60 * 60 * 1000;
+  public readonly accessTokenTtlMs = 15 * 60 * 1000; // 15 minutes
 
   constructor(
     private readonly jwtService: JwtService,

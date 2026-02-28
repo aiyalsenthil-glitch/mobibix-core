@@ -64,6 +64,10 @@ export class CreateTenantDto {
   @IsOptional()
   @IsString()
   promoCode?: string;
+
+  @IsOptional()
+  @IsString()
+  gstNumber?: string;
 }
 
 export class UpdateTenantSettingsDto {

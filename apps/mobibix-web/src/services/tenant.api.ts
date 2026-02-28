@@ -248,6 +248,16 @@ export async function getUsageSummary(): Promise<UsageSummary> {
 export interface CreateTenantDto {
   name: string;
   tenantType: "GYM" | "MOBILE_SHOP" | "MOBILE_REPAIR" | "WHATSAPP_CRM";
+  businessType?: string;
+  legalName?: string;
+  gstNumber?: string;
+  contactPhone?: string;
+  addressLine1?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  currency?: string;
+  timezone?: string;
 }
 
 export interface CreateTenantResponse {

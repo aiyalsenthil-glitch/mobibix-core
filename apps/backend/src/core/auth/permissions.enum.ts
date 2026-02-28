@@ -22,6 +22,14 @@ export enum Permission {
   // SaaS / Billing
   PLAN_UPGRADE = 'PLAN_UPGRADE',
 
-  //Tenant
+  // Tenant
   TENANT_MANAGE = 'TENANT_MANAGE',
+
+  // Mobibix Core Module Permissions
+  INVENTORY_VIEW = 'INVENTORY_VIEW',
+  INVENTORY_MANAGE = 'INVENTORY_MANAGE',
+  SALES_VIEW = 'SALES_VIEW',
+  SALES_CREATE = 'SALES_CREATE',
+  REPAIR_MANAGE = 'REPAIR_MANAGE',
+  SHOP_MANAGE = 'SHOP_MANAGE',
 }

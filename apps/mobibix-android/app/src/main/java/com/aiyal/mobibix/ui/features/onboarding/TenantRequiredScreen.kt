@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,11 +52,24 @@ fun TenantRequiredScreen(
     val appStateResolver = entryPoint.appStateResolver()
 
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
+    // Identity Fields
     var businessName by remember { mutableStateOf("") }
+    var legalName by remember { mutableStateOf("") }
+    
+    // Category Fields
     var categories by remember { mutableStateOf<List<BusinessCategory>>(emptyList()) }
     var selectedCategory by remember { mutableStateOf<BusinessCategory?>(null) }
     var isExpanded by remember { mutableStateOf(false) }
+
+    // Location & Regional Fields
+    var contactPhone by remember { mutableStateOf("") }
+    var addressLine1 by remember { mutableStateOf("") }
+    var city by remember { mutableStateOf("") }
+    var state by remember { mutableStateOf("") }
+    var pincode by remember { mutableStateOf("") }
+    var gstNumber by remember { mutableStateOf("") }
 
     var loading by remember { mutableStateOf(false) }
     var categoriesLoading by remember { mutableStateOf(true) }
@@ -76,31 +91,47 @@ fun TenantRequiredScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
+            .padding(horizontal = 24.dp)
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Spacer(Modifier.height(48.dp))
 
         Text(
-            text = "Create Your Business",
-            style = MaterialTheme.typography.headlineLarge,
+            text = "Set up your business",
+            style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center
         )
 
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Let's get your business set up.",
+            text = "We need some basic details to generate invoices correctly.",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center
         )
 
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(32.dp))
+
+        // --- IDENTITY ---
+        Text("Identity", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.Start))
+        Spacer(Modifier.height(8.dp))
 
         OutlinedTextField(
             value = businessName,
             onValueChange = { businessName = it },
-            label = { Text("Business Name") },
+            label = { Text("Display Name *") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = legalName,
+            onValueChange = { legalName = it },
+            label = { Text("Legal Entity Name") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -143,7 +174,6 @@ fun TenantRequiredScreen(
         }
 
         val isComingSoon = selectedCategory?.isComingSoon == true || selectedCategory?.name != "Mobile Shop"
-
         if (selectedCategory != null && isComingSoon) {
             Spacer(Modifier.height(8.dp))
             Text(
@@ -154,7 +184,71 @@ fun TenantRequiredScreen(
             )
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(32.dp))
+
+        // --- LOCATION & TAX ---
+        Text("Location & Tax", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.Start))
+        Spacer(Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = contactPhone,
+            onValueChange = { contactPhone = it },
+            label = { Text("Contact Phone *") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = addressLine1,
+            onValueChange = { addressLine1 = it },
+            label = { Text("Address") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = city,
+            onValueChange = { city = it },
+            label = { Text("City *") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = state,
+            onValueChange = { state = it },
+            label = { Text("State *") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = pincode,
+            onValueChange = { pincode = it },
+            label = { Text("Pincode") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = gstNumber,
+            onValueChange = { gstNumber = it },
+            label = { Text("GST / Tax Registration") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(32.dp))
 
         if (error != null) {
             Text(
@@ -167,6 +261,11 @@ fun TenantRequiredScreen(
         Button(
             onClick = {
                 if (loading || selectedCategory == null || isComingSoon) return@Button
+                if (businessName.isBlank() || contactPhone.isBlank() || city.isBlank() || state.isBlank()) {
+                    error = "Please fill in all required (*) fields"
+                    return@Button
+                }
+
                 loading = true
                 error = null
 
@@ -174,16 +273,25 @@ fun TenantRequiredScreen(
                     try {
                         val response = tenantApi.createTenant(
                             CreateTenantRequest(
-                                name = businessName,
+                                name = businessName.trim(),
                                 businessType = selectedCategory!!.name,
-                                businessCategoryId = selectedCategory!!.id
+                                businessCategoryId = selectedCategory!!.id,
+                                legalName = legalName.trim().takeIf { it.isNotEmpty() },
+                                contactPhone = contactPhone.trim(),
+                                addressLine1 = addressLine1.trim().takeIf { it.isNotEmpty() },
+                                city = city.trim(),
+                                state = state.trim(),
+                                pincode = pincode.trim().takeIf { it.isNotEmpty() },
+                                gstNumber = gstNumber.trim().takeIf { it.isNotEmpty() },
+                                currency = "INR",
+                                timezone = "Asia/Kolkata"
                             )
                         )
 
                         tokenStore.saveToken(response.accessToken)
 
-                        val state = appStateResolver.resolve()
-                        navController.navigate(state.toRoute()) {
+                        val tenantState = appStateResolver.resolve()
+                        navController.navigate(tenantState.toRoute()) {
                             popUpTo("tenant_required") { inclusive = true }
                         }
 
@@ -194,10 +302,12 @@ fun TenantRequiredScreen(
                     }
                 }
             },
-            enabled = !loading && businessName.isNotBlank() && selectedCategory != null && !isComingSoon,
+            enabled = !loading && !isComingSoon,
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
             Text(if (loading) "Creating..." else "Create Business")
         }
+        
+        Spacer(Modifier.height(48.dp))
     }
 }

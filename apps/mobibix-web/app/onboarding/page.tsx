@@ -2,23 +2,42 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { ArrowRight, Building2, AlertCircle } from "lucide-react";
+import { ArrowRight, ArrowLeft, Building2, MapPin, Globe, Check, AlertCircle } from "lucide-react";
 import {
   exchangeFirebaseToken,
   hasSessionHint,
   setAccessToken,
 } from "@/services/auth.api";
-import { createTenantWithToken } from "@/services/tenant.api";
+import { createTenantWithToken, CreateTenantDto } from "@/services/tenant.api";
 import { useAuth } from "@/hooks/useAuth";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 // Assumes user is authenticated and holds a backend JWT
 export default function OnboardingPage() {
   const router = useRouter();
   const { logout, authUser, REMOVED_AUTH_PROVIDERUser } = useAuth();
-  const [businessName, setBusinessName] = useState("");
+  
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // Form State
+  const [formData, setFormData] = useState<Partial<CreateTenantDto>>({
+    name: "",
+    legalName: "",
+    businessType: "",
+    contactPhone: "",
+    addressLine1: "",
+    city: "",
+    state: "",
+    pincode: "",
+    gstNumber: "",
+    currency: "INR",
+    timezone: "Asia/Kolkata",
+  });
 
   useEffect(() => {
     // Check if user is authenticated; if not, redirect to signin
@@ -38,17 +57,49 @@ export default function OnboardingPage() {
       await logout();
       router.push("/signin");
       setError(null);
-      setBusinessName("");
     } catch (err) {
       console.error("Logout error:", err);
     }
   };
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const validateStep = () => {
+    if (step === 1) {
+      if (!formData.name?.trim()) return "Business Display Name is required";
+    }
+    if (step === 2) {
+      if (!formData.contactPhone?.trim()) return "Contact Phone is required";
+      if (!formData.city?.trim()) return "City is required";
+      if (!formData.state?.trim()) return "State is required";
+    }
+    return null;
+  };
+
+  const handleNext = () => {
+    const err = validateStep();
+    if (err) {
+      setError(err);
+      return;
+    }
+    setError(null);
+    setStep((s) => s + 1);
+  };
+
+  const handleBack = () => {
+    setError(null);
+    setStep((s) => s - 1);
+  };
+
   async function handleCreateBusiness(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!businessName.trim()) {
-      setError("Business name is required");
+    const err = validateStep();
+    if (err) {
+      setError(err);
       return;
     }
 
@@ -73,13 +124,22 @@ export default function OnboardingPage() {
         await REMOVED_AUTH_PROVIDERUser.getIdToken(),
       );
 
-      const response = await createTenantWithToken(
-        {
-          name: businessName,
-          tenantType: "MOBILE_SHOP",
-        },
-        exchange.accessToken,
-      );
+      const payload: CreateTenantDto = {
+        name: formData.name!,
+        tenantType: "MOBILE_SHOP",
+        legalName: formData.legalName,
+        businessType: formData.businessType,
+        contactPhone: formData.contactPhone,
+        addressLine1: formData.addressLine1,
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode,
+        gstNumber: formData.gstNumber,
+        currency: formData.currency,
+        timezone: formData.timezone,
+      };
+
+      await createTenantWithToken(payload, exchange.accessToken);
 
       // Full page reload to ensure auth context reinitializes with new tenant context
       window.location.href = "/dashboard";
@@ -88,11 +148,10 @@ export default function OnboardingPage() {
       console.error("Create tenant error:", e);
 
       // If user not found, suggest re-authentication
-      if (e.message.includes("User not found")) {
+      if (e.message?.includes("User not found")) {
         setError(
           "Your session is invalid. Please sign out and sign in again to create a new account.",
         );
-        // Clear auth tokens so user is forced to re-authenticate
         localStorage.removeItem("accessToken");
         sessionStorage.removeItem("accessToken");
         setAccessToken(null);
@@ -104,77 +163,250 @@ export default function OnboardingPage() {
     }
   }
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white">
-      {checkingAuth ? (
+  if (checkingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white">
         <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur">
           <p className="text-center text-stone-400">
             Checking authentication...
           </p>
         </div>
-      ) : (
-        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Building2 className="h-6 w-6 text-teal-400" />
-              <h1 className="text-xl font-semibold">Set up your business</h1>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white py-12">
+      <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-stone-950 p-8 shadow-2xl">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-2xl font-semibold text-white">Set up your business</h1>
+          <button
+            onClick={handleSignOut}
+            className="text-sm text-stone-400 hover:text-white transition"
+          >
+            Sign out
+          </button>
+        </div>
+
+        {/* STEPPER */}
+        <div className="flex items-center justify-between mb-10 relative">
+          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-stone-800 -z-10 -translate-y-1/2"></div>
+          
+          <div className="flex flex-col items-center gap-2 bg-stone-950 px-2">
+            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${step >= 1 ? 'border-teal-500 bg-teal-500/10 text-teal-400' : 'border-stone-700 bg-stone-900 text-stone-500'}`}>
+              <Building2 className="w-5 h-5" />
             </div>
-            <button
-              onClick={handleSignOut}
-              className="text-xs text-stone-400 hover:text-stone-200 transition"
-            >
-              Sign out
-            </button>
+            <span className={`text-xs ${step >= 1 ? 'text-teal-400' : 'text-stone-500'}`}>Identity</span>
           </div>
 
-          <p className="mt-2 text-sm text-stone-400">
-            Create your first business to start managing sales, service, and
-            inventory.
-          </p>
-
-          <form onSubmit={handleCreateBusiness} className="mt-6 space-y-4">
-            <div>
-              <label className="mb-1 block text-sm text-stone-300">
-                Business name
-              </label>
-              <input
-                type="text"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                placeholder="e.g. Smart Tech Solutions"
-                className="w-full rounded-lg border border-white/10 bg-black px-3 py-2 text-sm text-white placeholder:text-stone-500 focus:border-teal-400 focus:outline-none"
-              />
+          <div className="flex flex-col items-center gap-2 bg-stone-950 px-2">
+            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${step >= 2 ? 'border-teal-500 bg-teal-500/10 text-teal-400' : 'border-stone-700 bg-stone-900 text-stone-500'}`}>
+              <MapPin className="w-5 h-5" />
             </div>
+            <span className={`text-xs ${step >= 2 ? 'text-teal-400' : 'text-stone-500'}`}>Location</span>
+          </div>
 
-            {error && (
-              <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-400 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-red-400">{error}</p>
-                    <p className="mt-1 text-xs text-red-300">
-                      Check the browser console for more details
-                    </p>
-                  </div>
+          <div className="flex flex-col items-center gap-2 bg-stone-950 px-2">
+            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${step === 3 ? 'border-teal-500 bg-teal-500/10 text-teal-400' : 'border-stone-700 bg-stone-900 text-stone-500'}`}>
+              <Globe className="w-5 h-5" />
+            </div>
+            <span className={`text-xs ${step === 3 ? 'text-teal-400' : 'text-stone-500'}`}>Regional</span>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-400" />
+            <div>
+              <p className="text-sm font-medium text-red-300">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* WIZARD CONTENT */}
+        <div className="min-h-[300px]">
+          {step === 1 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Business Display Name <span className="text-red-400">*</span></Label>
+                  <Input 
+                    name="name" 
+                    value={formData.name || ""} 
+                    onChange={handleChange} 
+                    placeholder="e.g. Smart Tech Solutions"
+                    className="bg-stone-900 border-white/10"
+                  />
+                  <p className="text-xs text-stone-500">This is the name your customers will see on invoices.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Legal / Registered Entity Name</Label>
+                  <Input 
+                    name="legalName" 
+                    value={formData.legalName || ""} 
+                    onChange={handleChange} 
+                    placeholder="e.g. Smart Tech Pvt Ltd"
+                    className="bg-stone-900 border-white/10"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Business Category (Optional)</Label>
+                  <Input 
+                    name="businessType" 
+                    value={formData.businessType || ""} 
+                    onChange={handleChange} 
+                    placeholder="e.g. Mobile Retailer, Electronics Repair"
+                    className="bg-stone-900 border-white/10"
+                  />
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-black transition hover:bg-teal-400 disabled:opacity-50"
-            >
-              {loading ? "Creating…" : "Create business"}
-              {!loading && <ArrowRight className="h-4 w-4" />}
-            </button>
-          </form>
+          {step === 2 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2">
+                  <Label>Contact Phone Number <span className="text-red-400">*</span></Label>
+                  <Input 
+                    name="contactPhone" 
+                    value={formData.contactPhone || ""} 
+                    onChange={handleChange} 
+                    placeholder="Primary business phone"
+                    className="bg-stone-900 border-white/10"
+                  />
+                </div>
 
-          <p className="mt-6 text-center text-xs text-stone-500">
-            You can add shops, staff, and settings after setup.
-          </p>
+                <div className="space-y-2 col-span-2">
+                  <Label>Address Line 1</Label>
+                  <Input 
+                    name="addressLine1" 
+                    value={formData.addressLine1 || ""} 
+                    onChange={handleChange} 
+                    placeholder="Shop/Building number, Street"
+                    className="bg-stone-900 border-white/10"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>City <span className="text-red-400">*</span></Label>
+                  <Input 
+                    name="city" 
+                    value={formData.city || ""} 
+                    onChange={handleChange} 
+                    placeholder="City"
+                    className="bg-stone-900 border-white/10"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>State / Province <span className="text-red-400">*</span></Label>
+                  <Input 
+                    name="state" 
+                    value={formData.state || ""} 
+                    onChange={handleChange} 
+                    placeholder="State"
+                    className="bg-stone-900 border-white/10"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Pincode / Zipcode</Label>
+                  <Input 
+                    name="pincode" 
+                    value={formData.pincode || ""} 
+                    onChange={handleChange} 
+                    placeholder="Postal code"
+                    className="bg-stone-900 border-white/10"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>GST / Tax Registration Number</Label>
+                  <Input 
+                    name="gstNumber" 
+                    value={formData.gstNumber || ""} 
+                    onChange={handleChange} 
+                    placeholder="e.g. 27ABCDE1234F1Z5"
+                    className="bg-stone-900 border-white/10"
+                  />
+                  <p className="text-[10px] text-stone-500">Essential for legal taxation on generated invoices.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+              <p className="text-stone-400 text-sm mb-4">Set your regional preferences so the system displays the correct time and currency formats.</p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Currency</Label>
+                  <select
+                    name="currency"
+                    value={formData.currency || "INR"}
+                    onChange={handleChange}
+                    className="flex h-10 w-full rounded-md border border-white/10 bg-stone-900 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                  >
+                    <option value="INR">Indian Rupee (₹)</option>
+                    <option value="USD">US Dollar ($)</option>
+                    <option value="EUR">Euro (€)</option>
+                    <option value="AED">UAE Dirham (د.إ)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Timezone</Label>
+                  <select
+                    name="timezone"
+                    value={formData.timezone || "Asia/Kolkata"}
+                    onChange={handleChange}
+                    className="flex h-10 w-full rounded-md border border-white/10 bg-stone-900 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                  >
+                    <option value="Asia/Kolkata">India Standard Time (IST)</option>
+                    <option value="UTC">Coordinated Universal Time (UTC)</option>
+                    <option value="America/New_York">Eastern Time (ET)</option>
+                    <option value="Europe/London">Greenwich Mean Time (GMT)</option>
+                    <option value="Asia/Dubai">Gulf Standard Time (GST)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* FOOTER CONTROLS */}
+        <div className="mt-8 flex items-center justify-between pt-6 border-t border-white/5">
+          {step > 1 ? (
+            <Button variant="outline" onClick={handleBack} disabled={loading} className="bg-transparent border-white/10 text-white hover:bg-white/5 hover:text-white">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+          ) : (
+            <div></div> // Spacer formatting
+          )}
+
+          {step < 3 ? (
+            <Button onClick={handleNext} className="bg-teal-500 hover:bg-teal-400 text-black">
+              Continue
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          ) : (
+            <Button 
+              onClick={handleCreateBusiness} 
+              disabled={loading}
+              className="bg-teal-500 hover:bg-teal-400 text-black"
+            >
+              {loading ? "Creating..." : "Complete Setup"}
+              {!loading && <Check className="w-4 h-4 ml-2" />}
+            </Button>
+          )}
+        </div>
+
+      </div>
     </div>
   );
 }

@@ -21,10 +21,13 @@ import { UserRole, ModuleType } from '@prisma/client';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { Permission } from '../auth/permissions.enum';
 
 @Controller('mobileshop/sales')
 @ModuleScope(ModuleType.MOBILE_SHOP)
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class SalesController {
   constructor(
@@ -33,34 +36,32 @@ export class SalesController {
   ) {}
 
   @Post('invoice')
+  @Permissions(Permission.SALES_CREATE)
   async create(@Req() req: any, @Body() dto: SalesInvoiceDto) {
     const tenantId = req.user.tenantId;
     return this.service.createInvoice(tenantId, dto);
   }
 
   @Patch('invoice/:invoiceId')
+  @Permissions(Permission.SALES_CREATE)
   async update(
     @Req() req: any,
     @Param('invoiceId') invoiceId: string,
     @Body() dto: SalesInvoiceDto,
   ) {
     const tenantId = req.user.tenantId;
-    if (req.user?.role !== 'OWNER') {
-      throw new ForbiddenException('Only owner can update invoice');
-    }
     return this.service.updateInvoice(tenantId, invoiceId, dto);
   }
 
   @Post('invoice/:invoiceId/cancel')
+  @Permissions(Permission.SALES_CREATE)
   async cancel(@Req() req: any, @Param('invoiceId') invoiceId: string) {
     const tenantId = req.user.tenantId;
-    if (req.user?.role !== 'OWNER') {
-      throw new ForbiddenException('Only owner can cancel invoice');
-    }
     return this.service.cancelInvoice(tenantId, invoiceId);
   }
 
   @Get('invoices')
+  @Permissions(Permission.SALES_VIEW)
   async list(
     @Req() req: any,
     @Query('shopId') shopId: string,
@@ -89,6 +90,7 @@ export class SalesController {
   }
 
   @Get('invoice/:invoiceId')
+  @Permissions(Permission.SALES_VIEW)
   async getInvoice(@Req() req: any, @Param('invoiceId') invoiceId: string) {
     const tenantId = req.user.tenantId;
     if (!tenantId) {
@@ -98,6 +100,7 @@ export class SalesController {
   }
 
   @Post('invoice/:invoiceId/payment')
+  @Permissions(Permission.SALES_CREATE)
   async recordPayment(
     @Req() req: any,
     @Param('invoiceId') invoiceId: string,
@@ -126,6 +129,7 @@ export class SalesController {
   }
 
   @Post('invoice/:invoiceId/collect-payment')
+  @Permissions(Permission.SALES_CREATE)
   async collectPayment(
     @Req() req: any,
     @Param('invoiceId') invoiceId: string,
@@ -136,6 +140,7 @@ export class SalesController {
   }
 
   @Post('invoice/:invoiceId/items')
+  @Permissions(Permission.SALES_CREATE)
   async addItem(
     @Req() req: any,
     @Param('invoiceId') invoiceId: string,
@@ -147,12 +152,14 @@ export class SalesController {
   }
 
   @Get('invoice/:invoiceId/payments')
+  @Permissions(Permission.SALES_VIEW)
   async listPayments(@Req() req: any, @Param('invoiceId') invoiceId: string) {
     const tenantId = req.user.tenantId;
     return this.paymentService.listPayments(tenantId, invoiceId);
   }
 
   @Get('summary')
+  @Permissions(Permission.SALES_VIEW)
   async getSalesSummary(
     @Req() req: any,
     @Query('shopId') shopId: string,
