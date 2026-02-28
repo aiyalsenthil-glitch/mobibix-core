@@ -23,7 +23,7 @@ fun InvoiceSettingsScreen(
     navController: NavController,
     shopApi: ShopApi
 ) {
-    var gstin by remember { mutableStateOf("") }
+    var gstNumber by remember { mutableStateOf("") }
     var gstEnabled by remember { mutableStateOf(false) }
     var invoiceFooter by remember { mutableStateOf("") }
     
@@ -36,7 +36,7 @@ fun InvoiceSettingsScreen(
         try {
             val details = shopApi.getShopSettings(shopId)
             shopDetails = details
-            gstin = details.gstin ?: ""
+            gstNumber = details.gstNumber ?: ""
             gstEnabled = details.gstEnabled
             invoiceFooter = details.invoiceFooter ?: ""
         } finally {
@@ -78,9 +78,9 @@ fun InvoiceSettingsScreen(
                 }
                 
                 OutlinedTextField(
-                    value = gstin,
-                    onValueChange = { gstin = it },
-                    label = { Text("GSTIN") },
+                    value = gstNumber,
+                    onValueChange = { gstNumber = it },
+                    label = { Text("GST Number") },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = gstEnabled
                 )
@@ -109,7 +109,7 @@ fun InvoiceSettingsScreen(
                                     address = d.address,
                                     phone = d.phone,
                                     gstEnabled = gstEnabled,
-                                    gstNumber = if (gstEnabled) gstin else null,
+                                    gstNumber = if (gstEnabled) gstNumber else null,
                                     invoiceFooter = invoiceFooter,
                                     terms = d.terms ?: emptyList()
                                 )

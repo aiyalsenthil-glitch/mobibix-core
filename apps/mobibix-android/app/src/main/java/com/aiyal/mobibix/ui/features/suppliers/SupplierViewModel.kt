@@ -58,7 +58,7 @@ class SupplierViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(showAddEditSheet = false, editingSupplier = null, saveError = null)
     }
 
-    fun saveSupplier(name: String, phone: String, email: String, address: String, gstin: String) {
+    fun saveSupplier(name: String, phone: String, email: String, address: String, gstNumber: String) {
         if (name.isBlank()) {
             _uiState.value = _uiState.value.copy(saveError = "Name is required")
             return
@@ -74,7 +74,7 @@ class SupplierViewModel @Inject constructor(
                     phone = phone.takeIf { it.isNotBlank() },
                     email = email.takeIf { it.isNotBlank() },
                     address = address.takeIf { it.isNotBlank() },
-                    gstin = gstin.takeIf { it.isNotBlank() }
+                    gstNumber = gstNumber.takeIf { it.isNotBlank() }
                 )
                 
                 repository.createSupplier(dto)

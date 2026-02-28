@@ -133,11 +133,14 @@ fun MainScreen(
                     )
                 }
                 composable(BottomNavItem.Sales.route) {
+                    val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
                     SalesListScreen(
                         shopContextProvider = shopContextProvider,
                         shopApi = shopApi,
                         onNewSale = { mainNavController.navigate("new_sale") },
-                        onInvoiceClick = { invoiceId -> mainNavController.navigate("invoice_details/$invoiceId") }
+                        onInvoiceClick = { invoiceId -> 
+                            mainNavController.navigate("invoice_details/${activeShopId ?: ""}/$invoiceId") 
+                        }
                     )
                 }
                 composable(BottomNavItem.Repair.route) {

@@ -42,7 +42,7 @@ fun ShopSettingsScreen(
     var name by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
-    var gstin by remember { mutableStateOf("") }
+    var gstNumber by remember { mutableStateOf("") }
     var gstEnabled by remember { mutableStateOf(false) }
     var invoiceFooter by remember { mutableStateOf("") }
     var terms by remember { mutableStateOf("") }
@@ -62,7 +62,7 @@ fun ShopSettingsScreen(
             name = details.name ?: ""
             address = details.address ?: ""
             phone = details.phone ?: ""
-            gstin = details.gstin ?: ""
+            gstNumber = details.gstNumber ?: ""
             gstEnabled = details.gstEnabled
             invoiceFooter = details.invoiceFooter ?: ""
             terms = details.terms?.joinToString("\n") ?: ""
@@ -101,7 +101,7 @@ fun ShopSettingsScreen(
                     )
                 }
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(value = gstin, onValueChange = { gstin = it }, label = { Text("GSTIN") }, modifier = Modifier.fillMaxWidth(), enabled = gstEnabled)
+                OutlinedTextField(value = gstNumber, onValueChange = { gstNumber = it }, label = { Text("GST Number") }, modifier = Modifier.fillMaxWidth(), enabled = gstEnabled)
                 
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(value = invoiceFooter, onValueChange = { invoiceFooter = it }, label = { Text("Invoice Footer") }, modifier = Modifier.fillMaxWidth())
@@ -119,7 +119,7 @@ fun ShopSettingsScreen(
                                 address = address,
                                 phone = phone,
                                 gstEnabled = gstEnabled,
-                                gstNumber = if (gstEnabled) gstin.takeIf { it.isNotBlank() } else null,
+                                gstNumber = if (gstEnabled) gstNumber.takeIf { it.isNotBlank() } else null,
                                 invoiceFooter = invoiceFooter.takeIf { it.isNotBlank() },
                                 terms = terms.lines().filter { it.isNotBlank() }
                             )

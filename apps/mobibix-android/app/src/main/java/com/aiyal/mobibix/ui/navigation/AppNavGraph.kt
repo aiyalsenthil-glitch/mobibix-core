@@ -189,12 +189,21 @@ fun AppNavGraph(
         }
         
         composable(
-            route = "invoice_details/{invoiceId}",
-            arguments = listOf(navArgument("invoiceId") { type = NavType.StringType })
+            route = "invoice_details/{shopId}/{invoiceId}",
+            arguments = listOf(
+                navArgument("shopId") { type = NavType.StringType },
+                navArgument("invoiceId") { type = NavType.StringType }
+            )
         ) {
             val appState by produceState<AppState?>(initialValue = null) { value = appStateResolver.resolve() }
+            val shopId = it.arguments?.getString("shopId") ?: ""
             val invoiceId = it.arguments?.getString("invoiceId") ?: ""
-            InvoiceDetailsScreen(invoiceId = invoiceId, navController = navController, canCancel = appState is AppState.Staff)
+            InvoiceDetailsScreen(
+                invoiceId = invoiceId,
+                shopId = shopId,
+                navController = navController,
+                canCancel = appState is AppState.Staff
+            )
         }
 
         composable(

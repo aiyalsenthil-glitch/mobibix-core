@@ -6,6 +6,8 @@ import com.aiyal.mobibix.core.shop.ShopInterceptor
 import com.aiyal.mobibix.data.network.AuthInterceptor
 import com.aiyal.mobibix.data.network.DashboardApi
 import com.aiyal.mobibix.data.network.JobApi
+import com.aiyal.mobibix.data.network.MobiResponseInterceptor
+import com.aiyal.mobibix.data.network.PermissionsApi
 import com.aiyal.mobibix.data.network.ProductApi
 import com.aiyal.mobibix.data.network.PurchaseApi
 import com.aiyal.mobibix.data.network.ReceiptApi

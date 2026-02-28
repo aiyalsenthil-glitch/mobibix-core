@@ -93,8 +93,8 @@ fun SupplierListScreen(
             AddEditSupplierSheet(
                 supplier = uiState.editingSupplier,
                 onDismiss = { viewModel.closeSheet() },
-                onSave = { name, phone, email, address, gstin ->
-                    viewModel.saveSupplier(name, phone, email, address, gstin)
+                onSave = { name, phone, email, address, gstNumber ->
+                    viewModel.saveSupplier(name, phone, email, address, gstNumber)
                 },
                 isSaving = uiState.isSaving,
                 saveError = uiState.saveError
@@ -134,7 +134,7 @@ fun PremiumSupplierCard(supplier: Supplier, onClick: () -> Unit) {
                 Text(supplier.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(2.dp))
                 
-                if (supplier.phone != null || supplier.gstin != null) {
+                if (supplier.phone != null || supplier.gstNumber != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (supplier.phone != null) {
                             Icon(
@@ -149,16 +149,16 @@ fun PremiumSupplierCard(supplier: Supplier, onClick: () -> Unit) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            if (supplier.gstin != null) {
+                            if (supplier.gstNumber != null) {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("•", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
                         }
                         
-                        if (supplier.gstin != null) {
+                        if (supplier.gstNumber != null) {
                             Text(
-                                text = "GST: ${supplier.gstin}",
+                                text = "GST: ${supplier.gstNumber}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

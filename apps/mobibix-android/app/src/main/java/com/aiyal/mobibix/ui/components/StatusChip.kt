@@ -16,10 +16,18 @@ import com.aiyal.mobibix.model.JobStatus
 fun StatusChip(status: JobStatus) {
     val backgroundColor = when (status) {
         JobStatus.RECEIVED -> Color(0xFF007BFF) // Blue
+        JobStatus.ASSIGNED -> Color(0xFF6610F2) // Indigo
+        JobStatus.DIAGNOSING -> Color(0xFF6F42C1) // Purple
+        JobStatus.WAITING_APPROVAL -> Color(0xFFE83E8C) // Pink
+        JobStatus.APPROVED -> Color(0xFF20C997) // Teal
+        JobStatus.WAITING_FOR_PARTS -> Color(0xFFFD7E14) // Yellow/Orange
         JobStatus.IN_PROGRESS -> Color(0xFFFFA500) // Orange
         JobStatus.READY -> Color(0xFF28A745) // Green
         JobStatus.DELIVERED -> Color(0xFF6C757D) // Gray
         JobStatus.CANCELLED -> Color(0xFFDC3545) // Red
+        JobStatus.RETURNED -> Color(0xFFF8D7DA) // Light Red/Pink
+        JobStatus.SCRAPPED -> Color(0xFF343A40) // Dark Gray/Black
+        else -> Color.Gray
     }
 
     Text(

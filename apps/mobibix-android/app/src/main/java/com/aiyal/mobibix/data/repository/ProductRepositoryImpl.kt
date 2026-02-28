@@ -31,7 +31,11 @@ class ProductRepositoryImpl @Inject constructor(
                     salePrice = entity.salePrice,
                     costPrice = entity.costPrice,
                     stockQty = entity.stockQty,
-                    sku = entity.sku
+                    sku = entity.sku,
+                    gstRate = entity.gstRate,
+                    hsnCode = entity.hsnCode,
+                    isSerialized = entity.isSerialized,
+                    warrantyDays = entity.warrantyDays
                 )
             }
         }
@@ -59,7 +63,11 @@ class ProductRepositoryImpl @Inject constructor(
                 salePrice = dto.salePrice,
                 costPrice = dto.costPrice,
                 stockQty = dto.stockQty,
-                sku = dto.sku
+                sku = dto.sku,
+                gstRate = dto.gstRate,
+                hsnCode = dto.hsnCode,
+                isSerialized = dto.isSerialized,
+                warrantyDays = dto.warrantyDays
             )
         }
         productDao.updateShopProducts(shopId, entities)
@@ -80,7 +88,11 @@ class ProductRepositoryImpl @Inject constructor(
                 salePrice = created.salePrice,
                 costPrice = created.costPrice,
                 stockQty = created.stockQty,
-                sku = created.sku
+                sku = created.sku,
+                gstRate = created.gstRate,
+                hsnCode = created.hsnCode,
+                isSerialized = created.isSerialized,
+                warrantyDays = created.warrantyDays
             )
         ))
         return created
@@ -97,7 +109,11 @@ class ProductRepositoryImpl @Inject constructor(
                 salePrice = updated.salePrice,
                 costPrice = updated.costPrice,
                 stockQty = updated.stockQty,
-                sku = updated.sku
+                sku = updated.sku,
+                gstRate = updated.gstRate,
+                hsnCode = updated.hsnCode,
+                isSerialized = updated.isSerialized,
+                warrantyDays = updated.warrantyDays
             )
         ))
         return updated

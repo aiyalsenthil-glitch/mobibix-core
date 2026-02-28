@@ -14,5 +14,9 @@ data class ProductEntity(
     val costPrice: Int?, // paise
     val stockQty: Int,
     val sku: String?,
+    val gstRate: Double? = null,
+    val hsnCode: String? = null,
+    val isSerialized: Boolean = false,
+    val warrantyDays: Int? = null,
     val updatedAt: Long = System.currentTimeMillis()
 )

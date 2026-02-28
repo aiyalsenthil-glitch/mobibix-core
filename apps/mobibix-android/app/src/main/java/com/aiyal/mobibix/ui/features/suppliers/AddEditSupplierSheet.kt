@@ -14,7 +14,7 @@ import com.aiyal.mobibix.data.network.Supplier
 fun AddEditSupplierSheet(
     supplier: Supplier?,
     onDismiss: () -> Unit,
-    onSave: (name: String, phone: String, email: String, address: String, gstin: String) -> Unit,
+    onSave: (name: String, phone: String, email: String, address: String, gstNumber: String) -> Unit,
     isSaving: Boolean,
     saveError: String?
 ) {
@@ -22,7 +22,7 @@ fun AddEditSupplierSheet(
     var phone by remember { mutableStateOf(supplier?.phone ?: "") }
     var email by remember { mutableStateOf(supplier?.email ?: "") }
     var address by remember { mutableStateOf(supplier?.address ?: "") }
-    var gstin by remember { mutableStateOf(supplier?.gstin ?: "") }
+    var gstNumber by remember { mutableStateOf(supplier?.gstNumber ?: "") }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -76,9 +76,9 @@ fun AddEditSupplierSheet(
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
-                value = gstin,
-                onValueChange = { gstin = it },
-                label = { Text("GSTIN") },
+                value = gstNumber,
+                onValueChange = { gstNumber = it },
+                label = { Text("GST Number") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -95,7 +95,7 @@ fun AddEditSupplierSheet(
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
-                onClick = { onSave(name, phone, email, address, gstin) },
+                onClick = { onSave(name, phone, email, address, gstNumber) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isSaving && name.isNotBlank()
             ) {

@@ -83,7 +83,7 @@ fun JobCardSettingsScreen(
                                     address = d.address,
                                     phone = d.phone,
                                     gstEnabled = d.gstEnabled,
-                                    gstNumber = d.gstin,
+                                    gstNumber = d.gstNumber,
                                     invoiceFooter = d.invoiceFooter,
                                     terms = terms.lines().filter { it.isNotBlank() }
                                 )

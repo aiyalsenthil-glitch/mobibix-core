@@ -10,7 +10,7 @@ data class Supplier(
     val email: String?,
     val phone: String?,
     val address: String?,
-    val gstin: String?,
+    val gstNumber: String?,
     val notes: String?,
     val createdAt: String,
     val updatedAt: String
@@ -22,7 +22,7 @@ data class CreateSupplierDto(
     val email: String? = null,
     val phone: String? = null,
     val address: String? = null,
-    val gstin: String? = null,
+    val gstNumber: String? = null,
     val notes: String? = null
 )
 

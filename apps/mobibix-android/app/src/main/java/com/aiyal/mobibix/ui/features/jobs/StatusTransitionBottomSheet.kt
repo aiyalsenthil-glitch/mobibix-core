@@ -65,6 +65,7 @@ private fun statusOption(status: JobStatus): NextStatusOption = when (status) {
     JobStatus.RETURNED        -> NextStatusOption(status, "Return to Customer", "Returning unrepaired", Icons.Outlined.Undo, isDestructive = true)
     JobStatus.CANCELLED       -> NextStatusOption(status, "Cancel Job", "Void this job", Icons.Outlined.Cancel, isDestructive = true)
     JobStatus.SCRAPPED        -> NextStatusOption(status, "Scrap Device", "Device cannot be repaired", Icons.Outlined.Delete, isDestructive = true)
+    JobStatus.UNKNOWN         -> NextStatusOption(status, "Unknown", "Unknown status", Icons.Outlined.QuestionMark)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
