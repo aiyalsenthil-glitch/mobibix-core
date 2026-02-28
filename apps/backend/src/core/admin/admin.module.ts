@@ -7,6 +7,8 @@ import { PlansModule } from '../billing/plans/plans.module';
 import { AdminWebhooksController } from './admin-webhooks.controller';
 // import { PlatformController } from './platform.controller';
 import { AuditModule } from '../audit/audit.module';
+import { PrismaModule } from '../prisma/prisma.module';
+import { PartnersModule } from '../../modules/partners/partners.module';
 
 import { AdminAnalyticsController } from './analytics/admin-analytics.controller';
 import { AdminTenantController } from './tenant/admin-tenant.controller';
@@ -33,6 +35,8 @@ import { RevenueAdminController } from './revenue/revenue-admin.controller';
     BillingModule, 
     PlansModule, 
     AuditModule,
+    PrismaModule,
+    PartnersModule,
     BullModule.registerQueue({
       name: 'admin-jobs',
     }),
