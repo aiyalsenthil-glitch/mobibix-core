@@ -1,5 +1,5 @@
 export type DocumentType = "INVOICE" | "JOBCARD" | "RECEIPT" | "VOUCHER";
-export type TemplateVariant = "CLASSIC" | "THERMAL" | "MODERN" | "SIMPLE" | "DETAILED";
+export type TemplateVariant = "CLASSIC" | "THERMAL" | "MODERN" | "SIMPLE" | "DETAILED" | "PROFESSIONAL";
 
 // Header Customization Config
 export interface HeaderConfig {
