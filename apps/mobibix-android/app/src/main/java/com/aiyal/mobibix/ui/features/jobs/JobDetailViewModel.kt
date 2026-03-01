@@ -11,6 +11,7 @@ import com.aiyal.mobibix.data.network.dto.UpdateJobRequest
 import com.aiyal.mobibix.domain.JobRepository
 import com.aiyal.mobibix.domain.ShopRepository
 import com.aiyal.mobibix.model.JobStatus
+import com.aiyal.mobibix.core.util.MobiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,7 +43,7 @@ class JobDetailViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     loading = false,
-                    error = e.message ?: "Failed to load job details"
+                    error = MobiError.extractMessage(e)
                 )
             }
         }
@@ -162,7 +163,23 @@ class JobDetailViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     loading = false,
-                    error = e.message ?: "Failed to create warranty job"
+                    error = MobiError.extractMessage(e)
+                )
+            }
+        }
+    }
+
+    fun generateBill(shopId: String, jobId: String, request: com.aiyal.mobibix.data.network.RepairBillRequest, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(loading = true, error = null)
+            try {
+                jobRepository.generateRepairBill(jobId, request)
+                loadJobDetails(shopId, jobId)
+                onSuccess()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    loading = false,
+                    error = MobiError.extractMessage(e)
                 )
             }
         }

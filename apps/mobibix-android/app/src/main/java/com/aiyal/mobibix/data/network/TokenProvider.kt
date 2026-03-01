@@ -1,22 +1,29 @@
 package com.aiyal.mobibix.data.network
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import com.aiyal.mobibix.core.data.PrefKeys
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class TokenProvider @Inject constructor(
-    private val dataStore: DataStore<Preferences>
+    @ApplicationContext private val context: Context
 ) {
+    private val masterKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
+
+    private val sharedPrefs = EncryptedSharedPreferences.create(
+        context,
+        "secure_auth_prefs",
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+
     fun getToken(): String? {
-        // runBlocking is used here to synchronously get the token on the same thread.
-        // This is acceptable because this will be called from an I/O-bound thread by OkHttp's dispatcher.
-        return runBlocking {
-            dataStore.data.first()[PrefKeys.JWT_TOKEN]
-        }
+        return sharedPrefs.getString("jwt_token", null)
     }
 }

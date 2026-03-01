@@ -92,6 +92,13 @@ fun InvoiceDetailsScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("${item.productName}", style = MaterialTheme.typography.bodyLarge)
                 Text("${item.quantity} x ₹${"%,.2f".format(item.rate)}", style = MaterialTheme.typography.bodySmall)
+                        if (!item.imeis.isNullOrEmpty()) {
+                            Text(
+                                "Serials: ${item.imeis.joinToString(", ")}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
                     }
                     Text("₹${"%,.2f".format(item.lineTotal)}", style = MaterialTheme.typography.bodyLarge)
                 }

@@ -61,4 +61,8 @@ class JobRepositoryImpl @Inject constructor(
     override suspend fun createWarrantyJob(shopId: String, jobId: String): JobCardResponse {
         return api.createWarrantyJob(shopId, jobId)
     }
+
+    override suspend fun generateRepairBill(jobId: String, request: com.aiyal.mobibix.data.network.RepairBillRequest) {
+        api.generateRepairBill(jobId, request)
+    }
 }

@@ -31,27 +31,29 @@ import com.aiyal.mobibix.ui.theme.ThemeState
 data class DrawerItem(
     val label: String,
     val icon: ImageVector,
-    val route: String
+    val route: String,
+    val requiredPermission: String? = null
 )
 
 private val drawerItems = listOf(
-    DrawerItem("Products", Icons.Default.ShoppingBag, "product_list"),
-    DrawerItem("Inventory", Icons.Default.Inventory, "inventory"),
-    DrawerItem("Customers", Icons.Default.People, "customers"),
-    DrawerItem("WhatsApp", Icons.AutoMirrored.Filled.Chat, "whatsapp_dashboard"),
-    DrawerItem("CRM", Icons.Default.AssignmentInd, "crm_dashboard"),
-    DrawerItem("Suppliers", Icons.Default.LocalShipping, "suppliers"),
-    DrawerItem("Purchases", Icons.Default.ShoppingCart, "purchases"),
-    DrawerItem("Payments", Icons.Default.CreditCard, "finance"),
-    DrawerItem("Reports", Icons.Default.Assessment, "reports"),
-    DrawerItem("Shops", Icons.Default.Store, "shop_management"),
-    DrawerItem("Staff", Icons.Default.People, "staff"),
-    DrawerItem("Settings", Icons.Default.Settings, "settings"),
+    DrawerItem("Products", Icons.Default.ShoppingBag, "product_list", "INVENTORY_VIEW"),
+    DrawerItem("Inventory", Icons.Default.Inventory, "inventory", "INVENTORY_VIEW"),
+    DrawerItem("Customers", Icons.Default.People, "customers", "MEMBER_VIEW"),
+    DrawerItem("WhatsApp", Icons.AutoMirrored.Filled.Chat, "whatsapp_dashboard", "REPAIR_MANAGE"),
+    DrawerItem("CRM", Icons.Default.AssignmentInd, "crm_dashboard", "MEMBER_VIEW"),
+    DrawerItem("Suppliers", Icons.Default.LocalShipping, "suppliers", "INVENTORY_VIEW"),
+    DrawerItem("Purchases", Icons.Default.ShoppingCart, "purchases", "INVENTORY_MANAGE"),
+    DrawerItem("Payments", Icons.Default.CreditCard, "finance", "SALES_VIEW"),
+    DrawerItem("Reports", Icons.Default.Assessment, "reports", "DASHBOARD_VIEW"),
+    DrawerItem("Shops", Icons.Default.Store, "shop_management", "SHOP_MANAGE"),
+    DrawerItem("Staff", Icons.Default.People, "staff", "STAFF_VIEW"),
+    DrawerItem("Settings", Icons.Default.Settings, "settings"), // Always allowed
 )
 
 @Composable
 fun AppDrawerContent(
     currentRoute: String?,
+    appState: com.aiyal.mobibix.core.app.AppState,
     onItemClick: (String) -> Unit,
     onLogout: () -> Unit,
     onClose: () -> Unit
@@ -142,11 +144,16 @@ fun AppDrawerContent(
         Spacer(Modifier.height(8.dp))
 
         // ── Nav Items ──
+        val filteredItems = remember(appState) {
+            drawerItems.filter { item ->
+                item.requiredPermission == null || appState.hasPermission(item.requiredPermission)
+            }
+        }
         LazyColumn(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
         ) {
-            items(drawerItems) { item ->
+            items(filteredItems) { item ->
                 val isSelected = currentRoute == item.route
                 DrawerNavItem(
                     item = item,

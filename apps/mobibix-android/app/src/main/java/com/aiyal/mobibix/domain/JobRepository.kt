@@ -23,4 +23,5 @@ interface JobRepository {
     suspend fun removePart(shopId: String, jobId: String, partId: String): JobCardResponse
     suspend fun addAdvance(shopId: String, jobId: String, request: AddAdvanceRequest): JobCardResponse
     suspend fun createWarrantyJob(shopId: String, jobId: String): JobCardResponse
+    suspend fun generateRepairBill(jobId: String, request: com.aiyal.mobibix.data.network.RepairBillRequest)
 }

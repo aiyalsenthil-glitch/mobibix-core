@@ -1,25 +1,33 @@
 package com.aiyal.mobibix.core.auth
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import com.aiyal.mobibix.core.data.PrefKeys
+import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class TokenStore @Inject constructor(
-    private val dataStore: DataStore<Preferences>
+    @ApplicationContext private val context: Context
 ) {
-    suspend fun saveToken(token: String) {
-        dataStore.edit {
-            it[PrefKeys.JWT_TOKEN] = token
-        }
+    private val masterKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
+
+    private val sharedPrefs = EncryptedSharedPreferences.create(
+        context,
+        "secure_auth_prefs",
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+
+    fun saveToken(token: String) {
+        sharedPrefs.edit().putString("jwt_token", token).apply()
     }
 
-    suspend fun clear() {
-        dataStore.edit {
-            it.remove(PrefKeys.JWT_TOKEN)
-        }
+    fun clear() {
+        sharedPrefs.edit().remove("jwt_token").apply()
     }
 }

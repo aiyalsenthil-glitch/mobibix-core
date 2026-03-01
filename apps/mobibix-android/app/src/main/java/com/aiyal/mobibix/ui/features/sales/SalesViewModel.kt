@@ -10,6 +10,7 @@ import com.aiyal.mobibix.data.network.SalesApi
 import com.aiyal.mobibix.data.network.ShopApi
 import com.aiyal.mobibix.data.network.ShopDetails
 import com.aiyal.mobibix.data.network.ShopProduct
+import com.aiyal.mobibix.core.util.MobiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,7 +79,7 @@ class SalesViewModel @Inject constructor(
                 val response = salesApi.listInvoices(shopId)
                 _state.value = SalesListState(loading = false, invoices = response.data)
             } catch (e: Exception) {
-                _state.value = SalesListState(loading = false, error = e.message)
+                _state.value = SalesListState(loading = false, error = MobiError.extractMessage(e))
             }
         }
     }
@@ -126,7 +127,7 @@ class SalesViewModel @Inject constructor(
                 val current = _invoiceWithShop.value
                 loadInvoiceDetails(invoiceId)
             } catch (e: Exception) {
-                _cancelError.value = e.message ?: "Failed to cancel invoice. Please try again."
+                _cancelError.value = MobiError.extractMessage(e)
             }
         }
     }
@@ -159,7 +160,7 @@ class SalesViewModel @Inject constructor(
                 salesApi.createInvoice(request)
                 onSuccess()
             } catch (e: Exception) {
-                onError(e.message ?: "Failed to create invoice")
+                onError(MobiError.extractMessage(e))
             } finally {
                 saving.value = false
             }
