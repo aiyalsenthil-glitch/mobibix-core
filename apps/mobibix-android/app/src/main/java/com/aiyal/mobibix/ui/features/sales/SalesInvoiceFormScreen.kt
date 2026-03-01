@@ -33,7 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.aiyal/mobibix.data.network.CreateInvoiceRequest
+import com.aiyal.mobibix.data.network.CreateInvoiceRequest
 import com.aiyal.mobibix.data.network.InvoiceItemRequest
 import com.aiyal.mobibix.data.network.PaymentMethodRequest
 import kotlin.math.roundToInt
