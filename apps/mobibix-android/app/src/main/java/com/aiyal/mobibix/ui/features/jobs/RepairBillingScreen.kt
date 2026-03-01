@@ -123,7 +123,7 @@ fun RepairBillingScreen(
                             shopId = shopId,
                             jobCardId = jobId,
                             services = listOf(RepairBillServiceItem("Repair Labor", labor)),
-                            parts = job.parts.map { RepairBillPartItem(it.shopProductId, it.quantity, it.unitPrice, 0.0) },
+                            parts = job.parts.map { RepairBillPartItem(it.productId, it.quantity, it.unitPrice, 0.0) },
                             billingMode = billingMode,
                             paymentMode = paymentMode,
                             deliverImmediately = deliverImmediately
