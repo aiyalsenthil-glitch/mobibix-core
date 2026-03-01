@@ -13,7 +13,6 @@ import { CreateTenantDto, UpdateTenantSettingsDto } from './dto/tenant.dto';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
-import { PLAN_CAPABILITIES } from '../billing/plan-capabilities';
 import { PlanRulesService } from '../billing/plan-rules.service';
 import { PartnersService } from '../../modules/partners/partners.service';
 import { normalizePhone } from '../../common/utils/phone.util';
@@ -361,7 +360,9 @@ export class TenantService {
         },
       });
     } catch (err) {
-      this.logger.error(`Failed to send deletion request email: ${err.message}`);
+      this.logger.error(
+        `Failed to send deletion request email: ${err.message}`,
+      );
       // Don't fail the request if email fails, but log it
     }
 

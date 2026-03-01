@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
@@ -15,8 +14,6 @@ import {
   DocumentType,
   InvoiceType,
   RepairInvoiceNumberingMode,
-  StockEntryType,
-  StockRefType,
   ProductType,
   FinanceRefType,
   ReceiptType,
@@ -721,7 +718,7 @@ export class JobCardsService {
       }
 
       // Step 3: Update job status to CANCELLED
-      const updated = await tx.jobCard.update({
+      await tx.jobCard.update({
         where: { id: jobId },
         data: {
           status: JobStatus.CANCELLED,

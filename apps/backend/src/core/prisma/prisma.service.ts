@@ -65,7 +65,6 @@ export class PrismaService
       'DeletionRequest',
     ]);
 
-    const baseClient = this;
     const extendedClient = this.$extends({
       query: {
         $allModels: {
@@ -130,7 +129,7 @@ export class PrismaService
               }
             }
 
-            return query(args);
+            return await query(args);
           },
         },
       },
@@ -220,12 +219,8 @@ export class PrismaService
       },
     });
 
-    let created = 0;
-    let skipped = 0;
-
     for (const user of users) {
       if (!user.tenantId || !user.role) {
-        skipped++;
         continue;
       }
 
@@ -245,8 +240,6 @@ export class PrismaService
           role: user.role,
         },
       });
-
-      created++;
     }
   }
 }

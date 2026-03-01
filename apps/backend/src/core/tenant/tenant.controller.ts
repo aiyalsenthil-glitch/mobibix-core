@@ -93,7 +93,10 @@ export class TenantController {
       userId,
       dto,
       {
-        ip: req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+        ip:
+          req.ip ||
+          req.headers['x-forwarded-for'] ||
+          req.connection.remoteAddress,
         userAgent: req.headers['user-agent'],
       },
     );
@@ -182,10 +185,7 @@ export class TenantController {
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
   @Permissions(Permission.TENANT_MANAGE)
   @Patch('me')
-  updateMyGym(
-    @Req() req: any,
-    @Body() body: UpdateTenantSettingsDto,
-  ) {
+  updateMyGym(@Req() req: any, @Body() body: UpdateTenantSettingsDto) {
     return this.tenantService.updateTenant(req.user.tenantId, body);
   }
 

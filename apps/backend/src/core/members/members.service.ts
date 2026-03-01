@@ -13,11 +13,8 @@ import { isMembershipExpired } from '../../common/utils/membership.util';
 import { MemberPaymentStatus } from '@prisma/client';
 import { startOfDay, endOfDay, addDays } from 'date-fns';
 import { RenewMemberDto } from './dto/renew-member.dto';
-import { formatDateDDMMYYYY } from '../../common/utils/date.util';
 import { normalizePhone } from '../../common/utils/phone.util';
 import { WhatsAppSender } from '../../modules/whatsapp/whatsapp.sender';
-import { WhatsAppTemplates } from '../../modules/whatsapp/whatsapp.templates';
-import { WhatsAppFeature } from '../billing/whatsapp-rules';
 import { TenantService } from '../tenant/tenant.service';
 import { PlanRulesService } from '../billing/plan-rules.service';
 import { getCreateAudit, getUpdateAudit } from '../audit/audit.helper';
@@ -876,7 +873,7 @@ export class MembersService {
 
     // 🚫 REMOVE FIELDS OWNER SHOULD NOT FORCE-EDIT
     const {
-      paymentStatus, // ❌ ignore even if sent
+      paymentStatus: _paymentStatus, // ❌ ignore even if sent
       ...safeData
     } = dto;
 

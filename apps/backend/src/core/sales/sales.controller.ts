@@ -7,7 +7,6 @@ import {
   Get,
   Query,
   Param,
-  ForbiddenException,
   Patch,
   UseGuards,
 } from '@nestjs/common';

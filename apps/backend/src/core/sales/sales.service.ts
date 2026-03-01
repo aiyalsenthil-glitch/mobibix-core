@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import {
-  ProductType,
   IMEIStatus,
   ReceiptStatus,
   PaymentMode,
@@ -19,7 +18,6 @@ import {
 } from '../../common/utils/invoice-number.util';
 import {
   calculateInvoiceTotals,
-  InvoiceLineInput,
 } from './invoice-calculator.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InvoiceCreatedEvent, InvoicePaidEvent } from '../events/crm.events';
@@ -435,7 +433,7 @@ export class SalesService {
     if (!dto.items?.length)
       throw new BadRequestException('At least one item required');
 
-    const txResult = await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       // 0. CHECK FOR DELETION REQUEST (Soft Lock)
       const tenant = (await tx.tenant.findUnique({
         where: { id: tenantId },
@@ -572,7 +570,7 @@ export class SalesService {
           hsnCode: true,
           costPrice: true,
           name: true,
-          // @ts-ignore - Prisma TS cache lag
+          // @ts-expect-error - Prisma TS cache lag
           warrantyDays: true,
         },
       });
