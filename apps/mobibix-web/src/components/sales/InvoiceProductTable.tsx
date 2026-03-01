@@ -11,7 +11,7 @@ interface InvoiceProductTableProps {
   onUpdateItem: (
     id: string,
     field: keyof ProductItem | "imeisText" | "serialNumbersText",
-    value: any,
+    value: string | number | string[] | undefined,
     products: ShopProduct[],
   ) => void;
   onAddItem: () => void;
@@ -40,12 +40,27 @@ export function InvoiceProductTable({
   const [productDropdowns, setProductDropdowns] = useState<{
     [key: string]: boolean;
   }>({});
-  const [productDropdownPositions, setProductDropdownPositions] = useState<{
+  const [_productDropdownPositions, setProductDropdownPositions] = useState<{
     [key: string]: { top: number; left: number; width: number };
-  }>({});
+  }>({})
   const productInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>(
     {},
   );
+
+  const updateDropdownPosition = (itemId: string) => {
+    const inputElement = productInputRefs.current[itemId];
+    if (inputElement) {
+      const rect = inputElement.getBoundingClientRect();
+      setProductDropdownPositions((prev) => ({
+        ...prev,
+        [itemId]: {
+          top: rect.bottom + window.scrollY + 2,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        },
+      }));
+    }
+  };
 
   // Sync searches with items on mount/update (fill in product names)
   useEffect(() => {
@@ -62,6 +77,7 @@ export function InvoiceProductTable({
       }
     });
     if (Object.keys(newSearches).length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProductSearches((prev) => ({ ...prev, ...newSearches }));
     }
   }, [items]);
@@ -95,20 +111,7 @@ export function InvoiceProductTable({
     }
   }, [productDropdowns]);
 
-  const updateDropdownPosition = (itemId: string) => {
-    const inputElement = productInputRefs.current[itemId];
-    if (inputElement) {
-      const rect = inputElement.getBoundingClientRect();
-      setProductDropdownPositions((prev) => ({
-        ...prev,
-        [itemId]: {
-          top: rect.bottom + window.scrollY + 2,
-          left: rect.left + window.scrollX,
-          width: rect.width,
-        },
-      }));
-    }
-  };
+
 
   const handleProductSearch = (itemId: string, searchTerm: string) => {
     setProductSearches((prev) => ({ ...prev, [itemId]: searchTerm }));
@@ -432,18 +435,20 @@ export function InvoiceProductTable({
                   </td>
                   <td className="px-4 py-4 align-top">
                     <button
-                      onClick={() => onRemoveItem(item.id)}
-                      className="text-gray-400 hover:text-red-500 transition"
+                      onClick={() => {
+                        onRemoveItem(item.id);
+                      }}
+                      className="text-gray-400 hover:text-red-500 transition px-2 py-1"
                     >
                       ✕
                     </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
 
       <div className="flex items-center gap-4">
         <button

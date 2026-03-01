@@ -40,7 +40,7 @@ export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
 
   const handleChange = (field: keyof LoyaltyConfig, value: string) => {
     if (!config) return;
-    let numValue: any;
+    let numValue: number | null = null;
     if (field === 'pointValueInRupees') {
       numValue = parseFloat(value);
     } else if (field === 'expiryDays' || field === 'minInvoiceForEarn') {
@@ -48,7 +48,7 @@ export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
     } else {
       numValue = parseInt(value);
     }
-    setConfig({ ...config, [field]: isNaN(numValue) && numValue !== null ? 0 : numValue });
+    setConfig({ ...config, [field]: (numValue !== null && isNaN(numValue)) ? 0 : numValue });
   };
 
   const handleSave = async () => {
@@ -66,8 +66,8 @@ export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
       } else {
         setError("Failed to update configuration");
       }
-    } catch (err) {
-      setError("An unexpected error occurred");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }

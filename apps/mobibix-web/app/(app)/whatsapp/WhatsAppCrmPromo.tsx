@@ -232,7 +232,7 @@ export default function WhatsAppCrmPromo() {
                     d="M5 13l4 4L19 7"
                   />
                 </svg>
-                What's Included
+                What&apos;s Included
               </h3>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">

@@ -52,8 +52,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // Cache shops in localStorage
       localStorage.setItem(SHOPS_CACHE_KEY, JSON.stringify(data));
       return data;
-    } catch (err: any) {
-      setError(err.message || "Failed to load shops");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to load shops");
       // Try to load from cache if API fails
       const cached = localStorage.getItem(SHOPS_CACHE_KEY);
       if (cached) {

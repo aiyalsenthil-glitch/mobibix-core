@@ -44,11 +44,12 @@ let inMemoryAccessToken: string | null = null;
 /**
  * Standardizes unwrapping of backend responses
  */
-export function unwrapStandardResponse<T>(data: any): T {
-  if (data && data.success === true && data.data !== undefined) {
-    return data.data as T;
+export function unwrapStandardResponse<T>(data: unknown): T {
+  const d = data as any;
+  if (d && d.success === true && d.data !== undefined) {
+    return d.data as T;
   }
-  return data as T;
+  return d as T;
 }
 
 export async function setAccessToken(token: string | null) {
@@ -147,7 +148,7 @@ export interface ExchangeTokenResponse {
 interface AuthError {
   code: string;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 /**
@@ -172,7 +173,7 @@ export async function exchangeFirebaseToken(
     });
 
     if (!response.ok) {
-      let errorData: any = {};
+      let errorData: Record<string, unknown> = {};
       const contentType = response.headers.get("content-type");
 
       try {
@@ -189,9 +190,9 @@ export async function exchangeFirebaseToken(
       }
 
       throw {
-        code: errorData.code || "EXCHANGE_FAILED",
+        code: (errorData.code as string) || "EXCHANGE_FAILED",
         message:
-          errorData.message ||
+          (errorData.message as string) ||
           `HTTP ${response.status}: Failed to exchange token`,
         details: {
           ...errorData,
@@ -209,8 +210,8 @@ export async function exchangeFirebaseToken(
     }
 
     return data;
-  } catch (error: any) {
-    if (Object.keys(error).length === 0) {
+  } catch (error: unknown) {
+    if (error && typeof error === "object" && Object.keys(error).length === 0) {
         console.error("Token exchange error (Empty Object):", JSON.stringify(error, null, 2), error);
     } else {
         console.error("Token exchange error:", error);
@@ -365,7 +366,7 @@ async function refreshAccessToken(): Promise<boolean> {
 
         try {
           const json = await response.json();
-          const data = unwrapStandardResponse<any>(json);
+          const data = unwrapStandardResponse<{ accessToken: string }>(json);
           if (data?.accessToken) {
             await setAccessToken(data.accessToken);
           }
@@ -386,7 +387,7 @@ async function refreshAccessToken(): Promise<boolean> {
   return (await refreshInFlight) === "ok";
 }
 
-export async function extractData<T = any>(res: Response): Promise<T> {
+export async function extractData<T = unknown>(res: Response): Promise<T> {
   const text = await res.text();
   if (!text) return {} as T;
   try {
@@ -395,7 +396,7 @@ export async function extractData<T = any>(res: Response): Promise<T> {
       return data.data as T;
     }
     return data as T;
-  } catch(e) {
+  } catch {
     return {} as T;
   }
 }
@@ -441,11 +442,11 @@ export async function authenticatedFetch(
     try {
       const errorData = await clonedResponse.json();
       if (errorData?.code === "APPROVAL_REQUIRED") {
-        const data = unwrapStandardResponse<any>(errorData);
+        const data = unwrapStandardResponse<Record<string, unknown>>(errorData);
         return new Promise<Response>((resolve, reject) => {
           import("@/lib/events/approval.events").then(({ dispatchApprovalRequired }) => {
             dispatchApprovalRequired(
-              data.action || "unknown_action",
+              (data.action as string) || "unknown_action",
               data,
               async () => {
                 const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -462,7 +463,7 @@ export async function authenticatedFetch(
           });
         });
       }
-    } catch (e) {
+    } catch {
       // Ignore JSON parse errors for non-JSON 403s
     }
   }

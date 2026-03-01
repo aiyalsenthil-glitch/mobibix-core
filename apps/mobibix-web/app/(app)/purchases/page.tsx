@@ -6,7 +6,7 @@ import {
   listPurchases,
   createPurchase,
   recordPayment,
-  cancelPurchase,
+//   cancelPurchase,
   type Purchase,
   type CreatePurchaseDto,
   type PurchaseItemDto,
@@ -15,7 +15,7 @@ import {
   type RecordPaymentDto,
 } from "@/services/purchases.api";
 import { listSuppliers, type Supplier } from "@/services/suppliers.api";
-import { authenticatedFetch } from "@/services/auth.api";
+// import { authenticatedFetch } from "@/services/auth.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { NoShopsAlert } from "../components/NoShopsAlert";
@@ -43,7 +43,7 @@ export default function PurchasesPage() {
   const {
     shops,
     selectedShopId: contextSelectedShopId,
-    selectShop,
+    selectShop: _selectShop,
     isLoadingShops,
   } = useShop();
   const [selectedShopId, setSelectedShopId] = useState("");
@@ -96,9 +96,9 @@ export default function PurchasesPage() {
         const suppliersData = await listSuppliers();
         // console.log("Suppliers loaded:", suppliersData);
         setSuppliers(suppliersData);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error loading suppliers:", err);
-        setError(err.message || "Failed to load suppliers");
+        setError(err instanceof Error ? err.message : "Failed to load suppliers");
         setSuppliers([]);
       }
     };
@@ -123,8 +123,8 @@ export default function PurchasesPage() {
       setError(null);
       const data = await listPurchases({ shopId: selectedShopId });
       setPurchases(data);
-    } catch (err: any) {
-      setError(err.message || "Failed to load purchases");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load purchases");
     } finally {
       setIsLoading(false);
     }
@@ -205,8 +205,8 @@ export default function PurchasesPage() {
       setShowForm(false);
       resetForm();
       loadPurchases();
-    } catch (err: any) {
-      alert(err.message || "Failed to create purchase");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to create purchase");
     }
   };
 
@@ -221,8 +221,8 @@ export default function PurchasesPage() {
       setSelectedPurchase(null);
       resetPaymentForm();
       loadPurchases();
-    } catch (err: any) {
-      alert(err.message || "Failed to record payment");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to record payment");
     }
   };
 
@@ -321,8 +321,8 @@ export default function PurchasesPage() {
             onClick={() => router.push("/purchases/new")}
             className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium"
           >
-            + New Purchase
-          </button>
+              + &quot;New Purchase&quot;
+            </button>
         </div>
 
         {/* Shop Selector */}
@@ -1025,7 +1025,7 @@ export default function PurchasesPage() {
                 theme === "dark" ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              No purchases yet. Click "New Purchase" to get started.
+              No purchases yet. Click &quot;New Purchase&quot; to get started.
             </p>
           </div>
         ) : (

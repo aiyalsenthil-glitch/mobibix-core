@@ -34,12 +34,13 @@ function StatItem({ value, unit, label }: { value: string; unit: string; label: 
 }
 
 export function HeroSlidesClient() {
-  const { theme } = useTheme();
+  const { theme: _theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const scrollCooldown = useRef(0);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 

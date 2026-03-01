@@ -115,7 +115,7 @@ export function TestimonialsSection() {
             </div>
 
             <p className={`text-base md:text-lg font-bold leading-snug mb-6 text-foreground/80 transition-colors ${t.lang !== 'English' ? 'font-serif tracking-wide' : 'font-sans'}`}>
-              "{t.text}"
+              &quot;{t.text}&quot;
             </p>
 
             <div className="pt-4 border-t border-border/50">

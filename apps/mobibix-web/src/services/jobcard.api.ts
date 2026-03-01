@@ -1,4 +1,6 @@
 import { authenticatedFetch, extractData } from "./auth.api";
+import { type Receipt } from "./receipts.api";
+import { type SalesInvoice } from "./sales.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -56,6 +58,7 @@ export interface JobCard {
 
   createdAt: Date | string;
   updatedAt: Date | string;
+  deliveredAt?: Date | string;
 
   invoices?: {
     id: string;
@@ -369,7 +372,7 @@ export async function addJobCardAdvance(
   jobCardId: string,
   amount: number,
   mode: string
-): Promise<{ job: JobCard; receipt: any }> {
+): Promise<{ job: JobCard; receipt: Receipt }> {
   const response = await authenticatedFetch(
     `/mobileshop/shops/${shopId}/job-cards/${jobCardId}/advance`,
     {
@@ -433,7 +436,7 @@ export async function generateRepairBill(
   shopId: string,
   jobCardId: string,
   data: RepairBillDto
-): Promise<any> {
+): Promise<SalesInvoice> {
     // Note: The backend controller is @Controller('mobileshop/repairs')
     // Post(':jobCardId/bill') -> /mobileshop/repairs/:jobCardId/bill
     const response = await authenticatedFetch(

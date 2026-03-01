@@ -16,7 +16,6 @@ import {
   Truck,
   Inbox,
   CreditCard,
-  Wallet,
   LineChart,
   Store,
   ShieldCheck,
@@ -66,7 +65,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const { theme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [expandedSubmenus, setExpandedSubmenus] = useState<string[]>([]);
+  const [_expandedSubmenus, _setExpandedSubmenus] = useState<string[]>([]);
   const [counts, setCounts] = useState<{ total: number } | null>(null);
   const isDark = mounted && theme === "dark";
 
@@ -88,6 +87,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   }, [mounted]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     const stored = localStorage.getItem("sidebarCollapsed");
     if (stored) setIsCollapsed(JSON.parse(stored));

@@ -55,9 +55,9 @@ export async function listSuppliers(): Promise<Supplier[]> {
       let errorDetails = {};
 
       try {
-        const error = await extractData(response);
-        errorMessage = error.message || error.error || errorMessage;
-        errorDetails = error;
+        const error = await extractData(response) as any;
+        errorMessage = error?.message || error?.error || errorMessage;
+        errorDetails = error || {};
         console.error("API Error Response:", {
           status: response.status,
           statusText: response.statusText,
@@ -80,12 +80,12 @@ export async function listSuppliers(): Promise<Supplier[]> {
     // Handle both array response and paginated response
     if (Array.isArray(data)) {
       return data;
-    } else if (data.data && Array.isArray(data.data)) {
-      return data.data;
+    } else if (data && typeof data === 'object' && 'data' in data && Array.isArray((data as any).data)) {
+      return (data as any).data;
     }
 
-    return data;
-  } catch (error: any) {
+    return (data as any)?.data || data;
+  } catch (error: unknown) {
     console.error("List suppliers error:", error);
     throw error;
   }
@@ -98,8 +98,8 @@ export async function getSupplier(supplierId: string): Promise<Supplier> {
   const response = await authenticatedFetch(`/suppliers/${supplierId}`);
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch supplier");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch supplier");
   }
 
   return extractData(response);
@@ -118,8 +118,8 @@ export async function createSupplier(
   });
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to create supplier");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to create supplier");
   }
 
   return extractData(response);
@@ -139,8 +139,8 @@ export async function updateSupplier(
   });
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to update supplier");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to update supplier");
   }
 
   return extractData(response);
@@ -155,8 +155,8 @@ export async function deleteSupplier(supplierId: string): Promise<void> {
   });
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to delete supplier");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to delete supplier");
   }
 }
 
@@ -171,8 +171,8 @@ export async function getSupplierOutstanding(
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch outstanding balance");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch outstanding balance");
   }
 
   return extractData(response);

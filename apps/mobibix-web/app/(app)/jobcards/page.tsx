@@ -36,7 +36,6 @@ import {
   Printer,
   Trash2,
   Edit,
-  Clock,
   Phone,
   ExternalLink,
   History,
@@ -198,8 +197,8 @@ export default function JobCardsPage() {
     return () => clearTimeout(timer);
   }, [customerNameFilter]);
 
-  // memoize initial data to prevent re-render loops
-  const initialData = useRef([] as JobCard[]).current;
+  // Stable empty initial data to prevent re-render loops
+  const initialData: JobCard[] = [];
 
   // Use modern hook for async data loading with built-in race condition prevention
   const {
@@ -212,7 +211,7 @@ export default function JobCardsPage() {
       () =>
         selectedShopId
           ? listJobCards(selectedShopId, {
-              status: statusFilter === "ALL" ? undefined : (statusFilter as any),
+              status: statusFilter === "ALL" ? undefined : (statusFilter as JobStatus),
               customerName: debouncedCustomerName || undefined,
             })
           : Promise.resolve([]),
@@ -234,8 +233,8 @@ export default function JobCardsPage() {
         try {
           await updateJobCardStatus(selectedShopId, job.id, status, { amount: advancePaid, mode: "CASH" });
           reload();
-        } catch (err: any) {
-          alert(err.message || "Failed to update status");
+        } catch (err: unknown) {
+          alert(err instanceof Error ? err.message : "Failed to update status");
         }
         return;
       }
@@ -270,8 +269,8 @@ export default function JobCardsPage() {
       await updateJobCardStatus(selectedShopId, job.id, status);
       // Reload job cards after status change
       reload();
-    } catch (err: any) {
-      alert(err.message || "Failed to update status");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to update status");
     }
   };
 
@@ -286,10 +285,10 @@ export default function JobCardsPage() {
       );
       setDeliveringJob(null);
       reload();
-    } catch (err: any) {
+    } catch (err: unknown) {
       alert(
         "Payment collected, but failed to update status to DELIVERED: " +
-          err.message,
+          (err instanceof Error ? err.message : String(err)),
       );
     }
   };
@@ -300,8 +299,8 @@ export default function JobCardsPage() {
       await generateRepairBill(selectedShopId, billingJob.id, dto);
       setBillingJob(null);
       reload();
-    } catch (err: any) {
-      alert(err.message || "Failed to generate bill");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to generate bill");
     }
   };
 
@@ -311,8 +310,8 @@ export default function JobCardsPage() {
     try {
       await deleteJobCard(selectedShopId, jobCardId);
       reload();
-    } catch (err: any) {
-      alert(err.message || "Failed to delete job card");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to delete job card");
     }
   };
 

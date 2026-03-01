@@ -20,7 +20,13 @@ export default function RoleEditScreen() {
   // Assume tenant.enabledModules is fetched. Mocking it here for UX.
   const enabledModules = ["MOBILE_SHOP", "CORE"]; // Hiding GYM for this mock context
 
-  const [role, setRole] = useState<RoleDto | null>(null);
+  const [role, setRole] = useState<RoleDto | null>(isNew ? {
+    id: "new",
+    name: "",
+    description: "",
+    isSystem: false,
+    permissions: []
+  } : null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [selectedActions, setSelectedActions] = useState<Set<string>>(new Set());
@@ -51,14 +57,6 @@ export default function RoleEditScreen() {
         setError(err.message || "Failed to load role");
       }).finally(() => {
         setLoading(false);
-      });
-    } else {
-      setRole({
-        id: "new",
-        name: "",
-        description: "",
-        isSystem: false,
-        permissions: []
       });
     }
   }, [roleId, isNew]);
@@ -116,8 +114,8 @@ export default function RoleEditScreen() {
         await updateRole(roleId, payload);
         router.push("/roles");
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to save role");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save role");
       setSubmitting(false);
     }
   };

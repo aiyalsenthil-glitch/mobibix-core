@@ -60,8 +60,8 @@ export default function SuppliersPage() {
         }
       }
       setOutstanding(outstandingData);
-    } catch (err: any) {
-      setError(err.message || "Failed to load suppliers");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load suppliers");
     } finally {
       setIsLoading(false);
     }
@@ -79,8 +79,8 @@ export default function SuppliersPage() {
       setEditingSupplier(null);
       resetForm();
       loadSuppliers();
-    } catch (err: any) {
-      alert(err.message || "Failed to save supplier");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to save supplier");
     }
   };
 
@@ -104,8 +104,8 @@ export default function SuppliersPage() {
     try {
       await deleteSupplier(supplierId);
       loadSuppliers();
-    } catch (err: any) {
-      alert(err.message || "Failed to delete supplier");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to delete supplier");
     }
   };
 
@@ -388,7 +388,7 @@ export default function SuppliersPage() {
                 theme === "dark" ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              No suppliers yet. Click "Add Supplier" to get started.
+              No suppliers yet. Click &quot;Add Supplier&quot; to get started.
             </p>
           </div>
         ) : (

@@ -32,7 +32,6 @@ import {
   MoreVertical,
   Eye,
   Printer,
-  Trash2,
   Edit,
   Phone,
   Share2,
@@ -83,11 +82,10 @@ const PAYMENT_BADGES: Record<PaymentMode, string> = {
 export default function SalesPage() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { authUser, isLoading: isAuthLoading } = useAuth();
+  const { authUser } = useAuth();
   const {
     shops,
     selectedShopId,
-    selectedShop,
     isLoadingShops,
     error: shopError,
     selectShop,
@@ -117,7 +115,6 @@ export default function SalesPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
-  const [totalInvoices, setTotalInvoices] = useState(0);
 
   // Simple debounce for search
   useEffect(() => {
@@ -127,9 +124,8 @@ export default function SalesPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Use modern hook for async data loading with built-in race condition prevention
-  // memoize initial data to prevent re-render loops
-  const initialData = useRef({ data: [], total: 0 }).current;
+  // Stable empty initial data to prevent re-render loops
+  const initialData = { data: [] as SalesInvoice[], total: 0 };
 
   const {
     data: invoicesData,
@@ -162,11 +158,7 @@ export default function SalesPage() {
 
   const invoices = invoicesData?.data || [];
 
-  useEffect(() => {
-    if (invoicesData?.total !== undefined) {
-      setTotalInvoices(invoicesData.total);
-    }
-  }, [invoicesData]);
+
 
   // Reload invoices when page becomes visible (e.g., after creating an invoice)
   useEffect(() => {
@@ -227,9 +219,7 @@ export default function SalesPage() {
     router.push(`/sales/create?shopId=${selectedShopId}`);
   };
 
-  const handlePrint = (invoiceId: string, invoiceNumber: string) => {
-    router.push(`/print/invoice/${invoiceId}?shopId=${selectedShopId}`);
-  };
+
 
   const handleShare = (invoiceId: string, invoiceNumber: string) => {
     const shareUrl = `${window.location.origin}/print/invoice/${invoiceId}?shopId=${selectedShopId}`;
@@ -689,7 +679,7 @@ export default function SalesPage() {
           </div>
 
           {/* Pagination Controls */}
-          {totalInvoices > PAGE_SIZE && (
+          {(invoicesData?.total || 0) > PAGE_SIZE && (
             <div
               className={`mt-4 flex items-center justify-between px-4 py-3 rounded-lg border ${
                 theme === "dark"
@@ -701,8 +691,8 @@ export default function SalesPage() {
                 className={`text-sm ${theme === "dark" ? "text-stone-400" : "text-gray-600"}`}
               >
                 Showing {currentPage * PAGE_SIZE + 1} to{" "}
-                {Math.min((currentPage + 1) * PAGE_SIZE, totalInvoices)} of{" "}
-                {totalInvoices} invoices
+                {Math.min((currentPage + 1) * PAGE_SIZE, invoicesData?.total || 0)} of{" "}
+                {invoicesData?.total || 0} invoices
               </div>
               <div className="flex gap-2">
                 <button
@@ -724,13 +714,13 @@ export default function SalesPage() {
                   className={`px-4 py-2 ${theme === "dark" ? "text-stone-300" : "text-gray-700"}`}
                 >
                   Page {currentPage + 1} of{" "}
-                  {Math.ceil(totalInvoices / PAGE_SIZE)}
+                  {Math.ceil((invoicesData?.total || 0) / PAGE_SIZE)}
                 </span>
                 <button
                   onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={(currentPage + 1) * PAGE_SIZE >= totalInvoices}
+                  disabled={(currentPage + 1) * PAGE_SIZE >= (invoicesData?.total || 0)}
                   className={`px-4 py-2 rounded-lg font-medium transition ${
-                    (currentPage + 1) * PAGE_SIZE >= totalInvoices
+                    (currentPage + 1) * PAGE_SIZE >= (invoicesData?.total || 0)
                       ? theme === "dark"
                         ? "bg-white/5 text-stone-600 cursor-not-allowed"
                         : "bg-gray-100 text-gray-400 cursor-not-allowed"

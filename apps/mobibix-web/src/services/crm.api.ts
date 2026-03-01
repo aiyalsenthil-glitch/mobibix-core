@@ -74,7 +74,7 @@ export interface TimelineItem {
   description: string;
   customerId: string;
   customerName?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt: string | Date;
 }
 

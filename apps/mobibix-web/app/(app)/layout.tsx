@@ -18,8 +18,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { theme } = useTheme();
-  const isDark = mounted && theme === "dark";
+  const { theme: _theme } = useTheme();
 
   useEffect(() => {
     // Don't check guard until auth has finished loading
@@ -27,10 +26,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     if (authUser) {
       // Auth resolved with a valid user — no guard check needed
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsReady(true);
     } else {
       // Auth finished loading but no user → check guard (may redirect to signin)
       const ok = authGuard(router);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsReady(ok);
     }
   }, [router, isLoading, authUser]);
@@ -39,12 +40,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!isReady || isLoading) return;
 
     if (authUser && !authUser.tenantId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsRedirecting(true);
       router.replace("/onboarding");
     }
   }, [authUser, isLoading, isReady, router]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     const stored = localStorage.getItem("sidebarCollapsed");
     if (stored) setIsCollapsed(JSON.parse(stored));
@@ -61,6 +64,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Close mobile menu on route change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileMenuOpen(false);
   }, [router]);
 

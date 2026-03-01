@@ -38,8 +38,8 @@ export function useProductCost(props: UseProductCostProps) {
       setEditingCostValue("");
       setSuccessMessage("✅ Cost updated successfully!");
       setTimeout(() => setSuccessMessage(null), 2000);
-    } catch (err: any) {
-      setError(err.message || "Failed to update cost");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to update cost");
     } finally {
       setUpdatingCostId(null);
     }

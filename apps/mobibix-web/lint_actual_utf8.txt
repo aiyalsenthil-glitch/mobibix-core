@@ -1,0 +1,706 @@
+﻿
+> mobibix-web@0.1.0 lint
+> eslint
+
+
+D:\gym-saas\apps\mobibix-web\app\(app)\jobcards\[id]\page.tsx
+  14:8   warning  'JobCard' is defined but never used  @typescript-eslint/no-unused-vars
+  17:15  warning  'Shop' is defined but never used     @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\(app)\jobcards\layout.tsx
+  13:11  warning  'theme' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\(app)\jobcards\page.tsx
+  137:5   warning  'selectedShop' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  184:10  warning  'currentPage' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  184:23  warning  'setCurrentPage' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  185:10  warning  'totalInvoices' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  185:25  warning  'setTotalInvoices' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  296:40  error    Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\layout.tsx
+  21:18  warning  '_theme' is assigned a value but never used                                                         @typescript-eslint/no-unused-vars
+  34:7   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect')
+
+D:\gym-saas\apps\mobibix-web\app\(app)\products\ProductModal.tsx
+  93:16  warning  '_err' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\(app)\products\page.tsx
+  54:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  94:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\purchases\new\page.tsx
+  13:10  warning  'authenticatedFetch' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\(app)\purchases\page.tsx
+   46:17  warning  '_selectShop' is assigned a value but never used                                                                  @typescript-eslint/no-unused-vars
+  137:6   warning  React Hook useEffect has a missing dependency: 'loadPurchases'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\app\(app)\receipts\create\page.tsx
+   9:3   warning  'PaymentMode' is defined but never used   @typescript-eslint/no-unused-vars
+  55:67  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\receipts\page.tsx
+  56:6  warning  React Hook useEffect has a missing dependency: 'loadReceipts'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\app\(app)\reports\gstr-1\page.tsx
+   5:20  warning  'FileText' is defined but never used      @typescript-eslint/no-unused-vars
+  11:8   warning  'Gstr1Record' is defined but never used   @typescript-eslint/no-unused-vars
+  50:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\reports\gstr-2\page.tsx
+   5:20  warning  'CreditCard' is defined but never used    @typescript-eslint/no-unused-vars
+  11:8   warning  'Gstr2Record' is defined but never used   @typescript-eslint/no-unused-vars
+  50:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\reports\inventory\page.tsx
+  25:19  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  34:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\app\(app)\reports\page.tsx
+   14:15  warning  'PieChartIcon' is defined but never used                                                                      @typescript-eslint/no-unused-vars
+   50:11  warning  'authUser' is assigned a value but never used                                                                 @typescript-eslint/no-unused-vars
+  136:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\app\(app)\reports\profit\page.tsx
+  36:19  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  45:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\app\(app)\reports\purchases\page.tsx
+  35:19  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  44:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\app\(app)\reports\repair\page.tsx
+  12:3  warning  'Settings' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+  13:3  warning  'Clock' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+  14:3  warning  'CheckCircle2' is defined but never used                                                                      @typescript-eslint/no-unused-vars
+  82:6  warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\app\(app)\reports\sales\page.tsx
+  36:19  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  45:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\app\(app)\roles\[id]\page.tsx
+  17:26  warning  'activePermissions' is assigned a value but never used                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  18:11  warning  'authUser' is assigned a value but never used                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+  21:9   warning  The 'enabledModules' array makes the dependencies of useMemo Hook (at line 41) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'enabledModules' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\app\(app)\sales\[invoiceId]\edit\page.tsx
+    3:31  warning  'useCallback' is defined but never used             @typescript-eslint/no-unused-vars
+   17:3   warning  'ProductType' is defined but never used             @typescript-eslint/no-unused-vars
+   23:15  warning  'InvoiceItem' is defined but never used             @typescript-eslint/no-unused-vars
+   50:10  warning  'imeiHighlight' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  176:9   warning  'isCredit' is assigned a value but never used       @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\(app)\sales\[invoiceId]\page.tsx
+  12:15  warning  'FollowUpType' is defined but never used            @typescript-eslint/no-unused-vars
+  34:10  warning  'actionLoading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\(app)\sales\[invoiceId]\print\page.tsx
+  73:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\sales\create\page.tsx
+  127:6  warning  React Hook useEffect has a missing dependency: 'loyalty'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\app\(app)\settings\DowngradeBlockerModal.tsx
+  3:30  warning  'CheckCircle' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\(app)\settings\page.tsx
+   54:9   warning  'router' is assigned a value but never used     @typescript-eslint/no-unused-vars
+   88:19  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  107:14  warning  'err' is defined but never used                 @typescript-eslint/no-unused-vars
+  107:19  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  114:43  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  115:34  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  116:52  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  141:16  warning  'err' is defined but never used                 @typescript-eslint/no-unused-vars
+  141:21  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  172:42  warning  'response' is defined but never used            @typescript-eslint/no-unused-vars
+  172:52  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  199:19  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  220:19  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  439:17  warning  'isUpgrade' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\(app)\shops\ShopFormModal.tsx
+  147:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\shops\ShopSettingsModal.tsx
+   60:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\shops\page.tsx
+  33:21  error    Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+  59:11  warning  'handleEditShop' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  74:37  warning  'shopId' is defined but never used                   @typescript-eslint/no-unused-vars
+  78:21  error    Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\staff-management\components\RolesTab.tsx
+  4:10  warning  'useAuth' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\(app)\vouchers\create\page.tsx
+  25:67  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  72:13  warning  'voucher' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\(app)\vouchers\page.tsx
+  61:6  warning  React Hook useEffect has a missing dependency: 'loadVouchers'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\app\(app)\whatsapp-crm\components\WhatsAppCrmContactSupport.tsx
+  15:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\whatsapp-crm\components\WhatsAppCrmDashboard.tsx
+  34:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\whatsapp-crm\components\WhatsAppCrmPromo.tsx
+    6:10  warning  'createOrder' is defined but never used           @typescript-eslint/no-unused-vars
+    6:23  warning  'verifyPayment' is defined but never used         @typescript-eslint/no-unused-vars
+   12:11  warning  'openPayment' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  120:43  error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\whatsapp-crm\components\WhatsAppRetailInbox.tsx
+  19:3   warning  'tenantId' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+  36:6   warning  React Hook useEffect has a missing dependency: 'loadLogs'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  78:19  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\whatsapp-crm\components\WhatsAppSettingsModal.tsx
+  46:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  62:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  79:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\whatsapp-crm\page.tsx
+   3:10  warning  'useEffect' is defined but never used                  @typescript-eslint/no-unused-vars
+   3:21  warning  'useState' is defined but never used                   @typescript-eslint/no-unused-vars
+   4:10  warning  'useSearchParams' is defined but never used            @typescript-eslint/no-unused-vars
+   5:10  warning  'authenticatedFetch' is defined but never used         @typescript-eslint/no-unused-vars
+   6:8   warning  'WhatsAppCrmPromo' is defined but never used           @typescript-eslint/no-unused-vars
+   7:8   warning  'WhatsAppCrmContactSupport' is defined but never used  @typescript-eslint/no-unused-vars
+   8:8   warning  'WhatsAppCrmDashboard' is defined but never used       @typescript-eslint/no-unused-vars
+  10:6   warning  'CrmStatus' is defined but never used                  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\(app)\whatsapp\components\WhatsAppDashboardView.tsx
+    7:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   10:13  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   11:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   12:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   13:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  109:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  224:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  233:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  245:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  277:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  286:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  298:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(app)\whatsapp\page.tsx
+   3:10  warning  'useEffect' is defined but never used                  @typescript-eslint/no-unused-vars
+   3:21  warning  'useMemo' is defined but never used                    @typescript-eslint/no-unused-vars
+   3:30  warning  'useState' is defined but never used                   @typescript-eslint/no-unused-vars
+   4:10  warning  'useSearchParams' is defined but never used            @typescript-eslint/no-unused-vars
+   6:3   warning  'createWhatsAppCampaign' is defined but never used     @typescript-eslint/no-unused-vars
+   7:3   warning  'getWhatsAppDashboard' is defined but never used       @typescript-eslint/no-unused-vars
+   8:3   warning  'getWhatsAppLogs' is defined but never used            @typescript-eslint/no-unused-vars
+   9:3   warning  'scheduleWhatsAppCampaign' is defined but never used   @typescript-eslint/no-unused-vars
+  10:3   warning  'sendWhatsAppMessage' is defined but never used        @typescript-eslint/no-unused-vars
+  11:3   warning  'WhatsAppDashboard' is defined but never used          @typescript-eslint/no-unused-vars
+  12:3   warning  'WhatsAppLog' is defined but never used                @typescript-eslint/no-unused-vars
+  14:10  warning  'authenticatedFetch' is defined but never used         @typescript-eslint/no-unused-vars
+  15:8   warning  'WhatsAppCrmPromo' is defined but never used           @typescript-eslint/no-unused-vars
+  16:8   warning  'WhatsAppCrmContactSupport' is defined but never used  @typescript-eslint/no-unused-vars
+  17:8   warning  'WhatsAppCrmDashboard' is defined but never used       @typescript-eslint/no-unused-vars
+  18:8   warning  'WhatsAppRetailInbox' is defined but never used        @typescript-eslint/no-unused-vars
+  19:8   warning  'WhatsAppDashboardView' is defined but never used      @typescript-eslint/no-unused-vars
+  20:10  warning  'NumberSelector' is defined but never used             @typescript-eslint/no-unused-vars
+  24:3   warning  'useWhatsAppNumber' is defined but never used          @typescript-eslint/no-unused-vars
+  27:11  warning  'CrmStatus' is defined but never used                  @typescript-eslint/no-unused-vars
+  48:32  warning  'authUser' is defined but never used                   @typescript-eslint/no-unused-vars
+  48:56  error    Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\(public)\verify\[invoiceId]\page.tsx
+  51:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\api\auth\session\route.ts
+  24:12  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\auth\page.tsx
+   10:3   warning  'onAuthStateChanged' is defined but never used  @typescript-eslint/no-unused-vars
+   23:36  warning  'mode' is defined but never used                @typescript-eslint/no-unused-vars
+   24:9   warning  'router' is assigned a value but never used     @typescript-eslint/no-unused-vars
+   68:13  warning  'response' is assigned a value but never used   @typescript-eslint/no-unused-vars
+   80:26  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+   81:29  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  121:13  warning  'response' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  129:19  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  142:36  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  189:33  error    Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\blog\page.tsx
+  6:10  warning  'motion' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\dashboard\DashboardClient.tsx
+  30:9  warning  'mainBg' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\dashboard\admin\partners\page.tsx
+    4:10  warning  'Users' is defined but never used         @typescript-eslint/no-unused-vars
+    4:17  warning  'Gift' is defined but never used          @typescript-eslint/no-unused-vars
+    4:39  warning  'TrendingUp' is defined but never used    @typescript-eslint/no-unused-vars
+    4:51  warning  'Landmark' is defined but never used      @typescript-eslint/no-unused-vars
+    4:96  warning  'RefreshCw' is defined but never used     @typescript-eslint/no-unused-vars
+   58:17  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   72:17  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   99:17  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:17  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  131:17  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  183:44  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\dashboard\owner\[tenantId]\PlanEditCard.tsx
+   8:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  39:66  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  39:78  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\dashboard\purchases\page.tsx
+  43:21  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  54:6   warning  React Hook useEffect has a missing dependency: 'loadPurchases'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  64:19  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\dashboard\reports\daily-sales\page.tsx
+   4:31  warning  'SalesReportItem' is defined but never used                                                                  @typescript-eslint/no-unused-vars
+  43:6   warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  84:19  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\dashboard\reports\payables\page.tsx
+  22:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\dashboard\sales\invoices\[id]\page.tsx
+   32:21  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  338:24  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\dashboard\sales\page.tsx
+   67:21  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+   82:6   warning  React Hook useEffect has a missing dependency: 'loadInvoices'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  101:19  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\dashboard\staff\page.tsx
+   8:11  warning  'authUser' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  32:19  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  56:19  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  70:19  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\features\page.tsx
+  4:8   warning  'Link' is defined but never used    @typescript-eslint/no-unused-vars
+  6:10  warning  'Footer' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\locations\[city]\page.tsx
+  3:10  warning  'motion' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\app\onboarding\page.tsx
+   53:6   warning  React Hook useEffect has a missing dependency: 'router'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  147:17  error    Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\app\partner\dashboard\page.tsx
+   11:3  warning  'ChevronRight' is defined but never used                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+  111:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\gym-saas\apps\mobibix-web\app\partner\login\page.tsx
+  27:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\gym-saas\apps\mobibix-web\app\print\[type]\[id]\page.tsx
+    5:10  warning  'getInvoice' is defined but never used                                                                   @typescript-eslint/no-unused-vars
+    9:10  warning  'listProducts' is defined but never used                                                                 @typescript-eslint/no-unused-vars
+   76:25  error    Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
+   90:53  error    Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
+   90:61  error    Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
+   93:20  error    Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
+  139:21  error    Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
+  155:6   warning  React Hook useEffect has a missing dependency: 'data'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\app\track\[token]\page.tsx
+   21:3   warning  'ChevronRight' is defined but never used  @typescript-eslint/no-unused-vars
+  162:21  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\components\FacebookSDK.tsx
+  12:3   warning  Unused eslint-disable directive (no problems were reported from 'no-var')
+  13:11  error    Unexpected any. Specify a different type                                   @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\components\landing\HeroSlidesClient.tsx
+  37:18  warning  '_theme' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\components\landing\TestimonialsSection.tsx
+  95:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\gym-saas\apps\mobibix-web\components\layout\Footer.tsx
+  12:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\gym-saas\apps\mobibix-web\components\layout\Header.tsx
+  49:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\gym-saas\apps\mobibix-web\components\pricing\PricingToggleClient.tsx
+  14:10  warning  '_openFaq' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  14:20  warning  '_setOpenFaq' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\hooks\useShopSelection.ts
+  36:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\lib\blog.ts
+  25:11  warning  'slug' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\auth\GlobalApprovalInterceptor.tsx
+   8:68   error  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+   8:82   error  The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type  @typescript-eslint/no-unsafe-function-type
+   8:100  error  The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type  @typescript-eslint/no-unsafe-function-type
+  58:19   error  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\billing\PaymentHistory.tsx
+  15:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\common\PartySelector.tsx
+  4:54  warning  'Building2' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\crm\CrmDashboardWidgets.tsx
+  17:11  warning  'authUser' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+  25:6   warning  React Hook useEffect has a missing dependency: 'loadDashboard'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  33:19  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\crm\CustomerTimeline.tsx
+  32:6  warning  React Hook useEffect has a missing dependency: 'loadTimeline'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\src\components\crm\MyFollowUpsWidget.tsx
+   8:8   warning  'FollowUpStatus' is defined but never used  @typescript-eslint/no-unused-vars
+  37:19  error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  57:19  error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\crm\WhatsAppQuickAction.tsx
+  56:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\dashboard\MetricCard.tsx
+  26:9  warning  'isDark' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\dashboard\UsageTrendsChart.tsx
+  15:10  warning  'useTheme' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\dashboard\ValueSnapshotWidget.tsx
+  3:48  warning  'FileText' is defined but never used  @typescript-eslint/no-unused-vars
+  3:71  warning  'Zap' is defined but never used       @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\inventory\InventoryList.tsx
+  36:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  71:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  71:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\inventory\LowStockAlerts.tsx
+   8:3   warning  'daysUntilStockout' is defined but never used  @typescript-eslint/no-unused-vars
+  28:21  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\inventory\StockAdjustmentModal.tsx
+  98:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\inventory\StockCorrectionForm.tsx
+  92:6  warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\src\components\inventory\StockInModal.tsx
+  26:11  warning  'theme' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  67:19  error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\invoices\GstrReportViewer.tsx
+   18:36  warning  'shopId' is defined but never used        @typescript-eslint/no-unused-vars
+   49:21  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   67:21  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:30  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\invoices\InvoiceForm.tsx
+   27:11  warning  'FormState' is defined but never used                       @typescript-eslint/no-unused-vars
+   59:10  warning  'loyaltyPointsToRedeem' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  115:30  error    Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+  183:51  error    Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+  693:59  error    Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\layout\sidebar.tsx
+   68:10  warning  '_expandedSubmenus' is assigned a value but never used                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+   68:29  warning  '_setExpandedSubmenus' is assigned a value but never used                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  137:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  167:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\gym-saas\apps\mobibix-web\src\components\loyalty\LoyaltySettings.tsx
+   3:20  warning  'useEffect' is defined but never used     @typescript-eslint/no-unused-vars
+  43:19  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  69:14  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\print\templates\InvoiceClassic.tsx
+   6:11  warning  'header' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  15:19  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  20:19  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  67:27  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  71:57  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  73:27  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  86:29  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  89:29  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\print\templates\InvoiceCompact.tsx
+  7:11  warning  'header' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  7:19  warning  'meta' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  7:58  warning  'config' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\print\templates\InvoiceCorporate.tsx
+  6:58  warning  'config' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\print\templates\InvoiceModern.tsx
+    3:10  warning  'QRCodeSVG' is defined but never used        @typescript-eslint/no-unused-vars
+    6:58  warning  'qrCode' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  151:10  warning  'verifyUrl' is defined but never used        @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\print\templates\InvoiceProfessional.tsx
+  2:10  warning  'QRCodeSVG' is defined but never used     @typescript-eslint/no-unused-vars
+  6:28  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\print\templates\InvoiceSimple.tsx
+   90:100  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  108:58   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  109:55   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:53   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\print\templates\InvoiceThermal.tsx
+  5:66  warning  'config' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\print\templates\JobCardClassic.tsx
+  94:44  warning  'i' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\print\templates\JobCardDetailed.tsx
+  7:13  warning  'header' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\print\templates\JobCardSimple.tsx
+  6:13  warning  'header' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\print\templates\ReceiptPrint.tsx
+  5:33  warning  'config' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\print\templates\VoucherClassic.tsx
+   18:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  107:32  warning  'i' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\print\templates\VoucherPrint.tsx
+  5:25  warning  'footer' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\purchases\CancelPurchaseModal.tsx
+   5:10  warning  'useTheme' is defined but never used      @typescript-eslint/no-unused-vars
+  36:19  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\purchases\SupplierPaymentModal.tsx
+  67:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\repair\RepairBillingModal.tsx
+  29:28  warning  'setPricesIncludeTax' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\reports\PayablesAgingChart.tsx
+  21:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\reports\PayablesTable.tsx
+   27:6   warning  React Hook useEffect has a missing dependency: 'loadPendingPurchases'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   42:19  error    Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+  130:56  error    Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\reports\ReceivablesAgingChart.tsx
+  25:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\sales\CancelInvoiceModal.tsx
+   6:10  warning  'useTheme' is defined but never used         @typescript-eslint/no-unused-vars
+  26:9   warning  'router' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\sales\CollectPaymentModal.tsx
+  5:10  warning  'useTheme' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\sales\InvoiceItemModal.tsx
+  60:6  warning  React Hook useEffect has a missing dependency: 'loadShopProducts'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\src\components\sales\InvoiceProductTable.tsx
+  43:10  warning  '_productDropdownPositions' is assigned a value but never used                                                      @typescript-eslint/no-unused-vars
+  83:6   warning  React Hook useEffect has a missing dependency: 'productSearches'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\src\components\shops\ShopDocumentSettings.tsx
+   33:6   warning  React Hook useEffect has a missing dependency: 'loadSettings'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   46:19  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+   59:19  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+  171:19  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\shops\ShopPrintSettings.tsx
+  103:6    warning  React Hook useEffect has missing dependencies: 'settings.invoiceTemplate' and 'settings.jobCardTemplate'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  192:10   error    Unexpected any. Specify a different type                                                                                                                      @typescript-eslint/no-explicit-any
+  194:20   error    Unexpected any. Specify a different type                                                                                                                      @typescript-eslint/no-explicit-any
+  307:21   error    Unexpected any. Specify a different type                                                                                                                      @typescript-eslint/no-explicit-any
+  331:21   error    Unexpected any. Specify a different type                                                                                                                      @typescript-eslint/no-explicit-any
+  351:72   error    Unexpected any. Specify a different type                                                                                                                      @typescript-eslint/no-explicit-any
+  530:103  error    Unexpected any. Specify a different type                                                                                                                      @typescript-eslint/no-explicit-any
+  548:91   error    Unexpected any. Specify a different type                                                                                                                      @typescript-eslint/no-explicit-any
+  580:103  error    Unexpected any. Specify a different type                                                                                                                      @typescript-eslint/no-explicit-any
+  598:90   error    Unexpected any. Specify a different type                                                                                                                      @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\shops\ShopSettingsView.tsx
+   92:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\staff\InviteStaffModal.tsx
+  91:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\staff\StaffList.tsx
+  19:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\components\subscription\SubscriptionAlert.tsx
+   4:31  warning  'TenantUsageResponse' is defined but never used  @typescript-eslint/no-unused-vars
+  11:10  warning  'daysLeft' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\components\whatsapp\WhatsAppComingSoon.tsx
+  28:15  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+D:\gym-saas\apps\mobibix-web\src\context\ShopContext.tsx
+  12:10  warning  'hasSessionHint' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+  55:19  error    Unexpected any. Specify a different type                                                                            @typescript-eslint/no-explicit-any
+  83:6   warning  React Hook useEffect has a missing dependency: 'initializeShops'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\src\context\ThemeContext.tsx
+  3:17  warning  'createContext' is defined but never used     @typescript-eslint/no-unused-vars
+  3:32  warning  'useContext' is defined but never used        @typescript-eslint/no-unused-vars
+  3:44  warning  'useEffect' is defined but never used         @typescript-eslint/no-unused-vars
+  3:55  warning  'useState' is defined but never used          @typescript-eslint/no-unused-vars
+  8:11  warning  'ThemeContextType' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\context\WhatsAppNumberContext.tsx
+  88:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\hooks\useAuth.ts
+   61:9   warning  'router' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   86:23  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  123:21  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  191:19  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\hooks\useDeferredAsyncData.ts
+   9:3  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  45:3  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect' or 'react-hooks/exhaustive-deps')
+  47:5  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+D:\gym-saas\apps\mobibix-web\src\hooks\useDeferredAsyncData.ts:47:5
+  45 |   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+  46 |   useEffect(() => {
+> 47 |     load();
+     |     ^^^^ Avoid calling setState() directly within an effect
+  48 |   }, dependencies);
+  49 |
+  50 |   return {  react-hooks/set-state-in-effect
+  48:6  warning  React Hook useEffect was passed a dependency list that is not an array literal. This means we can't statically verify whether you've passed the correct dependencies                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+  48:6  warning  React Hook useEffect has a missing dependency: 'load'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\src\hooks\usePermission.tsx
+  33:9  warning  The 'activePermissions' logical expression could make the dependencies of useMemo Hook (at line 58) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'activePermissions' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\src\hooks\useProductCost.ts
+  41:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\hooks\useRazorpay.ts
+  11:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  55:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  56:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\hooks\useShopSelection.ts
+  36:19  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+  45:6   warning  React Hook useEffect has a missing dependency: 'loadShops'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\gym-saas\apps\mobibix-web\src\lib\auth-routes.ts
+  3:3  warning  'AuthRole' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\lib\events\approval.events.ts
+   4:36   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   6:57   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:67   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:109  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\lib\REMOVED_AUTH_PROVIDER.ts
+  24:10  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  25:11  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  26:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  27:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\lib\print\adapters\invoice.adapter.ts
+  19:9   warning  'isInterState' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  43:20  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\lib\print\adapters\jobcard.adapter.ts
+  47:16  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\lib\print\registry.ts
+  2:48  warning  'TemplateVariant' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\services\auth.api.ts
+   47:49  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  150:28  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  175:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  212:19  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  368:47  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  389:39  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  398:11  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  444:45  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  465:14  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\services\crm.api.ts
+  3:7  warning  'API_BASE_URL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\services\customers.api.ts
+  3:7  warning  'API_BASE_URL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\services\global-suppliers.api.ts
+    3:7   warning  'API_BASE_URL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  108:19  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  126:19  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  154:16  warning  'e' is defined but never used                      @typescript-eslint/no-unused-vars
+  159:19  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  192:19  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  215:19  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\services\jobcard.api.ts
+  5:7  warning  'API_BASE_URL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\services\loyalty.api.ts
+    3:7   warning  'API_BASE_URL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  167:16  warning  'e' is defined but never used                      @typescript-eslint/no-unused-vars
+  270:16  warning  'e' is defined but never used                      @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\services\parties.api.ts
+  3:7  warning  'API_BASE_URL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\services\purchases.api.ts
+    3:7   warning  'API_BASE_URL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  150:19  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\services\receipts.api.ts
+  3:7  warning  'API_BASE_URL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\services\reports.api.ts
+  344:10  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\services\sales.api.ts
+  166:16  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\services\shops.api.ts
+    3:7   warning  'API_BASE_URL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  139:17  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\services\suppliers.api.ts
+   3:7   warning  'API_BASE_URL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  88:19  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+D:\gym-saas\apps\mobibix-web\src\services\vouchers.api.ts
+  3:7  warning  'API_BASE_URL' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\gym-saas\apps\mobibix-web\src\services\whatsapp.api.ts
+  60:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  75:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Γ£û 389 problems (178 errors, 211 warnings)
+  0 errors and 4 warnings potentially fixable with the `--fix` option.
+

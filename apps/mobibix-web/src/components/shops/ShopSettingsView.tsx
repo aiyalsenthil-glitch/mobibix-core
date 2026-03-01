@@ -89,8 +89,8 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
             RepairInvoiceNumberingMode.SHARED,
           repairGstDefault: settings.repairGstDefault || false,
         });
-      } catch (err: any) {
-        setError(err.message || "Failed to load settings");
+      } catch (err: unknown) {
+        setError((err as any)?.message || "Failed to load settings");
       } finally {
         setIsLoading(false);
       }
@@ -138,8 +138,8 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
       window.dispatchEvent(new CustomEvent("shopUpdated"));
 
       alert("Settings updated successfully!");
-    } catch (err: any) {
-      setError(err.message || "Failed to save settings");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to save settings");
     } finally {
       setIsSubmitting(false);
     }

@@ -77,6 +77,14 @@ export interface InvoiceItemDetail {
   gstAmount?: number;
   lineTotal?: number;
   taxableValue?: number; // Accurate taxable value (with 2 decimal precision)
+  product?: {
+    id: string;
+    name: string;
+  };
+  itemName?: string;
+  imeis?: string[];
+  serialNumbers?: string[];
+  warrantyDays?: number;
 
   // Tier 2 Fields
   cgstRate?: number;
@@ -297,10 +305,19 @@ export async function cancelInvoice(invoiceId: string): Promise<SalesInvoice> {
 
 // Legacy payment API removed – use collectPayment only
 
+export interface InvoicePayment {
+  id: string;
+  amount: number;
+  method: PaymentMode;
+  transactionRef?: string;
+  createdAt: string | Date;
+  receiptNumber: string;
+}
+
 /**
  * Get all payments recorded against an invoice
  */
-export async function listPayments(invoiceId: string) {
+export async function listPayments(invoiceId: string): Promise<InvoicePayment[]> {
   const response = await authenticatedFetch(
     `/mobileshop/sales/invoice/${invoiceId}/payments`,
   );
@@ -332,7 +349,7 @@ export interface CollectPaymentDto {
 export async function collectPayment(
   invoiceId: string,
   data: CollectPaymentDto,
-) {
+): Promise<{ success: boolean; invoice: SalesInvoice }> {
   const response = await authenticatedFetch(
     `/mobileshop/sales/invoice/${invoiceId}/collect-payment`,
     {

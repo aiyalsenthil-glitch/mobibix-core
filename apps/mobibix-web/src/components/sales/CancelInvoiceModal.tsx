@@ -47,8 +47,9 @@ export function CancelInvoiceModal({
       await cancelInvoice(invoiceId);
       onSuccess();
       onClose();
-    } catch (err: any) {
-      const errorMessage = err.message || "Failed to cancel invoice";
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to cancel invoice";
       
       // Parse error message to extract receipt IDs
       if (errorMessage.includes("Cannot cancel invoice with active payment")) {
@@ -99,8 +100,8 @@ export function CancelInvoiceModal({
         onSuccess();
         onClose();
       }, 500);
-    } catch (err: any) {
-      setError(err.message || "Failed to cancel all");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to cancel all");
       setProgress("");
     } finally {
       setCancellingAll(false);

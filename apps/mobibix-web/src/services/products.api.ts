@@ -68,11 +68,18 @@ export async function listProducts(
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch products");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch products");
   }
 
-  return extractData(response);
+  const result = (await extractData(response)) as
+    | ShopProduct[]
+    | { data: ShopProduct[]; total: number; skip: number; take: number };
+  
+  if (Array.isArray(result)) {
+    return result;
+  }
+  return result.data || [];
 }
 
 /**
@@ -112,11 +119,11 @@ export async function createProduct(
   });
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to create product");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to create product");
   }
 
-  return extractData(response);
+  return extractData(response) as Promise<ShopProduct>;
 }
 
 /**
@@ -158,11 +165,11 @@ export async function updateProduct(
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to update product");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to update product");
   }
 
-  return extractData(response);
+  return extractData(response) as Promise<ShopProduct>;
 }
 
 /**
@@ -199,11 +206,11 @@ export async function adjustStock(
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to adjust stock");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to adjust stock");
   }
 
-  return extractData(response);
+  return extractData(response) as Promise<{ success: boolean; newStock: number }>;
 }
 
 /**
@@ -220,11 +227,18 @@ export async function getStockLevels(
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch stock levels");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch stock levels");
   }
 
-  return extractData(response);
+  const result = (await extractData(response)) as
+    | ShopProduct[]
+    | { data: ShopProduct[]; total: number; skip: number; take: number };
+
+  if (Array.isArray(result)) {
+    return result;
+  }
+  return result.data || [];
 }
 
 /**
@@ -238,12 +252,12 @@ export async function getLowStockProducts(
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch low stock products");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch low stock products");
   }
 
-  const data = await extractData(response);
-  return Array.isArray(data) ? data : data.data || [];
+  const data = await extractData(response) as any;
+  return Array.isArray(data) ? data : data?.data || [];
 }
 
 /**
@@ -264,12 +278,12 @@ export async function getStockHistory(
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch stock history");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch stock history");
   }
 
-  const data = await extractData(response);
-  return Array.isArray(data) ? data : data.data || [];
+  const data = await extractData(response) as any;
+  return Array.isArray(data) ? data : data?.data || [];
 }
 
 /**
@@ -295,11 +309,11 @@ export async function importProducts(
   });
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to import products");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to import products");
   }
 
-  return extractData(response);
+  return extractData(response) as Promise<{ success: number; skipped: number; failed: number; errors: string[] }>;
 }
 
 /**

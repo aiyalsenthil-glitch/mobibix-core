@@ -23,7 +23,7 @@ export default function WhatsAppCrmPromo() {
           const defaultPlan = plans.find(p => p.code === 'WHATSAPP_GROWTH') || plans[0];
           setSelectedPlan(defaultPlan);
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Failed to fetch WhatsApp plans', error);
       }
     }
@@ -40,9 +40,9 @@ export default function WhatsAppCrmPromo() {
       await bypassPayment(plan.id, billingCycle);
       
       router.push('/whatsapp?onboarding=true');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Activation failed', error);
-      alert(error.message || 'Failed to activate plan');
+      alert(error instanceof Error ? error.message : 'Failed to activate plan');
     } finally {
       setLoading(false);
     }
@@ -158,7 +158,7 @@ export default function WhatsAppCrmPromo() {
                </svg>
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">No plans available</h3>
-            <p className="text-gray-600 mb-6">We couldn't find any WhatsApp plans for your region. Please try again later or contact support if the issue persists.</p>
+            <p className="text-gray-600 mb-6">We couldn&apos;t find any WhatsApp plans for your region. Please try again later or contact support if the issue persists.</p>
             <button 
               onClick={() => window.location.reload()}
               className="text-green-600 font-semibold hover:text-green-700 underline"

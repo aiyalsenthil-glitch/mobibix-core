@@ -43,8 +43,8 @@ export function ShopDocumentSettings({ shopId }: ShopDocumentSettingsProps) {
       ]);
       setShop(shopData);
       setSettings(settingsData);
-    } catch (err: any) {
-      setError(err.message || "Failed to load document settings");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to load document settings");
     } finally {
       setLoading(false);
     }
@@ -56,8 +56,8 @@ export function ShopDocumentSettings({ shopId }: ShopDocumentSettingsProps) {
       await updateShopSettings(shopId, { repairInvoiceNumberingMode: mode });
       // Reload to reflect changes
       await loadSettings();
-    } catch (err: any) {
-      alert("Failed to update numbering mode: " + err.message);
+    } catch (err: unknown) {
+      alert("Failed to update numbering mode: " + ((err as any)?.message || "Unknown error"));
     } finally {
       setTogglingMode(false);
     }
@@ -168,8 +168,8 @@ function DocumentSettingCard({
       await updateShopDocumentSetting(shopId, setting.documentType, formData);
       onUpdate();
       onCancel();
-    } catch (err: any) {
-      setSaveError(err.message || "Failed to update");
+    } catch (err: unknown) {
+      setSaveError((err as any)?.message || "Failed to update");
     } finally {
       setSaving(false);
     }

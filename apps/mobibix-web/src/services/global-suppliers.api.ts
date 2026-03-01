@@ -85,8 +85,8 @@ export async function listGlobalSuppliers(
     if (!response.ok) {
       let errorMessage = "Failed to fetch global suppliers";
       try {
-        const error = await extractData(response);
-        errorMessage = error.message || error.error || errorMessage;
+        const error = await extractData(response) as any;
+        errorMessage = error?.message || error?.error || errorMessage;
         console.error("API Error:", {
           status: response.status,
           message: errorMessage,
@@ -97,15 +97,15 @@ export async function listGlobalSuppliers(
       throw new Error(errorMessage);
     }
 
-    const result = await extractData(response);
+    const result = await extractData(response) as any;
     // Handle both array and paginated response
     if (Array.isArray(result)) {
       return result;
-    } else if (result.data && Array.isArray(result.data)) {
-      return result.data;
+    } else if (result && typeof result === 'object' && 'data' in result && Array.isArray(result.data)) {
+      return result.data as GlobalSupplier[];
     }
-    return result;
-  } catch (error: any) {
+    return (result?.data || result) as GlobalSupplier[];
+  } catch (error: unknown) {
     console.error("List global suppliers error:", error);
     throw error;
   }
@@ -123,7 +123,7 @@ export async function getGlobalSupplier(id: string): Promise<GlobalSupplier> {
     }
 
     return extractData(response);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get global supplier error:", error);
     throw error;
   }
@@ -149,14 +149,14 @@ export async function linkGlobalSupplier(
     if (!response.ok) {
       let errorMessage = "Failed to link supplier";
       try {
-        const error = await extractData(response);
-        errorMessage = error.message || error.error || errorMessage;
+        const error = await extractData(response) as any;
+        errorMessage = error?.message || error?.error || errorMessage;
       } catch (e) {}
       throw new Error(errorMessage);
     }
 
     return extractData(response);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Link supplier error:", error);
     throw error;
   }
@@ -187,9 +187,9 @@ export async function getLinkedSuppliers(params?: {
       throw new Error("Failed to fetch linked suppliers");
     }
 
-    const result = await extractData(response);
-    return Array.isArray(result) ? result : result.data || [];
-  } catch (error: any) {
+    const result = await extractData(response) as any;
+    return Array.isArray(result) ? result : result?.data || [];
+  } catch (error: unknown) {
     console.error("Get linked suppliers error:", error);
     throw error;
   }
@@ -212,7 +212,7 @@ export async function unlinkGlobalSupplier(
     if (!response.ok) {
       throw new Error("Failed to unlink supplier");
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Unlink supplier error:", error);
     throw error;
   }

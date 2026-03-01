@@ -10,6 +10,7 @@ export default function SupportPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -36,7 +37,7 @@ export default function SupportPage() {
             </div>
             <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tighter uppercase leading-none italic">How can we help?</h1>
             <p className="text-xl text-muted-foreground font-bold max-w-2xl mx-auto leading-relaxed">
-                Our team is standing by to help you modernize your retail business. From onboarding to troubleshooting, we've got you covered.
+                Our team is standing by to help you modernize your retail business. From onboarding to troubleshooting, we&apos;ve got you covered.
             </p>
         </motion.div>
         

@@ -11,10 +11,11 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
   const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "YEARLY">(
     "YEARLY"
   );
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [_openFaq, _setOpenFaq] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 

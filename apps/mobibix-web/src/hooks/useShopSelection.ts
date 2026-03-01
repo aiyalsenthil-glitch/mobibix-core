@@ -33,8 +33,8 @@ export function useShopSelection(initialShopId?: string) {
           localStorage.setItem(SELECTED_SHOP_KEY, data[0].id);
         }
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load shops");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to load shops");
     } finally {
       setIsLoadingShops(false);
     }
