@@ -18,8 +18,8 @@ export function PayablesAgingChart() {
       setError(null);
       const result = await getPayablesAging(false);
       setData(result as AgingReport);
-    } catch (err: any) {
-      setError(err.message || "Failed to load payables aging data");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to load payables aging data");
     } finally {
       setIsLoading(false);
     }

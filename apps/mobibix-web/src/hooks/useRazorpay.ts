@@ -1,5 +1,25 @@
 import { useState, useCallback } from 'react';
 
+interface RazorpayPaymentResponse {
+  REMOVED_PAYMENT_INFRA_payment_id: string;
+  REMOVED_PAYMENT_INFRA_order_id: string;
+  REMOVED_PAYMENT_INFRA_signature: string;
+}
+
+interface RazorpayErrorResponse {
+  error: {
+    code: string;
+    description: string;
+    source: string;
+    step: string;
+    reason: string;
+    metadata: {
+      order_id: string;
+      payment_id: string;
+    };
+  };
+}
+
 interface RazorpayOptions {
   key: string;
   amount: string | number;
@@ -8,7 +28,7 @@ interface RazorpayOptions {
   description: string;
   image?: string;
   order_id: string;
-  handler: (response: any) => void;
+  handler: (response: RazorpayPaymentResponse) => void;
   prefill?: {
     name?: string;
     email?: string;
@@ -20,12 +40,23 @@ interface RazorpayOptions {
   };
 }
 
+interface RazorpayInstance {
+  on: (event: string, handler: (response: RazorpayErrorResponse) => void) => void;
+  open: () => void;
+}
+
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
+  }
+}
+
 export const useRazorpay = () => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const loadRazorpay = useCallback(() => {
     return new Promise((resolve) => {
-      if (typeof window !== 'undefined' && (window as any).Razorpay) {
+      if (typeof window !== 'undefined' && window.Razorpay) {
         setIsLoaded(true);
         resolve(true);
         return;
@@ -52,8 +83,8 @@ export const useRazorpay = () => {
         return;
       }
 
-      const rzp = new (window as any).Razorpay(options);
-      rzp.on('payment.failed', function (response: any) {
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response: RazorpayErrorResponse) {
         alert(response.error.description);
       });
       rzp.open();

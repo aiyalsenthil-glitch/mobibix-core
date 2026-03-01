@@ -39,8 +39,8 @@ export function PayablesTable({ shopId }: PayablesTableProps) {
         (p) => p.outstandingAmount > 0 && p.status !== "CANCELLED",
       );
       setPurchases(pending);
-    } catch (err: any) {
-      setError(err.message || "Failed to load pending purchases");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to load pending purchases");
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +127,7 @@ export function PayablesTable({ shopId }: PayablesTableProps) {
         <label className="text-sm font-medium text-gray-700">Sort by:</label>
         <select
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as any)}
+          onChange={(e) => setSortBy(e.target.value as "dueDate" | "balanceAmount" | "daysOverdue")}
           className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
         >
           <option value="dueDate">Due Date</option>

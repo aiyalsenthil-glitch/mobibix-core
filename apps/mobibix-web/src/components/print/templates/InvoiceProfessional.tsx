@@ -3,7 +3,7 @@ import { QRCodeSVG } from "qrcode.react";
 
 export function InvoiceProfessional({ data }: { data: PrintDocumentData }) {
   const { header, meta, customer, items, totals, footer, config, headerConfig } = data;
-  const isGST = (config as any).isIndianGSTInvoice;
+  const isGST = config.isIndianGSTInvoice;
   const accentColor = config.accentColor || headerConfig?.accentColor || '#475569';
   
   return (
@@ -271,7 +271,7 @@ export function InvoiceProfessional({ data }: { data: PrintDocumentData }) {
                         <tbody>
                           <tr>
                             <td className="w-24 pb-[2px]">Name</td>
-                            <td className="font-bold pb-[2px]">{meta["Bank Name"] || "-"}</td>
+                            <td className="font-bold pb-[2px]">{config.bankName || meta["Bank Name"] || "-"}</td>
                           </tr>
                           <tr>
                             <td className="pb-[2px]">Branch</td>
@@ -279,11 +279,11 @@ export function InvoiceProfessional({ data }: { data: PrintDocumentData }) {
                           </tr>
                           <tr>
                             <td className="pb-[2px]">Acc. Number</td>
-                            <td className="font-bold pb-[2px]">{meta["A/c No"] || "-"}</td>
+                            <td className="font-bold pb-[2px]">{config.accountNumber || meta["A/c No"] || "-"}</td>
                           </tr>
                           <tr>
                             <td className="">IFSC</td>
-                            <td className="font-bold">{meta["IFSC"] || "-"}</td>
+                            <td className="font-bold">{config.ifscCode || meta["IFSC"] || "-"}</td>
                           </tr>
                         </tbody>
                       </table>

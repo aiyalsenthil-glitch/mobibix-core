@@ -33,9 +33,9 @@ export function InventoryList({ shopId, onAdjustStock }: InventoryListProps) {
         const data = await getStockLevels(shopId);
         const productsList = Array.isArray(data) ? data : data.data || [];
         setProducts(productsList);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to load products:", err);
-        setError(err.message || "Failed to load inventory");
+        setError((err as any)?.message || "Failed to load inventory");
       } finally {
         setLoading(false);
       }
@@ -68,7 +68,8 @@ export function InventoryList({ shopId, onAdjustStock }: InventoryListProps) {
       return true;
     })
     .sort((a, b) => {
-      let aVal: any, bVal: any;
+      let aVal: string | number = "";
+      let bVal: string | number = "";
 
       switch (sortField) {
         case "name":

@@ -95,9 +95,9 @@ export function StockAdjustmentModal({
         onClose();
         onSuccess();
       }, 1500);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to adjust stock:", err);
-      setError(err.message || "Failed to adjust stock");
+      setError((err as any)?.message || "Failed to adjust stock");
     } finally {
       setIsSubmitting(false);
     }

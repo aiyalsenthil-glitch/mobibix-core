@@ -64,8 +64,8 @@ export function SupplierPaymentModal({
       });
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to record payment");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to record payment");
     } finally {
       setIsSubmitting(false);
     }
