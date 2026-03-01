@@ -29,6 +29,7 @@ mlkit_barcode = "17.3.0"
 accompanist = "0.34.0"
 REMOVED_PAYMENT_INFRA = "1.6.40"
 room = "2.6.1"
+securityCrypto = "1.1.0-alpha06"
 
 
 
@@ -83,6 +84,7 @@ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", versio
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 REMOVED_PAYMENT_INFRA-checkout = { group = "com.REMOVED_PAYMENT_INFRA", name = "checkout", version.ref = "REMOVED_PAYMENT_INFRA" }
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 
 
 [plugins]

@@ -38,7 +38,9 @@ data class InvoiceItemUi(
     var quantity: Int = 1,
     var rate: Double = 0.0,          // Rate in RUPEES (salePrice / 100) — NOT Paisa
     var gstRate: Double = 0.0,       // GST rate as percentage from product (not hardcoded)
-    var customGstRate: Double? = null
+    var customGstRate: Double? = null,
+    var imeis: List<String> = emptyList(),
+    var isSerialized: Boolean = false
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,7 +88,9 @@ fun InvoiceItemRow(
                                 rate = (product.salePrice ?: 0) / 100.0,
                                 // A8 FIX: use product-specific gstRate, fallback to 0 if not set
                                 gstRate = product.gstRate ?: 0.0,
-                                customGstRate = null
+                                customGstRate = null,
+                                isSerialized = product.isSerialized,
+                                imeis = if (product.isSerialized) List(item.quantity) { "" } else emptyList()
                             ))
                             expanded = false
                         }
@@ -96,9 +100,47 @@ fun InvoiceItemRow(
         }
         Spacer(Modifier.height(8.dp))
         Row {
-            OutlinedTextField(value = item.quantity.toString(), onValueChange = { onItemChange(item.copy(quantity = it.toIntOrNull()?.coerceAtLeast(1) ?: 1)) }, label = { Text("Qty") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            OutlinedTextField(
+                value = item.quantity.toString(), 
+                onValueChange = { 
+                    val newQty = it.toIntOrNull()?.coerceAtLeast(1) ?: 1
+                    onItemChange(item.copy(
+                        quantity = newQty,
+                        imeis = if (item.isSerialized) {
+                            val current = item.imeis.toMutableList()
+                            if (newQty > current.size) {
+                                current.addAll(List(newQty - current.size) { "" })
+                            } else if (newQty < current.size) {
+                                current.subList(0, newQty)
+                            }
+                            current
+                        } else emptyList()
+                    )) 
+                }, 
+                label = { Text("Qty") }, 
+                modifier = Modifier.weight(1f), 
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
             Spacer(Modifier.width(8.dp))
             OutlinedTextField(value = item.rate.toString(), onValueChange = { onItemChange(item.copy(rate = it.toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0)) }, label = { Text("Rate (₹)") }, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+        }
+
+        if (item.isSerialized) {
+            Spacer(Modifier.height(8.dp))
+            Text("Enter IMEI/Serial Numbers", style = MaterialTheme.typography.labelMedium)
+            item.imeis.forEachIndexed { imeiIndex, imeiValue ->
+                OutlinedTextField(
+                    value = imeiValue,
+                    onValueChange = { newValue ->
+                        val newImeis = item.imeis.toMutableList()
+                        newImeis[imeiIndex] = newValue
+                        onItemChange(item.copy(imeis = newImeis))
+                    },
+                    label = { Text("Serial #${imeiIndex + 1}") },
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    singleLine = true
+                )
+            }
         }
         if (gstEnabled) {
             Spacer(Modifier.height(8.dp))

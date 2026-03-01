@@ -9,6 +9,7 @@ import com.aiyal.mobibix.data.network.StockCorrectionRequest
 import com.aiyal.mobibix.data.network.StockInRequest
 import com.aiyal.mobibix.data.network.UpdateProductRequest
 import com.aiyal.mobibix.domain.ProductRepository
+import com.aiyal.mobibix.core.util.MobiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -108,7 +109,7 @@ class ProductViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
                 loadProducts()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = MobiError.extractMessage(e))
             }
         }
     }
@@ -134,7 +135,7 @@ class ProductViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
                 loadProducts()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = MobiError.extractMessage(e))
             }
         }
     }
@@ -155,7 +156,7 @@ class ProductViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
                 loadProducts()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = MobiError.extractMessage(e))
             }
         }
     }
@@ -177,7 +178,7 @@ class ProductViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
                 loadProducts()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = MobiError.extractMessage(e))
             }
         }
     }

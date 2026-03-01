@@ -95,8 +95,9 @@ dependencies {
     // Navigation Compose
     implementation(libs.navigation.compose)
 
-    // DataStore
+    // DataStore & Security
     implementation(libs.datastore.preferences)
+    implementation(libs.androidx.security.crypto)
 
     // Firebase
     implementation(platform(libs.REMOVED_AUTH_PROVIDER.bom))

@@ -69,6 +69,7 @@ fun MainScreen(
         drawerContent = {
             AppDrawerContent(
                 currentRoute = currentRoute,
+                appState = appState,
                 onItemClick = { route ->
                     // Navigate via mainNavController for most items
                     mainNavController.navigate(route) {

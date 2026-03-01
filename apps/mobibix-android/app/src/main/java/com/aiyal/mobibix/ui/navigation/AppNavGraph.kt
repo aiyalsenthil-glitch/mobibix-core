@@ -314,6 +314,22 @@ fun AppNavGraph(
         }
 
         composable(
+            route = "job_repair_bill/{shopId}/{jobId}",
+            arguments = listOf(
+                navArgument("shopId") { type = NavType.StringType },
+                navArgument("jobId") { type = NavType.StringType }
+            )
+        ) {
+            val shopIdArg = it.arguments?.getString("shopId") ?: ""
+            val jobIdArg = it.arguments?.getString("jobId") ?: ""
+            com.aiyal.mobibix.ui.features.jobs.RepairBillingScreen(
+                shopId = shopIdArg,
+                jobId = jobIdArg,
+                navController = navController
+            )
+        }
+
+        composable(
             route = "job_card_print_preview/{shopId}/{jobId}",
             arguments = listOf(
                 navArgument("shopId") { type = NavType.StringType },

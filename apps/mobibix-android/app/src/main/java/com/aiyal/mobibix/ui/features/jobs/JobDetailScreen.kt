@@ -226,9 +226,7 @@ fun JobDetailScreen(
                     isLocked = isLocked,
                     onStatusClick = { showStatusSheet = true },
                     onSave = {
-                        viewModel.updateJob(
-                            shopId, jobId,
-                            UpdateJobRequest(
+                        val request = UpdateJobRequest(
                                 customerName = currentJob.customerName,
                                 customerPhone = currentJob.customerPhone,
                                 customerAltPhone = currentJob.customerAltPhone,
@@ -240,8 +238,13 @@ fun JobDetailScreen(
                                 physicalCondition = formData.physicalCondition.takeIf { it.isNotBlank() },
                                 estimatedCost = formData.estimatedCost.toDoubleOrNull(),
                                 estimatedDelivery = formatDisplayToIso(formData.estimatedDelivery)
-                            )
                         )
+                        viewModel.updateJob(shopId, jobId, request)
+                        
+                        // If user clicked "Generate Bill" (which triggers onSave), navigate
+                        if (currentJob.status == JobStatus.READY || currentJob.status == JobStatus.IN_PROGRESS) {
+                            navController.navigate("job_repair_bill/$shopId/$jobId")
+                        }
                     }
                 )
             }
@@ -334,10 +337,21 @@ private fun JobDetailBottomBar(
                 ) {
                     Icon(Icons.Outlined.SwapHoriz, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Change Status")
+                    Text("Status")
                 }
             }
-            if (!isLocked) {
+            if (job.status == JobStatus.READY || job.status == JobStatus.IN_PROGRESS) {
+                Button(
+                    onClick = { onSave(); /* Navigate implemented in caller */ }, // I'll wrap this in a callback
+                    modifier = Modifier.weight(1.5f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Icon(Icons.Outlined.Receipt, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Generate Bill")
+                }
+            } else if (!isLocked) {
                 Button(
                     onClick = onSave,
                     modifier = Modifier.weight(1f),

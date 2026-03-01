@@ -86,6 +86,31 @@ data class AddAdvanceRequest(
     val mode: String   // "CASH" | "UPI" | "CARD"
 )
 
+data class RepairBillServiceItem(
+    val description: String,
+    val amount: Double,
+    val gstRate: Double? = null
+)
+
+data class RepairBillPartItem(
+    val shopProductId: String,
+    val quantity: Int,
+    val rate: Double,
+    val gstRate: Double
+)
+
+data class RepairBillRequest(
+    val shopId: String,
+    val jobCardId: String,
+    val services: List<RepairBillServiceItem>,
+    val parts: List<RepairBillPartItem>? = null,
+    val billingMode: String, // 'WITH_GST' | 'WITHOUT_GST'
+    val paymentMode: String,
+    val pricesIncludeTax: Boolean? = null,
+    val deliverImmediately: Boolean? = null,
+    val loyaltyPointsRedeemed: Int? = null
+)
+
 // ─────────────────────────────────────────────
 // API Interface
 // ─────────────────────────────────────────────
@@ -149,4 +174,10 @@ interface JobApi {
         @Path("shopId") shopId: String,
         @Path("jobId") jobId: String
     ): JobCardResponse
+
+    @POST("api/mobileshop/repairs/{jobId}/bill")
+    suspend fun generateRepairBill(
+        @Path("jobId") jobId: String,
+        @Body request: RepairBillRequest
+    ): Any // You might want to map this to an InvoiceDetails response later
 }
