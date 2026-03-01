@@ -16,9 +16,7 @@ import {
   generateSalesInvoiceNumber,
   getFinancialYear,
 } from '../../common/utils/invoice-number.util';
-import {
-  calculateInvoiceTotals,
-} from './invoice-calculator.util';
+import { calculateInvoiceTotals } from './invoice-calculator.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InvoiceCreatedEvent, InvoicePaidEvent } from '../events/crm.events';
 import { DocumentNumberService } from '../../common/services/document-number.service';
@@ -570,7 +568,6 @@ export class SalesService {
           hsnCode: true,
           costPrice: true,
           name: true,
-          // @ts-expect-error - Prisma TS cache lag
           warrantyDays: true,
         },
       });

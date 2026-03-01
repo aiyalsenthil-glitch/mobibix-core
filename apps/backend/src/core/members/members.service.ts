@@ -871,11 +871,8 @@ export class MembersService {
       throw new ForbiddenException('Only owner can edit member');
     }
 
-    // 🚫 REMOVE FIELDS OWNER SHOULD NOT FORCE-EDIT
-    const {
-      paymentStatus: _paymentStatus, // ❌ ignore even if sent
-      ...safeData
-    } = dto;
+    const safeData = { ...dto };
+    delete (safeData as any).paymentStatus; // 🚫 REMOVE FIELDS OWNER SHOULD NOT FORCE-EDIT (❌ ignore even if sent)
 
     // 🗓 Convert date strings → Date (IMPORTANT)
     const updateData: any = {
