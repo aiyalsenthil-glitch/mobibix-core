@@ -192,177 +192,196 @@ export class SalesService {
       throw new BadRequestException('At least one item required');
     }
 
-    const invoiceId = await this.prisma.$transaction(async (tx) => {
-      // 1. Validate shop access
-      await assertShopAccess(tx, dto.shopId, tenantId);
+    const invoiceId = await this.prisma.$transaction(
+      async (tx) => {
+        // 1. Validate shop access
+        await assertShopAccess(tx, dto.shopId, tenantId);
 
-      // Get shop details
-      const shop = await tx.shop.findFirst({
-        where: { id: dto.shopId, tenantId },
-        select: { id: true, gstEnabled: true, state: true },
-      });
+        // Get shop details
+        const shop = await tx.shop.findFirst({
+          where: { id: dto.shopId, tenantId },
+          select: { id: true, gstEnabled: true, state: true },
+        });
 
-      if (!shop) {
-        throw new BadRequestException('Shop not found after validation');
-      }
-
-      // 2. Validate products
-      const productIds = dto.items.map((i) => i.shopProductId);
-      const products = await tx.shopProduct.findMany({
-        where: {
-          id: { in: productIds },
-          tenantId,
-          shopId: dto.shopId,
-          isActive: true,
-        },
-        select: {
-          id: true,
-          name: true,
-          isSerialized: true,
-          hsnCode: true,
-          costPrice: true,
-          // @ts-ignore - Prisma TS cache lag
-          warrantyDays: true,
-          type: true,
-        },
-      });
-      if (products.length !== productIds.length)
-        throw new BadRequestException('Invalid product');
-
-      const productMap = new Map(products.map((p) => [p.id, p]));
-      const productCostMap = new Map(
-        products.map((p) => [p.id, p.costPrice ?? null]),
-      );
-
-      // 🛡️ FIX 1: ENFORCE COST VALIDATION BEFORE SALE
-      for (const item of dto.items) {
-        const cost = productCostMap.get(item.shopProductId);
-        if (cost === null || cost === undefined || cost <= 0) {
-          const product = productMap.get(item.shopProductId);
-          throw new BadRequestException(
-            `Cannot sell product "${product?.name || 'Unknown'}" without a valid cost price. ` +
-              `Please ensure a purchase has been recorded or update the cost price manually.`,
-          );
+        if (!shop) {
+          throw new BadRequestException('Shop not found after validation');
         }
-      }
 
-      // 3. IMEI and Serial Number Validations
-      const allImeis: string[] = [];
-      const allSerials: string[] = [];
-
-      for (const item of dto.items) {
-        const product = productMap.get(item.shopProductId);
-        const hasImeis = item.imeis && item.imeis.length > 0;
-        const hasSerials = item.serialNumbers && item.serialNumbers.length > 0;
-
-        if (product?.isSerialized) {
-          if (!hasImeis && !hasSerials) {
-            throw new BadRequestException(`Serialized product requires either IMEIs or Serial Numbers`);
-          }
-          if (hasImeis && hasSerials) {
-            throw new BadRequestException(`Cannot provide both IMEIs and Serial Numbers. Provide one or the other.`);
-          }
-
-          const count = hasImeis ? item.imeis!.length : item.serialNumbers!.length;
-          if (item.quantity !== count) {
-            throw new BadRequestException(`Quantity mismatch for ${product.name}. Expected ${item.quantity}, got ${count}`);
-          }
-
-          if (hasImeis) allImeis.push(...item.imeis!);
-          if (hasSerials) allSerials.push(...item.serialNumbers!);
-        } else {
-          // Non-serialized products cannot have tracking numbers
-          if (hasImeis || hasSerials) {
-            throw new BadRequestException(`Non-serialized product cannot have IMEIs or Serial Numbers`);
-          }
-        }
-      }
-
-      // Check Serial Numbers Uniqueness
-      if (allSerials.length > 0) {
-        const existingSerials = await tx.invoiceItem.findMany({
+        // 2. Validate products
+        const productIds = dto.items.map((i) => i.shopProductId);
+        const products = await tx.shopProduct.findMany({
           where: {
-            invoice: { tenantId, status: { not: 'VOIDED' } },
-            serialNumbers: { hasSome: allSerials },
+            id: { in: productIds },
+            tenantId,
+            shopId: dto.shopId,
+            isActive: true,
           },
-          select: { id: true, serialNumbers: true },
+          select: {
+            id: true,
+            name: true,
+            isSerialized: true,
+            hsnCode: true,
+            costPrice: true,
+            // @ts-ignore - Prisma TS cache lag
+            warrantyDays: true,
+            type: true,
+          },
         });
-        if (existingSerials.length > 0) {
-          throw new BadRequestException('One or more Serial Numbers have already been sold');
-        }
-      }
+        if (products.length !== productIds.length)
+          throw new BadRequestException('Invalid product');
 
-      // Check IMEI Availability (Safe check)
-      if (allImeis.length > 0) {
-        const imeiRecords = await tx.iMEI.findMany({
-          where: { imei: { in: allImeis }, tenantId },
-          select: { imei: true, shopProductId: true, status: true },
-        });
+        const productMap = new Map(products.map((p) => [p.id, p]));
+        const productCostMap = new Map(
+          products.map((p) => [p.id, p.costPrice ?? null]),
+        );
 
-        if (imeiRecords.length !== allImeis.length) {
-          throw new BadRequestException('One or more IMEIs not found');
-        }
-
-        const imeiMap = new Map(imeiRecords.map((r) => [r.imei, r]));
+        // 🛡️ FIX 1: ENFORCE COST VALIDATION BEFORE SALE
         for (const item of dto.items) {
-          if (item.imeis) {
-            for (const imei of item.imeis) {
-              const record = imeiMap.get(imei);
-              if (record?.shopProductId !== item.shopProductId)
-                throw new BadRequestException(
-                  `IMEI ${imei} does not belong to product`,
-                );
-              if (record?.status !== 'IN_STOCK')
-                throw new BadRequestException(`IMEI ${imei} is not available`);
+          const cost = productCostMap.get(item.shopProductId);
+          if (cost === null || cost === undefined || cost <= 0) {
+            const product = productMap.get(item.shopProductId);
+            throw new BadRequestException(
+              `Cannot sell product "${product?.name || 'Unknown'}" without a valid cost price. ` +
+                `Please ensure a purchase has been recorded or update the cost price manually.`,
+            );
+          }
+        }
+
+        // 3. IMEI and Serial Number Validations
+        const allImeis: string[] = [];
+        const allSerials: string[] = [];
+
+        for (const item of dto.items) {
+          const product = productMap.get(item.shopProductId);
+          const hasImeis = item.imeis && item.imeis.length > 0;
+          const hasSerials =
+            item.serialNumbers && item.serialNumbers.length > 0;
+
+          if (product?.isSerialized) {
+            if (!hasImeis && !hasSerials) {
+              throw new BadRequestException(
+                `Serialized product requires either IMEIs or Serial Numbers`,
+              );
+            }
+            if (hasImeis && hasSerials) {
+              throw new BadRequestException(
+                `Cannot provide both IMEIs and Serial Numbers. Provide one or the other.`,
+              );
+            }
+
+            const count = hasImeis
+              ? item.imeis!.length
+              : item.serialNumbers!.length;
+            if (item.quantity !== count) {
+              throw new BadRequestException(
+                `Quantity mismatch for ${product.name}. Expected ${item.quantity}, got ${count}`,
+              );
+            }
+
+            if (hasImeis) allImeis.push(...item.imeis!);
+            if (hasSerials) allSerials.push(...item.serialNumbers!);
+          } else {
+            // Non-serialized products cannot have tracking numbers
+            if (hasImeis || hasSerials) {
+              throw new BadRequestException(
+                `Non-serialized product cannot have IMEIs or Serial Numbers`,
+              );
             }
           }
         }
-      }
 
-      // 4. Map to CreateInvoiceOptions
-      const billingItems = dto.items.map((item) => {
-        const product = productMap.get(item.shopProductId);
-        return {
-          shopProductId: item.shopProductId,
-          name: product?.name,
-          quantity: item.quantity,
-          rate: item.rate,
-          gstRate: item.gstRate,
-          hsnCode: product?.hsnCode || undefined,
-          costPrice: product?.costPrice || 0,
-          productType: product?.type,
-          imeis: item.imeis,
-          serialNumbers: item.serialNumbers,
-          warrantyDays: item.warrantyDays ?? (product as any)?.warrantyDays ?? undefined,
-          isSerialized: product?.isSerialized,
+        // Check Serial Numbers Uniqueness
+        if (allSerials.length > 0) {
+          const existingSerials = await tx.invoiceItem.findMany({
+            where: {
+              invoice: { tenantId, status: { not: 'VOIDED' } },
+              serialNumbers: { hasSome: allSerials },
+            },
+            select: { id: true, serialNumbers: true },
+          });
+          if (existingSerials.length > 0) {
+            throw new BadRequestException(
+              'One or more Serial Numbers have already been sold',
+            );
+          }
+        }
+
+        // Check IMEI Availability (Safe check)
+        if (allImeis.length > 0) {
+          const imeiRecords = await tx.iMEI.findMany({
+            where: { imei: { in: allImeis }, tenantId },
+            select: { imei: true, shopProductId: true, status: true },
+          });
+
+          if (imeiRecords.length !== allImeis.length) {
+            throw new BadRequestException('One or more IMEIs not found');
+          }
+
+          const imeiMap = new Map(imeiRecords.map((r) => [r.imei, r]));
+          for (const item of dto.items) {
+            if (item.imeis) {
+              for (const imei of item.imeis) {
+                const record = imeiMap.get(imei);
+                if (record?.shopProductId !== item.shopProductId)
+                  throw new BadRequestException(
+                    `IMEI ${imei} does not belong to product`,
+                  );
+                if (record?.status !== 'IN_STOCK')
+                  throw new BadRequestException(
+                    `IMEI ${imei} is not available`,
+                  );
+              }
+            }
+          }
+        }
+
+        // 4. Map to CreateInvoiceOptions
+        const billingItems = dto.items.map((item) => {
+          const product = productMap.get(item.shopProductId);
+          return {
+            shopProductId: item.shopProductId,
+            name: product?.name,
+            quantity: item.quantity,
+            rate: item.rate,
+            gstRate: item.gstRate,
+            hsnCode: product?.hsnCode || undefined,
+            costPrice: product?.costPrice || 0,
+            productType: product?.type,
+            imeis: item.imeis,
+            serialNumbers: item.serialNumbers,
+            warrantyDays:
+              item.warrantyDays ?? (product as any)?.warrantyDays ?? undefined,
+            isSerialized: product?.isSerialized,
+          };
+        });
+
+        const options: CreateInvoiceOptions = {
+          tenantId,
+          shopId: dto.shopId,
+          customerId: dto.customerId,
+          customerName: dto.customerName,
+          customerPhone: dto.customerPhone,
+          customerState: dto.customerState,
+          customerGstin: dto.customerGstin,
+          items: billingItems,
+          paymentMode: (dto.paymentMode as PaymentMode) || PaymentMode.CASH,
+          paymentMethods: dto.paymentMethods?.map((pm) => ({
+            mode: pm.mode as PaymentMode,
+            amount: pm.amount,
+          })),
+          pricesIncludeTax: !!dto.pricesIncludeTax,
+          invoiceDate: dto.invoiceDate ? new Date(dto.invoiceDate) : undefined,
+          referenceType: 'SALE',
+          loyaltyPointsRedeemed: dto.loyaltyPointsRedeemed,
+          // skipStockUpdate: false, // Default
         };
-      });
 
-      const options: CreateInvoiceOptions = {
-        tenantId,
-        shopId: dto.shopId,
-        customerId: dto.customerId,
-        customerName: dto.customerName,
-        customerPhone: dto.customerPhone,
-        customerState: dto.customerState,
-        customerGstin: dto.customerGstin,
-        items: billingItems,
-        paymentMode: (dto.paymentMode as PaymentMode) || PaymentMode.CASH,
-        paymentMethods: dto.paymentMethods?.map((pm) => ({
-          mode: pm.mode as PaymentMode,
-          amount: pm.amount,
-        })),
-        pricesIncludeTax: !!dto.pricesIncludeTax,
-        invoiceDate: dto.invoiceDate ? new Date(dto.invoiceDate) : undefined,
-        referenceType: 'SALE',
-        loyaltyPointsRedeemed: dto.loyaltyPointsRedeemed,
-        // skipStockUpdate: false, // Default
-      };
-
-      // 5. Delegate to BillingService
-      const invoice = await this.billingService.createInvoice(options, tx);
-      return invoice.id;
-    }, { timeout: 30000 });
+        // 5. Delegate to BillingService
+        const invoice = await this.billingService.createInvoice(options, tx);
+        return invoice.id;
+      },
+      { timeout: 30000 },
+    );
 
     // ⚡ EVENT (InvoiceCreated)
     const created = await this.prisma.invoice.findUnique({
@@ -454,7 +473,7 @@ export class SalesService {
         if (!shop.gstNumber) {
           throw new BadRequestException(
             'Shop GSTIN is required to update a GST Tax Invoice. ' +
-            'Please configure GSTIN in Shop Settings.',
+              'Please configure GSTIN in Shop Settings.',
           );
         }
         assertGstinFormat(shop.gstNumber, 'Shop GSTIN');
@@ -557,8 +576,8 @@ export class SalesService {
             const product = productMap.get(item.shopProductId);
             throw new BadRequestException(
               `HSN/SAC code is mandatory on every line of a GST Tax Invoice. ` +
-              `Missing for product: "${product?.name || item.shopProductId}". ` +
-              `Please update the product catalogue with the correct HSN/SAC code.`,
+                `Missing for product: "${product?.name || item.shopProductId}". ` +
+                `Please update the product catalogue with the correct HSN/SAC code.`,
             );
           }
         }
@@ -575,15 +594,23 @@ export class SalesService {
 
         if (product?.isSerialized) {
           if (!hasImeis && !hasSerials) {
-            throw new BadRequestException(`Serialized product requires either IMEIs or Serial Numbers`);
+            throw new BadRequestException(
+              `Serialized product requires either IMEIs or Serial Numbers`,
+            );
           }
           if (hasImeis && hasSerials) {
-            throw new BadRequestException(`Cannot provide both IMEIs and Serial Numbers. Provide one or the other.`);
+            throw new BadRequestException(
+              `Cannot provide both IMEIs and Serial Numbers. Provide one or the other.`,
+            );
           }
 
-          const count = hasImeis ? item.imeis!.length : item.serialNumbers!.length;
+          const count = hasImeis
+            ? item.imeis!.length
+            : item.serialNumbers!.length;
           if (item.quantity !== count) {
-            throw new BadRequestException(`Quantity mismatch for ${product.name}`);
+            throw new BadRequestException(
+              `Quantity mismatch for ${product.name}`,
+            );
           }
 
           if (hasImeis) {
@@ -595,7 +622,9 @@ export class SalesService {
           }
         } else {
           if (hasImeis || hasSerials) {
-            throw new BadRequestException(`Non-serialized product cannot have IMEIs or Serial Numbers`);
+            throw new BadRequestException(
+              `Non-serialized product cannot have IMEIs or Serial Numbers`,
+            );
           }
         }
       }
@@ -604,13 +633,19 @@ export class SalesService {
         // Check Serial Numbers Uniqueness
         const existingSerials = await tx.invoiceItem.findMany({
           where: {
-            invoice: { tenantId, status: { not: 'VOIDED' }, id: { not: invoiceId } },
+            invoice: {
+              tenantId,
+              status: { not: 'VOIDED' },
+              id: { not: invoiceId },
+            },
             serialNumbers: { hasSome: newAllSerials },
           },
           select: { id: true, serialNumbers: true },
         });
         if (existingSerials.length > 0) {
-          throw new BadRequestException('One or more Serial Numbers have already been sold');
+          throw new BadRequestException(
+            'One or more Serial Numbers have already been sold',
+          );
         }
       }
 
@@ -689,13 +724,18 @@ export class SalesService {
       await tx.invoiceItem.deleteMany({ where: { invoiceId: oldInvoice.id } });
 
       // Calculate warranty end date if applicable
-      const invoiceDateActual = dto.invoiceDate ? new Date(dto.invoiceDate) : (oldInvoice.createdAt || new Date());
+      const invoiceDateActual = dto.invoiceDate
+        ? new Date(dto.invoiceDate)
+        : oldInvoice.createdAt || new Date();
 
       const invoiceItemsData = calc.lines.map((line) => {
-        const inputItem = dto.items.find(i => i.shopProductId === line.shopProductId);
+        const inputItem = dto.items.find(
+          (i) => i.shopProductId === line.shopProductId,
+        );
         const prod = productMap.get(line.shopProductId);
-        
-        let warrantyDays = inputItem?.warrantyDays ?? (prod as any)?.warrantyDays;
+
+        const warrantyDays =
+          inputItem?.warrantyDays ?? (prod as any)?.warrantyDays;
         let warrantyEndAt: Date | undefined;
         if (warrantyDays !== undefined && warrantyDays > 0) {
           warrantyEndAt = new Date(invoiceDateActual);
@@ -725,9 +765,9 @@ export class SalesService {
           customerGstin: dto.customerGstin,
           subTotal: calc.subTotalPaisa,
           gstAmount: calc.gstAmountPaisa,
-          cgst: calc.cgstPaisa,         // P0 fix: persist CGST breakdown on edit
-          sgst: calc.sgstPaisa,         // P0 fix: persist SGST breakdown on edit
-          igst: calc.igstPaisa,         // P0 fix: persist IGST breakdown on edit
+          cgst: calc.cgstPaisa, // P0 fix: persist CGST breakdown on edit
+          sgst: calc.sgstPaisa, // P0 fix: persist SGST breakdown on edit
+          igst: calc.igstPaisa, // P0 fix: persist IGST breakdown on edit
           totalAmount: totalAmountPaisa,
           paymentMode: primaryPaymentMode,
           status: invoiceStatus,
@@ -887,7 +927,7 @@ export class SalesService {
       // 2. Validate & Revert IMEIs
       const linkedImeis = await tx.iMEI.findMany({
         where: { invoiceId: invoice.id },
-        select: { id: true, imei: true, status: true, shopProductId: true }
+        select: { id: true, imei: true, status: true, shopProductId: true },
       });
 
       if (linkedImeis.length > 0) {
@@ -898,7 +938,9 @@ export class SalesService {
         });
 
         if (updateResult.count !== linkedImeis.length) {
-          throw new BadRequestException('Cannot cancel invoice: One or more linked devices have been altered concurrently (e.g. Scrapped or Returned).');
+          throw new BadRequestException(
+            'Cannot cancel invoice: One or more linked devices have been altered concurrently (e.g. Scrapped or Returned).',
+          );
         }
       }
 
@@ -1203,7 +1245,7 @@ export class SalesService {
     return {
       id: invoice.id,
       shopId: invoice.shopId,
-      shopGstin: invoice.shopGstin ?? null,  // P0: seller GSTIN for invoice print
+      shopGstin: invoice.shopGstin ?? null, // P0: seller GSTIN for invoice print
       invoiceNumber: invoice.invoiceNumber,
       status: invoice.status,
       invoiceDate: invoice.invoiceDate,
@@ -1289,13 +1331,13 @@ export class SalesService {
         customerName: true,
         totalAmount: true,
         status: true,
-        shopGstin: true,             // P0: seller GSTIN for print verification
-        customerGstin: true,         // buyer GSTIN for B2B ITC verification
+        shopGstin: true, // P0: seller GSTIN for print verification
+        customerGstin: true, // buyer GSTIN for B2B ITC verification
         shop: {
           select: {
             name: true,
             phone: true,
-            gstNumber: true,         // live shop GSTIN (fallback if shopGstin null)
+            gstNumber: true, // live shop GSTIN (fallback if shopGstin null)
             addressLine1: true,
             state: true,
           },
@@ -1328,7 +1370,7 @@ export class SalesService {
       customerGstin: invoice.customerGstin ?? null,
       shopName: invoice.shop.name,
       shopPhone: invoice.shop.phone,
-      shopGstNumber: invoice.shop.gstNumber ?? null,   // live fallback in case shopGstin null on old invoices
+      shopGstNumber: invoice.shop.gstNumber ?? null, // live fallback in case shopGstin null on old invoices
       shopAddress: invoice.shop.addressLine1 ?? null,
       shopState: invoice.shop.state ?? null,
       items: invoice.items.map((item) => ({

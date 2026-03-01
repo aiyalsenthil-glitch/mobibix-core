@@ -387,7 +387,7 @@ async function refreshAccessToken(): Promise<boolean> {
   return (await refreshInFlight) === "ok";
 }
 
-export async function extractData<T = unknown>(res: Response): Promise<T> {
+export async function extractData<T = any>(res: Response): Promise<T> {
   const text = await res.text();
   if (!text) return {} as T;
   try {

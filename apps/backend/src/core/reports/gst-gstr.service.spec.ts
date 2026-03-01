@@ -157,7 +157,9 @@ describe('GSTVerificationService - Tier-2 Hardening', () => {
         },
       ]);
 
-      jest.spyOn(prisma.purchaseItem, 'update').mockResolvedValueOnce({} as any);
+      jest
+        .spyOn(prisma.purchaseItem, 'update')
+        .mockResolvedValueOnce({} as any);
 
       await service.verifyLegacyGST(
         mockTenantId,

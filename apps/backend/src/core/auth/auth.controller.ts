@@ -221,8 +221,6 @@ export class AuthController {
     return { success: true };
   }
 
-
-
   @UseGuards(JwtAuthGuard)
   @Post('send-verification-email')
   async sendVerificationEmail(@Req() req: any) {

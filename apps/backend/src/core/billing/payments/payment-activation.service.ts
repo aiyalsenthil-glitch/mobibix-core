@@ -106,7 +106,8 @@ export class PaymentActivationService {
             });
 
             if (partner && partner.status === 'APPROVED') {
-              const commissionAmount = (payment.amount * partner.commissionPercentage) / 100;
+              const commissionAmount =
+                (payment.amount * partner.commissionPercentage) / 100;
 
               await tx.partnerReferral.create({
                 data: {
@@ -128,11 +129,16 @@ export class PaymentActivationService {
                 },
               });
 
-              this.logger.log(`💰 Partner Commission Generated: ₹${commissionAmount} for Partner ${partner.id}`);
+              this.logger.log(
+                `💰 Partner Commission Generated: ₹${commissionAmount} for Partner ${partner.id}`,
+              );
             }
           }
         } catch (partnerErr) {
-          this.logger.error(`[PARTNER] ⚠️ Failed to process commission for payment ${payment.id}`, partnerErr);
+          this.logger.error(
+            `[PARTNER] ⚠️ Failed to process commission for payment ${payment.id}`,
+            partnerErr,
+          );
           // Don't fail the payment activation if partner logic fails
         }
 

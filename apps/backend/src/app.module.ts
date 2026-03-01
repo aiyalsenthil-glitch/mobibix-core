@@ -57,7 +57,7 @@ type LoggerRequest = {
       isGlobal: true,
       envFilePath: '.env',
     }),
-    
+
     PrometheusModule.register(),
 
     // 🚀 BullMQ Redis Connection
@@ -66,7 +66,9 @@ type LoggerRequest = {
       useFactory: () => ({
         connection: {
           host: process.env.REDIS_HOST || 'localhost',
-          port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
+          port: process.env.REDIS_PORT
+            ? parseInt(process.env.REDIS_PORT)
+            : 6379,
           password: process.env.REDIS_PASSWORD || undefined,
         },
       }),

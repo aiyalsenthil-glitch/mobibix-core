@@ -1,4 +1,11 @@
-import { Controller, Get, Head, Req, UseGuards, VERSION_NEUTRAL } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Head,
+  Req,
+  UseGuards,
+  VERSION_NEUTRAL,
+} from '@nestjs/common';
 import { AppService } from './app.service';
 import { JwtAuthGuard } from './core/auth/guards/jwt-auth.guard';
 import { Roles } from './core/auth/decorators/roles.decorator';

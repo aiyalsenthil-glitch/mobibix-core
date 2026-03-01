@@ -148,7 +148,11 @@ describe('Subscription Limits & Downgrade (e2e)', () => {
           data: { mobile: `900000000${i}` } as any,
         });
         await prisma.userTenant.create({
-          data: { userId: u.id, tenantId: dTenantId, role: UserRole.STAFF } as any,
+          data: {
+            userId: u.id,
+            tenantId: dTenantId,
+            role: UserRole.STAFF,
+          } as any,
         });
         staffUsers.push(u);
       }
@@ -229,7 +233,11 @@ describe('Subscription Limits & Downgrade (e2e)', () => {
 
       // Setup WhatsApp settings
       await prisma.whatsAppSetting.create({
-        data: { tenantId: tTenantId, phoneResourceId: 'test', enabled: true } as any,
+        data: {
+          tenantId: tTenantId,
+          phoneResourceId: 'test',
+          enabled: true,
+        } as any,
       });
 
       // Need a template

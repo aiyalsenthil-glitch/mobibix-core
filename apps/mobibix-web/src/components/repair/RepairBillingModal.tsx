@@ -256,6 +256,7 @@ export function RepairBillingModal({
                   customerId={job.customerId}
                   balance={loyaltyBalance}
                   invoiceSubTotal={(partsTotal + serviceTotal) * 100} // Paisa
+                  shopId={shopId}
                   onRedemptionChange={setPointsRedeemed}
                   onDiscountChange={setLoyaltyDiscountPaise}
                 />

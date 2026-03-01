@@ -27,7 +27,10 @@ export class B2BController extends TenantScopedController {
   }
 
   @Post('link/:distributorId')
-  async link(@CurrentUser() user: any, @Param('distributorId') distributorId: string) {
+  async link(
+    @CurrentUser() user: any,
+    @Param('distributorId') distributorId: string,
+  ) {
     return this.b2bService.requestLink(user.tenantId, distributorId);
   }
 

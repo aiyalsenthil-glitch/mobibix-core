@@ -48,7 +48,9 @@ export class PerformanceInterceptor implements NestInterceptor {
         const message = `${method} ${url} - ${duration}ms`;
 
         // Skip slow-log for external-bound endpoints — their latency is the 3rd party's
-        const isExternal = this.externalBoundPaths.some((p) => url?.includes(p));
+        const isExternal = this.externalBoundPaths.some((p) =>
+          url?.includes(p),
+        );
         if (isExternal) return;
 
         if (duration > this.verySlowThreshold) {

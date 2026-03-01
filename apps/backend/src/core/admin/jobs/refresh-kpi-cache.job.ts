@@ -21,17 +21,26 @@ export class RefreshKpiCacheJob extends WorkerHost {
 
     try {
       // Refresh materialized views
-      await this.prisma.$executeRawUnsafe(`REFRESH MATERIALIZED VIEW admin_global_kpis;`);
-      await this.prisma.$executeRawUnsafe(`REFRESH MATERIALIZED VIEW admin_revenue_monthly;`);
+      await this.prisma.$executeRawUnsafe(
+        `REFRESH MATERIALIZED VIEW admin_global_kpis;`,
+      );
+      await this.prisma.$executeRawUnsafe(
+        `REFRESH MATERIALIZED VIEW admin_revenue_monthly;`,
+      );
 
       // Invalidate existing cache
       await this.adminCache.invalidate('admin:global:kpis');
       await this.adminCache.invalidatePattern('admin:revenue:*'); // e.g. monthly drops
 
       const durationMs = Math.round(performance.now() - startTime);
-      this.logger.log(`✅ Refreshed KPI views and cache successfully in ${durationMs}ms`);
+      this.logger.log(
+        `✅ Refreshed KPI views and cache successfully in ${durationMs}ms`,
+      );
     } catch (error: any) {
-      this.logger.error(`Failed to refresh KPI materialized views: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to refresh KPI materialized views: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

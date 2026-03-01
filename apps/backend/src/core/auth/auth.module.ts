@@ -45,12 +45,6 @@ import { RefreshTokenCleanupCron } from './services/refresh-token-cleanup.cron';
     PrismaService,
     FirebaseAdminService,
   ],
-  exports: [
-    JwtAuthGuard,
-    RolesGuard,
-    JwtModule,
-    PassportModule,
-  ],
+  exports: [JwtAuthGuard, RolesGuard, JwtModule, PassportModule],
 })
 export class AuthModule {}
-

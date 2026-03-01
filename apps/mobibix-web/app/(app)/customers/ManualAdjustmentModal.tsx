@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTheme } from "@/context/ThemeContext";
+import { useShop } from "@/context/ShopContext";
 import { createManualAdjustment } from "@/services/loyalty.api";
 import { Loader2, X, Plus, Minus } from "lucide-react";
 
@@ -19,6 +20,7 @@ export function ManualAdjustmentModal({
   onSuccess,
 }: ManualAdjustmentModalProps) {
   const { theme } = useTheme();
+  const { selectedShopId } = useShop();
   const [points, setPoints] = useState<number>(0);
   const [reason, setReason] = useState("");
   const [type, setType] = useState<"ADD" | "DEDUCT">("ADD");
@@ -43,6 +45,7 @@ export function ManualAdjustmentModal({
         customerId,
         points: finalPoints,
         reason,
+        shopId: selectedShopId,
       });
 
       if (response.success) {

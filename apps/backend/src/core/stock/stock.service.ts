@@ -215,12 +215,14 @@ export class StockService {
 
     if (nonSerializedIds.length > 0 && !allowNegativeBulk) {
       // Postgres Read-Committed Phantom Insert Lock:
-      // Since stock is an append-only ledger and NOT a scalar field on ShopProduct, 
-      // we CANNOT enforce stock limits via `updateMany`. We MUST exclusively lock the product 
+      // Since stock is an append-only ledger and NOT a scalar field on ShopProduct,
+      // we CANNOT enforce stock limits via `updateMany`. We MUST exclusively lock the product
       // rows before SUMming the ledger to serialize concurrent parallel checkouts.
       if (nonSerializedIds.length > 0) {
-        const idList = nonSerializedIds.map(id => `'${id}'`).join(',');
-        await prisma.$executeRawUnsafe(`SELECT id FROM "mb_shop_product" WHERE "id" IN (${idList}) FOR UPDATE`);
+        const idList = nonSerializedIds.map((id) => `'${id}'`).join(',');
+        await prisma.$executeRawUnsafe(
+          `SELECT id FROM "mb_shop_product" WHERE "id" IN (${idList}) FOR UPDATE`,
+        );
       }
 
       const aggregates = await prisma.stockLedger.groupBy({

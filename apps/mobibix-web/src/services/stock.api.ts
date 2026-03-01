@@ -45,7 +45,7 @@ export async function getStockBalances(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch stock balances");
+    throw new Error((error as any).message || "Failed to fetch stock balances");
   }
 
   return extractData(response);
@@ -65,7 +65,7 @@ export async function correctStock(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to correct stock");
+    throw new Error((error as any).message || "Failed to correct stock");
   }
 
   return extractData(response);
@@ -82,7 +82,7 @@ export async function getNegativeStockReport(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch negative stock report");
+    throw new Error((error as any).message || "Failed to fetch negative stock report");
   }
 
   return extractData(response);
@@ -104,7 +104,7 @@ export async function getStockOverview(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch stock overview");
+    throw new Error((error as any).message || "Failed to fetch stock overview");
   }
 
   return extractData(response);

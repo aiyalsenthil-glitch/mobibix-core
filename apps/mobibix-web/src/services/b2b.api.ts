@@ -45,8 +45,8 @@ export const b2bApi = {
       body: JSON.stringify(payload)
     });
     if (!response.ok) {
-      const error = await extractData(response);
-      throw new Error(error.message || 'Failed to place order');
+      const error = (await extractData(response)) as any;
+      throw new Error(error?.message || 'Failed to place order');
     }
     return await extractData(response);
   },

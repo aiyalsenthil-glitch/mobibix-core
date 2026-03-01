@@ -61,7 +61,7 @@ export async function getParty(id: string): Promise<Party> {
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to load party");
+    throw new Error((error as any).message || "Failed to load party");
   }
 
   return extractData(response);
@@ -81,7 +81,7 @@ export async function upgradeParty(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to upgrade party");
+    throw new Error((error as any).message || "Failed to upgrade party");
   }
 
   return extractData(response);
@@ -95,7 +95,7 @@ export async function getPartyBalance(id: string): Promise<{ balance: number; cu
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch balance");
+    throw new Error((error as any).message || "Failed to fetch balance");
   }
 
   return extractData(response);

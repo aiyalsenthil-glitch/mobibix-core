@@ -904,7 +904,9 @@ export class MembersService {
     }
 
     const deleteSuffix = `-del-${Date.now()}`;
-    const newPhone = member.phone ? `${member.phone.substring(0, 15 - deleteSuffix.length)}${deleteSuffix}` : undefined;
+    const newPhone = member.phone
+      ? `${member.phone.substring(0, 15 - deleteSuffix.length)}${deleteSuffix}`
+      : undefined;
 
     await this.prisma.member.update({
       where: {

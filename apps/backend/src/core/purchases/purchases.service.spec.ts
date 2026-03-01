@@ -164,7 +164,10 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
     });
 
     it('should reject submission if purchase not in DRAFT status', async () => {
-      const submittedPurchase = { ...mockPurchase, status: PurchaseStatus.SUBMITTED };
+      const submittedPurchase = {
+        ...mockPurchase,
+        status: PurchaseStatus.SUBMITTED,
+      };
       jest
         .spyOn(prisma.purchase, 'findUnique')
         .mockResolvedValueOnce(submittedPurchase);

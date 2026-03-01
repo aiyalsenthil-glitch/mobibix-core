@@ -41,12 +41,16 @@ export class AutoRenewCronService {
   async autoRenewSubscriptions() {
     this.logger.log('🔄 Starting auto-renew cycle...');
 
-    const [{ pg_try_advisory_lock: gotLock }] = await this.prisma.$queryRaw<{ pg_try_advisory_lock: boolean }[]>`
+    const [{ pg_try_advisory_lock: gotLock }] = await this.prisma.$queryRaw<
+      { pg_try_advisory_lock: boolean }[]
+    >`
       SELECT pg_try_advisory_lock(12345)
     `;
 
     if (!gotLock) {
-      this.logger.warn('Another cron instance is already running auto-renew. Skipping.');
+      this.logger.warn(
+        'Another cron instance is already running auto-renew. Skipping.',
+      );
       return;
     }
 
@@ -93,7 +97,9 @@ export class AutoRenewCronService {
           break;
         }
 
-        this.logger.log(`Processing chunk of ${dueSubs.length} subscriptions...`);
+        this.logger.log(
+          `Processing chunk of ${dueSubs.length} subscriptions...`,
+        );
 
         // Process chunk concurrently but limited
         const promises = dueSubs.map((sub) =>
@@ -101,9 +107,11 @@ export class AutoRenewCronService {
             try {
               // 🔄 Renew subscription with retry
               const renewed = await this.renewWithRetry(sub.id);
-              
+
               successCount++;
-              this.logger.log(`✅ Renewed ${sub.tenant.name}@${sub.module} (${sub.plan.name})`);
+              this.logger.log(
+                `✅ Renewed ${sub.tenant.name}@${sub.module} (${sub.plan.name})`,
+              );
             } catch (err) {
               failCount++;
               this.logger.error(

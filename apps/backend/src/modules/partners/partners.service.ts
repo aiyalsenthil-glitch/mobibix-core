@@ -51,16 +51,23 @@ export class PartnersService {
       },
     });
 
-    this.logger.log(`✅ Partner application received: ${partner.email} (${partner.businessName})`);
+    this.logger.log(
+      `✅ Partner application received: ${partner.email} (${partner.businessName})`,
+    );
     return partner;
   }
 
   private async generateReferralCode(businessName: string): Promise<string> {
-    const prefix = businessName.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X');
+    const prefix = businessName
+      .substring(0, 3)
+      .toUpperCase()
+      .replace(/[^A-Z]/g, 'X');
     const random = Math.random().toString(36).substring(2, 6).toUpperCase();
     const code = `${prefix}-${random}`;
 
-    const existing = await this.prisma.partner.findUnique({ where: { referralCode: code } });
+    const existing = await this.prisma.partner.findUnique({
+      where: { referralCode: code },
+    });
     if (existing) return this.generateReferralCode(businessName);
     return code;
   }
@@ -68,8 +75,14 @@ export class PartnersService {
   // ─────────────────────────────────────────────
   // MODULE 4: Admin Panel — Approval
   // ─────────────────────────────────────────────
-  async approvePartner(partnerId: string, adminId: string, commissionPercentage: number) {
-    const partner = await this.prisma.partner.findUnique({ where: { id: partnerId } });
+  async approvePartner(
+    partnerId: string,
+    adminId: string,
+    commissionPercentage: number,
+  ) {
+    const partner = await this.prisma.partner.findUnique({
+      where: { id: partnerId },
+    });
     if (!partner) throw new NotFoundException('Partner not found');
 
     if (partner.status === PartnerStatus.APPROVED) {
@@ -112,7 +125,10 @@ export class PartnersService {
       } as any);
       this.logger.log(`📧 Approval email sent to partner ${updated.email}`);
     } catch (emailErr) {
-      this.logger.error(`Failed to send approval email to ${updated.email}`, emailErr);
+      this.logger.error(
+        `Failed to send approval email to ${updated.email}`,
+        emailErr,
+      );
       // Don't throw — approval itself succeeded
     }
 
@@ -121,7 +137,9 @@ export class PartnersService {
   }
 
   async suspendPartner(partnerId: string, adminId: string) {
-    const partner = await this.prisma.partner.findUnique({ where: { id: partnerId } });
+    const partner = await this.prisma.partner.findUnique({
+      where: { id: partnerId },
+    });
     if (!partner) throw new NotFoundException('Partner not found');
 
     return this.prisma.partner.update({
@@ -230,16 +248,22 @@ export class PartnersService {
       });
 
       if (existingUse) {
-        throw new ForbiddenException('Promo code already redeemed by this account');
+        throw new ForbiddenException(
+          'Promo code already redeemed by this account',
+        );
       }
     }
 
     // ✅ Atomic: all writes in one transaction + double-lock against concurrent requests
     return this.prisma.$transaction(async (tx) => {
       // Re-check inside transaction to close the race window between validate and write
-      const lockedPromo = await tx.promoCode.findUnique({ where: { id: promo.id } });
+      const lockedPromo = await tx.promoCode.findUnique({
+        where: { id: promo.id },
+      });
       if (!lockedPromo || lockedPromo.usedCount >= lockedPromo.maxUses) {
-        throw new BadRequestException('Promo code usage limit reached (concurrent request)');
+        throw new BadRequestException(
+          'Promo code usage limit reached (concurrent request)',
+        );
       }
 
       if (userId) {
@@ -285,7 +309,10 @@ export class PartnersService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const totalRevenue = referrals.reduce((acc, curr) => acc + curr.subscriptionAmount, 0);
+    const totalRevenue = referrals.reduce(
+      (acc, curr) => acc + curr.subscriptionAmount,
+      0,
+    );
     const pendingCommission = referrals
       .filter((r) => r.status === 'PENDING')
       .reduce((acc, curr) => acc + curr.commissionAmount, 0);

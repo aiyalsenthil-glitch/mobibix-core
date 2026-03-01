@@ -31,7 +31,9 @@ export class PaymentExpiryCronService {
       });
 
       if (result.count > 0) {
-        this.logger.log(`✅ Marked ${result.count} stale payments as FAILED(Expired)`);
+        this.logger.log(
+          `✅ Marked ${result.count} stale payments as FAILED(Expired)`,
+        );
       } else {
         this.logger.log('✅ No stale payments found.');
       }

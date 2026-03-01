@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getCustomerLoyaltyHistory, type LoyaltyTransaction } from "@/services/loyalty.api";
 import { useTheme } from "@/context/ThemeContext";
+import { useShop } from "@/context/ShopContext";
 import { X, TrendingUp, TrendingDown, Gift, RotateCcw, Clock } from "lucide-react";
 
 interface LoyaltyHistoryDrawerProps {
@@ -68,6 +69,7 @@ export function LoyaltyHistoryDrawer({
   onClose,
 }: LoyaltyHistoryDrawerProps) {
   const { theme } = useTheme();
+  const { selectedShopId } = useShop();
   const isDark = theme === "dark";
   const [transactions, setTransactions] = useState<LoyaltyTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,12 +77,12 @@ export function LoyaltyHistoryDrawer({
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
-      const data = await getCustomerLoyaltyHistory(customerId);
+      const data = await getCustomerLoyaltyHistory(customerId, selectedShopId);
       setTransactions(data);
       setIsLoading(false);
     };
     load();
-  }, [customerId]);
+  }, [customerId, selectedShopId]);
 
   // Close on backdrop click
   const handleBackdrop = (e: React.MouseEvent) => {

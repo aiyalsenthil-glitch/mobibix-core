@@ -16,7 +16,7 @@ export async function searchHsn(query: string): Promise<HSNCode[]> {
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to search HSN codes");
+    throw new Error((error as any).message || "Failed to search HSN codes");
   }
 
   return extractData(response);

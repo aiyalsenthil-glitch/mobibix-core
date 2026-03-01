@@ -32,6 +32,9 @@ export class GymDashboardController {
   @Get('attendance-heatmap')
   getAttendanceHeatmap(@Req() req: any, @Query('days') days?: string) {
     const numDays = days ? parseInt(days, 10) : 30;
-    return this.dashboardService.getAttendanceHeatmap(req.user.tenantId, numDays);
+    return this.dashboardService.getAttendanceHeatmap(
+      req.user.tenantId,
+      numDays,
+    );
   }
 }

@@ -33,19 +33,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // Suppress noisy 401s from health probes / bots (Go-http-client, etc.)
     const userAgent = request.headers['user-agent'] || '';
     const isAuthError = status === 401 || status === 403;
-    const isProbe = userAgent.includes('Go-http-client') || userAgent.includes('curl') || userAgent.includes('bot');
+    const isProbe =
+      userAgent.includes('Go-http-client') ||
+      userAgent.includes('curl') ||
+      userAgent.includes('bot');
 
     if (isAuthError && isProbe) {
       // Suppress - these are expected unauthenticated probe requests
     } else if (isAuthError) {
       // Auth errors from real clients - just warn, not error, to reduce noise
-      this.logger.warn(
-        `[${status}] [${request.method}] ${request.url}`,
-      );
+      this.logger.warn(`[${status}] [${request.method}] ${request.url}`);
     } else {
       this.logger.error(
         `[ERR] [${request.method}] ${request.url} - ${status}`,
-        exception instanceof Error ? exception.stack : JSON.stringify(exception),
+        exception instanceof Error
+          ? exception.stack
+          : JSON.stringify(exception),
       );
     }
 

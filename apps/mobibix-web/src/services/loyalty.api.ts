@@ -16,6 +16,7 @@ export interface LoyaltyConfig {
   expiryDays?: number | null;
   allowManualAdjustment: boolean;
   minInvoiceForEarn?: number | null;
+  shopId?: string;
 }
 
 export interface LoyaltyBalance {
@@ -28,6 +29,7 @@ export interface ValidateRedemptionRequest {
   customerId: string;
   points: number;
   invoiceSubTotal: number;
+  shopId?: string;
 }
 
 export interface ValidateRedemptionResponse {
@@ -59,6 +61,7 @@ export interface LoyaltySummary {
   totalPointsRedeemed: number;
   netPointsBalance: number;
   activeCustomersWithPoints: number;
+  shopId?: string;
 }
 
 /**
@@ -67,17 +70,19 @@ export interface LoyaltySummary {
 export async function getLoyaltySummary(
   startDate?: string,
   endDate?: string,
+  shopId?: string,
 ): Promise<LoyaltySummary | null> {
   try {
     let url = `/loyalty/summary`;
     const params = new URLSearchParams();
     if (startDate) params.append("startDate", startDate);
     if (endDate) params.append("endDate", endDate);
+    if (shopId) params.append("shopId", shopId);
     if (params.toString()) url += `?${params.toString()}`;
 
     const response = await authenticatedFetch(url);
     if (!response.ok) return null;
-    const data = await extractData(response);
+    const data: any = await extractData(response);
     return data;
   } catch (error) {
     console.error("Error fetching loyalty summary:", error);
@@ -88,11 +93,13 @@ export async function getLoyaltySummary(
 /**
  * Get all loyalty transactions for the tenant
  */
-export async function getAllLoyaltyTransactions(): Promise<LoyaltyTransaction[]> {
+export async function getAllLoyaltyTransactions(shopId?: string): Promise<LoyaltyTransaction[]> {
   try {
-    const response = await authenticatedFetch(`/loyalty/transactions`);
+    let url = "/loyalty/transactions";
+    if (shopId) url += `?shopId=${shopId}`;
+    const response = await authenticatedFetch(url);
     if (!response.ok) return [];
-    const data = await extractData(response);
+    const data: any = await extractData(response);
     return data.transactions || [];
   } catch (error) {
     console.error("Error fetching all loyalty transactions:", error);
@@ -105,9 +112,12 @@ export async function getAllLoyaltyTransactions(): Promise<LoyaltyTransaction[]>
  */
 export async function getCustomerLoyaltyBalance(
   customerId: string,
+  shopId?: string,
 ): Promise<number> {
   try {
-    const response = await authenticatedFetch(`/loyalty/balance/${customerId}`);
+    let url = `/loyalty/balance/${customerId}`;
+    if (shopId) url += `?shopId=${shopId}`;
+    const response = await authenticatedFetch(url);
 
     if (!response.ok) {
       console.error("Failed to fetch loyalty balance:", {
@@ -117,7 +127,7 @@ export async function getCustomerLoyaltyBalance(
       return 0; // Return 0 if error
     }
 
-    const data = await extractData(response);
+    const data: any = await extractData(response);
     return data.balance || 0;
   } catch (error) {
     console.error("Error fetching loyalty balance:", error);
@@ -130,11 +140,14 @@ export async function getCustomerLoyaltyBalance(
  */
 export async function getCustomerLoyaltyHistory(
   customerId: string,
+  shopId?: string,
 ): Promise<LoyaltyTransaction[]> {
   try {
-    const response = await authenticatedFetch(`/loyalty/history/${customerId}`);
+    let url = `/loyalty/history/${customerId}`;
+    if (shopId) url += `?shopId=${shopId}`;
+    const response = await authenticatedFetch(url);
     if (!response.ok) return [];
-    const data = await extractData(response);
+    const data: any = await extractData(response);
     return data.transactions || [];
   } catch (error) {
     console.error("Error fetching loyalty history:", error);
@@ -163,7 +176,7 @@ export async function validateLoyaltyRedemption(
       let errorMessage = "Validation failed";
       try {
         const error = await extractData(response);
-        errorMessage = error.error || errorMessage;
+        errorMessage = (error as any).error || errorMessage;
       } catch (e) {
         // ignore json parse error
       }
@@ -177,7 +190,7 @@ export async function validateLoyaltyRedemption(
       };
     }
 
-    const data = await extractData(response);
+    const data: any = await extractData(response);
     return {
       success: data.success !== false,
       points: data.points,
@@ -196,9 +209,11 @@ export async function validateLoyaltyRedemption(
 /**
  * Get tenant's loyalty configuration
  */
-export async function getLoyaltyConfig(): Promise<LoyaltyConfig | null> {
+export async function getLoyaltyConfig(shopId?: string): Promise<LoyaltyConfig | null> {
   try {
-    const response = await authenticatedFetch(`/loyalty/config`);
+    let url = "/loyalty/config";
+    if (shopId) url += `?shopId=${shopId}`;
+    const response = await authenticatedFetch(url);
 
     if (!response.ok) {
       console.error("Failed to fetch loyalty config:", {
@@ -207,7 +222,7 @@ export async function getLoyaltyConfig(): Promise<LoyaltyConfig | null> {
       return null;
     }
 
-    const data = await extractData(response);
+    const data: any = await extractData(response);
     return data;
   } catch (error) {
     console.error("Error fetching loyalty config:", error);
@@ -237,7 +252,7 @@ export async function updateLoyaltyConfig(
       return null;
     }
 
-    const data = await extractData(response);
+    const data: any = await extractData(response);
     return data.config;
   } catch (error) {
     console.error("Error updating loyalty config:", error);
@@ -252,6 +267,7 @@ export async function createManualAdjustment(request: {
   customerId: string;
   points: number;
   reason: string;
+  shopId?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const response = await authenticatedFetch(`/loyalty/manual-adjustment`, {
@@ -266,7 +282,7 @@ export async function createManualAdjustment(request: {
       let errorMessage = "Failed to create adjustment";
       try {
         const error = await extractData(response);
-        errorMessage = error.message || errorMessage;
+        errorMessage = (error as any).message || errorMessage;
       } catch (e) {
         // ignore json parse error
       }

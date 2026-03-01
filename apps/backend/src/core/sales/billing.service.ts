@@ -101,7 +101,7 @@ export class BillingService {
         select: {
           id: true,
           gstEnabled: true,
-          gstNumber: true,           // P0: seller GSTIN
+          gstNumber: true, // P0: seller GSTIN
           state: true,
           receiptPrintCounter: true,
         },
@@ -114,7 +114,7 @@ export class BillingService {
       if (!shop.gstNumber) {
         throw new BadRequestException(
           'Shop GSTIN is required to issue a GST Tax Invoice. ' +
-          'Please configure GSTIN in Shop Settings before creating a GST invoice.',
+            'Please configure GSTIN in Shop Settings before creating a GST invoice.',
         );
       }
       assertGstinFormat(shop.gstNumber, 'Shop GSTIN');
@@ -134,8 +134,8 @@ export class BillingService {
         if (!item.hsnCode || item.hsnCode.trim() === '') {
           throw new BadRequestException(
             `HSN/SAC code is mandatory on every line of a GST Tax Invoice. ` +
-            `Missing for product: "${item.name || item.shopProductId}". ` +
-            `Please update the product catalogue with the correct HSN/SAC code.`,
+              `Missing for product: "${item.name || item.shopProductId}". ` +
+              `Please update the product catalogue with the correct HSN/SAC code.`,
           );
         }
       }
@@ -153,36 +153,43 @@ export class BillingService {
 
     // 2b. Handle Loyalty Redemption (PRE-CALCULATION)
     let loyaltyDiscountPaise = 0;
-    if (options.loyaltyPointsRedeemed && options.loyaltyPointsRedeemed > 0 && options.customerId) {
-        // First calculation to get base subtotal for validation
-        const baseCalc = calculateInvoiceTotals(lineInputs, {
-            isIndianGSTInvoice: !!isIndianGSTInvoice,
-            pricesIncludeTax: !!options.pricesIncludeTax,
-            shopStateCode: shop.state,
-            customerStateCode: options.customerState,
-            customerGstin: options.customerGstin,
+    if (
+      options.loyaltyPointsRedeemed &&
+      options.loyaltyPointsRedeemed > 0 &&
+      options.customerId
+    ) {
+      // First calculation to get base subtotal for validation
+      const baseCalc = calculateInvoiceTotals(lineInputs, {
+        isIndianGSTInvoice: !!isIndianGSTInvoice,
+        pricesIncludeTax: !!options.pricesIncludeTax,
+        shopStateCode: shop.state,
+        customerStateCode: options.customerState,
+        customerGstin: options.customerGstin,
+      });
+
+      const validation = await this.loyaltyService.validateRedemption(
+        tenantId,
+        options.customerId,
+        options.loyaltyPointsRedeemed,
+        baseCalc.subTotalPaisa,
+        shopId,
+      );
+
+      if (validation.success) {
+        loyaltyDiscountPaise = validation.discountPaise;
+        // Add negative line item for discount
+        lineInputs.push({
+          shopProductId: 'LOYALTY_REDEMPTION',
+          quantity: 1,
+          ratePaisa: -loyaltyDiscountPaise,
+          gstRate: 0,
+          hsnCode: '99', // SAC for services/discounts
         });
-
-        const validation = await this.loyaltyService.validateRedemption(
-            tenantId,
-            options.customerId,
-            options.loyaltyPointsRedeemed,
-            baseCalc.subTotalPaisa,
+      } else {
+        throw new BadRequestException(
+          `Loyalty redemption failed: ${validation.error}`,
         );
-
-        if (validation.success) {
-            loyaltyDiscountPaise = validation.discountPaise;
-            // Add negative line item for discount
-            lineInputs.push({
-                shopProductId: 'LOYALTY_REDEMPTION',
-                quantity: 1,
-                ratePaisa: -loyaltyDiscountPaise,
-                gstRate: 0,
-                hsnCode: '99', // SAC for services/discounts
-            });
-        } else {
-            throw new BadRequestException(`Loyalty redemption failed: ${validation.error}`);
-        }
+      }
     }
 
     // 3. Calculate Totals
@@ -198,12 +205,16 @@ export class BillingService {
 
     // 4. Map Lines for DB
     const invoiceItemsData = calc.lines.map((line) => {
-      const parentItem = items.find(i => i.shopProductId === line.shopProductId);
-      
+      const parentItem = items.find(
+        (i) => i.shopProductId === line.shopProductId,
+      );
+
       let warrantyEndAt: Date | undefined;
       if (parentItem?.warrantyDays && parentItem.warrantyDays > 0) {
         warrantyEndAt = new Date(invoiceDate);
-        warrantyEndAt.setDate(warrantyEndAt.getDate() + parentItem.warrantyDays);
+        warrantyEndAt.setDate(
+          warrantyEndAt.getDate() + parentItem.warrantyDays,
+        );
       }
 
       return {
@@ -389,22 +400,27 @@ export class BillingService {
 
         // If the number of rows updated doesn't match the number of IMEIs, one or more were sold concurrently
         if (updateResult.count !== allImeis.length) {
-          throw new BadRequestException('Concurrency Error: One or more IMEIs are no longer IN_STOCK');
+          throw new BadRequestException(
+            'Concurrency Error: One or more IMEIs are no longer IN_STOCK',
+          );
         }
       }
     }
 
-
-
     // 12. Complete Redemption Transaction
-    if (loyaltyDiscountPaise > 0 && options.loyaltyPointsRedeemed && options.customerId) {
-        await this.loyaltyService.redeemPoints(
-            tenantId,
-            options.customerId,
-            options.loyaltyPointsRedeemed,
-            invoice.id,
-            invoice.invoiceNumber
-        );
+    if (
+      loyaltyDiscountPaise > 0 &&
+      options.loyaltyPointsRedeemed &&
+      options.customerId
+    ) {
+      await this.loyaltyService.redeemPoints(
+        tenantId,
+        options.customerId,
+        options.loyaltyPointsRedeemed,
+        invoice.id,
+        invoice.invoiceNumber,
+        shopId,
+      );
     }
 
     return invoice;

@@ -33,15 +33,15 @@ export class RazorpayWebhookProcessor extends WorkerHost {
   async process(job: Job<any>): Promise<any> {
     const { event, eventId, payload } = job.data;
     const startTime = performance.now();
-    
+
     // Structured log entry
     const logData: any = {
       event,
       eventId,
       processor: 'RazorpayWebhookProcessor',
-      status: 'STARTED'
+      status: 'STARTED',
     };
-    
+
     this.logger.log(JSON.stringify(logData));
 
     try {
@@ -85,26 +85,49 @@ export class RazorpayWebhookProcessor extends WorkerHost {
 
       // Mark webhook as processed
       if (eventId) {
-        await this.prisma.webhookEvent.updateMany({
-          where: { provider: 'RAZORPAY', referenceId: eventId },
-          data: { status: 'SUCCESS', processedAt: new Date() },
-        }).catch(err => this.logger.error(JSON.stringify({ ...logData, status: 'DB_UPDATE_FAILED', error: err.message })));
+        await this.prisma.webhookEvent
+          .updateMany({
+            where: { provider: 'RAZORPAY', referenceId: eventId },
+            data: { status: 'SUCCESS', processedAt: new Date() },
+          })
+          .catch((err) =>
+            this.logger.error(
+              JSON.stringify({
+                ...logData,
+                status: 'DB_UPDATE_FAILED',
+                error: err.message,
+              }),
+            ),
+          );
       }
 
       this.webhooksProcessedCounter.inc({ event });
 
       const durationMs = Math.round(performance.now() - startTime);
-      this.logger.log(JSON.stringify({ ...logData, status: 'COMPLETED', durationMs }));
-
+      this.logger.log(
+        JSON.stringify({ ...logData, status: 'COMPLETED', durationMs }),
+      );
     } catch (err: any) {
       const durationMs = Math.round(performance.now() - startTime);
-      this.logger.error(JSON.stringify({ ...logData, status: 'FAILED', durationMs, error: err.message }), err?.stack);
+      this.logger.error(
+        JSON.stringify({
+          ...logData,
+          status: 'FAILED',
+          durationMs,
+          error: err.message,
+        }),
+        err?.stack,
+      );
 
       if (eventId) {
-        await this.prisma.webhookEvent.updateMany({
-          where: { provider: 'RAZORPAY', referenceId: eventId },
-          data: { status: 'FAILED', error: err.message },
-        }).catch(updateErr => this.logger.error('Failed to log error status', updateErr));
+        await this.prisma.webhookEvent
+          .updateMany({
+            where: { provider: 'RAZORPAY', referenceId: eventId },
+            data: { status: 'FAILED', error: err.message },
+          })
+          .catch((updateErr) =>
+            this.logger.error('Failed to log error status', updateErr),
+          );
       }
 
       throw err; // allow BullMQ to retry if configured
@@ -116,79 +139,99 @@ export class RazorpayWebhookProcessor extends WorkerHost {
   // -------------------------------------------------------------------------
 
   private async handlePaymentCaptured(payment: any) {
-    this.logger.log(`Payment Captured: ${payment.id} for ₹${payment.amount / 100}`);
+    this.logger.log(
+      `Payment Captured: ${payment.id} for ₹${payment.amount / 100}`,
+    );
 
-    const paymentLinkId = payment.payment_link_id; 
+    const paymentLinkId = payment.payment_link_id;
 
     const internalPayment = await this.prisma.payment.findFirst({
       where: { providerPaymentId: payment.id },
-      include: { tenant: true }
+      include: { tenant: true },
     });
 
     if (internalPayment) {
-        const activeSub = await this.prisma.tenantSubscription.findFirst({
-            where: { tenantId: internalPayment.tenantId, planId: internalPayment.planId, status: 'PENDING' },
-            orderBy: { createdAt: 'desc' }
+      const activeSub = await this.prisma.tenantSubscription.findFirst({
+        where: {
+          tenantId: internalPayment.tenantId,
+          planId: internalPayment.planId,
+          status: 'PENDING',
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (activeSub) {
+        const endDate = this.subscriptionsService['calculateEndDate'](
+          new Date(),
+          activeSub.billingCycle || 'MONTHLY',
+        );
+
+        await this.prisma.$transaction(async (tx) => {
+          await tx.payment.update({
+            where: { id: internalPayment.id },
+            data: { status: 'SUCCESS' },
+          });
+
+          await tx.tenantSubscription.update({
+            where: { id: activeSub.id },
+            data: {
+              status: SubscriptionStatus.ACTIVE,
+              paymentStatus: PaymentStatus.SUCCESS,
+              updatedAt: new Date(),
+              startDate: new Date(),
+              endDate: endDate,
+            },
+          });
         });
+        this.logger.log(
+          `✅ TenantSubscription ${activeSub.id} activated (Manual).`,
+        );
+      } else {
+        await this.prisma.payment.update({
+          where: { id: internalPayment.id },
+          data: { status: 'SUCCESS' },
+        });
+      }
 
-        if (activeSub) {
-             const endDate = this.subscriptionsService['calculateEndDate'](new Date(), activeSub.billingCycle || 'MONTHLY');
-             
-             await this.prisma.$transaction(async (tx) => {
-                 await tx.payment.update({
-                     where: { id: internalPayment.id },
-                     data: { status: 'SUCCESS' }
-                 });
+      // Generate Invoice
+      try {
+        await this.invoiceService.createInvoiceForPayment(internalPayment.id);
+      } catch (invErr) {
+        this.logger.error(
+          `Failed to generate invoice for payment ${internalPayment.id}`,
+          invErr,
+        );
+      }
 
-                 await tx.tenantSubscription.update({
-                    where: { id: activeSub.id },
-                    data: {
-                      status: SubscriptionStatus.ACTIVE,
-                      paymentStatus: PaymentStatus.SUCCESS,
-                      updatedAt: new Date(),
-                      startDate: new Date(),
-                      endDate: endDate
-                    },
-                 });
-             });
-             this.logger.log(`✅ TenantSubscription ${activeSub.id} activated (Manual).`);
-        } else {
-             await this.prisma.payment.update({
-                 where: { id: internalPayment.id },
-                 data: { status: 'SUCCESS' }
-             });
-        }
-
-        // Generate Invoice
-        try {
-            await this.invoiceService.createInvoiceForPayment(internalPayment.id);
-        } catch(invErr) {
-            this.logger.error(`Failed to generate invoice for payment ${internalPayment.id}`, invErr);
-        }
-
-        // Trigger Cache Refresh
-        try {
-            await this.eventEmitter.emitAsync('payment.webhook.success', { paymentId: internalPayment.id });
-        } catch (evtErr) {
-            this.logger.error(`Failed to emit payment.webhook.success for ${internalPayment.id}`, evtErr);
-        }
-
+      // Trigger Cache Refresh
+      try {
+        await this.eventEmitter.emitAsync('payment.webhook.success', {
+          paymentId: internalPayment.id,
+        });
+      } catch (evtErr) {
+        this.logger.error(
+          `Failed to emit payment.webhook.success for ${internalPayment.id}`,
+          evtErr,
+        );
+      }
     } else if (paymentLinkId) {
-         const subscription = await this.prisma.tenantSubscription.findFirst({
-            where: { providerPaymentLinkId: paymentLinkId }
-         });
+      const subscription = await this.prisma.tenantSubscription.findFirst({
+        where: { providerPaymentLinkId: paymentLinkId },
+      });
 
-         if (subscription) {
-            await this.prisma.tenantSubscription.update({
-                where: { id: subscription.id },
-                data: {
-                  status: SubscriptionStatus.ACTIVE,
-                  paymentStatus: PaymentStatus.SUCCESS,
-                  updatedAt: new Date(),
-                },
-            });
-            this.logger.log(`✅ TenantSubscription ${subscription.id} activated (PaymentLink).`);
-         }
+      if (subscription) {
+        await this.prisma.tenantSubscription.update({
+          where: { id: subscription.id },
+          data: {
+            status: SubscriptionStatus.ACTIVE,
+            paymentStatus: PaymentStatus.SUCCESS,
+            updatedAt: new Date(),
+          },
+        });
+        this.logger.log(
+          `✅ TenantSubscription ${subscription.id} activated (PaymentLink).`,
+        );
+      }
     }
   }
 
@@ -232,7 +275,7 @@ export class RazorpayWebhookProcessor extends WorkerHost {
 
     const subscription = await this.prisma.tenantSubscription.findFirst({
       where: { providerSubscriptionId: subId },
-      orderBy: { createdAt: 'desc' } 
+      orderBy: { createdAt: 'desc' },
     });
 
     if (subscription) {
@@ -243,58 +286,81 @@ export class RazorpayWebhookProcessor extends WorkerHost {
         );
 
         const latestSub = await this.prisma.tenantSubscription.findFirst({
-            where: { tenantId: subscription.tenantId, module: subscription.module, status: 'ACTIVE' },
-            orderBy: { createdAt: 'desc' }
+          where: {
+            tenantId: subscription.tenantId,
+            module: subscription.module,
+            status: 'ACTIVE',
+          },
+          orderBy: { createdAt: 'desc' },
         });
 
         if (latestSub && latestSub.id !== subscription.id) {
-            await this.prisma.tenantSubscription.update({
-                where: { id: latestSub.id },
-                data: {
-                    providerSubscriptionId: subscription.providerSubscriptionId, 
-                    autopayStatus: AutopayStatus.ACTIVE,
-                    paymentStatus: PaymentStatus.SUCCESS
-                }
-            });
+          await this.prisma.tenantSubscription.update({
+            where: { id: latestSub.id },
+            data: {
+              providerSubscriptionId: subscription.providerSubscriptionId,
+              autopayStatus: AutopayStatus.ACTIVE,
+              paymentStatus: PaymentStatus.SUCCESS,
+            },
+          });
         }
 
         let internalPayment = await this.prisma.payment.findFirst({
-            where: { providerPaymentId: paymentEntity.id }
+          where: { providerPaymentId: paymentEntity.id },
         });
 
         if (!internalPayment) {
-            internalPayment = await this.prisma.payment.create({
-                data: {
-                    tenantId: latestSub?.tenantId || subscription.tenantId,
-                    planId: latestSub?.planId || subscription.planId,
-                    billingCycle: latestSub?.billingCycle || subscription.billingCycle || 'MONTHLY',
-                    priceSnapshot: latestSub?.priceSnapshot || paymentEntity.base_amount || paymentEntity.amount,
-                    amount: paymentEntity.amount,
-                    currency: paymentEntity.currency || 'INR',
-                    status: 'SUCCESS',
-                    provider: 'RAZORPAY',
-                    providerOrderId: paymentEntity.order_id || `autopay_${Date.now()}`,
-                    providerPaymentId: paymentEntity.id,
-                }
-            });
+          internalPayment = await this.prisma.payment.create({
+            data: {
+              tenantId: latestSub?.tenantId || subscription.tenantId,
+              planId: latestSub?.planId || subscription.planId,
+              billingCycle:
+                latestSub?.billingCycle ||
+                subscription.billingCycle ||
+                'MONTHLY',
+              priceSnapshot:
+                latestSub?.priceSnapshot ||
+                paymentEntity.base_amount ||
+                paymentEntity.amount,
+              amount: paymentEntity.amount,
+              currency: paymentEntity.currency || 'INR',
+              status: 'SUCCESS',
+              provider: 'RAZORPAY',
+              providerOrderId:
+                paymentEntity.order_id || `autopay_${Date.now()}`,
+              providerPaymentId: paymentEntity.id,
+            },
+          });
         }
 
         try {
-            await this.invoiceService.createInvoiceForPayment(internalPayment.id);
-            this.logger.log(`✅ Invoice generated for AutoPay payment ${internalPayment.id}`);
-        } catch(invErr) {
-            this.logger.error(`Failed to generate invoice for AutoPay payment ${internalPayment.id}`, invErr);
+          await this.invoiceService.createInvoiceForPayment(internalPayment.id);
+          this.logger.log(
+            `✅ Invoice generated for AutoPay payment ${internalPayment.id}`,
+          );
+        } catch (invErr) {
+          this.logger.error(
+            `Failed to generate invoice for AutoPay payment ${internalPayment.id}`,
+            invErr,
+          );
         }
 
         // Trigger Cache Refresh
         try {
-            await this.eventEmitter.emitAsync('payment.webhook.success', { paymentId: internalPayment.id });
+          await this.eventEmitter.emitAsync('payment.webhook.success', {
+            paymentId: internalPayment.id,
+          });
         } catch (evtErr) {
-            this.logger.error(`Failed to emit payment.webhook.success for ${internalPayment.id}`, evtErr);
+          this.logger.error(
+            `Failed to emit payment.webhook.success for ${internalPayment.id}`,
+            evtErr,
+          );
         }
-
       } catch (renewalErr) {
-          this.logger.error(`Sub renewal failed for ${subscription.id} via webhook`, renewalErr);
+        this.logger.error(
+          `Sub renewal failed for ${subscription.id} via webhook`,
+          renewalErr,
+        );
       }
     }
   }
@@ -304,8 +370,8 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     this.logger.warn(`Subscription Halted: ${subId}`);
 
     const subscription = await this.prisma.tenantSubscription.findFirst({
-        where: { providerSubscriptionId: subId },
-        include: { tenant: true }
+      where: { providerSubscriptionId: subId },
+      include: { tenant: true },
     });
 
     if (subscription) {
@@ -313,7 +379,7 @@ export class RazorpayWebhookProcessor extends WorkerHost {
         where: { id: subscription.id },
         data: {
           autopayStatus: AutopayStatus.HALTED,
-          paymentStatus: PaymentStatus.FAILED, 
+          paymentStatus: PaymentStatus.FAILED,
           updatedAt: new Date(),
         },
       });
@@ -330,7 +396,7 @@ export class RazorpayWebhookProcessor extends WorkerHost {
           data: {
             name: subscription.tenant.name,
             billingLink: `https://${subscription.module === 'MOBILE_SHOP' ? 'app.REMOVED_DOMAIN' : 'mobibix.in'}/billing`,
-          }
+          },
         });
       }
     }
@@ -352,61 +418,61 @@ export class RazorpayWebhookProcessor extends WorkerHost {
 
   private async handlePaymentFailed(payment: any) {
     this.logger.warn(`Payment Failed key: ${payment.id}`);
-    
+
     const internalPayment = await this.prisma.payment.findFirst({
-        where: { providerPaymentId: payment.id },
-        include: { tenant: true }
+      where: { providerPaymentId: payment.id },
+      include: { tenant: true },
     });
 
     if (internalPayment) {
-        await this.prisma.$transaction(async (tx) => {
-            await tx.payment.update({
-                where: { id: internalPayment.id },
-                data: { status: 'FAILED' }
-            });
-
-            const activeSub = await tx.tenantSubscription.findFirst({
-                where: {
-                    tenantId: internalPayment.tenantId,
-                    planId: internalPayment.planId,
-                    status: { in: ['ACTIVE', 'PENDING'] }
-                },
-                orderBy: { createdAt: 'desc' }
-            });
-
-            if (activeSub) {
-                await tx.tenantSubscription.update({
-                    where: { id: activeSub.id },
-                    data: {
-                        paymentStatus: PaymentStatus.FAILED,
-                        status: SubscriptionStatus.PAST_DUE,
-                        updatedAt: new Date(),
-                    }
-                });
-                this.logger.warn(
-                    `⚠️ Subscription ${activeSub.id} moved to PAST_DUE ` +
-                    `(tenant: ${internalPayment.tenant?.name})`
-                );
-
-                if (internalPayment.tenant?.contactEmail) {
-                    await this.emailService.send({
-                        tenantId: internalPayment.tenantId,
-                        recipientType: 'TENANT',
-                        emailType: 'PAYMENT_FAILED',
-                        referenceId: internalPayment.id,
-                        module: activeSub.module,
-                        to: internalPayment.tenant.contactEmail,
-                        subject: 'Payment Failed',
-                        data: {
-                            tenantName: internalPayment.tenant.name,
-                            planName: activeSub.planId, 
-                            retryCount: 1,
-                            payLink: `https://${activeSub.module === 'MOBILE_SHOP' ? 'app.REMOVED_DOMAIN' : 'mobibix.in'}/billing`,
-                        }
-                    });
-                }
-            }
+      await this.prisma.$transaction(async (tx) => {
+        await tx.payment.update({
+          where: { id: internalPayment.id },
+          data: { status: 'FAILED' },
         });
+
+        const activeSub = await tx.tenantSubscription.findFirst({
+          where: {
+            tenantId: internalPayment.tenantId,
+            planId: internalPayment.planId,
+            status: { in: ['ACTIVE', 'PENDING'] },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        if (activeSub) {
+          await tx.tenantSubscription.update({
+            where: { id: activeSub.id },
+            data: {
+              paymentStatus: PaymentStatus.FAILED,
+              status: SubscriptionStatus.PAST_DUE,
+              updatedAt: new Date(),
+            },
+          });
+          this.logger.warn(
+            `⚠️ Subscription ${activeSub.id} moved to PAST_DUE ` +
+              `(tenant: ${internalPayment.tenant?.name})`,
+          );
+
+          if (internalPayment.tenant?.contactEmail) {
+            await this.emailService.send({
+              tenantId: internalPayment.tenantId,
+              recipientType: 'TENANT',
+              emailType: 'PAYMENT_FAILED',
+              referenceId: internalPayment.id,
+              module: activeSub.module,
+              to: internalPayment.tenant.contactEmail,
+              subject: 'Payment Failed',
+              data: {
+                tenantName: internalPayment.tenant.name,
+                planName: activeSub.planId,
+                retryCount: 1,
+                payLink: `https://${activeSub.module === 'MOBILE_SHOP' ? 'app.REMOVED_DOMAIN' : 'mobibix.in'}/billing`,
+              },
+            });
+          }
+        }
+      });
     }
   }
 }

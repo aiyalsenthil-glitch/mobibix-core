@@ -526,12 +526,13 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-medium text-gray-900">Loyalty Points</h3>
-          <CustomerLoyaltyInfo customerId={customerId} />
+          <CustomerLoyaltyInfo customerId={customerId} shopId={shopId} />
         </div>
         <LoyaltyRedemptionInput
           customerId={customerId}
           balance={loyaltyBalance}
           invoiceSubTotal={invoiceTotals.subtotal}
+          shopId={shopId}
           onRedemptionChange={setLoyaltyPointsToRedeem}
           onDiscountChange={setLoyaltyDiscountPaise}
         />

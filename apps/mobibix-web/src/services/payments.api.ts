@@ -24,7 +24,7 @@ export async function createOrder(planId: string, billingCycle: 'MONTHLY' | 'QUA
   
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to create payment order");
+    throw new Error((error as any).message || "Failed to create payment order");
   }
   
   return extractData(response);
@@ -47,7 +47,7 @@ export async function verifyPayment(data: {
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Payment verification failed");
+    throw new Error((error as any).message || "Payment verification failed");
   }
 
   return extractData(response);
@@ -65,7 +65,7 @@ export async function bypassPayment(planId: string, billingCycle: string): Promi
 
     if (!response.ok) {
         const error = await extractData(response);
-        throw new Error(error.message || "Bypass failed");
+        throw new Error((error as any).message || "Bypass failed");
     }
 
     return extractData(response);
@@ -96,10 +96,10 @@ export async function getPaymentHistory(): Promise<PaymentRecord[]> {
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch payment history");
+    throw new Error((error as any).message || "Failed to fetch payment history");
   }
 
-  const data = await extractData(response);
+  const data: any = await extractData(response);
   return Array.isArray(data) ? data : data.data || [];
 }
 
@@ -113,7 +113,7 @@ export async function retryPayment(paymentId: string): Promise<Record<string, un
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to retry payment");
+    throw new Error((error as any).message || "Failed to retry payment");
   }
 
   return extractData(response);

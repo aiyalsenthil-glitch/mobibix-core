@@ -17,7 +17,7 @@ export class PartnerAuthService {
       where: { email, status: 'APPROVED' },
     });
 
-    if (partner && await bcrypt.compare(pass, partner.passwordHash)) {
+    if (partner && (await bcrypt.compare(pass, partner.passwordHash))) {
       const { passwordHash, ...result } = partner;
       return result;
     }
@@ -47,4 +47,3 @@ export class PartnerAuthService {
     };
   }
 }
-

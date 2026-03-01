@@ -18,13 +18,14 @@ export class RevenueAdminController {
   @Get('monthly')
   async getMonthlyRevenue() {
     let revenueData = await this.cache.get('admin:revenue:monthly');
-    
+
     if (!revenueData) {
-      const data = await this.prisma.$queryRaw`SELECT * FROM admin_revenue_monthly ORDER BY month DESC`;
+      const data = await this.prisma
+        .$queryRaw`SELECT * FROM admin_revenue_monthly ORDER BY month DESC`;
       revenueData = data;
       await this.cache.set('admin:revenue:monthly', revenueData, 300);
     }
-    
+
     return { data: revenueData };
   }
 
@@ -34,8 +35,8 @@ export class RevenueAdminController {
       take: 20,
       orderBy: { createdAt: 'desc' },
       include: {
-        tenant: { select: { name: true, tenantType: true } }
-      }
+        tenant: { select: { name: true, tenantType: true } },
+      },
     });
   }
 }

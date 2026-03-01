@@ -79,21 +79,23 @@ export function calculateInvoiceTotals(
       // Rate is inclusive of GST.
       // Total gross line amount:
       const grossLinePaisa = displayRatePaisa * qty;
-      
+
       // Calculate Taxable Base = (Gross * 100) / (100 + GST Rate)
       // Math.round applies nearest-integer standard accounting
-      taxableValuePaisa = Math.round((grossLinePaisa * 100) / (100 + effectiveGstRate));
-      
+      taxableValuePaisa = Math.round(
+        (grossLinePaisa * 100) / (100 + effectiveGstRate),
+      );
+
       // GST is simply the difference, guaranteeing no rounding drops
       lineGstPaisa = grossLinePaisa - taxableValuePaisa;
       lineTotalPaisa = grossLinePaisa;
     } else {
       // Rate is exclusive of GST.
       taxableValuePaisa = displayRatePaisa * qty;
-      
+
       // GST = (Taxable * Rate) / 100
       lineGstPaisa = Math.round((taxableValuePaisa * effectiveGstRate) / 100);
-      
+
       lineTotalPaisa = taxableValuePaisa + lineGstPaisa;
     }
 
@@ -121,9 +123,10 @@ export function calculateInvoiceTotals(
     // Both state codes must be present, valid, and identical to be local.
     // Normalize state codes to handle "Tamilnadu" == "Tamil Nadu" vs "TN"
     const isInterState = Boolean(
-      shopStateCode && 
-      customerStateCode && 
-      normalizeStateCode(shopStateCode) !== normalizeStateCode(customerStateCode)
+      shopStateCode &&
+      customerStateCode &&
+      normalizeStateCode(shopStateCode) !==
+        normalizeStateCode(customerStateCode),
     );
 
     if (isInterState) {

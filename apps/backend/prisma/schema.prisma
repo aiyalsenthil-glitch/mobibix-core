@@ -75,7 +75,7 @@ model Tenant {
   ledgerCustomers          LedgerCustomer[]
   ledgerPayments           LedgerPayment[]
   supplierPayments         SupplierPayment[]       @relation("TenantSupplierPayments")
-  loyaltyConfig            LoyaltyConfig?
+  loyaltyConfigs           LoyaltyConfig[]
   loyaltyTransactions      LoyaltyTransaction[]
   members                  Member[]                @relation("TenantMembers")
   payments                 Payment[]
@@ -160,6 +160,8 @@ model User {
 
   phone              String?
   welcomeEmailSent   Boolean            @default(false)
+  marketingConsent   Boolean            @default(false)
+  privacyAcceptedAt  DateTime?
   auditLogs          AuditLog[]
   assignedFollowUps  CustomerFollowUp[]
   platformAuditLogs  PlatformAuditLog[]

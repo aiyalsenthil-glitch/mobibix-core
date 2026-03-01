@@ -406,14 +406,15 @@ function deriveCustomerIntent(
 
 function getMessageBody(log: WhatsAppLog): string | null {
   if (!log.metadata) return null;
+  const meta = log.metadata as any;
   // Handle Text
-  if (log.metadata.type === "text" && log.metadata.text)
-    return log.metadata.text.body;
+  if (meta.type === "text" && meta.text)
+    return meta.text.body;
   // Handle Interactive (Simple)
-  if (log.metadata.type === "interactive") {
-    const interactive = log.metadata.interactive;
-    if (interactive.button_reply) return interactive.button_reply.id;
-    if (interactive.list_reply) return interactive.list_reply.id;
+  if (meta.type === "interactive") {
+    const interactive = meta.interactive;
+    if (interactive?.button_reply) return interactive.button_reply.id;
+    if (interactive?.list_reply) return interactive.list_reply.id;
   }
   return null;
 }
@@ -449,7 +450,7 @@ function getLogDescription(log: WhatsAppLog) {
     return `Broadcast: ${params.join(", ")}`;
   }
   if (log.metadata && log.metadata["text_snippet"]) {
-    return log.metadata["text_snippet"];
+    return String(log.metadata["text_snippet"]);
   }
 
   if (log.type === "WELCOME") return "Retail welcome flow triggered";

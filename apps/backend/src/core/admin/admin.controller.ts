@@ -386,7 +386,7 @@ export class AdminController {
   @Get('capital-overview')
   async getCapitalOverview() {
     const stats = await this.getGlobalAnalytics();
-    
+
     // Derived or mocked capital efficiency metrics
     return {
       ...stats,
@@ -396,7 +396,7 @@ export class AdminController {
       paybackMonths: 4,
       burnRate: 0,
       runway: 'Infinite',
-      efficiencyScore: 98
+      efficiencyScore: 98,
     };
   }
 

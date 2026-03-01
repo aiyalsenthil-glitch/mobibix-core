@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Query,
-  UseGuards,
-  Req,
-} from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Req } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AdminRolesGuard } from '../guards/admin-roles.guard';
 import { AdminRoles } from '../decorators/admin.decorator';
@@ -23,18 +17,18 @@ export class AdminAiController {
       orderBy: { createdAt: 'desc' },
       take: 1000,
       include: {
-        tenant: { select: { name: true } }
-      }
+        tenant: { select: { name: true } },
+      },
     });
 
     const aggregate = logs.reduce((acc: any, log) => {
       const feature = log.feature;
       if (!acc[feature]) {
         acc[feature] = {
-           name: feature,
-           tokens: 0,
-           cost: 0,
-           calls: 0
+          name: feature,
+          tokens: 0,
+          cost: 0,
+          calls: 0,
         };
       }
       acc[feature].tokens += log.totalTokens;
@@ -50,10 +44,10 @@ export class AdminAiController {
       summary: {
         totalTokens,
         totalCost,
-        totalCalls: logs.length
+        totalCalls: logs.length,
       },
       features: Object.values(aggregate),
-      recentLogs: logs.slice(0, 50)
+      recentLogs: logs.slice(0, 50),
     };
   }
 
@@ -77,7 +71,7 @@ export class AdminAiController {
         skip,
         take: limitNum,
         orderBy: { createdAt: 'desc' },
-        include: { tenant: { select: { name: true } } }
+        include: { tenant: { select: { name: true } } },
       }),
     ]);
 

@@ -85,7 +85,7 @@ export class JobStatusValidator {
 
     // Terminal state - no further transitions
     [JobStatus.RETURNED]: [],
-    
+
     // Terminal state - no further transitions
     [JobStatus.SCRAPPED]: [],
   };

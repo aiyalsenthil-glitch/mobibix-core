@@ -33,6 +33,10 @@ export function LoyaltySettings({ initialConfig }: LoyaltySettingsProps) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    setConfig(initialConfig);
+  }, [initialConfig]);
+
   const handleToggle = (field: keyof LoyaltyConfig) => {
     if (!config) return;
     setConfig({ ...config, [field]: !config[field] });

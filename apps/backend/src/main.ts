@@ -56,10 +56,15 @@ async function loadCorsOrigins(prisma: PrismaService): Promise<string[]> {
       })),
       skipDuplicates: true,
     });
-    console.log(`🌐 Seeded ${FALLBACK_ORIGINS.length} default CORS origins into DB`);
+    console.log(
+      `🌐 Seeded ${FALLBACK_ORIGINS.length} default CORS origins into DB`,
+    );
     return FALLBACK_ORIGINS;
   } catch (err) {
-    console.warn('⚠️  Could not load CORS origins from DB, using fallback:', err);
+    console.warn(
+      '⚠️  Could not load CORS origins from DB, using fallback:',
+      err,
+    );
     return FALLBACK_ORIGINS;
   }
 }

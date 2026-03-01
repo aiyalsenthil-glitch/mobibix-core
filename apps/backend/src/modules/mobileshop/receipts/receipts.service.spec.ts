@@ -82,7 +82,11 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
       } as any;
 
       // Mock existing createReceipt
-      const mockReceipt = { ...receiptDto, id: 'receipt-1', amount: 500000 } as any;
+      const mockReceipt = {
+        ...receiptDto,
+        id: 'receipt-1',
+        amount: 500000,
+      };
       jest.spyOn(service, 'createReceipt').mockResolvedValueOnce(mockReceipt);
 
       jest
@@ -233,7 +237,9 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
         .mockImplementation(async (callback: any) => {
           const mockTx = {
             invoice: {
-              findUnique: jest.fn().mockResolvedValueOnce(partialInvoice as any),
+              findUnique: jest
+                .fn()
+                .mockResolvedValueOnce(partialInvoice as any),
               update: jest.fn().mockResolvedValueOnce({
                 ...partialInvoice,
                 paidAmount: 10000,

@@ -11,6 +11,7 @@ import {
   LoyaltyConfig,
   Invoice,
   InvoiceType,
+  Prisma,
 } from '@prisma/client';
 
 /**
@@ -36,9 +37,9 @@ export class LoyaltyService {
    * Get tenant's loyalty configuration
    * Creates default config if not exists
    */
-  async getConfig(tenantId: string) {
-    let config = await this.prisma.loyaltyConfig.findUnique({
-      where: { tenantId },
+  async getConfig(tenantId: string, shopId?: string) {
+    let config = await this.prisma.loyaltyConfig.findFirst({
+      where: { tenantId, shopId: shopId || null },
     });
 
     // Create default config if not exists
@@ -46,6 +47,7 @@ export class LoyaltyService {
       config = await this.prisma.loyaltyConfig.create({
         data: {
           tenantId,
+          shopId: shopId || null,
           isEnabled: false, // Disabled by default
           earnAmountPerPoint: 10000, // ₹100 = 1 point
           pointsPerEarnUnit: 1,
@@ -65,15 +67,25 @@ export class LoyaltyService {
   /**
    * Update loyalty configuration (Admin only)
    */
-  async updateConfig(tenantId: string, data: Partial<LoyaltyConfig>) {
-    return this.prisma.loyaltyConfig.upsert({
-      where: { tenantId },
-      update: data,
-      create: {
-        tenantId,
-        ...data,
-      } as any,
+  async updateConfig(tenantId: string, shopId: string | undefined, data: Partial<LoyaltyConfig>) {
+    const existing = await this.prisma.loyaltyConfig.findFirst({
+      where: { tenantId, shopId: shopId || null },
     });
+
+    if (existing) {
+      return this.prisma.loyaltyConfig.update({
+        where: { id: existing.id },
+        data,
+      });
+    } else {
+      return this.prisma.loyaltyConfig.create({
+        data: {
+          tenantId,
+          shopId: shopId || null,
+          ...data,
+        } as any,
+      });
+    }
   }
 
   /**
@@ -82,9 +94,12 @@ export class LoyaltyService {
   async getCustomerBalance(
     tenantId: string,
     customerId: string,
+    shopId?: string,
   ): Promise<number> {
-    this.logger.debug(`[LoyaltyService] Calculating balance - Tenant: ${tenantId}, Customer: ${customerId}`);
-    
+    this.logger.debug(
+      `[LoyaltyService] Calculating balance - Tenant: ${tenantId}, Shop: ${shopId}, Customer: ${customerId}`,
+    );
+
     if (!customerId) return 0;
 
     /**
@@ -97,11 +112,14 @@ export class LoyaltyService {
       FROM "mb_loyalty_transaction"
       WHERE "tenantId" = ${tenantId}
       AND "customerId" = ${customerId}
+      ${shopId ? Prisma.sql`AND "shopId" = ${shopId}` : Prisma.empty}
     `;
 
     const balance = result[0]?.balance || 0;
-    this.logger.debug(`[LoyaltyService] Calculated balance: ${balance} for customer ${customerId}`);
-    
+    this.logger.debug(
+      `[LoyaltyService] Calculated balance: ${balance} for customer ${customerId}`,
+    );
+
     return balance;
   }
 
@@ -111,11 +129,15 @@ export class LoyaltyService {
   async getTransactionHistory(
     tenantId: string,
     customerId?: string,
+    shopId?: string,
     limit = 50,
   ) {
     const where: any = { tenantId };
     if (customerId) {
       where.customerId = customerId;
+    }
+    if (shopId) {
+      where.shopId = shopId;
     }
 
     return this.prisma.loyaltyTransaction.findMany({
@@ -138,10 +160,10 @@ export class LoyaltyService {
    */
   async calculateEarnedPoints(
     tenantId: string,
-    invoice: Pick<Invoice, 'subTotal' | 'invoiceType' | 'customerId'>,
+    invoice: Pick<Invoice, 'subTotal' | 'invoiceType' | 'customerId' | 'shopId'>,
   ): Promise<number> {
     // 1. Get config
-    const config = await this.getConfig(tenantId);
+    const config = await this.getConfig(tenantId, invoice.shopId || undefined);
 
     if (!config.isEnabled) {
       return 0;
@@ -202,6 +224,7 @@ export class LoyaltyService {
     await this.prisma.loyaltyTransaction.create({
       data: {
         tenantId,
+        shopId: invoice.shopId || null,
         customerId: invoice.customerId!,
         points,
         type: LoyaltyTransactionType.EARN,
@@ -225,6 +248,7 @@ export class LoyaltyService {
     customerId: string,
     requestedPoints: number,
     invoiceSubTotal: number, // In paise
+    shopId?: string,
   ): Promise<{
     success: boolean;
     points: number;
@@ -233,7 +257,7 @@ export class LoyaltyService {
     error?: string;
   }> {
     // 1. Get config
-    const config = await this.getConfig(tenantId);
+    const config = await this.getConfig(tenantId, shopId);
 
     if (!config.isEnabled) {
       return {
@@ -246,7 +270,7 @@ export class LoyaltyService {
     }
 
     // 2. Get current balance
-    const balance = await this.getCustomerBalance(tenantId, customerId);
+    const balance = await this.getCustomerBalance(tenantId, customerId, shopId);
 
     if (balance < requestedPoints) {
       return {
@@ -298,9 +322,10 @@ export class LoyaltyService {
     points: number,
     invoiceId: string,
     invoiceNumber: string,
+    shopId?: string,
   ): Promise<{ discountPaise: number }> {
     // Get config for conversion
-    const config = await this.getConfig(tenantId);
+    const config = await this.getConfig(tenantId, shopId);
 
     // Calculate discount
     const discountRupees = points * config.pointValueInRupees;
@@ -310,6 +335,7 @@ export class LoyaltyService {
     await this.prisma.loyaltyTransaction.create({
       data: {
         tenantId,
+        shopId: shopId || null,
         customerId,
         points: -points, // NEGATIVE
         type: LoyaltyTransactionType.REDEEM,
@@ -373,6 +399,7 @@ export class LoyaltyService {
       await this.prisma.loyaltyTransaction.create({
         data: {
           tenantId: txn.tenantId,
+          shopId: txn.shopId,
           customerId: txn.customerId,
           points: -txn.points, // Flip sign
           type: LoyaltyTransactionType.REVERSAL,
@@ -402,9 +429,10 @@ export class LoyaltyService {
     reason: string,
     userId: string,
     userName: string,
+    shopId?: string,
   ): Promise<void> {
     // Check config
-    const config = await this.getConfig(tenantId);
+    const config = await this.getConfig(tenantId, shopId);
 
     if (!config.allowManualAdjustment) {
       throw new ForbiddenException('Manual adjustments are disabled');
@@ -418,6 +446,7 @@ export class LoyaltyService {
     await this.prisma.loyaltyTransaction.create({
       data: {
         tenantId,
+        shopId: shopId || null,
         customerId,
         points,
         type: LoyaltyTransactionType.MANUAL,
@@ -435,12 +464,13 @@ export class LoyaltyService {
   /**
    * Get loyalty statistics for a tenant
    */
-  async getTenantStats(tenantId: string, startDate: Date, endDate: Date) {
+  async getTenantStats(tenantId: string, startDate: Date, endDate: Date, shopId?: string) {
     const [issued, redeemed, activeCustomers] = await Promise.all([
       // Points issued
       this.prisma.loyaltyTransaction.aggregate({
         where: {
           tenantId,
+          ...(shopId ? { shopId } : {}),
           points: { gt: 0 },
           type: LoyaltyTransactionType.EARN,
           createdAt: { gte: startDate, lte: endDate },
@@ -452,6 +482,7 @@ export class LoyaltyService {
       this.prisma.loyaltyTransaction.aggregate({
         where: {
           tenantId,
+          ...(shopId ? { shopId } : {}),
           points: { lt: 0 },
           type: LoyaltyTransactionType.REDEEM,
           createdAt: { gte: startDate, lte: endDate },
@@ -466,6 +497,7 @@ export class LoyaltyService {
           SELECT "customerId", SUM("points") as balance
           FROM "mb_loyalty_transaction"
           WHERE "tenantId" = ${tenantId}
+          ${shopId ? Prisma.sql`AND "shopId" = ${shopId}` : Prisma.empty}
           GROUP BY "customerId"
           HAVING SUM("points") > 0
         ) as customers_with_balance

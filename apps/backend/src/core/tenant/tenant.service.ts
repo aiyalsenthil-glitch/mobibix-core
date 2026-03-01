@@ -174,52 +174,68 @@ export class TenantService {
           firstShop.id,
           invoicePrefix,
         );
-        this.logger.log(`✅ Auto-created first shop for tenant ${tenant.id} (${firstShop.id})`);
+        this.logger.log(
+          `✅ Auto-created first shop for tenant ${tenant.id} (${firstShop.id})`,
+        );
       } catch (err: any) {
-        this.logger.error(`Failed to auto-create first shop for ${tenant.id}: ${err.message}`);
+        this.logger.error(
+          `Failed to auto-create first shop for ${tenant.id}: ${err.message}`,
+        );
       }
     }
 
     // Module 1: Apply Promo Code Logic
     if (dto.promoCode) {
       try {
-        await this.partnersService.applyPromoToTenant(dto.promoCode, tenant.id, userId);
-        
+        await this.partnersService.applyPromoToTenant(
+          dto.promoCode,
+          tenant.id,
+          userId,
+        );
+
         const promo = await this.prisma.promoCode.findUnique({
-          where: { code: dto.promoCode }
+          where: { code: dto.promoCode },
         });
 
         if (promo?.type === 'FREE_TRIAL') {
-           // Set plan = PRO and extend duration
-           const proPlan = await this.prisma.plan.findFirst({
-             where: { 
-               code: 'PRO',
-               module: effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM'
-             }
-           });
+          // Set plan = PRO and extend duration
+          const proPlan = await this.prisma.plan.findFirst({
+            where: {
+              code: 'PRO',
+              module:
+                effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
+            },
+          });
 
-           if (proPlan) {
-             const newEndDate = new Date();
-             newEndDate.setDate(newEndDate.getDate() + promo.durationDays);
+          if (proPlan) {
+            const newEndDate = new Date();
+            newEndDate.setDate(newEndDate.getDate() + promo.durationDays);
 
-             await this.prisma.tenantSubscription.update({
-               where: {
-                 tenantId_module: {
-                   tenantId: tenant.id,
-                   module: effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM'
-                 }
-               },
-               data: {
-                 planId: proPlan.id,
-                 endDate: newEndDate,
-                 status: 'ACTIVE' // Activate immediately for 3 months free
-               }
-             });
-             this.logger.log(`🎁 Applied FREE_TRIAL promo ${dto.promoCode}: Plan=PRO, Days=${promo.durationDays}`);
-           }
+            await this.prisma.tenantSubscription.update({
+              where: {
+                tenantId_module: {
+                  tenantId: tenant.id,
+                  module:
+                    effectiveTenantType === 'MOBILE_SHOP'
+                      ? 'MOBILE_SHOP'
+                      : 'GYM',
+                },
+              },
+              data: {
+                planId: proPlan.id,
+                endDate: newEndDate,
+                status: 'ACTIVE', // Activate immediately for 3 months free
+              },
+            });
+            this.logger.log(
+              `🎁 Applied FREE_TRIAL promo ${dto.promoCode}: Plan=PRO, Days=${promo.durationDays}`,
+            );
+          }
         }
       } catch (err) {
-        this.logger.error(`Failed to apply promo code ${dto.promoCode}: ${err.message}`);
+        this.logger.error(
+          `Failed to apply promo code ${dto.promoCode}: ${err.message}`,
+        );
         // Don't fail the whole onboarding if promo fails
       }
     }

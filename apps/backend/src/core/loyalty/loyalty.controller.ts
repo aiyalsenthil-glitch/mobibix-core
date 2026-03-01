@@ -41,6 +41,7 @@ interface UpdateLoyaltyConfigDto {
   expiryDays?: number | null;
   allowManualAdjustment?: boolean;
   minInvoiceForEarn?: number | null;
+  shopId?: string;
 }
 
 @Controller('loyalty')
@@ -48,21 +49,25 @@ interface UpdateLoyaltyConfigDto {
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class LoyaltyController {
   constructor(private loyaltyService: LoyaltyService) {}
-  
+
   /**
    * Get all loyalty transactions for the tenant (Dashboard view)
    */
   @Get('transactions')
-  async getAllTransactions(@Req() req: any) {
+  async getAllTransactions(
+    @Req() req: any,
+    @Query('shopId') shopId?: string,
+  ) {
     const tenantId = req.user.tenantId;
     const transactions = await this.loyaltyService.getTransactionHistory(
       tenantId,
       undefined,
+      shopId,
       100,
     );
     return { transactions };
   }
-  
+
   /**
    * Get global loyalty statistics for the tenant
    */
@@ -70,15 +75,23 @@ export class LoyaltyController {
   async getSummary(
     @Req() req: any,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
+    @Query('endDate') endDate?: string,
+    @Query('shopId') shopId?: string,
   ) {
     const tenantId = req.user.tenantId;
-    
+
     // Default to current month if dates not provided
-    const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const start = startDate
+      ? new Date(startDate)
+      : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const end = endDate ? new Date(endDate) : new Date();
 
-    const stats = await this.loyaltyService.getTenantStats(tenantId, start, end);
+    const stats = await this.loyaltyService.getTenantStats(
+      tenantId,
+      start,
+      end,
+      shopId,
+    );
     return stats;
   }
 
@@ -86,9 +99,13 @@ export class LoyaltyController {
    * Get customer's current loyalty balance
    */
   @Get('balance/:customerId')
-  async getBalance(@Req() req: any, @Param('customerId') customerId: string) {
+  async getBalance(
+    @Req() req: any,
+    @Param('customerId') customerId: string,
+    @Query('shopId') shopId?: string,
+  ) {
     const tenantId = req.user.tenantId;
-    
+
     if (!customerId || customerId === 'undefined' || customerId === 'null') {
       return { customerId: 'unknown', balance: 0, pointValueInRupees: 0 };
     }
@@ -96,16 +113,21 @@ export class LoyaltyController {
     const balance = await this.loyaltyService.getCustomerBalance(
       tenantId,
       customerId,
+      shopId,
     );
-    
-    return { customerId, balance, pointValueInRupees: balance * 1.0 }; 
+
+    return { customerId, balance, pointValueInRupees: balance * 1.0 };
   }
 
   /**
    * Get customer's loyalty transaction history
    */
   @Get('history/:customerId')
-  async getHistory(@Req() req: any, @Param('customerId') customerId: string) {
+  async getHistory(
+    @Req() req: any,
+    @Param('customerId') customerId: string,
+    @Query('shopId') shopId?: string,
+  ) {
     const tenantId = req.user.tenantId;
 
     if (!customerId || customerId === 'undefined' || customerId === 'null') {
@@ -115,6 +137,7 @@ export class LoyaltyController {
     const transactions = await this.loyaltyService.getTransactionHistory(
       tenantId,
       customerId,
+      shopId,
       100,
     );
 
@@ -141,6 +164,7 @@ export class LoyaltyController {
       dto.customerId,
       dto.points,
       dto.invoiceSubTotal,
+      (dto as any).shopId,
     );
 
     return validation;
@@ -170,6 +194,7 @@ export class LoyaltyController {
       dto.reason,
       userId,
       userName,
+      (dto as any).shopId,
     );
 
     return {
@@ -182,9 +207,9 @@ export class LoyaltyController {
    * Get current tenant's loyalty configuration
    */
   @Get('config')
-  async getConfig(@Req() req: any) {
+  async getConfig(@Req() req: any, @Query('shopId') shopId?: string) {
     const tenantId = req.user.tenantId;
-    const config = await this.loyaltyService.getConfig(tenantId);
+    const config = await this.loyaltyService.getConfig(tenantId, shopId);
     return config;
   }
 
@@ -195,7 +220,11 @@ export class LoyaltyController {
   async updateConfig(@Req() req: any, @Body() dto: UpdateLoyaltyConfigDto) {
     const tenantId = req.user.tenantId;
 
-    const updatedConfig = await this.loyaltyService.updateConfig(tenantId, dto);
+    const updatedConfig = await this.loyaltyService.updateConfig(
+      tenantId,
+      dto.shopId,
+      dto,
+    );
 
     return {
       message: 'Loyalty configuration updated successfully',

@@ -64,7 +64,7 @@ export async function createVoucher(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to create voucher");
+    throw new Error((error as any).message || "Failed to create voucher");
   }
 
   return extractData(response);
@@ -148,7 +148,7 @@ export async function cancelVoucher(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to cancel voucher");
+    throw new Error((error as any).message || "Failed to cancel voucher");
   }
 
   return extractData(response);
@@ -216,7 +216,7 @@ export async function applyAdvanceToPurchase(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to apply advance to purchase");
+    throw new Error((error as any).message || "Failed to apply advance to purchase");
   }
 
   return extractData(response);
