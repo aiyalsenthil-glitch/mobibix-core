@@ -1,6 +1,6 @@
 import { ModuleType } from '@prisma/client';
 
-export type EmailrecipientType = 'TENANT' | 'STAFF' | 'CUSTOMER';
+export type EmailrecipientType = 'TENANT' | 'STAFF' | 'CUSTOMER' | 'ADMIN';
 
 export interface EmailAttachment {
   filename: string;

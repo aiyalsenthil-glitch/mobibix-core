@@ -18,45 +18,37 @@ export default function PrivacyPage() {
         
         <div className="prose prose-invert prose-slate max-w-none space-y-8 text-gray-400 font-medium leading-relaxed">
           <p className="text-lg text-white font-bold">
-            At MobiBix, we take your privacy seriously. This Privacy Policy explains how we collect, use,
-            disclose, and safeguard your information when you visit our website or use our application.
+            Aiyal Groups Platform ("we," "us," or "our") respects your privacy. This Privacy Policy details how we collect, use, process, and protect your personal and business data when you use MobiBix.
           </p>
           
           <section>
             <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">1. Information We Collect</h2>
             <p>
-              We may collect information about you in a variety of ways, including data you provide
-              directly to us (such as account details, shop name, and contact information) and data
-              collected automatically (such as usage metrics and analytics).
+              We collect Account Information (name, email, phone), Business Information (GST, address), and Operational Data (customer details entered by you). We also collect device and usage metrics automatically to improve our services.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">2. Use of Your Information</h2>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">2. Data Storage &amp; Localization</h2>
             <p>
-              Having accurate information about you permits us to provide you with a smooth, efficient,
-              and customized experience. We use your data to manage your account, provide customer support,
-              and improve our Retail OS.
+              Data may be processed and stored on secure cloud infrastructure located in India or other jurisdictions that maintain adequate data protection safeguards. We implement industry-standard security measures, including HTTPS/TLS encryption and secure Firebase authentication.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">3. Data Security</h2>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">3. Your Rights &amp; DPDP Compliance</h2>
             <p>
-              We use administrative, technical, and physical security measures to help protect your
-              personal information. While we have taken reasonable steps to secure the personal
-              information you provide to us, please be aware that despite our efforts, no security
-              measures are perfect or impenetrable.
+              In compliance with the Digital Personal Data Protection Act, 2023, you have the right to access, correct, and delete your data. You may withdraw marketing consent at any time through your settings or the unsubscribe link in our emails.
             </p>
           </section>
 
           <section className="pt-8 border-t border-white/5">
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">Contact Us</h2>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">Grievance Officer</h2>
             <p>
-              If you have questions or comments about this Privacy Policy, please contact us at:
+              If you have questions or comments about this Privacy Policy, please contact our Grievance Officer at:
               <br />
-              <a href="mailto:support@REMOVED_DOMAIN" className="text-teal-500 hover:text-teal-400 font-black tracking-wide">
-                support@REMOVED_DOMAIN
+              <a href="mailto:legal@aiyalgroups.com" className="text-teal-500 hover:text-teal-400 font-black tracking-wide">
+                legal@aiyalgroups.com
               </a>
             </p>
           </section>

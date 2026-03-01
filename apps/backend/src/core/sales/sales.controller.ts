@@ -24,10 +24,17 @@ import { ModuleScope } from '../auth/decorators/module-scope.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permissions.enum';
+import { TenantStatusGuard } from '../tenant/guards/tenant-status.guard';
 
 @Controller('mobileshop/sales')
 @ModuleScope(ModuleType.MOBILE_SHOP)
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TenantRequiredGuard)
+@UseGuards(
+  JwtAuthGuard,
+  RolesGuard,
+  PermissionsGuard,
+  TenantRequiredGuard,
+  TenantStatusGuard,
+)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class SalesController {
   constructor(

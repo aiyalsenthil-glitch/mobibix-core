@@ -18,7 +18,8 @@ export type EmailTemplateType =
   | 'JOBCARD_CREATED'
   | 'JOBCARD_STATUS_UPDATED'
   | 'JOBCARD_COMPLETED'
-  | 'EMAIL_VERIFICATION';
+  | 'EMAIL_VERIFICATION'
+  | 'DELETION_REQUEST';
 
 export interface EmailTemplateProps {
   // Tenant
@@ -131,4 +132,14 @@ export interface EmailTemplateProps {
 
   // System Auth
   EMAIL_VERIFICATION: { name: string; verificationLink: string };
+  // Admin
+  DELETION_REQUEST: {
+    tenantName: string;
+    tenantId: string;
+    ownerName: string;
+    ownerEmail: string;
+    ownerPhone: string;
+    requestedAt: string;
+    reason: string;
+  };
 }

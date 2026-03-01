@@ -20,12 +20,13 @@ import { CreateJobCardDto } from '../jobcard/dto/create-job-card.dto';
 import { UpdateJobCardDto } from './dto/update-job-card.dto';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
+import { TenantStatusGuard } from '../../../core/tenant/guards/tenant-status.guard';
 import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
 import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
 
 @Controller('mobileshop/shops/:shopId/job-cards')
 @ModuleScope(ModuleType.MOBILE_SHOP)
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, TenantStatusGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class JobCardsController extends TenantScopedController {
   constructor(private readonly service: JobCardsService) {

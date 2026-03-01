@@ -258,6 +258,13 @@ export interface CreateTenantDto {
   pincode?: string;
   currency?: string;
   timezone?: string;
+  marketingConsent?: boolean;
+  acceptedPolicyVersion?: string;
+}
+
+export interface RequestDeletionDto {
+  acknowledged: boolean;
+  reason?: string;
 }
 
 export interface CreateTenantResponse {
@@ -344,6 +351,19 @@ export async function getTenantUsage(): Promise<TenantUsageResponse> {
   const response = await authenticatedFetch("/tenant/usage");
   if (!response.ok) {
     throw new Error("Failed to fetch tenant usage");
+  }
+  const json = await extractData(response);
+  return unwrapStandardResponse(json);
+}
+
+export async function requestDeletion(dto: RequestDeletionDto): Promise<any> {
+  const response = await authenticatedFetch("/tenant/request-deletion", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
+  if (!response.ok) {
+    const err = await extractData(response);
+    throw new Error(err.message || "Deletion request failed");
   }
   const json = await extractData(response);
   return unwrapStandardResponse(json);

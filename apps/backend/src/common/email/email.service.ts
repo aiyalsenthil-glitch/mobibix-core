@@ -32,6 +32,7 @@ import { JobcardStatusUpdatedEmail } from './templates/customer/jobcard-status-u
 import { JobcardCompletedEmail } from './templates/customer/jobcard-completed';
 
 import { EmailVerificationEmail } from './templates/system/email-verification';
+import { DeletionRequestAdminEmail } from './templates/admin/deletion-request';
 
 import { ModuleType } from '@prisma/client';
 import { EmailTemplateType } from './email-template-types';
@@ -320,6 +321,14 @@ export class EmailService {
           module,
           ...(payload as Omit<
             Parameters<typeof EmailVerificationEmail>[0],
+            'module'
+          >),
+        });
+      case 'DELETION_REQUEST':
+        return DeletionRequestAdminEmail({
+          module,
+          ...(payload as Omit<
+            Parameters<typeof DeletionRequestAdminEmail>[0],
             'module'
           >),
         });

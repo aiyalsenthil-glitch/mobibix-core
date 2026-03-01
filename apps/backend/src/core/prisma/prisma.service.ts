@@ -62,6 +62,7 @@ export class PrismaService
       'Product',
       'StockLog',
       'Inventory',
+      'DeletionRequest',
     ]);
 
     const baseClient = this;

@@ -20,6 +20,13 @@ enum AutopayStatus {
   PAST_DUE
 }
 
+enum DeletionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
 model Tenant {
   lastLoginAt DateTime?
 
@@ -103,12 +110,35 @@ model Tenant {
   distributorLinks         DistributorTenantLink[]
   b2bPurchaseOrders        B2BPurchaseOrder[]
 
+  // 🔐 Compliance & Legal Tracking
+  termsAcceptedAt       DateTime?
+  privacyAcceptedAt     DateTime?
+  marketingConsent      Boolean  @default(false)
+  acceptedPolicyVersion String?
+  consentIpAddress      String?
+  consentUserAgent      String?
+  deletionRequestPending Boolean @default(false)
+  deletionRequests      DeletionRequest[] @relation("TenantDeletionRequests")
+
   partnerId        String?
   partner          Partner?     @relation(fields: [partnerId], references: [id])
   promoCodeId      String?
   appliedPromoCode PromoCode?   @relation(fields: [promoCodeId], references: [id])
   promoUsages      PromoUsage[]
   aiUsageLogs      AiUsageLog[]
+}
+
+model DeletionRequest {
+  id             String   @id @default(uuid())
+  tenantId       String
+  requestedBy    String
+  requestedAt    DateTime @default(now())
+  reason         String?
+  status         DeletionStatus @default(PENDING)
+  adminNotes     String?
+  resolvedAt     DateTime?
+
+  tenant Tenant @relation("TenantDeletionRequests", fields: [tenantId], references: [id])
 }
 
 model BusinessCategory {

@@ -38,6 +38,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
             <div className={`flex flex-col gap-3 ${compact ? "text-xs" : "text-sm"} font-bold text-muted-foreground`}>
               <Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
               <Link href="/terms" className="hover:text-primary transition-colors">Terms of Service</Link>
+              <Link href="/data-deletion" className="hover:text-primary transition-colors">Data Deletion</Link>
             </div>
           </div>
         </div>

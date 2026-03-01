@@ -2,13 +2,14 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModuleType } from '@prisma/client';
 import { PlansService } from '../billing/plans/plans.service';
 import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
-import { CreateTenantDto } from './dto/tenant.dto';
+import { CreateTenantDto, UpdateTenantSettingsDto } from './dto/tenant.dto';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 import { randomBytes } from 'crypto';
@@ -20,6 +21,8 @@ import { getCreateAudit } from '../audit/audit.helper';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TenantWelcomeEvent } from '../../common/email/email.events';
 import { DocumentNumberService } from '../../common/services/document-number.service';
+import { EmailService } from '../../common/email/email.service';
+import { RequestDeletionDto } from './dto/deletion-request.dto';
 
 @Injectable()
 export class TenantService {
@@ -34,6 +37,7 @@ export class TenantService {
     private readonly eventEmitter: EventEmitter2,
     private readonly partnersService: PartnersService,
     private readonly docNumberService: DocumentNumberService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -41,7 +45,11 @@ export class TenantService {
    * CREATE TENANT (ONBOARDING)
    * ============================
    */
-  async createTenant(userId: string, dto: CreateTenantDto) {
+  async createTenant(
+    userId: string,
+    dto: CreateTenantDto,
+    audit?: { ip?: string; userAgent?: string },
+  ) {
     // 🔒 Safety guard (prevents Prisma crash)
     if (!userId) {
       throw new BadRequestException('Invalid user session');
@@ -104,6 +112,14 @@ export class TenantService {
         currency: dto.currency,
         timezone: dto.timezone,
         ...getCreateAudit(userId), // ✅ Capture who created
+
+        // 🔐 Legal & Compliance Recording
+        termsAcceptedAt: new Date(),
+        privacyAcceptedAt: new Date(),
+        marketingConsent: dto.marketingConsent ?? false,
+        acceptedPolicyVersion: dto.acceptedPolicyVersion || '2026-03-01',
+        consentIpAddress: audit?.ip,
+        consentUserAgent: audit?.userAgent,
       },
     });
     // Send welcome email after gym create (Event Driven)
@@ -252,28 +268,15 @@ export class TenantService {
     });
   }
 
-  async updateTenant(
-    tenantId: string,
-    data: {
-      name?: string;
-      contactPhone?: string;
-      contactEmail?: string;
-      website?: string;
-      addressLine1?: string;
-      addressLine2?: string;
-      city?: string;
-      state?: string;
-      pincode?: string;
-    },
-  ) {
+  async updateTenant(tenantId: string, data: UpdateTenantSettingsDto) {
     return this.prisma.tenant.update({
       where: { id: tenantId },
       data: {
         name: data.name,
+        legalName: data.legalName,
         contactPhone: data.contactPhone
           ? normalizePhone(data.contactPhone)
           : undefined,
-
         contactEmail: data.contactEmail,
         website: data.website,
         addressLine1: data.addressLine1,
@@ -281,8 +284,91 @@ export class TenantService {
         city: data.city,
         state: data.state,
         pincode: data.pincode,
+        country: data.country,
+        gstNumber: data.gstNumber,
+        taxId: data.taxId,
+        businessType: data.businessType,
+        currency: data.currency,
+        timezone: data.timezone,
+        logoUrl: data.logoUrl,
+        marketingConsent: data.marketingConsent,
       },
     });
+  }
+
+  async requestDeletion(
+    tenantId: string,
+    userId: string,
+    dto: RequestDeletionDto,
+  ) {
+    if (!dto.acknowledged) {
+      throw new BadRequestException('Acknowledgment is required');
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: {
+        users: {
+          where: { id: userId },
+        },
+      },
+    });
+
+    if (!tenant) throw new NotFoundException('Tenant not found');
+
+    const user = tenant.users[0];
+    if (!user || user.role !== 'OWNER') {
+      throw new ForbiddenException('Only the owner can request deletion');
+    }
+
+    if (tenant.deletionRequestPending) {
+      throw new BadRequestException('A deletion request is already pending');
+    }
+
+    // 1️⃣ Create deletion request record
+    const request = await this.prisma.deletionRequest.create({
+      data: {
+        tenantId,
+        requestedBy: userId,
+        reason: dto.reason,
+      },
+    });
+
+    // 2️⃣ Flag the tenant
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { deletionRequestPending: true },
+    });
+
+    // 3️⃣ Send admin email
+    try {
+      await this.emailService.send({
+        tenantId,
+        recipientType: 'ADMIN',
+        emailType: 'DELETION_REQUEST',
+        referenceId: request.id,
+        module: tenant.tenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
+        to: 'privacy@aiyalgroups.com',
+        subject: `[Deletion Request] Tenant: ${tenant.name}`,
+        data: {
+          tenantName: tenant.name,
+          tenantId: tenant.id,
+          ownerName: user.fullName || 'Unknown',
+          ownerEmail: user.email || 'No email',
+          ownerPhone: user.phone || 'No phone',
+          requestedAt: new Date().toISOString(),
+          reason: dto.reason || 'None',
+        },
+      });
+    } catch (err) {
+      this.logger.error(`Failed to send deletion request email: ${err.message}`);
+      // Don't fail the request if email fails, but log it
+    }
+
+    return {
+      message: 'Deletion request submitted successfully',
+      requestId: request.id,
+    };
   }
 
   async getCurrentTenantPublic(tenantId: string) {

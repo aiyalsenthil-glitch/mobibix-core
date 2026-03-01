@@ -21,7 +21,8 @@ import { UsageSnapshotService } from '../analytics/usage-snapshot.service';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantService } from './tenant.service';
-import { CreateTenantDto } from './dto/tenant.dto';
+import { CreateTenantDto, UpdateTenantSettingsDto } from './dto/tenant.dto';
+import { RequestDeletionDto } from './dto/deletion-request.dto';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permissions.enum';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -91,6 +92,10 @@ export class TenantController {
     const { tenant, userTenant } = await this.tenantService.createTenant(
       userId,
       dto,
+      {
+        ip: req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+        userAgent: req.headers['user-agent'],
+      },
     );
 
     const token = this.tenantService.issueJwt({
@@ -179,19 +184,19 @@ export class TenantController {
   @Patch('me')
   updateMyGym(
     @Req() req: any,
-    @Body()
-    body: {
-      name?: string;
-      contactPhone?: string;
-      contactEmail?: string;
-      website?: string;
-      addressLine1?: string;
-      addressLine2?: string;
-      city?: string;
-      state?: string;
-      pincode?: string;
-    },
+    @Body() body: UpdateTenantSettingsDto,
   ) {
     return this.tenantService.updateTenant(req.user.tenantId, body);
+  }
+
+  @UseGuards(JwtAuthGuard, TenantRequiredGuard)
+  @Roles(UserRole.OWNER)
+  @Post('request-deletion')
+  requestDeletion(@Req() req: any, @Body() body: RequestDeletionDto) {
+    return this.tenantService.requestDeletion(
+      req.user.tenantId,
+      req.user.id,
+      body,
+    );
   }
 }

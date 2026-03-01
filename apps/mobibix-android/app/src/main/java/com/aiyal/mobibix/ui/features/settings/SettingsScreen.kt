@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.Card
@@ -37,9 +38,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import android.content.Intent
+import android.net.Uri
 import com.aiyal.mobibix.core.shop.ShopContextProvider
 import com.aiyal.mobibix.ui.theme.ThemeState
 
@@ -48,7 +52,8 @@ private val TealAccent = Color(0xFF00C896)
 @Composable
 fun SettingsScreen(
     navController: NavController,
-    shopContextProvider: ShopContextProvider
+    shopContextProvider: ShopContextProvider,
+    isOwner: Boolean = false
 ) {
     val activeShopId = shopContextProvider.getActiveShopId() ?: ""
     val isSystemDark = isSystemInDarkTheme()
@@ -173,6 +178,49 @@ fun SettingsScreen(
                     color = Color(0xFFF59E0B),
                     onClick = { navController.navigate("billing") }
                 )
+            }
+
+            // ── Legal & Privacy Section ──
+            item {
+                val context = LocalContext.current
+                SettingsSectionHeader("Legal & Privacy")
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SettingsOptionCard(
+                        title = "Terms of Service",
+                        subtitle = "Read our service agreement",
+                        icon = Icons.Default.Description,
+                        color = Color(0xFF64748B),
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mobibix.com/terms"))
+                            context.startActivity(intent)
+                        }
+                    )
+                    SettingsOptionCard(
+                        title = "Privacy Policy",
+                        subtitle = "How we handle your data",
+                        icon = Icons.Default.Shield,
+                        color = Color(0xFF64748B),
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mobibix.com/privacy"))
+                            context.startActivity(intent)
+                        }
+                    )
+                    SettingsOptionCard(
+                        title = "Data Deletion",
+                        subtitle = if (isOwner) "Account removal procedures" else "Contact owner to delete account",
+                        icon = Icons.Default.Build,
+                        color = if (isOwner) Color(0xFFEF4444) else Color.Gray,
+                        onClick = {
+                            if (isOwner) {
+                                navController.navigate("delete_account")
+                            } else {
+                                // For staff, maybe just show policy URL as it was before or do nothing
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mobibix.com/data-deletion"))
+                                context.startActivity(intent)
+                            }
+                        }
+                    )
+                }
             }
         }
     }

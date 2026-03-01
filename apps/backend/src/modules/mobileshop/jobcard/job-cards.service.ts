@@ -362,6 +362,17 @@ export class JobCardsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // 0. CHECK FOR DELETION REQUEST (Soft Lock)
+      const tenant = (await tx.tenant.findUnique({
+        where: { id: user.tenantId },
+        select: { deletionRequestPending: true } as any,
+      })) as any;
+      if (tenant?.deletionRequestPending) {
+        throw new BadRequestException(
+          'Your account is currently pending deletion and most operations are restricted. Please contact support if you need to cancel the request.',
+        );
+      }
+
       // 1. Create Job Card
       const job = await tx.jobCard.create({
         data: {

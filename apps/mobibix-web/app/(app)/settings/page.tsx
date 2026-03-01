@@ -9,6 +9,8 @@ import DowngradeBlockerModal from "./DowngradeBlockerModal";
 import { Check, AlertCircle, Loader2, Zap, Shield, Crown, CreditCard, RefreshCw, Gift } from "lucide-react";
 import { LoyaltySettings } from "@/components/loyalty/LoyaltySettings";
 import { useShop } from "@/context/ShopContext";
+import { useAuth } from "@/hooks/useAuth";
+import { AccountDeletionDialog } from "@/components/settings/AccountDeletionDialog";
 
 import { PaymentHistory } from "@/components/billing/PaymentHistory";
 
@@ -54,7 +56,7 @@ const PLAN_MARKETING_FEATURES: Record<string, string[]> = {
 export default function SettingsPage() {
   const router = useRouter();
   const { selectedShopId } = useShop();
-  const [activeTab, setActiveTab] = useState<"SUBSCRIPTION" | "BILLING" | "LOYALTY">("SUBSCRIPTION");
+  const [activeTab, setActiveTab] = useState<"SUBSCRIPTION" | "BILLING" | "LOYALTY" | "LEGAL">("SUBSCRIPTION");
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null);
   const [loyaltyConfig, setLoyaltyConfig] = useState<LoyaltyConfig | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -69,6 +71,10 @@ export default function SettingsPage() {
   const [downgradeModalOpen, setDowngradeModalOpen] = useState(false);
   const [downgradeBlockers, setDowngradeBlockers] = useState<string[]>([]);
   const [targetPlanForDowngrade, setTargetPlanForDowngrade] = useState<Plan | null>(null);
+  const [deletionDialogOpen, setDeletionDialogOpen] = useState(false);
+
+  const { authUser } = useAuth();
+  const isOwner = authUser?.role === "OWNER";
 
   const loadData = async () => {
     try {
@@ -301,6 +307,16 @@ export default function SettingsPage() {
         >
           <Gift size={16} /> Loyalty Rewards
         </button>
+        <button
+          onClick={() => setActiveTab("LEGAL")}
+          className={`px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+            activeTab === "LEGAL"
+              ? "bg-white dark:bg-stone-800 text-teal-600 dark:text-teal-400 shadow-sm"
+              : "text-gray-500 hover:text-gray-700 dark:hover:text-stone-300"
+          }`}
+        >
+          <Shield size={16} /> Legal & Privacy
+        </button>
       </div>
 
       {error && (
@@ -317,6 +333,52 @@ export default function SettingsPage() {
       ) : activeTab === "LOYALTY" ? (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           <LoyaltySettings initialConfig={loyaltyConfig} />
+        </div>
+      ) : activeTab === "LEGAL" ? (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+          <div className="bg-white dark:bg-stone-900 border border-gray-200 dark:border-stone-800 rounded-2xl p-8 shadow-sm">
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-2 uppercase tracking-tight">
+              <Shield className="text-teal-500" /> Compliance & Legal Documents
+            </h2>
+            <div className="grid md:grid-cols-3 gap-6">
+              <a href="/terms" target="_blank" className="p-6 rounded-xl border border-gray-100 dark:border-stone-800 hover:bg-gray-50 dark:hover:bg-stone-800 transition-all group">
+                <h3 className="font-bold mb-2 group-hover:text-teal-500 transition-colors">Terms of Service</h3>
+                <p className="text-xs text-gray-500">View our legally binding platform agreement.</p>
+              </a>
+              <a href="/privacy" target="_blank" className="p-6 rounded-xl border border-gray-100 dark:border-stone-800 hover:bg-gray-50 dark:hover:bg-stone-800 transition-all group">
+                <h3 className="font-bold mb-2 group-hover:text-teal-500 transition-colors">Privacy Policy</h3>
+                <p className="text-xs text-gray-500">Learn how we process and protect your data.</p>
+              </a>
+              <a href="/data-deletion" target="_blank" className="p-6 rounded-xl border border-gray-100 dark:border-stone-800 hover:bg-gray-50 dark:hover:bg-stone-800 transition-all group">
+                <h3 className="font-bold mb-2 group-hover:text-teal-500 transition-colors">Data Deletion</h3>
+                <p className="text-xs text-gray-500">Procedures for account and record removal.</p>
+              </a>
+            </div>
+
+            <div className="mt-12 pt-8 border-t border-gray-100 dark:border-stone-800">
+              <h3 className="text-sm font-black uppercase tracking-widest text-red-500 mb-4">Danger Zone</h3>
+              <div className="p-6 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 flex flex-col md:flex-row justify-between items-center gap-6">
+                 <div>
+                    <h4 className="font-bold text-red-700 dark:text-red-400">Permanently Delete Account</h4>
+                    <p className="text-xs text-red-600/70 max-w-md">Once deleted, your shop records, invoices, and customer data cannot be recovered. Active subscriptions will be immediately cancelled.</p>
+                 </div>
+                 {isOwner ? (
+                   <button 
+                    onClick={() => setDeletionDialogOpen(true)}
+                    className="px-6 py-2 bg-red-600 text-white rounded-lg font-bold text-sm hover:bg-red-700 transition-all shadow-md active:scale-95"
+                   >
+                     Request Deletion
+                   </button>
+                 ) : (
+                   <p className="text-xs text-gray-500 italic">Only the account owner can request deletion.</p>
+                 )}
+              </div>
+            </div>
+          </div>
+          <AccountDeletionDialog 
+            isOpen={deletionDialogOpen} 
+            onClose={() => setDeletionDialogOpen(false)} 
+          />
         </div>
       ) : (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">

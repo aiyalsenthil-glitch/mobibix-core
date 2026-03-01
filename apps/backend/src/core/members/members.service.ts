@@ -143,6 +143,17 @@ export class MembersService {
       throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
     }
 
+    // 🛡️ CHECK FOR DELETION REQUEST (Soft Lock)
+    const tenant = (await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { deletionRequestPending: true } as any,
+    })) as any;
+    if (tenant?.deletionRequestPending) {
+      throw new BadRequestException(
+        'Your account is currently pending deletion and most operations are restricted. Please contact support if you need to cancel the request.',
+      );
+    }
+
     const rules = await this.planRulesService.getPlanRulesForTenant(
       tenantId,
       subscription.module,
@@ -456,6 +467,17 @@ export class MembersService {
       throw new BadRequestException('Member not found');
     }
 
+    // 🛡️ CHECK FOR DELETION REQUEST (Soft Lock)
+    const tenant = (await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { deletionRequestPending: true } as any,
+    })) as any;
+    if (tenant?.deletionRequestPending) {
+      throw new BadRequestException(
+        'Your account is currently pending deletion and most operations are restricted. Please contact support if you need to cancel the request.',
+      );
+    }
+
     const newPaid = member.paidAmount + amount;
 
     if (newPaid > member.feeAmount) {
@@ -685,6 +707,17 @@ export class MembersService {
 
     if (!existingMember) {
       throw new BadRequestException('Member not found');
+    }
+
+    // 🛡️ CHECK FOR DELETION REQUEST (Soft Lock)
+    const tenant = (await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { deletionRequestPending: true } as any,
+    })) as any;
+    if (tenant?.deletionRequestPending) {
+      throw new BadRequestException(
+        'Your account is currently pending deletion and most operations are restricted. Please contact support if you need to cancel the request.',
+      );
     }
 
     // ─────────────────────────────

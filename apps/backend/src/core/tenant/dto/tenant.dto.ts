@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 export class CreateTenantDto {
   @IsString()
   @IsNotEmpty()
@@ -68,6 +68,14 @@ export class CreateTenantDto {
   @IsOptional()
   @IsString()
   gstNumber?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  marketingConsent?: boolean;
+
+  @IsOptional()
+  @IsString()
+  acceptedPolicyVersion?: string;
 }
 
 export class UpdateTenantSettingsDto {
@@ -138,4 +146,12 @@ export class UpdateTenantSettingsDto {
   @IsOptional()
   @IsString()
   timezone?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  marketingConsent?: boolean;
+
+  @IsOptional()
+  @IsString()
+  acceptedPolicyVersion?: string;
 }

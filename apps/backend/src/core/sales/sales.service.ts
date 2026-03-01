@@ -194,6 +194,17 @@ export class SalesService {
 
     const invoiceId = await this.prisma.$transaction(
       async (tx) => {
+        // 0. CHECK FOR DELETION REQUEST (Soft Lock)
+        const tenant = (await tx.tenant.findUnique({
+          where: { id: tenantId },
+          select: { deletionRequestPending: true } as any,
+        })) as any;
+        if (tenant?.deletionRequestPending) {
+          throw new BadRequestException(
+            'Your account is currently pending deletion and most operations are restricted. Please contact support if you need to cancel the request.',
+          );
+        }
+
         // 1. Validate shop access
         await assertShopAccess(tx, dto.shopId, tenantId);
 
@@ -425,6 +436,17 @@ export class SalesService {
       throw new BadRequestException('At least one item required');
 
     const txResult = await this.prisma.$transaction(async (tx) => {
+      // 0. CHECK FOR DELETION REQUEST (Soft Lock)
+      const tenant = (await tx.tenant.findUnique({
+        where: { id: tenantId },
+        select: { deletionRequestPending: true } as any,
+      })) as any;
+      if (tenant?.deletionRequestPending) {
+        throw new BadRequestException(
+          'Your account is currently pending deletion and most operations are restricted. Please contact support if you need to cancel the request.',
+        );
+      }
+
       // 1. Fetch Existing
       const oldInvoice = await tx.invoice.findFirst({
         where: { id: invoiceId, tenantId },

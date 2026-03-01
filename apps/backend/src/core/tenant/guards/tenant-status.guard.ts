@@ -50,12 +50,36 @@ export class TenantStatusGuard implements CanActivate {
     }
 
     if (!module) {
-      const tenant = await this.prisma.tenant.findUnique({
+      const tenant = (await this.prisma.tenant.findUnique({
         where: { id: tenantId },
-        select: { tenantType: true },
-      });
+        select: { tenantType: true, deletionRequestPending: true },
+      })) as any;
       module =
         tenant?.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
+
+      // 🛡️ GLOBAL DELETION SOFT LOCK
+      if (tenant?.deletionRequestPending) {
+        const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+        if (isMutation) {
+          throw new ForbiddenException(
+            'Your account is currently pending deletion and most operations are restricted. Please contact support if you need to cancel the request.',
+          );
+        }
+      }
+    } else {
+      // If module was provided, we still need to fetch the tenant's deletion status
+      const tenant = (await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { deletionRequestPending: true },
+      })) as any;
+      if (tenant?.deletionRequestPending) {
+        const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+        if (isMutation) {
+          throw new ForbiddenException(
+            'Your account is currently pending deletion and most operations are restricted. Please contact support if you need to cancel the request.',
+          );
+        }
+      }
     }
 
     const now = new Date();

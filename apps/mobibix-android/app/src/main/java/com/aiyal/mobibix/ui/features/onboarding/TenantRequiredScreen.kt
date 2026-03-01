@@ -1,7 +1,7 @@
 package com.aiyal.mobibix.ui.features.onboarding
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -70,6 +71,9 @@ fun TenantRequiredScreen(
     var state by remember { mutableStateOf("") }
     var pincode by remember { mutableStateOf("") }
     var gstNumber by remember { mutableStateOf("") }
+
+    var agreedToTerms by remember { mutableStateOf(false) }
+    var marketingConsent by remember { mutableStateOf(false) }
 
     var loading by remember { mutableStateOf(false) }
     var categoriesLoading by remember { mutableStateOf(true) }
@@ -248,6 +252,41 @@ fun TenantRequiredScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
+        Spacer(Modifier.height(24.dp))
+
+        // --- COMPLIANCE ---
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = agreedToTerms,
+                onCheckedChange = { agreedToTerms = it }
+            )
+            Text(
+                text = "I agree to the Terms & Conditions and Privacy Policy *",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = marketingConsent,
+                onCheckedChange = { marketingConsent = it }
+            )
+            Text(
+                text = "Receive product updates and offers (Optional)",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+
         Spacer(Modifier.height(32.dp))
 
         if (error != null) {
@@ -265,6 +304,10 @@ fun TenantRequiredScreen(
                     error = "Please fill in all required (*) fields"
                     return@Button
                 }
+                if (!agreedToTerms) {
+                    error = "You must agree to the Terms and Privacy Policy"
+                    return@Button
+                }
 
                 loading = true
                 error = null
@@ -279,12 +322,13 @@ fun TenantRequiredScreen(
                                 legalName = legalName.trim().takeIf { it.isNotEmpty() },
                                 contactPhone = contactPhone.trim(),
                                 addressLine1 = addressLine1.trim().takeIf { it.isNotEmpty() },
-                                city = city.trim(),
                                 state = state.trim(),
                                 pincode = pincode.trim().takeIf { it.isNotEmpty() },
                                 gstNumber = gstNumber.trim().takeIf { it.isNotEmpty() },
                                 currency = "INR",
-                                timezone = "Asia/Kolkata"
+                                timezone = "Asia/Kolkata",
+                                marketingConsent = marketingConsent,
+                                acceptedPolicyVersion = "2026-03-01"
                             )
                         )
 

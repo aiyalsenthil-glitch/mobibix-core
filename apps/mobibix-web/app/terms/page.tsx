@@ -18,48 +18,34 @@ export default function TermsPage() {
         
         <div className="prose prose-invert prose-slate max-w-none space-y-8 text-gray-400 font-medium leading-relaxed">
           <p className="text-lg text-white font-bold">
-            These Terms of Service constitute a legally binding agreement made between you and MobiBix,
-            concerning your access to and use of the REMOVED_DOMAIN website as well as any other
-            media form, media channel, mobile website or mobile application related, linked, or
-            otherwise connected thereto.
+            These Terms &amp; Conditions constitute a legally binding agreement made between you and Aiyal Groups Platform concerning your access to and use of MobiBix (Retail POS &amp; Repair SaaS).
           </p>
           
           <section>
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">1. Agreement to Terms</h2>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">1. Account Registration</h2>
             <p>
-              By accessing the Site, you agree that you have read, understood, and agree to be bound by
-              all of these Terms of Service. If you do not agree with all of these Terms of Service,
-              then you are expressly prohibited from using the Site and you must discontinue use immediately.
+              You agree to provide true, accurate, and complete information during registration. The Owner is responsible for safeguarding credentials and all activity under the Tenant account. You must be at least 18 years of age to use the Services.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">2. Intellectual Property Rights</h2>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">2. Subscription &amp; Billing</h2>
             <p>
-              Unless otherwise indicated, the Site and Software are our proprietary property and all
-              source code, databases, functionality, software, website designs, audio, video, text,
-              photographs, and graphics on the Site are owned or controlled by us or licensed to us.
+              Subscription fees are billed in advance and are non-refundable. We reserve the right to suspend access if fees are past due. Cancellation takes effect at the end of the current billing cycle.
             </p>
           </section>
 
           <section>
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">3. User Representations</h2>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">3. Data Ownership &amp; Liability</h2>
             <p>
-              By using the Site, you represent and warrant that all registration information you submit
-              will be true, accurate, current, and complete. You agree to maintain the accuracy of such
-              information and promptly update such registration information as necessary.
+              The Tenant retains full ownership of business Data. Aiyal Groups acts solely as a data processor. We are NOT responsible for the accuracy of tax filings, GST compliance, or regulatory reporting errors made using our tools.
             </p>
           </section>
 
           <section className="pt-8 border-t border-white/5">
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">Contact Us</h2>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">Governing Law</h2>
             <p>
-              In order to resolve a complaint regarding the Site or to receive further information
-              regarding use of the Site, please contact us at:
-              <br />
-              <a href="mailto:support@REMOVED_DOMAIN" className="text-teal-500 hover:text-teal-400 font-black tracking-wide">
-                support@REMOVED_DOMAIN
-              </a>
+              These Terms shall be governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the competent courts in Chennai, Tamil Nadu, India.
             </p>
           </section>
         </div>

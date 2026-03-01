@@ -24,11 +24,18 @@ data class CreateTenantRequest(
     val pincode: String? = null,
     val gstNumber: String? = null,
     val currency: String? = null,
-    val timezone: String? = null
+    val timezone: String? = null,
+    val marketingConsent: Boolean? = null,
+    val acceptedPolicyVersion: String? = null
 )
 
 data class CreateTenantResponse(
     val accessToken: String
+)
+
+data class RequestDeletionRequest(
+    val acknowledged: Boolean,
+    val reason: String? = null
 )
 
 interface TenantApi {
@@ -39,4 +46,9 @@ interface TenantApi {
 
     @GET("api/platform/business-categories")
     suspend fun getBusinessCategories(): List<BusinessCategory>
+
+    @POST("api/tenant/request-deletion")
+    suspend fun requestDeletion(
+        @Body body: RequestDeletionRequest
+    )
 }

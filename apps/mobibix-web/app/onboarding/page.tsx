@@ -38,6 +38,8 @@ export default function OnboardingPage() {
     currency: "INR",
     timezone: "Asia/Kolkata",
   });
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
 
   useEffect(() => {
     // Check if user is authenticated; if not, redirect to signin
@@ -75,6 +77,9 @@ export default function OnboardingPage() {
       if (!formData.contactPhone?.trim()) return "Contact Phone is required";
       if (!formData.city?.trim()) return "City is required";
       if (!formData.state?.trim()) return "State is required";
+    }
+    if (step === 3) {
+      if (!agreedToTerms) return "You must agree to the Terms and Privacy Policy to continue";
     }
     return null;
   };
@@ -137,6 +142,8 @@ export default function OnboardingPage() {
         gstNumber: formData.gstNumber,
         currency: formData.currency,
         timezone: formData.timezone,
+        marketingConsent: marketingConsent,
+        acceptedPolicyVersion: "2026-03-01", // Match 'Last Updated' in policies
       };
 
       await createTenantWithToken(payload, exchange.accessToken);
@@ -373,6 +380,32 @@ export default function OnboardingPage() {
                     <option value="Asia/Dubai">Gulf Standard Time (GST)</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="space-y-4 pt-6 mt-6 border-t border-white/5">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="mt-1 w-5 h-5 rounded border-white/10 bg-stone-900 text-teal-600 focus:ring-teal-500"
+                  />
+                  <span className="text-sm text-stone-300">
+                    I agree to the <a href="/terms" target="_blank" className="text-teal-400 hover:underline">Terms & Conditions</a> and <a href="/privacy" target="_blank" className="text-teal-400 hover:underline">Privacy Policy</a> <span className="text-red-400">*</span>
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={marketingConsent}
+                    onChange={(e) => setMarketingConsent(e.target.checked)}
+                    className="mt-1 w-5 h-5 rounded border-white/10 bg-stone-900 text-teal-600 focus:ring-teal-500"
+                  />
+                  <span className="text-sm text-stone-300">
+                    I want to receive product updates, news, and promotional offers. (Optional)
+                  </span>
+                </label>
               </div>
             </div>
           )}

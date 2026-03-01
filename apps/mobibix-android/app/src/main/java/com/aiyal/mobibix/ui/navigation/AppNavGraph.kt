@@ -505,10 +505,15 @@ fun AppNavGraph(
         
         // Placeholder routes for drawer items not yet implemented
         composable("settings") {
+            val isOwner = appStateResolver.resolve() is AppState.Owner
             com.aiyal.mobibix.ui.features.settings.SettingsScreen(
                 navController = navController,
-                shopContextProvider = shopContextProvider
+                shopContextProvider = shopContextProvider,
+                isOwner = isOwner
             )
+        }
+        composable("delete_account") {
+            com.aiyal.mobibix.ui.features.settings.DeleteAccountScreen(navController = navController)
         }
         composable("suppliers") {
             com.aiyal.mobibix.ui.features.suppliers.SupplierListScreen(
