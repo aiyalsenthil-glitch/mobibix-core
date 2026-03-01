@@ -7,9 +7,5 @@ interface EmailSectionProps {
 }
 
 export const EmailSection = ({ children, style }: EmailSectionProps) => {
-  return (
-    <Section style={{ padding: '0 48px', ...style }}>
-      {children}
-    </Section>
-  );
+  return <Section style={{ padding: '0 48px', ...style }}>{children}</Section>;
 };

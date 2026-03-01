@@ -86,10 +86,10 @@ export class InvoiceController {
     if (!user.tenantId) {
       throw new NotFoundException('User not associated with any tenant');
     }
-    
+
     const page = pageStr ? parseInt(pageStr, 10) : 1;
     const limit = limitStr ? parseInt(limitStr, 10) : 10;
-    
+
     return this.invoiceService.getInvoicesForTenant(user.tenantId, page, limit);
   }
 }

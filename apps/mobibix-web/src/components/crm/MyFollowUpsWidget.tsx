@@ -34,8 +34,8 @@ export function MyFollowUpsWidget() {
         setFollowUps(result.data);
         setTotalFollowUps(result.total);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load follow-ups");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to load follow-ups");
     } finally {
       setLoading(false);
     }
@@ -54,8 +54,8 @@ export function MyFollowUpsWidget() {
           item.id === followUpId ? { ...item, status: "DONE" } : item,
         ),
       );
-    } catch (err: any) {
-      alert(err.message || "Failed to update follow-up");
+    } catch (err: unknown) {
+      alert((err as any)?.message || "Failed to update follow-up");
     }
   }
 

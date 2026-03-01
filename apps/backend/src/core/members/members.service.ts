@@ -904,7 +904,9 @@ export class MembersService {
     }
 
     const deleteSuffix = `-del-${Date.now()}`;
-    const newPhone = member.phone ? `${member.phone.substring(0, 15 - deleteSuffix.length)}${deleteSuffix}` : undefined;
+    const newPhone = member.phone
+      ? `${member.phone.substring(0, 15 - deleteSuffix.length)}${deleteSuffix}`
+      : undefined;
 
     await this.prisma.member.update({
       where: {
@@ -929,7 +931,9 @@ export class MembersService {
         entity: 'MEMBER',
         entityId: memberId,
       });
-    } catch {}
+    } catch (err) {
+      console.error('Failed to audit member deletion:', err);
+    }
 
     return { success: true };
   }

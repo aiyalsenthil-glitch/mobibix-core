@@ -4,7 +4,14 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/core/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { IMEIStatus, ProductType, InvoiceStatus, PaymentMode, PartyType, ModuleType } from '@prisma/client';
+import {
+  IMEIStatus,
+  ProductType,
+  InvoiceStatus,
+  PaymentMode,
+  PartyType,
+  ModuleType,
+} from '@prisma/client';
 
 jest.setTimeout(30000);
 
@@ -13,10 +20,10 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
   let prisma: PrismaService;
   let jwtService: JwtService;
 
-  let tenantIds: string[] = [];
-  let userIds: string[] = [];
-  let planIds: string[] = [];
-  
+  const tenantIds: string[] = [];
+  const userIds: string[] = [];
+  const planIds: string[] = [];
+
   // Per-test variables
   let tenantA: any;
   let shopA: any;
@@ -60,7 +67,7 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
         level: 1,
         module: ModuleType.MOBILE_SHOP,
         isActive: true,
-      }
+      },
     });
     planIds.push(plan.id);
 
@@ -72,7 +79,7 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
         status: 'ACTIVE',
         startDate: new Date(),
         endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      }
+      },
     });
 
     // 3. Setup Shop
@@ -134,7 +141,7 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
         tenantId: tenantA.id,
         shopId: shopA.id,
         name: 'Chaos Accessory',
-        type: ProductType.GOODS, 
+        type: ProductType.GOODS,
         isSerialized: false,
         hsnCode: '8517',
         salePrice: 100, // Rupees
@@ -148,10 +155,10 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
         tenantId: tenantA.id,
         shopId: shopA.id,
         name: 'Chaos Phone',
-        type: ProductType.GOODS, 
+        type: ProductType.GOODS,
         isSerialized: true,
         hsnCode: '8517',
-        salePrice: 10000, 
+        salePrice: 10000,
         costPrice: 8000,
         isActive: true,
       },
@@ -163,22 +170,30 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
     for (const tid of tenantIds) {
       try {
         await prisma.iMEI.deleteMany({ where: { tenantId: tid } });
-        await prisma.invoiceItem.deleteMany({ where: { invoice: { tenantId: tid } } });
+        await prisma.invoiceItem.deleteMany({
+          where: { invoice: { tenantId: tid } },
+        });
         await prisma.invoice.deleteMany({ where: { tenantId: tid } });
         await prisma.stockLedger.deleteMany({ where: { tenantId: tid } });
         await prisma.shopProduct.deleteMany({ where: { tenantId: tid } });
         await prisma.shop.deleteMany({ where: { tenantId: tid } });
         await prisma.userTenant.deleteMany({ where: { tenantId: tid } });
         await prisma.party.deleteMany({ where: { tenantId: tid } });
-        await prisma.tenantSubscription.deleteMany({ where: { tenantId: tid } });
+        await prisma.tenantSubscription.deleteMany({
+          where: { tenantId: tid },
+        });
         await prisma.tenant.delete({ where: { id: tid } });
       } catch (e) {}
     }
     for (const pid of planIds) {
-        try { await prisma.plan.delete({ where: { id: pid } }); } catch (e) {}
+      try {
+        await prisma.plan.delete({ where: { id: pid } });
+      } catch (e) {}
     }
     for (const uid of userIds) {
-        try { await prisma.user.delete({ where: { id: uid } }); } catch (e) {}
+      try {
+        await prisma.user.delete({ where: { id: uid } });
+      } catch (e) {}
     }
     await app.close();
   }, 30000);
@@ -203,12 +218,12 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
       items: [
         {
           shopProductId: productB.id,
-          quantity: 2, 
-          rate: 100, 
+          quantity: 2,
+          rate: 100,
           gstRate: 18,
-          imeis: [imeiCode] // Only 1 IMEI for qty 2 -> fails validation
-        }
-      ]
+          imeis: [imeiCode], // Only 1 IMEI for qty 2 -> fails validation
+        },
+      ],
     };
 
     const response = await request(app.getHttpServer())
@@ -216,15 +231,15 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
       .set('Authorization', `Bearer ${tokenA}`)
       .send(badPayload);
 
-    expect(response.status).toBe(400); 
-    
+    expect(response.status).toBe(400);
+
     const imei = await prisma.iMEI.findUnique({
       where: {
         tenantId_imei: {
           tenantId: tenantA.id,
-          imei: imeiCode
-        }
-      }
+          imei: imeiCode,
+        },
+      },
     });
     expect(imei?.status).toBe(IMEIStatus.IN_STOCK);
     expect(imei?.invoiceId).toBeNull();
@@ -253,23 +268,37 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
           quantity: 1,
           rate: 10000,
           gstRate: 18,
-          imeis: [imeiCode]
-        }
-      ]
+          imeis: [imeiCode],
+        },
+      ],
     };
 
     const results = await Promise.all([
-      request(app.getHttpServer()).post('/api/mobileshop/sales/invoice').set('Authorization', `Bearer ${tokenA}`).send(payload),
-      request(app.getHttpServer()).post('/api/mobileshop/sales/invoice').set('Authorization', `Bearer ${tokenA}`).send(payload),
-      request(app.getHttpServer()).post('/api/mobileshop/sales/invoice').set('Authorization', `Bearer ${tokenA}`).send(payload),
+      request(app.getHttpServer())
+        .post('/api/mobileshop/sales/invoice')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send(payload),
+      request(app.getHttpServer())
+        .post('/api/mobileshop/sales/invoice')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send(payload),
+      request(app.getHttpServer())
+        .post('/api/mobileshop/sales/invoice')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send(payload),
     ]);
 
-    const successCount = results.filter(r => r.status === 201).length;
-    if (successCount !== 1) { console.log("RACE TEST FAILED:", results.map(r => ({status: r.status, body: r.body}))); }
+    const successCount = results.filter((r) => r.status === 201).length;
+    if (successCount !== 1) {
+      console.log(
+        'RACE TEST FAILED:',
+        results.map((r) => ({ status: r.status, body: r.body })),
+      );
+    }
     expect(successCount).toBe(1);
 
     const invoices = await prisma.invoice.findMany({
-        where: { tenantId: tenantA.id, status: { not: 'VOIDED' } }
+      where: { tenantId: tenantA.id, status: { not: 'VOIDED' } },
     });
     expect(invoices).toHaveLength(1);
   });
@@ -282,8 +311,8 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
         shopProductId: productA.id,
         quantity: 5,
         type: 'IN',
-        referenceType: 'ADJUSTMENT'
-      }
+        referenceType: 'ADJUSTMENT',
+      },
     });
 
     const payload = {
@@ -296,31 +325,42 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
         {
           shopProductId: productA.id,
           quantity: 1,
-          rate: 100, 
-          gstRate: 18
-        }
-      ]
+          rate: 100,
+          gstRate: 18,
+        },
+      ],
     };
 
     const results = await Promise.all(
-        Array(10).fill(null).map(() => 
-            request(app.getHttpServer()).post('/api/mobileshop/sales/invoice').set('Authorization', `Bearer ${tokenA}`).send(payload)
-        )
+      Array(10)
+        .fill(null)
+        .map(() =>
+          request(app.getHttpServer())
+            .post('/api/mobileshop/sales/invoice')
+            .set('Authorization', `Bearer ${tokenA}`)
+            .send(payload),
+        ),
     );
 
-    const successCount = results.filter(r => r.status === 201).length;
-    if (successCount !== 5) { console.log("STOCK STORM FAILED:", results.map(r => ({status: r.status, body: r.body}))); }
+    const successCount = results.filter((r) => r.status === 201).length;
+    if (successCount !== 5) {
+      console.log(
+        'STOCK STORM FAILED:',
+        results.map((r) => ({ status: r.status, body: r.body })),
+      );
+    }
     expect(successCount).toBe(5);
 
     const aggregates = await prisma.stockLedger.groupBy({
-        by: ['type'],
-        where: { shopProductId: productA.id },
-        _sum: { quantity: true }
+      by: ['type'],
+      where: { shopProductId: productA.id },
+      _sum: { quantity: true },
     });
-    
-    const qtyIn = aggregates.find(a => a.type === 'IN')?._sum?.quantity || 0;
-    const qtyOut = aggregates.find(a => a.type === 'OUT')?._sum?.quantity || 0;
-    
+
+    const qtyIn = aggregates.find((a) => a.type === 'IN')?._sum?.quantity || 0;
+    const qtyOut =
+      aggregates.find((a) => a.type === 'OUT')?._sum?.quantity || 0;
+
     expect(Number(qtyIn) - Number(qtyOut)).toBe(0);
   });
 
@@ -333,25 +373,25 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
         shopProductId: productA.id,
         quantity: 10,
         type: 'IN',
-        referenceType: 'ADJUSTMENT'
-      }
+        referenceType: 'ADJUSTMENT',
+      },
     });
     const maliciousPayload = {
-        shopId: shopA.id,
-        customerId: customerA.id,
-        customerName: customerA.name,
-        customerPhone: customerA.phone,
-        items: [
-          {
-            shopProductId: productA.id,
-            quantity: 1,
-            rate: 100,
-            gstRate: 18,
-            warrantyDays: 365,
-            warrantyEndAt: "2099-01-01" 
-          }
-        ],
-        paymentMode: 'CASH'
+      shopId: shopA.id,
+      customerId: customerA.id,
+      customerName: customerA.name,
+      customerPhone: customerA.phone,
+      items: [
+        {
+          shopProductId: productA.id,
+          quantity: 1,
+          rate: 100,
+          gstRate: 18,
+          warrantyDays: 365,
+          warrantyEndAt: '2099-01-01',
+        },
+      ],
+      paymentMode: 'CASH',
     };
 
     const response = await request(app.getHttpServer())
@@ -359,17 +399,19 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
       .set('Authorization', `Bearer ${tokenA}`)
       .send(maliciousPayload);
 
-    if (response.status !== 201) { console.log("WARRANTY ATTACK FAILED:", response.body); }
+    if (response.status !== 201) {
+      console.log('WARRANTY ATTACK FAILED:', response.body);
+    }
     expect(response.status).toBe(201);
-    
+
     const invoiceId = response.body.id;
     const item = await prisma.invoiceItem.findFirst({
-        where: { invoiceId }
+      where: { invoiceId },
     });
 
     const expectedEnd = new Date();
     expectedEnd.setDate(expectedEnd.getDate() + 365);
-    
+
     const actualEnd = new Date(item!.warrantyEndAt!);
     expect(actualEnd.getFullYear()).toBe(expectedEnd.getFullYear());
     expect(actualEnd.getFullYear()).not.toBe(2099);
@@ -378,56 +420,56 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
   it('Should block cross-tenant product injection (MULTI-TENANT ATTACK)', async () => {
     // 1. Create Tenant B and a product
     const tenantB = await prisma.tenant.create({
-        data: {
-          name: 'Victim Tenant',
-          code: 'VICTIM-' + Math.random().toString(36).substring(7),
-          tenantType: 'MOBILE_SHOP',
-        },
+      data: {
+        name: 'Victim Tenant',
+        code: 'VICTIM-' + Math.random().toString(36).substring(7),
+        tenantType: 'MOBILE_SHOP',
+      },
     });
     tenantIds.push(tenantB.id);
 
     const shopB = await prisma.shop.create({
-        data: {
-          tenantId: tenantB.id,
-          name: 'Victim Shop',
-          state: 'Tamil Nadu',
-          phone: '1111111111',
-          addressLine1: 'Victim Street',
-          city: 'Victim City',
-          pincode: '600001',
-          invoicePrefix: 'VIC',
-        },
+      data: {
+        tenantId: tenantB.id,
+        name: 'Victim Shop',
+        state: 'Tamil Nadu',
+        phone: '1111111111',
+        addressLine1: 'Victim Street',
+        city: 'Victim City',
+        pincode: '600001',
+        invoicePrefix: 'VIC',
+      },
     });
 
     const productB_Other = await prisma.shopProduct.create({
-        data: {
-          tenantId: tenantB.id,
-          shopId: shopB.id,
-          name: 'Victim Phone',
-          type: ProductType.GOODS, 
-          isSerialized: false, // Easier for this test
-          hsnCode: '8517',
-          salePrice: 50000, 
-          costPrice: 40000,
-          isActive: true,
-        },
+      data: {
+        tenantId: tenantB.id,
+        shopId: shopB.id,
+        name: 'Victim Phone',
+        type: ProductType.GOODS,
+        isSerialized: false, // Easier for this test
+        hsnCode: '8517',
+        salePrice: 50000,
+        costPrice: 40000,
+        isActive: true,
+      },
     });
 
     // 2. Attempt to sell Tenant B's product using Tenant A's token
     const maliciousPayload = {
-        shopId: shopA.id, // Current tenant's shop
-        customerId: customerA.id,
-        customerName: customerA.name,
-        customerPhone: customerA.phone,
-        items: [
-          {
-            shopProductId: productB_Other.id, // Maliciously injected ID from Tenant B
-            quantity: 1,
-            rate: 100,
-            gstRate: 18
-          }
-        ],
-        paymentMode: 'CASH'
+      shopId: shopA.id, // Current tenant's shop
+      customerId: customerA.id,
+      customerName: customerA.name,
+      customerPhone: customerA.phone,
+      items: [
+        {
+          shopProductId: productB_Other.id, // Maliciously injected ID from Tenant B
+          quantity: 1,
+          rate: 100,
+          gstRate: 18,
+        },
+      ],
+      paymentMode: 'CASH',
     };
 
     const response = await request(app.getHttpServer())

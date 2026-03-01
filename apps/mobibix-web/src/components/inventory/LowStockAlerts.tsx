@@ -25,9 +25,9 @@ export function LowStockAlerts({ shopId, onAdjustStock }: LowStockAlertsProps) {
         setError(null);
         const data = await getLowStockProducts(shopId);
         setProducts(data);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to load low stock products:", err);
-        setError(err.message || "Failed to load low stock products");
+        setError((err as any)?.message || "Failed to load low stock products");
       } finally {
         setLoading(false);
       }

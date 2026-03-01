@@ -53,8 +53,8 @@ export function WhatsAppQuickAction({
       setShowModal(false);
       onSuccess?.();
       alert("WhatsApp message sent successfully!");
-    } catch (err: any) {
-      setError(err.message || "Failed to send message");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to send message");
     } finally {
       setLoading(false);
     }

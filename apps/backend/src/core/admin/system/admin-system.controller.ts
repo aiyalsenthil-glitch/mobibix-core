@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AdminRolesGuard } from '../guards/admin-roles.guard';
 import { AdminRoles } from '../decorators/admin.decorator';
@@ -100,7 +110,10 @@ export class AdminSystemController {
   }
 
   @Patch('cors-origins/:id')
-  async toggleCorsOrigin(@Param('id') id: string, @Body() data: { isEnabled: boolean }) {
+  async toggleCorsOrigin(
+    @Param('id') id: string,
+    @Body() data: { isEnabled: boolean },
+  ) {
     return this.prisma.corsAllowedOrigin.update({
       where: { id },
       data: { isEnabled: data.isEnabled },
@@ -120,4 +133,3 @@ export class AdminSystemController {
     };
   }
 }
-

@@ -19,12 +19,12 @@ export const SubscriptionHaltedEmail = ({
   return (
     <EmailLayout module={module}>
       <EmailSection>
-        <Text style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626' }}>
+        <Text
+          style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626' }}
+        >
           Subscription Suspended 🛑
         </Text>
-        <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
-          Hi {name},
-        </Text>
+        <Text style={{ color: '#4b5563', lineHeight: '24px' }}>Hi {name},</Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
           We were unable to process your latest payment after multiple attempts.
           As a result, your subscription has been temporarily suspended.

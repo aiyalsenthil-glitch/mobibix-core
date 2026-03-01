@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getCustomerLoyaltyBalance } from "@/services/loyalty.api";
 import { useTheme } from "@/context/ThemeContext";
+import { useShop } from "@/context/ShopContext";
 
 interface CustomerLoyaltyBalanceProps {
   customerId: string;
@@ -19,6 +20,7 @@ export function CustomerLoyaltyBalance({
   onClick,
 }: CustomerLoyaltyBalanceProps) {
   const { theme } = useTheme();
+  const { selectedShopId } = useShop();
   const isDark = theme === "dark";
   const [balance, setBalance] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,7 +32,7 @@ export function CustomerLoyaltyBalance({
       try {
         setIsLoading(true);
         setError(false);
-        const result = await getCustomerLoyaltyBalance(customerId);
+        const result = await getCustomerLoyaltyBalance(customerId, selectedShopId);
         setBalance(result);
       } catch (err) {
         console.error("Failed to fetch loyalty balance:", err);
@@ -41,7 +43,7 @@ export function CustomerLoyaltyBalance({
       }
     };
     fetchBalance();
-  }, [customerId]);
+  }, [customerId, selectedShopId]);
 
   if (isLoading) {
     return (

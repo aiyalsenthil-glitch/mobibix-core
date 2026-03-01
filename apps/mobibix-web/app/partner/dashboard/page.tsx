@@ -131,7 +131,7 @@ export default function PartnerDashboard() {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               Welcome back{stats ? `, ${stats.businessName}` : ""}!
             </h1>
-            <p className="text-slate-500">Here's how your referral network is performing.</p>
+            <p className="text-slate-500">Here&apos;s how your referral network is performing.</p>
           </div>
           <div className="flex items-center gap-3">
             <button className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl relative">

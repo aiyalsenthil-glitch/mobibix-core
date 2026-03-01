@@ -11,6 +11,7 @@ interface LoyaltyRedemptionInputProps {
   customerId: string | undefined;
   balance: number; // Current customer balance in points
   invoiceSubTotal: number; // In paisa
+  shopId?: string;
   onRedemptionChange?: (points: number) => void;
   onDiscountChange?: (discountPaise: number) => void;
 }
@@ -19,6 +20,7 @@ export function LoyaltyRedemptionInput({
   customerId,
   balance,
   invoiceSubTotal,
+  shopId,
   onRedemptionChange,
   onDiscountChange,
 }: LoyaltyRedemptionInputProps) {
@@ -36,11 +38,11 @@ export function LoyaltyRedemptionInput({
   // Load loyalty config on mount
   useEffect(() => {
     const loadConfig = async () => {
-      const loyaltyConfig = await getLoyaltyConfig();
+      const loyaltyConfig = await getLoyaltyConfig(shopId);
       setConfig(loyaltyConfig);
     };
     loadConfig();
-  }, []);
+  }, [shopId]);
 
   // Validate redemption when points or invoice subtotal changes
   const validateRedemption = useCallback(async () => {
@@ -59,6 +61,7 @@ export function LoyaltyRedemptionInput({
         customerId,
         points,
         invoiceSubTotal,
+        shopId,
       });
 
       if (response.success && response.discountPaise !== undefined) {

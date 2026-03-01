@@ -20,7 +20,7 @@
  *   WHATSAPP_CRM:
  *     - MONTHLY: ₹299
  *     - QUARTERLY: ₹749
- * 
+ *
  *     - YEARLY: ₹2699
  *
  * CRITICAL:
@@ -84,7 +84,6 @@ const V1_PRICING = {
   },
 };
 
-
 async function seedPlanPrices() {
   console.log('💰 V1 Plan Prices Seeder');
   console.log('==================================================\n');
@@ -125,18 +124,18 @@ async function seedPlanPrices() {
             },
           },
           update: {
-            price: price as number,
+            price: price,
             isActive: true,
           },
           create: {
             planId: plan.id,
             billingCycle: cycle as any,
-            price: price as number,
+            price: price,
             isActive: true,
           },
         });
 
-        const rupees = (price as number) / 100;
+        const rupees = price / 100;
         console.log(`   ${cycle}: ₹${rupees.toFixed(2)}`);
         priceCount++;
       } catch (error: any) {

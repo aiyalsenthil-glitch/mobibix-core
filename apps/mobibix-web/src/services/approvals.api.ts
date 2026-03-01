@@ -29,8 +29,8 @@ export async function getPendingApprovals(shopId?: string): Promise<ApprovalRequ
   const response = await authenticatedFetch(url);
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to load pending approvals");
+    const error = (await extractData(response)) as any;
+    throw new Error(error?.message || "Failed to load pending approvals");
   }
 
   return extractData(response);
@@ -53,8 +53,8 @@ export async function resolveApproval(
   });
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to resolve approval");
+    const error = (await extractData(response)) as any;
+    throw new Error(error?.message || "Failed to respond to approval request");
   }
 
   return extractData(response);

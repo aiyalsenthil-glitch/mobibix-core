@@ -31,10 +31,10 @@ import { InvestorController } from './investor/investor.controller';
 
 @Module({
   imports: [
-    AuthModule, 
-    TenantModule, 
-    BillingModule, 
-    PlansModule, 
+    AuthModule,
+    TenantModule,
+    BillingModule,
+    PlansModule,
     AuditModule,
     PrismaModule,
     PartnersModule,
@@ -70,4 +70,3 @@ import { InvestorController } from './investor/investor.controller';
   exports: [AdminCorsService, AdminCacheService],
 })
 export class AdminModule {}
-

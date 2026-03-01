@@ -346,7 +346,7 @@ export default function WhatsAppDashboardView({
                     <td className="py-2">{log.phone}</td>
                     <td className="py-2">{log.status}</td>
                     <td className="py-2">
-                      {log.metadata?.templateName || log.type}
+                      {String((log.metadata as any)?.templateName || log.type)}
                     </td>
                     <td className="py-2">
                       {new Date(log.sentAt).toLocaleString()}

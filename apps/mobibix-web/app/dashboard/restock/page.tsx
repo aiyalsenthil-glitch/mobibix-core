@@ -45,9 +45,9 @@ export default function RestockPage() {
         }]
       });
       alert(`Purchase Order for ${item.moq}x ${item.productName} Placed Successfully!`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert(err?.message || "Failed to place order");
+      alert(err instanceof Error ? err.message : "Failed to place order");
     } finally {
       setIsOrdering(prev => ({ ...prev, [item.id]: false }));
     }
@@ -78,7 +78,7 @@ export default function RestockPage() {
       ) : catalog.length === 0 ? (
         <div className="text-center p-12 bg-muted/30 rounded-3xl border border-border">
             <h3 className="text-xl font-black uppercase mb-4">No Distributors Linked</h3>
-            <p className="text-muted-foreground mb-6">You haven't been approved by any distributors in our network yet. Please contact your local vendor to activate your wholesale pipeline.</p>
+            <p className="text-muted-foreground mb-6">You haven&apos;t been approved by any distributors in our network yet. Please contact your local vendor to activate your wholesale pipeline.</p>
         </div>
       ) : (
         <>

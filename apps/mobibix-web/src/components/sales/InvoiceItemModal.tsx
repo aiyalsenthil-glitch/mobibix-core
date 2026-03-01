@@ -91,8 +91,8 @@ export function InvoiceItemModal({
         return { ...p, stockQty };
       });
       setProducts(merged);
-    } catch (e) {
-      console.error("Failed to load products", e);
+    } catch (err: unknown) {
+      console.error("Failed to load products", err);
     } finally {
       setLoadingProducts(false);
     }
@@ -215,8 +215,8 @@ export function InvoiceItemModal({
 
       await onAdd(item);
       handleClose();
-    } catch (e: any) {
-      alert(e.message || "Failed to add item");
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Failed to add item");
     } finally {
       setIsSubmitting(false);
     }
@@ -336,7 +336,7 @@ export function InvoiceItemModal({
                         }}
                         className="text-teal-600 hover:text-teal-700 font-bold text-sm"
                       >
-                        Create "{search}"
+                        Create &quot;{search}&quot;
                       </button>
                     </div>
                   )}

@@ -10,7 +10,13 @@ import { UsageSnapshotService } from '../analytics/usage-snapshot.service';
 import { PartnersModule } from '../../modules/partners/partners.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, BillingModule, PlansModule, PartnersModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    BillingModule,
+    PlansModule,
+    PartnersModule,
+  ],
   controllers: [TenantController, TenantUsageController],
   providers: [TenantService, UsageSnapshotService],
   exports: [TenantService, UsageSnapshotService], // 👈 THIS IS THE KEY LINE

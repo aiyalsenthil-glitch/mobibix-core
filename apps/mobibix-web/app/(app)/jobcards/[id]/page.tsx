@@ -9,14 +9,18 @@ import {
   removeJobCardPart,
   JobStatus,
   createWarrantyJob,
+  generateRepairBill,
   type RepairBillDto,
+  type JobCard,
 } from "@/services/jobcard.api";
 import { useShop } from "@/context/ShopContext";
+import { type Shop } from "@/services/shops.api";
 import { useAuth } from "@/hooks/useAuth";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
 import { sendWhatsAppMessage } from "@/services/whatsapp.api";
 import { AdvanceModal } from "./AdvanceModal";
 import { AddPartModal } from "../AddPartModal";
+import { RepairBillingModal } from "@/components/repair/RepairBillingModal";
 
 // Helper for status colors (reused)
 const STATUS_COLORS: Record<JobStatus, string> = {
@@ -65,8 +69,6 @@ function getAllowedTransitions(currentStatus: JobStatus): JobStatus[] {
   return VALID_TRANSITIONS[currentStatus] || [];
 }
 
-import { RepairBillingModal } from "@/components/repair/RepairBillingModal";
-import { generateRepairBill } from "@/services/jobcard.api";
 
 export default function JobCardDetailPage() {
   const router = useRouter();
@@ -138,8 +140,8 @@ export default function JobCardDetailPage() {
         try {
           await updateJobCardStatus(selectedShopId, job.id, status, { amount: advancePaid, mode: "CASH" });
           reload();
-        } catch (err: any) {
-          alert(err.message || "Failed to update status");
+        } catch (err: unknown) {
+          alert(err instanceof Error ? err.message : "Failed to update status");
         }
         return;
       }
@@ -321,10 +323,10 @@ export default function JobCardDetailPage() {
               {job.status === "DELIVERED" &&
                 (job.warrantyDuration || 0) > 0 &&
                 (() => {
-                  const isWarrantyEnabled = (selectedShop as any)?.headerConfig?.enableWarrantyJobs;
+                  const isWarrantyEnabled = selectedShop?.headerConfig?.enableWarrantyJobs;
                   if (!isWarrantyEnabled) return null;
                   
-                  const deliveredAt = (job as any).deliveredAt ? new Date((job as any).deliveredAt) : null;
+                  const deliveredAt = job.deliveredAt ? new Date(job.deliveredAt) : null;
                   if (deliveredAt) {
                     const expiryDate = new Date(deliveredAt);
                     expiryDate.setDate(expiryDate.getDate() + (job.warrantyDuration || 0));
@@ -352,7 +354,7 @@ export default function JobCardDetailPage() {
                   </button>
                 )}
 
-              {job.status !== "DELIVERED" && job.status !== "RETURNED" && job.status !== "SCRAPPED" && job.status !== "CANCELLED" && (
+              {(job.status !== "DELIVERED" && job.status !== "RETURNED" && job.status !== "SCRAPPED") && (
                 (() => {
                   const allowedTransitions = getAllowedTransitions(job.status);
                   if (allowedTransitions.length === 0) return null;
@@ -843,7 +845,7 @@ export default function JobCardDetailPage() {
         isOpen={isBillingModalOpen}
         onClose={() => setIsBillingModalOpen(false)}
         onSubmit={handleBillSubmit}
-        job={job}
+        job={job!}
         shopId={selectedShopId!}
       />
     </div>

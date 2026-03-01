@@ -25,7 +25,7 @@ export type PaymentMode = "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT" | "MIXED";
 
 export interface SplitPayment {
   id: string;
-  mode: "CASH" | "UPI" | "CARD" | "BANK";
+  mode: Exclude<PaymentMode, "MIXED">;
   amount: string;
 }
 
@@ -84,11 +84,24 @@ export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoice
   }, []);
 
   const updateItem = useCallback(
-    (id: string, field: keyof ProductItem | "imeisText" | "serialNumbersText", value: any, products: ShopProduct[] = []) => {
+    (
+      id: string,
+      field: keyof ProductItem | "imeisText" | "serialNumbersText",
+      value: string | number | string[] | undefined,
+      products: ShopProduct[] = [],
+    ) => {
       setItems((prev) =>
         prev.map((item) => {
           if (item.id === id) {
-            const updated = { ...item, [field]: value };
+            const updated: ProductItem = { ...item };
+            
+            if (field === "productName") updated.productName = value as string;
+            if (field === "hsnSac") updated.hsnSac = value as string;
+            if (field === "quantity") updated.quantity = value as number;
+            if (field === "rate") updated.rate = value as number;
+            if (field === "gstRate") updated.gstRate = value as number;
+            if (field === "shopProductId") updated.shopProductId = value as string;
+            if (field === "warrantyDays") updated.warrantyDays = value as number;
 
             // Logic when product is selected
             if (field === "shopProductId") {
@@ -113,7 +126,7 @@ export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoice
               field === "shopProductId"
             ) {
               const baseAmount = updated.quantity * updated.rate;
-              
+
               if (pricesIncludeTax) {
                 // Price includes GST
                 const divisor = 1 + updated.gstRate / 100;
@@ -122,30 +135,39 @@ export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoice
                 updated.total = baseAmount;
               } else {
                 // Price excludes GST
-                updated.gstAmount = Math.round(((baseAmount * updated.gstRate) / 100) * 100) / 100;
-                updated.total = Math.round((baseAmount + updated.gstAmount) * 100) / 100;
+                updated.gstAmount =
+                  Math.round(((baseAmount * updated.gstRate) / 100) * 100) /
+                  100;
+                updated.total =
+                  Math.round((baseAmount + updated.gstAmount) * 100) / 100;
               }
             }
 
             // Parse IMEIs from text
             if (field === "imeisText") {
-              const text: string = value || "";
-              updated.imeis = text.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean);
+              const text = value as string;
+              updated.imeis = text
+                .split(/\r?\n|,/)
+                .map((s) => s.trim())
+                .filter(Boolean);
             }
 
             // Parse Serial Numbers from text
-            if (field === "serialNumbersText" as any) {
-              const text: string = value || "";
-              updated.serialNumbers = text.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean);
+            if (field === "serialNumbersText") {
+              const text = value as string;
+              updated.serialNumbers = text
+                .split(/\r?\n|,/)
+                .map((s) => s.trim())
+                .filter(Boolean);
             }
 
             return updated;
           }
           return item;
-        })
+        }),
       );
     },
-    [shopGstEnabled, pricesIncludeTax]
+    [shopGstEnabled, pricesIncludeTax],
   );
 
   // Recalculate all items when pricesIncludeTax changes

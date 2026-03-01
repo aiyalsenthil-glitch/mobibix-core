@@ -40,7 +40,7 @@ export default function ComparePage({ params }: { params: { competitor: string }
             MobiBix vs <span className="text-stone-400">{competitor.name}</span>
           </h1>
           <p className="text-lg text-slate-300 mb-8 max-w-2xl mx-auto">
-            {competitor.name} is a great app for general stores. But for a mobile shop? You need IMEI tracking, repair job cards, and warranty CRM. That's why mobile retailers switch to MobiBix.
+            {competitor.name} is a great app for general stores. But for a mobile shop? You need IMEI tracking, repair job cards, and warranty CRM. That&apos;s why mobile retailers switch to MobiBix.
           </p>
           <div className="flex justify-center gap-4">
             <Link href="/" className="px-6 py-3 rounded-lg bg-teal-500 hover:bg-teal-400 font-semibold transition-colors">

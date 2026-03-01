@@ -46,9 +46,9 @@ export function GstrReportViewer({ shopId }: GstrReportViewerProps) {
         const data = await getGstr1SalesRegister(startDate, endDate);
         // data is Gstr1Report, which has 'records' array
         setSalesRegister(data.records);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to load sales register:", err);
-        setSalesRegisterError(err.message || "Failed to load sales register");
+        setSalesRegisterError((err as any)?.message || "Failed to load sales register");
       } finally {
         setLoadingSalesRegister(false);
       }
@@ -64,9 +64,9 @@ export function GstrReportViewer({ shopId }: GstrReportViewerProps) {
         setHsnSummaryError(null);
         const data = await getGstr1HsnSummary(startDate, endDate);
         setHsnSummary(data);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to load HSN summary:", err);
-        setHsnSummaryError(err.message || "Failed to load HSN summary");
+        setHsnSummaryError((err as any)?.message || "Failed to load HSN summary");
       } finally {
         setLoadingHsnSummary(false);
       }
@@ -107,7 +107,7 @@ export function GstrReportViewer({ shopId }: GstrReportViewerProps) {
   };
 
   // Export to CSV
-  const exportToCsv = (data: any[], filename: string) => {
+  const exportToCsv = (data: Record<string, any>[], filename: string) => {
     if (data.length === 0) {
       alert("No data to export");
       return;

@@ -56,9 +56,13 @@ export function CollectPaymentModal({
     setRows(newRows);
   };
 
-  const updateRow = (index: number, field: keyof PaymentRow, value: any) => {
+  const updateRow = (
+    index: number,
+    field: keyof PaymentRow,
+    value: string | number | PaymentMode,
+  ) => {
     const newRows = [...rows];
-    newRows[index] = { ...newRows[index], [field]: value };
+    newRows[index] = { ...newRows[index], [field]: value } as PaymentRow;
     setRows(newRows);
   };
 
@@ -106,8 +110,8 @@ export function CollectPaymentModal({
       });
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to collect payment");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to collect payment");
     } finally {
       setIsSubmitting(false);
     }

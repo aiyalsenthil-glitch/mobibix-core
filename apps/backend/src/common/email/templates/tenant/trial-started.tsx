@@ -23,12 +23,12 @@ export const TrialStartedEmail = ({
   return (
     <EmailLayout module={module} preview="Your premium access starts now ✨">
       <EmailSection>
-        <Text style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }}>
+        <Text
+          style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }}
+        >
           Your premium access starts now ✨
         </Text>
-        <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
-          Hi {name},
-        </Text>
+        <Text style={{ color: '#4b5563', lineHeight: '24px' }}>Hi {name},</Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
           Your <strong>{planName}</strong> trial is now active.
         </Text>
@@ -42,10 +42,12 @@ export const TrialStartedEmail = ({
           Here’s what successful users usually do in the first 3 days:
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
-          • Add at least 5 customers / members<br />
-          • Invite staff<br />
-          • Explore automation features<br />
-          • Check analytics dashboard
+          • Add at least 5 customers / members
+          <br />
+          • Invite staff
+          <br />
+          • Explore automation features
+          <br />• Check analytics dashboard
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
           The more you use it, the more value you unlock.
@@ -55,7 +57,9 @@ export const TrialStartedEmail = ({
           Start Exploring
         </EmailButton>
 
-        <Text style={{ color: '#4b5563', lineHeight: '24px', marginTop: '24px' }}>
+        <Text
+          style={{ color: '#4b5563', lineHeight: '24px', marginTop: '24px' }}
+        >
           We’ll remind you before your trial ends.
         </Text>
       </EmailSection>

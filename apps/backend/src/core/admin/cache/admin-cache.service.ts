@@ -25,17 +25,21 @@ export class AdminCacheService {
     // For Redis:
     const store = (this.cacheManager as any).store;
     if (store && store.getClient) {
-        const client = store.getClient();
-        if (client) {
-             const keys = await client.keys(pattern);
-             if (keys.length > 0) {
-                 await client.del(...keys);
-             }
+      const client = store.getClient();
+      if (client) {
+        const keys = await client.keys(pattern);
+        if (keys.length > 0) {
+          await client.del(...keys);
         }
+      }
     }
   }
 
-  async getOrSet<T>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T> {
+  async getOrSet<T>(
+    key: string,
+    factory: () => Promise<T>,
+    ttl?: number,
+  ): Promise<T> {
     const cached = await this.get<T>(key);
     if (cached !== undefined && cached !== null) {
       return cached;

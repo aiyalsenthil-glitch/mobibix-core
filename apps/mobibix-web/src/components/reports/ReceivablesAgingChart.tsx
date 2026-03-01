@@ -22,8 +22,8 @@ export function ReceivablesAgingChart({ shopId }: AgingChartProps) {
       setError(null);
       const result = await getReceivablesAging(false);
       setData(result as AgingReport);
-    } catch (err: any) {
-      setError(err.message || "Failed to load receivables aging data");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to load receivables aging data");
     } finally {
       setIsLoading(false);
     }

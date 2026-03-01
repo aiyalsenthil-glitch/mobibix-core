@@ -18,27 +18,28 @@ export interface Shop {
   gstEnabled?: boolean;
   invoicePrefix?: string;
   invoiceFooter?: string;
-  logoUrl?: string;
-  tagline?: string;
-  terms?: string[];
-  isActive: boolean;
-  createdAt: Date | string;
-  updatedAt: Date | string;
-  currency?: string;
-
-  // Print Settings
-  invoicePrinterType?: "NORMAL" | "THERMAL";
-  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL" | "SIMPLE" | "RECEIPT_THERMAL" | "PROFESSIONAL";
-  jobCardPrinterType?: "NORMAL" | "THERMAL";
-  jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL" | "CLASSIC" | "VOUCHER_CLASSIC";
-
-  // Custom Header
-  headerConfig?: {
-    layout: "CLASSIC" | "CENTERED" | "SPLIT" | "MINIMAL";
-    showLogo: boolean;
-    showTagline: boolean;
-    accentColor?: string;
-  };
+    logoUrl?: string;
+    tagline?: string;
+    terms?: string[];
+    isActive: boolean;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+    currency?: string;
+  
+    // Print Settings
+    invoicePrinterType?: "NORMAL" | "THERMAL";
+    invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL" | "SIMPLE" | "RECEIPT_THERMAL" | "PROFESSIONAL";
+    jobCardPrinterType?: "NORMAL" | "THERMAL";
+    jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL" | "CLASSIC" | "VOUCHER_CLASSIC";
+  
+    // Custom Header
+    headerConfig?: {
+      layout: "CLASSIC" | "CENTERED" | "SPLIT" | "MINIMAL";
+      showLogo: boolean;
+      showTagline: boolean;
+      accentColor?: string;
+      enableWarrantyJobs?: boolean;
+    };
   // Bank Details
   bankName?: string;
   accountNumber?: string;
@@ -111,6 +112,7 @@ export interface UpdateShopSettingsDto {
     showLogo: boolean;
     showTagline: boolean;
     accentColor?: string;
+    enableWarrantyJobs?: boolean;
   };
   // Bank Details
   bankName?: string;
@@ -129,16 +131,16 @@ export async function listShops(): Promise<Shop[]> {
   const response = await authenticatedFetch(`/mobileshop/shops`);
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch shops");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch shops");
   }
 
   const json = await extractData(response);
-  const result: any = unwrapStandardResponse(json);
+  const result = unwrapStandardResponse<unknown>(json);
   
   // Handle paginated response: { data: [], total, skip, take }
-  if (result && typeof result === 'object' && Array.isArray(result.data)) {
-    return result.data;
+  if (result && typeof result === 'object' && 'data' in result && Array.isArray((result as any).data)) {
+    return (result as any).data;
   }
   
   // Fallback: if it's already an array, return it
@@ -161,8 +163,8 @@ export async function getShop(shopId: string): Promise<Shop> {
   const response = await authenticatedFetch(`/mobileshop/shops/${shopId}`);
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch shop");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch shop");
   }
 
   return extractData(response);
@@ -178,8 +180,8 @@ export async function createShop(data: CreateShopDto): Promise<Shop> {
   });
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to create shop");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to create shop");
   }
 
   return extractData(response);
@@ -198,8 +200,8 @@ export async function updateShop(
   });
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to update shop");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to update shop");
   }
 
   return extractData(response);
@@ -214,8 +216,8 @@ export async function getShopSettings(shopId: string): Promise<Shop> {
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch shop settings");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch shop settings");
   }
 
   return extractData(response);
@@ -237,8 +239,8 @@ export async function updateShopSettings(
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to update shop settings");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to update shop settings");
   }
 
   return extractData(response);
@@ -312,8 +314,8 @@ export async function getShopDocumentSettings(
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch document settings");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch document settings");
   }
 
   return extractData(response);
@@ -336,8 +338,8 @@ export async function updateShopDocumentSetting(
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to update document setting");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to update document setting");
   }
 
   return extractData(response);

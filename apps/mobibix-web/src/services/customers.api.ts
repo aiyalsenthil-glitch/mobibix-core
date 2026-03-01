@@ -48,7 +48,7 @@ export async function listCustomers(): Promise<Customer[]> {
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to load customers");
+    throw new Error((error as any).message || "Failed to load customers");
   }
 
   return extractData(response);
@@ -74,7 +74,7 @@ export async function listCustomersPaginated(options?: {
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to load customers");
+    throw new Error((error as any).message || "Failed to load customers");
   }
 
   return extractData(response);
@@ -88,7 +88,7 @@ export async function getCustomer(customerId: string): Promise<Customer> {
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to load customer");
+    throw new Error((error as any).message || "Failed to load customer");
   }
 
   return extractData(response);
@@ -110,7 +110,7 @@ export async function getCustomerByPhone(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to lookup customer");
+    throw new Error((error as any).message || "Failed to lookup customer");
   }
 
   return extractData(response);
@@ -155,7 +155,7 @@ export async function createCustomer(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to create customer");
+    throw new Error((error as any).message || "Failed to create customer");
   }
 
   return extractData(response);
@@ -178,7 +178,7 @@ export async function updateCustomer(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to update customer");
+    throw new Error((error as any).message || "Failed to update customer");
   }
 
   return extractData(response);
@@ -194,6 +194,6 @@ export async function deleteCustomer(customerId: string): Promise<void> {
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to delete customer");
+    throw new Error((error as any).message || "Failed to delete customer");
   }
 }

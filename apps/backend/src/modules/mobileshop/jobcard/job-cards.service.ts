@@ -489,9 +489,11 @@ export class JobCardsService {
 
     // Check Expiry using explicit deliveredAt anchor
     const deliveredAt = originalJob.deliveredAt;
-    
+
     if (!deliveredAt) {
-      throw new BadRequestException('Cannot claim warranty: Original delivery date missing.');
+      throw new BadRequestException(
+        'Cannot claim warranty: Original delivery date missing.',
+      );
     }
 
     const expiryDate = new Date(deliveredAt);
@@ -583,7 +585,11 @@ export class JobCardsService {
       );
 
     // 🛡️ GUARD: Cannot add parts after READY or terminal states
-    if (['READY', 'DELIVERED', 'CANCELLED', 'RETURNED', 'SCRAPPED'].includes(job.status)) {
+    if (
+      ['READY', 'DELIVERED', 'CANCELLED', 'RETURNED', 'SCRAPPED'].includes(
+        job.status,
+      )
+    ) {
       throw new BadRequestException(
         'Cannot add parts: Job has moved past the parts stage. Create a new job or use credit note for changes.',
       );
@@ -746,7 +752,11 @@ export class JobCardsService {
     if (!job) throw new NotFoundException('Job not found');
 
     // 🛡️ GUARD: Cannot remove parts after READY or terminal states
-    if (['READY', 'DELIVERED', 'CANCELLED', 'RETURNED', 'SCRAPPED'].includes(job.status)) {
+    if (
+      ['READY', 'DELIVERED', 'CANCELLED', 'RETURNED', 'SCRAPPED'].includes(
+        job.status,
+      )
+    ) {
       throw new BadRequestException(
         'Cannot remove parts: Job has moved past the parts stage. Create a new job or use credit note for changes.',
       );
@@ -820,7 +830,9 @@ export class JobCardsService {
       throw new BadRequestException('Job not found');
     }
 
-    if (['DELIVERED', 'CANCELLED', 'RETURNED', 'SCRAPPED'].includes(job.status)) {
+    if (
+      ['DELIVERED', 'CANCELLED', 'RETURNED', 'SCRAPPED'].includes(job.status)
+    ) {
       throw new BadRequestException('Job is locked');
     }
 
@@ -983,9 +995,9 @@ export class JobCardsService {
       throw e;
     }
 
-    const where: Prisma.JobCardWhereInput = { 
+    const where: Prisma.JobCardWhereInput = {
       tenantId: user.tenantId,
-      shopId 
+      shopId,
     };
 
     if (filters?.status) {
@@ -1176,7 +1188,8 @@ export class JobCardsService {
         userId: user.sub,
         userName: user.name || user.email,
         refundedAdvance:
-          ['CANCELLED', 'RETURNED', 'SCRAPPED'].includes(newStatus) && job.advancePaid > 0
+          ['CANCELLED', 'RETURNED', 'SCRAPPED'].includes(newStatus) &&
+          job.advancePaid > 0
             ? job.advancePaid
             : undefined,
       });
@@ -1317,7 +1330,8 @@ export class JobCardsService {
     const serviceChargePaisa = (job.laborCharge || 0) * 100;
 
     // Overwrite job.finalCost as visual record of parts+labor
-    const finalCostRupees = Math.round(partsSubtotalPaisa / 100) + (job.laborCharge || 0);
+    const finalCostRupees =
+      Math.round(partsSubtotalPaisa / 100) + (job.laborCharge || 0);
     await prisma.jobCard.update({
       where: { id: job.id },
       data: { finalCost: finalCostRupees },
@@ -1460,7 +1474,10 @@ export class JobCardsService {
     });
 
     for (const invoice of invoices) {
-      if (invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.PARTIALLY_PAID) {
+      if (
+        invoice.status === InvoiceStatus.PAID ||
+        invoice.status === InvoiceStatus.PARTIALLY_PAID
+      ) {
         // [Risk F-03] Avoid voiding paid invoices without explicit refund flow
         throw new BadRequestException(
           `Cannot automatically void invoice ${invoice.invoiceNumber}. The invoice has payments against it. Please reconcile or refund the invoice explicitly before terminating this job.`,

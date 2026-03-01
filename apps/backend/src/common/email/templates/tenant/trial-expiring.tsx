@@ -24,27 +24,31 @@ export const TrialExpiringEmail = ({
   return (
     <EmailLayout module={module} preview="Don’t lose access — 3 days left">
       <EmailSection>
-        <Text style={{ fontSize: '20px', fontWeight: 'bold', color: '#DC2626' }}>
+        <Text
+          style={{ fontSize: '20px', fontWeight: 'bold', color: '#DC2626' }}
+        >
           Don’t lose access — 3 days left
         </Text>
-        <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
-          Hi {name},
-        </Text>
+        <Text style={{ color: '#4b5563', lineHeight: '24px' }}>Hi {name},</Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
           Your free trial ends in 3 days.
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
-          After <strong>{trialEndDate}</strong>, your access to premium features will be paused.
+          After <strong>{trialEndDate}</strong>, your access to premium features
+          will be paused.
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
-          If <strong>{brandName}</strong> has helped streamline your operations, now’s the time to continue without interruption.
+          If <strong>{brandName}</strong> has helped streamline your operations,
+          now’s the time to continue without interruption.
         </Text>
 
         <EmailButton module={module} href={upgradeLink} fullWidth>
           Upgrade Your Plan
         </EmailButton>
 
-        <Text style={{ color: '#4b5563', lineHeight: '24px', marginTop: '24px' }}>
+        <Text
+          style={{ color: '#4b5563', lineHeight: '24px', marginTop: '24px' }}
+        >
           No setup again. No data loss. Everything continues seamlessly.
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>

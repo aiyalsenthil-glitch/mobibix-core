@@ -6,7 +6,7 @@ import { ModuleType } from '@prisma/client';
 
 async function bootstrap() {
   console.log('🚀 Starting Email Service Verification...\n');
-  
+
   const app = await NestFactory.createApplicationContext(AppModule);
   const emailService = app.get(EmailService);
   const prisma = app.get(PrismaService);
@@ -29,39 +29,51 @@ async function bootstrap() {
       type: 'TENANT_WELCOME',
       module: ModuleType.GYM,
       subject: 'Welcome to GymPilot!',
-      data: { tenantName: 'Elite Gym', link: 'https://mobibix.in/dashboard' }
+      data: { tenantName: 'Elite Gym', link: 'https://mobibix.in/dashboard' },
     },
     {
       type: 'TENANT_WELCOME',
       module: ModuleType.MOBILE_SHOP,
       subject: 'Welcome to MobiBix!',
-      data: { tenantName: 'Senthil Mobiles', link: 'https://mobibix.com/dashboard' }
+      data: {
+        tenantName: 'Senthil Mobiles',
+        link: 'https://mobibix.com/dashboard',
+      },
     },
     {
       type: 'TRIAL_EXPIRING',
       module: ModuleType.MOBILE_SHOP,
       subject: 'MobiBix Trial Expiring Soon',
-      data: { name: 'John Doe', trialEndDate: '2026-02-20', upgradeLink: 'https://mobibix.com/billing' }
+      data: {
+        name: 'John Doe',
+        trialEndDate: '2026-02-20',
+        upgradeLink: 'https://mobibix.com/billing',
+      },
     },
     {
       type: 'PAYMENT_FAILED',
       module: ModuleType.GYM,
       subject: 'Action Required: Payment Failed',
-      data: { tenantName: 'Elite Fitness', planName: 'Pro Plan', retryCount: 1, payLink: 'https://mobibix.in/pay' }
+      data: {
+        tenantName: 'Elite Fitness',
+        planName: 'Pro Plan',
+        retryCount: 1,
+        payLink: 'https://mobibix.in/pay',
+      },
     },
     {
       type: 'INVOICE_GENERATED',
       module: ModuleType.MOBILE_SHOP,
       subject: 'Your MobiBix Invoice',
-      data: { 
-        customerName: 'Alice Smith', 
-        invoiceNumber: 'INV-2026-001', 
-        amount: '₹1,500', 
-        storeName: 'Alice Repairs', 
-        invoiceDate: '2026-02-17', 
-        viewLink: 'https://mobibix.com/inv/1' 
-      }
-    }
+      data: {
+        customerName: 'Alice Smith',
+        invoiceNumber: 'INV-2026-001',
+        amount: '₹1,500',
+        storeName: 'Alice Repairs',
+        invoiceDate: '2026-02-17',
+        viewLink: 'https://mobibix.com/inv/1',
+      },
+    },
   ];
 
   for (const test of testCases) {
@@ -75,15 +87,19 @@ async function bootstrap() {
         module: test.module,
         to: testEmail,
         subject: test.subject,
-        data: test.data
+        data: test.data,
       });
       console.log(`✅ Success!\n`);
     } catch (err: any) {
       // Logic for domain verification error explanation
       if (err.message.includes('domain is not verified')) {
         console.warn(`⚠️  NOTICE: ${err.message}`);
-        console.warn(`    Rendering worked, but Resend blocked sending because sender domain is not verified.`);
-        console.warn(`    To fix: Verify your domain in Resend dashboard or use onboarding@resend.dev for testing.`);
+        console.warn(
+          `    Rendering worked, but Resend blocked sending because sender domain is not verified.`,
+        );
+        console.warn(
+          `    To fix: Verify your domain in Resend dashboard or use onboarding@resend.dev for testing.`,
+        );
       } else {
         console.error(`❌ Failed: ${err.message}\n`);
       }
@@ -94,7 +110,7 @@ async function bootstrap() {
   await app.close();
 }
 
-bootstrap().catch(err => {
+bootstrap().catch((err) => {
   console.error('💥 Fatal Error:', err);
   process.exit(1);
 });

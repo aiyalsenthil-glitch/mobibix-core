@@ -115,11 +115,7 @@ export class EmailService {
       const message =
         renderErr instanceof Error ? renderErr.message : 'Unknown render error';
       this.logger.error(`[RENDER FAILED] ${message}`);
-      await this.logResult(
-        options,
-        'FAILED',
-        `Render Error: ${message}`,
-      );
+      await this.logResult(options, 'FAILED', `Render Error: ${message}`);
       return;
     }
 
@@ -146,7 +142,8 @@ export class EmailService {
       await this.logResult(options, 'SENT', null);
       this.logger.log(`[SENT] Email ${emailType} sent to ${to}`);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown email error';
+      const message =
+        err instanceof Error ? err.message : 'Unknown email error';
       this.logger.error(`[FAILED] Email ${emailType} failed: ${message}`);
       await this.logResult(options, 'FAILED', message);
     }
@@ -328,7 +325,7 @@ export class EmailService {
         });
 
       default:
-        this.logger.warn(`Unknown email template type: ${type}`);
+        this.logger.warn(`Unknown email template type: ${String(type)}`);
         return null;
     }
   }

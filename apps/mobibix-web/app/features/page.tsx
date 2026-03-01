@@ -10,6 +10,7 @@ export default function FeaturesPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -104,7 +105,7 @@ export default function FeaturesPage() {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-indigo-500">Retail Excellence.</span>
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground mb-16 max-w-3xl mx-auto leading-relaxed font-bold">
-            MobiBix isn't just a billing app. It's a complete Operating System designed to scale your mobile shop from a local store to a regional powerhouse.
+            MobiBix isn&apos;t just a billing app. It&apos;s a complete Operating System designed to scale your mobile shop from a local store to a regional powerhouse.
           </p>
         </motion.div>
       </section>
@@ -238,7 +239,7 @@ export default function FeaturesPage() {
                 <div className="p-12 rounded-[3.5rem] bg-gradient-to-br from-card to-background border border-border shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full blur-[80px]" />
                     <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 text-foreground relative z-10 italic">Skip the Line. Get It First.</h3>
-                    <p className="text-muted-foreground font-bold mb-8 max-w-xl mx-auto relative z-10">We be releasing this exact feature module to beta users very soon. Enter your shop's WhatsApp number to get priority access.</p>
+                    <p className="text-muted-foreground font-bold mb-8 max-w-xl mx-auto relative z-10">We be releasing this exact feature module to beta users very soon. Enter your shop&apos;s WhatsApp number to get priority access.</p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-xl mx-auto relative z-10">
                         <input type="tel" placeholder="+91 Shop WhatsApp Number" className="w-full sm:w-2/3 px-6 py-4 rounded-2xl border border-border bg-background/50 backdrop-blur-md text-foreground placeholder:text-muted-foreground font-bold focus:outline-none focus:border-green-500/50 transition-colors" />
                         <button className="w-full sm:w-1/3 px-6 py-4 rounded-2xl bg-green-500 text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 shadow-lg shadow-green-500/20 active:scale-95 transition-all">

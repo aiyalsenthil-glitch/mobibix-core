@@ -21,7 +21,6 @@ import {
   UserPlus,
   Clock,
   PhoneCall,
-  Gift,
   Pencil,
   Trash2,
   ChevronLeft,

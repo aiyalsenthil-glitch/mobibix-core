@@ -15,7 +15,11 @@ import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { SkipSubscriptionCheck } from '../../core/auth/decorators/skip-subscription-check.decorator';
 import { Public } from '../../core/auth/decorators/public.decorator';
-import { CreatePartnerDto, ApplyPromoDto, GeneratePromoDto } from './dto/create-partner.dto';
+import {
+  CreatePartnerDto,
+  ApplyPromoDto,
+  GeneratePromoDto,
+} from './dto/create-partner.dto';
 import { UserRole } from '@prisma/client';
 
 @Controller('partners')

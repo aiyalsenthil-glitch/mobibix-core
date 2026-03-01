@@ -57,7 +57,7 @@ export interface SendWhatsAppMessageRequest {
 export interface CreateWhatsAppCampaignRequest {
   name: string;
   templateId: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>;
 }
 
 export interface ScheduleWhatsAppCampaignRequest {
@@ -72,15 +72,15 @@ export interface WhatsAppLog {
   status: string;
   error?: string | null;
   messageId?: string | null;
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, unknown> | null;
   sentAt: string;
 }
 
 export async function getWhatsAppDashboard(): Promise<WhatsAppDashboard> {
   const response = await authenticatedFetch("/user/whatsapp/dashboard");
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to load WhatsApp dashboard");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to load WhatsApp dashboard");
   }
   return extractData(response);
 }
@@ -94,8 +94,8 @@ export async function sendWhatsAppMessage(
   });
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to send WhatsApp message");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to send WhatsApp message");
   }
 
   return extractData(response);
@@ -118,8 +118,8 @@ export async function getPhoneNumbers(
     `/whatsapp/phone-numbers/${tenantId}`,
   );
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch phone numbers");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch phone numbers");
   }
   return extractData(response);
 }
@@ -144,8 +144,8 @@ export async function getWhatsAppLogs(params?: {
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch WhatsApp logs");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch WhatsApp logs");
   }
 
   return extractData(response);
@@ -160,8 +160,8 @@ export async function createWhatsAppCampaign(
   });
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to create campaign");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to create campaign");
   }
 
   return extractData(response);
@@ -180,8 +180,8 @@ export async function scheduleWhatsAppCampaign(
   );
 
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to schedule campaign");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to schedule campaign");
   }
 
   return extractData(response);
@@ -190,8 +190,8 @@ export async function scheduleWhatsAppCampaign(
 export async function getWhatsAppStatus(): Promise<WhatsAppStatus> {
   const response = await authenticatedFetch("/integrations/whatsapp/status");
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch WhatsApp status");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch WhatsApp status");
   }
   return extractData(response);
 }
@@ -207,8 +207,8 @@ export async function manualSyncWhatsApp(
     },
   );
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to perform manual sync");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to perform manual sync");
   }
 }
 
@@ -220,16 +220,16 @@ export async function disconnectWhatsApp(): Promise<void> {
     },
   );
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to disconnect WhatsApp");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to disconnect WhatsApp");
   }
 }
 
 export async function connectWhatsApp(): Promise<{ url: string }> {
   const response = await authenticatedFetch("/integrations/whatsapp/connect");
   if (!response.ok) {
-    const error = await extractData(response);
-    throw new Error(error.message || "Failed to initiate WhatsApp connection");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to initiate WhatsApp connection");
   }
   return extractData(response);
 }

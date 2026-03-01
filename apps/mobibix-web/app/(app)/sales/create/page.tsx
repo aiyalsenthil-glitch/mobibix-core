@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { listProducts, type ShopProduct } from "@/services/products.api";
 import { getStockBalances } from "@/services/stock.api";
-import { createInvoice, type CreateInvoiceDto } from "@/services/sales.api";
+import { createInvoice, type CreateInvoiceDto, type PaymentMode } from "@/services/sales.api";
 import { useShop } from "@/context/ShopContext";
 import { CustomerModal } from "../../customers/CustomerModal";
 import { ProductModal } from "../../products/ProductModal";
@@ -108,7 +108,7 @@ export default function CreateInvoicePage() {
         return { ...p, stockQty, isNegative };
       });
       setProducts(merged);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to load products:", err);
     }
   };
@@ -250,8 +250,8 @@ export default function CreateInvoicePage() {
 
       // Navigate on success
       router.push(`/sales?shopId=${selectedShopId}`);
-    } catch (err: any) {
-      const msg = (err?.message || "Failed to create invoice") as string;
+    } catch (err: unknown) {
+      const msg = (err instanceof Error ? err.message : "Failed to create invoice") as string;
 
       // Handle cost-related errors with product context
       if (
@@ -485,7 +485,7 @@ export default function CreateInvoicePage() {
               {["CASH", "UPI", "CARD", "BANK", "CREDIT"].map((mode) => (
                 <button
                   key={mode}
-                  onClick={() => setPaymentMode(mode as any)}
+                  onClick={() => setPaymentMode(mode as PaymentMode)}
                   className={`px-4 py-3 rounded-2xl text-xs font-semibold tracking-[0.2em] transition border ${
                     paymentMode === mode
                       ? "bg-teal-400 text-white dark:text-slate-900 border-teal-300 shadow-[0_10px_30px_rgba(13,148,136,0.35)]"
@@ -522,7 +522,7 @@ export default function CreateInvoicePage() {
                         value={payment.mode}
                         onChange={(e) => {
                           const newSplits = [...splitPayments];
-                          newSplits[idx].mode = e.target.value as any;
+                          newSplits[idx].mode = e.target.value as PaymentMode;
                           setSplitPayments(newSplits);
                         }}
                         className="px-3 py-2 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-black/40 text-xs text-slate-900 dark:text-white"

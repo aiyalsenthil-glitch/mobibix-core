@@ -30,8 +30,8 @@ export function CrmDashboardWidgets({
       setError(null);
       const data = await getCrmDashboard(preset, shopId);
       setMetrics(data);
-    } catch (err: any) {
-      setError(err.message || "Failed to load CRM dashboard");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to load CRM dashboard");
     } finally {
       setLoading(false);
     }

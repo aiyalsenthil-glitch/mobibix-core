@@ -42,8 +42,8 @@ export default function PartnerApplyPage() {
       }
 
       setSubmitted(true);
-    } catch (err: any) {
-      setError(err.message || "Network error. Please check your connection.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Network error. Please check your connection.");
     } finally {
       setLoading(false);
     }
@@ -97,7 +97,7 @@ export default function PartnerApplyPage() {
               </h1>
               <p className="text-lg text-slate-600 dark:text-slate-400 mt-6 max-w-lg leading-relaxed">
                 Join our network of authorized partners and earn recurring commissions for every shop you bring onto
-                India's fastest-growing mobile ERP.
+                India&apos;s fastest-growing mobile ERP.
               </p>
             </motion.div>
 

@@ -4,12 +4,17 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class PartnerJwtStrategy extends PassportStrategy(Strategy, 'partner-jwt') {
+export class PartnerJwtStrategy extends PassportStrategy(
+  Strategy,
+  'partner-jwt',
+) {
   constructor(private configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('PARTNER_JWT_SECRET') || configService.get<string>('JWT_SECRET')!,
+      secretOrKey:
+        configService.get<string>('PARTNER_JWT_SECRET') ||
+        configService.get<string>('JWT_SECRET')!,
     });
   }
 

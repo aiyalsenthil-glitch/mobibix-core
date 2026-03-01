@@ -64,8 +64,8 @@ export function StockInModal({
 
       onSuccess();
       onOpenChange(false);
-    } catch (err: any) {
-      setError(err.message || "Failed to add stock");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to add stock");
     } finally {
       setIsSubmitting(false);
     }

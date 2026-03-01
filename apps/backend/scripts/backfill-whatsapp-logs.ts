@@ -1,4 +1,3 @@
-
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -14,7 +13,9 @@ async function main() {
     },
   });
 
-  console.log(`Found ${logsWithMissingNumber.length} tenants with logs needing backfill.`);
+  console.log(
+    `Found ${logsWithMissingNumber.length} tenants with logs needing backfill.`,
+  );
 
   for (const group of logsWithMissingNumber) {
     const tenantId = group.tenantId;
@@ -32,7 +33,9 @@ async function main() {
     });
 
     if (!number) {
-      console.warn(`⚠️  No WhatsAppNumber found for tenant ${tenantId}. Skipping logs.`);
+      console.warn(
+        `⚠️  No WhatsAppNumber found for tenant ${tenantId}. Skipping logs.`,
+      );
       continue;
     }
 

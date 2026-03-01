@@ -88,8 +88,8 @@ export function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteStaffModa
       });
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to invite staff");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to invite staff");
     } finally {
       setIsLoading(false);
     }

@@ -74,7 +74,7 @@ export interface TimelineItem {
   description: string;
   customerId: string;
   customerName?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt: string | Date;
 }
 
@@ -122,7 +122,7 @@ export async function getCrmDashboard(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch CRM dashboard");
+    throw new Error((error as any).message || "Failed to fetch CRM dashboard");
   }
 
   return extractData(response);
@@ -148,7 +148,7 @@ export async function getMyFollowUps(options?: {
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch follow-ups");
+    throw new Error((error as any).message || "Failed to fetch follow-ups");
   }
 
   return extractData(response);
@@ -168,7 +168,7 @@ export async function getFollowUpCounts(): Promise<{
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch follow-up counts");
+    throw new Error((error as any).message || "Failed to fetch follow-up counts");
   }
 
   return extractData(response);
@@ -195,7 +195,7 @@ export async function createFollowUp(data: {
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to create follow-up");
+    throw new Error((error as any).message || "Failed to create follow-up");
   }
 
   return extractData(response);
@@ -221,7 +221,7 @@ export async function updateFollowUpStatus(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to update follow-up status");
+    throw new Error((error as any).message || "Failed to update follow-up status");
   }
 
   return extractData(response);
@@ -243,7 +243,7 @@ export async function getCustomerTimeline(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch customer timeline");
+    throw new Error((error as any).message || "Failed to fetch customer timeline");
   }
 
   return extractData(response);
@@ -265,7 +265,7 @@ export async function sendWhatsAppMessage(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to send WhatsApp message");
+    throw new Error((error as any).message || "Failed to send WhatsApp message");
   }
 
   return extractData(response);
@@ -287,7 +287,7 @@ export async function getWhatsAppLogs(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch WhatsApp logs");
+    throw new Error((error as any).message || "Failed to fetch WhatsApp logs");
   }
 
   return extractData(response);

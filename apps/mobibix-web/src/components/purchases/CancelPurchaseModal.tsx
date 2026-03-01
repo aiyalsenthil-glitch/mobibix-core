@@ -33,8 +33,8 @@ export function CancelPurchaseModal({
       await cancelPurchase(purchaseId);
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to cancel purchase");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to cancel purchase");
     } finally {
       setIsSubmitting(false);
     }

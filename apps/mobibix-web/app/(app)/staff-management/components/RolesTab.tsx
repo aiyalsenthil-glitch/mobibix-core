@@ -24,8 +24,8 @@ export default function RolesTab() {
       setError(null);
       const data = await listRoles();
       setRoles(data);
-    } catch (err: any) {
-      setError(err.message || "Failed to load roles.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load roles.");
     } finally {
       setLoading(false);
     }
@@ -36,8 +36,8 @@ export default function RolesTab() {
     try {
       await deleteRole(id);
       fetchRoles();
-    } catch (err: any) {
-      alert(err.message || "Failed to delete role.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to delete role.");
     }
   };
 
@@ -118,7 +118,7 @@ export default function RolesTab() {
           <div className="space-y-3">
             {roles.filter(r => !r.isSystem).length === 0 ? (
               <div className="p-8 text-center border-2 border-dashed border-gray-200 dark:border-stone-800 rounded-2xl text-gray-500 dark:text-stone-500">
-                You haven't created any custom roles.
+                You haven&apos;t created any custom roles.
                 <br />
                 Most businesses never need to!
               </div>

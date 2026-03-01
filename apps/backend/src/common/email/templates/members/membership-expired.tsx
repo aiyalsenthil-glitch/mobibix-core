@@ -24,15 +24,18 @@ export const MembershipExpiredEmail = ({
   return (
     <EmailLayout module={module}>
       <EmailSection>
-        <Text style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626' }}>
+        <Text
+          style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626' }}
+        >
           Membership Expired ⏳
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
           Hi {memberName},
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
-          Your membership at <strong>{gymName}</strong> has expired.
-          We miss you already! Renew now to continue your fitness journey without interruption.
+          Your membership at <strong>{gymName}</strong> has expired. We miss you
+          already! Renew now to continue your fitness journey without
+          interruption.
         </Text>
         <EmailButton module={module} href={renewalLink} fullWidth>
           Renew Membership

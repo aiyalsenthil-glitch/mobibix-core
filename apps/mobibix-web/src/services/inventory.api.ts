@@ -29,7 +29,7 @@ export async function stockIn(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to add stock");
+    throw new Error((error as any).message || "Failed to add stock");
   }
 
   return extractData(response);

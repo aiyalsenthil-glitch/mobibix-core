@@ -83,9 +83,9 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         try {
           const response = await exchangeFirebaseToken(await user.getIdToken());
           setAuthUser(response.user);
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error("Auth exchange error:", err);
-          setError(err.message || "Authentication failed");
+          setError((err as any)?.message || "Authentication failed");
           setFirebaseUser(null);
         }
       } else {
@@ -120,8 +120,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
         // Keep isLoading = true; the hard navigation will tear down this page
         return response as ExchangeTokenResponse;
-      } catch (err: any) {
-        setError(err.message || "Failed to exchange token");
+      } catch (err: unknown) {
+        setError((err as any)?.message || "Failed to exchange token");
         setIsLoading(false);
         throw err;
       }
@@ -188,8 +188,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
       // Force hard redirect to clear all context/state
       window.location.href = "/auth";
-    } catch (err: any) {
-      setError(err.message || "Logout failed");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Logout failed");
     } finally {
       setIsLoading(false);
     }

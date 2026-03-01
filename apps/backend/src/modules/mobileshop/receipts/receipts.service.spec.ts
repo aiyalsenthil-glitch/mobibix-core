@@ -3,6 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { ReceiptsService } from '../../../core/receipts/receipts.service';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { DocumentNumberService } from '../../../common/services/document-number.service';
+import { InvoiceStatus, PaymentMode } from '@prisma/client';
 
 describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', () => {
   let service: ReceiptsService;
@@ -20,8 +21,20 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
     invoiceNumber: 'INV-001',
     amount: 10000,
     paidAmount: 0,
-    status: 'UNPAID',
+    status: InvoiceStatus.UNPAID,
     invoiceDate: new Date('2024-12-01'),
+    customerId: 'cust-123',
+    createdBy: mockUserId,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    dueDate: new Date('2025-01-01'),
+    notes: null,
+    discountAmount: 0,
+    taxAmount: 0,
+    grandTotal: 10000,
+    subTotal: 10000,
+    isTaxInclusive: false,
+    balance: 10000,
   };
 
   beforeEach(async () => {
@@ -58,7 +71,7 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
     it('should create receipt and update invoice payment status to PARTIALLY_PAID', async () => {
       const receiptDto = {
         amount: 5000,
-        paymentMethod: 'CASH',
+        paymentMethod: PaymentMode.CASH,
         linkedInvoiceId: mockInvoiceId,
         receiptType: 'RECEIPT',
         customerName: 'Customer A',
@@ -66,20 +79,24 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
         narration: 'Partial payment',
         customerPhone: null,
         linkedJobId: null,
-      };
+      } as any;
 
       // Mock existing createReceipt
-      const mockReceipt = { ...receiptDto, id: 'receipt-1', amount: 500000 };
+      const mockReceipt = {
+        ...receiptDto,
+        id: 'receipt-1',
+        amount: 500000,
+      };
       jest.spyOn(service, 'createReceipt').mockResolvedValueOnce(mockReceipt);
 
       jest
         .spyOn(prisma.invoice, 'findUnique')
-        .mockResolvedValueOnce(mockInvoice);
+        .mockResolvedValueOnce(mockInvoice as any);
 
       // Mock transaction
       jest
         .spyOn(prisma, '$transaction')
-        .mockImplementation(async (callback) => {
+        .mockImplementation(async (callback: any) => {
           return callback(prisma);
         });
 
@@ -101,7 +118,7 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
     it('should prevent over-collection (receipt > outstanding)', async () => {
       const receiptDto = {
         amount: 15000, // Exceeds outstanding (10000)
-        paymentMethod: 'CASH',
+        paymentMethod: PaymentMode.CASH,
         linkedInvoiceId: mockInvoiceId,
         receiptType: 'RECEIPT',
         customerName: 'Customer A',
@@ -109,17 +126,17 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
         narration: 'Over-collection attempt',
         customerPhone: null,
         linkedJobId: null,
-      };
+      } as any;
 
-      jest.spyOn(service, 'createReceipt').mockResolvedValueOnce({});
+      jest.spyOn(service, 'createReceipt').mockResolvedValueOnce({} as any);
 
       jest
         .spyOn(prisma.invoice, 'findUnique')
-        .mockResolvedValueOnce(mockInvoice);
+        .mockResolvedValueOnce(mockInvoice as any);
 
       jest
         .spyOn(prisma, '$transaction')
-        .mockImplementation(async (callback) => {
+        .mockImplementation(async (callback: any) => {
           await expect(() => callback(prisma)).rejects.toThrow(
             BadRequestException,
           );
@@ -145,7 +162,7 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
     it('should transition invoice from UNPAID to PARTIALLY_PAID', async () => {
       const receiptDto = {
         amount: 5000,
-        paymentMethod: 'CASH',
+        paymentMethod: PaymentMode.CASH,
         linkedInvoiceId: mockInvoiceId,
         receiptType: 'RECEIPT',
         customerName: 'Customer A',
@@ -153,28 +170,28 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
         narration: 'Partial payment',
         customerPhone: null,
         linkedJobId: null,
-      };
+      } as any;
 
-      jest.spyOn(service, 'createReceipt').mockResolvedValueOnce({});
+      jest.spyOn(service, 'createReceipt').mockResolvedValueOnce({} as any);
       jest
         .spyOn(prisma.invoice, 'findUnique')
-        .mockResolvedValueOnce(mockInvoice);
+        .mockResolvedValueOnce(mockInvoice as any);
 
       const invoiceUpdateData = {
         paidAmount: 500000, // 5000 in paisa
-        status: 'PARTIALLY_PAID',
+        status: InvoiceStatus.PARTIALLY_PAID,
       };
 
       jest
         .spyOn(prisma, '$transaction')
-        .mockImplementation(async (callback) => {
+        .mockImplementation(async (callback: any) => {
           const mockTx = {
             invoice: {
-              findUnique: jest.fn().mockResolvedValueOnce(mockInvoice),
+              findUnique: jest.fn().mockResolvedValueOnce(mockInvoice as any),
               update: jest.fn().mockResolvedValueOnce({
                 ...mockInvoice,
                 ...invoiceUpdateData,
-              }),
+              } as any),
             },
           };
           return callback(mockTx);
@@ -195,12 +212,12 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
       const partialInvoice = {
         ...mockInvoice,
         paidAmount: 5000,
-        status: 'PARTIALLY_PAID',
+        status: InvoiceStatus.PARTIALLY_PAID,
       };
 
       const receiptDto = {
         amount: 5000, // Final payment to complete invoice
-        paymentMethod: 'CASH',
+        paymentMethod: PaymentMode.CASH,
         linkedInvoiceId: mockInvoiceId,
         receiptType: 'RECEIPT',
         customerName: 'Customer A',
@@ -208,24 +225,26 @@ describe('ReceiptsService - Tier-2 Hardening (createReceiptWithInvoiceUpdate)', 
         narration: 'Final payment',
         customerPhone: null,
         linkedJobId: null,
-      };
+      } as any;
 
-      jest.spyOn(service, 'createReceipt').mockResolvedValueOnce({});
+      jest.spyOn(service, 'createReceipt').mockResolvedValueOnce({} as any);
       jest
         .spyOn(prisma.invoice, 'findUnique')
-        .mockResolvedValueOnce(partialInvoice);
+        .mockResolvedValueOnce(partialInvoice as any);
 
       jest
         .spyOn(prisma, '$transaction')
-        .mockImplementation(async (callback) => {
+        .mockImplementation(async (callback: any) => {
           const mockTx = {
             invoice: {
-              findUnique: jest.fn().mockResolvedValueOnce(partialInvoice),
+              findUnique: jest
+                .fn()
+                .mockResolvedValueOnce(partialInvoice as any),
               update: jest.fn().mockResolvedValueOnce({
                 ...partialInvoice,
                 paidAmount: 10000,
-                status: 'PAID',
-              }),
+                status: InvoiceStatus.PAID,
+              } as any),
             },
           };
           return callback(mockTx);

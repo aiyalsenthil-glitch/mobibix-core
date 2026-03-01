@@ -5,7 +5,7 @@ import { approvalEventTarget } from "@/lib/events/approval.events";
 import { PERMISSION_DICTIONARY } from "@/lib/permissions.dict";
 
 export function GlobalApprovalInterceptor() {
-  const [request, setRequest] = useState<{ action: string; params: any; resolve: Function; reject: Function } | null>(null);
+  const [request, setRequest] = useState<{ action: string; params: Record<string, unknown>; resolve: () => void; reject: (reason?: any) => void } | null>(null);
   const [managerPin, setManagerPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,8 +55,8 @@ export function GlobalApprovalInterceptor() {
       // Success! Resolve the intercepted promise
       request.resolve();
       setRequest(null);
-    } catch (err: any) {
-      setError(err.message || "Approval failed");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Approval failed");
     } finally {
       setLoading(false);
     }

@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const code = 'RG-MB-01';
-  
+
   const existing = await prisma.promoCode.findUnique({
     where: { code },
   });

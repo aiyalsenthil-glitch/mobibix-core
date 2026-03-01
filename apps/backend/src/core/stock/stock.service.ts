@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ProductType, IMEIStatus } from '@prisma/client';
+import { ProductType, IMEIStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { StockInDto } from '../inventory/dto/stock-in.dto';
 import {
@@ -215,12 +215,11 @@ export class StockService {
 
     if (nonSerializedIds.length > 0 && !allowNegativeBulk) {
       // Postgres Read-Committed Phantom Insert Lock:
-      // Since stock is an append-only ledger and NOT a scalar field on ShopProduct, 
-      // we CANNOT enforce stock limits via `updateMany`. We MUST exclusively lock the product 
+      // Since stock is an append-only ledger and NOT a scalar field on ShopProduct,
+      // we CANNOT enforce stock limits via `updateMany`. We MUST exclusively lock the product
       // rows before SUMming the ledger to serialize concurrent parallel checkouts.
       if (nonSerializedIds.length > 0) {
-        const idList = nonSerializedIds.map(id => `'${id}'`).join(',');
-        await prisma.$executeRawUnsafe(`SELECT id FROM "mb_shop_product" WHERE "id" IN (${idList}) FOR UPDATE`);
+        await prisma.$executeRaw`SELECT id FROM "mb_shop_product" WHERE "id" IN (${Prisma.join(nonSerializedIds)}) FOR UPDATE`;
       }
 
       const aggregates = await prisma.stockLedger.groupBy({

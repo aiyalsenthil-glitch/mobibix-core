@@ -7,6 +7,8 @@ import {
   updateInvoice,
   type SalesInvoice,
   type PaymentMode,
+  type CreateInvoiceDto,
+  type InvoiceItemDetail,
 } from "@/services/sales.api";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -57,7 +59,7 @@ export default function EditInvoicePage() {
   >([{ mode: "CASH", amount: 0 }]);
   const [invoiceDate, setInvoiceDate] = useState("");
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
-  const [editableItems, setEditableItems] = useState<any[]>([]);
+  const [editableItems, setEditableItems] = useState<InvoiceItemDetail[]>([]);
 
   // Load invoice
   useEffect(() => {
@@ -97,16 +99,13 @@ export default function EditInvoicePage() {
         }
 
         // Initialize payment methods
-        // Initialize payment methods
-        const invoiceData = data as any;
+        const invoiceData = data;
         if (
-          invoiceData.paymentMethods &&
-          invoiceData.paymentMethods.length > 0
+          invoiceData.payments &&
+          invoiceData.payments.length > 0
         ) {
-          setPaymentMethods(invoiceData.paymentMethods);
-        } else if (invoiceData.payments && invoiceData.payments.length > 0) {
           setPaymentMethods(
-            invoiceData.payments.map((p: any) => ({
+            invoiceData.payments.map((p) => ({
               mode: p.method,
               amount: p.amount,
             })),
@@ -119,8 +118,8 @@ export default function EditInvoicePage() {
 
         // Initialize items
         setEditableItems(data.items || []);
-      } catch (err: any) {
-        setError(err.message || "Failed to load invoice");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load invoice");
       } finally {
         setLoading(false);
       }
@@ -226,10 +225,10 @@ export default function EditInvoicePage() {
         })),
       };
 
-      await updateInvoice(invoiceId, payload as any);
+      await updateInvoice(invoiceId, payload as unknown as CreateInvoiceDto);
       router.push(`/sales?shopId=${shopId}`);
-    } catch (err: any) {
-      const msg = (err?.message || "Failed to save invoice") as string;
+    } catch (err: unknown) {
+      const msg = (err instanceof Error ? err.message : "Failed to save invoice") as string;
       if (msg.includes("Insufficient stock")) {
         setError("Insufficient stock. Please add purchase or reduce quantity.");
       } else if (msg.includes("Serialized products require IMEI")) {
@@ -527,7 +526,15 @@ export default function EditInvoicePage() {
           gstEnabled={selectedShop?.gstEnabled || false}
           onClose={() => setIsItemModalOpen(false)}
           onAdd={async (newItem) => {
-            setEditableItems([...editableItems, newItem]);
+            const detail: InvoiceItemDetail = {
+              shopProductId: newItem.shopProductId,
+              quantity: newItem.quantity,
+              rate: newItem.rate,
+              gstRate: newItem.gstRate,
+              gstAmount: newItem.gstAmount,
+              lineTotal: newItem.rate * newItem.quantity + (newItem.gstAmount || 0),
+            };
+            setEditableItems([...editableItems, detail]);
           }}
         />
       </div>

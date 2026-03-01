@@ -87,8 +87,8 @@ export function InvoiceSimple({ data }: { data: PrintDocumentData }) {
                             <div className="w-20 border-r border-black py-1 text-center">{item.hsn || '-'}</div>
                             <div className="w-16 border-r border-black py-1 text-center">{item.qty}</div>
                             <div className="w-20 border-r border-black py-1 text-center">{item.rate.toFixed(2)}</div>
-                            <div className="w-16 border-r border-black py-1 text-center">{(item as any).discount || '-'}</div>
-                            <div className="w-20 border-r border-black py-1 text-right px-1">{(item.total * 0.82).toFixed(2)}</div> {/* Approx taxable simulation if simplified */}
+                            <div className="w-16 border-r border-black py-1 text-center">{item.discount || '-'}</div>
+                            <div className="w-20 border-r border-black py-1 text-right px-1">{(item.taxableValue || item.total * 0.82).toFixed(2)}</div>
                             <div className="w-12 border-r border-black py-1 text-center">{item.taxRate}%</div>
                             <div className="w-24 py-1 text-right px-1 font-bold">{item.total.toFixed(2)}</div>
                         </div>
@@ -105,9 +105,9 @@ export function InvoiceSimple({ data }: { data: PrintDocumentData }) {
                         </div>
                         <div className="text-[10px] mt-4">
                              <div className="font-bold underline">Bank Details</div>
-                             <div>Bank Name: {(config as any)?.bankName || 'HDFC Bank'}</div>
-                             <div>A/c No: {(config as any)?.accountNumber || '1234567890'}</div>
-                             <div>IFSC: {(config as any)?.ifscCode || 'HDFC0001234'}</div>
+                             <div>Bank Name: {config.bankName || 'HDFC Bank'}</div>
+                             <div>A/c No: {config.accountNumber || '1234567890'}</div>
+                             <div>IFSC: {config.ifscCode || 'HDFC0001234'}</div>
                         </div>
                     </div>
                     <div className="w-[40%] text-sm">

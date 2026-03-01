@@ -57,10 +57,11 @@ export default function CreateJobCardPage() {
     if (shop) {
       const targetType = shop.gstEnabled ? "WITH_GST" : "WITHOUT_GST";
       if (formData.billType !== targetType) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setFormData((prev) => ({ ...prev, billType: targetType }));
       }
     }
-  }, [shop?.gstEnabled]);
+  }, [shop, formData.billType]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -114,8 +115,8 @@ export default function CreateJobCardPage() {
     try {
       await createJobCard(selectedShopId, payload);
       router.push("/jobcards");
-    } catch (err: any) {
-      setError(err.message || "Failed to save job card");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save job card");
       setIsSubmitting(false);
     }
   };

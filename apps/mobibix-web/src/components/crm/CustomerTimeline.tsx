@@ -38,8 +38,8 @@ export function CustomerTimeline({
       const source = selectedSource === "ALL" ? undefined : selectedSource;
       const response = await getCustomerTimeline(customerId, source);
       setItems(response.items);
-    } catch (err: any) {
-      setError(err.message || "Failed to load timeline");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load timeline");
     } finally {
       setLoading(false);
     }

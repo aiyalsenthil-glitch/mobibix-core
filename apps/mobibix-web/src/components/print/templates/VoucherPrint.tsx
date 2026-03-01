@@ -55,7 +55,7 @@ export function VoucherPrint({ data }: { data: PrintDocumentData }) {
             {meta["Narration"] && (
                 <div className="border-t border-slate-200 mt-6 pt-4">
                      <p className="text-xs font-bold text-slate-400 uppercase mb-1">Narration / Notes</p>
-                     <p className="text-sm text-slate-700 italic">"{meta["Narration"]}"</p>
+                     <p className="text-sm text-slate-700 italic">&quot;{meta["Narration"]}&quot;</p>
                 </div>
             )}
         </div>
@@ -66,7 +66,7 @@ export function VoucherPrint({ data }: { data: PrintDocumentData }) {
            <div className="text-xs text-slate-400 max-w-xs">
                <div className="h-16 mb-2"></div>
                <div className="border-t border-slate-300 pt-1 w-32">
-                   <p className="text-xs font-bold text-slate-900">Receiver's Signature</p>
+                   <p className="text-xs font-bold text-slate-900">Receiver&apos;s Signature</p>
                </div>
            </div>
 

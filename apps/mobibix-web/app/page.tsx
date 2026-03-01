@@ -1,4 +1,5 @@
 import { HeroSlidesClient } from "../components/landing/HeroSlidesClient";
+import { WhatsAppWidget } from "../components/landing/WhatsAppWidget";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -50,6 +51,7 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <HeroSlidesClient />
+      <WhatsAppWidget />
     </>
   );
 }

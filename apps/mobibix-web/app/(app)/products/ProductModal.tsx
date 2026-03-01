@@ -24,7 +24,7 @@ enum ModalStep {
   STOCK_INIT = "STOCK_INIT",
 }
 
-const GST_OPTIONS = [0, 5, 12, 18, 28];
+// const GST_OPTIONS = [0, 5, 12, 18, 28];
 
 export function ProductModal({
   shopId,
@@ -63,7 +63,8 @@ export function ProductModal({
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >,
   ) => {
-    let { name, value } = e.target;
+    const { name, value: _value } = e.target;
+    let value = _value;
 
     // Prevent leading whitespace for specific text fields
     if (["name", "category"].includes(name)) {
@@ -89,7 +90,7 @@ export function ProductModal({
         const results = await searchHsn(searchTerm);
         setHsnResults(results);
         setShowHsnDropdown(true);
-      } catch (err) {
+      } catch (_err) {
         console.warn("HSN search unavailable, using manual entry");
         setShowHsnDropdown(false);
       }
@@ -147,10 +148,10 @@ export function ProductModal({
             imeis: formData.isSerialized ? imeis : undefined,
             type: formData.type,
           });
-        } catch (stockErr: any) {
+        } catch (stockErr: unknown) {
           console.error("Stock in failed:", stockErr);
           alert(
-            `Product created, but stock initialization failed: ${stockErr.message}`,
+            `Product created, but stock initialization failed: ${stockErr instanceof Error ? stockErr.message : "Unknown error"}`,
           );
         }
       }
@@ -165,8 +166,8 @@ export function ProductModal({
       setCreatedProduct(productWithStock);
       onProductCreated?.(productWithStock);
       setStep(ModalStep.SUCCESS_CHOICE);
-    } catch (err: any) {
-      alert(err.message || "Failed to create product");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to create product");
     } finally {
       setIsSubmitting(false);
     }
@@ -644,7 +645,7 @@ export function ProductModal({
                     />
                     <p className="text-[10px] mt-1 text-gray-500 italic">
                       Note: Initial stock setup is typically for opening
-                      balance. For ongoing inventory, use "New Purchase" for
+                      balance. For ongoing inventory, use &quot;New Purchase&quot; for
                       proper accounting.
                     </p>
                   </div>

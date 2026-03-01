@@ -1,4 +1,12 @@
-import { Controller, Post, Body, UnauthorizedException, UseGuards, Get, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UnauthorizedException,
+  UseGuards,
+  Get,
+  Request,
+} from '@nestjs/common';
 import { PartnerAuthService } from './partner-auth.service';
 import { PartnerJwtGuard } from './guards/partner-jwt.guard';
 
@@ -8,9 +16,14 @@ export class PartnerAuthController {
 
   @Post('login')
   async login(@Body() body: { email: string; pass: string }) {
-    const partner = await this.authService.validatePartner(body.email, body.pass);
+    const partner = await this.authService.validatePartner(
+      body.email,
+      body.pass,
+    );
     if (!partner) {
-      throw new UnauthorizedException('Invalid email, password or application not approved');
+      throw new UnauthorizedException(
+        'Invalid email, password or application not approved',
+      );
     }
     return this.authService.login(partner);
   }

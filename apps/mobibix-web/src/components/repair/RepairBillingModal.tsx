@@ -126,7 +126,7 @@ export function RepairBillingModal({
                     <label className="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Billing Mode</label>
                     <select 
                         value={billingMode}
-                        onChange={(e) => setBillingMode(e.target.value as any)}
+                        onChange={(e) => setBillingMode(e.target.value as "WITH_GST" | "WITHOUT_GST")}
                         className="w-full p-2 border border-slate-200 dark:border-white/10 rounded bg-white dark:bg-black/20 text-slate-900 dark:text-white"
                     >
                         <option value="WITHOUT_GST">Estimate / Non-GST</option>
@@ -256,6 +256,7 @@ export function RepairBillingModal({
                   customerId={job.customerId}
                   balance={loyaltyBalance}
                   invoiceSubTotal={(partsTotal + serviceTotal) * 100} // Paisa
+                  shopId={shopId}
                   onRedemptionChange={setPointsRedeemed}
                   onDiscountChange={setLoyaltyDiscountPaise}
                 />

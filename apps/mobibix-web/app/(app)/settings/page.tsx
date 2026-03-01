@@ -8,6 +8,7 @@ import { getLoyaltyConfig, LoyaltyConfig } from "@/services/loyalty.api";
 import DowngradeBlockerModal from "./DowngradeBlockerModal";
 import { Check, AlertCircle, Loader2, Zap, Shield, Crown, CreditCard, RefreshCw, Gift } from "lucide-react";
 import { LoyaltySettings } from "@/components/loyalty/LoyaltySettings";
+import { useShop } from "@/context/ShopContext";
 
 import { PaymentHistory } from "@/components/billing/PaymentHistory";
 
@@ -52,6 +53,7 @@ const PLAN_MARKETING_FEATURES: Record<string, string[]> = {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { selectedShopId } = useShop();
   const [activeTab, setActiveTab] = useState<"SUBSCRIPTION" | "BILLING" | "LOYALTY">("SUBSCRIPTION");
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null);
   const [loyaltyConfig, setLoyaltyConfig] = useState<LoyaltyConfig | null>(null);
@@ -71,14 +73,12 @@ export default function SettingsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [subData, plansData, loyaltyData] = await Promise.all([
+      const [subData, plansData] = await Promise.all([
         getSubscription(),
         getAvailablePlans(),
-        getLoyaltyConfig(),
       ]);
       setSubscription(subData.current);
       setPlans(plansData);
-      setLoyaltyConfig(loyaltyData);
       
       // smart default: if current is manual and autoRenew is false, maybe default to MANUAL?
       // But we prefer AUTOPAY. Keep default AUTOPAY.
@@ -95,7 +95,28 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadData();
+    
+    // Check for tab in URL
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    if (tab === "loyalty") {
+      setActiveTab("LOYALTY");
+    } else if (tab === "billing") {
+      setActiveTab("BILLING");
+    }
   }, []);
+
+  useEffect(() => {
+    const loadLoyalty = async () => {
+      try {
+        const config = await getLoyaltyConfig(selectedShopId);
+        setLoyaltyConfig(config);
+      } catch (err) {
+        console.error("Failed to load loyalty config", err);
+      }
+    };
+    loadLoyalty();
+  }, [selectedShopId]);
 
   const handleAutoRenewToggle = async () => {
     if (!subscription) return;

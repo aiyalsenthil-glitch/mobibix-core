@@ -71,7 +71,7 @@ export default function ReceivablesAgingPage() {
            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
              <p className="text-sm text-blue-800">
                💡 <strong>Aging Analysis:</strong> Oldest receivables should be prioritized for collection.
-               Amounts in the "90+ Days" bucket are at higher risk of becoming bad debts.
+               Amounts in the &quot;90+ Days&quot; bucket are at higher risk of becoming bad debts.
              </p>
            </div>
         </div>

@@ -16,8 +16,8 @@ export function StaffList() {
       const data = await listStaff();
       setStaffList(data);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || "Failed to load staff list");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to load staff list");
     } finally {
       setIsLoading(false);
     }
@@ -33,8 +33,8 @@ export function StaffList() {
     try {
       await removeStaff(staffId, status);
       fetchStaff(); // Refresh list
-    } catch (err: any) {
-      alert(err.message || "Failed to remove staff");
+    } catch (err: unknown) {
+      alert((err as any)?.message || "Failed to remove staff");
     }
   };
 

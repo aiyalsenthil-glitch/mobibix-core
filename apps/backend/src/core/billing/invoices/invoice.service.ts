@@ -156,7 +156,9 @@ export class InvoiceService {
             if (payment.tenant.contactEmail) {
               try {
                 // We generate the PDF buffer to attach it to the email
-                const pdfBuffer = await this.generatePDF(invoice.id) as Buffer;
+                const pdfBuffer = (await this.generatePDF(
+                  invoice.id,
+                )) as Buffer;
 
                 await this.emailService.send({
                   tenantId: payment.tenant.id,
@@ -178,7 +180,7 @@ export class InvoiceService {
                     },
                   ],
                 });
-                
+
                 // Mark as sent
                 await tx.subscriptionInvoice.update({
                   where: { id: invoice.id },
@@ -188,7 +190,10 @@ export class InvoiceService {
                   },
                 });
               } catch (emailErr) {
-                this.logger.error(`Failed to send invoice email to ${payment.tenant.contactEmail}`, emailErr);
+                this.logger.error(
+                  `Failed to send invoice email to ${payment.tenant.contactEmail}`,
+                  emailErr,
+                );
               }
             }
 
@@ -228,7 +233,10 @@ export class InvoiceService {
    * If a stream is provided, it writes to the stream and resolves when done.
    * If no stream is provided, it resolves with a Buffer.
    */
-  async generatePDF(invoiceId: string, outputStream?: import('stream').Writable): Promise<Buffer | void> {
+  async generatePDF(
+    invoiceId: string,
+    outputStream?: import('stream').Writable,
+  ): Promise<Buffer | void> {
     const invoice = await this.prisma.subscriptionInvoice.findUnique({
       where: { id: invoiceId },
       include: {
@@ -275,7 +283,11 @@ export class InvoiceService {
       doc
         .fontSize(10)
         .text(`Invoice #: ${invoice.invoiceNumber}`, 400, 45)
-        .text(`Date: ${invoice.invoiceDate.toLocaleDateString('en-IN')}`, 400, 60)
+        .text(
+          `Date: ${invoice.invoiceDate.toLocaleDateString('en-IN')}`,
+          400,
+          60,
+        )
         .text(`SAC Code: 998314 (IT/Digital Services)`, 400, 75);
 
       // QR Code Placeholder (IRN)

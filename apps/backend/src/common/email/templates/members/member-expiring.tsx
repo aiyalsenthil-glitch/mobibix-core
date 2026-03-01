@@ -20,38 +20,46 @@ export const MemberExpiringEmail = ({
   expiryDate,
   renewLink,
 }: MemberExpiringEmailProps) => {
-    // Guard: Only for GYM
-    if (module !== 'GYM') return null;
+  // Guard: Only for GYM
+  if (module !== 'GYM') return null;
 
   return (
     <EmailLayout module={module} preview="Your membership ends soon">
       <EmailSection>
-        <Text style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }}>
+        <Text
+          style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }}
+        >
           Your membership ends soon
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
           Hi {memberName},
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
-          Just a reminder — your membership at <strong>{gymName}</strong> expires on <strong>{expiryDate}</strong>.
+          Just a reminder — your membership at <strong>{gymName}</strong>{' '}
+          expires on <strong>{expiryDate}</strong>.
         </Text>
-        <Text style={{ color: '#4b5563', lineHeight: '24px', fontWeight: 'bold' }}>
+        <Text
+          style={{ color: '#4b5563', lineHeight: '24px', fontWeight: 'bold' }}
+        >
           Don’t break your momentum 💪
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
           Renew today to continue enjoying:
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
-          • Full access to facilities<br />
-          • Ongoing progress tracking<br />
-          • Member benefits
+          • Full access to facilities
+          <br />
+          • Ongoing progress tracking
+          <br />• Member benefits
         </Text>
-        
+
         <EmailButton module={module} href={renewLink} fullWidth>
           Renew Now
         </EmailButton>
 
-        <Text style={{ color: '#4b5563', lineHeight: '24px', marginTop: '24px' }}>
+        <Text
+          style={{ color: '#4b5563', lineHeight: '24px', marginTop: '24px' }}
+        >
           We look forward to seeing you at the gym!
         </Text>
       </EmailSection>

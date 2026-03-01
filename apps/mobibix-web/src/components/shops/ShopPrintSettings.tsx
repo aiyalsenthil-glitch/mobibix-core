@@ -189,9 +189,9 @@ export function ShopPrintSettings({ shop, onUpdate }: ShopPrintSettingsProps) {
           terms: ["Goods once sold cannot be taken back.", "Warranty valid for 3 months on parts."],
           text: shop.invoiceFooter || "Thank you for your business!"
       }
-    } as any;
+    };
 
-    let Component: any = InvoiceClassic;
+    let Component: React.ComponentType<{ data: PrintDocumentData }> = InvoiceClassic;
 
     if (previewMode === "INVOICE") {
       switch (settings.invoiceTemplate) {
@@ -304,9 +304,9 @@ export function ShopPrintSettings({ shop, onUpdate }: ShopPrintSettingsProps) {
       
       setLocalLogoUrl(downloadURL); // We need this state.
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Upload failed:", error);
-      alert(`Upload failed: ${error.message}`);
+      alert(`Upload failed: ${(error as any)?.message || "Unknown error"}`);
     } finally {
       setIsUploading(false);
     }
@@ -328,8 +328,8 @@ export function ShopPrintSettings({ shop, onUpdate }: ShopPrintSettingsProps) {
       
       alert("Print settings saved!");
       if (onUpdate) onUpdate();
-    } catch (error: any) {
-      alert(error.message || "Failed to save");
+    } catch (error: unknown) {
+      alert((error as any)?.message || "Failed to save");
     } finally {
       setIsLoading(false);
     }

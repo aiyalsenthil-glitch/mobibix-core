@@ -85,8 +85,8 @@ export function WhatsAppNumberProvider({
       }
 
       setSelectedNumberIdState("ALL");
-    } catch (err: any) {
-      setError(err?.message || "Failed to load WhatsApp numbers");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to load WhatsApp numbers");
       setNumbers([]);
     } finally {
       setIsLoading(false);

@@ -7,7 +7,7 @@ export default function MemberComingSoon() {
         <p className="text-sm text-teal-300">Member Area</p>
         <h1 className="text-3xl font-bold">Dashboard coming soon</h1>
         <p className="text-gray-400">
-          We're building a focused experience for members.
+          We&apos;re building a focused experience for members.
         </p>
       </div>
     </div>

@@ -23,17 +23,22 @@ export const PaymentSuccessEmail = ({
   return (
     <EmailLayout module={module}>
       <EmailSection>
-        <Text style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }}>
+        <Text
+          style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }}
+        >
           Payment Received 🧾
         </Text>
+        <Text style={{ color: '#4b5563', lineHeight: '24px' }}>Hi {name},</Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
-          Hi {name},
+          We received a payment of <strong>{amount}</strong> on {date}. Thank
+          you for your continued business.
         </Text>
-        <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
-          We received a payment of <strong>{amount}</strong> on {date}.
-          Thank you for your continued business.
-        </Text>
-        <EmailButton module={module} href={invoiceLink} fullWidth variant="secondary">
+        <EmailButton
+          module={module}
+          href={invoiceLink}
+          fullWidth
+          variant="secondary"
+        >
           Download Invoice
         </EmailButton>
       </EmailSection>

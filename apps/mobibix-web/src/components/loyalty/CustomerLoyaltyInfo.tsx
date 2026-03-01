@@ -6,11 +6,13 @@ import { useTheme } from "@/context/ThemeContext";
 
 interface CustomerLoyaltyInfoProps {
   customerId: string | undefined;
+  shopId?: string;
   isLoading?: boolean;
 }
 
 export function CustomerLoyaltyInfo({
   customerId,
+  shopId,
   isLoading: externalLoading = false,
 }: CustomerLoyaltyInfoProps) {
   const { theme } = useTheme();
@@ -30,7 +32,7 @@ export function CustomerLoyaltyInfo({
       setIsLoading(true);
       setError(null);
       try {
-        const result = await getCustomerLoyaltyBalance(customerId);
+        const result = await getCustomerLoyaltyBalance(customerId, shopId);
         setBalance(result);
       } catch (err) {
         console.error("Failed to fetch loyalty balance:", err);
@@ -44,7 +46,7 @@ export function CustomerLoyaltyInfo({
     // Debounce the fetch by 300ms to avoid too many requests
     const timer = setTimeout(fetchBalance, 300);
     return () => clearTimeout(timer);
-  }, [customerId]);
+  }, [customerId, shopId]);
 
   // If no customer selected, don't show anything
   if (!customerId) {

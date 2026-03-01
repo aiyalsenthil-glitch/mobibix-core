@@ -75,7 +75,7 @@ export async function createReceipt(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to create receipt");
+    throw new Error((error as any).message || "Failed to create receipt");
   }
 
   return extractData(response);
@@ -155,7 +155,7 @@ export async function cancelReceipt(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to cancel receipt");
+    throw new Error((error as any).message || "Failed to cancel receipt");
   }
 
   return extractData(response);

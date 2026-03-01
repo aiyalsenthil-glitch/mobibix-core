@@ -15,6 +15,7 @@ function StaffManagementContent() {
   
   // Wait until mounted to prevent hydration errors with search params
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 

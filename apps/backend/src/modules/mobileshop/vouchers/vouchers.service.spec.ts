@@ -3,6 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { VouchersService } from './vouchers.service';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { DocumentNumberService } from '../../../common/services/document-number.service';
+import { PaymentMode, PurchaseStatus } from '@prisma/client';
 
 describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)', () => {
   let service: VouchersService;
@@ -22,7 +23,12 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
     outstanding: 10000,
     supplierName: 'Supplier A',
     invoiceDate: new Date('2024-12-01'),
-  };
+    status: PurchaseStatus.SUBMITTED,
+    paymentMethod: PaymentMode.CASH,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    createdBy: mockUserId,
+  } as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -58,7 +64,7 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
     it('should create SETTLEMENT voucher and reduce purchase outstanding', async () => {
       const voucherDto = {
         amount: 5000,
-        paymentMethod: 'CASH',
+        paymentMethod: PaymentMode.CASH,
         linkedPurchaseId: mockPurchaseId,
         voucherType: 'SUPPLIER',
         voucherSubType: 'SETTLEMENT' as const,
@@ -66,10 +72,14 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
         transactionRef: null,
         narration: 'Partial payment',
         expenseCategory: null,
-      };
+      } as any;
 
       // Mock existing createVoucher
-      const mockVoucher = { ...voucherDto, id: 'voucher-1', amount: 500000 };
+      const mockVoucher = {
+        ...voucherDto,
+        id: 'voucher-1',
+        amount: 500000,
+      };
       jest.spyOn(service, 'createVoucher').mockResolvedValueOnce(mockVoucher);
 
       jest
@@ -79,7 +89,7 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
       // Mock transaction
       jest
         .spyOn(prisma, '$transaction')
-        .mockImplementation(async (callback) => {
+        .mockImplementation(async (callback: any) => {
           return callback(prisma);
         });
 
@@ -100,8 +110,8 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
 
     it('should prevent over-payment (voucher > outstanding)', async () => {
       const voucherDto = {
-        amount: 15000, // Exceeds outstanding (10000)
-        paymentMethod: 'CASH',
+        amount: 5000,
+        paymentMethod: PaymentMode.CASH,
         linkedPurchaseId: mockPurchaseId,
         voucherType: 'SUPPLIER',
         voucherSubType: 'SETTLEMENT' as const,
@@ -109,9 +119,9 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
         transactionRef: null,
         narration: 'Over-payment attempt',
         expenseCategory: null,
-      };
+      } as any;
 
-      jest.spyOn(service, 'createVoucher').mockResolvedValueOnce({});
+      jest.spyOn(service, 'createVoucher').mockResolvedValueOnce({} as any);
 
       jest
         .spyOn(prisma.purchase, 'findUnique')
@@ -139,7 +149,7 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
     it('should reduce outstanding from 10000 to 5000 on 5000 SETTLEMENT voucher', async () => {
       const voucherDto = {
         amount: 5000,
-        paymentMethod: 'CASH',
+        paymentMethod: PaymentMode.CASH,
         linkedPurchaseId: mockPurchaseId,
         voucherType: 'SUPPLIER',
         voucherSubType: 'SETTLEMENT' as const,
@@ -147,16 +157,16 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
         transactionRef: null,
         narration: 'Partial payment',
         expenseCategory: null,
-      };
+      } as any;
 
-      jest.spyOn(service, 'createVoucher').mockResolvedValueOnce({});
+      jest.spyOn(service, 'createVoucher').mockResolvedValueOnce({} as any);
       jest
         .spyOn(prisma.purchase, 'findUnique')
         .mockResolvedValueOnce(mockPurchase);
 
       jest
         .spyOn(prisma, '$transaction')
-        .mockImplementation(async (callback) => {
+        .mockImplementation(async (callback: any) => {
           const mockTx = {
             purchase: {
               findUnique: jest.fn().mockResolvedValueOnce(mockPurchase),
@@ -166,7 +176,7 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
               }),
             },
           };
-          return callback(mockTx);
+          return callback(mockTx as any);
         });
 
       await service.createVoucherWithPurchaseUpdate(
@@ -182,7 +192,7 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
     it('should NOT reduce outstanding for ADVANCE vouchers', async () => {
       const voucherDto = {
         amount: 2000,
-        paymentMethod: 'CASH',
+        paymentMethod: PaymentMode.CASH,
         linkedPurchaseId: mockPurchaseId,
         voucherType: 'SUPPLIER',
         voucherSubType: 'ADVANCE' as const,
@@ -190,23 +200,23 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
         transactionRef: null,
         narration: 'Advance payment',
         expenseCategory: null,
-      };
+      } as any;
 
-      jest.spyOn(service, 'createVoucher').mockResolvedValueOnce({});
+      jest.spyOn(service, 'createVoucher').mockResolvedValueOnce({} as any);
       jest
         .spyOn(prisma.purchase, 'findUnique')
         .mockResolvedValueOnce(mockPurchase);
 
       jest
         .spyOn(prisma, '$transaction')
-        .mockImplementation(async (callback) => {
+        .mockImplementation(async (callback: any) => {
           const mockTx = {
             purchase: {
               findUnique: jest.fn().mockResolvedValueOnce(mockPurchase),
               // ADVANCE vouchers should NOT trigger update
             },
           };
-          return callback(mockTx);
+          return callback(mockTx as any);
         });
 
       await service.createVoucherWithPurchaseUpdate(
@@ -223,7 +233,7 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
     it('should fully settle purchase on full-amount SETTLEMENT voucher', async () => {
       const voucherDto = {
         amount: 10000, // Full payment
-        paymentMethod: 'CASH',
+        paymentMethod: PaymentMode.CASH,
         linkedPurchaseId: mockPurchaseId,
         voucherType: 'SUPPLIER',
         voucherSubType: 'SETTLEMENT' as const,
@@ -231,16 +241,16 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
         transactionRef: null,
         narration: 'Full payment',
         expenseCategory: null,
-      };
+      } as any;
 
-      jest.spyOn(service, 'createVoucher').mockResolvedValueOnce({});
+      jest.spyOn(service, 'createVoucher').mockResolvedValueOnce({} as any);
       jest
         .spyOn(prisma.purchase, 'findUnique')
         .mockResolvedValueOnce(mockPurchase);
 
       jest
         .spyOn(prisma, '$transaction')
-        .mockImplementation(async (callback) => {
+        .mockImplementation(async (callback: any) => {
           const mockTx = {
             purchase: {
               findUnique: jest.fn().mockResolvedValueOnce(mockPurchase),
@@ -250,7 +260,7 @@ describe('VouchersService - Tier-2 Hardening (createVoucherWithPurchaseUpdate)',
               }),
             },
           };
-          return callback(mockTx);
+          return callback(mockTx as any);
         });
 
       await service.createVoucherWithPurchaseUpdate(

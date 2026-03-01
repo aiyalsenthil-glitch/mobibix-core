@@ -112,7 +112,7 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
         const productsData = await listProducts(shopId);
         const productsArray = Array.isArray(productsData)
           ? productsData
-          : (productsData as any).data || [];
+          : (productsData as { data: ShopProduct[] }).data || [];
         setProducts(productsArray);
       } catch (err) {
         console.error("Failed to load products:", err);
@@ -180,12 +180,12 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
 
   // Update item field
   const updateItem = useCallback(
-    (tempId: string, field: keyof ItemRow, value: any) => {
+    (tempId: string, field: keyof ItemRow, value: string | number) => {
       setItems(
         items.map((item) => {
           if (item.tempId !== tempId) return item;
 
-          const updated = { ...item, [field]: value };
+          const updated: ItemRow = { ...item, [field]: value };
 
           // If product changed, populate product name and HSN code
           if (field === "shopProductId") {
@@ -309,9 +309,9 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
       if (onSuccess) {
         onSuccess(result.id);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to create invoice:", err);
-      setErrors([err.message || "Failed to create invoice"]);
+      setErrors([err instanceof Error ? err.message : "Failed to create invoice"]);
     } finally {
       setIsSubmitting(false);
     }
@@ -493,7 +493,7 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
           {shop.gstEnabled === false ? (
             <div className="rounded-lg bg-amber-50 border border-amber-200 p-4">
               <p className="text-amber-800 font-medium">
-                ℹ️ This shop doesn't have GST enabled
+                ℹ️ This shop doesn&apos;t have GST enabled
               </p>
               <p className="text-amber-700 text-sm mt-1">
                 All invoices will be created without GST
@@ -526,12 +526,13 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-medium text-gray-900">Loyalty Points</h3>
-          <CustomerLoyaltyInfo customerId={customerId} />
+          <CustomerLoyaltyInfo customerId={customerId} shopId={shopId} />
         </div>
         <LoyaltyRedemptionInput
           customerId={customerId}
           balance={loyaltyBalance}
           invoiceSubTotal={invoiceTotals.subtotal}
+          shopId={shopId}
           onRedemptionChange={setLoyaltyPointsToRedeem}
           onDiscountChange={setLoyaltyDiscountPaise}
         />
@@ -560,7 +561,7 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
         {items.length === 0 ? (
           <div className="rounded-lg border-2 border-dashed border-gray-300 p-8 text-center text-gray-500">
             <p>No items added yet</p>
-            <p className="text-sm">Click "Add Item" to start</p>
+            <p className="text-sm">Click &quot;Add Item&quot; to start</p>
           </div>
         ) : (
           <div className="space-y-3 overflow-x-auto">
@@ -690,7 +691,7 @@ function ItemRowComponent({
 }: {
   item: ItemRow;
   products: ShopProduct[];
-  onUpdate: (tempId: string, field: keyof ItemRow, value: any) => void;
+  onUpdate: (tempId: string, field: keyof ItemRow, value: string | number) => void;
   onRemove: (tempId: string) => void;
   isGstApplicable: boolean;
 }) {

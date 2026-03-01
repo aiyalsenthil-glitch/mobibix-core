@@ -8,6 +8,7 @@ import {
   LoyaltyTransaction 
 } from "@/services/loyalty.api";
 import { MetricCard } from "@/components/dashboard/MetricCard";
+import { useShop } from "@/context/ShopContext";
 import { 
   Gift, 
   ArrowUpRight, 
@@ -32,6 +33,7 @@ import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function LoyaltyDashboardPage() {
+  const { selectedShopId } = useShop();
   const [summary, setSummary] = useState<LoyaltySummary | null>(null);
   const [transactions, setTransactions] = useState<LoyaltyTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,8 +43,8 @@ export default function LoyaltyDashboardPage() {
       try {
         setLoading(true);
         const [summaryData, historyData] = await Promise.all([
-          getLoyaltySummary(),
-          getAllLoyaltyTransactions()
+          getLoyaltySummary(undefined, undefined, selectedShopId),
+          getAllLoyaltyTransactions(selectedShopId)
         ]);
         setSummary(summaryData);
         setTransactions(historyData);
@@ -53,7 +55,7 @@ export default function LoyaltyDashboardPage() {
       }
     }
     loadData();
-  }, []);
+  }, [selectedShopId]);
 
   return (
     <div className="space-y-8 pb-10">

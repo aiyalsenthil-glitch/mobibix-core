@@ -52,7 +52,7 @@ export function ReceiptPrint({ data }: { data: PrintDocumentData }) {
             {meta["Narration"] && (
                 <div className="border-t border-slate-200 mt-6 pt-4">
                      <p className="text-xs font-bold text-slate-400 uppercase mb-1">Narration / Notes</p>
-                     <p className="text-sm text-slate-700 italic">"{meta["Narration"]}"</p>
+                     <p className="text-sm text-slate-700 italic">&quot;{meta["Narration"]}&quot;</p>
                 </div>
             )}
         </div>

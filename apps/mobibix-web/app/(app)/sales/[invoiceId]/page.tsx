@@ -74,8 +74,8 @@ export default function InvoiceDetailPage() {
       setActionLoading(true);
       await addItemToInvoice(invoice.id, item);
       await reload();
-    } catch (e: any) {
-      alert(e.message || "Failed to add item");
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Failed to add item");
     } finally {
       setActionLoading(false);
     }
@@ -443,8 +443,8 @@ export default function InvoiceDetailPage() {
                   <td
                     className={`px-6 py-3 font-medium ${theme === "dark" ? "text-white" : "text-gray-900"}`}
                   >
-                    {(item as any).product?.name ||
-                      (item as any).itemName ||
+                    {item.product?.name ||
+                      item.itemName ||
                       "Item"}
                   </td>
                   <td
@@ -480,11 +480,11 @@ export default function InvoiceDetailPage() {
                                 await import("@/services/sales.api");
                               const newItems = (invoice.items ?? [])
                                 .filter((_, i) => i !== index)
-                                .map((i: any) => ({
+                                .map((i) => ({
                                   shopProductId: i.shopProductId,
                                   quantity: i.quantity,
                                   rate: i.rate,
-                                  gstRate: i.gstRate,
+                                  gstRate: i.gstRate || 0,
                                   gstAmount: i.gstAmount,
                                 }));
 
@@ -492,12 +492,12 @@ export default function InvoiceDetailPage() {
                                 shopId: invoice.shopId,
                                 items: newItems,
                                 customerName: invoice.customerName ?? "",
-                                paymentMode: invoice.paymentMode as any, // Preserve
+                                paymentMode: invoice.paymentMode,
                                 pricesIncludeTax: true,
                               });
                               reload();
-                            } catch (e: any) {
-                              alert(e.message || "Failed to remove");
+                            } catch (e: unknown) {
+                              alert(e instanceof Error ? e.message : "Failed to remove");
                             }
                           }
                         }}

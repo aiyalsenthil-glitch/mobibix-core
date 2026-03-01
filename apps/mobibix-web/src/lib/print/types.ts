@@ -65,6 +65,9 @@ export interface PrintDocumentData {
     isB2B: boolean;
     accentColor?: string;
     isIndianGSTInvoice?: boolean;
+    bankName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
   };
 }
 
@@ -76,6 +79,7 @@ export interface PrintLineItem {
   qty: number;
   rate: number; // Unit Price
   unit?: string;
+  discount?: number; // Added discount field
   
   // Tax details per line (already calculated)
   taxableValue?: number;

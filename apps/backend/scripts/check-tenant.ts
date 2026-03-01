@@ -12,23 +12,33 @@ async function main() {
       subscription: {
         include: {
           plan: true,
-          addons: { include: { addonPlan: true } }
-        }
-      }
-    }
+          addons: { include: { addonPlan: true } },
+        },
+      },
+    },
   });
 
   if (!tenant) return console.log('Tenant not found');
-  
+
   console.log(`\nTenant: ${tenant.name} (${tenant.id})`);
-  console.log(`Type: ${tenant.tenantType}, CRM Enabled: ${tenant.whatsappCrmEnabled}`);
-  
-  tenant.subscription.forEach(sub => {
+  console.log(
+    `Type: ${tenant.tenantType}, CRM Enabled: ${tenant.whatsappCrmEnabled}`,
+  );
+
+  tenant.subscription.forEach((sub) => {
     console.log(`\nSub ID: ${sub.id}`);
-    console.log(`Module: ${sub.module}, Plan: ${sub.plan.name}, Status: ${sub.status}`);
-    console.log(`Period: ${sub.startDate.toISOString()} -> ${sub.endDate.toISOString()}`);
-    console.log(`Addons: ${sub.addons.map(a => a.addonPlan.name).join(', ') || 'None'}`);
+    console.log(
+      `Module: ${sub.module}, Plan: ${sub.plan.name}, Status: ${sub.status}`,
+    );
+    console.log(
+      `Period: ${sub.startDate.toISOString()} -> ${sub.endDate.toISOString()}`,
+    );
+    console.log(
+      `Addons: ${sub.addons.map((a) => a.addonPlan.name).join(', ') || 'None'}`,
+    );
   });
 }
 
-main().catch(console.error).finally(() => prisma.$disconnect());
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());

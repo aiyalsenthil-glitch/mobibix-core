@@ -1,4 +1,6 @@
 import { authenticatedFetch, extractData } from "./auth.api";
+import { type Receipt } from "./receipts.api";
+import { type SalesInvoice } from "./sales.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -56,6 +58,7 @@ export interface JobCard {
 
   createdAt: Date | string;
   updatedAt: Date | string;
+  deliveredAt?: Date | string;
 
   invoices?: {
     id: string;
@@ -154,10 +157,10 @@ export async function listJobCards(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch job cards");
+    throw new Error((error as any).message || "Failed to fetch job cards");
   }
 
-  const data = await extractData(response);
+  const data: any = await extractData(response);
   // Backend returns { jobCards: [...], empty: false }
   return data.jobCards || [];
 }
@@ -175,7 +178,7 @@ export async function getJobCard(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to fetch job card");
+    throw new Error((error as any).message || "Failed to fetch job card");
   }
 
   return extractData(response);
@@ -198,7 +201,7 @@ export async function createJobCard(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to create job card");
+    throw new Error((error as any).message || "Failed to create job card");
   }
 
   return extractData(response);
@@ -222,7 +225,7 @@ export async function updateJobCard(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to update job card");
+    throw new Error((error as any).message || "Failed to update job card");
   }
 
   return extractData(response);
@@ -247,7 +250,7 @@ export async function updateJobCardStatus(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to update status");
+    throw new Error((error as any).message || "Failed to update status");
   }
 
   return extractData(response);
@@ -269,7 +272,7 @@ export async function reopenJobCard(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to reopen job");
+    throw new Error((error as any).message || "Failed to reopen job");
   }
 
   return extractData(response);
@@ -294,7 +297,7 @@ export async function addJobCardPart(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to add part");
+    throw new Error((error as any).message || "Failed to add part");
   }
 }
 
@@ -315,7 +318,7 @@ export async function removeJobCardPart(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to remove part");
+    throw new Error((error as any).message || "Failed to remove part");
   }
 }
 
@@ -335,7 +338,7 @@ export async function deleteJobCard(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to delete job card");
+    throw new Error((error as any).message || "Failed to delete job card");
   }
 }
 /**
@@ -354,7 +357,7 @@ export async function createWarrantyJob(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to create warranty job");
+    throw new Error((error as any).message || "Failed to create warranty job");
   }
 
 
@@ -369,7 +372,7 @@ export async function addJobCardAdvance(
   jobCardId: string,
   amount: number,
   mode: string
-): Promise<{ job: JobCard; receipt: any }> {
+): Promise<{ job: JobCard; receipt: Receipt }> {
   const response = await authenticatedFetch(
     `/mobileshop/shops/${shopId}/job-cards/${jobCardId}/advance`,
     {
@@ -380,7 +383,7 @@ export async function addJobCardAdvance(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to add advance");
+    throw new Error((error as any).message || "Failed to add advance");
   }
 
   return extractData(response);
@@ -405,7 +408,7 @@ export async function refundJobCardAdvance(
 
   if (!response.ok) {
     const error = await extractData(response);
-    throw new Error(error.message || "Failed to refund advance");
+    throw new Error((error as any).message || "Failed to refund advance");
   }
 
   return extractData(response);
@@ -433,7 +436,7 @@ export async function generateRepairBill(
   shopId: string,
   jobCardId: string,
   data: RepairBillDto
-): Promise<any> {
+): Promise<SalesInvoice> {
     // Note: The backend controller is @Controller('mobileshop/repairs')
     // Post(':jobCardId/bill') -> /mobileshop/repairs/:jobCardId/bill
     const response = await authenticatedFetch(
@@ -446,7 +449,7 @@ export async function generateRepairBill(
 
     if (!response.ok) {
         const error = await extractData(response);
-        throw new Error(error.message || "Failed to generate bill");
+        throw new Error((error as any).message || "Failed to generate bill");
     }
 
     return extractData(response);

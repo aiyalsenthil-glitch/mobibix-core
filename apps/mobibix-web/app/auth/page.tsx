@@ -67,13 +67,18 @@ export default function AuthPage({ mode }: AuthPageProps) {
       const result = await signInWithPopup(auth, googleProvider);
       const response = await exchangeToken(result.user);
       // Keep loading = true; hard navigation in exchangeToken will tear down this page
-    } catch (err: any) {
+    } catch (err: unknown) {
+      if (!(err instanceof Error)) {
+        setError("An unexpected error occurred");
+        setLoading(false);
+        return;
+      }
       // Backend error code for blocked unverified emails
       if (err.message === "EMAIL_NOT_VERIFIED") {
         setFirebaseUser(auth.currentUser);
         setStep("VERIFY");
-      } else if (err?.code !== "auth/popup-closed-by-user") {
-        const msg = err.code === 'auth/invalid-credential'
+      } else if ((err as any)?.code !== "auth/popup-closed-by-user") {
+        const msg = (err as any).code === 'auth/invalid-credential'
           ? "Invalid login credentials. Please try again."
           : (err.message || "Failed to sign in with Google");
         setError(msg);
@@ -115,8 +120,13 @@ export default function AuthPage({ mode }: AuthPageProps) {
       // Exchange token (backend enforces email verification)
       const response = await exchangeToken(result.user);
       // Keep loading = true; hard navigation in exchangeToken will tear down this page
-    } catch (err: any) {
-      if (err.code === 'auth/user-not-found') {
+    } catch (err: unknown) {
+      if (!(err instanceof Error)) {
+        setError("An unexpected error occurred");
+        setLoading(false);
+        return;
+      }
+      if ((err as any).code === 'auth/user-not-found') {
         setError("Account not found. Create one?");
         setStep("SIGNUP_PASS");
         setLoading(false);
@@ -129,10 +139,11 @@ export default function AuthPage({ mode }: AuthPageProps) {
       } else {
          // Granular Firebase error handling
          let msg = err.message || "Invalid credentials";
+         const errorCode = (err as any).code;
          
-         if (err.code === 'auth/unauthorized-domain') {
+         if (errorCode === 'auth/unauthorized-domain') {
            msg = "This domain is not authorized in Firebase. Check Firebase Console > Auth > Settings.";
-         } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+         } else if (errorCode === 'auth/invalid-credential' || errorCode === 'auth/wrong-password') {
            msg = "Invalid email or password. Please try again.";
          }
          
@@ -167,14 +178,20 @@ export default function AuthPage({ mode }: AuthPageProps) {
       setFirebaseUser(res.user);
       setStep("VERIFY");
       setLoading(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      if (!(err instanceof Error)) {
+        setError("Signup failed");
+        setLoading(false);
+        return;
+      }
       let msg = err.message || "Signup failed";
       
-      if (err.code === 'auth/unauthorized-domain') {
+      const errorCode = (err as any).code;
+      if (errorCode === 'auth/unauthorized-domain') {
         msg = "This domain is not authorized in Firebase. Check Firebase Console > Auth > Settings.";
-      } else if (err.code === 'auth/email-already-in-use') {
+      } else if (errorCode === 'auth/email-already-in-use') {
         msg = "This email is already registered. Try signing in instead.";
-      } else if (err.code === 'auth/weak-password') {
+      } else if (errorCode === 'auth/weak-password') {
         msg = "Password is too weak. Please use a stronger password.";
       }
       
@@ -195,8 +212,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
         setError("Email not verified yet. Please check your inbox.");
         setLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Verification failed");
       setLoading(false);
     }
   };
@@ -206,8 +223,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
     try {
       await sendVerificationEmail(REMOVED_AUTH_PROVIDERUser);
       setError("Verification email sent!"); // using error state for success msg temporarily
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to resend email");
     }
   };
 
@@ -224,8 +241,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
       await requestPasswordReset(normalizedEmail);
       setStep("FORGOT_PASS");
       setError("Reset link sent!");
-    } catch (err: any) {
-      setError(err.message || "Failed to send reset link");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to send reset link");
     } finally {
       setLoading(false);
     }
@@ -309,7 +326,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
                   <p className="text-sm text-zinc-500">
                     {intendedMode === "signin" ? (
                       <>
-                        Don't have an account?{" "}
+                        Don&apos;t have an account?{" "}
                         <button 
                           onClick={() => setIntendedMode("signup")}
                           className="text-emerald-500 font-bold hover:text-emerald-400 underline decoration-emerald-500/30 underline-offset-4"
@@ -458,7 +475,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
                     disabled={loading}
                     className="w-full py-4 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20"
                   >
-                    {loading ? <Loader2 className="animate-spin w-5 h-5" /> : "I've Verified My Email"}
+                    {loading ? <Loader2 className="animate-spin w-5 h-5" /> : "I&apos;ve Verified My Email"}
                   </button>
                   
                   <button onClick={resendEmail} className="text-xs text-zinc-400 dark:text-zinc-600 hover:text-zinc-900 dark:hover:text-zinc-400 underline">
@@ -476,7 +493,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
                
                 <div className="space-y-2">
                  <h3 className="text-zinc-900 dark:text-white font-bold text-lg">Reset Link Sent</h3>
-                 <p className="text-zinc-500 text-sm">We've sent a password reset link to <br/><span className="text-zinc-900 dark:text-zinc-300 font-medium">{email}</span></p>
+                 <p className="text-zinc-500 text-sm">We&apos;ve sent a password reset link to <br/><span className="text-zinc-900 dark:text-zinc-300 font-medium">{email}</span></p>
                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Please check your spam folder too</p>
                </div>
 

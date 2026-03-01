@@ -65,8 +65,8 @@ export function AddFollowUpModal({
       onSuccess?.();
       onClose();
       resetForm();
-    } catch (err: any) {
-      setError(err.message || "Failed to create follow-up");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create follow-up");
     } finally {
       setLoading(false);
     }

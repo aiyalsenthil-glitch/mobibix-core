@@ -10,7 +10,7 @@ interface MembershipRenewalSuccessEmailProps {
   memberName: string;
   gymName: string;
   expiryDate: string;
-  renewalLink: string; 
+  renewalLink: string;
 }
 
 export const MembershipRenewalSuccessEmail = ({
@@ -20,13 +20,15 @@ export const MembershipRenewalSuccessEmail = ({
   expiryDate,
   renewalLink,
 }: MembershipRenewalSuccessEmailProps) => {
-    // Guard: Only for GYM
-    if (module !== 'GYM') return null;
+  // Guard: Only for GYM
+  if (module !== 'GYM') return null;
 
   return (
     <EmailLayout module={module}>
       <EmailSection>
-        <Text style={{ fontSize: '20px', fontWeight: 'bold', color: '#16A34A' }}>
+        <Text
+          style={{ fontSize: '20px', fontWeight: 'bold', color: '#16A34A' }}
+        >
           Membership Renewed! 🎉
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
@@ -39,7 +41,12 @@ export const MembershipRenewalSuccessEmail = ({
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
           Keep crushing your goals! 💪
         </Text>
-        <EmailButton module={module} href={renewalLink} fullWidth variant="secondary">
+        <EmailButton
+          module={module}
+          href={renewalLink}
+          fullWidth
+          variant="secondary"
+        >
           View Membership
         </EmailButton>
       </EmailSection>

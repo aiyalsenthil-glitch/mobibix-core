@@ -8,6 +8,7 @@ import { PurchasesService } from './purchases.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StockService } from '../../core/stock/stock.service';
 import { PartiesService } from '../parties/parties.service';
+import { PaymentMode, PurchaseStatus } from '@prisma/client';
 
 describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
   let service: PurchasesService;
@@ -20,50 +21,75 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
   const mockPurchase = {
     id: mockPurchaseId,
     tenantId: mockTenantId,
-    status: 'DRAFT',
+    shopId: 'shop-123',
+    status: PurchaseStatus.DRAFT,
     invoiceNumber: 'PUR-001',
+    globalSupplierId: null,
     supplierName: 'Supplier A',
     supplierGstin: '12AABCU9603R1Z5',
     amount: 10000,
+    subTotal: 8200,
     cgst: 900,
     sgst: 900,
     igst: 0,
     totalGst: 1800,
     invoiceDate: new Date('2025-08-20'),
+    dueDate: null,
     isLegacyGstApproximation: false,
     outstanding: 10000,
-    items: [
-      {
-        id: 'item-1',
-        purchaseId: mockPurchaseId,
-        itemName: 'Item 1',
-        quantity: 10,
-        purchasePrice: 100,
-        hsnCode: '8701',
-        cgstRate: 9,
-        sgstRate: 9,
-        igstRate: 0,
-        cgstAmount: 90,
-        sgstAmount: 90,
-        igstAmount: 0,
-      },
-    ],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    supplierId: 'supplier-123',
+    createdBy: mockUserId,
+    // Add other missing Prisma fields as needed (null/default)
+    notes: null,
+    currency: 'INR',
+    isPaid: false,
+    paidAmount: 0,
+    discountAmount: 0,
+    shippingAmount: 0,
+    otherCharges: 0,
+    roundOff: 0,
+    isTaxInclusive: false,
+    itcEligible: true,
+    grandTotal: 10000,
+    paymentMethod: PaymentMode.CASH,
+    paymentReference: null,
+    cashAmount: 10000,
+    bankAmount: 0,
+    upiAmount: 0,
+    cardAmount: 0,
+    referenceId: null,
+    referenceType: null,
+    purchaseType: 'GST',
+    taxInclusive: false,
+    gstApproximationReason: null,
+    verifiedByUserId: null,
+    verifiedAt: null,
   };
 
   const mockItems = [
     {
       id: 'item-1',
       purchaseId: mockPurchaseId,
+      shopProductId: 'prod-123',
       itemName: 'Item 1',
+      description: 'Test Item',
       quantity: 10,
       purchasePrice: 100,
+      totalAmount: 1000,
+      taxAmount: 180,
       hsnCode: '8701',
-      cgstRate: 9,
-      sgstRate: 9,
-      igstRate: 0,
+      hsnSac: '8701',
+      gstRate: 18,
+      cgstRate: 9 as any, // Decimal type mismatch in mock
+      sgstRate: 9 as any,
+      igstRate: 0 as any,
       cgstAmount: 90,
       sgstAmount: 90,
       igstAmount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
   ];
 
@@ -138,7 +164,10 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
     });
 
     it('should reject submission if purchase not in DRAFT status', async () => {
-      const submittedPurchase = { ...mockPurchase, status: 'SUBMITTED' };
+      const submittedPurchase = {
+        ...mockPurchase,
+        status: PurchaseStatus.SUBMITTED,
+      };
       jest
         .spyOn(prisma.purchase, 'findUnique')
         .mockResolvedValueOnce(submittedPurchase);

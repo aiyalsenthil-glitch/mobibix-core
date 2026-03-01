@@ -12,12 +12,12 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
       <InvoiceHeader data={data} />
 
       {/* Inclusive/Exclusive Notices */}
-      {(config as any).isIndianGSTInvoice && config.pricesInclusive && (
+      {config.isIndianGSTInvoice && config.pricesInclusive && (
         <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-2 rounded text-sm print:bg-gray-100 print:text-black print:border-gray-300">
             <strong>Note:</strong> All prices are inclusive of GST
         </div>
       )}
-      {(config as any).isIndianGSTInvoice && !config.pricesInclusive && (
+      {config.isIndianGSTInvoice && !config.pricesInclusive && (
         <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded text-sm print:bg-gray-100 print:text-black print:border-gray-300">
             <strong>Note:</strong> GST will be added to the base price. Final amount may not be a round figure.
         </div>
@@ -64,13 +64,13 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
             <tr className="border-b-2" style={{ borderColor: accentColor }}>
               <th className="py-2 text-left text-xs font-bold text-slate-500 uppercase w-12">#</th>
               <th className="py-2 text-left text-xs font-bold text-slate-500 uppercase">Item Description</th>
-              {(config as any).isIndianGSTInvoice && <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-24">HSN</th>}
+              {config.isIndianGSTInvoice && <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-24">HSN</th>}
               <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-16">Qty</th>
               <th className="py-2 text-right text-xs font-bold text-slate-500 uppercase w-28">
                   Rate
-                  {config.pricesInclusive && (config as any).isIndianGSTInvoice && <span className="block text-[8px] text-slate-400 font-normal">(Incl. Tax)</span>}
+                  {config.pricesInclusive && config.isIndianGSTInvoice && <span className="block text-[8px] text-slate-400 font-normal">(Incl. Tax)</span>}
               </th>
-              {(config as any).isIndianGSTInvoice && <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-20">Tax %</th>}
+              {config.isIndianGSTInvoice && <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-20">Tax %</th>}
               <th className="py-2 text-right text-xs font-bold text-slate-500 uppercase w-32">Total</th>
             </tr>
           </thead>
@@ -83,10 +83,10 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
                   {item.name}
                   {item.description && <div className="text-xs text-slate-400 font-normal">{item.description}</div>}
                 </td>
-                {(config as any).isIndianGSTInvoice && <td className="py-2 text-sm text-center text-slate-500">{item.hsn}</td>}
+                {config.isIndianGSTInvoice && <td className="py-2 text-sm text-center text-slate-500">{item.hsn}</td>}
                 <td className="py-2 text-sm text-center text-slate-900">{item.qty}</td>
                 <td className="py-2 text-sm text-right text-slate-900">₹{item.rate.toFixed(2)}</td>
-                {(config as any).isIndianGSTInvoice && <td className="py-2 text-sm text-center text-slate-500">{item.taxRate}%</td>}
+                {config.isIndianGSTInvoice && <td className="py-2 text-sm text-center text-slate-500">{item.taxRate}%</td>}
                 <td className="py-2 text-sm text-right font-bold text-slate-900">₹{item.total.toFixed(2)}</td>
               </tr>
             ))
