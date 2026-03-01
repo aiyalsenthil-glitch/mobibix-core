@@ -67,7 +67,11 @@ export class LoyaltyService {
   /**
    * Update loyalty configuration (Admin only)
    */
-  async updateConfig(tenantId: string, shopId: string | undefined, data: Partial<LoyaltyConfig>) {
+  async updateConfig(
+    tenantId: string,
+    shopId: string | undefined,
+    data: Partial<LoyaltyConfig>,
+  ) {
     const existing = await this.prisma.loyaltyConfig.findFirst({
       where: { tenantId, shopId: shopId || null },
     });
@@ -160,7 +164,10 @@ export class LoyaltyService {
    */
   async calculateEarnedPoints(
     tenantId: string,
-    invoice: Pick<Invoice, 'subTotal' | 'invoiceType' | 'customerId' | 'shopId'>,
+    invoice: Pick<
+      Invoice,
+      'subTotal' | 'invoiceType' | 'customerId' | 'shopId'
+    >,
   ): Promise<number> {
     // 1. Get config
     const config = await this.getConfig(tenantId, invoice.shopId || undefined);
@@ -464,7 +471,12 @@ export class LoyaltyService {
   /**
    * Get loyalty statistics for a tenant
    */
-  async getTenantStats(tenantId: string, startDate: Date, endDate: Date, shopId?: string) {
+  async getTenantStats(
+    tenantId: string,
+    startDate: Date,
+    endDate: Date,
+    shopId?: string,
+  ) {
     const [issued, redeemed, activeCustomers] = await Promise.all([
       // Points issued
       this.prisma.loyaltyTransaction.aggregate({

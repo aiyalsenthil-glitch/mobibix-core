@@ -1,4 +1,3 @@
-
 const dotenv = require('dotenv');
 dotenv.config();
 
@@ -80,36 +79,35 @@ async function main() {
     // Need a plan first? Assume TRIAL plan exists from seed. if not create one.
     let plan = await prisma.plan.findFirst({ where: { code: 'TRIAL' } });
     if (!plan) {
-         plan = await prisma.plan.findFirst(); // Fallback to any plan
+      plan = await prisma.plan.findFirst(); // Fallback to any plan
     }
     if (!plan) {
-        throw new Error("No plan found to subscribe to.");
+      throw new Error('No plan found to subscribe to.');
     }
 
     await prisma.tenantSubscription.upsert({
-        where: { 
-            tenantId_module: {
-                tenantId: tenant.id,
-                module: 'MOBILE_SHOP'
-            }
-        }, 
-        update: { status: 'ACTIVE', endDate: new Date(2100, 0, 1) },
-        create: {
-            tenantId: tenant.id,
-            planId: plan.id,
-            module: 'MOBILE_SHOP',
-            status: 'ACTIVE',
-            startDate: new Date(),
-            endDate: new Date(2100, 0, 1),
-            billingCycle: 'MONTHLY'
-        }
+      where: {
+        tenantId_module: {
+          tenantId: tenant.id,
+          module: 'MOBILE_SHOP',
+        },
+      },
+      update: { status: 'ACTIVE', endDate: new Date(2100, 0, 1) },
+      create: {
+        tenantId: tenant.id,
+        planId: plan.id,
+        module: 'MOBILE_SHOP',
+        status: 'ACTIVE',
+        startDate: new Date(),
+        endDate: new Date(2100, 0, 1),
+        billingCycle: 'MONTHLY',
+      },
     });
 
     console.log('✅ Created Test User:', user.email);
     console.log('✅ Tenant:', tenant.id);
     console.log('✅ Shop:', shop.id);
     console.log('🔑 Firebase UID:', user.REMOVED_AUTH_PROVIDERUid);
-
   } catch (e) {
     console.error(e);
   } finally {

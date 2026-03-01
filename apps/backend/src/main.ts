@@ -250,4 +250,7 @@ async function bootstrap() {
   console.log(`🚀 GymPilot API running on port ${port}`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Failed to boot application:', err);
+  process.exit(1);
+});

@@ -20,13 +20,18 @@ export const JobcardCreatedEmail = ({
   storeName,
   trackingLink,
 }: JobcardCreatedEmailProps) => {
-    // Guard: Only for MOBILE_SHOP
-    if (module !== 'MOBILE_SHOP') return null;
+  // Guard: Only for MOBILE_SHOP
+  if (module !== 'MOBILE_SHOP') return null;
 
   return (
-    <EmailLayout module={module} preview={`Service request received — ${jobcardNumber}`}>
+    <EmailLayout
+      module={module}
+      preview={`Service request received — ${jobcardNumber}`}
+    >
       <EmailSection>
-        <Text style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }}>
+        <Text
+          style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }}
+        >
           Service request received — {jobcardNumber}
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
@@ -39,14 +44,16 @@ export const JobcardCreatedEmail = ({
           <strong>Jobcard Number:</strong> {jobcardNumber}
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
-           You can track the progress anytime here:
+          You can track the progress anytime here:
         </Text>
-        
+
         <EmailButton module={module} href={trackingLink} fullWidth>
           Track Service Status
         </EmailButton>
 
-        <Text style={{ color: '#4b5563', lineHeight: '24px', marginTop: '24px' }}>
+        <Text
+          style={{ color: '#4b5563', lineHeight: '24px', marginTop: '24px' }}
+        >
           We’ll notify you as soon as it’s ready.
         </Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>

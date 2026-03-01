@@ -11,7 +11,7 @@ async function main() {
     },
     _count: {
       _all: true,
-    }
+    },
   });
 
   const output = {
@@ -21,9 +21,9 @@ async function main() {
       orderBy: { createdAt: 'desc' },
     }),
     customers: await prisma.party.findMany({
-      where: { id: { in: counts.map(c => c.customerId) } },
-      select: { id: true, name: true }
-    })
+      where: { id: { in: counts.map((c) => c.customerId) } },
+      select: { id: true, name: true },
+    }),
   };
 
   fs.writeFileSync('loyalty-diag.json', JSON.stringify(output, null, 2));

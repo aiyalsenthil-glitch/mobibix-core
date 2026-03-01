@@ -12,12 +12,14 @@ async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn', 'log'],
   });
-  
+
   const args = process.argv.slice(2);
   const jobName = args[0];
 
   if (!jobName) {
-    console.error('❌ Please specify a job name (e.g., auto-renew or payment-expiry)');
+    console.error(
+      '❌ Please specify a job name (e.g., auto-renew or payment-expiry)',
+    );
     process.exit(1);
   }
 

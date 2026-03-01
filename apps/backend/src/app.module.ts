@@ -156,6 +156,7 @@ type LoggerRequest = {
       isGlobal: true,
       imports: [ConfigModule],
       useFactory: () => ({
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         store: require('cache-manager-ioredis'),
         host: process.env.REDIS_HOST || 'localhost',
         port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,

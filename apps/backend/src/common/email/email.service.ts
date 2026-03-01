@@ -325,7 +325,7 @@ export class EmailService {
         });
 
       default:
-        this.logger.warn(`Unknown email template type: ${type}`);
+        this.logger.warn(`Unknown email template type: ${String(type)}`);
         return null;
     }
   }

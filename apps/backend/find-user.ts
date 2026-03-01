@@ -1,4 +1,3 @@
-
 const dotenv = require('dotenv');
 dotenv.config();
 
@@ -19,9 +18,9 @@ async function main() {
       },
       include: {
         userTenants: {
-          include: { tenant: true }
-        }
-      }
+          include: { tenant: true },
+        },
+      },
     });
 
     if (user) {

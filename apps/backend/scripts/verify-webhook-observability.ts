@@ -1,4 +1,3 @@
-
 import { PrismaClient, WebhookStatus } from '@prisma/client';
 import { Logger } from '@nestjs/common';
 import * as dotenv from 'dotenv';
@@ -14,7 +13,7 @@ async function main() {
     // 1. Verify Enum Existence
     console.log('🔍 Checking WebhookStatus Enum...');
     if (!WebhookStatus) {
-        throw new Error('❌ WebhookStatus Enum is undefined!');
+      throw new Error('❌ WebhookStatus Enum is undefined!');
     }
     console.log('✅ WebhookStatus Enum exists:', WebhookStatus);
 
@@ -32,25 +31,28 @@ async function main() {
       },
     });
 
-    console.log(`✅ Created WebhookEvent: ${event.id} with status ${event.status}`);
+    console.log(
+      `✅ Created WebhookEvent: ${event.id} with status ${event.status}`,
+    );
 
     // 3. Verify Retrieval (Simulating Admin Query)
     console.log('🔍 Querying failed webhooks...');
     const failedEvents = await prisma.webhookEvent.findMany({
-        where: { status: WebhookStatus.FAILED },
-        take: 1
+      where: { status: WebhookStatus.FAILED },
+      take: 1,
     });
 
     if (failedEvents.length > 0 && failedEvents[0].id === event.id) {
-        console.log('✅ Successfully retrieved failed webhook from DB.');
+      console.log('✅ Successfully retrieved failed webhook from DB.');
     } else {
-        console.warn('⚠️ Could not retrieve the just created webhook (might be buried if many exist).');
+      console.warn(
+        '⚠️ Could not retrieve the just created webhook (might be buried if many exist).',
+      );
     }
 
     // Cleanup
     await prisma.webhookEvent.delete({ where: { id: event.id } });
     console.log('🧹 Cleanup complete.');
-
   } catch (err) {
     console.error('❌ Verification Failed:', err);
     process.exit(1);

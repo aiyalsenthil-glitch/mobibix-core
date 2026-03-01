@@ -1,6 +1,9 @@
-
-
-import { PrismaClient, PaymentStatus, PaymentRetryStatus, BillingCycle } from '@prisma/client';
+import {
+  PrismaClient,
+  PaymentStatus,
+  PaymentRetryStatus,
+  BillingCycle,
+} from '@prisma/client';
 import { PaymentRetryService } from '../src/core/billing/payments/payment-retry.service';
 import { Logger } from '@nestjs/common';
 import * as dotenv from 'dotenv';
@@ -12,21 +15,24 @@ Logger.overrideLogger(['log', 'error', 'warn', 'debug', 'verbose']);
 
 async function main() {
   console.log('Environment Debug:', {
-      hasDbUrl: !!process.env.DATABASE_URL,
-      cwd: process.cwd()
+    hasDbUrl: !!process.env.DATABASE_URL,
+    cwd: process.cwd(),
   });
 
   const prisma = new PrismaClient();
-  
+
   const mockEventEmitter = {
-      emitAsync: async (event: string, payload: any) => {
-          console.log(`[MOCK EVENT] Emitted: ${event}`, payload);
-          return [];
-      }
+    emitAsync: async (event: string, payload: any) => {
+      console.log(`[MOCK EVENT] Emitted: ${event}`, payload);
+      return [];
+    },
   };
 
   // Mock PrismaService (which extends PrismaClient)
-  const paymentRetryService = new PaymentRetryService(prisma as any, mockEventEmitter as any);
+  const paymentRetryService = new PaymentRetryService(
+    prisma as any,
+    mockEventEmitter as any,
+  );
 
   console.log('🚀 Starting Payment Retry Verification...');
 
@@ -64,29 +70,33 @@ async function main() {
 
     // 4. Verify Retry Created
     const retry1 = await prisma.paymentRetry.findFirst({
-        where: { paymentId: payment.id }
+      where: { paymentId: payment.id },
     });
 
     if (!retry1) {
-        throw new Error('❌ Retry record NOT created!');
+      throw new Error('❌ Retry record NOT created!');
     }
-    console.log(`✅ Retry #1 Created: ${retry1.id} (Scheduled for: ${retry1.scheduledAt.toISOString()})`);
+    console.log(
+      `✅ Retry #1 Created: ${retry1.id} (Scheduled for: ${retry1.scheduledAt.toISOString()})`,
+    );
 
     // 5. Test Cron (Should NOT execute yet)
     console.log('⏳ Running Cron (Should verify it is too early)...');
     await paymentRetryService.handleCron();
-    
-    const retry1check = await prisma.paymentRetry.findUnique({ where: { id: retry1.id } });
+
+    const retry1check = await prisma.paymentRetry.findUnique({
+      where: { id: retry1.id },
+    });
     if (retry1check?.status !== PaymentRetryStatus.PENDING) {
-        throw new Error('❌ Retry executed too early!');
+      throw new Error('❌ Retry executed too early!');
     }
     console.log('✅ Cron correctly skipped future retry.');
 
     // 6. Fast-forward time (Update scheduledAt to past)
     console.log('⏩ Fast-forwarding time...');
     await prisma.paymentRetry.update({
-        where: { id: retry1.id },
-        data: { scheduledAt: new Date(Date.now() - 60000) } // 1 min ago
+      where: { id: retry1.id },
+      data: { scheduledAt: new Date(Date.now() - 60000) }, // 1 min ago
     });
 
     // 7. Test Cron (Should EXECUTE now)
@@ -94,31 +104,36 @@ async function main() {
     await paymentRetryService.handleCron();
 
     // 8. Verify Execution
-    const retry1final = await prisma.paymentRetry.findUnique({ where: { id: retry1.id } });
+    const retry1final = await prisma.paymentRetry.findUnique({
+      where: { id: retry1.id },
+    });
     if (retry1final?.status !== PaymentRetryStatus.PROCESSED) {
-        throw new Error(`❌ Retry status mismatch: Expected PROCESSED, got ${retry1final?.status}`);
+      throw new Error(
+        `❌ Retry status mismatch: Expected PROCESSED, got ${retry1final?.status}`,
+      );
     }
     console.log('✅ Retry #1 Executed successfully.');
 
     // 9. Verify Next Retry Scheduled
     const retry2 = await prisma.paymentRetry.findFirst({
-        where: { 
-            paymentId: payment.id,
-            retryCount: 2
-        }
+      where: {
+        paymentId: payment.id,
+        retryCount: 2,
+      },
     });
 
     if (!retry2) {
-        throw new Error('❌ Next retry (#2) NOT scheduled!');
+      throw new Error('❌ Next retry (#2) NOT scheduled!');
     }
-    console.log(`✅ Retry #2 Scheduled: ${retry2.id} (Scheduled for: ${retry2.scheduledAt.toISOString()})`);
+    console.log(
+      `✅ Retry #2 Scheduled: ${retry2.id} (Scheduled for: ${retry2.scheduledAt.toISOString()})`,
+    );
 
     console.log('🎉 Verification Successful! Cleaning up...');
-    
+
     // Cleanup
     await prisma.payment.delete({ where: { id: payment.id } });
     console.log('🧹 Cleanup complete.');
-
   } catch (err) {
     console.error('❌ Verification Failed:', err);
   } finally {

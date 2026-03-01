@@ -54,10 +54,7 @@ export class LoyaltyController {
    * Get all loyalty transactions for the tenant (Dashboard view)
    */
   @Get('transactions')
-  async getAllTransactions(
-    @Req() req: any,
-    @Query('shopId') shopId?: string,
-  ) {
+  async getAllTransactions(@Req() req: any, @Query('shopId') shopId?: string) {
     const tenantId = req.user.tenantId;
     const transactions = await this.loyaltyService.getTransactionHistory(
       tenantId,

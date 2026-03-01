@@ -21,12 +21,10 @@ export class RefreshKpiCacheJob extends WorkerHost {
 
     try {
       // Refresh materialized views
-      await this.prisma.$executeRawUnsafe(
-        `REFRESH MATERIALIZED VIEW admin_global_kpis;`,
-      );
-      await this.prisma.$executeRawUnsafe(
-        `REFRESH MATERIALIZED VIEW admin_revenue_monthly;`,
-      );
+      await this.prisma
+        .$executeRaw`REFRESH MATERIALIZED VIEW admin_global_kpis;`;
+      await this.prisma
+        .$executeRaw`REFRESH MATERIALIZED VIEW admin_revenue_monthly;`;
 
       // Invalidate existing cache
       await this.adminCache.invalidate('admin:global:kpis');

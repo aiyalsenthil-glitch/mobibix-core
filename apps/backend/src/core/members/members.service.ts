@@ -931,7 +931,9 @@ export class MembersService {
         entity: 'MEMBER',
         entityId: memberId,
       });
-    } catch {}
+    } catch (err) {
+      console.error('Failed to audit member deletion:', err);
+    }
 
     return { success: true };
   }

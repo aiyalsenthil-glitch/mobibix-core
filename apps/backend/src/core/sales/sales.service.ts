@@ -222,7 +222,6 @@ export class SalesService {
             isSerialized: true,
             hsnCode: true,
             costPrice: true,
-            // @ts-ignore - Prisma TS cache lag
             warrantyDays: true,
             type: true,
           },

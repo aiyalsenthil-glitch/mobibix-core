@@ -1,4 +1,3 @@
-
 import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 
@@ -25,7 +24,6 @@ async function main() {
     // Flush to ensure events are sent (or attempted)
     await Sentry.close(2000);
     console.log('✅ Sentry closed successfully');
-
   } catch (err) {
     console.error('❌ Verification Failed:', err);
     process.exit(1);

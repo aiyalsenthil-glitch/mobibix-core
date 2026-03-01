@@ -3,8 +3,8 @@ import * as React from 'react';
 import { ModuleType } from '@prisma/client';
 
 export const BRAND_COLORS = {
-  GYM: '#16A34A',        // Green
-  MOBILE_SHOP: '#2563EB' // Blue
+  GYM: '#16A34A', // Green
+  MOBILE_SHOP: '#2563EB', // Blue
 };
 
 interface EmailButtonProps {
@@ -15,15 +15,16 @@ interface EmailButtonProps {
   fullWidth?: boolean;
 }
 
-export const EmailButton = ({ 
-  module, 
-  href, 
+export const EmailButton = ({
+  module,
+  href,
   children,
   variant = 'primary',
-  fullWidth = false 
+  fullWidth = false,
 }: EmailButtonProps) => {
-  const primaryColor = module === 'MOBILE_SHOP' ? BRAND_COLORS.MOBILE_SHOP : BRAND_COLORS.GYM;
-  
+  const primaryColor =
+    module === 'MOBILE_SHOP' ? BRAND_COLORS.MOBILE_SHOP : BRAND_COLORS.GYM;
+
   const style = {
     backgroundColor: variant === 'primary' ? primaryColor : '#e2e8f0',
     color: variant === 'primary' ? '#ffffff' : '#1f2937',

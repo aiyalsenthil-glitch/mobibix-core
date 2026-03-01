@@ -692,7 +692,7 @@ export class AdminController {
     }
 
     // 2. Issue short-lived JWT for the target user context (15m)
-    const token = await this.tenantService.issueJwt(
+    const token = this.tenantService.issueJwt(
       {
         userId: ownerRecord.userId,
         tenantId: ownerRecord.tenantId,

@@ -21,15 +21,16 @@ export const TrialExpiredEmail = ({
   return (
     <EmailLayout module={module}>
       <EmailSection>
-        <Text style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626' }}>
+        <Text
+          style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626' }}
+        >
           Your Free Trial Has Expired ⏳
         </Text>
-        <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
-          Hi {name},
-        </Text>
+        <Text style={{ color: '#4b5563', lineHeight: '24px' }}>Hi {name},</Text>
         <Text style={{ color: '#4b5563', lineHeight: '24px' }}>
           Your trial for the <strong>{planName}</strong> plan has ended today.
-          To keep accessing your data and using premium features, please upgrade your subscription.
+          To keep accessing your data and using premium features, please upgrade
+          your subscription.
         </Text>
         <EmailButton module={module} href={upgradeLink} fullWidth>
           Upgrade Now

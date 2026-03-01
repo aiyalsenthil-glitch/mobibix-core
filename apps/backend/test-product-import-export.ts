@@ -1,4 +1,3 @@
-
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const FormData = require('form-data');
@@ -26,13 +25,19 @@ async function runTest() {
 
     // 2. Test Export (Empty or existing)
     console.log('\n--- 1. Testing Export ---');
-    const exportRes = await axios.get(`${BASE_URL}/mobileshop/products/export?shopId=${SHOP_ID}&includeStock=true`, { 
+    const exportRes = await axios.get(
+      `${BASE_URL}/mobileshop/products/export?shopId=${SHOP_ID}&includeStock=true`,
+      {
         headers,
-        responseType: 'text' 
-    });
+        responseType: 'text',
+      },
+    );
     console.log('Export Response Status:', exportRes.status);
     console.log('Export Headers:', exportRes.headers['content-type']);
-    console.log('Sample Data from Export (first 100 chars):', exportRes.data.substring(0, 100));
+    console.log(
+      'Sample Data from Export (first 100 chars):',
+      exportRes.data.substring(0, 100),
+    );
 
     // 3. Test Import
     console.log('\n--- 2. Testing Import ---');
@@ -42,23 +47,32 @@ async function runTest() {
     form.append('shopId', SHOP_ID);
     form.append('includeStock', 'true');
 
-    const importRes = await axios.post(`${BASE_URL}/mobileshop/products/import`, form, {
-      headers: {
-        ...headers,
-        ...form.getHeaders(),
+    const importRes = await axios.post(
+      `${BASE_URL}/mobileshop/products/import`,
+      form,
+      {
+        headers: {
+          ...headers,
+          ...form.getHeaders(),
+        },
       },
-    });
+    );
 
     console.log('Import Status:', importRes.status);
     console.log('Import Result:', importRes.data);
 
     // 4. Verify Imported Products
     console.log('\n--- 3. Verifying Imported Products ---');
-    const listRes = await axios.get(`${BASE_URL}/mobileshop/products?shopId=${SHOP_ID}`, { headers });
-    const products = Array.isArray(listRes.data) ? listRes.data : listRes.data.data;
+    const listRes = await axios.get(
+      `${BASE_URL}/mobileshop/products?shopId=${SHOP_ID}`,
+      { headers },
+    );
+    const products = Array.isArray(listRes.data)
+      ? listRes.data
+      : listRes.data.data;
     console.log('Total Products in Shop:', products.length);
-    
-    const importedProduct = products.find(p => p.name === 'iPhone 14');
+
+    const importedProduct = products.find((p) => p.name === 'iPhone 14');
     if (importedProduct) {
       console.log('✅ Found imported product: iPhone 14');
       console.log('   Stock Level:', importedProduct.stockQty);
@@ -69,11 +83,13 @@ async function runTest() {
 
     // 5. Test Stock Overview (New Endpoint)
     console.log('\n--- 4. Testing Stock Overview ---');
-    const overviewRes = await axios.get(`${BASE_URL}/mobileshop/stock/overview?shopId=${SHOP_ID}`, { headers });
+    const overviewRes = await axios.get(
+      `${BASE_URL}/mobileshop/stock/overview?shopId=${SHOP_ID}`,
+      { headers },
+    );
     console.log('Overview Data:', overviewRes.data);
 
     console.log('\n--- PRODUCT IMPORT/EXPORT TEST COMPLETE ---');
-
   } catch (error) {
     console.error('Test Failed:', error.message);
     if (error.response) {
