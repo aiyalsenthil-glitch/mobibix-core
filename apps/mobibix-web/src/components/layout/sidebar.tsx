@@ -44,7 +44,7 @@ const navItems: NavItem[] = [
   { label: "Customers", href: "/customers", icon: Users },
   { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare },
   { label: "Suppliers", href: "/suppliers", icon: Truck },
-  { label: "Loyalty Program", href: "/loyalty", icon: Gift },
+  { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift },
   { label: "Purchases", href: "/purchases", icon: Inbox },
   { label: "Sales Receipts", href: "/receipts", icon: CreditCard },
   { label: "Reports", href: "/reports", icon: LineChart },

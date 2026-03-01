@@ -58,7 +58,6 @@ export const geist = Geist({
   subsets: ["latin"],
   variable: "--font-geist",
 });
-import { WhatsAppWidget } from "../components/landing/WhatsAppWidget";
 
 export default function RootLayout({
   children,
@@ -71,7 +70,6 @@ export default function RootLayout({
         <Providers>
           {children}
           <FacebookSDK />
-          <WhatsAppWidget />
         </Providers>
       </body>
     </html>

@@ -340,8 +340,9 @@ model CustomerReminder {
 }
 
 model LoyaltyConfig {
-  id       String @id @default(cuid())
-  tenantId String @unique
+  id       String  @id @default(cuid())
+  tenantId String
+  shopId   String? @unique
 
   // Feature Toggle
   isEnabled Boolean @default(false)
@@ -370,14 +371,17 @@ model LoyaltyConfig {
   updatedAt DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shop   Shop?  @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  @@index([shopId])
   @@map("mb_loyalty_config")
 }
 
 model LoyaltyTransaction {
   id         String @id @default(cuid())
   tenantId   String
+  shopId     String?
   customerId String
 
   // Transaction Details
@@ -397,8 +401,10 @@ model LoyaltyTransaction {
   // Relations
   customer Party  @relation(fields: [customerId], references: [id], onDelete: Cascade)
   tenant   Tenant @relation(fields: [tenantId], references: [id])
+  shop     Shop?  @relation(fields: [shopId], references: [id])
 
   @@index([tenantId])
+  @@index([shopId])
   @@index([customerId])
   @@index([invoiceId])
   @@index([reversalOf])
@@ -1094,6 +1100,8 @@ model Shop {
   stockEntries        StockLedger[]
   featureFlags        FeatureFlag[]         @relation("ShopFeatureFlags")
   approvalRequests    ApprovalRequest[]
+  loyaltyConfig       LoyaltyConfig?
+  loyaltyTransactions LoyaltyTransaction[]
 
   @@unique([tenantId, invoicePrefix])
   @@index([tenantId])

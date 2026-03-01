@@ -7,7 +7,7 @@ import { AppModule } from './../src/app.module';
 import { PlatformService } from './../src/core/platform/platform.service';
 
 describe('RBAC (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication;
   let jwtService: JwtService;
 
   const signToken = (role: string) =>
@@ -16,7 +16,7 @@ describe('RBAC (e2e)', () => {
       tenantId: 'test-tenant',
       userTenantId: 'test-user-tenant',
       role,
-    });
+    } as any);
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

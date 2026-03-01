@@ -121,6 +121,15 @@ export class AuthController {
   }
 
   @Public()
+  @Post('login')
+  async login(
+    @Body() body: { idToken?: string; tenantCode?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.loginWithFirebase(body, res);
+  }
+
+  @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute - prevent brute force
   @Post('google/exchange')
   async exchangeToken(

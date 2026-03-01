@@ -95,6 +95,15 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadData();
+    
+    // Check for tab in URL
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    if (tab === "loyalty") {
+      setActiveTab("LOYALTY");
+    } else if (tab === "billing") {
+      setActiveTab("BILLING");
+    }
   }, []);
 
   const handleAutoRenewToggle = async () => {

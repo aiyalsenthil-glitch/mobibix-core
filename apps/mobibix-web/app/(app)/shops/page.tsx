@@ -253,21 +253,6 @@ import { getTenantUsage, type TenantUsageResponse } from "@/services/tenant.api"
       )}
       
       {/* Settings Modal Removed - Navigates to page now */}
-
-      {/* Floating Add Shop button to ensure visibility */}
-      <button
-        onClick={handleCreateShop}
-        disabled={isLimitReached}
-        className={`fixed bottom-6 right-6 z-20 px-4 py-2 rounded-full shadow-lg font-medium transition ${
-            isLimitReached 
-                ? "bg-gray-600 text-gray-400 cursor-not-allowed" 
-                : "bg-teal-500 hover:bg-teal-600 text-white"
-        }`}
-        aria-label="Add Shop"
-        title={isLimitReached ? "Limit Reached" : "Add Shop"}
-      >
-        {isLimitReached ? "Limit Reached" : "+ Add Shop"}
-      </button>
     </div>
   );
 }

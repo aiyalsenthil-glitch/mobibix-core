@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/core/prisma/prisma.service';
 import { ModuleType, UserRole } from '@prisma/client';
@@ -17,7 +17,7 @@ describe('Subscription Limits & Downgrade (e2e)', () => {
       .toString()
       .padStart(8, '0')}`;
     const user = await prisma.user.create({
-      data: { mobile, otp: '1234' },
+      data: { mobile, otp: '1234' } as any,
     });
 
     const tenant = await prisma.tenant.create({
@@ -94,15 +94,15 @@ describe('Subscription Limits & Downgrade (e2e)', () => {
 
       const std = await prisma.plan.upsert({
         where: { code: stdParams.code },
-        update: stdParams,
-        create: stdParams,
+        update: stdParams as any,
+        create: stdParams as any,
       });
       standardPlanId = std.id;
 
       const pro = await prisma.plan.upsert({
         where: { code: proParams.code },
-        update: proParams,
-        create: proParams,
+        update: proParams as any,
+        create: proParams as any,
       });
       proPlanId = pro.id;
 
@@ -117,7 +117,7 @@ describe('Subscription Limits & Downgrade (e2e)', () => {
           endDate: new Date(Date.now() + 10000000),
           billingCycle: 'MONTHLY',
           priceSnapshot: 1000,
-        },
+        } as any,
       });
     });
 
@@ -142,13 +142,13 @@ describe('Subscription Limits & Downgrade (e2e)', () => {
     it('should BLOCK downgrade if staff limit exceeded', async () => {
       // 1. Add 3 staff (total 4 users including owner? - Wait logic counts role=STAFF)
       // We need to add users with role STAFF
-      const staffUsers = [];
+      const staffUsers: any[] = [];
       for (let i = 0; i < 3; i++) {
         const u = await prisma.user.create({
-          data: { mobile: `900000000${i}` },
+          data: { mobile: `900000000${i}` } as any,
         });
         await prisma.userTenant.create({
-          data: { userId: u.id, tenantId: dTenantId, role: UserRole.STAFF },
+          data: { userId: u.id, tenantId: dTenantId, role: UserRole.STAFF } as any,
         });
         staffUsers.push(u);
       }
@@ -205,8 +205,8 @@ describe('Subscription Limits & Downgrade (e2e)', () => {
       // Ensure TRIAL Plan exists
       const trial = await prisma.plan.upsert({
         where: { code: 'TRIAL' },
-        update: { code: 'TRIAL', name: 'Trial Plan', isActive: true },
-        create: { code: 'TRIAL', name: 'Trial Plan', isActive: true },
+        update: { code: 'TRIAL', name: 'Trial Plan', isActive: true } as any,
+        create: { code: 'TRIAL', name: 'Trial Plan', isActive: true } as any,
       });
 
       // Rules are fetched via PlanRulesService which might rely on Plan Code 'TRIAL' or Subscription Status 'TRIAL'
@@ -224,12 +224,12 @@ describe('Subscription Limits & Downgrade (e2e)', () => {
           endDate: new Date(Date.now() + 10000000),
           billingCycle: 'MONTHLY',
           priceSnapshot: 0,
-        },
+        } as any,
       });
 
       // Setup WhatsApp settings
       await prisma.whatsAppSetting.create({
-        data: { tenantId: tTenantId, phoneResourceId: 'test', enabled: true },
+        data: { tenantId: tTenantId, phoneResourceId: 'test', enabled: true } as any,
       });
 
       // Need a template
@@ -242,12 +242,12 @@ describe('Subscription Limits & Downgrade (e2e)', () => {
           feature: 'WHATSAPP_UTILITY', // Standard feature
           language: 'en',
           status: 'ACTIVE',
-        },
+        } as any,
       });
       templateId = tpl.id;
 
       // Need active phone number (Mocked mostly by checking DB in service)
-      await prisma.whatsAppPhoneNumber.create({
+      await prisma.whatsAppNumber.create({
         data: {
           tenantId: tTenantId,
           phoneNumber: '919000000000',
@@ -255,13 +255,13 @@ describe('Subscription Limits & Downgrade (e2e)', () => {
           wabaId: '456',
           isActive: true,
           purpose: 'DEFAULT',
-        },
+        } as any,
       });
     });
 
     afterAll(async () => {
       await prisma.whatsAppLog.deleteMany({ where: { tenantId: tTenantId } });
-      await prisma.whatsAppPhoneNumber.deleteMany({
+      await prisma.whatsAppNumber.deleteMany({
         where: { tenantId: tTenantId },
       });
       await prisma.whatsAppSetting.deleteMany({

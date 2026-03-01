@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
-import { Bell } from "lucide-react";
+import { Bell, PhoneCall } from "lucide-react";
 
 interface TopbarProps {
   isCollapsed?: boolean;
@@ -81,6 +81,22 @@ export function Topbar({ isCollapsed = false, onMenuClick }: TopbarProps) {
             {authUser?.isSystemOwner ? "System Owner" : (authUser?.role || "Staff")}
           </p>
         </div>
+
+        {/* Support Call/WhatsApp Button */}
+        <a
+          href="https://wa.me/918838822461?text=Hi%20MobiBix%20team%2C%20I%20need%20support%20with%20my%20account."
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`p-2 rounded-xl transition-all duration-200 flex items-center gap-2 ${
+            isDark
+              ? "text-green-400 hover:bg-green-500/10 hover:text-green-300"
+              : "text-green-600 hover:bg-green-50 hover:text-green-700"
+          }`}
+          title="Contact Support"
+        >
+          <PhoneCall size={18} />
+          <span className="hidden lg:inline text-xs font-bold">Support</span>
+        </a>
 
         {/* Notifications Icon */}
         <button
