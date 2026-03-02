@@ -2,6 +2,10 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PurchasesService } from './purchases.service';
 import { PurchasesController } from './purchases.controller';
+import { PurchaseOrderController } from './purchase-order.controller';
+import { PurchaseOrderService } from './purchase-order.service';
+import { GRNController } from './grn.controller';
+import { GRNService } from './grn.service';
 import { PurchasesHardeningController } from './purchases-hardening.controller';
 import { GSTVerificationService } from './gst-verification.service';
 import { PurchaseAuditService } from './purchase-audit.service';
@@ -13,11 +17,18 @@ import { PurchasePaymentService } from '../../modules/mobileshop/services/purcha
   imports: [PrismaModule, StockModule, PartiesModule],
   providers: [
     PurchasesService,
+    PurchaseOrderService,
+    GRNService,
     GSTVerificationService,
     PurchaseAuditService,
     PurchasePaymentService,
   ],
-  controllers: [PurchasesController, PurchasesHardeningController],
-  exports: [PurchasesService],
+  controllers: [
+    PurchasesController,
+    PurchaseOrderController,
+    GRNController,
+    PurchasesHardeningController,
+  ],
+  exports: [PurchasesService, PurchaseOrderService, GRNService],
 })
 export class PurchasesModule {}

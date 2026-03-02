@@ -25,6 +25,11 @@ export class PurchaseResponseDto {
   payments?: SupplierPaymentResponseDto[];
   createdAt: Date;
   updatedAt: Date;
+
+  // Multi-currency
+  currency: string;
+  exchangeRate: number;
+  poId?: string;
 }
 
 export class PurchaseItemResponseDto {

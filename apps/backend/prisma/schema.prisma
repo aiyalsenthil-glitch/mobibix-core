@@ -300,6 +300,8 @@ model Party {
   currentOutstanding  Int          @default(0) // Derrived atomic balance
   mergedIntoId        String?      // ID of the target party if merged
 
+  supplierProfile     SupplierProfile?
+
   tenant              Tenant               @relation("TenantParties", fields: [tenantId], references: [id])
   alerts              CustomerAlert[]
   followUps           CustomerFollowUp[]
@@ -348,6 +350,21 @@ model LoyaltyAdjustment {
   @@index([partyId])
   @@index([createdAt])
   @@map("mb_loyalty_adjustment")
+}
+
+model SupplierProfile {
+  id               String   @id @default(cuid())
+  partyId          String   @unique
+  category         String?  // Tier-1, Tier-2, etc.
+  riskFlag         Boolean  @default(false)
+  rating           Float    @default(0.0)
+  paymentDueDays   Int      @default(30)
+  creditLimit      Int?     // in Paisa
+  preferredCurrency String   @default("INR")
+  
+  party            Party    @relation(fields: [partyId], references: [id], onDelete: Cascade)
+
+  @@map("mb_supplier_profile")
 }
 
 model CustomerFollowUp {
@@ -1357,6 +1374,7 @@ model ShopProduct {
   invoiceItems     InvoiceItem[]
   purchaseItems    PurchaseItem[]
   jobCardParts     JobCardPart[]
+  grnItems         GRNItem[]
   global           GlobalProduct?    @relation(fields: [globalProductId], references: [id])
   shop             Shop              @relation(fields: [shopId], references: [id])
   tenant           Tenant            @relation(fields: [tenantId], references: [id])
@@ -1364,6 +1382,7 @@ model ShopProduct {
   stockEntries     StockLedger[]
 
   @@unique([shopId, name])
+  @@unique([tenantId, shopId, sku])
   @@index([tenantId])
   @@index([shopId])
   @@index([globalProductId])
@@ -1593,6 +1612,11 @@ model Purchase {
   createdAt                DateTime             @default(now())
   updatedAt                DateTime             @updatedAt
   createdBy                String?
+  currency                 String               @default("INR")
+  exchangeRate             Decimal              @db.Decimal(18, 6) @default(1.0)
+  poId                     String?
+  
+  po                       PurchaseOrder?       @relation(fields: [poId], references: [id])
   party                    Party?               @relation("PartyToPurchases", fields: [globalSupplierId], references: [id])
   shop                     Shop                 @relation(fields: [shopId], references: [id])
   tenant                   Tenant               @relation("TenantPurchases", fields: [tenantId], references: [id])
@@ -1786,17 +1810,64 @@ model PurchaseOrder {
   totalEstimatedAmount Int                 @default(0)
   notes                String?
   status               POStatus            @default(DRAFT)
+  currency             String              @default("INR")
+  exchangeRate         Decimal             @db.Decimal(18, 6) @default(1.0)
+  paymentDueDays       Int                 @default(30)
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
   createdBy            String?
   shop                 Shop                @relation(fields: [shopId], references: [id])
   tenant               Tenant              @relation("TenantPurchaseOrders", fields: [tenantId], references: [id])
   items                PurchaseOrderItem[]
+  grns                 GRN[]
+  purchases            Purchase[]
 
   @@unique([shopId, poNumber])
   @@index([tenantId])
   @@index([shopId])
   @@map("mb_purchase_order")
+}
+
+model GRN {
+  id                   String         @id @default(cuid())
+  tenantId             String
+  shopId               String
+  poId                 String
+  grnNumber            String
+  receivedDate         DateTime       @default(now())
+  status               GRNStatus      @default(DRAFT)
+  isVarianceOverridden Boolean        @default(false)
+  overrideNote         String?
+  overriddenBy         String?        // UserID (OWNER only)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  po                   PurchaseOrder  @relation(fields: [poId], references: [id])
+  items                GRNItem[]
+
+  @@unique([shopId, grnNumber])
+  @@index([tenantId])
+  @@index([shopId])
+  @@index([poId])
+  @@map("mb_grn")
+}
+
+model GRNItem {
+  id               String      @id @default(cuid())
+  grnId            String
+  poItemId         String
+  shopProductId    String
+  receivedQuantity Int
+  confirmedPrice   Int?        // Price at time of receipt (for WAC)
+  uom              String?     @default("pcs")
+
+  grn              GRN         @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  poItem           PurchaseOrderItem @relation(fields: [poItemId], references: [id])
+  product          ShopProduct @relation(fields: [shopProductId], references: [id])
+
+  @@index([grnId])
+  @@index([poItemId])
+  @@map("mb_grn_item")
 }
 
 model PurchaseOrderItem {
@@ -1807,7 +1878,9 @@ model PurchaseOrderItem {
   quantity         Int
   estimatedPrice   Int?
   receivedQuantity Int           @default(0)
+  uom              String?       @default("pcs")
   po               PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  grnItems         GRNItem[]
 
   @@index([poId])
   @@map("mb_purchase_order_item")
@@ -2053,8 +2126,15 @@ enum QuotationStatus {
 enum POStatus {
   DRAFT
   ORDERED
+  DISPATCHED
   PARTIALLY_RECEIVED
   RECEIVED
+  CANCELLED
+}
+
+enum GRNStatus {
+  DRAFT
+  CONFIRMED
   CANCELLED
 }
 

@@ -222,4 +222,13 @@ export class PurchasesController {
       dto.paymentReference,
     );
   }
+
+  /**
+   * GET /api/purchases/reports/payables-aging
+   * Get Payables Aging Report
+   */
+  @Get('reports/payables-aging')
+  async getPayablesAging(@Req() req: any, @Query('shopId') shopId?: string) {
+    return this.purchasesService.getPayablesAging(req.user.tenantId, shopId);
+  }
 }

@@ -22,6 +22,7 @@ import {
   Settings,
   Gift,
   ShoppingBag,
+  FileText,
 } from "lucide-react";
 
 interface NavItem {
@@ -45,7 +46,8 @@ const navItems: NavItem[] = [
   { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare },
   { label: "Suppliers", href: "/suppliers", icon: Truck },
   { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift },
-  { label: "Purchases", href: "/purchases", icon: Inbox },
+  { label: "Purchase Orders", href: "/purchase-orders", icon: FileText },
+  { label: "Supplier Invoices", href: "/purchases", icon: Inbox },
   { label: "Sales Receipts", href: "/receipts", icon: CreditCard },
   { label: "Reports", href: "/reports", icon: LineChart },
   { label: "Shops", href: "/shops", icon: Store },

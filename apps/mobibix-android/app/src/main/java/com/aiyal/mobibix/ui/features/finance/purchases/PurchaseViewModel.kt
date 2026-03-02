@@ -6,6 +6,10 @@ import com.aiyal.mobibix.core.shop.ShopContextProvider
 import com.aiyal.mobibix.data.network.CreatePurchaseDto
 import com.aiyal.mobibix.data.network.Purchase
 import com.aiyal.mobibix.data.network.PurchaseStatus
+import com.aiyal.mobibix.data.network.PurchaseOrder
+import com.aiyal.mobibix.data.network.PurchaseOrderStatus
+import com.aiyal.mobibix.data.network.GRN
+import com.aiyal.mobibix.data.network.CreateGRNDto
 import com.aiyal.mobibix.domain.PurchaseRepository
 import com.aiyal.mobibix.domain.SupplierRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,6 +24,10 @@ data class PurchaseUiState(
     val error: String? = null,
     val purchases: List<Purchase> = emptyList(),
     val selectedPurchase: Purchase? = null,
+    val purchaseOrders: List<PurchaseOrder> = emptyList(),
+    val selectedPO: PurchaseOrder? = null,
+    val grns: List<GRN> = emptyList(),
+    val selectedGRN: GRN? = null,
     val actionSuccess: Boolean = false
 )
 
@@ -77,6 +85,71 @@ class PurchaseViewModel @Inject constructor(
             try {
                 purchaseRepository.recordPayment(id, amount, method, reference, notes)
                 loadPurchaseDetail(id) // Refresh
+                _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    // Purchase Orders
+    fun loadPurchaseOrders() {
+        val shopId = shopContextProvider.getActiveShopId() ?: ""
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val list = purchaseRepository.listPurchaseOrders(shopId)
+                _uiState.value = _uiState.value.copy(isLoading = false, purchaseOrders = list)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    fun loadPODetail(id: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val po = purchaseRepository.getPurchaseOrder(id)
+                _uiState.value = _uiState.value.copy(isLoading = false, selectedPO = po)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    fun transitionPOStatus(id: String, status: PurchaseOrderStatus) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                purchaseRepository.transitionPOStatus(id, status)
+                loadPODetail(id)
+                _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    // GRNs
+    fun createGrn(data: CreateGRNDto) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                purchaseRepository.createGrn(data)
+                _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    fun confirmGrn(id: String, poId: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                purchaseRepository.confirmGrn(id)
+                loadPODetail(poId) // Refresh PO to see updated received quantities
                 _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)

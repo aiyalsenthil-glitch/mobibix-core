@@ -20,4 +20,12 @@ export class SupplierResponseDto {
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
+
+  // SupplierProfile fields
+  category?: string;
+  riskFlag?: boolean;
+  rating?: number;
+  paymentDueDays?: number;
+  creditLimit?: number;
+  preferredCurrency?: string;
 }

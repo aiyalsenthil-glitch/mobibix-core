@@ -45,6 +45,7 @@ export interface ShopProduct {
   stock?: number;
   stockQty?: number;
   isNegative?: boolean;
+  uom?: string;
 
   // Relations
   globalProductId?: string | null; // Reference to GlobalProduct (null = custom product)

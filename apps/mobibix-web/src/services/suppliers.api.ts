@@ -15,6 +15,14 @@ export interface Supplier {
   notes?: string;
   createdAt: string | Date;
   updatedAt: string | Date;
+
+  // SupplierProfile
+  category?: string;
+  riskFlag?: boolean;
+  rating?: number;
+  paymentDueDays?: number;
+  creditLimit?: number;
+  preferredCurrency?: string;
 }
 
 export interface CreateSupplierDto {
@@ -25,6 +33,11 @@ export interface CreateSupplierDto {
   address?: string;
   gstin?: string;
   notes?: string;
+  // SupplierProfile
+  category?: string;
+  paymentDueDays?: number;
+  creditLimit?: number;
+  preferredCurrency?: string;
 }
 
 export interface UpdateSupplierDto {
@@ -35,6 +48,12 @@ export interface UpdateSupplierDto {
   address?: string;
   gstin?: string;
   notes?: string;
+  // SupplierProfile
+  category?: string;
+  riskFlag?: boolean;
+  paymentDueDays?: number;
+  creditLimit?: number;
+  preferredCurrency?: string;
 }
 
 export interface SupplierOutstanding {

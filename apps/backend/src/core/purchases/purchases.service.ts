@@ -12,6 +12,7 @@ import { RecordPaymentDto } from './dto/record-payment.dto';
 import { PurchaseResponseDto } from './dto/purchase.response.dto';
 import { StockService } from '../../core/stock/stock.service';
 import { PartiesService } from '../parties/parties.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PurchasesService {
@@ -535,116 +536,110 @@ export class PurchasesService {
       })),
       createdAt: purchase.createdAt,
       updatedAt: purchase.updatedAt,
+      currency: purchase.currency,
+      exchangeRate: Number(purchase.exchangeRate),
+      poId: purchase.poId,
     };
   }
 
+  /**
+   * Financial-only submission of purchase invoice.
+   * Stock updates are handled by GRN.
+   */
   async atomicPurchaseSubmit(
     tenantId: string,
     purchaseId: string,
   ): Promise<void> {
-    // Validation 1: Purchase exists and belongs to tenant
     const purchase = await this.prisma.purchase.findUnique({
       where: { id: purchaseId },
-      include: { items: true },
     });
 
     if (!purchase || purchase.tenantId !== tenantId) {
       throw new NotFoundException('Purchase not found');
     }
 
-    // Validation 2: Cannot submit if already submitted/paid
     if (purchase.status !== 'DRAFT') {
       throw new ConflictException(
         `Purchase cannot be submitted. Current status: ${purchase.status}`,
       );
     }
 
-    // Validation 3: Must have items
-    if (!purchase.items || purchase.items.length === 0) {
-      throw new BadRequestException('Purchase must have at least one item');
-    }
-
-    // Validation 4: GSTIN mandatory if GST > 0
-    // Cast to any to avoid TS error if type definition is lagging
-    if (purchase.totalGst > 0 && !(purchase as any).supplierGstin) {
-      throw new BadRequestException(
-        'Supplier GSTIN required for GST purchases (ITC eligibility)',
-      );
-    }
-
-    // Defensive check: Ensure items is not undefined for further operations
-    if (!purchase.items) {
-      throw new InternalServerErrorException(
-        'Invalid state: purchase items missing after validation',
-      );
-    }
-
-    // Validation 5: Invoice date validation
-    const today = new Date();
-    if (purchase.invoiceDate > today) {
-      throw new BadRequestException('Invoice date cannot be in future');
-    }
-
-    // Validation 6: 180-day ITC claim window
-    const daysSinceInvoice = Math.floor(
-      (today.getTime() - purchase.invoiceDate.getTime()) /
-        (1000 * 60 * 60 * 24),
-    );
-    if (daysSinceInvoice > 180) {
-      throw new BadRequestException(
-        'ITC claim window expired (CGST Act Sec 16 - 180 days)',
-      );
-    }
-
-    // Atomic transaction: Submit purchase + Create stock ledger entries
     await this.prisma.$transaction(
       async (tx) => {
-        // Double-check status inside transaction (Serializable isolation)
-        const currentStatus = await tx.purchase.findUnique({
+        const current = await tx.purchase.findUnique({
           where: { id: purchaseId },
         });
 
-        if (currentStatus && currentStatus.status !== 'DRAFT') {
-          throw new ConflictException(
-            'Purchase already submitted by another request',
-          );
+        if (current && current.status !== 'DRAFT') {
+          throw new ConflictException('Purchase already submitted');
         }
 
-        // Update purchase status to SUBMITTED
         await tx.purchase.update({
           where: { id: purchaseId },
           data: { status: 'SUBMITTED' },
         });
-
-        // Create stock ledger entries for each item
-        // 🛡️ STOCK IN & COST UPDATE (Tier-2 Hardening)
-        // Iterate items to record stock and update Last Purchase Price
-        for (const item of purchase.items) {
-          if (item.shopProductId) {
-            // 1. Record Consolidated Stock In
-            await this.stockService.recordStockIn(
-              tenantId,
-              purchase.shopId,
-              item.shopProductId,
-              item.quantity,
-              'PURCHASE',
-              purchase.id,
-              item.purchasePrice,
-              undefined, // imeis (Future: Extract from strict PurchaseItemIMEI relation if added)
-              tx,
-            );
-
-            // 2. Update Cost Price (LPP)
-            await tx.shopProduct.update({
-              where: { id: item.shopProductId },
-              data: { costPrice: item.purchasePrice },
-            });
-          }
-        }
+        
+        // Stock logic REMOVED. Handled by GRN.
       },
-      {
-        isolationLevel: 'Serializable',
-      },
+      { isolationLevel: 'Serializable' },
     );
+  }
+
+  /**
+   * Get Payables Aging Report
+   */
+  async getPayablesAging(tenantId: string, shopId?: string) {
+    const today = new Date();
+    
+    const purchases = await this.prisma.purchase.findMany({
+      where: {
+        tenantId,
+        ...(shopId && { shopId }),
+        status: { in: ['SUBMITTED', 'PARTIALLY_PAID'] },
+        grandTotal: { gt: this.prisma.purchase.fields.paidAmount as any }, // Outstanding > 0
+      },
+      select: {
+        id: true,
+        invoiceNumber: true,
+        supplierName: true,
+        grandTotal: true,
+        paidAmount: true,
+        dueDate: true,
+        invoiceDate: true,
+      },
+    });
+
+    const report = {
+      current: 0,
+      '1-30': 0,
+      '31-60': 0,
+      '61-90': 0,
+      over90: 0,
+      totalOutstanding: 0,
+    };
+
+    purchases.forEach((p) => {
+      const outstanding = p.grandTotal - p.paidAmount;
+      report.totalOutstanding += outstanding;
+
+      const dateToCompare = p.dueDate || p.invoiceDate;
+      const diffDays = Math.floor(
+        (today.getTime() - dateToCompare.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      if (diffDays <= 0) {
+        report.current += outstanding;
+      } else if (diffDays <= 30) {
+        report['1-30'] += outstanding;
+      } else if (diffDays <= 60) {
+        report['31-60'] += outstanding;
+      } else if (diffDays <= 90) {
+        report['61-90'] += outstanding;
+      } else {
+        report.over90 += outstanding;
+      }
+    });
+
+    return report;
   }
 }

@@ -119,4 +119,22 @@ export class SuppliersController {
     );
     return { supplierId: id, outstandingBalance: balance };
   }
+
+  /**
+   * GET /api/suppliers/check-gstin
+   * Check if GSTIN is duplicate
+   */
+  @Get('check-gstin')
+  async checkGstin(
+    @Req() req: any,
+    @Query('gstin') gstin: string,
+    @Query('excludeId') excludeId?: string,
+  ) {
+    const isDuplicate = await this.suppliersService.checkGstinDuplicate(
+      req.user.tenantId,
+      gstin,
+      excludeId,
+    );
+    return { gstin, isDuplicate };
+  }
 }

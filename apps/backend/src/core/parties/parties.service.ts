@@ -91,7 +91,26 @@ export class PartiesService {
 
     return this.prisma.party.update({
       where: { id },
-      data: { partyType: updatedType },
+      data: {
+        partyType: updatedType,
+        ...(updatedType === 'VENDOR' || updatedType === 'BOTH'
+          ? {
+              supplierProfile: {
+                connectOrCreate: {
+                  where: { partyId: id },
+                  create: {
+                    category: 'Standard',
+                    paymentDueDays: 30,
+                    preferredCurrency: 'INR',
+                  },
+                },
+              },
+            }
+          : {}),
+      },
+      include: {
+        supplierProfile: true,
+      },
     });
   }
 

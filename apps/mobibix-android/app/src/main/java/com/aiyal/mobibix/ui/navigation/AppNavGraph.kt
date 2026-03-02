@@ -440,6 +440,23 @@ fun AppNavGraph(
             val purchaseId = backStackEntry.arguments?.getString("purchaseId") ?: ""
             PurchaseDetailScreen(purchaseId = purchaseId, navController = navController)
         }
+        composable("purchase_orders") {
+            com.aiyal.mobibix.ui.features.finance.purchases.PurchaseOrderListScreen(navController = navController)
+        }
+        composable(
+            route = "purchase_order_detail/{poId}",
+            arguments = listOf(navArgument("poId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val poId = backStackEntry.arguments?.getString("poId") ?: ""
+            com.aiyal.mobibix.ui.features.finance.purchases.PurchaseOrderDetailScreen(poId = poId, navController = navController)
+        }
+        composable(
+            route = "receive_goods/{poId}",
+            arguments = listOf(navArgument("poId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val poId = backStackEntry.arguments?.getString("poId") ?: ""
+            com.aiyal.mobibix.ui.features.finance.purchases.ReceiveGoodsScreen(poId = poId, navController = navController)
+        }
         composable("receipts") {
             ReceiptListScreen(navController = navController)
         }

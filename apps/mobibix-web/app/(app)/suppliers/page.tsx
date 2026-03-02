@@ -33,6 +33,11 @@ export default function SuppliersPage() {
     address: "",
     gstin: "",
     notes: "",
+    // SupplierProfile
+    category: "",
+    paymentDueDays: 30,
+    creditLimit: 0,
+    preferredCurrency: "INR",
   });
 
   useEffect(() => {
@@ -94,6 +99,10 @@ export default function SuppliersPage() {
       address: supplier.address || "",
       gstin: supplier.gstin || "",
       notes: supplier.notes || "",
+      category: supplier.category || "",
+      paymentDueDays: supplier.paymentDueDays || 30,
+      creditLimit: (supplier.creditLimit || 0) / 100, // Convert from Paisa
+      preferredCurrency: supplier.preferredCurrency || "INR",
     });
     setShowForm(true);
   };
@@ -118,6 +127,10 @@ export default function SuppliersPage() {
       address: "",
       gstin: "",
       notes: "",
+      category: "",
+      paymentDueDays: 30,
+      creditLimit: 0,
+      preferredCurrency: "INR",
     });
   };
 
@@ -330,13 +343,61 @@ export default function SuppliersPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, notes: e.target.value })
                     }
-                    rows={3}
+                    rows={2}
                     className={`w-full px-3 py-2 rounded-lg border ${
                       theme === "dark"
                         ? "bg-gray-800 border-gray-700 text-white"
                         : "bg-white border-gray-300 text-gray-900"
                     }`}
                   />
+                </div>
+
+                <div className="border-t border-dashed border-gray-700 pt-4 mt-4">
+                   <h3 className="text-sm font-bold opacity-50 mb-4 uppercase tracking-wider">Advanced Profile</h3>
+                   <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium mb-1 opacity-70">Category</label>
+                        <select
+                          value={formData.category}
+                          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                          className={`w-full px-3 py-2 rounded-lg border ${theme === "dark" ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-300 text-gray-900"}`}
+                        >
+                          <option value="">-- Select --</option>
+                          <option value="Tier-1">Tier-1 (Priority)</option>
+                          <option value="Tier-2">Tier-2</option>
+                          <option value="Wholesaler">Wholesaler</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1 opacity-70">Preferred Currency</label>
+                        <select
+                          value={formData.preferredCurrency}
+                          onChange={(e) => setFormData({ ...formData, preferredCurrency: e.target.value })}
+                          className={`w-full px-3 py-2 rounded-lg border ${theme === "dark" ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-300 text-gray-900"}`}
+                        >
+                          <option value="INR">INR (₹)</option>
+                          <option value="USD">USD ($)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1 opacity-70">Payment Due (Days)</label>
+                        <input
+                          type="number"
+                          value={formData.paymentDueDays}
+                          onChange={(e) => setFormData({ ...formData, paymentDueDays: parseInt(e.target.value) || 0 })}
+                          className={`w-full px-3 py-2 rounded-lg border ${theme === "dark" ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-300 text-gray-900"}`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1 opacity-70">Credit Limit (₹)</label>
+                        <input
+                          type="number"
+                          value={formData.creditLimit}
+                          onChange={(e) => setFormData({ ...formData, creditLimit: parseFloat(e.target.value) || 0 })}
+                          className={`w-full px-3 py-2 rounded-lg border ${theme === "dark" ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-300 text-gray-900"}`}
+                        />
+                      </div>
+                   </div>
                 </div>
 
                 <div className="flex gap-3 pt-4">

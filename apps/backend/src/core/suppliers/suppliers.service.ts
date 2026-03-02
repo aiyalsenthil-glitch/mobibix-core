@@ -64,6 +64,19 @@ export class SuppliersService {
         isActive: true,
         partyType: 'VENDOR',
         createdBy: 'system',
+        supplierProfile: {
+          create: {
+            category: dto.category,
+            riskFlag: dto.riskFlag || false,
+            rating: dto.rating || 0,
+            paymentDueDays: dto.paymentDueDays || 30,
+            creditLimit: dto.creditLimit,
+            preferredCurrency: dto.preferredCurrency || 'INR',
+          },
+        },
+      },
+      include: {
+        supplierProfile: true,
       },
     });
 
@@ -116,6 +129,9 @@ export class SuppliersService {
       skip,
       take,
       orderBy: { createdAt: 'desc' },
+      include: {
+        supplierProfile: true,
+      },
     });
 
     return {
@@ -199,6 +215,19 @@ export class SuppliersService {
         ...(dto.paymentTerms !== undefined && {
           defaultPaymentTerms: dto.paymentTerms,
         }),
+        supplierProfile: {
+          update: {
+            ...(dto.category !== undefined && { category: dto.category }),
+            ...(dto.riskFlag !== undefined && { riskFlag: dto.riskFlag }),
+            ...(dto.rating !== undefined && { rating: dto.rating }),
+            ...(dto.paymentDueDays !== undefined && { paymentDueDays: dto.paymentDueDays }),
+            ...(dto.creditLimit !== undefined && { creditLimit: dto.creditLimit }),
+            ...(dto.preferredCurrency !== undefined && { preferredCurrency: dto.preferredCurrency }),
+          },
+        },
+      },
+      include: {
+        supplierProfile: true,
       },
     });
 
@@ -228,9 +257,16 @@ export class SuppliersService {
       },
     });
 
-    if (activePurchases > 0) {
+    const openPOs = await this.prisma.purchaseOrder.count({
+      where: {
+        globalSupplierId: id,
+        status: { notIn: ['RECEIVED', 'CANCELLED'] },
+      },
+    });
+
+    if (activePurchases > 0 || openPOs > 0) {
       throw new BadRequestException(
-        `Cannot delete supplier with ${activePurchases} active purchase(es)`,
+        `Cannot delete supplier with ${activePurchases} active purchase(es) and ${openPOs} open purchase order(s)`,
       );
     }
 
@@ -267,6 +303,27 @@ export class SuppliersService {
   }
 
   /**
+   * Check if a GSTIN is already used by another supplier/party in the tenant
+   */
+  async checkGstinDuplicate(
+    tenantId: string,
+    gstin: string,
+    excludeId?: string,
+  ): Promise<boolean> {
+    if (!gstin) return false;
+
+    const existing = await this.prisma.party.findFirst({
+      where: {
+        tenantId,
+        gstNumber: gstin,
+        ...(excludeId && { id: { not: excludeId } }),
+      },
+    });
+
+    return !!existing;
+  }
+
+  /**
    * Map Prisma supplier to response DTO
    */
   private mapToResponseDto(supplier: any): SupplierResponseDto {
@@ -292,6 +349,13 @@ export class SuppliersService {
       notes: '',
       createdAt: supplier.createdAt,
       updatedAt: supplier.updatedAt,
+      // SupplierProfile
+      category: supplier.supplierProfile?.category,
+      riskFlag: supplier.supplierProfile?.riskFlag,
+      rating: supplier.supplierProfile?.rating,
+      paymentDueDays: supplier.supplierProfile?.paymentDueDays,
+      creditLimit: supplier.supplierProfile?.creditLimit,
+      preferredCurrency: supplier.supplierProfile?.preferredCurrency,
     };
   }
 }

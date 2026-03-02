@@ -6,9 +6,10 @@ import { JobStatusValidator } from './job-status-validator.service';
 import { PrismaModule } from '../../../core/prisma/prisma.module';
 import { StockModule } from '../../../core/stock/stock.module';
 import { CommonModule } from '../../../common/common.module';
+import { SalesModule } from '../../../core/sales/sales.module';
 
 @Module({
-  imports: [PrismaModule, StockModule, CommonModule],
+  imports: [PrismaModule, StockModule, CommonModule, SalesModule],
   controllers: [JobCardsController, PublicJobController],
   providers: [JobCardsService, JobStatusValidator],
 })

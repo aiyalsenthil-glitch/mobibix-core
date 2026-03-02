@@ -53,6 +53,11 @@ export interface Purchase {
   payments: SupplierPayment[];
   createdAt: string | Date;
   updatedAt: string | Date;
+
+  // Multi-currency & PO
+  currency: string;
+  exchangeRate: number;
+  poId?: string;
 }
 
 export interface PurchaseItemDto {
@@ -75,6 +80,12 @@ export interface CreatePurchaseDto {
   paymentMethod: PaymentMode;
   status?: PurchaseStatus;
   items: PurchaseItemDto[];
+
+  // Multi-currency & PO
+  currency?: string;
+  exchangeRate?: number;
+  poId?: string;
+  grnId?: string;
 }
 
 export interface UpdatePurchaseDto {
@@ -85,6 +96,12 @@ export interface UpdatePurchaseDto {
   status?: PurchaseStatus;
   paymentMethod?: PaymentMode;
   items?: PurchaseItemDto[];
+
+  // Multi-currency & PO
+  currency?: string;
+  exchangeRate?: number;
+  poId?: string;
+  grnId?: string;
 }
 
 export interface RecordPaymentDto {

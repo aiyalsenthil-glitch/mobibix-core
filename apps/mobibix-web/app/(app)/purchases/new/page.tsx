@@ -10,6 +10,8 @@ import {
   type PurchaseItemDto,
   type PaymentMode,
 } from "@/services/purchases.api";
+import { listPurchaseOrders, type PurchaseOrder } from "@/services/purchase-orders.api";
+import { listGrns, type GRN } from "@/services/grn.api";
 import { authenticatedFetch } from "@/services/auth.api";
 import { useTheme } from "@/context/ThemeContext";
 import { PartySelector } from "@/components/common/PartySelector";
@@ -44,7 +46,12 @@ export default function NewPurchasePage() {
     dueDate: "",
     paymentMethod: "CASH",
     items: [],
+    currency: "INR",
+    exchangeRate: 1.0,
   });
+
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [grns, setGrns] = useState<GRN[]>([]);
 
   // Advance vouchers
   const [advanceVouchers, setAdvanceVouchers] = useState<PaymentVoucher[]>([]);
@@ -64,7 +71,18 @@ export default function NewPurchasePage() {
       setAdvanceVouchers(advances);
     } catch (err: unknown) {
       console.error("Failed to fetch advance vouchers:", err);
-      // Suppress UI error for seamlessness unless needed
+    }
+  };
+
+  const fetchSupplierPOs = async (supplierId: string) => {
+    try {
+      const pos = await listPurchaseOrders();
+      setPurchaseOrders(pos.filter(po => po.globalSupplierId === supplierId));
+      
+      const grnListData = await listGrns();
+      setGrns(grnListData.filter(g => g.status === "CONFIRMED"));
+    } catch (err) {
+      console.error("Failed to fetch POs/GRNs:", err);
     }
   };
 
@@ -281,14 +299,14 @@ export default function NewPurchasePage() {
               theme === "dark" ? "text-white" : "text-gray-900"
             }`}
           >
-            New Purchase Invoice
+            Record Supplier Invoice
           </h1>
           <p
             className={`mt-2 ${
               theme === "dark" ? "text-gray-400" : "text-gray-600"
             }`}
           >
-            Create and track supplier invoices
+            Match financial records against physical arrivals
           </p>
         </div>
 
@@ -393,6 +411,7 @@ export default function NewPurchasePage() {
                         }));
                         // Fetch their advance vouchers
                         fetchSupplierAdvances(party.id);
+                        fetchSupplierPOs(party.id);
                       }}
                       placeholder="Search existing supplier..."
                     />
@@ -525,6 +544,87 @@ export default function NewPurchasePage() {
               </div>
             </div>
 
+            {/* Linking & Currency Section */}
+            <div className={`mt-6 p-4 rounded-lg border border-dashed ${
+              theme === "dark" ? "bg-gray-800/40 border-gray-700" : "bg-blue-50/50 border-blue-200"
+            }`}>
+              <div className="flex flex-col md:flex-row gap-6">
+                <div className="flex-1 space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Inventory Linking</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium mb-1 opacity-70">Purchase Order</label>
+                      <select
+                        value={formData.poId || ""}
+                        onChange={(e) => {
+                          const poId = e.target.value;
+                          const po = purchaseOrders.find(p => p.id === poId);
+                          if (po) {
+                            setFormData(prev => ({
+                              ...prev,
+                              poId,
+                              currency: po.currency,
+                              exchangeRate: po.exchangeRate,
+                              items: po.items.map(item => ({
+                                description: item.description,
+                                quantity: item.quantity,
+                                purchasePrice: item.price,
+                                gstRate: 18,
+                                shopProductId: item.shopProductId,
+                              }))
+                            }));
+                          } else {
+                            setFormData(prev => ({ ...prev, poId: "" }));
+                          }
+                        }}
+                        className={`w-full text-sm px-2 py-1.5 rounded border ${theme === "dark" ? "bg-gray-900 border-gray-700" : "bg-white border-gray-300"}`}
+                      >
+                        <option value="">-- No PO --</option>
+                        {purchaseOrders.map(po => <option key={po.id} value={po.id}>{po.poNumber}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1 opacity-70">Physical Receipt (GRN)</label>
+                      <select
+                        className={`w-full text-sm px-2 py-1.5 rounded border ${theme === "dark" ? "bg-gray-900 border-gray-700" : "bg-white border-gray-300"}`}
+                      >
+                        <option value="">-- No GRN --</option>
+                        {grns.map(g => <option key={g.id} value={g.id}>{g.grnNumber}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`flex-1 space-y-4 md:border-l md:pl-6 ${theme === "dark" ? "border-gray-700" : "border-gray-200"}`}>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">Multi-Currency</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium mb-1 opacity-70">Currency</label>
+                      <select
+                        value={formData.currency}
+                        onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+                        className={`w-full text-sm px-2 py-1.5 rounded border ${theme === "dark" ? "bg-gray-900 border-gray-700" : "bg-white border-gray-300"}`}
+                      >
+                        <option value="INR">INR (₹)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1 opacity-70">Exchange Rate</label>
+                      <input
+                        type="number"
+                        step="0.0001"
+                        value={formData.exchangeRate}
+                        onChange={(e) => setFormData(prev => ({ ...prev, exchangeRate: parseFloat(e.target.value) || 1 }))}
+                        className={`w-full text-sm px-2 py-1.5 rounded border ${theme === "dark" ? "bg-gray-900 border-gray-700" : "bg-white border-gray-300"}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Payment Method */}
             <div className="grid grid-cols-1 gap-6">
               <div>
@@ -600,7 +700,7 @@ export default function NewPurchasePage() {
                               : "bg-white border-teal-300 text-gray-900"
                           }`}
                           min="0"
-                          max={Math.min(selectedVoucherBalance, totals.grandTotal)}
+                          max={Math.min(selectedVoucherBalance, totals.grandTotal * (formData.exchangeRate || 1))}
                           step="0.01"
                         />
                       </div>

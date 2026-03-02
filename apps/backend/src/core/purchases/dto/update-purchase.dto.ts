@@ -6,6 +6,7 @@ import {
   IsDateString,
   IsBoolean,
   Min,
+  IsNumber,
 } from 'class-validator';
 
 export enum PurchaseStatus {
@@ -73,4 +74,16 @@ export class UpdatePurchaseDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @IsOptional()
+  @IsNumber()
+  exchangeRate?: number;
+
+  @IsOptional()
+  @IsString()
+  poId?: string;
 }

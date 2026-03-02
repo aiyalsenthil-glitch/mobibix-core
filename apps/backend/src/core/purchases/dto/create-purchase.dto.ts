@@ -6,6 +6,7 @@ import {
   IsDateString,
   IsBoolean,
   IsArray,
+  IsNumber,
   ValidateNested,
   Min,
 } from 'class-validator';
@@ -98,6 +99,18 @@ export class CreatePurchaseDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @IsOptional()
+  @IsNumber()
+  exchangeRate?: number;
+
+  @IsOptional()
+  @IsString()
+  poId?: string;
 
   @IsOptional()
   @IsEnum(['DRAFT', 'SUBMITTED'])

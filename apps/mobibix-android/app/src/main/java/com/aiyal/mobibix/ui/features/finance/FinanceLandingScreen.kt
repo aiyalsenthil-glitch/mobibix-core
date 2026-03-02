@@ -29,7 +29,8 @@ data class FinanceModule(
 @Composable
 fun FinanceLandingScreen(navController: NavController) {
     val modules = listOf(
-        FinanceModule("Purchases", "Manage stock purchases and suppliers", Icons.Default.ShoppingCart, "purchases", Color(0xFF3B82F6)),
+        FinanceModule("Purchase Orders", "Ordered items and pending receipts", Icons.Default.Inventory, "purchase_orders", Color(0xFFF59E0B)),
+        FinanceModule("Supplier Invoices", "Manage stock bills and payables", Icons.Default.ShoppingCart, "purchases", Color(0xFF3B82F6)),
         FinanceModule("Receipts", "Log money received from customers", Icons.Default.Receipt, "receipts", TealAccent),
         FinanceModule("Payment Vouchers", "Log expenses and supplier payments", Icons.Default.Payment, "vouchers", Color(0xFF8B5CF6))
     )

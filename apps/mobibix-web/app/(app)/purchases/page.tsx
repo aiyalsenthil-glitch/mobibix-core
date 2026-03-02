@@ -307,21 +307,21 @@ export default function PurchasesPage() {
                 theme === "dark" ? "text-white" : "text-gray-900"
               }`}
             >
-              Purchase Management
+              Supplier Invoices
             </h1>
             <p
               className={`text-sm ${
                 theme === "dark" ? "text-stone-400" : "text-gray-600"
               }`}
             >
-              Track supplier invoices and payments
+              Manage financial records and payables
             </p>
           </div>
-          <button
-            onClick={() => router.push("/purchases/new")}
-            className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium"
-          >
-              + &quot;New Purchase&quot;
+            <button
+              onClick={() => router.push("/purchases/new")}
+              className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium"
+            >
+              + Record Invoice
             </button>
         </div>
 
