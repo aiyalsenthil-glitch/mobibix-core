@@ -109,6 +109,22 @@ export class BillingService {
 
     if (!shop) throw new BadRequestException('Shop not found');
 
+    // ─── P2: Atomic Customer Lock & Credit Limit Enforcement ──────────────
+    let customer: any = null;
+    if (options.customerId) {
+      // Use raw SQL for FOR UPDATE since Prisma doesn't support it natively in fluent API
+      const [lockedCustomer] = (await prisma.$queryRawUnsafe(
+        `SELECT id, "currentOutstanding", "defaultCreditLimit" FROM mb_party WHERE id = $1 AND "tenantId" = $2 FOR UPDATE`,
+        options.customerId,
+        tenantId,
+      )) as any[];
+
+      if (!lockedCustomer) {
+        throw new BadRequestException('Customer not found');
+      }
+      customer = lockedCustomer;
+    }
+
     // ─── P0: Seller GSTIN Validation ──────────────────────────────────────
     if (shop.gstEnabled) {
       if (!shop.gstNumber) {
@@ -421,6 +437,36 @@ export class BillingService {
         invoice.invoiceNumber,
         shopId,
       );
+    }
+
+    // ─── P2: Apply Atomic Credit Update ──────────────
+    if (customer && options.customerId) {
+      const creditPortion = totalAmountPaisa - totalPaidPaisa;
+      if (creditPortion > 0) {
+        // Enforce Credit Limit (Atomic)
+        if (
+          customer.defaultCreditLimit !== null &&
+          customer.defaultCreditLimit > 0
+        ) {
+          const projectedBalance = customer.currentOutstanding + creditPortion;
+          if (projectedBalance > customer.defaultCreditLimit) {
+            throw new BadRequestException(
+              `Credit limit exceeded. Current outstanding: ₹${this.fromPaisa(customer.currentOutstanding)}. ` +
+                `New credit: ₹${this.fromPaisa(creditPortion)}. ` +
+                `Limit: ₹${this.fromPaisa(customer.defaultCreditLimit)}.`,
+            );
+          }
+        }
+
+        await prisma.party.update({
+          where: { id: options.customerId },
+          data: { currentOutstanding: { increment: creditPortion } },
+        });
+
+        this.logger.log(
+          `Atomic balance update for Customer ${options.customerId}: +₹${this.fromPaisa(creditPortion)}`,
+        );
+      }
     }
 
     return invoice;

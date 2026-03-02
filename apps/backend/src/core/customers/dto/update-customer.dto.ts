@@ -14,10 +14,15 @@ export class UpdateCustomerDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^[6-9]\d{9}$/, {
-    message: 'Phone number must be a valid 10-digit Indian mobile number',
-  })
   phone?: string;
+
+  @IsOptional()
+  @IsString()
+  countryCode?: string;
+
+  @IsOptional()
+  @IsString()
+  isoStateCode?: string;
 
   @IsOptional()
   @IsEmail({}, { message: 'Invalid email address' })

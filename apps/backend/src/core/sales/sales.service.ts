@@ -453,6 +453,16 @@ export class SalesService {
       if (oldInvoice.status === 'VOIDED')
         throw new BadRequestException('Cannot update cancelled invoice');
 
+      // Lock Customer for Atomic Balance Update (if linked)
+      const customerIdForLock = dto.customerId || oldInvoice.customerId;
+      if (customerIdForLock) {
+        await tx.$queryRawUnsafe(
+          `SELECT id FROM mb_party WHERE id = $1 AND "tenantId" = $2 FOR UPDATE`,
+          customerIdForLock,
+          tenantId,
+        );
+      }
+
       // 🛡️ GUARD: JobCard-linked invoices have special rules
       if (oldInvoice.jobCardId && oldInvoice.jobCard) {
         // If JobCard is DELIVERED, invoice is fully locked
@@ -792,6 +802,34 @@ export class SalesService {
         include: { items: true },
       });
 
+      // Update currentOutstanding (Atomic Net Adjustment)
+      if (oldInvoice.customerId || dto.customerId) {
+        // 1. Revert Old Credit
+        const oldPaid = oldInvoice.receipts.reduce(
+          (sum, r) => sum + r.amount,
+          0,
+        );
+        const oldCredit = Math.max(0, oldInvoice.totalAmount - oldPaid);
+
+        if (oldInvoice.customerId) {
+          await tx.party.update({
+            where: { id: oldInvoice.customerId },
+            data: { currentOutstanding: { decrement: oldCredit } },
+          });
+        }
+
+        // 2. Apply New Credit
+        const newCredit = Math.max(0, totalAmountPaisa - totalPaidPaisa);
+        const targetCustomerId = dto.customerId || oldInvoice.customerId;
+
+        if (targetCustomerId) {
+          await tx.party.update({
+            where: { id: targetCustomerId },
+            data: { currentOutstanding: { increment: newCredit } },
+          });
+        }
+      }
+
       // 9b. Synchronize Job Card Parts (if linked)
       if (isRepairLinked && oldInvoice.jobCardId) {
         // Clear existing parts to sync exactly with invoice
@@ -928,6 +966,15 @@ export class SalesService {
       if (invoice.status === InvoiceStatus.VOIDED)
         throw new BadRequestException('Already cancelled');
 
+      // Lock Customer for Atomic Balance Update (if linked)
+      if (invoice.customerId) {
+        await tx.$queryRawUnsafe(
+          `SELECT id FROM mb_party WHERE id = $1 AND "tenantId" = $2 FOR UPDATE`,
+          invoice.customerId,
+          tenantId,
+        );
+      }
+
       // 🔒 PAYMENT VALIDATION
       const activeReceipts = invoice.receipts.filter(
         (r) => r.status === ReceiptStatus.ACTIVE,
@@ -1002,6 +1049,19 @@ export class SalesService {
         where: { id: invoiceId },
         data: { status: InvoiceStatus.VOIDED },
       });
+
+      // Update currentOutstanding (Atomic Reversal)
+      if (invoice.customerId) {
+        const creditBalance =
+          invoice.totalAmount -
+          invoice.receipts.reduce((sum, r) => sum + r.amount, 0);
+        if (creditBalance > 0) {
+          await tx.party.update({
+            where: { id: invoice.customerId },
+            data: { currentOutstanding: { decrement: creditBalance } },
+          });
+        }
+      }
 
       // 6. Financial Reversal
       // Create OUT entry to balance the original IN
@@ -1547,6 +1607,15 @@ export class SalesService {
           'Cannot collect payment for cancelled invoice',
         );
 
+      // Lock Customer for Atomic Balance Update (if linked)
+      if (invoice.customerId) {
+        await tx.$queryRawUnsafe(
+          `SELECT id FROM mb_party WHERE id = $1 AND "tenantId" = $2 FOR UPDATE`,
+          invoice.customerId,
+          tenantId,
+        );
+      }
+
       // 2. Calculate Balance (in Paisa)
       // Invoice totals are already stored as Paisa in DB (ints)
       // Receipts amounts are also Paisa (ints)
@@ -1644,6 +1713,14 @@ export class SalesService {
         newTotalPaidPaisa >= totalAmountPaisa - 100
           ? InvoiceStatus.PAID
           : InvoiceStatus.PARTIALLY_PAID;
+
+      // Update currentOutstanding (Atomic)
+      if (invoice.customerId) {
+        await tx.party.update({
+          where: { id: invoice.customerId },
+          data: { currentOutstanding: { decrement: incomingTotalPaisa } },
+        });
+      }
 
       // Only update if status changed, but always nice to ensure consistency
       const updatedInvoice = await tx.invoice.update({

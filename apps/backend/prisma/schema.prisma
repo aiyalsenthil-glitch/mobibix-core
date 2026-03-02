@@ -126,6 +126,7 @@ model Tenant {
   appliedPromoCode PromoCode?   @relation(fields: [promoCodeId], references: [id])
   promoUsages      PromoUsage[]
   aiUsageLogs      AiUsageLog[]
+  loyaltyAdjustments LoyaltyAdjustment[]
 }
 
 model DeletionRequest {
@@ -292,6 +293,13 @@ model Party {
   deletedAt           DateTime?
   deletedBy           String?
 
+  // Global & Atomic Hardening
+  normalizedPhone     String?      // E.164 format (e.g., +919876543210)
+  countryCode         String       @default("IN")
+  isoStateCode        String?      // ISO 3166-2 state code (e.g., "TN")
+  currentOutstanding  Int          @default(0) // Derrived atomic balance
+  mergedIntoId        String?      // ID of the target party if merged
+
   tenant              Tenant               @relation("TenantParties", fields: [tenantId], references: [id])
   alerts              CustomerAlert[]
   followUps           CustomerFollowUp[]
@@ -309,11 +317,37 @@ model Party {
   whatsAppLogs        WhatsAppLog[]
   emailLogs           EmailLog[]
 
-  @@unique([tenantId, phone])
+  // Merge & Loyalty Audit Relations
+  mergedInto          Party?              @relation("PartyMerge", fields: [mergedIntoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  mergesFrom          Party[]             @relation("PartyMerge")
+  loyaltyAdjustments  LoyaltyAdjustment[]
+
+  @@unique([tenantId, phone])           // Legacy unique constraint
+  @@unique([tenantId, normalizedPhone]) // Global identity constraint
   @@index([tenantId])
   @@index([tenantId, deletedAt])
   @@index([name])
   @@map("mb_party")
+}
+
+model LoyaltyAdjustment {
+  id              String   @id @default(cuid())
+  tenantId        String
+  partyId         String
+  beforePoints    Int
+  afterPoints     Int
+  delta           Int
+  reason          String
+  adjustedBy      String   // UserId
+  createdAt       DateTime @default(now())
+
+  party           Party    @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([partyId])
+  @@index([createdAt])
+  @@map("mb_loyalty_adjustment")
 }
 
 model CustomerFollowUp {

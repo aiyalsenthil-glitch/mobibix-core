@@ -438,7 +438,14 @@ export class LoyaltyService {
     userName: string,
     shopId?: string,
   ): Promise<void> {
-    // Check config
+    // 1. Snapshot Before Points
+    const beforePoints = await this.getCustomerBalance(
+      tenantId,
+      customerId,
+      shopId,
+    );
+
+    // 2. Check config
     const config = await this.getConfig(tenantId, shopId);
 
     if (!config.allowManualAdjustment) {
@@ -449,22 +456,39 @@ export class LoyaltyService {
       throw new BadRequestException('Points cannot be zero');
     }
 
-    // Create manual adjustment
-    await this.prisma.loyaltyTransaction.create({
-      data: {
-        tenantId,
-        shopId: shopId || null,
-        customerId,
-        points,
-        type: LoyaltyTransactionType.MANUAL,
-        source: LoyaltySource.MANUAL,
-        createdBy: userId,
-        note: `Manual adjustment by ${userName}: ${reason}`,
-      },
+    // 3. Atomic Transaction: Transaction Record + Hard Audit Snapshot
+    await this.prisma.$transaction(async (tx) => {
+      // Create Transaction ledger entry
+      await tx.loyaltyTransaction.create({
+        data: {
+          tenantId,
+          shopId: shopId || null,
+          customerId,
+          points,
+          type: LoyaltyTransactionType.MANUAL,
+          source: LoyaltySource.MANUAL,
+          createdBy: userId,
+          note: `Manual adjustment by ${userName}: ${reason}`,
+        },
+      });
+
+      // Create Snapshot Audit Entry
+      // Note: Use 'as any' if Prisma types haven't refreshed in IDE
+      await (tx as any).loyaltyAdjustment.create({
+        data: {
+          tenantId,
+          partyId: customerId,
+          beforePoints,
+          afterPoints: beforePoints + points,
+          delta: points,
+          reason,
+          adjustedBy: userId,
+        },
+      });
     });
 
     this.logger.warn(
-      `Manual loyalty adjustment: ${points} points for customer ${customerId} by ${userName} (${reason})`,
+      `Manual loyalty adjustment: ${points} points for customer ${customerId} (Before: ${beforePoints}, After: ${beforePoints + points}) by ${userName} (${reason})`,
     );
   }
 

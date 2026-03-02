@@ -18,6 +18,7 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { UserRole } from '@prisma/client';
+import { MergeCustomersDto } from './dto/merge-customers.dto';
 
 @UseGuards(JwtAuthGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
@@ -46,6 +47,13 @@ export class CustomersController {
     const tenantId = req.user.tenantId;
 
     return this.service.deleteCustomer(tenantId, customerId);
+  }
+
+  @Post('merge')
+  @Roles(UserRole.OWNER)
+  async merge(@Req() req, @Body() dto: MergeCustomersDto) {
+    const tenantId = req.user.tenantId;
+    return this.service.mergeCustomers(tenantId, dto.sourceId, dto.targetId);
   }
 
   @Get('by-phone')

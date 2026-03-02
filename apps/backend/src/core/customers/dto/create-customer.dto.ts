@@ -12,14 +12,19 @@ export class CreateCustomerDto {
   name: string;
 
   @IsString()
-  @Matches(/^[6-9]\d{9}$/, {
-    message: 'Phone number must be a valid 10-digit Indian mobile number',
-  })
   phone: string;
 
   @IsOptional()
   @IsEmail({}, { message: 'Invalid email address' })
   email?: string;
+
+  @IsOptional()
+  @IsString()
+  countryCode?: string; // ISO-3166-1 alpha-2 (e.g., IN, AE)
+
+  @IsOptional()
+  @IsString()
+  isoStateCode?: string; // ISO-3166-2 state code (e.g., TN)
 
   @IsString()
   state: string;

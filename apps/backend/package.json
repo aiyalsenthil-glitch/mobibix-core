@@ -66,6 +66,7 @@
     "REMOVED_AUTH_PROVIDER-admin": "^13.6.0",
     "ioredis": "^5.10.0",
     "jsonwebtoken": "^9.0.3",
+    "libphonenumber-js": "^1.12.38",
     "lru-cache": "^11.2.5",
     "multer": "^2.0.2",
     "nestjs-pino": "^4.6.0",
