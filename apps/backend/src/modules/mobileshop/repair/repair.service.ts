@@ -110,6 +110,7 @@ export class RepairService {
         shopProductId: i.shopProductId,
         quantity: i.quantity,
         costPrice: i.costPerUnit || 0, // Mapped to costPrice
+        isDeducted: true,
       }));
 
       await tx.jobCardPart.createMany({ data: partsUsedEntries });
@@ -269,7 +270,7 @@ export class RepairService {
         pricesIncludeTax: !!dto.pricesIncludeTax,
         referenceType: 'JOB',
         referenceId: dto.jobCardId,
-        skipStockUpdate: false, // ERP-Correct: Stock now consumed ONLY on Invoice confirm
+        skipStockUpdate: true, // ERP-Correct: Stock now consumed ONLY on Invoice confirm
         skipReceipt: false,
         shop, // Passing shop object to avoid redundant lookup
         loyaltyPointsRedeemed: dto.loyaltyPointsRedeemed,

@@ -1312,6 +1312,12 @@ model ShopProduct {
   sku              String? // Stock Keeping Unit (internal identifier)
   location         String?
   warrantyDays     Int?    // Default warranty days for sales
+
+  // --- HARDENING FIELDS (ERP P1) ---
+  quantity         Int     @default(0)    // Current physical stock (Total IN - Total OUT)
+  totalValue       BigInt  @default(0)    // Total inventory value in Paisa (Quantity * Cost)
+  lastPurchasePrice Int    @default(0)    // Last unit price from Purchase/Correction
+  // ---------------------------------
   
   imeis            IMEI[]
   invoiceItems     InvoiceItem[]
@@ -1489,7 +1495,8 @@ model JobCardPart {
   jobCardId     String
   shopProductId String
   quantity      Int
-  costPrice     Int?        @default(0) // Snapshot of cost at time of usage
+  costPrice     Int?        // Historical cost at time of addition
+  isDeducted    Boolean     @default(false) // Whether stock has been deducted from ledger
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   jobCard       JobCard     @relation(fields: [jobCardId], references: [id])

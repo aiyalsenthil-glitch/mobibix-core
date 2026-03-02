@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
+import { BillingService } from '../../../core/sales/billing.service';
 import * as crypto from 'crypto';
 import { CreateJobCardDto } from '../jobcard/dto/create-job-card.dto';
 import {
@@ -40,6 +41,7 @@ export class JobCardsService {
     private documentNumberService: DocumentNumberService,
     private stockService: StockService,
     private stockValidation: StockValidationService,
+    private billingService: BillingService,
   ) {}
 
   private async validateStaffAssignment(
@@ -628,37 +630,57 @@ export class JobCardsService {
       dto.quantity,
     );
 
-    // Use transaction to ensure part entry is created
     return this.prisma.$transaction(async (tx) => {
-      // 1. Upsert JobCardPart (accumulate quantity if already exists)
-      const existing = await tx.jobCardPart.findFirst({
-        where: {
-          jobCardId: jobId,
-          shopProductId: dto.productId,
-        },
+      // 1. Lock Product and Validate Stock
+      const product = await tx.shopProduct.findFirst({
+        where: { id: dto.productId, tenantId: user.tenantId, shopId },
       });
+      if (!product) throw new NotFoundException('Product not found');
+      if (product.type === 'SERVICE')
+        throw new BadRequestException('Cannot add SERVICE as a part');
 
-      const newQty = (existing?.quantity || 0) + dto.quantity;
-      const costSnapshot = product.avgCost || product.costPrice || 0;
-
-      if (existing) {
-        await tx.jobCardPart.update({
-          where: { id: existing.id },
-          data: { quantity: newQty },
-        });
-      } else {
-        await tx.jobCardPart.create({
-          data: {
-            jobCardId: jobId,
-            shopProductId: dto.productId,
-            quantity: dto.quantity,
-            costPrice: costSnapshot,
-          },
-        });
+      // Validate stock (Scalar check is fast)
+      if ((product as any).quantity < dto.quantity) {
+        throw new BadRequestException(
+          `Insufficient stock. Available: ${(product as any).quantity}`,
+        );
       }
 
-      // Stock deduction is now deferred to Invoice Generation phase
-      return { success: true };
+      // 2. Record Stock Out Immediately (Atomic)
+      await this.stockService.recordStockOut(
+        user.tenantId,
+        shopId,
+        dto.productId,
+        dto.quantity,
+        'REPAIR',
+        jobId,
+        undefined, // costPerUnit
+        undefined, // imeis
+        tx,
+      );
+
+      // 3. Create or Update JobCardPart
+      const part = await tx.jobCardPart.upsert({
+        where: {
+          jobCardId_shopProductId: {
+            jobCardId: jobId,
+            shopProductId: dto.productId,
+          },
+        },
+        update: {
+          quantity: { increment: dto.quantity },
+          isDeducted: true,
+        } as any,
+        create: {
+          jobCardId: jobId,
+          shopProductId: dto.productId,
+          quantity: dto.quantity,
+          costPrice: (product as any).avgCost,
+          isDeducted: true,
+        } as any,
+      });
+
+      return part;
     });
   }
 
@@ -693,7 +715,7 @@ export class JobCardsService {
     return this.prisma.$transaction(async (tx) => {
       // Step 1: Restore all used parts to inventory
       for (const part of job.parts) {
-        if (part.product.type !== ProductType.SERVICE) {
+        if ((part as any).isDeducted && (part as any).product.type !== ProductType.SERVICE) {
           await this.stockService.recordStockIn(
             user.tenantId,
             shopId,
@@ -1111,7 +1133,7 @@ export class JobCardsService {
         // [Risk S-01] Stock Reconciliation (Optimized via Batching)
         if (job.parts.length > 0) {
           const partsToRestore = job.parts.filter(
-            (p) => p.product.type !== ProductType.SERVICE,
+            (p) => (p as any).isDeducted && (p as any).product.type !== ProductType.SERVICE,
           );
 
           if (partsToRestore.length > 0) {
@@ -1399,31 +1421,34 @@ export class JobCardsService {
 
     const fy = getFinancialYear(new Date());
 
-    // Create DRAFT invoice with correct totals
-    const invoice = await prisma.invoice.create({
-      data: {
+    // 5. Create Invoice via BillingService
+    const invoice = await this.billingService.createInvoice(
+      {
         tenantId: job.tenantId,
         shopId: job.shopId,
-        jobCardId: job.id,
         customerId: job.customerId,
-        invoiceNumber,
-        invoiceDate: new Date(),
-        financialYear: fy,
-        customerName: job.customerName,
+        customerName: job.customerName || 'Walk-in Customer',
         customerPhone: job.customerPhone,
-        status: InvoiceStatus.UNPAID,
-        subTotal: invoiceSubtotalPaisa,
-        gstAmount: invoiceTaxPaisa,
-        totalAmount: invoiceGrandTotalPaisa,
-        paymentMode: 'CASH',
-        cashAmount: 0,
-        invoiceType,
-        isGstApplicable,
-        items: {
-          create: itemsData,
-        },
+        items: itemsData.map((item) => ({
+          shopProductId: item.shopProductId,
+          quantity: item.quantity,
+          rate: item.rate,
+          gstRate: item.gstRate,
+          hsnCode: item.hsnCode,
+          isSerialized: false, // Mobile repairs parts are usually bulk here, or specific IMEI logic handled elsewhere if needed
+        })),
+        paymentMode: PaymentMode.CASH, // Default draft payment mode
+        referenceType: 'JOB',
+        referenceId: job.id,
+        skipStockUpdate: true, // IMPORTANT: We already deducted stock in addPart!
+        shop,
       },
-    });
+      tx,
+    );
+
+    console.log(
+      `✅ Auto-invoice ${invoice.invoiceNumber} created for Job ${job.jobNumber}`,
+    );
 
     // 4. 🛡️ LINK ADVANCE RECEIPTS & UPDATE BALANCE
     // Fetch all advances linked to this JobCard
