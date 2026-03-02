@@ -99,7 +99,9 @@ export class LoyaltyService {
     tenantId: string,
     customerId: string,
     shopId?: string,
+    tx?: any,
   ): Promise<number> {
+    const prisma = tx || this.prisma;
     this.logger.debug(
       `[LoyaltyService] Calculating balance - Tenant: ${tenantId}, Shop: ${shopId}, Customer: ${customerId}`,
     );
@@ -111,7 +113,7 @@ export class LoyaltyService {
      * Prisma aggregate/_sum can sometimes skip filters in complex multi-tenant environments
      * if parameters are intermittently null or 'undefined' string.
      */
-    const result = await this.prisma.$queryRaw<Array<{ balance: number }>>`
+    const result = await prisma.$queryRaw<Array<{ balance: number }>>`
       SELECT COALESCE(SUM(points), 0)::int as balance
       FROM "mb_loyalty_transaction"
       WHERE "tenantId" = ${tenantId}
@@ -202,9 +204,15 @@ export class LoyaltyService {
    * CRITICAL: Only call this when invoice.status === 'PAID'
    * Implements idempotency protection
    */
-  async awardLoyaltyPoints(tenantId: string, invoice: Invoice): Promise<void> {
+  async awardLoyaltyPoints(
+    tenantId: string,
+    invoice: Invoice,
+    tx?: any,
+  ): Promise<void> {
+    const prisma = tx || this.prisma;
+    
     // Idempotency check: Already earned?
-    const existing = await this.prisma.loyaltyTransaction.findFirst({
+    const existing = await prisma.loyaltyTransaction.findFirst({
       where: {
         tenantId,
         invoiceId: invoice.id,
@@ -227,8 +235,15 @@ export class LoyaltyService {
       return;
     }
 
+    // Lock the customer row atomically
+    await prisma.$executeRawUnsafe(
+      `SELECT id FROM "mb_party" WHERE id = $1 AND "tenantId" = $2 FOR UPDATE`,
+      invoice.customerId!,
+      tenantId
+    );
+
     // Create transaction
-    await this.prisma.loyaltyTransaction.create({
+    await prisma.loyaltyTransaction.create({
       data: {
         tenantId,
         shopId: invoice.shopId || null,
@@ -256,6 +271,7 @@ export class LoyaltyService {
     requestedPoints: number,
     invoiceSubTotal: number, // In paise
     shopId?: string,
+    tx?: any,
   ): Promise<{
     success: boolean;
     points: number;
@@ -276,8 +292,8 @@ export class LoyaltyService {
       };
     }
 
-    // 2. Get current balance
-    const balance = await this.getCustomerBalance(tenantId, customerId, shopId);
+    // 2. Get current balance atomically
+    const balance = await this.getCustomerBalance(tenantId, customerId, shopId, tx);
 
     if (balance < requestedPoints) {
       return {
@@ -330,16 +346,25 @@ export class LoyaltyService {
     invoiceId: string,
     invoiceNumber: string,
     shopId?: string,
+    tx?: any,
   ): Promise<{ discountPaise: number }> {
+    const prisma = tx || this.prisma;
     // Get config for conversion
     const config = await this.getConfig(tenantId, shopId);
+
+    // Lock Customer Row securely
+    await prisma.$executeRawUnsafe(
+      `SELECT id FROM "mb_party" WHERE id = $1 AND "tenantId" = $2 FOR UPDATE`,
+      customerId,
+      tenantId
+    );
 
     // Calculate discount
     const discountRupees = points * config.pointValueInRupees;
     const discountPaise = Math.round(discountRupees * 100);
 
     // Create redemption transaction (negative points)
-    await this.prisma.loyaltyTransaction.create({
+    await prisma.loyaltyTransaction.create({
       data: {
         tenantId,
         shopId: shopId || null,
@@ -490,6 +515,119 @@ export class LoyaltyService {
     this.logger.warn(
       `Manual loyalty adjustment: ${points} points for customer ${customerId} (Before: ${beforePoints}, After: ${beforePoints + points}) by ${userName} (${reason})`,
     );
+  }
+
+  /**
+   * Reverse points proportionally for partial refunds
+   */
+  async reversePointsProRata(
+    tenantId: string,
+    invoiceId: string,
+    refundId: string,
+    returnedAmount: number, // in paise
+    originalSubtotal: number, // in paise
+    tx?: any,
+  ): Promise<void> {
+    const prisma = tx || this.prisma;
+
+    const earnTxn = await prisma.loyaltyTransaction.findFirst({
+      where: { tenantId, invoiceId, type: LoyaltyTransactionType.EARN },
+    });
+
+    if (!earnTxn) return;
+
+    // Idempotency: Check if this specific refund was already processed
+    const existing = await prisma.loyaltyTransaction.findFirst({
+      where: { tenantId, referenceId: refundId, type: LoyaltyTransactionType.REVERSAL },
+    });
+
+    if (existing) {
+      this.logger.warn(`Pro-rata reversal already processed for refund ${refundId} (idempotent skip)`);
+      return;
+    }
+
+    const reversalPoints = Math.floor((returnedAmount / originalSubtotal) * earnTxn.points);
+
+    if (reversalPoints > 0) {
+      await prisma.loyaltyTransaction.create({
+        data: {
+          tenantId,
+          shopId: earnTxn.shopId,
+          customerId: earnTxn.customerId,
+          points: -reversalPoints,
+          type: LoyaltyTransactionType.REVERSAL,
+          source: LoyaltySource.INVOICE,
+          invoiceId,
+          referenceId: refundId,
+          reversalOf: earnTxn.id,
+          note: `Pro-rata Reversal: ₹${returnedAmount / 100} returned out of ₹${originalSubtotal / 100}`,
+        },
+      });
+      this.logger.log(`Reversed ${reversalPoints} points for refund ${refundId}`);
+    }
+  }
+
+  /**
+   * Idempotent Expiry Cron Method
+   */
+  async expireLoyaltyPoints(tenantId: string): Promise<number> {
+    const config = await this.getConfig(tenantId);
+    if (!config.isEnabled || !config.expiryDays) return 0;
+
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() - config.expiryDays);
+
+    const expiringTxns = await this.prisma.$queryRaw<Array<{ id: string, customerId: string, shopId: string, points: number }>>`
+      SELECT t.id, t."customerId", t."shopId", t.points 
+      FROM "mb_loyalty_transaction" t
+      LEFT JOIN "mb_loyalty_transaction" exp 
+             ON exp."referenceId" = t.id AND exp.type = 'EXPIRE'
+      WHERE t."tenantId" = ${tenantId}
+        AND t.type = 'EARN'
+        AND t."createdAt" < ${expiryDate}
+        AND exp.id IS NULL
+    `;
+
+    let expiredCount = 0;
+    for (const txn of expiringTxns) {
+      await this.prisma.loyaltyTransaction.create({
+        data: {
+          tenantId,
+          shopId: txn.shopId,
+          customerId: txn.customerId,
+          points: -txn.points,
+          type: LoyaltyTransactionType.EXPIRE,
+          source: LoyaltySource.SYSTEM,
+          referenceId: txn.id,
+          note: `Points expired after ${config.expiryDays} days`,
+        }
+      });
+      expiredCount++;
+    }
+
+    if (expiredCount > 0) {
+      this.logger.log(`Expired ${expiredCount} loyalty transactions for tenant ${tenantId}`);
+    }
+
+    return expiredCount;
+  }
+
+  /**
+   * Get total outstanding liability for the tenant
+   */
+  async getLoyaltyLiability(tenantId: string): Promise<{ totalPoints: number, liabilityRupees: number }> {
+    const config = await this.getConfig(tenantId);
+    
+    const result = await this.prisma.$queryRaw<Array<{ balance: number }>>`
+      SELECT COALESCE(SUM(points), 0)::int as balance
+      FROM "mb_loyalty_transaction"
+      WHERE "tenantId" = ${tenantId}
+    `;
+
+    const totalPoints = result[0]?.balance || 0;
+    const liabilityRupees = totalPoints * config.pointValueInRupees;
+
+    return { totalPoints, liabilityRupees };
   }
 
   /**

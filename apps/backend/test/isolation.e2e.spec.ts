@@ -7,10 +7,16 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/core/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
+import {
+  UserRole,
+  Gender,
+  MemberPaymentStatus,
+  FitnessGoal,
+} from '@prisma/client';
 
 describe('Data Isolation Security (E2E)', () => {
   let app: INestApplication;
@@ -27,6 +33,7 @@ describe('Data Isolation Security (E2E)', () => {
   let tokenStaffA: string, tokenStaffB: string;
 
   beforeAll(async () => {
+    jest.setTimeout(60000);
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -34,8 +41,8 @@ describe('Data Isolation Security (E2E)', () => {
     app = moduleFixture.createNestApplication();
     await app.init();
 
-    prisma = app.get(PrismaService);
-    jwtService = app.get(JwtService);
+    prisma = moduleFixture.get<PrismaService>(PrismaService);
+    jwtService = moduleFixture.get<JwtService>(JwtService);
   });
 
   beforeEach(async () => {
@@ -46,6 +53,7 @@ describe('Data Isolation Security (E2E)', () => {
         code: 'GYM-A-' + Date.now(),
         legalName: 'Gym A Legal',
         contactPhone: '+91-1111111111',
+        tenantType: 'GYM',
       },
     });
 
@@ -55,6 +63,7 @@ describe('Data Isolation Security (E2E)', () => {
         code: 'GYM-B-' + Date.now(),
         legalName: 'Gym B Legal',
         contactPhone: '+91-2222222222',
+        tenantType: 'GYM',
       },
     });
 
@@ -64,6 +73,7 @@ describe('Data Isolation Security (E2E)', () => {
         REMOVED_AUTH_PROVIDERUid: 'owner-a-' + Date.now(),
         email: `owner-a-${Date.now()}@test.com`,
         fullName: 'Owner A',
+        role: UserRole.OWNER,
       },
     });
 
@@ -72,6 +82,7 @@ describe('Data Isolation Security (E2E)', () => {
         REMOVED_AUTH_PROVIDERUid: 'owner-b-' + Date.now(),
         email: `owner-b-${Date.now()}@test.com`,
         fullName: 'Owner B',
+        role: UserRole.OWNER,
       },
     });
 
@@ -98,6 +109,7 @@ describe('Data Isolation Security (E2E)', () => {
         REMOVED_AUTH_PROVIDERUid: 'staff-a-' + Date.now(),
         email: `staff-a-${Date.now()}@test.com`,
         fullName: 'Staff A',
+        role: UserRole.STAFF,
       },
     });
 
@@ -106,6 +118,7 @@ describe('Data Isolation Security (E2E)', () => {
         REMOVED_AUTH_PROVIDERUid: 'staff-b-' + Date.now(),
         email: `staff-b-${Date.now()}@test.com`,
         fullName: 'Staff B',
+        role: UserRole.STAFF,
       },
     });
 
@@ -134,9 +147,16 @@ describe('Data Isolation Security (E2E)', () => {
         phone: '+91-' + Math.random().toString().slice(2, 12),
         feeAmount: 5000,
         paidAmount: 5000,
-        durationCode: 'M1',
+        gender: Gender.OTHER,
+        membershipPlanId: 'plan-a',
         membershipStartAt: new Date(),
         membershipEndAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        paymentStatus: MemberPaymentStatus.PAID,
+        heightCm: 170,
+        weightKg: 70,
+        fitnessGoal: FitnessGoal.GENERAL_FITNESS,
+        monthlyFee: 5000,
+        paymentDueDate: new Date(),
       },
     });
 
@@ -147,13 +167,19 @@ describe('Data Isolation Security (E2E)', () => {
         phone: '+91-' + Math.random().toString().slice(2, 12),
         feeAmount: 5000,
         paidAmount: 2500,
-        durationCode: 'M1',
+        gender: Gender.OTHER,
+        membershipPlanId: 'plan-a',
         membershipStartAt: new Date(),
         membershipEndAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        paymentStatus: MemberPaymentStatus.PARTIAL,
+        heightCm: 170,
+        weightKg: 70,
+        fitnessGoal: FitnessGoal.GENERAL_FITNESS,
+        monthlyFee: 5000,
+        paymentDueDate: new Date(),
       },
     });
 
-    // Create member for gym B
     memberB1 = await prisma.member.create({
       data: {
         tenantId: gymB.id,
@@ -161,9 +187,16 @@ describe('Data Isolation Security (E2E)', () => {
         phone: '+91-' + Math.random().toString().slice(2, 12),
         feeAmount: 6000,
         paidAmount: 6000,
-        durationCode: 'M1',
+        gender: Gender.OTHER,
+        membershipPlanId: 'plan-b',
         membershipStartAt: new Date(),
         membershipEndAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        paymentStatus: MemberPaymentStatus.PAID,
+        heightCm: 170,
+        weightKg: 70,
+        fitnessGoal: FitnessGoal.GENERAL_FITNESS,
+        monthlyFee: 6000,
+        paymentDueDate: new Date(),
       },
     });
 

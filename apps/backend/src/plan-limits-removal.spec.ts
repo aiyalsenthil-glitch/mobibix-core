@@ -8,7 +8,7 @@ import { AuditService } from '../src/core/audit/audit.service';
 import { TenantService } from '../src/core/tenant/tenant.service';
 import { WhatsAppSender } from '../src/modules/whatsapp/whatsapp.sender';
 import { AutomationService } from '../src/modules/whatsapp/automation.service';
-import { ModuleType, UserRole } from '@prisma/client';
+import { ModuleType, UserRole, FitnessGoal } from '@prisma/client';
 
 describe('PLAN_LIMITS Removal - Automated Tests', () => {
   let membersService: MembersService;
@@ -236,6 +236,7 @@ describe('PLAN_LIMITS Removal - Automated Tests', () => {
           durationCode: 'M6',
           feeAmount: 1000,
           paidAmount: 1000,
+          fitnessGoal: FitnessGoal.GENERAL_FITNESS,
         },
         'user-1',
       );
@@ -304,6 +305,7 @@ describe('PLAN_LIMITS Removal - Automated Tests', () => {
             durationCode: 'M6',
             feeAmount: 1000,
             paidAmount: 1000,
+            fitnessGoal: FitnessGoal.GENERAL_FITNESS,
           },
           'user-1',
         ),
@@ -423,6 +425,7 @@ describe('PLAN_LIMITS Removal - Automated Tests', () => {
           durationCode: 'M6',
           feeAmount: 1000,
           paidAmount: 1000,
+          fitnessGoal: FitnessGoal.GENERAL_FITNESS,
         },
         'user-1',
       );

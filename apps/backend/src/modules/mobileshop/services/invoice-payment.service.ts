@@ -75,44 +75,40 @@ export class InvoicePaymentService {
         ? InvoiceStatus.PAID
         : InvoiceStatus.PARTIALLY_PAID;
 
-    // Step 5: Update invoice atomically
-    const updatedInvoice = await this.prisma.invoice.update({
-      where: { id: invoiceId },
-      data: {
-        paidAmount: newPaidAmount,
-        status: newStatus,
-      },
-    });
+    // Step 5: Execute modifications atomically
+    const { updatedInvoice, receipt } = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          paidAmount: newPaidAmount,
+          status: newStatus,
+        },
+      });
 
-    // Step 6: Award loyalty points if invoice is now PAID (idempotent)
-    if (newStatus === InvoiceStatus.PAID && invoice.customerId) {
-      try {
-        await this.loyaltyService.awardLoyaltyPoints(tenantId, updatedInvoice);
-      } catch (error) {
-        // Log but don't fail payment if loyalty service fails
-        this.logger.error(
-          `Failed to award loyalty points for invoice ${invoiceId}`,
-          error as Error,
-        );
+      // Step 6: Award loyalty points if invoice is now PAID (strictly within transaction)
+      if (newStatus === InvoiceStatus.PAID && invoice.customerId) {
+        await this.loyaltyService.awardLoyaltyPoints(tenantId, updated, tx);
       }
-    }
 
-    // Step 7: Create Receipt entry (for accounting)
-    const receipt = await this.prisma.receipt.create({
-      data: {
-        tenantId,
-        shopId: invoice.shopId,
-        linkedInvoiceId: invoiceId,
-        customerId: invoice.customerId,
-        receiptId: `RCP-${Date.now()}`,
-        printNumber: `RCP-${Date.now()}`,
-        customerName: invoice.customerName,
-        customerPhone: invoice.customerPhone,
-        amount,
-        paymentMethod: paymentMethod as PaymentMode,
-        receiptType: 'CUSTOMER',
-        status: 'ACTIVE',
-      },
+      // Step 7: Create Receipt entry (for accounting)
+      const rec = await tx.receipt.create({
+        data: {
+          tenantId,
+          shopId: invoice.shopId,
+          linkedInvoiceId: invoiceId,
+          customerId: invoice.customerId,
+          receiptId: `RCP-${Date.now()}`,
+          printNumber: `RCP-${Date.now()}`,
+          customerName: invoice.customerName,
+          customerPhone: invoice.customerPhone,
+          amount,
+          paymentMethod: paymentMethod as PaymentMode,
+          receiptType: 'CUSTOMER',
+          status: 'ACTIVE',
+        },
+      });
+
+      return { updatedInvoice: updated, receipt: rec };
     });
 
     this.logger.log(

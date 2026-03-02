@@ -1,7 +1,8 @@
-import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { MobileShopReportsService } from './reports.service';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
+import { CurrentUser } from '../../../core/auth/decorators/current-user.decorator';
 import { UserRole, ModuleType } from '@prisma/client';
 import { GSTReportsService } from '../services/gst-reports.service';
 import { InvoicePaymentService } from '../services/invoice-payment.service';
@@ -44,65 +45,141 @@ export class MobileShopReportsController extends TenantScopedController {
     return defaultDate || new Date();
   }
 
+  private validateShopAccess(user: any, shopId?: string) {
+    if (user.role === UserRole.OWNER) return;
+
+    if (shopId) {
+      if (!user.shopIds || !user.shopIds.includes(shopId)) {
+        throw new ForbiddenException('You are not authorized to view reports for this shop');
+      }
+    } else {
+      throw new ForbiddenException('Staff members must specify a shopId to view reports');
+    }
+  }
+
   @Get('dashboard')
-  async getDashboard(@Request() req, @Query('shopId') shopId?: string) {
-    const tenantId = this.getTenantId(req);
-    return this.reportsService.getOwnerDashboard(tenantId, shopId);
+  async getDashboard(@CurrentUser() user: any, @Query('shopId') shopId?: string) {
+    this.validateShopAccess(user, shopId);
+    return this.reportsService.getOwnerDashboard(user.tenantId, shopId);
+  }
+
+  // --- SALES ---
+
+  @Get('sales/summary')
+  async getSalesSummary(
+    @CurrentUser() user: any,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('shopId') shopId?: string,
+  ) {
+    this.validateShopAccess(user, shopId);
+    return this.reportsService.getSalesSummary(
+      user.tenantId,
+      startDate ? new Date(startDate) : undefined,
+      endDate ? new Date(endDate) : undefined,
+      shopId,
+    );
   }
 
   @Get('sales')
-  async getSalesReport(
-    @Request() req,
+  async getPaginatedSales(
+    @CurrentUser() user: any,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('shopId') shopId?: string,
     @Query('partyId') partyId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    const tenantId = this.getTenantId(req);
-    return this.reportsService.getSalesReport(
-      tenantId,
+    this.validateShopAccess(user, shopId);
+    return this.reportsService.getPaginatedSales(
+      user.tenantId,
       startDate ? new Date(startDate) : undefined,
       endDate ? new Date(endDate) : undefined,
       shopId,
       partyId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
+  }
+
+  // --- PURCHASES ---
+
+  @Get('purchases/summary')
+  async getPurchaseSummary(
+    @CurrentUser() user: any,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('shopId') shopId?: string,
+  ) {
+    this.validateShopAccess(user, shopId);
+    return this.reportsService.getPurchaseSummary(
+      user.tenantId,
+      startDate ? new Date(startDate) : undefined,
+      endDate ? new Date(endDate) : undefined,
+      shopId,
     );
   }
 
   @Get('purchases')
-  async getPurchaseReport(
-    @Request() req,
+  async getPaginatedPurchases(
+    @CurrentUser() user: any,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('shopId') shopId?: string,
     @Query('partyId') partyId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    const tenantId = this.getTenantId(req);
-    return this.reportsService.getPurchaseReport(
-      tenantId,
+    this.validateShopAccess(user, shopId);
+    return this.reportsService.getPaginatedPurchases(
+      user.tenantId,
       startDate ? new Date(startDate) : undefined,
       endDate ? new Date(endDate) : undefined,
       shopId,
       partyId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
     );
   }
 
-  @Get('inventory')
-  async getInventoryReport(@Request() req, @Query('shopId') shopId?: string) {
-    const tenantId = this.getTenantId(req);
-    return this.reportsService.getInventoryReport(tenantId, shopId);
+  // --- INVENTORY ---
+
+  @Get('inventory/summary')
+  async getInventorySummary(@CurrentUser() user: any, @Query('shopId') shopId?: string) {
+    this.validateShopAccess(user, shopId);
+    return this.reportsService.getInventorySummary(user.tenantId, shopId);
   }
 
-  @Get('profit')
+  @Get('inventory')
+  async getInventoryReport(
+    @CurrentUser() user: any, 
+    @Query('shopId') shopId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    this.validateShopAccess(user, shopId);
+    return this.reportsService.getPaginatedInventory(
+      user.tenantId, 
+      shopId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
+  }
+
+  // --- PROFIT ---
+
+  @Get('profit/summary')
   async getProfitSummary(
-    @Request() req,
+    @CurrentUser() user: any,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('shopId') shopId?: string,
     @Query('partyId') partyId?: string,
   ) {
-    const tenantId = this.getTenantId(req);
+    this.validateShopAccess(user, shopId);
     return this.reportsService.getProfitSummary(
-      tenantId,
+      user.tenantId,
       startDate ? new Date(startDate) : undefined,
       endDate ? new Date(endDate) : undefined,
       shopId,
@@ -162,7 +239,7 @@ export class MobileShopReportsController extends TenantScopedController {
 
   @Get('gstr-1/b2b')
   async getGSTR1B2B(
-    @Request() req,
+    @CurrentUser() user: any,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
     @Query('startDate') startDate: string,
@@ -172,12 +249,12 @@ export class MobileShopReportsController extends TenantScopedController {
     const from = this.parseDate(startDate, fromDate);
     const to = this.parseDate(endDate, toDate);
 
-    return this.gstReports.getGSTR1B2B(this.getTenantId(req), from, to, shopId);
+    return this.gstReports.getGSTR1B2B(user.tenantId, from, to, shopId);
   }
 
   @Get('gstr-1/b2c')
   async getGSTR1B2C(
-    @Request() req,
+    @CurrentUser() user: any,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
     @Query('startDate') startDate: string,
@@ -187,12 +264,12 @@ export class MobileShopReportsController extends TenantScopedController {
     const from = this.parseDate(startDate, fromDate);
     const to = this.parseDate(endDate, toDate);
 
-    return this.gstReports.getGSTR1B2C(this.getTenantId(req), from, to, shopId);
+    return this.gstReports.getGSTR1B2C(user.tenantId, from, to, shopId);
   }
 
   @Get('gstr-2')
   async getGSTR2(
-    @Request() req,
+    @CurrentUser() user: any,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
     @Query('startDate') startDate: string,
@@ -202,12 +279,12 @@ export class MobileShopReportsController extends TenantScopedController {
     const from = this.parseDate(startDate, fromDate);
     const to = this.parseDate(endDate, toDate);
 
-    return this.gstReports.getGSTR2(this.getTenantId(req), from, to, shopId);
+    return this.gstReports.getGSTR2(user.tenantId, from, to, shopId);
   }
 
   @Get('gstr-1/export')
   async exportGSTR1CSV(
-    @Request() req,
+    @CurrentUser() user: any,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
     @Query('startDate') startDate: string,
@@ -218,7 +295,7 @@ export class MobileShopReportsController extends TenantScopedController {
     const to = this.parseDate(endDate, toDate);
 
     const csv = await this.gstReports.exportGSTR1AsCSV(
-      this.getTenantId(req),
+      user.tenantId,
       from,
       to,
       shopId,
@@ -228,7 +305,7 @@ export class MobileShopReportsController extends TenantScopedController {
 
   @Get('gstr-2/export')
   async exportGSTR2CSV(
-    @Request() req,
+    @CurrentUser() user: any,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
     @Query('startDate') startDate: string,
@@ -239,7 +316,7 @@ export class MobileShopReportsController extends TenantScopedController {
     const to = this.parseDate(endDate, toDate);
 
     const csv = await this.gstReports.exportGSTR2AsCSV(
-      this.getTenantId(req),
+      user.tenantId,
       from,
       to,
       shopId,
@@ -250,19 +327,22 @@ export class MobileShopReportsController extends TenantScopedController {
   // ===== PAYMENT REPORTS =====
 
   @Get('payables-aging')
-  async getPayablesAging(@Request() req, @Query('shopId') shopId?: string) {
-    return this.purchasePayment.getPayablesAging(this.getTenantId(req), shopId);
+  async getPayablesAging(@CurrentUser() user: any, @Query('shopId') shopId?: string) {
+    this.validateShopAccess(user, shopId);
+    return this.purchasePayment.getPayablesAging(user.tenantId, shopId);
   }
 
   @Get('receivables-aging')
-  async getReceivablesAging(@Request() req, @Query('shopId') shopId?: string) {
-    return this.receivablesAging.getAgingReport(this.getTenantId(req), shopId);
+  async getReceivablesAging(@CurrentUser() user: any, @Query('shopId') shopId?: string) {
+    this.validateShopAccess(user, shopId);
+    return this.receivablesAging.getAgingReport(user.tenantId, shopId);
   }
 
   @Get('receivables-aging/export')
-  async exportReceivablesCSV(@Request() req, @Query('shopId') shopId?: string) {
+  async exportReceivablesCSV(@CurrentUser() user: any, @Query('shopId') shopId?: string) {
+    this.validateShopAccess(user, shopId);
     const csv = await this.receivablesAging.exportAsCSV(
-      req.user.tenantId,
+      user.tenantId,
       shopId,
     );
     return { csv };
@@ -270,44 +350,55 @@ export class MobileShopReportsController extends TenantScopedController {
 
   @Get('receivables-aging/top-delinquent')
   async getTopDelinquentCustomers(
-    @Request() req,
+    @CurrentUser() user: any,
     @Query('shopId') shopId?: string,
     @Query('limit') limit?: string,
   ) {
+    this.validateShopAccess(user, shopId);
     const limitNum = limit ? parseInt(limit, 10) : 10;
     return this.receivablesAging.getTopDelinquentCustomers(
-      req.user.tenantId,
+      user.tenantId,
       shopId,
       limitNum,
     );
+  }
+
+  // ===== LOYALTY REPORTS =====
+
+  @Get('loyalty/liability')
+  async getLoyaltyLiability(@CurrentUser() user: any, @Query('shopId') shopId?: string) {
+    this.validateShopAccess(user, shopId);
+    return this.reportsService.getLoyaltyLiability(user.tenantId);
   }
 
   // ===== WARRANTY TRACKING =====
 
   @Get('warranties/expiring')
   async getExpiringWarranties(
-    @Request() req,
+    @CurrentUser() user: any,
     @Query('shopId') shopId?: string,
     @Query('days') days?: string,
   ) {
+    this.validateShopAccess(user, shopId);
     const daysAhead = days ? parseInt(days, 10) : 7;
     return this.warranty.getExpiringWarranties(
-      req.user.tenantId,
+      user.tenantId,
       shopId,
       daysAhead,
     );
   }
 
   @Get('warranties/active')
-  async getActiveWarranties(@Request() req, @Query('shopId') shopId?: string) {
-    return this.warranty.getActiveWarranties(req.user.tenantId, shopId);
+  async getActiveWarranties(@CurrentUser() user: any, @Query('shopId') shopId?: string) {
+    this.validateShopAccess(user, shopId);
+    return this.warranty.getActiveWarranties(user.tenantId, shopId);
   }
 
   // ===== DAILY SALES REPORTS =====
 
   @Get('daily-sales')
   async getDailySalesReport(
-    @Request() req,
+    @CurrentUser() user: any,
     @Query('shopId') shopId: string,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
@@ -322,7 +413,7 @@ export class MobileShopReportsController extends TenantScopedController {
     const to = this.parseDate(endDate, toDate);
 
     return this.dailySales.getDailySalesReport(
-      req.user.tenantId,
+      user.tenantId,
       shopId,
       from,
       to,
@@ -330,24 +421,24 @@ export class MobileShopReportsController extends TenantScopedController {
   }
 
   @Get('daily-sales/today')
-  async getTodaySales(@Request() req, @Query('shopId') shopId: string) {
+  async getTodaySales(@CurrentUser() user: any, @Query('shopId') shopId: string) {
     if (!shopId) {
       return { error: 'shopId is required' };
     }
-    return this.dailySales.getTodaySales(req.user.tenantId, shopId);
+    return this.dailySales.getTodaySales(user.tenantId, shopId);
   }
 
   @Get('daily-sales/comparison')
-  async getSalesComparison(@Request() req, @Query('shopId') shopId: string) {
+  async getSalesComparison(@CurrentUser() user: any, @Query('shopId') shopId: string) {
     if (!shopId) {
       return { error: 'shopId is required' };
     }
-    return this.dailySales.getSalesComparison(req.user.tenantId, shopId);
+    return this.dailySales.getSalesComparison(user.tenantId, shopId);
   }
 
   @Get('daily-sales/export')
   async exportDailySalesCSV(
-    @Request() req,
+    @CurrentUser() user: any,
     @Query('shopId') shopId: string,
     @Query('from') fromDate: string,
     @Query('to') toDate: string,
@@ -362,7 +453,7 @@ export class MobileShopReportsController extends TenantScopedController {
     const to = this.parseDate(endDate, toDate);
 
     const csv = await this.dailySales.exportDailySalesCSV(
-      req.user.tenantId,
+      user.tenantId,
       shopId,
       from,
       to,

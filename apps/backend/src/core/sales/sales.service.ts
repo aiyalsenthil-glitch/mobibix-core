@@ -384,6 +384,12 @@ export class SalesService {
 
         // 5. Delegate to BillingService
         const invoice = await this.billingService.createInvoice(options, tx);
+        
+        // 💳 AWARD LOYALTY POINTS (Strictly within atomic transaction)
+        if (invoice.status === InvoiceStatus.PAID && invoice.customerId) {
+          await this.loyaltyService.awardLoyaltyPoints(tenantId, invoice, tx);
+        }
+        
         return invoice.id;
       },
       { timeout: 30000 },
@@ -406,18 +412,6 @@ export class SalesService {
         ),
       );
 
-      // 💳 AWARD LOYALTY POINTS (if invoice created with PAID status)
-      if (created.status === InvoiceStatus.PAID && created.customerId) {
-        try {
-          await this.loyaltyService.awardLoyaltyPoints(tenantId, created);
-        } catch (err) {
-          this.logger.error(
-            `Failed to award loyalty points for invoice ${created.invoiceNumber}`,
-            err as Error,
-          );
-          // Don't throw - invoice creation succeeded, loyalty is secondary
-        }
-      }
     }
 
     return this.getInvoiceDetails(tenantId, invoiceId);
@@ -772,6 +766,7 @@ export class SalesService {
           shopProductId: line.shopProductId,
           quantity: line.quantity,
           rate: this.toInt(line.ratePaisa), // Now coming in directly as Paise
+          costAtSale: prod?.costPrice || null, // Capture historical cost for GP integrity
           hsnCode: line.hsnCode,
           gstRate: line.gstRate,
           gstAmount: line.gstAmountPaisa, // Already in Paise

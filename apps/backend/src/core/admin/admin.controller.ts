@@ -173,7 +173,7 @@ export class AdminController {
     @Req() req?: any,
   ) {
     // Verify requester is authorized (admin/owner can access)
-    if (req?.user?.role !== 'owner' && req?.user?.role !== 'admin') {
+    if (req?.user?.role !== UserRole.OWNER && req?.user?.role !== UserRole.ADMIN) {
       throw new ForbiddenException(
         'Only admins can access tenant subscription',
       );

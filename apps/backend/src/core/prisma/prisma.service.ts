@@ -71,76 +71,66 @@ export class PrismaService
           async $allOperations({ model, operation, args, query }: any) {
             const tenantId = getCtx('tenantId');
             const skipTenantCheck = getCtx('isInternalQuery') === true;
+            const start = Date.now();
 
-            // 1. Soft Delete Filter
-            if (model && softDeleteModels.has(model)) {
-              if (
-                [
-                  'findUnique',
-                  'findUniqueOrThrow',
-                  'findFirst',
-                  'findFirstOrThrow',
-                  'findMany',
-                  'count',
-                  'aggregate',
-                  'groupBy',
-                ].includes(operation)
-              ) {
-                args.where = withSoftDeleteFilter(args.where ?? {});
-              }
-            }
-
-            // 2. Tenant Isolation
-            if (
-              model &&
-              multiTenantModels.has(model) &&
-              tenantId &&
-              !skipTenantCheck
-            ) {
-              if (
-                [
-                  'findUnique',
-                  'findUniqueOrThrow',
-                  'findFirst',
-                  'findFirstOrThrow',
-                  'findMany',
-                  'count',
-                  'aggregate',
-                  'groupBy',
-                  'update',
-                  'updateMany',
-                  'delete',
-                  'deleteMany',
-                ].includes(operation)
-              ) {
-                args.where = {
-                  ...(args.where ?? {}),
-                  tenantId,
-                };
-              }
-
-              if (['create', 'upsert'].includes(operation)) {
-                if (operation === 'create') {
-                  args.data = { ...(args.data ?? {}), tenantId };
-                } else if (operation === 'upsert') {
-                  args.create = { ...(args.create ?? {}), tenantId };
-                  args.where = { ...(args.where ?? {}), tenantId };
+            try {
+              // 1. Soft Delete Filter
+              if (model && softDeleteModels.has(model)) {
+                if (
+                  [
+                    'findUnique',
+                    'findUniqueOrThrow',
+                    'findFirst',
+                    'findFirstOrThrow',
+                    'findMany',
+                    'count',
+                    'aggregate',
+                    'groupBy',
+                  ].includes(operation)
+                ) {
+                  args.where = withSoftDeleteFilter(args.where ?? {});
                 }
               }
-            }
 
-            return await query(args);
-          },
-        },
-      },
-    });
+              // 2. Tenant Isolation
+              if (
+                model &&
+                multiTenantModels.has(model) &&
+                tenantId &&
+                !skipTenantCheck
+              ) {
+                if (
+                  [
+                    'findUnique',
+                    'findUniqueOrThrow',
+                    'findFirst',
+                    'findFirstOrThrow',
+                    'findMany',
+                    'count',
+                    'aggregate',
+                    'groupBy',
+                    'update',
+                    'updateMany',
+                    'delete',
+                    'deleteMany',
+                  ].includes(operation)
+                ) {
+                  args.where = {
+                    ...(args.where ?? {}),
+                    tenantId,
+                  };
+                }
 
-    const performanceClient = this.$extends({
-      query: {
-        $allModels: {
-          async $allOperations({ model, operation, args, query }) {
-            const start = Date.now();
-            try {
+                if (['create', 'upsert'].includes(operation)) {
+                  if (operation === 'create') {
+                    args.data = { ...(args.data ?? {}), tenantId };
+                  } else if (operation === 'upsert') {
+                    args.create = { ...(args.create ?? {}), tenantId };
+                    args.where = { ...(args.where ?? {}), tenantId };
+                  }
+                }
+              }
+
               return await query(args);
             } finally {
               const duration = Date.now() - start;
@@ -157,7 +147,6 @@ export class PrismaService
     });
 
     Object.assign(this, extendedClient);
-    Object.assign(this, performanceClient);
   }
 
   async onModuleInit() {

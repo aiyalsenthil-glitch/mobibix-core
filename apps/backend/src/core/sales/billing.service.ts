@@ -237,6 +237,7 @@ export class BillingService {
         shopProductId: line.shopProductId,
         quantity: line.quantity,
         rate: line.ratePaisa,
+        costAtSale: parentItem?.costPrice || null, // Capture historical cost for GP integrity
         hsnCode: line.hsnCode,
         gstRate: line.gstRate,
         gstAmount: line.gstAmountPaisa,

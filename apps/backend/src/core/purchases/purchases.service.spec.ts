@@ -8,7 +8,7 @@ import { PurchasesService } from './purchases.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StockService } from '../../core/stock/stock.service';
 import { PartiesService } from '../parties/parties.service';
-import { PaymentMode, PurchaseStatus } from '@prisma/client';
+import { PaymentMode, PurchaseStatus, Prisma } from '@prisma/client';
 
 describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
   let service: PurchasesService;
@@ -66,6 +66,8 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
     gstApproximationReason: null,
     verifiedByUserId: null,
     verifiedAt: null,
+    exchangeRate: new Prisma.Decimal(1.0),
+    poId: null,
   };
 
   const mockItems = [

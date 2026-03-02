@@ -3,7 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { GSTVerificationService } from '../purchases/gst-verification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { GSTR2Service } from '../reports/gstr2.service';
-import { PurchaseStatus, PaymentMode } from '@prisma/client';
+import { PurchaseStatus, PaymentMode, Prisma } from '@prisma/client';
 
 describe('GSTVerificationService - Tier-2 Hardening', () => {
   let service: GSTVerificationService;
@@ -59,6 +59,8 @@ describe('GSTVerificationService - Tier-2 Hardening', () => {
     referenceType: null,
     purchaseType: 'GST',
     taxInclusive: false,
+    exchangeRate: new Prisma.Decimal(1.0),
+    poId: null,
   };
 
   beforeEach(async () => {
@@ -289,6 +291,8 @@ describe('GSTR2Service - ITC Tracking & Legacy Exclusion', () => {
     referenceType: null,
     purchaseType: 'GST',
     taxInclusive: false,
+    exchangeRate: new Prisma.Decimal(1.0),
+    poId: null,
     gstApproximationReason: null,
     verifiedByUserId: 'admin-123',
     items: [
@@ -360,6 +364,8 @@ describe('GSTR2Service - ITC Tracking & Legacy Exclusion', () => {
     referenceType: null,
     purchaseType: 'GST',
     taxInclusive: false,
+    exchangeRate: new Prisma.Decimal(1.0),
+    poId: null,
     gstApproximationReason: 'Legacy',
     verifiedByUserId: null,
     items: [

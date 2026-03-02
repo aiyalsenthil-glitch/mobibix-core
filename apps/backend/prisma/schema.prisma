@@ -111,33 +111,33 @@ model Tenant {
   b2bPurchaseOrders        B2BPurchaseOrder[]
 
   // 🔐 Compliance & Legal Tracking
-  termsAcceptedAt       DateTime?
-  privacyAcceptedAt     DateTime?
-  marketingConsent      Boolean  @default(false)
-  acceptedPolicyVersion String?
-  consentIpAddress      String?
-  consentUserAgent      String?
-  deletionRequestPending Boolean @default(false)
-  deletionRequests      DeletionRequest[] @relation("TenantDeletionRequests")
+  termsAcceptedAt        DateTime?
+  privacyAcceptedAt      DateTime?
+  marketingConsent       Boolean           @default(false)
+  acceptedPolicyVersion  String?
+  consentIpAddress       String?
+  consentUserAgent       String?
+  deletionRequestPending Boolean           @default(false)
+  deletionRequests       DeletionRequest[] @relation("TenantDeletionRequests")
 
-  partnerId        String?
-  partner          Partner?     @relation(fields: [partnerId], references: [id])
-  promoCodeId      String?
-  appliedPromoCode PromoCode?   @relation(fields: [promoCodeId], references: [id])
-  promoUsages      PromoUsage[]
-  aiUsageLogs      AiUsageLog[]
+  partnerId          String?
+  partner            Partner?            @relation(fields: [partnerId], references: [id])
+  promoCodeId        String?
+  appliedPromoCode   PromoCode?          @relation(fields: [promoCodeId], references: [id])
+  promoUsages        PromoUsage[]
+  aiUsageLogs        AiUsageLog[]
   loyaltyAdjustments LoyaltyAdjustment[]
 }
 
 model DeletionRequest {
-  id             String   @id @default(uuid())
-  tenantId       String
-  requestedBy    String
-  requestedAt    DateTime @default(now())
-  reason         String?
-  status         DeletionStatus @default(PENDING)
-  adminNotes     String?
-  resolvedAt     DateTime?
+  id          String         @id @default(uuid())
+  tenantId    String
+  requestedBy String
+  requestedAt DateTime       @default(now())
+  reason      String?
+  status      DeletionStatus @default(PENDING)
+  adminNotes  String?
+  resolvedAt  DateTime?
 
   tenant Tenant @relation("TenantDeletionRequests", fields: [tenantId], references: [id])
 }
@@ -294,13 +294,13 @@ model Party {
   deletedBy           String?
 
   // Global & Atomic Hardening
-  normalizedPhone     String?      // E.164 format (e.g., +919876543210)
-  countryCode         String       @default("IN")
-  isoStateCode        String?      // ISO 3166-2 state code (e.g., "TN")
-  currentOutstanding  Int          @default(0) // Derrived atomic balance
-  mergedIntoId        String?      // ID of the target party if merged
+  normalizedPhone    String? // E.164 format (e.g., +919876543210)
+  countryCode        String  @default("IN")
+  isoStateCode       String? // ISO 3166-2 state code (e.g., "TN")
+  currentOutstanding Int     @default(0) // Derrived atomic balance
+  mergedIntoId       String? // ID of the target party if merged
 
-  supplierProfile     SupplierProfile?
+  supplierProfile SupplierProfile?
 
   tenant              Tenant               @relation("TenantParties", fields: [tenantId], references: [id])
   alerts              CustomerAlert[]
@@ -320,11 +320,11 @@ model Party {
   emailLogs           EmailLog[]
 
   // Merge & Loyalty Audit Relations
-  mergedInto          Party?              @relation("PartyMerge", fields: [mergedIntoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  mergesFrom          Party[]             @relation("PartyMerge")
-  loyaltyAdjustments  LoyaltyAdjustment[]
+  mergedInto         Party?              @relation("PartyMerge", fields: [mergedIntoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  mergesFrom         Party[]             @relation("PartyMerge")
+  loyaltyAdjustments LoyaltyAdjustment[]
 
-  @@unique([tenantId, phone])           // Legacy unique constraint
+  @@unique([tenantId, phone]) // Legacy unique constraint
   @@unique([tenantId, normalizedPhone]) // Global identity constraint
   @@index([tenantId])
   @@index([tenantId, deletedAt])
@@ -333,18 +333,18 @@ model Party {
 }
 
 model LoyaltyAdjustment {
-  id              String   @id @default(cuid())
-  tenantId        String
-  partyId         String
-  beforePoints    Int
-  afterPoints     Int
-  delta           Int
-  reason          String
-  adjustedBy      String   // UserId
-  createdAt       DateTime @default(now())
+  id           String   @id @default(cuid())
+  tenantId     String
+  partyId      String
+  beforePoints Int
+  afterPoints  Int
+  delta        Int
+  reason       String
+  adjustedBy   String // UserId
+  createdAt    DateTime @default(now())
 
-  party           Party    @relation(fields: [partyId], references: [id], onDelete: Cascade)
-  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  party  Party  @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
   @@index([partyId])
@@ -353,16 +353,16 @@ model LoyaltyAdjustment {
 }
 
 model SupplierProfile {
-  id               String   @id @default(cuid())
-  partyId          String   @unique
-  category         String?  // Tier-1, Tier-2, etc.
-  riskFlag         Boolean  @default(false)
-  rating           Float    @default(0.0)
-  paymentDueDays   Int      @default(30)
-  creditLimit      Int?     // in Paisa
-  preferredCurrency String   @default("INR")
-  
-  party            Party    @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  id                String  @id @default(cuid())
+  partyId           String  @unique
+  category          String? // Tier-1, Tier-2, etc.
+  riskFlag          Boolean @default(false)
+  rating            Float   @default(0.0)
+  paymentDueDays    Int     @default(30)
+  creditLimit       Int? // in Paisa
+  preferredCurrency String  @default("INR")
+
+  party Party @relation(fields: [partyId], references: [id], onDelete: Cascade)
 
   @@map("mb_supplier_profile")
 }
@@ -462,7 +462,7 @@ model LoyaltyConfig {
 }
 
 model LoyaltyTransaction {
-  id         String @id @default(cuid())
+  id         String  @id @default(cuid())
   tenantId   String
   shopId     String?
   customerId String
@@ -473,8 +473,9 @@ model LoyaltyTransaction {
   source LoyaltySource
 
   // Audit Trail
-  invoiceId  String? // Link to invoice (for earn/redeem)
-  reversalOf String? // Points to original transaction ID if reversal
+  invoiceId   String? // Link to invoice (for earn/redeem)
+  reversalOf  String? // Points to original transaction ID if reversal
+  referenceId String? // Added for tracking related transactions (e.g. expiry source)
 
   // Metadata
   note      String?
@@ -491,6 +492,7 @@ model LoyaltyTransaction {
   @@index([customerId])
   @@index([invoiceId])
   @@index([reversalOf])
+  @@index([referenceId])
   @@index([createdAt])
   @@map("mb_loyalty_transaction")
 }
@@ -1341,35 +1343,35 @@ model GlobalProduct {
 }
 
 model ShopProduct {
-  id               String            @id @default(cuid())
-  tenantId         String
-  shopId           String
-  globalProductId  String?
-  name             String
-  salePrice        Int?
-  costPrice        Int? // Last Purchase Price (legacy)
-  avgCost          Int? // Weighted Average Cost (WAC) - calculated on every stock IN
-  isActive         Boolean           @default(true)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  type             ProductType
-  category         String?
-  isSerialized     Boolean           @default(false)
-  hsnCode          String?
-  gstRate          Float?            @default(0)
-  reorderLevel     Int?
-  reorderQty       Int?
-  barcode          String?
-  sku              String? // Stock Keeping Unit (internal identifier)
-  location         String?
-  warrantyDays     Int?    // Default warranty days for sales
+  id              String      @id @default(cuid())
+  tenantId        String
+  shopId          String
+  globalProductId String?
+  name            String
+  salePrice       Int?
+  costPrice       Int? // Last Purchase Price (legacy)
+  avgCost         Int? // Weighted Average Cost (WAC) - calculated on every stock IN
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  type            ProductType
+  category        String?
+  isSerialized    Boolean     @default(false)
+  hsnCode         String?
+  gstRate         Float?      @default(0)
+  reorderLevel    Int?
+  reorderQty      Int?
+  barcode         String?
+  sku             String? // Stock Keeping Unit (internal identifier)
+  location        String?
+  warrantyDays    Int? // Default warranty days for sales
 
   // --- HARDENING FIELDS (ERP P1) ---
-  quantity         Int     @default(0)    // Current physical stock (Total IN - Total OUT)
-  totalValue       BigInt  @default(0)    // Total inventory value in Paisa (Quantity * Cost)
-  lastPurchasePrice Int    @default(0)    // Last unit price from Purchase/Correction
+  quantity          Int    @default(0) // Current physical stock (Total IN - Total OUT)
+  totalValue        BigInt @default(0) // Total inventory value in Paisa (Quantity * Cost)
+  lastPurchasePrice Int    @default(0) // Last unit price from Purchase/Correction
   // ---------------------------------
-  
+
   imeis            IMEI[]
   invoiceItems     InvoiceItem[]
   purchaseItems    PurchaseItem[]
@@ -1473,7 +1475,7 @@ model Invoice {
   customerPhone   String?
   customerGstin   String?
   customerState   String?
-  shopGstin       String?       // P0 GST Compliance: seller GSTIN snapshot at invoice time
+  shopGstin       String? // P0 GST Compliance: seller GSTIN snapshot at invoice time
   subTotal        Int
   gstAmount       Int
   cgst            Int?
@@ -1515,29 +1517,30 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id            String      @id @default(cuid())
+  id            String  @id @default(cuid())
   invoiceId     String
   shopProductId String
   quantity      Int
   rate          Int
+  costAtSale    Int? // Last Purchase Price at the time of sale for GP calculations
   hsnCode       String
   gstRate       Float
   gstAmount     Int
-  cgstRate      Decimal     @default(9.0)
-  sgstRate      Decimal     @default(9.0)
-  igstRate      Decimal     @default(0.0)
+  cgstRate      Decimal @default(9.0)
+  sgstRate      Decimal @default(9.0)
+  igstRate      Decimal @default(0.0)
   cgstAmount    Int?
   sgstAmount    Int?
   igstAmount    Int?
   lineTotal     Int
-  
+
   // Warranty & Tracking
   warrantyDays  Int?
   warrantyEndAt DateTime?
-  serialNumbers String[]    @default([])
+  serialNumbers String[]  @default([])
 
-  invoice       Invoice     @relation(fields: [invoiceId], references: [id])
-  product       ShopProduct @relation(fields: [shopProductId], references: [id])
+  invoice Invoice     @relation(fields: [invoiceId], references: [id])
+  product ShopProduct @relation(fields: [shopProductId], references: [id])
 
   @@index([invoiceId])
   @@map("mb_invoice_item")
@@ -1548,7 +1551,7 @@ model JobCardPart {
   jobCardId     String
   shopProductId String
   quantity      Int
-  costPrice     Int?        // Historical cost at time of addition
+  costPrice     Int? // Historical cost at time of addition
   isDeducted    Boolean     @default(false) // Whether stock has been deducted from ledger
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -1581,48 +1584,48 @@ model FinancialEntry {
 }
 
 model Purchase {
-  id                       String               @id @default(cuid())
+  id                       String         @id @default(cuid())
   tenantId                 String
   shopId                   String
   invoiceNumber            String
   globalSupplierId         String?
   supplierName             String
-  supplierGstin            String?              @db.VarChar(15)
-  invoiceDate              DateTime             @default(now())
+  supplierGstin            String?        @db.VarChar(15)
+  invoiceDate              DateTime       @default(now())
   dueDate                  DateTime?
   subTotal                 Int
   totalGst                 Int
-  cgst                     Int?                 @default(0)
-  sgst                     Int?                 @default(0)
-  igst                     Int?                 @default(0)
+  cgst                     Int?           @default(0)
+  sgst                     Int?           @default(0)
+  igst                     Int?           @default(0)
   grandTotal               Int
-  paidAmount               Int                  @default(0)
+  paidAmount               Int            @default(0)
   paymentMethod            PaymentMode
   paymentReference         String?
   cashAmount               Int?
   upiAmount                Int?
-  purchaseType             String               @default("Goods")
-  taxInclusive             Boolean              @default(false)
-  isLegacyGstApproximation Boolean              @default(false)
+  purchaseType             String         @default("Goods")
+  taxInclusive             Boolean        @default(false)
+  isLegacyGstApproximation Boolean        @default(false)
   gstApproximationReason   String?
   verifiedByUserId         String?
   verifiedAt               DateTime?
-  status                   PurchaseStatus       @default(DRAFT)
+  status                   PurchaseStatus @default(DRAFT)
   notes                    String?
-  createdAt                DateTime             @default(now())
-  updatedAt                DateTime             @updatedAt
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
   createdBy                String?
-  currency                 String               @default("INR")
-  exchangeRate             Decimal              @db.Decimal(18, 6) @default(1.0)
+  currency                 String         @default("INR")
+  exchangeRate             Decimal        @default(1.0) @db.Decimal(18, 6)
   poId                     String?
-  
-  po                       PurchaseOrder?       @relation(fields: [poId], references: [id])
-  party                    Party?               @relation("PartyToPurchases", fields: [globalSupplierId], references: [id])
-  shop                     Shop                 @relation(fields: [shopId], references: [id])
-  tenant                   Tenant               @relation("TenantPurchases", fields: [tenantId], references: [id])
-  items                    PurchaseItem[]
-  payments                 SupplierPayment[]
-  supplierAdvances         AdvanceApplication[]
+
+  po               PurchaseOrder?       @relation(fields: [poId], references: [id])
+  party            Party?               @relation("PartyToPurchases", fields: [globalSupplierId], references: [id])
+  shop             Shop                 @relation(fields: [shopId], references: [id])
+  tenant           Tenant               @relation("TenantPurchases", fields: [tenantId], references: [id])
+  items            PurchaseItem[]
+  payments         SupplierPayment[]
+  supplierAdvances AdvanceApplication[]
 
   @@unique([tenantId, invoiceNumber])
   @@index([tenantId])
@@ -1811,7 +1814,7 @@ model PurchaseOrder {
   notes                String?
   status               POStatus            @default(DRAFT)
   currency             String              @default("INR")
-  exchangeRate         Decimal             @db.Decimal(18, 6) @default(1.0)
+  exchangeRate         Decimal             @default(1.0) @db.Decimal(18, 6)
   paymentDueDays       Int                 @default(30)
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
@@ -1829,21 +1832,21 @@ model PurchaseOrder {
 }
 
 model GRN {
-  id                   String         @id @default(cuid())
+  id                   String    @id @default(cuid())
   tenantId             String
   shopId               String
   poId                 String
   grnNumber            String
-  receivedDate         DateTime       @default(now())
-  status               GRNStatus      @default(DRAFT)
-  isVarianceOverridden Boolean        @default(false)
+  receivedDate         DateTime  @default(now())
+  status               GRNStatus @default(DRAFT)
+  isVarianceOverridden Boolean   @default(false)
   overrideNote         String?
-  overriddenBy         String?        // UserID (OWNER only)
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
+  overriddenBy         String? // UserID (OWNER only)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  po                   PurchaseOrder  @relation(fields: [poId], references: [id])
-  items                GRNItem[]
+  po    PurchaseOrder @relation(fields: [poId], references: [id])
+  items GRNItem[]
 
   @@unique([shopId, grnNumber])
   @@index([tenantId])
@@ -1853,17 +1856,17 @@ model GRN {
 }
 
 model GRNItem {
-  id               String      @id @default(cuid())
+  id               String  @id @default(cuid())
   grnId            String
   poItemId         String
   shopProductId    String
   receivedQuantity Int
-  confirmedPrice   Int?        // Price at time of receipt (for WAC)
-  uom              String?     @default("pcs")
+  confirmedPrice   Int? // Price at time of receipt (for WAC)
+  uom              String? @default("pcs")
 
-  grn              GRN         @relation(fields: [grnId], references: [id], onDelete: Cascade)
-  poItem           PurchaseOrderItem @relation(fields: [poItemId], references: [id])
-  product          ShopProduct @relation(fields: [shopProductId], references: [id])
+  grn     GRN               @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  poItem  PurchaseOrderItem @relation(fields: [poItemId], references: [id])
+  product ShopProduct       @relation(fields: [shopProductId], references: [id])
 
   @@index([grnId])
   @@index([poItemId])
@@ -2142,10 +2145,10 @@ enum IMEIStatus {
   IN_STOCK
   RESERVED
   SOLD
-  RETURNED       // Legacy
+  RETURNED // Legacy
   RETURNED_GOOD
   RETURNED_DAMAGED
-  DAMAGED        // Legacy
+  DAMAGED // Legacy
   TRANSFERRED
   LOST
   SCRAPPED
@@ -2243,6 +2246,8 @@ enum LoyaltySource {
   PROMOTION
   REFERRAL
   REDEMPTION
+  SYSTEM
+  EXPIRED
 }
 
 enum LoyaltyTransactionType {

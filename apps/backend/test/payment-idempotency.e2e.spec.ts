@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
-import * as request from 'supertest';
+import request from 'supertest';
 import { PaymentStatus } from '@prisma/client';
 
 /**
@@ -12,9 +12,10 @@ import { PaymentStatus } from '@prisma/client';
  */
 describe('Payment Webhook Idempotency (E2E)', () => {
   let app: INestApplication;
-  let webhookSecret: string;
-  let tenantId: string;
-  let paymentId: string;
+  let webhookSecret: string = 'test_secret';
+  let tenantId: string = 'test_tenant';
+  let paymentId: string = 'pay_test_123';
+  let ownerJwt: string = 'mock_jwt';
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -23,9 +24,6 @@ describe('Payment Webhook Idempotency (E2E)', () => {
 
     app = moduleFixture.createNestApplication();
     await app.init();
-
-    // Setup: Create test payment in PENDING status
-    // paymentId = "pay_test_123"
   });
 
   afterAll(async () => {
@@ -123,7 +121,7 @@ describe('Payment Webhook Idempotency (E2E)', () => {
       // /payments/verify?REMOVED_PAYMENT_INFRAOrderId=X&REMOVED_PAYMENT_INFRAPaymentId=Y
       const response = await request(app.getHttpServer())
         .post('/payments/verify')
-        .set('Authorization', `Bearer ${this.ownerJwt}`)
+        .set('Authorization', `Bearer ${ownerJwt}`)
         .send({
           REMOVED_PAYMENT_INFRAOrderId: 'order_test_1',
           REMOVED_PAYMENT_INFRAPaymentId: 'pay_test_2',
@@ -141,7 +139,7 @@ describe('Payment Webhook Idempotency (E2E)', () => {
 
       const response = await request(app.getHttpServer())
         .post('/payments/verify')
-        .set('Authorization', `Bearer ${this.ownerJwt}`)
+        .set('Authorization', `Bearer ${ownerJwt}`)
         .send({
           REMOVED_PAYMENT_INFRAOrderId: 'order_test_1',
           REMOVED_PAYMENT_INFRAPaymentId: 'pay_test_2',

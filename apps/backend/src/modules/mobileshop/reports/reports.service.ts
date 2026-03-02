@@ -103,14 +103,56 @@ export class MobileShopReportsService {
    * 2️⃣ SALES REPORT
    * Profit = NULL if cost not captured.
    */
-  async getSalesReport(
+  async getSalesSummary(
+    tenantId: string,
+    startDate?: Date,
+    endDate?: Date,
+    shopId?: string,
+  ) {
+    const where: any = {
+      tenantId,
+      ...(shopId && { shopId }),
+      status: { not: InvoiceStatus.VOIDED },
+      ...(startDate &&
+        endDate && { invoiceDate: { gte: startDate, lte: endDate } }),
+    };
+
+    const agg = await this.prisma.invoice.aggregate({
+      where,
+      _sum: { totalAmount: true },
+      _count: { id: true },
+    });
+
+    const receipts = await this.prisma.receipt.aggregate({
+      where: {
+        tenantId,
+        ...(shopId && { shopId }),
+        receiptType: ReceiptType.CUSTOMER,
+        status: ReceiptStatus.ACTIVE,
+        ...(startDate &&
+          endDate && { createdAt: { gte: startDate, lte: endDate } }),
+      },
+      _sum: { amount: true },
+    });
+
+    return {
+      totalInvoices: agg._count.id,
+      totalSales: (agg._sum.totalAmount || 0) / 100,
+      totalCollected: (receipts._sum.amount || 0) / 100,
+    };
+  }
+
+  async getPaginatedSales(
     tenantId: string,
     startDate?: Date,
     endDate?: Date,
     shopId?: string,
     partyId?: string,
+    page: number = 1,
+    limit: number = 20,
     jobCardOnly?: boolean,
   ) {
+    const skip = (page - 1) * limit;
     const where: any = {
       tenantId,
       ...(shopId && { shopId }),
@@ -125,6 +167,8 @@ export class MobileShopReportsService {
 
     const invoices = await this.prisma.invoice.findMany({
       where,
+      skip,
+      take: limit,
       include: {
         items: { include: { product: true } },
         receipts: { where: { status: ReceiptStatus.ACTIVE } },
@@ -237,13 +281,43 @@ export class MobileShopReportsService {
    * 3️⃣ PURCHASE REPORT
    * Note: Purchase module represents Bill + Stock Receipt together.
    */
-  async getPurchaseReport(
+  async getPurchaseSummary(
+    tenantId: string,
+    startDate?: Date,
+    endDate?: Date,
+    shopId?: string,
+  ) {
+    const where: any = {
+      tenantId,
+      ...(shopId && { shopId }),
+      status: { not: PurchaseStatus.CANCELLED },
+      ...(startDate &&
+        endDate && { invoiceDate: { gte: startDate, lte: endDate } }),
+    };
+
+    const agg = await this.prisma.purchase.aggregate({
+      where,
+      _sum: { grandTotal: true, paidAmount: true },
+      _count: { id: true },
+    });
+
+    return {
+      totalPurchases: agg._count.id,
+      totalAmount: (agg._sum.grandTotal || 0) / 100,
+      totalPaid: (agg._sum.paidAmount || 0) / 100,
+    };
+  }
+
+  async getPaginatedPurchases(
     tenantId: string,
     startDate?: Date,
     endDate?: Date,
     shopId?: string,
     partyId?: string,
+    page: number = 1,
+    limit: number = 20,
   ) {
+    const skip = (page - 1) * limit;
     const where: any = {
       tenantId,
       ...(shopId && { shopId }),
@@ -256,6 +330,8 @@ export class MobileShopReportsService {
     };
 
     const purchases = await this.prisma.purchase.findMany({
+      skip,
+      take: limit,
       where,
       include: {
         shop: { select: { name: true } },
@@ -275,11 +351,37 @@ export class MobileShopReportsService {
     }));
   }
 
+  async getInventorySummary(tenantId: string, shopId?: string) {
+    const shopFilter = shopId
+      ? Prisma.sql`AND "shopId" = ${shopId}`
+      : Prisma.empty;
+    const result = await this.prisma.$queryRaw<{ total_value: bigint }[]>`
+      WITH CTE_Balances AS (
+        SELECT "shopProductId", SUM(CASE WHEN "type" = 'IN' THEN "quantity" ELSE -"quantity" END) as qty
+        FROM "mb_stock_ledger"
+        WHERE "tenantId" = ${tenantId} ${shopFilter}
+        GROUP BY "shopProductId"
+        HAVING SUM(CASE WHEN "type" = 'IN' THEN "quantity" ELSE -"quantity" END) > 0
+      )
+      SELECT SUM(cb.qty * p."costPrice") as total_value
+      FROM CTE_Balances cb
+      JOIN "mb_shop_product" p ON cb."shopProductId" = p."id"
+    `;
+
+    return { totalCurrentValue: Number(result[0]?.total_value || 0) / 100 };
+  }
+
   /**
    * 4️⃣ INVENTORY REPORT
    * Logic: StockLedger Aggregation
    */
-  async getInventoryReport(tenantId: string, shopId?: string) {
+  async getPaginatedInventory(
+    tenantId: string,
+    shopId?: string,
+    page: number = 1,
+    limit: number = 20,
+  ) {
+    const skip = (page - 1) * limit;
     const where: any = { tenantId };
     if (shopId) where.shopId = shopId;
 
@@ -370,7 +472,7 @@ export class MobileShopReportsService {
 
   /**
    * 5️⃣ PROFIT SUMMARY
-   * Logic: Paid/Valid Revenue - Cost (LPP)
+   * Logic: Paid/Valid Revenue - Cost (costAtSale)
    */
   async getProfitSummary(
     tenantId: string,
@@ -379,39 +481,6 @@ export class MobileShopReportsService {
     shopId?: string,
     partyId?: string,
   ) {
-    const whereInvoice: any = {
-      tenantId,
-      ...(shopId && { shopId }),
-      ...(partyId && { customerId: partyId }),
-      status: { not: InvoiceStatus.VOIDED },
-      ...(startDate &&
-        endDate && {
-          invoiceDate: { gte: startDate, lte: endDate },
-        }),
-    };
-
-    // 1. Revenue Separation
-    const salesRevenueAgg = await this.prisma.invoiceItem.aggregate({
-      where: {
-        invoice: {
-          ...whereInvoice,
-          jobCardId: null, // Pure Sales
-        },
-      },
-      _sum: { lineTotal: true },
-    });
-
-    const repairRevenueAgg = await this.prisma.invoiceItem.aggregate({
-      where: {
-        invoice: {
-          ...whereInvoice,
-          jobCardId: { not: null }, // Repair Invoices
-        },
-      },
-      _sum: { lineTotal: true },
-    });
-
-    // Use Prisma.sql for dynamic parts
     const shopFilter = shopId
       ? Prisma.sql`AND i."shopId" = ${shopId}`
       : Prisma.empty;
@@ -421,107 +490,46 @@ export class MobileShopReportsService {
     const dateEndFilter = endDate
       ? Prisma.sql`AND i."invoiceDate" <= ${endDate}`
       : Prisma.empty;
-    const salesPartyFilter = partyId
+    const cbPartyFilter = partyId
       ? Prisma.sql`AND i."customerId" = ${partyId}`
       : Prisma.empty;
-    // For Repair, JobCard also has customerId.
-    const repairPartyFilter = partyId
-      ? Prisma.sql`AND jc."customerId" = ${partyId}`
-      : Prisma.empty;
 
-    // 2. Cost Separation (Raw Query for Weighted Sum)
-    // Note: StockLedger stores createdAt, not invoiceDate. Approximate match or join?
-    // Joining InvoiceItem -> Invoice is safer for exact period match if possible.
-    // However, StockLedger for 'REPAIR' references JobCard, 'SALE' references InvoiceItem.
-    // 'SALE' refId is InvoiceItem.id. 'REPAIR' refId is JobCard.id (mostly).
-
-    // Complex Join Strategy for accuracy:
-    // Cost SALE: Join StockLedger -> InvoiceItem -> Invoice
-    // Cost REPAIR: Join StockLedger -> JobCard -> Invoice?
-    // Repair Stock Out happens BEFORE Invoice usually.
-    // But Profit Report is usually based on "Invoiced Period".
-    // If we count cost of parts used in jobs invoiced in this period:
-    // JOIN StockLedger on refId=jobCardId WHERE jobCardId IN (Invoices in Period).
-
-    // SIMPLE APPROACH (User confirmed "Modernized Approach", implied robust).
-    // Let's iterate Invoices and summing costs? No, simplified aggregate.
-
-    // ════════════════════════════════════════════════════════════════════
-    // ✅ APPROVED RAW SQL: Profit calculation with multi-table JOINs
-    // ════════════════════════════════════════════════════════════════════
-    // Why raw SQL is acceptable here:
-    // 1. Requires complex JOINs across 3 tables (StockLedger -> Invoice -> JobCard)
-    // 2. Filters must apply consistently across all tables
-    // 3. Performance-critical reporting query (profit calculations)
-    // 4. Properly parameterized with $queryRaw template literals (SQL injection safe)
-    // 5. Type-safe: TypeScript types defined for result
-    //
-    // Alternative would require:
-    // - Multiple separate Prisma queries with manual JOIN logic
-    // - Loading all records into memory (slow, memory intensive)
-    // - Complex nested includes with filtering
-    //
-    // Decision: Keep raw SQL for accuracy, performance, and maintainability
-    // ════════════════════════════════════════════════════════════════════
-
-    // Cost SALE (Linked to Invoice ID)
-    const costSaleResult = await this.prisma.$queryRaw<
-      { total_cost: bigint }[]
+    const profitResult = await this.prisma.$queryRaw<
+      {
+        sales_revenue: bigint;
+        sales_cost: bigint;
+        repair_revenue: bigint;
+        repair_cost: bigint;
+      }[]
     >`
-      SELECT SUM(sl."quantity" * sl."costPerUnit") as "total_cost"
-      FROM "mb_stock_ledger" sl
-      JOIN "mb_invoice" i ON sl."referenceId" = i."id"
-      WHERE sl."tenantId" = ${tenantId}
-        AND sl."referenceType" = 'SALE'
-        AND i."status" != 'VOIDED'
-        AND i."jobCardId" IS NULL
-        ${shopFilter}
-        ${dateStartFilter}
-        ${dateEndFilter}
-        ${salesPartyFilter}
-    `;
-
-    // Cost REPAIR (Linked to JobCard)
-    // JobCard Parts are OUT entries with refType='REPAIR', refId=JobCardId
-    // We need to filter these by Invoices in the date range?
-    // If we filter by StockLedger.createdAt, it might be different from InvoiceDate.
-    // Consistency: Filter by Invoice Date.
-    const costRepairResult = await this.prisma.$queryRaw<
-      { total_cost: bigint }[]
-    >`
-      SELECT SUM(sl."quantity" * sl."costPerUnit") as "total_cost"
-      FROM "mb_stock_ledger" sl
-      JOIN "mb_job_card" jc ON sl."referenceId" = jc."id"
-      JOIN "mb_invoice" i ON jc."id" = i."jobCardId"
-      WHERE sl."tenantId" = ${tenantId}
-        AND sl."referenceType" = 'REPAIR'
+      SELECT 
+        SUM(CASE WHEN i."jobCardId" IS NULL THEN ii."lineTotal" - ii."gstAmount" ELSE 0 END) as sales_revenue,
+        SUM(CASE WHEN i."jobCardId" IS NULL THEN COALESCE(ii."costAtSale", 0) * ii."quantity" ELSE 0 END) as sales_cost,
+        SUM(CASE WHEN i."jobCardId" IS NOT NULL THEN ii."lineTotal" - ii."gstAmount" ELSE 0 END) as repair_revenue,
+        SUM(CASE WHEN i."jobCardId" IS NOT NULL THEN COALESCE(ii."costAtSale", 0) * ii."quantity" ELSE 0 END) as repair_cost
+      FROM "mb_invoice_item" ii
+      JOIN "mb_invoice" i ON ii."invoiceId" = i."id"
+      WHERE i."tenantId" = ${tenantId}
         AND i."status" != 'VOIDED'
         ${shopFilter}
         ${dateStartFilter}
         ${dateEndFilter}
-        ${repairPartyFilter}
+        ${cbPartyFilter}
     `;
 
-    const salesRevenuePaisa = Number(salesRevenueAgg._sum.lineTotal || 0);
-    const repairRevenuePaisa = Number(repairRevenueAgg._sum.lineTotal || 0);
-    const totalRevenuePaisa = salesRevenuePaisa + repairRevenuePaisa;
+    const r = profitResult[0] || ({} as any);
 
-    const salesCostPaisa = Number(costSaleResult?.[0]?.total_cost || 0);
-    const repairCostPaisa = Number(costRepairResult?.[0]?.total_cost || 0);
-    const totalCostPaisa = salesCostPaisa + repairCostPaisa;
-
-    // Convert to Rupees
-    const salesRevenue = salesRevenuePaisa / 100;
-    const repairRevenue = repairRevenuePaisa / 100;
-    const totalRevenue = totalRevenuePaisa / 100;
-
-    const salesCost = salesCostPaisa / 100;
-    const repairCost = repairCostPaisa / 100;
-    const totalCost = totalCostPaisa / 100;
-
+    const salesRevenue = Number(r.sales_revenue || 0) / 100;
+    const salesCost = Number(r.sales_cost || 0) / 100;
     const salesProfit = salesRevenue - salesCost;
+
+    const repairRevenue = Number(r.repair_revenue || 0) / 100;
+    const repairCost = Number(r.repair_cost || 0) / 100;
     const repairProfit = repairRevenue - repairCost;
-    const totalProfit = totalRevenue - totalCost;
+
+    const totalRevenue = salesRevenue + repairRevenue;
+    const totalCost = salesCost + repairCost;
+    const totalProfit = salesProfit + repairProfit;
 
     return {
       metrics: {
@@ -540,6 +548,28 @@ export class MobileShopReportsService {
         repairProfit,
       },
     };
+  }
+
+  /**
+   * 6️⃣ LOYALTY LIABILITY
+   */
+  async getLoyaltyLiability(tenantId: string) {
+    const config = await this.prisma.loyaltyConfig.findFirst({
+      where: { tenantId },
+    });
+    if (!config || !config.isEnabled)
+      return { totalPoints: 0, liabilityRupees: 0 };
+
+    const result = await this.prisma.$queryRaw<Array<{ balance: number }>>`
+      SELECT COALESCE(SUM(points), 0)::int as balance
+      FROM "mb_loyalty_transaction"
+      WHERE "tenantId" = ${tenantId}
+    `;
+
+    const totalPoints = result[0]?.balance || 0;
+    const liabilityRupees = totalPoints * config.pointValueInRupees;
+
+    return { totalPoints, liabilityRupees };
   }
 
   /**
@@ -600,12 +630,14 @@ export class MobileShopReportsService {
     endDate?: Date,
     shopId?: string,
   ) {
-    return this.getSalesReport(
+    return this.getPaginatedSales(
       tenantId,
       startDate,
       endDate,
       shopId,
       undefined,
+      1,
+      100,
       true,
     );
   }
