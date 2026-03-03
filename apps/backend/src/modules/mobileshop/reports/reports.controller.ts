@@ -187,6 +187,17 @@ export class MobileShopReportsController extends TenantScopedController {
     );
   }
 
+  @Get('profit')
+  async getProfitSummaryAlias(
+    @CurrentUser() user: any,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('shopId') shopId?: string,
+    @Query('partyId') partyId?: string,
+  ) {
+    return this.getProfitSummary(user, startDate, endDate, shopId, partyId);
+  }
+
   @Get('top-products')
   async getTopSellingProducts(
     @Request() req,

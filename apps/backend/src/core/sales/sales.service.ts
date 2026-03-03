@@ -207,7 +207,12 @@ export class SalesService {
         // Get shop details
         const shop = await tx.shop.findFirst({
           where: { id: dto.shopId, tenantId },
-          select: { id: true, gstEnabled: true, state: true },
+          select: {
+            id: true,
+            gstEnabled: true,
+            state: true,
+            stateCode: true,
+          },
         });
 
         if (!shop) {
@@ -482,7 +487,13 @@ export class SalesService {
       // Get shop details
       const shop = await tx.shop.findFirst({
         where: { id: dto.shopId, tenantId },
-        select: { id: true, gstEnabled: true, gstNumber: true, state: true }, // gstNumber added for P0 HSN/GSTIN guards
+        select: {
+          id: true,
+          gstEnabled: true,
+          gstNumber: true,
+          state: true,
+          stateCode: true,
+        }, // gstNumber added for P0 HSN/GSTIN guards
       });
 
       if (!shop) {
@@ -588,7 +599,7 @@ export class SalesService {
       );
 
       // ─── P0: HSN/SAC Enforcement for GST Invoices (mirrors billing.service.ts) ──────────
-      const isGstInvoice = shop.gstEnabled && !!shop.state;
+      const isGstInvoice = shop.gstEnabled && (!!shop.state || !!shop.stateCode);
       if (isGstInvoice) {
         for (const item of dto.items) {
           const hsnCode = productHsnMap.get(item.shopProductId);
@@ -702,9 +713,9 @@ export class SalesService {
       }));
 
       const calc = calculateInvoiceTotals(lineInputs, {
-        isIndianGSTInvoice: shop.gstEnabled && !!shop.state, // P0 fix: !!shop.state handles null/empty
+        isIndianGSTInvoice: shop.gstEnabled && (!!shop.state || !!shop.stateCode), // P0 fix: !!shop.state handles null/empty
         pricesIncludeTax: !!dto.pricesIncludeTax,
-        shopStateCode: shop.state,
+        shopStateCode: shop.stateCode || shop.state,
         customerStateCode: dto.customerState,
         customerGstin: dto.customerGstin,
       });
@@ -1411,13 +1422,11 @@ export class SalesService {
             gstNumber: true, // live shop GSTIN (fallback if shopGstin null)
             addressLine1: true,
             state: true,
+            stateCode: true,
           },
         },
         items: {
-          select: {
-            quantity: true,
-            rate: true,
-            lineTotal: true,
+          include: {
             product: {
               select: { name: true },
             },
@@ -1442,9 +1451,9 @@ export class SalesService {
       shopName: invoice.shop.name,
       shopPhone: invoice.shop.phone,
       shopGstNumber: invoice.shop.gstNumber ?? null, // live fallback in case shopGstin null on old invoices
-      shopAddress: invoice.shop.addressLine1 ?? null,
-      shopState: invoice.shop.state ?? null,
-      items: invoice.items.map((item) => ({
+      shopAddress: (invoice as any).shop.addressLine1 ?? null,
+      shopState: (invoice as any).shop.stateCode || (invoice as any).shop.state || null,
+      items: (invoice as any).items.map((item: any) => ({
         description: item.product.name,
         quantity: item.quantity,
         rate: item.rate,
@@ -1794,7 +1803,7 @@ export class SalesService {
       include: {
         items: true,
         imeis: true, // Fetch linked IMEIs
-        shop: { select: { gstEnabled: true, state: true } },
+        shop: { select: { gstEnabled: true, state: true, stateCode: true } },
       },
     });
 
@@ -1804,14 +1813,15 @@ export class SalesService {
 
     // 2. Reconstruct current items DTO
     const imeisByProduct = new Map<string, string[]>();
-    for (const imei of currentInvoice.imeis) {
+    const invoiceImeis = (currentInvoice as any).imeis || [];
+    for (const imei of invoiceImeis) {
       if (!imeisByProduct.has(imei.shopProductId)) {
         imeisByProduct.set(imei.shopProductId, []);
       }
       imeisByProduct.get(imei.shopProductId)?.push(imei.imei);
     }
 
-    const currentItemsDto = currentInvoice.items.map((item) => {
+    const currentItemsDto = ((currentInvoice as any).items || []).map((item: any) => {
       const productImeis = imeisByProduct.get(item.shopProductId) || [];
       // Consume IMEIs for this item quantity
       const assignedImeis = productImeis.splice(0, item.quantity);

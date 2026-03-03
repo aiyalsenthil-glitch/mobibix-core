@@ -105,8 +105,9 @@ describe('Multi-Tenant Security (E2E)', () => {
         weightKg: 80,
         fitnessGoal: FitnessGoal.MUSCLE_GAIN,
         monthlyFee: 3000,
+        feeAmount: 3000,
         paymentDueDate: new Date(),
-      },
+      } as any,
     });
 
     shop = await prisma.shop.create({
@@ -115,7 +116,12 @@ describe('Multi-Tenant Security (E2E)', () => {
         tenantId: mobileShopTenant.id,
         name: 'Test Shop Instance',
         phone: '+919999000004',
-      },
+        addressLine1: 'Test Address',
+        city: 'Test City',
+        state: 'TN',
+        pincode: '600001',
+        invoicePrefix: 'TS',
+      } as any,
     });
 
     shopInvoice = await prisma.invoice.create({
@@ -238,8 +244,9 @@ describe('Multi-Tenant Security (E2E)', () => {
           weightKg: 70,
           fitnessGoal: FitnessGoal.GENERAL_FITNESS,
           monthlyFee: 5000,
+          feeAmount: 5000,
           paymentDueDate: new Date(),
-        },
+        } as any,
       });
 
       await prisma.member.update({

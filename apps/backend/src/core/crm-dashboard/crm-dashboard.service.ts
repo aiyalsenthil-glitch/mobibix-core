@@ -366,13 +366,25 @@ export class CrmDashboardService {
     const netPointsBalance = totalPointsIssued - totalPointsRedeemed;
 
     // Active customers with points (current balance > 0)
-    const activeCustomersWithPoints = await this.prisma.party.count({
+    // 💡 Performance Note: Aggregating transactions is better than redundant field cache
+    const loyalCustomerAgg = await this.prisma.loyaltyTransaction.groupBy({
+      by: ['customerId'],
       where: {
         tenantId,
-        partyType: { in: ['CUSTOMER', 'BOTH'] },
-        loyaltyPoints: { gt: 0 },
+      },
+      _sum: {
+        points: true,
+      },
+      having: {
+        points: {
+          _sum: {
+            gt: 0,
+          },
+        },
       },
     });
+
+    const activeCustomersWithPoints = loyalCustomerAgg.length;
 
     return {
       totalPointsIssued,

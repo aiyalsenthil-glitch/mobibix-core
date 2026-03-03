@@ -137,31 +137,8 @@ export class PurchasesService {
         },
       });
 
-      // 🛡️ AUTO-SUBMIT: Process stock and cost if status is SUBMITTED
-      if (status === 'SUBMITTED') {
-        for (const item of purchase.items) {
-          if (item.shopProductId) {
-            // 1. Record Consolidated Stock In
-            await this.stockService.recordStockIn(
-              tenantId,
-              purchase.shopId,
-              item.shopProductId,
-              item.quantity,
-              'PURCHASE',
-              purchase.id,
-              item.purchasePrice,
-              undefined,
-              tx,
-            );
-
-            // 2. Update Cost Price (LPP)
-            await tx.shopProduct.update({
-              where: { id: item.shopProductId },
-              data: { costPrice: item.purchasePrice },
-            });
-          }
-        }
-      }
+      // 🛡️ AUTO-SUBMIT: Removed. Stock is now handled EXCLUSIVELY by GRN.
+      // Supplier Invoice (Purchase) is now a purely financial and tax compliance document.
 
       return this.mapToResponseDto(purchase);
     });
@@ -561,6 +538,41 @@ export class PurchasesService {
     if (purchase.status !== 'DRAFT') {
       throw new ConflictException(
         `Purchase cannot be submitted. Current status: ${purchase.status}`,
+      );
+    }
+
+    // 🛡️ HARDENING: Critical Business Validations
+    const items = await this.prisma.purchaseItem.findMany({
+      where: { purchaseId },
+    });
+
+    if (items.length === 0) {
+      throw new BadRequestException('Cannot submit purchase without items');
+    }
+
+    // 1. GST & Compliance
+    if (purchase.totalGst > 0 && !purchase.supplierGstin) {
+      throw new BadRequestException(
+        'Supplier GSTIN is mandatory if GST amount is greater than zero.',
+      );
+    }
+
+    // 2. Invoice Date Validations
+    const now = new Date();
+    const invoiceDate = new Date(purchase.invoiceDate);
+
+    if (invoiceDate > now) {
+      throw new BadRequestException('Invoice date cannot be in the future');
+    }
+
+    // 3. ITC (Input Tax Credit) Safety: Limit to 180 days (standard audit recommendation)
+    const MAX_ITC_DAYS = 180;
+    const oldestAllowed = new Date();
+    oldestAllowed.setDate(now.getDate() - MAX_ITC_DAYS);
+
+    if (invoiceDate < oldestAllowed) {
+      throw new BadRequestException(
+        `Invoice is too old (>${MAX_ITC_DAYS} days). Input Tax Credit (ITC) may be ineligible.`,
       );
     }
 

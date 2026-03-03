@@ -45,6 +45,7 @@ model Tenant {
   state              String?
   pincode            String?
   country            String            @default("India")
+  stateCode          String? // ISO-3166-2:IN (e.g. TN, KA, MH)
   gstNumber          String?
   taxId              String?
   businessType       String?
@@ -209,6 +210,7 @@ model User {
   adminUser          AdminUser?
 
   @@index([REMOVED_AUTH_PROVIDERUid])
+  @@index([REMOVED_AUTH_PROVIDERUid, deletedAt])
   @@index([email])
   @@index([tenantId, deletedAt])
 }
@@ -279,7 +281,6 @@ model Party {
   gstNumber           String?
   businessType        BusinessType @default(B2C)
   partyType           PartyType    @default(CUSTOMER)
-  loyaltyPoints       Int          @default(0)
   isActive            Boolean      @default(true)
   altPhone            String?
   address             String?
@@ -294,7 +295,7 @@ model Party {
   deletedBy           String?
 
   // Global & Atomic Hardening
-  normalizedPhone    String? // E.164 format (e.g., +919876543210)
+  normalizedPhone    String  @default("") // Forced mandatory for identity hardening
   countryCode        String  @default("IN")
   isoStateCode       String? // ISO 3166-2 state code (e.g., "TN")
   currentOutstanding Int     @default(0) // Derrived atomic balance
@@ -318,6 +319,7 @@ model Party {
   paymentVouchers     PaymentVoucher[]
   whatsAppLogs        WhatsAppLog[]
   emailLogs           EmailLog[]
+  ledgerCustomers     LedgerCustomer[]
 
   // Merge & Loyalty Audit Relations
   mergedInto         Party?              @relation("PartyMerge", fields: [mergedIntoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -521,6 +523,7 @@ model CustomerAlert {
 model LedgerCustomer {
   id        String          @id @default(cuid())
   tenantId  String
+  customerId String?         // Link to central Party model
   name      String
   phone     String
   address   String?
@@ -529,9 +532,11 @@ model LedgerCustomer {
   ledgers   LedgerAccount[]
   payments  LedgerPayment[]
   tenant    Tenant          @relation(fields: [tenantId], references: [id])
+  customer  Party?          @relation(fields: [customerId], references: [id])
 
   @@unique([tenantId, phone])
   @@index([tenantId])
+  @@index([customerId])
   @@map("lg_ledger_customer")
 }
 
@@ -613,13 +618,17 @@ model StaffInvite {
   name      String?
   phone     String?
   shopIds   String[] @default([])
+  deletedAt DateTime?
+  deletedBy String?
 
   dynamicRole Role? @relation(fields: [roleId], references: [id])
 
   @@unique([tenantId, email])
+  @@index([email, accepted, deletedAt])
   @@index([email])
   @@index([tenantId])
   @@index([accepted])
+  @@index([tenantId, deletedAt])
 }
 
 model MemberPayment {
@@ -663,6 +672,7 @@ model Plan {
   whatsappUtilityQuota   Int  @default(0) // Monthly quota (all modules)
   whatsappMarketingQuota Int  @default(0) // Monthly quota (all modules)
   analyticsHistoryDays   Int  @default(30) // Days of analytics history (all modules)
+  maxAiTokens            Int  @default(100) // AI tokens per billing cycle
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -720,6 +730,10 @@ model TenantSubscription {
   nextPriceSnapshot Int? // Price for next cycle (when upgrading)
   lastRenewedAt     DateTime? // Track when last renewed (for audit)
 
+  // AI Governance
+  aiTokensUsed     Int       @default(0)
+  lastQuotaResetAt DateTime? @db.Timestamp(6)
+
   // Hybrid Billing Fields
   billingType            BillingType    @default(MANUAL)
   paymentStatus          PaymentStatus  @default(PENDING)
@@ -739,6 +753,7 @@ model TenantSubscription {
   @@index([providerSubscriptionId])
   @@index([providerPaymentLinkId])
   @@index([status, module])
+  @@index([tenantId, status, endDate]) // Optimized for expiry cron
 }
 
 model SubscriptionAddon {
@@ -1136,8 +1151,9 @@ model Shop {
   addressLine1               String
   addressLine2               String?
   city                       String
-  state                      String
+  state                      String?
   pincode                    String
+  stateCode                  String? // ISO-3166-2:IN (e.g. TN, KA, MH)
   gstNumber                  String?
   gstEnabled                 Boolean                    @default(false)
   currency                   String                     @default("INR")
@@ -1287,6 +1303,8 @@ model JobCard {
   scrappedAt           DateTime?
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
+  deletedAt            DateTime?
+  deletedBy            String?
   customer             Party?        @relation(fields: [customerId], references: [id])
   shop                 Shop          @relation(fields: [shopId], references: [id])
   receipts             Receipt[]     @relation("JobCardReceipts")
@@ -1300,6 +1318,7 @@ model JobCard {
   @@index([customerId])
   @@index([tenantId, shopId, status, createdAt])
   @@index([shopId, createdAt(sort: Desc)])
+  @@index([tenantId, deletedAt])
   @@map("mb_job_card")
 }
 
@@ -2492,6 +2511,8 @@ model ApprovalRequest {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   ownerComment String?
+  deletedAt    DateTime?
+  deletedBy    String?
 
   requester User   @relation("RequestedApprovals", fields: [requestedBy], references: [id])
   resolver  User?  @relation("ResolvedApprovals", fields: [resolvedBy], references: [id])
@@ -2500,6 +2521,7 @@ model ApprovalRequest {
 
   @@index([tenantId, shopId])
   @@index([status])
+  @@index([tenantId, deletedAt])
 }
 
 // ─── CORS Management ─────────────────────────────────────────────────────────
@@ -2756,7 +2778,7 @@ model PromoUsage {
   user   User      @relation(fields: [userId], references: [id])
   tenant Tenant    @relation(fields: [tenantId], references: [id])
 
-  @@unique([promoId, userId])
+  @@unique([promoId, tenantId]) // Enforce one use per tenant
   @@index([promoId])
   @@index([userId])
   @@index([tenantId])

@@ -1,6 +1,8 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
+import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/core/prisma/prisma.service';
 
 /**
  * PHASE 5: Frontend Auth Unification (E2E Tests)
@@ -17,23 +19,75 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
   let app: INestApplication;
   let backendServer: any;
 
+  let prisma: PrismaService;
+
   beforeAll(async () => {
-    // Note: This test suite focuses on the BACKEND /auth/exchange endpoint
-    // which both frontends will call. The frontend-specific middleware/storage
-    // tests belong in their respective test directories.
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    await app.init();
+    backendServer = app.getHttpServer();
+    prisma = app.get(PrismaService);
+  });
+
+  beforeEach(async () => {
+    // Seed required tenants for the tests
+    const tenants = ['gym-12345', 'gym-name-12345', 'gym-fitness-12345'];
+    for (const code of tenants) {
+      await prisma.tenant.upsert({
+        where: { code },
+        update: {},
+        create: {
+          name: 'Test Gym ' + code,
+          code,
+          legalName: 'Test Legal ' + code,
+          contactPhone: '+91-0000000000',
+          tenantType: 'GYM',
+        },
+      });
+    }
+
+    // Seed mock user linked to those tenants
+    const user = await prisma.user.upsert({
+      where: { REMOVED_AUTH_PROVIDERUid: 'mock-user-uid' },
+      update: {},
+      create: {
+        REMOVED_AUTH_PROVIDERUid: 'mock-user-uid',
+        email: 'test@gmail.com',
+        fullName: 'Mock User',
+        role: 'OWNER',
+      },
+    });
+
+    for (const code of tenants) {
+      const t = await prisma.tenant.findUnique({ where: { code } });
+      if (t) {
+        await prisma.userTenant.upsert({
+          where: { userId_tenantId: { userId: user.id, tenantId: t.id } },
+          update: {},
+          create: {
+            userId: user.id,
+            tenantId: t.id,
+            role: 'OWNER',
+          },
+        });
+      }
+    }
   });
 
   afterAll(async () => {
-    if (backendServer) {
-      await backendServer.close();
+    if (app) {
+      await app.close();
     }
   });
 
   describe('Auth Exchange Endpoint (Common for Both Frontends)', () => {
     it('should exchange Firebase ID token for Backend JWT', async () => {
-      // Both frontends call: POST /auth/exchange with { idToken, tenantCode }
+      // Both frontends call: POST /auth/REMOVED_AUTH_PROVIDER with { idToken, tenantCode }
       const response = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
           tenantCode: 'gym-fitness-12345',
@@ -48,7 +102,7 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
     it('should return JWT with tenantId claim for multi-tenant context', async () => {
       // Both GymPilot and MobiBix need tenantId for tenant-scoped API calls
       const response = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
           tenantCode: 'gym-name-12345',
@@ -66,7 +120,7 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
     it('should handle missing tenantCode for owner login', async () => {
       // Owners (no tenant) may call without tenantCode
       const response = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
           // No tenantCode (owner login)
@@ -80,7 +134,7 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
     it('should reject invalid Firebase token', async () => {
       // Invalid token = 401 Unauthorized
       await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'invalid_token_xyz',
           tenantCode: 'gym-12345',
@@ -93,7 +147,7 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
     it('should provide accessToken for localStorage storage', async () => {
       // GymPilot (SPA) stores token in localStorage and reads it on each request
       const response = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
           tenantCode: 'gym-12345',
@@ -110,7 +164,7 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
     it('should support Bearer token in Authorization header', async () => {
       // After GymPilot stores token, it sends: Authorization: Bearer <token>
       const exchangeResponse = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({ idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token', tenantCode: 'gym-12345' })
         .expect(200);
 
@@ -128,7 +182,7 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
     it('should provide user metadata for frontend context', async () => {
       // GymPilot stores user info in state: {userId, email, role, tenantId}
       const response = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
           tenantCode: 'gym-12345',
@@ -149,13 +203,13 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
       // Auth happens entirely client-side:
       // 1. User logs in → Firebase auth
       // 2. Get Firebase ID token
-      // 3. Exchange for JWT via /auth/exchange
+      // 3. Exchange for JWT via /auth/REMOVED_AUTH_PROVIDER
       // 4. Store JWT in localStorage
       // 5. Attach to all API calls as Bearer header
 
       // This test just verifies the exchange endpoint works (already tested above)
       const response = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
           tenantCode: 'gym-12345',
@@ -171,7 +225,7 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
     it('should provide accessToken and support Set-Cookie', async () => {
       // MobiBix (SSR) can receive token via Set-Cookie header
       const response = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
           tenantCode: 'gym-12345',
@@ -201,7 +255,7 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
       // This is primarily a middleware test in mobibix-web tests
       // But we verify JWT validates in backend:
       const exchangeResponse = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({ idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token', tenantCode: 'gym-12345' })
         .expect(200);
 
@@ -232,7 +286,7 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
     it('should preserve tenantId in both auth strategies', async () => {
       // Both GymPilot (localStorage) and MobiBix (cookie) need tenantId
       const response = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
           tenantCode: 'gym-fitness-12345',
@@ -252,13 +306,13 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
   describe('Auth Strategy Distinctions', () => {
     it('GymPilot: SPA requires localStorage (no SSR middleware)', async () => {
       // GymPilot flow:
-      // 1. Client receives JWT from /auth/exchange
+      // 1. Client receives JWT from /auth/REMOVED_AUTH_PROVIDER
       // 2. Stores in localStorage (client-side only)
       // 3. On each API call: reads from localStorage, attaches as Bearer
       // 4. No backend middleware validation needed
 
       const response = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
           tenantCode: 'gym-12345',
@@ -271,14 +325,14 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
 
     it('MobiBix: SSR requires cookie + middleware (server-side validation)', async () => {
       // MobiBix flow:
-      // 1. Client receives JWT from /auth/exchange
+      // 1. Client receives JWT from /auth/REMOVED_AUTH_PROVIDER
       // 2. Stores in HTTP-only cookie (server sets via Set-Cookie header)
       // 3. On each request: middleware reads cookie, validates JWT
       // 4. Passes to Next.js page handlers with context
       // 5. Redirects unauthenticated requests to /signin
 
       const response = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
           tenantCode: 'gym-12345',
@@ -291,14 +345,14 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
   });
 
   describe('Backward Compatibility', () => {
-    it('should support both auth strategies from single /auth/exchange endpoint', async () => {
+    it('should support both auth strategies from single /auth/REMOVED_AUTH_PROVIDER endpoint', async () => {
       // Single endpoint serves both frontends
-      // /auth/exchange returns: {accessToken, user, ...}
+      // /auth/REMOVED_AUTH_PROVIDER returns: {accessToken, user, ...}
       // GymPilot: Takes accessToken, stores in localStorage
       // MobiBix: Takes accessToken, sets in HTTP-only cookie via middleware
 
       const response = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
           tenantCode: 'gym-12345',
@@ -315,7 +369,7 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
     it('should include sub (user ID) in JWT', async () => {
       // JWT structure: {sub: userId, tenantId, role, iat, exp}
       const response = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
           tenantCode: 'gym-12345',
@@ -333,7 +387,7 @@ describe('Frontend Auth Strategy Validation (E2E)', () => {
     it('should expire tokens appropriately', async () => {
       // JWT should have exp claim (e.g., 24 hours)
       const response = await request(backendServer)
-        .post('/auth/exchange')
+        .post('/auth/REMOVED_AUTH_PROVIDER')
         .send({
           idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
           tenantCode: 'gym-12345',

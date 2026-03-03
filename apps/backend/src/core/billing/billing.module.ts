@@ -16,6 +16,7 @@ import { AutoRenewCronService } from './auto-renew.cron';
 import { BullModule } from '@nestjs/bullmq';
 import { RazorpayWebhookProcessor } from './REMOVED_PAYMENT_INFRA.webhook.processor';
 import { billingMetricsProviders } from './metrics.providers';
+import { AiGovernanceService } from './ai-governance.service';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { billingMetricsProviders } from './metrics.providers';
     AutoRenewCronService,
     // PaymentExpiryCronService REMOVED — duplicate of PaymentCleanupCron in payments.module
     RazorpayWebhookProcessor,
+    AiGovernanceService,
     ...billingMetricsProviders,
   ],
   controllers: [RazorpayWebhookController],
@@ -47,6 +49,7 @@ import { billingMetricsProviders } from './metrics.providers';
     InvoiceModule,
     PlanRulesService,
     PlanMappingService,
+    AiGovernanceService,
   ],
 })
 export class BillingModule {}

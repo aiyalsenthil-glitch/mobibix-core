@@ -105,6 +105,7 @@ export class ShopService {
         addressLine1: dto.addressLine1,
         city: dto.city,
         state: dto.state,
+        stateCode: dto.stateCode,
         pincode: dto.pincode,
         invoicePrefix: dto.invoicePrefix,
         gstNumber,
@@ -165,6 +166,7 @@ export class ShopService {
         addressLine1: dto.addressLine1,
         city: dto.city,
         state: dto.state,
+        stateCode: dto.stateCode,
         pincode: dto.pincode,
         gstNumber,
         // Auto-enable GST if a GST number is provided; otherwise leave unchanged
@@ -187,6 +189,7 @@ export class ShopService {
         addressLine2: true,
         city: true,
         state: true,
+        stateCode: true,
         pincode: true,
         website: true,
 
@@ -254,6 +257,7 @@ export class ShopService {
         addressLine2: dto.addressLine2,
         city: dto.city,
         state: dto.state,
+        stateCode: dto.stateCode,
         pincode: dto.pincode,
         website: dto.website,
 

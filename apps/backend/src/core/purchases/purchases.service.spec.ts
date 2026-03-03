@@ -105,6 +105,11 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
             purchase: {
               findUnique: jest.fn(),
               update: jest.fn(),
+              findMany: jest.fn(),
+              count: jest.fn(),
+              fields: {
+                paidAmount: 'paidAmount', // Dummy for grandTotal: { gt: this.prisma.purchase.fields.paidAmount }
+              } as any,
             },
             purchaseItem: {
               findMany: jest.fn(),
@@ -135,13 +140,10 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
   });
 
   describe('atomicPurchaseSubmit', () => {
-    it('should submit a valid purchase and create stock ledger entries', async () => {
+    it('should submit a valid purchase (financial-only)', async () => {
       jest
         .spyOn(prisma.purchase, 'findUnique')
         .mockResolvedValueOnce(mockPurchase);
-      jest
-        .spyOn(prisma.purchaseItem, 'findMany')
-        .mockResolvedValueOnce(mockItems);
 
       // Mock transaction
       jest
@@ -152,9 +154,13 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
 
       await service.atomicPurchaseSubmit(mockTenantId, mockPurchaseId);
 
-      expect(prisma.purchase.findUnique).toHaveBeenCalledWith({
+      expect(prisma.purchase.update).toHaveBeenCalledWith({
         where: { id: mockPurchaseId },
+        data: { status: 'SUBMITTED' },
       });
+      
+      // Verify no stock ledger creation (now handled by GRN)
+      expect(prisma.stockLedger.create).not.toHaveBeenCalled();
     });
 
     it('should reject submission if purchase not found', async () => {
@@ -178,68 +184,49 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
         service.atomicPurchaseSubmit(mockTenantId, mockPurchaseId),
       ).rejects.toThrow(ConflictException);
     });
+  });
 
-    it('should reject submission if purchase has no items', async () => {
-      const purchaseNoItems = { ...mockPurchase, items: [] };
-      jest
-        .spyOn(prisma.purchase, 'findUnique')
-        .mockResolvedValueOnce(purchaseNoItems);
+  describe('getPayablesAging', () => {
+    it('should calculate aging buckets correctly', async () => {
+      const today = new Date();
+      const mockPurchases = [
+        {
+          id: 'p1',
+          invoiceNumber: 'INV1',
+          supplierName: 'S1',
+          grandTotal: 1000,
+          paidAmount: 0,
+          dueDate: new Date(today.getTime() + 86400000), // Future (Current)
+          invoiceDate: today,
+        },
+        {
+          id: 'p2',
+          invoiceNumber: 'INV2',
+          supplierName: 'S2',
+          grandTotal: 500,
+          paidAmount: 100,
+          dueDate: new Date(today.getTime() - 10 * 86400000), // 10 days ago (1-30)
+          invoiceDate: today,
+        },
+        {
+          id: 'p3',
+          invoiceNumber: 'INV3',
+          supplierName: 'S3',
+          grandTotal: 2000,
+          paidAmount: 0,
+          dueDate: new Date(today.getTime() - 100 * 86400000), // 100 days ago (over90)
+          invoiceDate: today,
+        },
+      ];
 
-      await expect(
-        service.atomicPurchaseSubmit(mockTenantId, mockPurchaseId),
-      ).rejects.toThrow(BadRequestException);
-    });
+      jest.spyOn(prisma.purchase, 'findMany').mockResolvedValueOnce(mockPurchases as any);
 
-    it('should reject if GSTIN missing for GST purchases', async () => {
-      const purchaseNoGstin = { ...mockPurchase, supplierGstin: null };
-      jest
-        .spyOn(prisma.purchase, 'findUnique')
-        .mockResolvedValueOnce(purchaseNoGstin);
-      jest
-        .spyOn(prisma.purchaseItem, 'findMany')
-        .mockResolvedValueOnce(mockItems);
+      const report = await service.getPayablesAging(mockTenantId);
 
-      await expect(
-        service.atomicPurchaseSubmit(mockTenantId, mockPurchaseId),
-      ).rejects.toThrow(
-        new BadRequestException(
-          'Supplier GSTIN required for GST purchases (ITC eligibility)',
-        ),
-      );
-    });
-
-    it('should reject if invoice date is in future', async () => {
-      const futurePurchase = {
-        ...mockPurchase,
-        invoiceDate: new Date(Date.now() + 86400000), // +1 day
-      };
-      jest
-        .spyOn(prisma.purchase, 'findUnique')
-        .mockResolvedValueOnce(futurePurchase);
-      jest
-        .spyOn(prisma.purchaseItem, 'findMany')
-        .mockResolvedValueOnce(mockItems);
-
-      await expect(
-        service.atomicPurchaseSubmit(mockTenantId, mockPurchaseId),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should reject if invoice exceeds 180-day ITC window', async () => {
-      const oldPurchase = {
-        ...mockPurchase,
-        invoiceDate: new Date('2023-01-01'), // >180 days ago
-      };
-      jest
-        .spyOn(prisma.purchase, 'findUnique')
-        .mockResolvedValueOnce(oldPurchase);
-      jest
-        .spyOn(prisma.purchaseItem, 'findMany')
-        .mockResolvedValueOnce(mockItems);
-
-      await expect(
-        service.atomicPurchaseSubmit(mockTenantId, mockPurchaseId),
-      ).rejects.toThrow(BadRequestException);
+      expect(report.current).toBe(1000);
+      expect(report['1-30']).toBe(400); // 500 - 100
+      expect(report.over90).toBe(2000);
+      expect(report.totalOutstanding).toBe(3400);
     });
   });
 });

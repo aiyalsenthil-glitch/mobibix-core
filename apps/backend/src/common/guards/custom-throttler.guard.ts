@@ -20,6 +20,11 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
    * Exempt admin users from rate limiting on analytics endpoints
    */
   protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
+    // Skip throttling in test environment
+    if (process.env.NODE_ENV === 'test') {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 

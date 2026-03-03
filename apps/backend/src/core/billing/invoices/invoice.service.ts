@@ -53,9 +53,10 @@ export class InvoiceService {
         igst: totalGst,
       };
     } else {
+      const half = Math.round(totalGst / 2);
       return {
-        cgst: Math.round(totalGst / 2), // 9%
-        sgst: Math.round(totalGst / 2), // 9%
+        cgst: half,
+        sgst: half,
         igst: 0,
       };
     }
@@ -106,6 +107,18 @@ export class InvoiceService {
               return existing;
             }
 
+            // Get tenant's state code for robust GST calculation
+            const tenantFull = await tx.tenant.findUnique({
+              where: { id: payment.tenantId },
+              select: { state: true, stateCode: true },
+            });
+
+            const companyStateCode = 'TN'; // Tamil Nadu ISO code
+            const isInterstate = tenantFull?.stateCode
+              ? tenantFull.stateCode.trim().toUpperCase() !== companyStateCode
+              : tenantFull?.state &&
+                tenantFull.state.trim().toLowerCase() !== 'tamil nadu';
+
             // Get plan details
             const plan = await tx.plan.findUnique({
               where: { id: payment.planId },
@@ -119,9 +132,9 @@ export class InvoiceService {
 
             const invoiceNumber = await this.generateInvoiceNumber(tx);
 
-            // Calculate GST (assuming intra-state for now)
-            const gst = this.calculateGST(payment.amount, false);
-            const total = payment.amount + gst.cgst + gst.sgst + gst.igst;
+            // Calculate GST based on state
+            const gst = this.calculateGST(payment.amount, !!isInterstate);
+            const total = payment.amount + gst.cgst! + gst.sgst! + gst.igst!;
 
             // Create invoice
             const invoice = await tx.subscriptionInvoice.create({

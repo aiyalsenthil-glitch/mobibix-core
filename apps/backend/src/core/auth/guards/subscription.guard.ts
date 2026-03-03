@@ -94,7 +94,7 @@ export class SubscriptionGuard implements CanActivate {
           ],
         });
       },
-      1000 * 60 * 5, // 5 minutes TTL
+      1000 * 30, // 30 seconds TTL
     );
 
     if (!subscription) {

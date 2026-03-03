@@ -16,7 +16,7 @@ export class CustomersService {
     const normalizedPhone = this.phoneService.normalize(
       dto.phone,
       dto.countryCode || 'IN',
-    );
+    ) || "";
 
     // prevent duplicate phone per tenant
     // 🔒 B2B GSTIN validation
@@ -177,12 +177,12 @@ export class CustomersService {
       throw new BadRequestException('Customer not found');
     }
 
-    let normalizedPhone: string | null | undefined;
+    let normalizedPhone: string = customer.normalizedPhone;
     if (dto.phone) {
       normalizedPhone = this.phoneService.normalize(
         dto.phone,
         dto.countryCode || customer.countryCode || 'IN',
-      );
+      ) || "";
 
       // Check for uniqueness if phone changed
       if (normalizedPhone !== customer.normalizedPhone) {
@@ -311,12 +311,11 @@ export class CustomersService {
         data: { globalSupplierId: targetId },
       });
 
-      // 4. Consolidate financial & loyalty points
+      // 4. Consolidate financial balance (loyalty is handled naturally by history transfer)
       await tx.party.update({
         where: { id: targetId },
         data: {
           currentOutstanding: { increment: source.currentOutstanding },
-          loyaltyPoints: { increment: source.loyaltyPoints },
         },
       });
 

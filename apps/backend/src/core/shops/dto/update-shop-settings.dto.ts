@@ -35,6 +35,10 @@ export class UpdateShopSettingsDto {
 
   @IsOptional()
   @IsString()
+  stateCode?: string;
+
+  @IsOptional()
+  @IsString()
   pincode?: string;
 
   @IsOptional()

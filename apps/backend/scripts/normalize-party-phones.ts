@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   const parties = await prisma.party.findMany({
     where: {
-      normalizedPhone: null,
+      normalizedPhone: "", // Mandatory field, so only searching for empty strings now
     },
   });
 

@@ -16,6 +16,10 @@ export class CreateShopDto {
   @IsString()
   state: string;
 
+  @IsOptional()
+  @IsString()
+  stateCode?: string;
+
   @IsString()
   pincode: string;
 

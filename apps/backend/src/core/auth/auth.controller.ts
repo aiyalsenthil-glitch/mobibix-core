@@ -7,6 +7,8 @@ import {
   Req,
   UseGuards,
   Res,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -75,6 +77,7 @@ export class AuthController {
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute - prevent brute force
   @Post('REMOVED_AUTH_PROVIDER')
+  @HttpCode(200)
   async loginWithFirebase(
     @Body() body: { idToken?: string; tenantCode?: string },
     @Res({ passthrough: true }) res: Response,
@@ -122,6 +125,7 @@ export class AuthController {
 
   @Public()
   @Post('login')
+  @HttpCode(200)
   async login(
     @Body() body: { idToken?: string; tenantCode?: string },
     @Res({ passthrough: true }) res: Response,

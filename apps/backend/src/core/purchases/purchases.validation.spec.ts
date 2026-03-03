@@ -23,6 +23,9 @@ describe('PurchasesService Validations', () => {
       create: jest.fn(),
       update: jest.fn(),
     },
+    purchaseItem: {
+      findMany: jest.fn(),
+    },
     party: {
       findUnique: jest.fn(),
       update: jest.fn(),
@@ -125,23 +128,20 @@ describe('PurchasesService Validations', () => {
       totalGst: 0,
       grandTotal: 1000,
       paidAmount: 0,
-      items: [
-        {
-          id: 'item-1',
-          shopProductId: 'prod-1',
-          quantity: 10,
-          purchasePrice: 100,
-        },
-      ],
     };
+
+    const baseItems = [
+      {
+        id: 'item-1',
+        shopProductId: 'prod-1',
+        quantity: 10,
+        purchasePrice: 100,
+      },
+    ];
 
     it('should submit valid purchase successfully', async () => {
       mockPrismaService.purchase.findUnique.mockResolvedValue(basePurchase);
-
-      // For double-check in transaction
-      mockPrismaService.purchase.findUnique
-        .mockResolvedValueOnce(basePurchase) // first check
-        .mockResolvedValueOnce(basePurchase); // inside tx check
+      mockPrismaService.purchaseItem.findMany.mockResolvedValue(baseItems);
 
       await service.atomicPurchaseSubmit(tenantId, purchaseId);
 
@@ -149,7 +149,8 @@ describe('PurchasesService Validations', () => {
         where: { id: purchaseId },
         data: { status: 'SUBMITTED' },
       });
-      expect(stockService.recordStockIn).toHaveBeenCalled();
+      // 🛡️ Corrected: Stock is NOT handled here anymore
+      expect(stockService.recordStockIn).not.toHaveBeenCalled();
     });
 
     it('should fail if purchase not found', async () => {
@@ -170,10 +171,8 @@ describe('PurchasesService Validations', () => {
     });
 
     it('should fail if items are empty', async () => {
-      mockPrismaService.purchase.findUnique.mockResolvedValue({
-        ...basePurchase,
-        items: [],
-      });
+      mockPrismaService.purchase.findUnique.mockResolvedValue(basePurchase);
+      mockPrismaService.purchaseItem.findMany.mockResolvedValue([]); // Empty items
       await expect(
         service.atomicPurchaseSubmit(tenantId, purchaseId),
       ).rejects.toThrow(BadRequestException);
@@ -185,6 +184,7 @@ describe('PurchasesService Validations', () => {
         totalGst: 100, // GST Present
         supplierGstin: null, // Missing GSTIN
       });
+      mockPrismaService.purchaseItem.findMany.mockResolvedValue(baseItems);
       await expect(
         service.atomicPurchaseSubmit(tenantId, purchaseId),
       ).rejects.toThrow(BadRequestException);
@@ -196,18 +196,7 @@ describe('PurchasesService Validations', () => {
         totalGst: 100,
         supplierGstin: '29ABCDE1234F1Z5',
       });
-      // Transaction mock behavior
-      mockPrismaService.purchase.findUnique
-        .mockResolvedValueOnce({
-          ...basePurchase,
-          totalGst: 100,
-          supplierGstin: '29ABCDE1234F1Z5',
-        })
-        .mockResolvedValueOnce({
-          ...basePurchase,
-          totalGst: 100,
-          supplierGstin: '29ABCDE1234F1Z5',
-        });
+      mockPrismaService.purchaseItem.findMany.mockResolvedValue(baseItems);
 
       await expect(
         service.atomicPurchaseSubmit(tenantId, purchaseId),
@@ -222,6 +211,7 @@ describe('PurchasesService Validations', () => {
         ...basePurchase,
         invoiceDate: futureDate,
       });
+      mockPrismaService.purchaseItem.findMany.mockResolvedValue(baseItems);
 
       await expect(
         service.atomicPurchaseSubmit(tenantId, purchaseId),
@@ -236,6 +226,7 @@ describe('PurchasesService Validations', () => {
         ...basePurchase,
         invoiceDate: oldDate,
       });
+      mockPrismaService.purchaseItem.findMany.mockResolvedValue(baseItems);
 
       await expect(
         service.atomicPurchaseSubmit(tenantId, purchaseId),

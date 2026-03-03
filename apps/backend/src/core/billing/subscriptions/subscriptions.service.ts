@@ -295,20 +295,52 @@ export class SubscriptionsService {
   }
 
   /**
+   * Calculate prorated delta for mid-cycle upgrade (Second Precision)
+   * Formula: (NewPrice - OldPrice) * (RemainingSeconds / TotalCycleSeconds)
+   */
+  public calculateProratedAmount(
+    currentPrice: number,
+    newPrice: number,
+    startDate: Date,
+    endDate: Date,
+  ): number {
+    if (newPrice <= currentPrice) return 0;
+
+    const now = new Date();
+    const totalSeconds = Math.max(
+      1,
+      Math.floor((endDate.getTime() - startDate.getTime()) / 1000),
+    );
+    const remainingSeconds = Math.max(
+      0,
+      Math.floor((endDate.getTime() - now.getTime()) / 1000),
+    );
+
+    if (remainingSeconds <= 0) return 0;
+
+    const delta = newPrice - currentPrice;
+    const proratedDelta = Math.round(delta * (remainingSeconds / totalSeconds));
+
+    return Math.max(0, proratedDelta);
+  }
+
+  /**
    * UPGRADE PLAN (Immediate)
    *
    * Rules:
    * - Upgrade is IMMEDIATE (features active now)
    * - Current billing cycle continues unchanged
-   * - New price applies at NEXT RENEWAL ONLY
-   * - Can upgrade to same level (duration change not supported yet)
+   * - New price delta is charged IMMEDIATELY (Prorated)
+   * - Full new price applies at NEXT RENEWAL
    *
    * Implementation:
-   * - Update planId, nextPriceSnapshot
-   * - Keep current endDate
-   * - Log as "nextPrice" to distinguish from priceSnapshot
+   * - Calculate prorated delta using second-precision math
+   * - Create Razorpay Payment Link for the delta
+   * - Update planId immediately to grant features
    */
-  async upgradePlan(input: UpgradePlanInput): Promise<TenantSubscription> {
+  async upgradePlan(
+    input: UpgradePlanInput,
+  ): Promise<TenantSubscription & { paymentLink?: string }> {
     const { subscriptionId, newPlanId } = input;
 
     // Get current subscription
@@ -339,13 +371,38 @@ export class SubscriptionsService {
       );
     }
 
-    // Get price for next renewal
-    // Use new billing cycle if provided, otherwise stick to current
+    // Get price for new plan (for current cycle duration)
     const targetCycle = input.newBillingCycle || subscription.billingCycle!;
-    const nextPrice = await this.planPriceService.getPlanPrice({
+    const newPriceResponse = await this.planPriceService.getPlanPrice({
       planId: newPlanId,
       billingCycle: targetCycle,
     });
+
+    // 💰 CALCULATE PRORATED DELTA
+    const proratedDelta = this.calculateProratedAmount(
+      subscription.priceSnapshot || 0,
+      newPriceResponse.price,
+      subscription.startDate,
+      subscription.endDate,
+    );
+
+    let paymentLink: string | undefined;
+
+    // 💳 GENERATE PAYMENT LINK FOR DELTA
+    if (proratedDelta > 0) {
+      const link = await this.REMOVED_PAYMENT_INFRAService.createPaymentLink(
+        proratedDelta,
+        'INR',
+        `Prorated Upgrade: ${subscription.plan.name} → ${newPlan.name}`,
+        {
+          name: subscription.tenant.name,
+          email: subscription.tenant.contactEmail || 'admin@mobibix.com',
+          contact: subscription.tenant.contactPhone || '9999999999',
+        },
+        `upgrade_${subscription.id}_${Date.now()}`,
+      );
+      paymentLink = link.short_url;
+    }
 
     // UPDATE: Change plan immediately, queue price for renewal
     const upgraded = await this.prisma.tenantSubscription.update({
@@ -354,7 +411,7 @@ export class SubscriptionsService {
         planId: newPlanId,
         nextBillingCycle: input.newBillingCycle || subscription.billingCycle,
         // Keep current cycle, update price for next cycle
-        nextPriceSnapshot: nextPrice.price,
+        nextPriceSnapshot: newPriceResponse.price,
         updatedAt: new Date(),
       },
     });
@@ -362,7 +419,7 @@ export class SubscriptionsService {
     this.logger.log(
       `⬆️ Upgraded ${subscription.tenant.name}@${subscription.module}: ` +
         `${subscription.plan.name} → ${newPlan.name} (immediate). ` +
-        `Next renewal will use ₹${nextPrice.price / 100} price.`,
+        `Prorated Delta: ₹${proratedDelta / 100} | Next renewal price: ₹${newPriceResponse.price / 100}`,
     );
 
     // ⚡ Invalidate cache
@@ -370,7 +427,10 @@ export class SubscriptionsService {
       `subscription:${subscription.tenantId}:${subscription.module}`,
     );
 
-    return upgraded;
+    return {
+      ...upgraded,
+      paymentLink,
+    };
   }
 
   /**
