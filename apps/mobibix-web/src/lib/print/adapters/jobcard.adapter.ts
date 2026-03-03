@@ -1,6 +1,7 @@
 import type { JobCard } from "@/services/jobcard.api";
 import type { Shop } from "@/services/shops.api";
 import type { PrintDocumentData, PrintLineItem } from "../types";
+import { formatCurrency } from "@/lib/gst.utils";
 
 interface AdapterContext {
   jobCard: JobCard;
@@ -96,7 +97,7 @@ export function mapJobCardToPrintData(ctx: AdapterContext): PrintDocumentData {
     },
     notes: [
         `Issue Reported: ${jobCard.customerComplaint}`,
-        jobCard.advancePaid ? `Advance Paid: ₹${jobCard.advancePaid}` : null
+        jobCard.advancePaid ? `Advance Paid: ${formatCurrency(jobCard.advancePaid)}` : null
     ].filter(Boolean) as string[],
     footer: {
       terms: shop.terms || [

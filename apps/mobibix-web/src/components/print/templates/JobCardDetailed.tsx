@@ -2,6 +2,7 @@
 import { PrintDocumentData } from "@/lib/print/types";
 import { InvoiceHeader } from "../headers/InvoiceHeader";
 import { QRCodeSVG } from "qrcode.react";
+import { formatCurrency } from "@/lib/gst.utils";
 
 export function JobCardDetailed({ data }: { data: PrintDocumentData }) {
     const { header, meta, items, notes, footer, customer, qrCode } = data;
@@ -54,7 +55,7 @@ export function JobCardDetailed({ data }: { data: PrintDocumentData }) {
                                 <td className="py-3 px-3 align-top">
                                     <div className="whitespace-pre-wrap">{item.description}</div>
                                 </td>
-                                <td className="py-3 px-3 align-top text-right font-mono text-sm">₹{item.rate}</td>
+                                <td className="py-3 px-3 align-top text-right font-mono text-sm">{formatCurrency(item.rate)}</td>
                             </tr>
                         ))}
                     </tbody>
