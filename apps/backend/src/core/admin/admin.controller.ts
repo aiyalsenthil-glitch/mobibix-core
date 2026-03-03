@@ -163,6 +163,33 @@ export class AdminController {
   }
 
   // ─────────────────────────────────────────────
+  // PRIVACY & ACCOUNT DELETION REQS
+  // ─────────────────────────────────────────────
+  @Get('privacy/deletions')
+  async getDeletionRequests() {
+    return this.prisma.deletionRequest.findMany({
+      orderBy: { requestedAt: 'desc' },
+      include: {
+        tenant: {
+          select: { name: true, tenantType: true }
+        }
+      }
+    });
+  }
+
+  @Post('privacy/deletions/:id/approve')
+  async approveDeletionRequest(@Param('id') id: string, @Req() req: any) {
+    const adminUserId = req.user.sub || req.user.id;
+    return this.tenantService.processDeletionRequest(id, true, adminUserId);
+  }
+
+  @Post('privacy/deletions/:id/reject')
+  async rejectDeletionRequest(@Param('id') id: string, @Req() req: any) {
+    const adminUserId = req.user.sub || req.user.id;
+    return this.tenantService.processDeletionRequest(id, false, adminUserId);
+  }
+
+  // ─────────────────────────────────────────────
   // TENANT SUBSCRIPTION
   // ─────────────────────────────────────────────
   @Get('tenants/:tenantId/subscription')

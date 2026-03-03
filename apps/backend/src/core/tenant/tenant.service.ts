@@ -652,6 +652,189 @@ export class TenantService {
       where: { id: userId },
     });
   }
+
+  // ─────────────────────────────────────────────
+  // PRIVACY & COMPLIANCE
+  // ─────────────────────────────────────────────
+  async processDeletionRequest(requestId: string, approve: boolean, adminUserId: string) {
+    const request = await this.prisma.deletionRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        tenant: {
+          include: {
+            shops: true,
+            userTenants: { include: { user: true } }
+          }
+        },
+      }
+    });
+
+    if (!request || request.status !== 'PENDING') {
+      throw new BadRequestException('Request not found or not pending');
+    }
+
+    if (!approve) {
+      await this.prisma.$transaction([
+        this.prisma.deletionRequest.update({ where: { id: requestId }, data: { status: 'REJECTED', resolvedAt: new Date(), adminNotes: 'Rejected by admin' } }),
+        this.prisma.tenant.update({ where: { id: request.tenantId }, data: { deletionRequestPending: false } })
+      ]);
+      return { message: 'Deletion request rejected.' };
+    }
+
+    // Checking GST Compliance Data
+    const hasGst = request.tenant.shops.some(s => s.gstEnabled || s.gstNumber);
+
+    // Save compliance snapshots
+    const owner = request.tenant.userTenants.find(ut => ut.role === 'OWNER')?.user || request.tenant.userTenants[0]?.user;
+    
+    await this.prisma.deletionRequest.update({
+      where: { id: requestId },
+      data: {
+        originalEmail: owner?.email,
+        originalLegalName: request.tenant.legalName || request.tenant.name,
+        originalPhone: owner?.phone,
+        originalGstNumber: request.tenant.shops.find(s => s.gstNumber)?.gstNumber,
+        isHardDeleted: !hasGst,
+        status: 'COMPLETED',
+        resolvedAt: new Date(),
+        adminNotes: `Approved by ${adminUserId}`
+      }
+    });
+
+    if (hasGst) {
+       await this.anonymizeTenant(request.tenantId, owner?.id);
+    } else {
+       await this.hardDeleteTenant(request.tenantId, owner?.id);
+    }
+
+    return { message: 'Tenant deletion processed successfully.', isHardDeleted: !hasGst };
+  }
+
+  private async hardDeleteTenant(tenantId: string, ownerUserId?: string) {
+    const whereClause = { where: { tenantId } };
+    const p = this.prisma;
+    
+    await p.whatsAppLog.deleteMany(whereClause).catch(() => {});
+    await p.whatsAppCampaign.deleteMany(whereClause).catch(() => {});
+    await p.whatsAppDailyUsage.deleteMany(whereClause).catch(() => {});
+    await p.whatsAppNumber.deleteMany(whereClause).catch(() => {});
+    await p.whatsAppSetting.deleteMany(whereClause).catch(() => {});
+    await p.financialEntry.deleteMany(whereClause).catch(() => {});
+    await p.receipt.deleteMany(whereClause).catch(() => {});
+    await p.paymentVoucher.deleteMany(whereClause).catch(() => {});
+    await p.invoiceItem.deleteMany({ where: { invoice: { tenantId } } }).catch(() => {});
+    await p.purchaseItem.deleteMany({ where: { purchase: { tenantId } } }).catch(() => {});
+    await p.supplierPayment.deleteMany(whereClause).catch(() => {});
+    await p.purchase.deleteMany(whereClause).catch(() => {});
+    await p.jobCard.deleteMany(whereClause).catch(() => {});
+    await p.gRN.deleteMany(whereClause).catch(() => {});
+    await p.quotation.deleteMany(whereClause).catch(() => {});
+    await p.ledgerPayment.deleteMany(whereClause).catch(() => {});
+    await p.ledgerCollection.deleteMany(whereClause).catch(() => {});
+    await p.ledgerAccount.deleteMany(whereClause).catch(() => {});
+    await p.ledgerCustomer.deleteMany(whereClause).catch(() => {});
+    await p.iMEI.deleteMany(whereClause).catch(() => {});
+    await p.stockLedger.deleteMany(whereClause).catch(() => {});
+    await p.stockCorrection.deleteMany(whereClause).catch(() => {});
+    await p.invoice.deleteMany(whereClause).catch(() => {});
+    await p.shopProduct.deleteMany(whereClause).catch(() => {});
+    await p.customerAlert.deleteMany(whereClause).catch(() => {});
+    await p.customerReminder.deleteMany(whereClause).catch(() => {});
+    await p.customerFollowUp.deleteMany(whereClause).catch(() => {});
+    await p.loyaltyTransaction.deleteMany(whereClause).catch(() => {});
+    await p.loyaltyConfig.deleteMany(whereClause).catch(() => {});
+    await p.loyaltyAdjustment.deleteMany(whereClause).catch(() => {});
+    await p.usageSnapshot.deleteMany(whereClause).catch(() => {});
+    await p.payment.deleteMany(whereClause).catch(() => {});
+    await p.party.deleteMany(whereClause).catch(() => {});
+    await p.auditLog.deleteMany(whereClause).catch(() => {});
+    await p.memberPayment.deleteMany(whereClause).catch(() => {});
+    await p.gymAttendance.deleteMany(whereClause).catch(() => {});
+    await p.gymMembership.deleteMany(whereClause).catch(() => {});
+    await p.member.deleteMany(whereClause).catch(() => {});
+    await p.shopStaff.deleteMany(whereClause).catch(() => {});
+    await p.shop.deleteMany(whereClause).catch(() => {});
+    await p.staffInvite.deleteMany(whereClause).catch(() => {});
+    await p.userTenant.deleteMany(whereClause).catch(() => {});
+    await p.tenantSubscription.deleteMany(whereClause).catch(() => {});
+    
+    await p.tenant.delete({ where: { id: tenantId } }).catch(() => {});
+
+    if (ownerUserId) {
+      const userTenants = await p.userTenant.count({ where: { userId: ownerUserId } });
+      if (userTenants === 0) {
+        await p.refreshToken.deleteMany({ where: { userId: ownerUserId } }).catch(() => {});
+        await p.user.delete({ where: { id: ownerUserId } }).catch(() => {});
+      }
+    }
+  }
+
+  private async anonymizeTenant(tenantId: string, ownerUserId?: string) {
+    const whereClause = { where: { tenantId } };
+    const p = this.prisma;
+
+    // Remove volatile marketing/auth data
+    await p.refreshToken.deleteMany({ where: { user: { userTenants: { some: { tenantId } } } } }).catch(() => {});
+    await p.whatsAppLog.deleteMany(whereClause).catch(() => {});
+    await p.whatsAppCampaign.deleteMany(whereClause).catch(() => {});
+    await p.whatsAppDailyUsage.deleteMany(whereClause).catch(() => {});
+    await p.whatsAppNumber.deleteMany(whereClause).catch(() => {});
+    await p.whatsAppSetting.deleteMany(whereClause).catch(() => {});
+    await p.customerAlert.deleteMany(whereClause).catch(() => {});
+    await p.customerReminder.deleteMany(whereClause).catch(() => {});
+    await p.customerFollowUp.deleteMany(whereClause).catch(() => {});
+    await p.emailLog.deleteMany(whereClause).catch(() => {});
+
+    // Anonymize the tenant
+    await p.tenant.update({
+        where: { id: tenantId },
+        data: {
+           name: `Deleted Business ${tenantId.substring(0,6)}`,
+           legalName: `Anonymized ${tenantId.substring(0,6)}`,
+           contactPhone: '0000000000',
+           contactEmail: 'deleted@anonymized.local',
+           addressLine1: null,
+           addressLine2: null,
+           deletionRequestPending: false,
+           website: null,
+           gstNumber: null,
+           taxId: null,
+        }
+    }).catch(() => {});
+
+    // Anonymize shops
+    await p.shop.updateMany({
+        where: { tenantId },
+        data: {
+            addressLine1: 'Deleted',
+            phone: '0000000000',
+            gstNumber: null,
+            gstEnabled: false,
+        }
+    }).catch(() => {});
+
+    // Sever relations
+    await p.userTenant.deleteMany(whereClause).catch(() => {});
+    await p.tenantSubscription.deleteMany(whereClause).catch(() => {});
+
+    // Anonymize user if has no other tenants
+    if (ownerUserId) {
+        const userTenants = await p.userTenant.count({ where: { userId: ownerUserId } });
+        if (userTenants === 0) {
+            await p.user.update({
+                where: { id: ownerUserId },
+                data: {
+                    email: `deleted_user_${ownerUserId.substring(0,8)}@anonymized.local`,
+                    fullName: 'Deleted User',
+                    phone: '0000000000',
+                    REMOVED_AUTH_PROVIDERUid: `deleted_${ownerUserId.substring(0,8)}`,
+                    avatar: null,
+                }
+            }).catch(() => {});
+        }
+    }
+  }
+
   issueJwt(
     payload: {
       userId: string;

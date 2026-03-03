@@ -140,6 +140,13 @@ model DeletionRequest {
   adminNotes  String?
   resolvedAt  DateTime?
 
+  // Compliance Snapshot Fields
+  originalEmail     String?
+  originalLegalName String?
+  originalPhone     String?
+  originalGstNumber String?
+  isHardDeleted     Boolean @default(false)
+
   tenant Tenant @relation("TenantDeletionRequests", fields: [tenantId], references: [id])
 }
 
@@ -521,18 +528,18 @@ model CustomerAlert {
 }
 
 model LedgerCustomer {
-  id        String          @id @default(cuid())
-  tenantId  String
-  customerId String?         // Link to central Party model
-  name      String
-  phone     String
-  address   String?
-  isActive  Boolean         @default(true)
-  createdAt DateTime        @default(now())
-  ledgers   LedgerAccount[]
-  payments  LedgerPayment[]
-  tenant    Tenant          @relation(fields: [tenantId], references: [id])
-  customer  Party?          @relation(fields: [customerId], references: [id])
+  id         String          @id @default(cuid())
+  tenantId   String
+  customerId String? // Link to central Party model
+  name       String
+  phone      String
+  address    String?
+  isActive   Boolean         @default(true)
+  createdAt  DateTime        @default(now())
+  ledgers    LedgerAccount[]
+  payments   LedgerPayment[]
+  tenant     Tenant          @relation(fields: [tenantId], references: [id])
+  customer   Party?          @relation(fields: [customerId], references: [id])
 
   @@unique([tenantId, phone])
   @@index([tenantId])
@@ -608,16 +615,16 @@ model LedgerPayment {
 }
 
 model StaffInvite {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   email     String
   tenantId  String
-  createdAt DateTime @default(now())
-  accepted  Boolean  @default(false)
-  role      UserRole @default(STAFF) // LEGACY: Kept for Phase 2 Migration
+  createdAt DateTime  @default(now())
+  accepted  Boolean   @default(false)
+  role      UserRole  @default(STAFF) // LEGACY: Kept for Phase 2 Migration
   roleId    String? // Made optional for Phase 1/2 Migration
   name      String?
   phone     String?
-  shopIds   String[] @default([])
+  shopIds   String[]  @default([])
   deletedAt DateTime?
   deletedBy String?
 

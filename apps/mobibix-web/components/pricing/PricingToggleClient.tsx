@@ -48,7 +48,7 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
               <button
                 key={cycle}
                 onClick={() => setBillingCycle(cycle)}
-                className={`relative px-8 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-500 z-10 ${
+                className={`relative px-8 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all duration-500 z-10 ${
                   billingCycle === cycle
                     ? "text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -65,9 +65,14 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
                   {cycle === "MONTHLY" ? "Monthly" : "Yearly"}
                 </span>
                 {cycle === "YEARLY" && (
-                   <span className="absolute -top-8 -right-2 bg-primary text-primary-foreground text-[8px] font-black px-1.5 py-0.5 rounded shadow-2xl rotate-12">
+                   <motion.span 
+                     initial={{ scale: 0.8, rotate: 12 }}
+                     animate={{ scale: [1, 1.1, 1], rotate: [12, 14, 12] }}
+                     transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                     className="absolute -top-8 -right-6 md:-top-10 md:-right-8 bg-primary text-primary-foreground text-xs md:text-sm font-black px-3 md:px-4 py-1.5 rounded-xl shadow-2xl border-2 border-background z-20"
+                   >
                     2 MO FREE
-                   </span>
+                   </motion.span>
                 )}
               </button>
             ))}
@@ -103,7 +108,7 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
                   >
                     {isPro && (
                       <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
-                        <span className="bg-gradient-to-r from-primary to-blue-500 text-primary-foreground text-[8px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-2xl ring-2 ring-background">
+                        <span className="bg-gradient-to-r from-primary to-blue-500 text-primary-foreground text-[10px] md:text-xs font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-2xl ring-4 ring-background">
                           MOST POPULAR
                         </span>
                       </div>
@@ -131,7 +136,7 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.8 }}
-                            className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest ring-1 ring-primary/20"
+                            className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-black uppercase tracking-widest ring-1 ring-primary/20"
                           >
                              Save {plan.savings.yearlyFormatted}
                           </motion.div>
@@ -141,10 +146,10 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
 
                     <Link
                       href={`/auth?plan=${plan.id}&billing=${billingCycle}`}
-                      className={`block w-full text-center px-6 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all mb-8 shadow-2xl active:scale-95 ${
+                      className={`block w-full text-center px-6 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all duration-300 mb-8 shadow-2xl hover:-translate-y-1 active:scale-95 ${
                         isPro
-                          ? "bg-gradient-to-r from-primary to-blue-500 text-primary-foreground shadow-primary/20"
-                          : "bg-foreground text-background hover:brightness-110 shadow-primary/5"
+                          ? "bg-gradient-to-r from-primary to-blue-500 text-primary-foreground shadow-primary/30 hover:shadow-blue-500/40"
+                          : "bg-foreground text-background hover:brightness-110 shadow-primary/5 hover:shadow-foreground/20"
                       }`}
                     >
                       Start Free Trial
@@ -166,6 +171,19 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
                 );
               })}
             </div>
+          )}
+          
+          {plans.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-12 text-center"
+            >
+              <p className="text-[11px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest">
+                <span className="text-primary border-b border-primary/30 pb-0.5">14-Day Free Trial</span> &nbsp;•&nbsp; No Credit Card Required &nbsp;•&nbsp; Cancel Anytime
+              </p>
+            </motion.div>
           )}
         </div>
       </section>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 interface GlobalStats {
   totalTenants: number;
@@ -164,6 +165,9 @@ export default function AdminDashboard() {
             <button className="px-6 py-3 bg-purple-500 hover:bg-purple-600 rounded-lg font-semibold transition-all">
               View Subscriptions
             </button>
+            <Link href="/dashboard/admin/privacy" className="px-6 py-3 bg-red-500 hover:bg-red-600 rounded-lg font-semibold transition-all text-center">
+              Privacy & Deletions
+            </Link>
             <button className="px-6 py-3 bg-orange-500 hover:bg-orange-600 rounded-lg font-semibold transition-all">
               System Logs
             </button>
