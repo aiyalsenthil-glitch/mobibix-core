@@ -260,6 +260,9 @@ export class PlansService {
       isActive?: boolean;
       isPublic?: boolean;
       isAddon?: boolean;
+      tagline?: string;
+      description?: string;
+      featuresJson?: string[];
     },
   ) {
     const existing = await this.prisma.plan.findUnique({
@@ -279,6 +282,9 @@ export class PlansService {
         isActive: data.isActive,
         isPublic: data.isPublic,
         isAddon: data.isAddon,
+        tagline: data.tagline,
+        description: data.description,
+        featuresJson: data.featuresJson ? JSON.parse(JSON.stringify(data.featuresJson)) : undefined,
       },
     });
   }
