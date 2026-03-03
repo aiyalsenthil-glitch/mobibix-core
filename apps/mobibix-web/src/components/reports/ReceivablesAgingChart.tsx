@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getReceivablesAging, type AgingReport } from "@/services/reports.api";
+import { CurrencyText } from "@/components/ui/currency-text";
 
 interface AgingChartProps {
   shopId?: string;
@@ -55,7 +56,7 @@ export function ReceivablesAgingChart({ shopId }: AgingChartProps) {
       <div className="rounded-lg bg-linear-to-br from-blue-50 to-blue-100 border border-blue-200 p-6">
         <h3 className="text-sm font-medium text-gray-700">Total Receivables</h3>
         <p className="text-3xl font-bold text-blue-600 mt-2">
-          ₹{data.totalOutstanding.toLocaleString()}
+          <CurrencyText amount={data.totalOutstanding} />
         </p>
         <p className="text-xs text-gray-600 mt-1">
           Outstanding customer payments
@@ -86,7 +87,7 @@ export function ReceivablesAgingChart({ shopId }: AgingChartProps) {
                     {bucket.bucket}
                   </span>
                   <span className="text-gray-900 font-semibold">
-                    ₹{bucket.amount.toLocaleString()} ({bucket.count} invoices)
+                    <CurrencyText amount={bucket.amount} /> ({bucket.count} invoices)
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
@@ -133,7 +134,7 @@ export function ReceivablesAgingChart({ shopId }: AgingChartProps) {
                     {bucket.bucket}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                    ₹{bucket.amount.toLocaleString()}
+                    <CurrencyText amount={bucket.amount} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                     {bucket.count}
@@ -149,7 +150,7 @@ export function ReceivablesAgingChart({ shopId }: AgingChartProps) {
                 Total
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                ₹{data.totalOutstanding.toLocaleString()}
+                <CurrencyText amount={data.totalOutstanding} />
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                 {data.buckets.reduce((sum, b) => sum + b.count, 0)}

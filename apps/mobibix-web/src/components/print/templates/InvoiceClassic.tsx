@@ -1,6 +1,7 @@
 import type { PrintDocumentData } from "@/lib/print/types";
 import { InvoiceHeader } from "@/components/print/headers/InvoiceHeader";
 import { QRCodeSVG } from "qrcode.react";
+import { formatCurrency } from "@/lib/gst.utils";
 
 export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
   const { header, meta, customer, items, totals, footer, qrCode, config, headerConfig } = data;
@@ -85,9 +86,9 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
                 </td>
                 {config.isIndianGSTInvoice && <td className="py-2 text-sm text-center text-slate-500">{item.hsn}</td>}
                 <td className="py-2 text-sm text-center text-slate-900">{item.qty}</td>
-                <td className="py-2 text-sm text-right text-slate-900">₹{item.rate.toFixed(2)}</td>
+                <td className="py-2 text-sm text-right text-slate-900">{formatCurrency(item.rate)}</td>
                 {config.isIndianGSTInvoice && <td className="py-2 text-sm text-center text-slate-500">{item.taxRate}%</td>}
-                <td className="py-2 text-sm text-right font-bold text-slate-900">₹{item.total.toFixed(2)}</td>
+                <td className="py-2 text-sm text-right font-bold text-slate-900">{formatCurrency(item.total)}</td>
               </tr>
             ))
             ) : (
@@ -144,19 +145,19 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
             <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm text-slate-600">
                    <span>Subtotal</span>
-                   <span>₹{totals?.subTotal?.toFixed(2)}</span>
+                   <span>{formatCurrency(totals?.subTotal || 0)}</span>
                 </div>
                 {totals?.taxLines?.map((tax, i) => (
                     <div key={i} className="flex justify-between text-sm text-slate-600">
                         <span>{tax.label} {tax.rate ? `(${tax.rate}%)` : ''}</span>
-                        <span>₹{tax.amount.toFixed(2)}</span>
+                        <span>{formatCurrency(tax.amount)}</span>
                     </div>
                 ))}
             </div>
             
             <div className="border-t-2 border-slate-800 pt-2 flex justify-between items-center text-slate-900">
                 <span className="text-base font-bold">Grand Total</span>
-                <span className="text-xl font-bold">₹{totals?.grandTotal.toFixed(2)}</span>
+                <span className="text-xl font-bold">{formatCurrency(totals?.grandTotal || 0)}</span>
             </div>
 
             <div className="mt-8 text-center">

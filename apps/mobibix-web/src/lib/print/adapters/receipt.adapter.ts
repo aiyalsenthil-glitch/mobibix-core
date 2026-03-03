@@ -1,6 +1,7 @@
 import type { Receipt } from "@/services/receipts.api";
 import type { Shop } from "@/services/shops.api";
 import type { PrintDocumentData } from "@/lib/print/types";
+import { numberToIndianWords } from "@/utils/numberToWords";
 
 export function mapReceiptToPrintData({
   receipt,
@@ -9,7 +10,7 @@ export function mapReceiptToPrintData({
   receipt: Receipt;
   shop: Shop;
 }): PrintDocumentData {
-  const amountInWords = toWords(receipt.amount);
+  const amountInWords = numberToIndianWords(receipt.amount);
 
   return {
     id: receipt.receiptId,
@@ -55,19 +56,4 @@ export function mapReceiptToPrintData({
   };
 }
 
-// Simple Number to Words Converter (for Indian currency context)
-function toWords(amount: number): string {
-    // This is a placeholder. Real implementation would be more complex or use a library.
-    // Ideally we should move the robust implementation from backend or utils to a shared lib.
-    // For now, returning a simple formatted string or using a known util if available.
-    // Since we don't have a shared util visible, I'll assume passing the numeric string is acceptable 
-    // OR implementing a basic converter.
-    
-    // I will use a simple placeholder for now as implementing full number-to-words is verbose.
-    // The Invoice adapter likely has one or expects the backend to provide it?
-    // Checking types.ts: `totals.amountInWords` is optional string.
-    // Backend Invoice has `amountInWords`. Receipt entity DOES NOT.
-    // So we must generate it here or just leave it blank/simple.
-    
-    return `${amount.toLocaleString('en-IN')} Rupees Only`; 
-}
+

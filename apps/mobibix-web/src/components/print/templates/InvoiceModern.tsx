@@ -1,6 +1,7 @@
 import type { PrintDocumentData } from "@/lib/print/types";
 import { InvoiceHeader } from "@/components/print/headers/InvoiceHeader";
 import { QRCodeSVG } from "qrcode.react";
+import { formatCurrency } from "@/lib/gst.utils";
 
 export function InvoiceModern({ data }: { data: PrintDocumentData }) {
   const { header, meta, customer, items, totals, footer, qrCode, config, headerConfig } = data;
@@ -10,11 +11,10 @@ export function InvoiceModern({ data }: { data: PrintDocumentData }) {
     <div className="w-[210mm] min-h-[297mm] mx-auto bg-white p-12 text-black font-sans relative">
       
       {/* Dynamic Header */}
-      <InvoiceHeader data={data} />
+      <div className="border-b-2 pb-6 mb-8" style={{ borderColor: accentColor }}>
+        <InvoiceHeader data={data} />
+      </div>
       
-      {/* Spacer if header doesn't include one (Header component handles its own spacing but we might need extra here) */}
-      <div className="mb-8"></div>
-
       {/* 2. Customer & Meta Grid */}
       <div className="grid grid-cols-2 gap-12 mb-12">
           {/* Bill To */}
@@ -68,10 +68,10 @@ export function InvoiceModern({ data }: { data: PrintDocumentData }) {
                           <td className="py-4 text-slate-500 text-center align-top">{item.hsn || "-"}</td>
                           <td className="py-4 text-slate-900 text-center align-top">{item.qty}</td>
                           <td className="py-4 text-slate-600 text-right align-top">
-                             {item.rate.toFixed(2)}
+                             {formatCurrency(item.rate)}
                           </td>
                           <td className="py-4 font-bold text-slate-900 text-right align-top">
-                             {item.total.toFixed(2)}
+                             {formatCurrency(item.total)}
                           </td>
                       </tr>
                   ))}
@@ -106,31 +106,24 @@ export function InvoiceModern({ data }: { data: PrintDocumentData }) {
               <div className="space-y-3 text-sm mb-6 border-b border-slate-100 pb-6">
                   <div className="flex justify-between text-slate-600">
                       <span>Subtotal</span>
-                      <span className="font-medium">₹{totals?.subTotal?.toFixed(2)}</span>
+                      <span className="font-medium">{formatCurrency(totals?.subTotal || 0)}</span>
                   </div>
                   
                   {totals?.taxLines?.map((tax, i) => (
                        <div key={i} className="flex justify-between text-slate-600">
                           <span>{tax.label} <span className="text-xs text-slate-400">({tax.rate}%)</span></span>
-                          <span className="font-medium">₹{tax.amount.toFixed(2)}</span>
+                          <span className="font-medium">{formatCurrency(tax.amount)}</span>
                        </div>
                   ))}
-                  
-                  {/* Round off if any logic existed or derived */}
-                  {/* <div className="flex justify-between text-slate-400 text-xs">
-                      <span>Round Off</span>
-                      <span>0.00</span>
-                  </div> */}
               </div>
 
               <div className="flex justify-between items-end mb-8">
                   <span className="text-sm font-bold text-slate-900 uppercase tracking-wide">Grand Total</span>
-                  <span className="text-3xl font-bold text-slate-900">₹{totals?.grandTotal?.toFixed(2)}</span>
+                  <span className="text-3xl font-bold text-slate-900">{formatCurrency(totals?.grandTotal || 0)}</span>
               </div>
 
               {/* Signature Block */}
               <div className="text-right mt-12">
-                   {/* Placeholder for optional signature image */}
                    <div className="h-12"></div> 
                    <p className="text-xs font-bold text-slate-900 uppercase tracking-widest">Authorized Signatory</p>
                    {header.shopName && <p className="text-[10px] text-slate-500 mt-1">For {header.shopName}</p>}
@@ -145,7 +138,6 @@ export function InvoiceModern({ data }: { data: PrintDocumentData }) {
 
     </div>
   );
-
 }
 
 function verifyUrl(path: string) {

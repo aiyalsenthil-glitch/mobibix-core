@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
-import { TrendingUp, TrendingDown, DollarSign, FileText, CheckCircle, Zap, MessageSquare, Clock } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, CheckCircle, Zap, MessageSquare, Clock } from "lucide-react";
+import { CurrencyText } from "@/components/ui/currency-text";
 
 interface ValueSnapshotWidgetProps {
   data: {
@@ -51,11 +52,7 @@ export function ValueSnapshotWidget({ data, isLoading }: ValueSnapshotWidgetProp
             <span>Monthly Revenue</span>
           </div>
           <div className="text-2xl font-bold flex items-baseline gap-2">
-            {new Intl.NumberFormat("en-IN", {
-              style: "currency",
-              currency: "INR",
-              maximumFractionDigits: 0,
-            }).format(data.monthRevenue)}
+            <CurrencyText amount={data.monthRevenue} />
             {data.lastMonthRevenue > 0 && (
               <span className={`text-xs flex items-center ${isRevenueUp ? 'text-emerald-600' : 'text-red-500'}`}>
                 {isRevenueUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -64,7 +61,7 @@ export function ValueSnapshotWidget({ data, isLoading }: ValueSnapshotWidgetProp
             )}
           </div>
           <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-            vs last mo (₹{data.lastMonthRevenue.toLocaleString()})
+            vs last mo (<CurrencyText amount={data.lastMonthRevenue} />)
           </p>
         </div>
 
@@ -86,7 +83,7 @@ export function ValueSnapshotWidget({ data, isLoading }: ValueSnapshotWidgetProp
           </div>
           <div className="text-2xl font-bold">{data.whatsappStats.sent < 10 && data.whatsappStats.sent > 0 ? `0${data.whatsappStats.sent}` : data.whatsappStats.sent}</div>
           <p className="text-[10px] text-emerald-600 font-bold">
-            ₹{data.whatsappStats.recoveredAmount?.toLocaleString()} recovered
+            <CurrencyText amount={data.whatsappStats.recoveredAmount} /> recovered
           </p>
         </div>
 

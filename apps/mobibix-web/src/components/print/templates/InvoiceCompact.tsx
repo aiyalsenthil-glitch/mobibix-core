@@ -1,6 +1,7 @@
 import type { PrintDocumentData } from "@/lib/print/types";
 import { InvoiceHeader } from "@/components/print/headers/InvoiceHeader";
 import { QRCodeSVG } from "qrcode.react";
+import { formatCurrency } from "@/lib/gst.utils";
 
 // Design concept: Fits comfortably in half-page height if items are few, or uses space efficiently.
 export function InvoiceCompact({ data }: { data: PrintDocumentData }) {
@@ -45,8 +46,8 @@ export function InvoiceCompact({ data }: { data: PrintDocumentData }) {
                           <p className="font-medium text-slate-800">{item.name}</p>
                       </td>
                       <td className="py-1 text-center text-slate-600 align-top">{item.qty}</td>
-                      <td className="py-1 text-right text-slate-600 align-top">{item.rate.toFixed(2)}</td>
-                      <td className="py-1 text-right font-bold text-slate-900 align-top">{item.total.toFixed(2)}</td>
+                      <td className="py-1 text-right text-slate-600 align-top">{formatCurrency(item.rate)}</td>
+                      <td className="py-1 text-right font-bold text-slate-900 align-top">{formatCurrency(item.total)}</td>
                   </tr>
               ))}
           </tbody>
@@ -57,17 +58,17 @@ export function InvoiceCompact({ data }: { data: PrintDocumentData }) {
           <div className="w-48 text-right space-y-1">
               <div className="flex justify-between">
                   <span className="text-slate-500">Subtotal</span>
-                  <span>{totals?.subTotal?.toFixed(2)}</span>
+                  <span>{formatCurrency(totals?.subTotal || 0)}</span>
               </div>
               {totals?.taxLines?.map((t, i) => (
                   <div key={i} className="flex justify-between text-[10px] text-slate-600">
                       <span>{t.label}</span>
-                      <span>{t.amount.toFixed(2)}</span>
+                      <span>{formatCurrency(t.amount)}</span>
                   </div>
               ))}
               <div className="flex justify-between font-bold text-base border-t border-dashed border-slate-300 pt-1 mt-1">
                   <span>Total</span>
-                  <span>₹{totals?.grandTotal?.toFixed(2)}</span>
+                  <span>{formatCurrency(totals?.grandTotal || 0)}</span>
               </div>
               <p className="text-[10px] italic text-slate-500 text-right mt-1">{totals?.amountInWords}</p>
           </div>

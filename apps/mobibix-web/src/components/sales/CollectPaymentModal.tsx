@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { type PaymentMode, collectPayment } from "@/services/sales.api";
 import { useTheme } from "@/context/ThemeContext";
+import { CurrencyText } from "@/components/ui/currency-text";
+import { formatCurrency } from "@/lib/gst.utils";
 
 interface CollectPaymentModalProps {
   invoiceId: string;
@@ -83,7 +85,7 @@ export function CollectPaymentModal({
     if (total > balanceAmount + 1) {
       // 1 Rupee tolerance for JS float issues
       setError(
-        `Total amount (₹${total}) exceeds due balance (₹${balanceAmount})`,
+        `Total amount (${formatCurrency(total)}) exceeds due balance (${formatCurrency(balanceAmount)})`,
       );
       return;
     }
@@ -148,7 +150,7 @@ export function CollectPaymentModal({
                 Balance Due
               </span>
               <span className="text-lg font-bold text-red-600 dark:text-red-400">
-                ₹{balanceAmount.toLocaleString()}
+                <CurrencyText amount={balanceAmount} />
               </span>
             </div>
             {customerId && (
@@ -247,7 +249,7 @@ export function CollectPaymentModal({
           >
             <span className="text-sm font-medium">Total Paying:</span>
             <span className="font-bold text-lg">
-              ₹{totalEntered.toLocaleString()}
+              <CurrencyText amount={totalEntered} />
             </span>
           </div>
 

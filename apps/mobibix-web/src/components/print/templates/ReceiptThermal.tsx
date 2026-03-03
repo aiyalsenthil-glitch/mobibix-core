@@ -1,5 +1,6 @@
 import type { PrintDocumentData } from "@/lib/print/types";
 import { QRCodeSVG } from "qrcode.react";
+import { formatCurrency } from "@/lib/gst.utils";
 
 export function ReceiptThermal({ data }: { data: PrintDocumentData }) {
   const {
@@ -84,7 +85,7 @@ export function ReceiptThermal({ data }: { data: PrintDocumentData }) {
                 <span className="w-8 text-gray-500">{item.qty} x</span>
                 <span className="flex-1 text-gray-500">@{item.rate}</span>
                 <span className="w-16 text-right font-medium">
-                  {item.total.toFixed(2)}
+                  {formatCurrency(item.total)}
                 </span>
               </div>
             </div>
@@ -96,7 +97,7 @@ export function ReceiptThermal({ data }: { data: PrintDocumentData }) {
       <div className="mb-4 space-y-1">
         <div className="flex justify-between text-[11px]">
           <span className="text-gray-600">Subtotal</span>
-          <span className="font-medium">{totals?.subTotal?.toFixed(2)}</span>
+          <span className="font-medium">{formatCurrency(totals?.subTotal || 0)}</span>
         </div>
         {totals?.taxLines?.map((tax, i) => (
           <div
@@ -106,13 +107,13 @@ export function ReceiptThermal({ data }: { data: PrintDocumentData }) {
             <span>
               {tax.label} ({tax.rate}%)
             </span>
-            <span>{tax.amount.toFixed(2)}</span>
+            <span>{formatCurrency(tax.amount)}</span>
           </div>
         ))}
         <div className="flex justify-between font-black text-xl mt-2 pt-2 border-t-2 border-black border-dashed">
           <span className="uppercase">Total</span>
           <span style={{ color: accentColor }}>
-            ₹{totals?.grandTotal.toFixed(2)}
+            {formatCurrency(totals?.grandTotal || 0)}
           </span>
         </div>
       </div>

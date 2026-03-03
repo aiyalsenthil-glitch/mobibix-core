@@ -1,5 +1,6 @@
 import type { PrintDocumentData } from "@/lib/print/types";
 import { QRCodeSVG } from "qrcode.react";
+import { formatCurrency } from "@/lib/gst.utils";
 
 export function InvoiceProfessional({ data }: { data: PrintDocumentData }) {
   const { header, meta, customer, items, totals, footer, config, headerConfig } = data;
@@ -160,7 +161,6 @@ export function InvoiceProfessional({ data }: { data: PrintDocumentData }) {
               </thead>
               <tbody className="align-top flex-1">
                 {items && items.length > 0 && items.map((item, i) => {
-                  const rate = item.rate;
                   const taxableValue = config.pricesInclusive 
                        ? (item.rate * item.qty) / (1 + (item.taxRate || 0) / 100)
                        : (item.rate * item.qty);
@@ -176,23 +176,23 @@ export function InvoiceProfessional({ data }: { data: PrintDocumentData }) {
                     </td>
                     <td className="border-r-[1px] border-black p-1 text-center">{item.hsn || ""}</td>
                     <td className="border-r-[1px] border-black p-1 text-center">{item.qty.toFixed(2)}</td>
-                    <td className="border-r-[1px] border-black p-1 text-right">{rate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="border-r-[1px] border-black p-1 text-right">{formatCurrency(item.rate)}</td>
                     <td className="border-r-[1px] border-black p-1 text-center">0</td>
-                    <td className="border-r-[1px] border-black p-1 text-right">{taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="border-r-[1px] border-black p-1 text-right">{formatCurrency(taxableValue)}</td>
                     
                     {isGST ? (
                       <>
                       <td className="border-r-[1px] border-black p-1 text-center">{cgstRate.toFixed(2)}</td>
-                      <td className="border-r-[1px] border-black p-1 text-right">{cgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="border-r-[1px] border-black p-1 text-right">{formatCurrency(cgstAmt)}</td>
                       <td className="border-r-[1px] border-black p-1 text-center">{cgstRate.toFixed(2)}</td>
-                      <td className="border-r-[1px] border-black p-1 text-right">{cgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="border-r-[1px] border-black p-1 text-right">{formatCurrency(cgstAmt)}</td>
                       </>
                     ) : (
                       <td className="border-r-[1px] border-black p-1 text-right">
-                          {(item.total - taxableValue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {formatCurrency(item.total - taxableValue)}
                       </td>
                     )}
-                    <td className="p-1 text-right">{item.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="p-1 text-right font-bold">{formatCurrency(item.total)}</td>
                   </tr>
                 )})}
                 
@@ -217,14 +217,14 @@ export function InvoiceProfessional({ data }: { data: PrintDocumentData }) {
               {/* Total Row (Part of Items table, not footer) */}
               <tfoot className="border-t-[1.5px] border-black border-b-[1.5px] border-black">
                   <tr className="font-bold">
-                      <td colSpan={3} className="border-r-[1px] border-black py-1 px-2 text-right">Total</td>
+                      <td colSpan={3} className="border-r-[1px] border-black py-1 px-2 text-right text-[11px]">Total</td>
                       <td className="border-r-[1px] border-black py-1 text-center">{items?.reduce((s, i) => s + i.qty, 0).toFixed(2)}</td>
                       <td className="border-r-[1px] border-black py-1"></td>
                       <td className="border-r-[1px] border-black py-1 text-center text-[9px]">0.00</td>
                       
                       {(() => {
                           const tv = items?.reduce((s, i) => s + (config.pricesInclusive ? (i.rate * i.qty) / (1 + (i.taxRate || 0)/100) : (i.rate * i.qty)), 0) || 0;
-                          return <td className="border-r-[1px] border-black py-1 pr-1 text-right">{tv.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          return <td className="border-r-[1px] border-black py-1 pr-1 text-right font-bold">{formatCurrency(tv)}</td>
                       })()}
 
                       {isGST ? (
@@ -233,17 +233,17 @@ export function InvoiceProfessional({ data }: { data: PrintDocumentData }) {
                               return (
                                   <>
                                   <td className="border-r-[1px] border-black py-1"></td>
-                                  <td className="border-r-[1px] border-black py-1 pr-1 text-right">{totalTaxAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  <td className="border-r-[1px] border-black py-1 pr-1 text-right font-bold">{formatCurrency(totalTaxAmt)}</td>
                                   <td className="border-r-[1px] border-black py-1"></td>
-                                  <td className="border-r-[1px] border-black py-1 pr-1 text-right">{totalTaxAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  <td className="border-r-[1px] border-black py-1 pr-1 text-right font-bold">{formatCurrency(totalTaxAmt)}</td>
                                   </>
                               )
                           })()
                       ) : (
-                          <td className="border-r-[1px] border-black py-1 pr-1 text-right">{(totals?.totalTax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="border-r-[1px] border-black py-1 pr-1 text-right font-bold">{formatCurrency(totals?.totalTax || 0)}</td>
                       )}
 
-                      <td className="py-1 pr-1 text-right">{totals?.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="py-1 pr-1 text-right font-bold text-[11px]">{formatCurrency(totals?.grandTotal || 0)}</td>
                   </tr>
               </tfoot>
             </table>
@@ -258,8 +258,8 @@ export function InvoiceProfessional({ data }: { data: PrintDocumentData }) {
                   <div className="border-b-[1px] border-black text-center font-bold py-1">
                       Total in words
                   </div>
-                  <div className="border-b-[1.5px] border-black px-2 py-1.5 uppercase font-medium">
-                      {totals?.amountInWords} RUPEES AND ZERO PAISA ONLY
+                  <div className="border-b-[1.5px] border-black px-2 py-1.5 uppercase font-bold text-[11px]">
+                      {totals?.amountInWords}
                   </div>
 
                   {/* Bank Details block */}
@@ -267,23 +267,23 @@ export function InvoiceProfessional({ data }: { data: PrintDocumentData }) {
                       Bank Details
                   </div>
                   <div className="border-b-[1.5px] border-black px-2 py-1 flex">
-                     <table className="w-full text-left align-top leading-tight">
+                     <table className="w-full text-left align-top leading-tight text-[11px]">
                         <tbody>
                           <tr>
                             <td className="w-24 pb-[2px]">Name</td>
-                            <td className="font-bold pb-[2px]">{config.bankName || meta["Bank Name"] || "-"}</td>
+                            <td className="font-bold pb-[2px] uppercase">{config.bankName || meta["Bank Name"] || "-"}</td>
                           </tr>
                           <tr>
                             <td className="pb-[2px]">Branch</td>
-                            <td className="font-bold pb-[2px]">{meta["Branch"] || "-"}</td>
+                            <td className="font-bold pb-[2px] uppercase">{meta["Branch"] || "-"}</td>
                           </tr>
                           <tr>
                             <td className="pb-[2px]">Acc. Number</td>
-                            <td className="font-bold pb-[2px]">{config.accountNumber || meta["A/c No"] || "-"}</td>
+                            <td className="font-bold pb-[2px] font-mono">{config.accountNumber || meta["A/c No"] || "-"}</td>
                           </tr>
                           <tr>
                             <td className="">IFSC</td>
-                            <td className="font-bold">{config.ifscCode || meta["IFSC"] || "-"}</td>
+                            <td className="font-bold font-mono">{config.ifscCode || meta["IFSC"] || "-"}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -320,37 +320,28 @@ export function InvoiceProfessional({ data }: { data: PrintDocumentData }) {
                           <span>
                               {(() => {
                                 const tv = items?.reduce((s, i) => s + (config.pricesInclusive ? (i.rate * i.qty) / (1 + (i.taxRate || 0)/100) : (i.rate * i.qty)), 0) || 0;
-                                return tv.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                return formatCurrency(tv);
                               })()}
                           </span>
                       </div>
                       {isGST ? (
                           <>
                           <div className="flex justify-between border-b-[1px] border-black p-1 px-2">
-                              <span>Add : CGST</span><span>{((totals?.totalTax || 0) / 2).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span>Add : CGST</span><span>{formatCurrency((totals?.totalTax || 0) / 2)}</span>
                           </div>
                           <div className="flex justify-between border-b-[1px] border-black p-1 px-2">
-                              <span>Add : SGST</span><span>{((totals?.totalTax || 0) / 2).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span>Add : SGST</span><span>{formatCurrency((totals?.totalTax || 0) / 2)}</span>
                           </div>
                           </>
                       ) : (
                           <div className="flex justify-between border-b-[1px] border-black p-1 px-2">
-                              <span>Total Tax</span><span>{(totals?.totalTax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span>Total Tax</span><span>{formatCurrency(totals?.totalTax || 0)}</span>
                           </div>
                       )}
-                      
-                      {isGST && (
-                      <div className="flex justify-between border-b-[1px] border-black p-1 px-2">
-                          <span>Total Tax</span><span>{(totals?.totalTax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                      )}
 
-                      <div className="flex justify-between border-b-[1px] border-black p-1 px-2">
-                          <span>Round off Amount</span><span>0.00</span>
-                      </div>
                       <div className="flex justify-between border-b-[1px] border-black p-1.5 px-2 text-[12px] bg-slate-50 relative">
                           <span>Total Amount After Tax</span>
-                          <span>₹{(totals?.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span>{formatCurrency(totals?.grandTotal || 0)}</span>
                       </div>
                       <div className="text-right text-[8px] p-0.5 px-2 font-bold mb-0.5">
                           (E & O.E.)

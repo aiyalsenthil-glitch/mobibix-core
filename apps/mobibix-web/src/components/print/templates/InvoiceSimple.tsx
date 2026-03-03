@@ -1,5 +1,6 @@
 import type { PrintDocumentData } from "@/lib/print/types";
 import { QRCodeSVG } from "qrcode.react";
+import { formatCurrency } from "@/lib/gst.utils";
 
 export function InvoiceSimple({ data }: { data: PrintDocumentData }) {
     const { header, meta, customer, items, totals, footer, qrCode, config } = data;
@@ -86,14 +87,13 @@ export function InvoiceSimple({ data }: { data: PrintDocumentData }) {
                             <div className="flex-1 border-r border-black py-1 px-1">{item.name}</div>
                             <div className="w-20 border-r border-black py-1 text-center">{item.hsn || '-'}</div>
                             <div className="w-16 border-r border-black py-1 text-center">{item.qty}</div>
-                            <div className="w-20 border-r border-black py-1 text-center">{item.rate.toFixed(2)}</div>
+                            <div className="w-20 border-r border-black py-1 text-center">{formatCurrency(item.rate)}</div>
                             <div className="w-16 border-r border-black py-1 text-center">{item.discount || '-'}</div>
-                            <div className="w-20 border-r border-black py-1 text-right px-1">{(item.taxableValue || item.total * 0.82).toFixed(2)}</div>
+                            <div className="w-20 border-r border-black py-1 text-right px-1">{formatCurrency(item.taxableValue || item.total * 0.82)}</div>
                             <div className="w-12 border-r border-black py-1 text-center">{item.taxRate}%</div>
-                            <div className="w-24 py-1 text-right px-1 font-bold">{item.total.toFixed(2)}</div>
+                            <div className="w-24 py-1 text-right px-1 font-bold">{formatCurrency(item.total)}</div>
                         </div>
                     ))}
-                    {/* Fill empty space logic could go here */}
                 </div>
 
                 {/* Totals Section */}
@@ -113,17 +113,17 @@ export function InvoiceSimple({ data }: { data: PrintDocumentData }) {
                     <div className="w-[40%] text-sm">
                         <div className="flex justify-between border-b border-black p-1 px-2">
                             <span>Sub Total</span>
-                            <span className="font-bold">{totals?.subTotal?.toFixed(2)}</span>
+                            <span className="font-bold">{formatCurrency(totals?.subTotal || 0)}</span>
                         </div>
                         {totals?.taxLines?.map((t, i) => (
                              <div key={i} className="flex justify-between border-b border-black p-1 px-2">
                                 <span>{t.label}</span>
-                                <span>{t.amount.toFixed(2)}</span>
+                                <span>{formatCurrency(t.amount)}</span>
                             </div>
                         ))}
-                         <div className="flex justify-between p-2 font-bold bg-slate-200">
+                         <div className="flex justify-between p-2 font-bold bg-slate-200 text-lg">
                             <span>Grand Total</span>
-                            <span>₹{totals?.grandTotal?.toFixed(2)}</span>
+                            <span>{formatCurrency(totals?.grandTotal || 0)}</span>
                         </div>
                     </div>
                 </div>
@@ -138,7 +138,7 @@ export function InvoiceSimple({ data }: { data: PrintDocumentData }) {
                      </div>
                      <div className="w-1/2 p-2 text-center flex flex-col justify-end">
                          <div className="text-[10px] mb-4">For {header.shopName}</div>
-                         <div className="font-bold">Authorized Signatory</div>
+                         <div className="font-bold text-xs uppercase underline">Authorized Signatory</div>
                      </div>
                  </div>
 
@@ -146,7 +146,6 @@ export function InvoiceSimple({ data }: { data: PrintDocumentData }) {
         </div>
     );
 }
-
 
 function verifyUrl(path: string) {
     if (path.startsWith("http")) return path;
