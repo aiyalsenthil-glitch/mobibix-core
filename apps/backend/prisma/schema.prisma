@@ -150,6 +150,7 @@ model Tenant {
   promoUsages        PromoUsage[]
   aiUsageLogs        AiUsageLog[]
   loyaltyAdjustments LoyaltyAdjustment[]
+  billingEventLogs   BillingEventLog[]
 }
 
 model DeletionRequest {
@@ -173,22 +174,22 @@ model DeletionRequest {
 }
 
 model NotificationLog {
-  id           String              @id @default(cuid())
-  tenantId     String
-  userId       String?
-  eventId      String
-  channel      NotificationChannel
-  recipient    String
-  status       NotificationStatus  @default(PENDING)
-  payload      Json?
-  errorReason  String?
-  retryCount   Int                 @default(0)
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-  sentAt       DateTime?
+  id          String              @id @default(cuid())
+  tenantId    String
+  userId      String?
+  eventId     String
+  channel     NotificationChannel
+  recipient   String
+  status      NotificationStatus  @default(PENDING)
+  payload     Json?
+  errorReason String?
+  retryCount  Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  sentAt      DateTime?
 
-  tenant       Tenant              @relation(fields: [tenantId], references: [id])
-  user         User?               @relation(fields: [userId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
 
   @@index([tenantId])
   @@index([userId])
@@ -2109,6 +2110,8 @@ enum PaymentStatus {
   FAILED
   PENDING
   EXPIRED
+  REFUNDED
+  DISPUTED
 }
 
 enum SubscriptionStatus {
@@ -2119,6 +2122,7 @@ enum SubscriptionStatus {
   EXPIRED
   CANCELLED
   SCHEDULED
+  DISPUTED
 }
 
 enum AttendanceSource {
@@ -2839,4 +2843,16 @@ model PromoUsage {
   @@index([userId])
   @@index([tenantId])
   @@map("promo_usages")
+}
+
+model BillingEventLog {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  eventType           String // e.g., 'payment.refunded', 'payment.dispute.created'
+  providerReferenceId String? // Razorpay payment/subscription/refund ID
+  statusBefore        String?
+  statusAfter         String?
+  createdAt           DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }

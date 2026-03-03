@@ -132,6 +132,38 @@ export class RazorpayService {
   }
 
   /**
+   * Fetch a single payment
+   */
+  async fetchPayment(paymentId: string) {
+    try {
+      this.logger.log(`Fetching Razorpay Payment: ${paymentId}`);
+      return await this.REMOVED_PAYMENT_INFRA.payments.fetch(paymentId);
+    } catch (error: any) {
+      this.logger.error(`Fetch Payment Failed: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch all payments within a range
+   * @param from Unix timestamp (seconds)
+   * @param to Unix timestamp (seconds)
+   */
+  async fetchRecentPayments(from?: number, to?: number) {
+    try {
+      this.logger.log(`Fetching Razorpay Payments from ${from} to ${to}`);
+      return await this.REMOVED_PAYMENT_INFRA.payments.all({
+        from,
+        to,
+        count: 100,
+      });
+    } catch (error: any) {
+      this.logger.error(`Fetch All Payments Failed: ${error.message}`);
+      return { items: [] };
+    }
+  }
+
+  /**
    * Cancel a Subscription
    * Used when user toggles off Auto-Renew for an AutoPay plan
    */

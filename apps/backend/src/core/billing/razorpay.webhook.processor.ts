@@ -79,6 +79,14 @@ export class RazorpayWebhookProcessor extends WorkerHost {
           await this.handleSubscriptionCancelled(payload.subscription.entity);
           break;
 
+        case 'payment.refunded':
+          await this.handlePaymentRefunded(payload.payment.entity, payload.refund?.entity);
+          break;
+
+        case 'payment.dispute.created':
+          await this.handlePaymentDisputeCreated(payload.dispute.entity, payload.payment.entity);
+          break;
+
         default:
           this.logger.log(`Unhandled event type: ${event}`);
       }
@@ -196,16 +204,37 @@ export class RazorpayWebhookProcessor extends WorkerHost {
             },
           });
 
-          this.eventEmitter.emit('subscription.active', {
-            tenantId: internalPayment.tenantId,
-            module: activeSub.module,
-            planId: activeSub.planId,
-            expiryDate: endDate,
+          await tx.billingEventLog.create({
+            data: {
+              tenantId: internalPayment.tenantId,
+              eventType: 'payment.captured.activated',
+              providerReferenceId: payment.id,
+              statusBefore: 'PENDING',
+              statusAfter: 'ACTIVE',
+            },
           });
         });
+
+        this.eventEmitter.emit('subscription.active', {
+          tenantId: internalPayment.tenantId,
+          module: activeSub.module,
+          planId: activeSub.planId,
+          expiryDate: endDate,
+        });
+
         this.logger.log(
           `✅ TenantSubscription ${activeSub.id} activated (Manual).`,
         );
+
+        // Generate Invoice (Outside transaction)
+        try {
+          await this.invoiceService.createInvoiceForPayment(internalPayment.id);
+        } catch (invErr) {
+          this.logger.error(
+            `Failed to generate invoice for payment ${internalPayment.id}`,
+            invErr,
+          );
+        }
       } else {
         await this.prisma.payment.update({
           where: { id: internalPayment.id },
@@ -213,17 +242,7 @@ export class RazorpayWebhookProcessor extends WorkerHost {
         });
       }
 
-      // Generate Invoice
-      try {
-        await this.invoiceService.createInvoiceForPayment(internalPayment.id);
-      } catch (invErr) {
-        this.logger.error(
-          `Failed to generate invoice for payment ${internalPayment.id}`,
-          invErr,
-        );
-      }
-
-      // Trigger Cache Refresh
+      // Trigger Cache Refresh (Outside transaction)
       try {
         await this.eventEmitter.emitAsync('payment.webhook.success', {
           paymentId: internalPayment.id,
@@ -249,12 +268,22 @@ export class RazorpayWebhookProcessor extends WorkerHost {
           },
         });
 
+        await this.prisma.billingEventLog.create({
+          data: {
+            tenantId: subscription.tenantId,
+            eventType: 'payment.captured.link_activated',
+            providerReferenceId: payment.id,
+            statusAfter: 'ACTIVE',
+          },
+        });
+
         this.eventEmitter.emit('subscription.active', {
           tenantId: subscription.tenantId,
           module: subscription.module,
           planId: subscription.planId,
           expiryDate: subscription.endDate,
         });
+
         this.logger.log(
           `✅ TenantSubscription ${subscription.id} activated (PaymentLink).`,
         );
@@ -271,20 +300,32 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     });
 
     if (subscription) {
-      await this.prisma.tenantSubscription.update({
-        where: { id: subscription.id },
-        data: {
-          status: SubscriptionStatus.ACTIVE,
-          autopayStatus: AutopayStatus.ACTIVE,
-          paymentStatus: PaymentStatus.SUCCESS,
-          startDate: subEntity.current_start
-            ? new Date(subEntity.current_start * 1000)
-            : undefined,
-          endDate: subEntity.current_end
-            ? new Date(subEntity.current_end * 1000)
-            : undefined,
-          updatedAt: new Date(),
-        },
+      await this.prisma.$transaction(async (tx) => {
+        await tx.tenantSubscription.update({
+          where: { id: subscription.id },
+          data: {
+            status: SubscriptionStatus.ACTIVE,
+            autopayStatus: AutopayStatus.ACTIVE,
+            paymentStatus: PaymentStatus.SUCCESS,
+            startDate: subEntity.current_start
+              ? new Date(subEntity.current_start * 1000)
+              : undefined,
+            endDate: subEntity.current_end
+              ? new Date(subEntity.current_end * 1000)
+              : undefined,
+            updatedAt: new Date(),
+          },
+        });
+
+        await tx.billingEventLog.create({
+          data: {
+            tenantId: subscription.tenantId,
+            eventType: 'subscription.activated',
+            providerReferenceId: subId,
+            statusBefore: 'PENDING',
+            statusAfter: 'ACTIVE',
+          },
+        });
       });
 
       this.eventEmitter.emit('subscription.active', {
@@ -295,6 +336,7 @@ export class RazorpayWebhookProcessor extends WorkerHost {
           ? new Date(subEntity.current_end * 1000)
           : undefined,
       });
+
       this.logger.log(
         `✅ TenantSubscription ${subscription.id} activated (AutoPay).`,
       );
@@ -316,82 +358,97 @@ export class RazorpayWebhookProcessor extends WorkerHost {
 
     if (subscription) {
       try {
-        await this.subscriptionsService.renewSubscription(subscription.id);
-        this.logger.log(
-          `✅ TenantSubscription ${subscription.id} renewed (AutoPay webhook ledger action).`,
-        );
+        // Atomic renewal and payment recording
+        const { internalPaymentId } = await this.prisma.$transaction(async (tx) => {
+          // 1. Process local renewal
+          // Note: SubscriptionsService.renewSubscription isn't using transaction internally, 
+          // so we'll have to either pass tx or implement a simplified version here.
+          // For now, let's stick to consistent status updates within this transaction.
+          
+          const now = new Date();
+          
+          // Re-implementing a simplified atomic version of 'renewSubscription' logic here 
+          // to ensure transaction integrity if we don't refactor the service yet.
+          const nextPlanId = subscription.nextPlanId || subscription.planId;
+          const nextBillingCycle = subscription.nextBillingCycle || subscription.billingCycle || 'MONTHLY';
+          const nextPriceSnapshot = subscription.nextPriceSnapshot ?? subscription.priceSnapshot;
 
-        const latestSub = await this.prisma.tenantSubscription.findFirst({
-          where: {
-            tenantId: subscription.tenantId,
-            module: subscription.module,
-            status: 'ACTIVE',
-          },
-          orderBy: { createdAt: 'desc' },
-        });
+          const newEndDate = this.subscriptionsService['calculateEndDate'](now, nextBillingCycle);
 
-        if (latestSub && latestSub.id !== subscription.id) {
-          await this.prisma.tenantSubscription.update({
-            where: { id: latestSub.id },
+          const renewed = await tx.tenantSubscription.create({
             data: {
-              providerSubscriptionId: subscription.providerSubscriptionId,
+              tenantId: subscription.tenantId,
+              planId: nextPlanId,
+              module: subscription.module,
+              status: SubscriptionStatus.ACTIVE,
+              startDate: now,
+              endDate: newEndDate,
+              billingCycle: nextBillingCycle,
+              priceSnapshot: nextPriceSnapshot,
+              autoRenew: true,
               autopayStatus: AutopayStatus.ACTIVE,
               paymentStatus: PaymentStatus.SUCCESS,
+              providerSubscriptionId: subId,
+              lastRenewedAt: now,
             },
           });
-        }
 
-        let internalPayment = await this.prisma.payment.findFirst({
-          where: { providerPaymentId: paymentEntity.id },
+          await tx.tenantSubscription.update({
+            where: { id: subscription.id },
+            data: { status: SubscriptionStatus.EXPIRED, updatedAt: now },
+          });
+
+          // 2. Map Payment
+          let internalPayment = await tx.payment.findFirst({
+            where: { providerPaymentId: paymentEntity.id },
+          });
+
+          if (!internalPayment) {
+            internalPayment = await tx.payment.create({
+              data: {
+                tenantId: subscription.tenantId,
+                planId: nextPlanId,
+                billingCycle: nextBillingCycle,
+                priceSnapshot: nextPriceSnapshot || paymentEntity.amount,
+                amount: paymentEntity.amount,
+                currency: paymentEntity.currency || 'INR',
+                status: 'SUCCESS',
+                provider: 'RAZORPAY',
+                providerOrderId: paymentEntity.order_id || `autopay_${Date.now()}`,
+                providerPaymentId: paymentEntity.id,
+              },
+            });
+          }
+
+          // 3. Log Event
+          await tx.billingEventLog.create({
+            data: {
+              tenantId: subscription.tenantId,
+              eventType: 'subscription.charged.renewed',
+              providerReferenceId: paymentEntity.id,
+              statusBefore: 'ACTIVE',
+              statusAfter: 'ACTIVE',
+            },
+          });
+
+          return { internalPaymentId: internalPayment.id, renewedSub: renewed };
         });
 
-        if (!internalPayment) {
-          internalPayment = await this.prisma.payment.create({
-            data: {
-              tenantId: latestSub?.tenantId || subscription.tenantId,
-              planId: latestSub?.planId || subscription.planId,
-              billingCycle:
-                latestSub?.billingCycle ||
-                subscription.billingCycle ||
-                'MONTHLY',
-              priceSnapshot:
-                latestSub?.priceSnapshot ||
-                paymentEntity.base_amount ||
-                paymentEntity.amount,
-              amount: paymentEntity.amount,
-              currency: paymentEntity.currency || 'INR',
-              status: 'SUCCESS',
-              provider: 'RAZORPAY',
-              providerOrderId:
-                paymentEntity.order_id || `autopay_${Date.now()}`,
-              providerPaymentId: paymentEntity.id,
-            },
-          });
-        }
+        this.logger.log(`✅ TenantSubscription renewed & payment recorded atomically.`);
 
+        // Post-Transaction: Async tasks
         try {
-          await this.invoiceService.createInvoiceForPayment(internalPayment.id);
-          this.logger.log(
-            `✅ Invoice generated for AutoPay payment ${internalPayment.id}`,
-          );
+          await this.invoiceService.createInvoiceForPayment(internalPaymentId);
         } catch (invErr) {
-          this.logger.error(
-            `Failed to generate invoice for AutoPay payment ${internalPayment.id}`,
-            invErr,
-          );
+          this.logger.error(`Failed to generate invoice for AutoPay payment ${internalPaymentId}`, invErr);
         }
 
-        // Trigger Cache Refresh
         try {
-          await this.eventEmitter.emitAsync('payment.webhook.success', {
-            paymentId: internalPayment.id,
-          });
+          await this.eventEmitter.emitAsync('payment.webhook.success', { paymentId: internalPaymentId });
         } catch (evtErr) {
-          this.logger.error(
-            `Failed to emit payment.webhook.success for ${internalPayment.id}`,
-            evtErr,
-          );
+          this.logger.error(`Failed to emit payment.webhook.success for ${internalPaymentId}`, evtErr);
         }
+
       } catch (renewalErr) {
         this.logger.error(
           `Sub renewal failed for ${subscription.id} via webhook`,
@@ -522,5 +579,136 @@ export class RazorpayWebhookProcessor extends WorkerHost {
         }
       });
     }
+  }
+
+  private async handlePaymentRefunded(payment: any, refund: any) {
+    this.logger.warn(`Payment Refunded: ${payment.id}, Refund: ${refund?.id}`);
+
+    const internalPayment = await this.prisma.payment.findFirst({
+      where: { providerPaymentId: payment.id },
+      include: { tenant: true },
+    });
+
+    if (!internalPayment) {
+      this.logger.error(`Internal payment record not found for refund: ${payment.id}`);
+      return;
+    }
+
+    const isFullRefund = refund
+      ? refund.amount === payment.amount
+      : payment.amount_refunded === payment.amount;
+
+    await this.prisma.$transaction(async (tx) => {
+      // Update Payment Record
+      await tx.payment.update({
+        where: { id: internalPayment.id },
+        data: { status: 'REFUNDED' },
+      });
+
+      // Log Event
+      await tx.billingEventLog.create({
+        data: {
+          tenantId: internalPayment.tenantId,
+          eventType: isFullRefund ? 'payment.refund.full' : 'payment.refund.partial',
+          providerReferenceId: refund?.id || payment.id,
+          statusBefore: 'SUCCESS',
+          statusAfter: 'REFUNDED',
+        },
+      });
+
+      // Scenario A & B: Full Refund -> Immediate Cancellation
+      if (isFullRefund) {
+        const activeSub = await tx.tenantSubscription.findFirst({
+          where: {
+            tenantId: internalPayment.tenantId,
+            module: internalPayment.module,
+            status: { in: ['ACTIVE', 'PAST_DUE'] },
+          },
+        });
+
+        if (activeSub) {
+          await tx.tenantSubscription.update({
+            where: { id: activeSub.id },
+            data: {
+              status: SubscriptionStatus.CANCELLED,
+              updatedAt: new Date(),
+            },
+          });
+
+          this.logger.log(`Subscription ${activeSub.id} cancelled due to full refund.`);
+        }
+      }
+    });
+
+    // Post-Transaction: Handle External Subscription Cancellation for Autopay
+    const activeSub = await this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId: internalPayment.tenantId,
+        status: 'CANCELLED',
+        providerSubscriptionId: { not: null },
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    if (activeSub?.providerSubscriptionId && isFullRefund) {
+      try {
+        await this.subscriptionsService.toggleAutoRenew(activeSub.id, false);
+        this.logger.log(`External mandate cancelled for refunded sub ${activeSub.id}`);
+      } catch (err) {
+        this.logger.error(`Failed to cancel external mandate after refund for sub ${activeSub.id}`, err);
+      }
+    }
+  }
+
+  private async handlePaymentDisputeCreated(dispute: any, payment: any) {
+    this.logger.warn(`Dispute Created: ${dispute.id} for Payment: ${payment.id}`);
+
+    const internalPayment = await this.prisma.payment.findFirst({
+      where: { providerPaymentId: payment.id },
+      include: { tenant: true },
+    });
+
+    if (!internalPayment) {
+      this.logger.error(`Internal payment record not found for dispute: ${payment.id}`);
+      return;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Update Statuses
+      await tx.payment.update({
+        where: { id: internalPayment.id },
+        data: { status: 'DISPUTED' },
+      });
+
+      const activeSub = await tx.tenantSubscription.findFirst({
+        where: {
+          tenantId: internalPayment.tenantId,
+          module: internalPayment.module,
+          status: 'ACTIVE',
+        },
+      });
+
+      if (activeSub) {
+        await tx.tenantSubscription.update({
+          where: { id: activeSub.id },
+          data: {
+            status: SubscriptionStatus.DISPUTED,
+            updatedAt: new Date(),
+          },
+        });
+      }
+
+      await tx.billingEventLog.create({
+        data: {
+          tenantId: internalPayment.tenantId,
+          eventType: 'payment.dispute.created',
+          providerReferenceId: dispute.id,
+          statusBefore: 'ACTIVE',
+          statusAfter: 'DISPUTED',
+        },
+      });
+    });
+
+    this.logger.warn(`Access suspended for tenant ${internalPayment.tenantId} due to dispute.`);
   }
 }

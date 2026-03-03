@@ -9,6 +9,7 @@ import { ModuleType, UserRole, SubscriptionStatus } from '@prisma/client';
 import {
   GRACE_PERIOD_DAYS,
   SOFT_GRACE_PERIOD_DAYS,
+  HARD_GRACE_PERIOD_HOURS,
 } from '../../billing/grace-period.constants';
 
 @Injectable()
@@ -113,30 +114,40 @@ export class TenantStatusGuard implements CanActivate {
       throw new ForbiddenException('SUBSCRIPTION_REQUIRED');
     }
 
-    const gracePeriodEnd = new Date(subscription.endDate || now);
-    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + GRACE_PERIOD_DAYS);
-
     const softGracePeriodEnd = new Date(subscription.endDate || now);
     softGracePeriodEnd.setDate(
       softGracePeriodEnd.getDate() + SOFT_GRACE_PERIOD_DAYS,
     );
 
-    const isExpired = subscription.endDate && now > gracePeriodEnd;
-    const isSoftExpired = subscription.endDate && now > softGracePeriodEnd;
+    const isAutopay =
+      subscription.autopayStatus === 'ACTIVE' && subscription.autoRenew === true;
+
+    // 1️⃣ Determine if we are in the "Mutation Grace Period" (24h for autopay only)
+    const mutationGraceEnd = new Date(subscription.endDate || now);
+    if (isAutopay) {
+      mutationGraceEnd.setHours(
+        mutationGraceEnd.getHours() + HARD_GRACE_PERIOD_HOURS,
+      );
+    }
+
+    const isBeyondMutationGrace = now > mutationGraceEnd;
+    const isBeyondSoftGrace = subscription.endDate && now > softGracePeriodEnd;
     const isPastDue = subscription.status === SubscriptionStatus.PAST_DUE;
 
-    // 2️⃣ Hard Block: EXPIRED or beyond Soft Grace Period
-    if (subscription.status === SubscriptionStatus.EXPIRED || isSoftExpired) {
+    // 2️⃣ Hard Block: EXPIRED or beyond Soft Grace Period (14 days)
+    if (subscription.status === SubscriptionStatus.EXPIRED || isBeyondSoftGrace) {
       throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
     }
 
-    // 3️⃣ Soft Block: Read-Only for PAST_DUE or during Soft Grace Period
-    if (isExpired || isPastDue) {
+    // 3️⃣ Soft Block: Read-Only for PAST_DUE or beyond mutation grace period
+    if (isBeyondMutationGrace || isPastDue) {
       const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
       if (isMutation) {
         throw new ForbiddenException(
           isPastDue
             ? 'PAYMENT_PAST_DUE_READ_ONLY'
+            : isAutopay
+            ? 'AUTOPAY_RENEWAL_PENDING_READ_ONLY'
             : 'SUBSCRIPTION_EXPIRED_READ_ONLY',
         );
       }
@@ -153,7 +164,7 @@ export class TenantStatusGuard implements CanActivate {
         expiryDate: subscription.endDate,
         message: isPastDue
           ? `Payment past due. Read-only mode active.`
-          : `Subscription expired. ${daysRemaining} days remaining in read-only grace period.`,
+          : `Subscription ended. ${daysRemaining} days remaining in read-only grace period.`,
       };
     }
 
