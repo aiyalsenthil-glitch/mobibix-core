@@ -406,22 +406,6 @@ export class BillingService {
           tx,
         );
       }
-
-      // IMEI Updates
-      const allImeis = items.flatMap((i) => i.imeis || []);
-      if (allImeis.length > 0) {
-        const updateResult = await prisma.iMEI.updateMany({
-          where: { imei: { in: allImeis }, tenantId, status: 'IN_STOCK' }, // Optimistic Lock
-          data: { invoiceId: invoice.id, status: 'SOLD', soldAt: new Date() },
-        });
-
-        // If the number of rows updated doesn't match the number of IMEIs, one or more were sold concurrently
-        if (updateResult.count !== allImeis.length) {
-          throw new BadRequestException(
-            'Concurrency Error: One or more IMEIs are no longer IN_STOCK',
-          );
-        }
-      }
     }
 
     // 12. Complete Redemption Transaction

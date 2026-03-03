@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 import { LoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'crypto';
@@ -13,11 +14,11 @@ import { HealthModule } from './health/health.module';
 
 import { rawBodyMiddleware } from './common/middleware/raw-body.middleware';
 import { AuthModule } from './core/auth/auth.module';
-import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './core/auth/guards/jwt-auth.guard';
 import { SubscriptionGuard } from './core/auth/guards/subscription.guard';
 import { CsrfGuard } from './core/auth/guards/csrf.guard';
 import { RolesGuard } from './core/auth/guards/roles.guard';
+import { TenantContextInterceptor } from './core/tenant/tenant-context.interceptor';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { GymAppModule } from './modules/gymapp/gym-app.module';
@@ -168,6 +169,10 @@ type LoggerRequest = {
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TenantContextInterceptor,
+    },
     // ════════════════════════════════════════════════════
     // ✅ SECURITY: APP-LEVEL GUARDS (Applied to ALL endpoints)
     // ════════════════════════════════════════════════════

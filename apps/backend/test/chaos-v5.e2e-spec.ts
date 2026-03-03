@@ -315,6 +315,11 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
       },
     });
 
+    await prisma.shopProduct.update({
+      where: { id: productA.id },
+      data: { quantity: 5 },
+    });
+
     const payload = {
       shopId: shopA.id,
       customerId: customerA.id,
@@ -375,6 +380,11 @@ describe('Invoice Engine Chaos Destruction Test (Phase 5 Hardening)', () => {
         type: 'IN',
         referenceType: 'ADJUSTMENT',
       },
+    });
+
+    await prisma.shopProduct.update({
+      where: { id: productA.id },
+      data: { quantity: 10 },
     });
     const maliciousPayload = {
       shopId: shopA.id,
