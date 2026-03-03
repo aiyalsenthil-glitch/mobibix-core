@@ -333,41 +333,55 @@ export class TenantService {
       },
     });
 
-    // 2️⃣ Flag the tenant
+    // 2️⃣ Flag the tenant and schedule deletion
+    const scheduledDate = new Date();
+    scheduledDate.setDate(scheduledDate.getDate() + 30); // 30-day cooling period
+
     await this.prisma.tenant.update({
       where: { id: tenantId },
-      data: { deletionRequestPending: true },
+      data: {
+        status: 'PENDING_DELETION',
+        deletionRequestPending: true,
+        deletionScheduledAt: scheduledDate,
+      },
     });
 
-    // 3️⃣ Send admin email
-    try {
-      await this.emailService.send({
-        tenantId,
-        recipientType: 'ADMIN',
-        emailType: 'DELETION_REQUEST',
-        referenceId: request.id,
-        module: tenant.tenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
-        to: 'privacy@aiyalgroups.com',
-        subject: `[Deletion Request] Tenant: ${tenant.name}`,
-        data: {
-          tenantName: tenant.name,
-          tenantId: tenant.id,
-          ownerName: user.fullName || 'Unknown',
-          ownerEmail: user.email || 'No email',
-          ownerPhone: user.phone || 'No phone',
-          requestedAt: new Date().toISOString(),
-          reason: dto.reason || 'None',
-        },
-      });
-    } catch (err) {
-      this.logger.error(
-        `Failed to send deletion request email: ${err.message}`,
-      );
-      // Don't fail the request if email fails, but log it
+    // 🛑 Cancel External Mandates immediately to stop automated phantom bills!
+    const activeSubs = await this.prisma.tenantSubscription.findMany({
+      where: { tenantId, status: 'ACTIVE', providerSubscriptionId: { not: null } },
+      select: { id: true, providerSubscriptionId: true },
+    });
+
+    for (const sub of activeSubs) {
+      if (sub.providerSubscriptionId) {
+        try {
+          await this.subscriptionsService.toggleAutoRenew(sub.id, false);
+          this.logger.log(`Externally cancelled Mandate for deleting tenant Sub ${sub.id}`);
+        } catch (err: any) {
+          this.logger.error(`Failed canceling mandate for Sub ${sub.id} prior to tenant delete!`, err);
+        }
+      }
     }
 
+    // 3️⃣ Immediately revoke user sessions to disable login
+    await this.prisma.refreshToken.deleteMany({
+      where: {
+        user: { userTenants: { some: { tenantId } } },
+      },
+    });
+
+    // 4️⃣ Emit the Stage 1 Event
+    this.eventEmitter.emit('tenant.deletion.requested', {
+      tenantId,
+      ownerId: userId,
+      scheduledDate,
+      module: tenant.tenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
+      reason: dto.reason,
+    });
+
     return {
-      message: 'Deletion request submitted successfully',
+      message: 'Deletion requested successfully. Data will be purged in 30 days.',
+      scheduledFor: scheduledDate,
       requestId: request.id,
     };
   }
@@ -708,6 +722,39 @@ export class TenantService {
     }
 
     return { message: 'Tenant deletion processed successfully.', isHardDeleted: !hasGst };
+  }
+
+  async executeScheduledDeletion(tenantId: string, ownerUserId: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: {
+        shops: true,
+      },
+    });
+
+    if (!tenant) return;
+
+    const hasGst = tenant.shops.some((s) => s.gstEnabled || s.gstNumber);
+
+    this.logger.warn(
+      `Executing automated deletion for Tenant ${tenantId} (hasGst: ${hasGst})`,
+    );
+
+    await this.prisma.deletionRequest.updateMany({
+      where: { tenantId, status: 'PENDING' },
+      data: {
+        status: 'COMPLETED',
+        resolvedAt: new Date(),
+        adminNotes: 'Automated 30-day scheduled deletion executed.',
+        isHardDeleted: !hasGst,
+      },
+    });
+
+    if (hasGst) {
+      await this.anonymizeTenant(tenantId, ownerUserId);
+    } else {
+      await this.hardDeleteTenant(tenantId, ownerUserId);
+    }
   }
 
   private async hardDeleteTenant(tenantId: string, ownerUserId?: string) {

@@ -151,6 +151,19 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     });
 
     if (internalPayment) {
+      const receivedAmount = payment.amount / 100;
+
+      if (
+        receivedAmount !== internalPayment.amount ||
+        payment.currency !== internalPayment.currency ||
+        payment.status !== 'captured'
+      ) {
+        this.logger.error(
+          `[FRAUD ALERT] Payment tampering detected! ID: ${internalPayment.id}`,
+        );
+        throw new Error('Payment mismatch: Fraud Validation Triggered');
+      }
+
       const activeSub = await this.prisma.tenantSubscription.findFirst({
         where: {
           tenantId: internalPayment.tenantId,
@@ -181,6 +194,13 @@ export class RazorpayWebhookProcessor extends WorkerHost {
               startDate: new Date(),
               endDate: endDate,
             },
+          });
+
+          this.eventEmitter.emit('subscription.active', {
+            tenantId: internalPayment.tenantId,
+            module: activeSub.module,
+            planId: activeSub.planId,
+            expiryDate: endDate,
           });
         });
         this.logger.log(
@@ -228,6 +248,13 @@ export class RazorpayWebhookProcessor extends WorkerHost {
             updatedAt: new Date(),
           },
         });
+
+        this.eventEmitter.emit('subscription.active', {
+          tenantId: subscription.tenantId,
+          module: subscription.module,
+          planId: subscription.planId,
+          expiryDate: subscription.endDate,
+        });
         this.logger.log(
           `✅ TenantSubscription ${subscription.id} activated (PaymentLink).`,
         );
@@ -258,6 +285,15 @@ export class RazorpayWebhookProcessor extends WorkerHost {
             : undefined,
           updatedAt: new Date(),
         },
+      });
+
+      this.eventEmitter.emit('subscription.active', {
+        tenantId: subscription.tenantId,
+        module: subscription.module,
+        planId: subscription.planId,
+        expiryDate: subEntity.current_end
+          ? new Date(subEntity.current_end * 1000)
+          : undefined,
       });
       this.logger.log(
         `✅ TenantSubscription ${subscription.id} activated (AutoPay).`,
@@ -384,6 +420,12 @@ export class RazorpayWebhookProcessor extends WorkerHost {
         },
       });
 
+      this.eventEmitter.emit('subscription.suspended', {
+        tenantId: subscription.tenantId,
+        module: subscription.module,
+        reason: 'PAYMENT_HALTED',
+      });
+
       if (subscription.tenant?.contactEmail) {
         await this.emailService.send({
           tenantId: subscription.tenantId,
@@ -448,6 +490,12 @@ export class RazorpayWebhookProcessor extends WorkerHost {
               status: SubscriptionStatus.PAST_DUE,
               updatedAt: new Date(),
             },
+          });
+
+          this.eventEmitter.emit('subscription.suspended', {
+            tenantId: internalPayment.tenantId,
+            module: activeSub.module,
+            reason: 'PAYMENT_FAILED_PAST_DUE',
           });
           this.logger.warn(
             `⚠️ Subscription ${activeSub.id} moved to PAST_DUE ` +

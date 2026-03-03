@@ -22,6 +22,7 @@ import { TenantContextInterceptor } from './core/tenant/tenant-context.intercept
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { GymAppModule } from './modules/gymapp/gym-app.module';
+import { NotificationsModule } from './core/notifications/notifications.module';
 import { MobileShopModule } from './modules/mobileshop/mobileshop.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { PartnersModule } from './modules/partners/partners.module';
@@ -141,6 +142,7 @@ type LoggerRequest = {
     CoreModule,
     AuthModule,
     WhatsAppModule,
+    NotificationsModule,
     CustomerTimelineModule,
     LoyaltyModule, // 🧩 Business modules
     GymModule,

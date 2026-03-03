@@ -27,6 +27,25 @@ enum DeletionStatus {
   COMPLETED
 }
 
+enum TenantStatus {
+  ACTIVE
+  PENDING_DELETION
+  SUSPENDED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum NotificationChannel {
+  EMAIL
+  WHATSAPP
+  IN_APP
+}
+
 model Tenant {
   lastLoginAt DateTime?
 
@@ -119,7 +138,10 @@ model Tenant {
   consentIpAddress       String?
   consentUserAgent       String?
   deletionRequestPending Boolean           @default(false)
+  deletionScheduledAt    DateTime?
+  status                 TenantStatus      @default(ACTIVE)
   deletionRequests       DeletionRequest[] @relation("TenantDeletionRequests")
+  notificationLogs       NotificationLog[]
 
   partnerId          String?
   partner            Partner?            @relation(fields: [partnerId], references: [id])
@@ -148,6 +170,32 @@ model DeletionRequest {
   isHardDeleted     Boolean @default(false)
 
   tenant Tenant @relation("TenantDeletionRequests", fields: [tenantId], references: [id])
+}
+
+model NotificationLog {
+  id           String              @id @default(cuid())
+  tenantId     String
+  userId       String?
+  eventId      String
+  channel      NotificationChannel
+  recipient    String
+  status       NotificationStatus  @default(PENDING)
+  payload      Json?
+  errorReason  String?
+  retryCount   Int                 @default(0)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  sentAt       DateTime?
+
+  tenant       Tenant              @relation(fields: [tenantId], references: [id])
+  user         User?               @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([eventId])
+  @@index([createdAt])
+  @@map("mb_notification_log")
 }
 
 model BusinessCategory {
@@ -215,6 +263,7 @@ model User {
   resolvedApprovals  ApprovalRequest[]  @relation("ResolvedApprovals")
   promoUsages        PromoUsage[]
   adminUser          AdminUser?
+  notificationLogs   NotificationLog[]
 
   @@index([REMOVED_AUTH_PROVIDERUid])
   @@index([REMOVED_AUTH_PROVIDERUid, deletedAt])

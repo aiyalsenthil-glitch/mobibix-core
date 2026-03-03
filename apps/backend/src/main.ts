@@ -102,12 +102,16 @@ async function bootstrap() {
    * MUST be on Express, NOT Nest app
    */
   server.use(
+    '/api/billing/webhook/REMOVED_PAYMENT_INFRA',
     bodyParser.json({
       verify: (req: any, _res, buf) => {
         req.rawBody = buf;
       },
     }),
   );
+  
+  // Normal JSON parsing for all other routes
+  server.use(bodyParser.json());
 
   // Parse cookies for httpOnly auth
   server.use(cookieParser());

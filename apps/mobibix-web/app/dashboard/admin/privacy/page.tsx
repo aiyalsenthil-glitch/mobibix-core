@@ -15,6 +15,7 @@ interface DeletionRequest {
   tenant: {
     name: string;
     tenantType: string;
+    deletionScheduledAt: string | null;
   };
 }
 
@@ -85,7 +86,7 @@ export default function PrivacyRequests() {
             <thead>
               <tr className="border-b border-white/10 bg-white/5 text-stone-300">
                 <th className="p-4 font-semibold text-sm">Tenant</th>
-                <th className="p-4 font-semibold text-sm">Requested At</th>
+                <th className="p-4 font-semibold text-sm">Request / Scheduled</th>
                 <th className="p-4 font-semibold text-sm">Reason</th>
                 <th className="p-4 font-semibold text-sm">Status</th>
                 <th className="p-4 font-semibold text-sm text-right">Actions</th>
@@ -99,7 +100,12 @@ export default function PrivacyRequests() {
                     <div className="text-xs text-stone-500">{req.tenant.tenantType}</div>
                   </td>
                   <td className="p-4 text-stone-400 text-sm">
-                    {new Date(req.requestedAt).toLocaleString()}
+                    <div>Requested: {new Date(req.requestedAt).toLocaleDateString()}</div>
+                    {req.tenant.deletionScheduledAt && (
+                        <div className="text-red-400 mt-1">
+                          Scheduled: {new Date(req.tenant.deletionScheduledAt).toLocaleDateString()}
+                        </div>
+                    )}
                   </td>
                   <td className="p-4 text-stone-400 text-sm max-w-xs truncate">
                     {req.reason || "N/A"}
@@ -119,14 +125,16 @@ export default function PrivacyRequests() {
                         <button
                           onClick={() => handleAction(req.id, 'approve')}
                           className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded text-sm font-semibold transition-colors"
+                          title="Force immediate wipe instead of waiting for 30-day cron"
                         >
-                          Scrub Data
+                          Force Scrub Now
                         </button>
                         <button
                           onClick={() => handleAction(req.id, 'reject')}
                           className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded text-sm font-semibold transition-colors"
+                          title="Cancel the deletion request and unlock the account"
                         >
-                          Reject
+                          Cancel Request
                         </button>
                       </div>
                     )}

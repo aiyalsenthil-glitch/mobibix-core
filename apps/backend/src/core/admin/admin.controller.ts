@@ -171,7 +171,7 @@ export class AdminController {
       orderBy: { requestedAt: 'desc' },
       include: {
         tenant: {
-          select: { name: true, tenantType: true }
+          select: { name: true, tenantType: true, deletionScheduledAt: true }
         }
       }
     });
@@ -906,5 +906,55 @@ export class AdminController {
       targetPlanId,
       resolvedModule,
     );
+  }
+
+  // ─────────────────────────────────────────────
+  // NOTIFICATION LOGS (PLATFORM ADMIN)
+  // ─────────────────────────────────────────────
+  @Get('notifications/logs')
+  async getNotificationLogs(
+    @Query('tenantId') tenantId?: string,
+    @Query('eventId') eventId?: string,
+    @Query('status') status?: any,
+  ) {
+    const where: any = {};
+    if (tenantId) where.tenantId = tenantId;
+    if (eventId) where.eventId = eventId;
+    if (status) where.status = status;
+
+    return this.prisma.notificationLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      include: {
+        tenant: { select: { name: true } },
+        user: { select: { email: true, phone: true } },
+      },
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // REVENUE PROTECTION ANALYTICS (PLATFORM ADMIN)
+  // ─────────────────────────────────────────────
+  @Get('analytics/revenue-protection')
+  async getRevenueProtectionStats() {
+    const [overdueCount, expiredCount, pendingDeletionCount] =
+      await Promise.all([
+        this.prisma.tenantSubscription.count({
+          where: { status: SubscriptionStatus.PAST_DUE },
+        }),
+        this.prisma.tenantSubscription.count({
+          where: { status: SubscriptionStatus.EXPIRED },
+        }),
+        this.prisma.tenant.count({
+          where: { status: 'PENDING_DELETION' },
+        }),
+      ]);
+
+    return {
+      overdueCount,
+      expiredCount,
+      pendingDeletionCount,
+    };
   }
 }

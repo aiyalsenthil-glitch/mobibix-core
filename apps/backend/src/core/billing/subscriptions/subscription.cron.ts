@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class SubscriptionCron {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   // Runs every night at 1 AM
   @Cron('0 1 * * *')
@@ -12,48 +16,73 @@ export class SubscriptionCron {
     const now = new Date();
 
     // 1. Expire Trials
-    const trials = await this.prisma.tenantSubscription.updateMany({
+    const trials = await this.prisma.tenantSubscription.findMany({
       where: {
-        status: { in: ['TRIAL', 'PENDING'] }, // Expire unactivated pending too
+        status: { in: ['TRIAL', 'PENDING'] },
         endDate: { lt: now },
-      },
-      data: {
-        status: 'EXPIRED',
       },
     });
 
+    for (const sub of trials) {
+      await this.prisma.tenantSubscription.update({
+        where: { id: sub.id },
+        data: { status: 'EXPIRED' },
+      });
+      this.eventEmitter.emit('subscription.expired', {
+        tenantId: sub.tenantId,
+        module: sub.module,
+        reason: 'TRIAL_ENDED',
+      });
+    }
+
     // 2. Expire Non-renewing Active/PastDue Subs
-    // If autoRenew is OFF and end date passed, they MUST be EXPIRED immediately.
-    const nonRenewing = await this.prisma.tenantSubscription.updateMany({
+    const nonRenewing = await this.prisma.tenantSubscription.findMany({
       where: {
         status: { in: ['ACTIVE', 'PAST_DUE'] },
         autoRenew: false,
         endDate: { lt: now },
       },
-      data: {
-        status: 'EXPIRED',
-      },
     });
 
+    for (const sub of nonRenewing) {
+      await this.prisma.tenantSubscription.update({
+        where: { id: sub.id },
+        data: { status: 'EXPIRED' },
+      });
+      this.eventEmitter.emit('subscription.expired', {
+        tenantId: sub.tenantId,
+        module: sub.module,
+        reason: 'EXPIRED_NON_RENEWING',
+      });
+    }
+
     // 3. Expire Abandoned Auto-renewing Subs
-    // If autoRenew is ON but they stayed PAST_DUE for too long (e.g., 30 days past endDate)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(now.getDate() - 30);
 
-    const staleAutoRenew = await this.prisma.tenantSubscription.updateMany({
+    const staleAutoRenew = await this.prisma.tenantSubscription.findMany({
       where: {
         status: 'PAST_DUE',
         autoRenew: true,
         endDate: { lt: thirtyDaysAgo },
       },
-      data: {
-        status: 'EXPIRED',
-      },
     });
+
+    for (const sub of staleAutoRenew) {
+      await this.prisma.tenantSubscription.update({
+        where: { id: sub.id },
+        data: { status: 'EXPIRED' },
+      });
+      this.eventEmitter.emit('subscription.expired', {
+        tenantId: sub.tenantId,
+        module: sub.module,
+        reason: 'ABANDONED_AUTOPAY',
+      });
+    }
 
     console.log(
       `[CRON][Expiry][${now.toISOString()}] ` +
-        `Trials: ${trials.count} | Non-Renewing: ${nonRenewing.count} | Stale Auto-Pay: ${staleAutoRenew.count}`,
+        `Trials: ${trials.length} | Non-Renewing: ${nonRenewing.length} | Stale Auto-Pay: ${staleAutoRenew.length}`,
     );
   }
 }

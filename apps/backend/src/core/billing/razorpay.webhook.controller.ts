@@ -48,8 +48,11 @@ export class RazorpayWebhookController {
       .filter((s) => s.length > 0);
 
     let isValid = false;
-    const bodyBuffer = req.rawBody ?? Buffer.from(JSON.stringify(body));
-
+    if (!req.rawBody) {
+      this.logger.error('Raw body missing - webhook signature validation impossible properly. Ensure express middleware configured!');
+      throw new BadRequestException('Webhook payload serialization mapping error natively');
+    }
+    const bodyBuffer = req.rawBody;
     for (const secret of secrets) {
       if (
         this.REMOVED_PAYMENT_INFRAService.validateWebhookSignature(

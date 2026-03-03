@@ -5,6 +5,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { Counter } from 'prom-client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -73,6 +74,7 @@ export class SubscriptionsService {
     private readonly cacheService: CacheService,
     // private readonly paymentGatewayService: PaymentGatewayService,
     private readonly REMOVED_PAYMENT_INFRAService: RazorpayService,
+    private readonly eventEmitter: EventEmitter2,
     @InjectMetric('renewals_success_total')
     private readonly renewalsSuccessCounter: Counter<string>,
     @InjectMetric('renewals_failed_total')
@@ -283,6 +285,15 @@ export class SubscriptionsService {
     this.logger.log(
       `🛒 Initiated purchase ${tenant.name}@${module}: ${billingType} | Status: ${initialStatus}`,
     );
+
+    if (initialStatus === SubscriptionStatus.ACTIVE) {
+      this.eventEmitter.emit('subscription.active', {
+        tenantId,
+        module,
+        planId,
+        expiryDate: endDate,
+      });
+    }
 
     // ⚡ Invalidate cache
     this.cacheService.delete(`subscription:${tenantId}:${module}`);
@@ -619,6 +630,13 @@ export class SubscriptionsService {
       },
     });
 
+    this.eventEmitter.emit('subscription.active', {
+      tenantId: current.tenantId,
+      module: current.module,
+      planId: nextPlanId,
+      expiryDate: newEndDate,
+    });
+
     // Mark old subscription as EXPIRED
     await this.prisma.tenantSubscription.update({
       where: { id: subscriptionId },
@@ -626,6 +644,11 @@ export class SubscriptionsService {
         status: SubscriptionStatus.EXPIRED,
         updatedAt: new Date(),
       },
+    });
+
+    this.eventEmitter.emit('subscription.expired', {
+      tenantId: current.tenantId,
+      module: current.module,
     });
 
     // Migrate active add-ons to new subscription row
@@ -910,6 +933,13 @@ export class SubscriptionsService {
       await this.prisma.tenantSubscription.update({
         where: { id: scheduled.id },
         data: { status: SubscriptionStatus.ACTIVE },
+      });
+
+      this.eventEmitter.emit('subscription.active', {
+        tenantId,
+        module,
+        planId: scheduled.planId,
+        expiryDate: scheduled.endDate,
       });
     }
 
