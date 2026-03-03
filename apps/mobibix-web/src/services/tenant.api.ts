@@ -260,6 +260,7 @@ export interface CreateTenantDto {
   timezone?: string;
   marketingConsent?: boolean;
   acceptedPolicyVersion?: string;
+  promoCode?: string;
 }
 
 export interface RequestDeletionDto {

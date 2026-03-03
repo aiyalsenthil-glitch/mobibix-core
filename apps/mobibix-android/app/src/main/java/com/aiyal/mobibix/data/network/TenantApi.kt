@@ -26,7 +26,8 @@ data class CreateTenantRequest(
     val currency: String? = null,
     val timezone: String? = null,
     val marketingConsent: Boolean? = null,
-    val acceptedPolicyVersion: String? = null
+    val acceptedPolicyVersion: String? = null,
+    val promoCode: String? = null
 )
 
 data class CreateTenantResponse(

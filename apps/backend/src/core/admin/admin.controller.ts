@@ -271,6 +271,9 @@ export class AdminController {
       isActive?: boolean;
       isPublic?: boolean;
       isAddon?: boolean;
+      tagline?: string;
+      description?: string;
+      featuresJson?: string[];
     },
   ) {
     return this.plansService.updatePlan(planId, body);

@@ -58,6 +58,7 @@ fun TenantRequiredScreen(
     // Identity Fields
     var businessName by remember { mutableStateOf("") }
     var legalName by remember { mutableStateOf("") }
+    var promoCode by remember { mutableStateOf("") }
     
     // Category Fields
     var categories by remember { mutableStateOf<List<BusinessCategory>>(emptyList()) }
@@ -136,6 +137,16 @@ fun TenantRequiredScreen(
             value = legalName,
             onValueChange = { legalName = it },
             label = { Text("Legal Entity Name") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = promoCode,
+            onValueChange = { promoCode = it.uppercase() },
+            label = { Text("Promo Code (Optional)") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -328,7 +339,8 @@ fun TenantRequiredScreen(
                                 currency = "INR",
                                 timezone = "Asia/Kolkata",
                                 marketingConsent = marketingConsent,
-                                acceptedPolicyVersion = "2026-03-01"
+                                acceptedPolicyVersion = "2026-03-01",
+                                promoCode = promoCode.trim().takeIf { it.isNotEmpty() }
                             )
                         )
 

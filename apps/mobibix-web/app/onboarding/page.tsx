@@ -37,6 +37,7 @@ export default function OnboardingPage() {
     gstNumber: "",
     currency: "INR",
     timezone: "Asia/Kolkata",
+    promoCode: "",
   });
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
@@ -142,6 +143,7 @@ export default function OnboardingPage() {
         gstNumber: formData.gstNumber,
         currency: formData.currency,
         timezone: formData.timezone,
+        promoCode: formData.promoCode || undefined,
         marketingConsent: marketingConsent,
         acceptedPolicyVersion: "2026-03-01", // Match 'Last Updated' in policies
       };
@@ -266,6 +268,17 @@ export default function OnboardingPage() {
                     onChange={handleChange} 
                     placeholder="e.g. Mobile Retailer, Electronics Repair"
                     className="bg-stone-900 border-white/10"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Promo Code (Optional)</Label>
+                  <Input 
+                    name="promoCode" 
+                    value={formData.promoCode || ""} 
+                    onChange={handleChange} 
+                    placeholder="Have a referral or promo code?"
+                    className="bg-stone-900 border-white/10 text-teal-400 uppercase font-bold"
                   />
                 </div>
               </div>
