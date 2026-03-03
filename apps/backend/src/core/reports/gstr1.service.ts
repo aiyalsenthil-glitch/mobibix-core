@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { paiseToRupees } from '../utils/currency.utils';
 
 interface GSTR1Record {
   invoiceNumber: string;
@@ -98,11 +99,11 @@ export class GSTR1Service {
         invoiceDate: invoice.invoiceDate,
         customerName: invoice.customer?.name || invoice.customerName,
         gstinUin: invoice.customer?.gstNumber || '',
-        invoiceAmount: invoice.subTotal,
-        taxableAmount: baseAmount,
-        cgstAmount: invoice.cgst || 0,
-        sgstAmount: invoice.sgst || 0,
-        igstAmount: invoice.igst || 0,
+        invoiceAmount: paiseToRupees(invoice.subTotal),
+        taxableAmount: paiseToRupees(baseAmount),
+        cgstAmount: paiseToRupees(invoice.cgst || 0),
+        sgstAmount: paiseToRupees(invoice.sgst || 0),
+        igstAmount: paiseToRupees(invoice.igst || 0),
         category,
       });
 
@@ -122,10 +123,10 @@ export class GSTR1Service {
       b2bCount,
       b2cCount,
       exportCount,
-      totalTaxableAmount,
-      totalCgst,
-      totalSgst,
-      totalIgst,
+      totalTaxableAmount: paiseToRupees(totalTaxableAmount),
+      totalCgst: paiseToRupees(totalCgst),
+      totalSgst: paiseToRupees(totalSgst),
+      totalIgst: paiseToRupees(totalIgst),
       records,
     };
   }
@@ -207,14 +208,14 @@ export class GSTR1Service {
     return Array.from(hsnMap.entries()).map(([hsnCode, data]) => ({
       hsnCode,
       quantity: data.quantity,
-      unitPrice: Math.round(data.totalAmount / data.quantity),
-      totalAmount: data.totalAmount,
+      unitPrice: paiseToRupees(Math.round(data.totalAmount / data.quantity)),
+      totalAmount: paiseToRupees(data.totalAmount),
       cgstRate: data.cgstRate,
-      cgstAmount: data.cgstAmount,
+      cgstAmount: paiseToRupees(data.cgstAmount),
       sgstRate: data.sgstRate,
-      sgstAmount: data.sgstAmount,
+      sgstAmount: paiseToRupees(data.sgstAmount),
       igstRate: data.igstRate,
-      igstAmount: data.igstAmount,
+      igstAmount: paiseToRupees(data.igstAmount),
     }));
   }
 

@@ -14,63 +14,71 @@ export default function TermsPage() {
 
       <div className="container mx-auto max-w-4xl pt-40 pb-20 px-6">
         <h1 className="text-5xl font-black mb-4 tracking-tighter text-foreground">Terms & Conditions</h1>
-        <p className="text-teal-500 font-bold uppercase tracking-[0.2em] text-xs mb-12">Last updated: March 1, 2026</p>
+        <p className="text-teal-500 font-bold uppercase tracking-[0.2em] text-xs mb-12">Last updated: March 3, 2026</p>
         
         <div className="max-w-none space-y-12 text-muted-foreground font-medium leading-relaxed">
           <p className="text-lg text-foreground font-bold italic border-l-4 border-teal-500 pl-6 bg-teal-500/5 py-4 rounded-r-xl">
-            Welcome to the Aiyal Groups Platform, encompassing our suite of SaaS products including Mobibix (Retail POS & Repair SaaS) and GymPilot (Gym Management SaaS).
+            Welcome to MobiBix, a subscription-based SaaS platform operated by Aiyal Groups. By using our services, you agree to the following terms.
           </p>
 
           <section className="space-y-4">
-            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">1. Definitions</h2>
-            <ul className="list-disc pl-6 space-y-2 marker:text-teal-500">
-              <li><strong>"Platform":</strong> Mobibix, GymPilot, their apps, websites, and infrastructure.</li>
-              <li><strong>"Tenant":</strong> The business entity subscribing to the Platform.</li>
-              <li><strong>"Owner":</strong> The primary individual who registers the Tenant account.</li>
-              <li><strong>"Data":</strong> All information and records entered into the Platform by the Tenant.</li>
+            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">1. Description of Service</h2>
+            <p>
+              MobiBix provides a "Software as a Service" (SaaS) platform designed for retail POS and repair center management. 
+              The service is delivered electronically via our web and mobile applications. As a digital service, no physical goods 
+              are shipped or delivered.
+            </p>
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">2. Subscription Plans & Billing</h2>
+            <ul className="list-disc pl-6 space-y-3 marker:text-teal-500">
+              <li><strong>Plan Selection:</strong> We offer monthly and yearly subscription plans. Pricing details are available on our pricing page and are inclusive/exclusive of taxes as specified.</li>
+              <li><strong>Auto-Renewal:</strong> All subscriptions are set to auto-renew at the end of the billing cycle (monthly or yearly) unless cancelled.</li>
+              <li><strong>Recurring Charges (eMandate):</strong> By subscribing and providing payment details, you explicitly authorize Aiyal Groups to charge your payment method (Credit Card, Debit Card, or UPI) on a recurring basis via Razorpay eMandate/Subscription services.</li>
+              <li><strong>Authorization:</strong> This authorization remains in effect until you cancel your subscription through the platform settings or by contacting support.</li>
             </ul>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">2. Account Registration</h2>
-            <ul className="list-disc pl-6 space-y-2 marker:text-teal-500">
-              <li><strong>Accurate Information:</strong> You agree to provide true, accurate, and complete information during registration.</li>
-              <li><strong>Security:</strong> The Owner is responsible for safeguarding credentials and all activity under the account.</li>
-              <li><strong>Age:</strong> You must be at least 18 years of age to use the Services.</li>
-            </ul>
+            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">3. Upgrade/Downgrade Terms</h2>
+            <p>
+              Users may upgrade or downgrade their plans at any time. Upgrades will be processed immediately with prorated charges. 
+              Downgrades will take effect from the next billing cycle. No partial refunds are provided for downgrades mid-cycle.
+            </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">3. Subscription & Billing</h2>
-            <ul className="list-disc pl-6 space-y-2 marker:text-teal-500">
-              <li><strong>Subscription Fees:</strong> Fees are billed in advance on a recurring basis.</li>
-              <li><strong>Refund Policy:</strong> All fees are non-refundable unless required by law.</li>
-              <li><strong>Right to Suspend:</strong> We reserve the right to suspend access if fees are past due.</li>
-            </ul>
+            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">4. Cancellation & Termination</h2>
+            <p>
+              You may cancel your subscription at any time via the billing section of your dashboard. Upon cancellation, you will 
+              retain access until the end of your current paid billing period. We reserve the right to terminate accounts for 
+              violations of these terms or non-payment.
+            </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">4. Acceptable Use</h2>
-            <p>You agree not to use the Platform for any unlawful acts, tax fraud, or storing illegal data. Reverse engineering or bypassing security measures is strictly prohibited.</p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">5. Data Ownership</h2>
-            <p><strong>Tenant Ownership:</strong> The Tenant retains full ownership of all business Data.</p>
-            <p><strong>Processor Role:</strong> Aiyal Groups acts solely as a data processor. We do not claim ownership over your Data.</p>
-            <p><strong>Retention:</strong> Upon cancellation, we retain Data for a 30-day grace period, after which it is permanently deleted.</p>
+            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">5. Data Ownership & Privacy</h2>
+            <p>
+              You retain ownership of all data entered into the platform. Our use of your data is governed by our Privacy Policy. 
+              We act as a data processor for your customer information.
+            </p>
           </section>
 
           <section className="space-y-4">
             <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">6. Limitation of Liability</h2>
-            <p><strong>Tax & Regulatory:</strong> We are NOT responsible for the accuracy of tax filings or GST compliance.</p>
-            <p><strong>Business Losses:</strong> Aiyal Groups is not liable for indirect, incidental, or consequential damages or loss of profits.</p>
+            <p>
+              To the maximum extent permitted by law, Aiyal Groups shall not be liable for any indirect, incidental, 
+              or consequential damages arising from the use of our SaaS platform. Our total liability for any claim 
+              shall not exceed the amount paid by you for the service in the 12 months preceding the claim.
+            </p>
           </section>
 
           <section className="space-y-4 pt-12 border-t border-border">
-            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">Governing Law</h2>
+            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">7. Governing Law</h2>
             <p>
-              These Terms shall be governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the competent courts in Chennai, Tamil Nadu, India.
+              These Terms shall be governed by the laws of India. Any disputes shall be subject to the exclusive 
+              jurisdiction of the competent courts in <strong>Salem, Tamil Nadu, India</strong>.
             </p>
           </section>
         </div>

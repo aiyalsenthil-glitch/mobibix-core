@@ -1,4 +1,9 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import {
+  calculateGST,
+  paiseToRupees,
+  rupeesToPaise,
+} from '../../../core/utils/currency.utils';
 
 /**
  * TaxCalculationService: GST Tax Calculation for Indian invoices
@@ -43,8 +48,9 @@ export class TaxCalculationService {
   calculateStateTax(amount: number, gstRate: number) {
     this.validateGSTRate(gstRate);
 
-    const cgst = Math.round((amount * gstRate) / 200);
-    const sgst = Math.round((amount * gstRate) / 200);
+    const totalGst = calculateGST(amount, gstRate);
+    const cgst = Math.round(totalGst / 2);
+    const sgst = Math.round(totalGst / 2);
 
     return {
       taxableAmount: amount,
@@ -66,7 +72,7 @@ export class TaxCalculationService {
   calculateInterstateTab(amount: number, gstRate: number) {
     this.validateGSTRate(gstRate);
 
-    const igst = Math.round((amount * gstRate) / 100);
+    const igst = calculateGST(amount, gstRate);
 
     return {
       taxableAmount: amount,
@@ -121,13 +127,13 @@ export class TaxCalculationService {
    * 1 rupee = 100 paise
    */
   toPaise(rupees: number): number {
-    return Math.round(rupees * 100);
+    return rupeesToPaise(rupees);
   }
 
   /**
    * Format paise back to rupees (for display)
    */
   toRupees(paise: number): number {
-    return Math.round(paise / 100);
+    return paiseToRupees(paise);
   }
 }

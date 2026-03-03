@@ -11,6 +11,7 @@ import {
   Prisma,
   ProductType,
 } from '@prisma/client';
+import { paiseToRupees } from '../../../core/utils/currency.utils';
 
 @Injectable()
 export class MobileShopReportsService {
@@ -87,14 +88,15 @@ export class MobileShopReportsService {
 
     return {
       metrics: {
-        salesPaid: totalSalesPaid / 100,
-        salesCredit: totalSalesCredit / 100,
-        totalPurchases: purchaseTotal / 100,
-        totalExpenses: (totalExpenses._sum.amount || 0) / 100,
-        netCashFlow:
-          ((cashIn._sum.amount || 0) - (cashOut._sum.amount || 0)) / 100,
-        pendingReceivables: totalSalesCredit / 100, // Same as Credit Sales
-        pendingPayables: pendingPayables / 100,
+        salesPaid: paiseToRupees(totalSalesPaid),
+        salesCredit: paiseToRupees(totalSalesCredit),
+        totalPurchases: paiseToRupees(purchaseTotal),
+        totalExpenses: paiseToRupees(totalExpenses._sum.amount || 0),
+        netCashFlow: paiseToRupees(
+          (cashIn._sum.amount || 0) - (cashOut._sum.amount || 0),
+        ),
+        pendingReceivables: paiseToRupees(totalSalesCredit), // Same as Credit Sales
+        pendingPayables: paiseToRupees(pendingPayables),
       },
     };
   }
@@ -137,8 +139,8 @@ export class MobileShopReportsService {
 
     return {
       totalInvoices: agg._count.id,
-      totalSales: (agg._sum.totalAmount || 0) / 100,
-      totalCollected: (receipts._sum.amount || 0) / 100,
+      totalSales: paiseToRupees(agg._sum.totalAmount || 0),
+      totalCollected: paiseToRupees(receipts._sum.amount || 0),
     };
   }
 
@@ -267,11 +269,11 @@ export class MobileShopReportsService {
         invoiceNo: inv.invoiceNumber,
         date: inv.invoiceDate,
         customer: inv.customerName,
-        totalAmount: inv.totalAmount / 100, // Paisa to Rupees
-        paidAmount: paid / 100, // Paisa to Rupees
-        pendingAmount: pending / 100, // Paisa to Rupees
+        totalAmount: paiseToRupees(inv.totalAmount), // Paisa to Rupees
+        paidAmount: paiseToRupees(paid), // Paisa to Rupees
+        pendingAmount: paiseToRupees(pending), // Paisa to Rupees
         paymentMode: paymentDisplay as any, // Allow breakdown strings like "CASH + UPI"
-        profit: totalProfit !== null ? totalProfit / 100 : null, // Paisa to Rupees
+        profit: totalProfit !== null ? paiseToRupees(totalProfit) : null, // Paisa to Rupees
         shopName: inv.shop.name,
       };
     });
@@ -303,8 +305,8 @@ export class MobileShopReportsService {
 
     return {
       totalPurchases: agg._count.id,
-      totalAmount: (agg._sum.grandTotal || 0) / 100,
-      totalPaid: (agg._sum.paidAmount || 0) / 100,
+      totalAmount: paiseToRupees(agg._sum.grandTotal || 0),
+      totalPaid: paiseToRupees(agg._sum.paidAmount || 0),
     };
   }
 
@@ -343,9 +345,9 @@ export class MobileShopReportsService {
       purchaseNo: p.invoiceNumber,
       supplier: p.supplierName,
       date: p.invoiceDate,
-      totalAmount: p.grandTotal / 100, // Paisa to Rupees
-      paidAmount: p.paidAmount / 100, // Paisa to Rupees
-      pendingAmount: (p.grandTotal - p.paidAmount) / 100, // Paisa to Rupees
+      totalAmount: paiseToRupees(p.grandTotal), // Paisa to Rupees
+      paidAmount: paiseToRupees(p.paidAmount), // Paisa to Rupees
+      pendingAmount: paiseToRupees(p.grandTotal - p.paidAmount), // Paisa to Rupees
       stockReceived: p.status !== PurchaseStatus.DRAFT, // Check logic
       shopName: p.shop.name,
     }));
@@ -368,7 +370,7 @@ export class MobileShopReportsService {
       JOIN "mb_shop_product" p ON cb."shopProductId" = p."id"
     `;
 
-    return { totalCurrentValue: Number(result[0]?.total_value || 0) / 100 };
+    return { totalCurrentValue: paiseToRupees(Number(result[0]?.total_value || 0)) };
   }
 
   /**
@@ -463,8 +465,8 @@ export class MobileShopReportsService {
         product: prod?.name || 'Unknown',
         isSerialized: prod?.isSerialized || false,
         quantity: qty,
-        costPrice: prod?.costPrice ? prod.costPrice / 100 : 0, // Paisa to Rupees
-        stockValue: prod?.costPrice ? (qty * prod.costPrice) / 100 : null, // Paisa to Rupees
+        costPrice: prod?.costPrice ? paiseToRupees(prod.costPrice) : 0, // Paisa to Rupees
+        stockValue: prod?.costPrice ? paiseToRupees(qty * prod.costPrice) : null, // Paisa to Rupees
         lowStock: prod?.reorderLevel ? qty <= prod.reorderLevel : false,
       };
     });
@@ -519,12 +521,12 @@ export class MobileShopReportsService {
 
     const r = profitResult[0] || ({} as any);
 
-    const salesRevenue = Number(r.sales_revenue || 0) / 100;
-    const salesCost = Number(r.sales_cost || 0) / 100;
+    const salesRevenue = paiseToRupees(Number(r.sales_revenue || 0));
+    const salesCost = paiseToRupees(Number(r.sales_cost || 0));
     const salesProfit = salesRevenue - salesCost;
 
-    const repairRevenue = Number(r.repair_revenue || 0) / 100;
-    const repairCost = Number(r.repair_cost || 0) / 100;
+    const repairRevenue = paiseToRupees(Number(r.repair_revenue || 0));
+    const repairCost = paiseToRupees(Number(r.repair_cost || 0));
     const repairProfit = repairRevenue - repairCost;
 
     const totalRevenue = salesRevenue + repairRevenue;
@@ -620,7 +622,7 @@ export class MobileShopReportsService {
       productId: p.shopProductId,
       name: productMap.get(p.shopProductId)?.name || 'Unknown',
       totalQty: p._sum.quantity || 0,
-      totalAmount: (p._sum.lineTotal || 0) / 100, // Paisa to Rupees
+      totalAmount: paiseToRupees(p._sum.lineTotal || 0), // Paisa to Rupees
     }));
   }
 

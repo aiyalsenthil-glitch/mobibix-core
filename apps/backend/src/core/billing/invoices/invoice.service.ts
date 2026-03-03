@@ -5,6 +5,11 @@ import PDFDocument from 'pdfkit';
 import { Readable } from 'stream';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { Counter } from 'prom-client';
+import {
+  calculateGST,
+  formatAsINR,
+  paiseToRupees,
+} from '../../../core/utils/currency.utils';
 
 @Injectable()
 export class InvoiceService {
@@ -43,8 +48,7 @@ export class InvoiceService {
    * @param isInterstate Whether it's an inter-state transaction
    */
   private calculateGST(amount: number, isInterstate: boolean) {
-    const gstRate = 0.18; // 18% GST for digital services
-    const totalGst = Math.round(amount * gstRate);
+    const totalGst = calculateGST(amount, 18); // 18% GST for digital services
 
     if (isInterstate) {
       return {
@@ -356,7 +360,7 @@ export class InvoiceService {
         .font('Helvetica')
         .text(invoice.description, 50, tableTop + 25)
         .text(invoice.sacCode, 250, tableTop + 25)
-        .text(`₹${(invoice.amount / 100).toFixed(2)}`, 400, tableTop + 25, {
+        .text(formatAsINR(paiseToRupees(invoice.amount)), 400, tableTop + 25, {
           align: 'right',
           width: 110,
         });
@@ -367,7 +371,7 @@ export class InvoiceService {
       doc
         .fontSize(10)
         .text('Subtotal:', 400, taxTop, { width: 80, align: 'right' })
-        .text(`₹${(invoice.amount / 100).toFixed(2)}`, 480, taxTop, {
+        .text(formatAsINR(paiseToRupees(invoice.amount)), 480, taxTop, {
           width: 80,
           align: 'right',
         });
@@ -375,14 +379,14 @@ export class InvoiceService {
       if (invoice.cgst && invoice.cgst > 0) {
         doc
           .text('CGST (9%):', 400, taxTop + 15, { width: 80, align: 'right' })
-          .text(`₹${(invoice.cgst / 100).toFixed(2)}`, 480, taxTop + 15, {
+          .text(formatAsINR(paiseToRupees(invoice.cgst)), 480, taxTop + 15, {
             width: 80,
             align: 'right',
           });
 
         doc
           .text('SGST (9%):', 400, taxTop + 30, { width: 80, align: 'right' })
-          .text(`₹${(invoice.sgst / 100).toFixed(2)}`, 480, taxTop + 30, {
+          .text(formatAsINR(paiseToRupees(invoice.sgst)), 480, taxTop + 30, {
             width: 80,
             align: 'right',
           });
@@ -391,7 +395,7 @@ export class InvoiceService {
       if (invoice.igst && invoice.igst > 0) {
         doc
           .text('IGST (18%):', 400, taxTop + 15, { width: 80, align: 'right' })
-          .text(`₹${(invoice.igst / 100).toFixed(2)}`, 480, taxTop + 15, {
+          .text(formatAsINR(paiseToRupees(invoice.igst)), 480, taxTop + 15, {
             width: 80,
             align: 'right',
           });
@@ -409,7 +413,7 @@ export class InvoiceService {
         .fontSize(12)
         .font('Helvetica-Bold')
         .text('TOTAL:', 400, taxTop + 60, { width: 80, align: 'right' })
-        .text(`₹${(invoice.total / 100).toFixed(2)}`, 480, taxTop + 60, {
+        .text(formatAsINR(paiseToRupees(invoice.total)), 480, taxTop + 60, {
           width: 80,
           align: 'right',
         });

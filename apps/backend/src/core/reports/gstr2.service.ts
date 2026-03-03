@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { paiseToRupees } from '../utils/currency.utils';
 
 interface GSTR2Record {
   purchaseNumber: string;
@@ -94,15 +95,15 @@ export class GSTR2Service {
         invoiceDate: purchase.invoiceDate,
         supplierName: purchase.supplierName,
         supplierGstin: purchase.supplierGstin || '',
-        invoiceAmount: purchase.grandTotal || baseAmount + purchase.totalGst,
-        taxableAmount: baseAmount,
-        cgstAmount: purchase.cgst || 0,
-        sgstAmount: purchase.sgst || 0,
-        igstAmount: purchase.igst || 0,
+        invoiceAmount: paiseToRupees(purchase.grandTotal || baseAmount + purchase.totalGst),
+        taxableAmount: paiseToRupees(baseAmount),
+        cgstAmount: paiseToRupees(purchase.cgst || 0),
+        sgstAmount: paiseToRupees(purchase.sgst || 0),
+        igstAmount: paiseToRupees(purchase.igst || 0),
         itcEligible,
-        itcCgstAmount: itcCgst,
-        itcSgstAmount: itcSgst,
-        itcIgstAmount: itcIgst,
+        itcCgstAmount: paiseToRupees(itcCgst),
+        itcSgstAmount: paiseToRupees(itcSgst),
+        itcIgstAmount: paiseToRupees(itcIgst),
       });
 
       if (itcEligible) itcEligibleCount++;
@@ -120,11 +121,11 @@ export class GSTR2Service {
       totalPurchases: purchases.length,
       itcEligibleCount,
       legacyUnverifiedCount,
-      totalTaxableAmount,
-      totalCgst,
-      totalSgst,
-      totalIgst,
-      totalITC,
+      totalTaxableAmount: paiseToRupees(totalTaxableAmount),
+      totalCgst: paiseToRupees(totalCgst),
+      totalSgst: paiseToRupees(totalSgst),
+      totalIgst: paiseToRupees(totalIgst),
+      totalITC: paiseToRupees(totalITC),
       records,
     };
   }
@@ -226,14 +227,14 @@ export class GSTR2Service {
     return Array.from(hsnMap.entries()).map(([hsnCode, data]) => ({
       hsnCode,
       quantity: data.quantity,
-      unitPrice: Math.round(data.totalAmount / data.quantity),
-      totalAmount: data.totalAmount,
+      unitPrice: paiseToRupees(Math.round(data.totalAmount / data.quantity)),
+      totalAmount: paiseToRupees(data.totalAmount),
       cgstRate: data.cgstRate,
-      cgstAmount: data.cgstAmount,
+      cgstAmount: paiseToRupees(data.cgstAmount),
       sgstRate: data.sgstRate,
-      sgstAmount: data.sgstAmount,
+      sgstAmount: paiseToRupees(data.sgstAmount),
       igstRate: data.igstRate,
-      igstAmount: data.igstAmount,
+      igstAmount: paiseToRupees(data.igstAmount),
       itcEligible: data.itcEligibleCount === data.count,
     }));
   }
@@ -287,13 +288,13 @@ export class GSTR2Service {
     }
 
     return {
-      totalCgst,
-      totalSgst,
-      totalIgst,
-      totalITC: totalCgst + totalSgst + totalIgst,
-      legacyUnverifiedCgst,
-      legacyUnverifiedSgst,
-      legacyUnverifiedIgst,
+      totalCgst: paiseToRupees(totalCgst),
+      totalSgst: paiseToRupees(totalSgst),
+      totalIgst: paiseToRupees(totalIgst),
+      totalITC: paiseToRupees(totalCgst + totalSgst + totalIgst),
+      legacyUnverifiedCgst: paiseToRupees(legacyUnverifiedCgst),
+      legacyUnverifiedSgst: paiseToRupees(legacyUnverifiedSgst),
+      legacyUnverifiedIgst: paiseToRupees(legacyUnverifiedIgst),
     };
   }
 

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
+import { paiseToRupees } from '../../../core/utils/currency.utils';
 
 /**
  * GSTReportsService: Generate GST compliance reports
@@ -51,12 +52,12 @@ export class GSTReportsService {
       invoiceDate: inv.invoiceDate,
       customerGstin: inv.customer?.gstNumber,
       customerName: inv.customer?.name,
-      invoiceValue: inv.totalAmount,
-      taxableValue: inv.subTotal,
-      cgst: inv.cgst || 0,
-      sgst: inv.sgst || 0,
-      igst: inv.igst || 0,
-      totalTax: (inv.cgst || 0) + (inv.sgst || 0) + (inv.igst || 0),
+      invoiceValue: paiseToRupees(inv.totalAmount),
+      taxableValue: paiseToRupees(inv.subTotal),
+      cgst: paiseToRupees(inv.cgst || 0),
+      sgst: paiseToRupees(inv.sgst || 0),
+      igst: paiseToRupees(inv.igst || 0),
+      totalTax: paiseToRupees((inv.cgst || 0) + (inv.sgst || 0) + (inv.igst || 0)),
     }));
   }
 
@@ -117,10 +118,10 @@ export class GSTReportsService {
 
         const existing = hsnWise.get(hsnCode)!;
         existing.invoiceCount += 1;
-        existing.taxableValue += item.rate;
-        existing.cgst += item.cgstAmount || 0;
-        existing.sgst += item.sgstAmount || 0;
-        existing.igst += item.igstAmount || 0;
+        existing.taxableValue += paiseToRupees(item.rate);
+        existing.cgst += paiseToRupees(item.cgstAmount || 0);
+        existing.sgst += paiseToRupees(item.sgstAmount || 0);
+        existing.igst += paiseToRupees(item.igstAmount || 0);
         existing.totalTax = existing.cgst + existing.sgst + existing.igst;
       }
     }
@@ -159,12 +160,12 @@ export class GSTReportsService {
       billDate: purch.invoiceDate,
       supplierGstin: purch.supplierGstin,
       supplierName: purch.party?.name || purch.supplierName,
-      invoiceValue: purch.grandTotal,
-      taxableValue: purch.subTotal,
-      cgst: purch.cgst || 0,
-      sgst: purch.sgst || 0,
-      igst: purch.igst || 0,
-      totalTax: (purch.cgst || 0) + (purch.sgst || 0) + (purch.igst || 0),
+      invoiceValue: paiseToRupees(purch.grandTotal),
+      taxableValue: paiseToRupees(purch.subTotal),
+      cgst: paiseToRupees(purch.cgst || 0),
+      sgst: paiseToRupees(purch.sgst || 0),
+      igst: paiseToRupees(purch.igst || 0),
+      totalTax: paiseToRupees((purch.cgst || 0) + (purch.sgst || 0) + (purch.igst || 0)),
       itcEligible: true, // Can claim ITC if supplier is registered
     }));
   }

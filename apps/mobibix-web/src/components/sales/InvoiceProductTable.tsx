@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { type ShopProduct } from "@/services/products.api";
 import { type ProductItem } from "@/hooks/useInvoiceForm";
 import { useShop } from "@/context/ShopContext";
+import { CurrencyText } from "@/components/ui/currency-text";
 
 interface InvoiceProductTableProps {
   items: ProductItem[];
@@ -275,7 +276,7 @@ export function InvoiceProductTable({
                                     )}
                                 </div>
                                 <div className="text-xs text-gray-500 mt-1 flex justify-between">
-                                  <span>₹{(p.salePrice || 0) / 100}</span>
+                                  <CurrencyText amount={p.salePrice || 0} />
                                   <span
                                     className={
                                       p.isNegative
@@ -431,7 +432,7 @@ export function InvoiceProductTable({
                     </td>
                   )}
                   <td className="px-4 py-4 text-right align-top font-medium text-gray-900 dark:text-white">
-                    ₹{item.total.toFixed(2)}
+                    <CurrencyText amount={item.total} isPaise={false} />
                   </td>
                   <td className="px-4 py-4 align-top">
                     <button

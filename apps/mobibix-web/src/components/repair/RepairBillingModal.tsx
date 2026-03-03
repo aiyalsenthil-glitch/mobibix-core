@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { JobCard, RepairBillDto } from "@/services/jobcard.api";
 import { getCustomerLoyaltyBalance } from "@/services/loyalty.api";
 import { LoyaltyRedemptionInput } from "@/components/loyalty/LoyaltyRedemptionInput";
+import { CurrencyText } from "@/components/ui/currency-text";
+import { calculateGST } from "@/lib/gst.utils";
 
 interface RepairBillingModalProps {
   isOpen: boolean;
@@ -33,14 +35,6 @@ export function RepairBillingModal({
   const [loyaltyBalance, setLoyaltyBalance] = useState<number>(0);
   const [pointsRedeemed, setPointsRedeemed] = useState<number>(0);
   const [loyaltyDiscountPaise, setLoyaltyDiscountPaise] = useState<number>(0);
-
-  // Helper for currency format
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-    }).format(amount);
-  };
 
   useEffect(() => {
     if (isOpen && job) {
@@ -93,19 +87,22 @@ export function RepairBillingModal({
     }
   };
 
-  // Calculations for Preview
+  // Calculations for Preview (Math in Rupees for UI preview)
   const partsTotal = job.parts?.reduce((sum, p) => sum + ((p.product?.salePrice || 0) / 100) * p.quantity, 0) || 0;
   const serviceTotal = serviceAmount;
   
   let tax = 0;
   if (billingMode === "WITH_GST") {
-      const serviceTax = (serviceAmount * serviceGstRate) / 100;
-      const partsTax = job.parts?.reduce((sum, p) => sum + (((p.product?.salePrice || 0) / 100) * p.quantity * (p.product?.gstRate || 0) / 100), 0) || 0;
-      tax = serviceTax + partsTax;
+      const serviceTaxCalculated = calculateGST(serviceAmount * 100, serviceGstRate);
+      const partsTaxAmount = job.parts?.reduce((sum, p) => {
+          const itemTax = calculateGST(((p.product?.salePrice || 0) / 100) * p.quantity * 100, p.product?.gstRate || 0);
+          return sum + itemTax.totalGST;
+      }, 0) || 0;
+      tax = (serviceTaxCalculated.totalGST + partsTaxAmount) / 100;
   }
   
   const total = partsTotal + serviceTotal + tax;
-  const advance = job.advancePaid || 0; 
+  const advance = (job.advancePaid || 0) / 100; // 🚨 FIX: Assume job.advancePaid is in Paise
   const loyaltyDiscount = loyaltyDiscountPaise / 100;
   const payable = Math.max(0, total - advance - loyaltyDiscount);
 
@@ -213,38 +210,38 @@ export function RepairBillingModal({
              <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                     <span>Parts Cost ({job.parts?.length || 0} items)</span>
-                    <span>{formatCurrency(partsTotal)}</span>
+                    <CurrencyText amount={partsTotal} isPaise={false} />
                 </div>
                 <div className="flex justify-between">
                     <span>Service Charges</span>
-                    <span>{formatCurrency(serviceTotal)}</span>
+                    <CurrencyText amount={serviceTotal} isPaise={false} />
                 </div>
                 {billingMode === "WITH_GST" && (
                     <div className="flex justify-between text-gray-500">
                         <span>GST (Approx)</span>
-                        <span>{formatCurrency(tax)}</span>
+                        <CurrencyText amount={tax} isPaise={false} />
                     </div>
                 )}
                  <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2 dark:text-white">
                     <span>Total Bill</span>
-                    <span>{formatCurrency(total)}</span>
+                    <CurrencyText amount={total} isPaise={false} />
                 </div>
                 
                  {advance > 0 && (
                       <div className="flex justify-between text-teal-600 font-medium pt-2">
                          <span>Less: Advance Paid</span>
-                         <span>- {formatCurrency(advance)}</span>
+                         <CurrencyText amount={advance} isPaise={false} />
                      </div>
                  )}
                  {loyaltyDiscount > 0 && (
                       <div className="flex justify-between text-blue-600 font-medium pt-1">
                          <span>Less: Loyalty Discount</span>
-                         <span>- {formatCurrency(loyaltyDiscount)}</span>
+                         <CurrencyText amount={loyaltyDiscount} isPaise={false} />
                      </div>
                  )}
                   <div className="flex justify-between font-bold text-xl text-indigo-600 pt-2 border-t border-dashed border-gray-300 mt-2">
                      <span>Payable Now</span>
-                     <span>{formatCurrency(payable)}</span>
+                     <CurrencyText amount={payable} isPaise={false} />
                  </div>
               </div>
            </div>

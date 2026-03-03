@@ -14,75 +14,67 @@ export default function PrivacyPage() {
 
       <div className="container mx-auto max-w-4xl pt-40 pb-20 px-6">
         <h1 className="text-5xl font-black mb-4 tracking-tighter text-foreground">Privacy Policy</h1>
-        <p className="text-teal-500 font-bold uppercase tracking-[0.2em] text-xs mb-12">Last updated: March 1, 2026</p>
+        <p className="text-teal-500 font-bold uppercase tracking-[0.2em] text-xs mb-12">Last updated: March 3, 2026</p>
         
         <div className="max-w-none space-y-12 text-muted-foreground font-medium leading-relaxed">
           <p className="text-lg text-foreground font-bold italic border-l-4 border-teal-500 pl-6 bg-teal-500/5 py-4 rounded-r-xl">
-            Aiyal Groups Platform ("we," "us," or "our") respects your privacy. This Privacy Policy details how we collect, use, process, and protect your personal and business data when you use Mobibix, GymPilot, our websites, and related services.
+            At MobiBix (Aiyal Groups), we are committed to protecting your privacy and ensuring the security of your business and personal data.
           </p>
           
           <section className="space-y-4">
-            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">1. Information We Collect</h2>
-            <p>We collect information only to the extent necessary to provide our SaaS services.</p>
+            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">1. Data We Collect</h2>
             <ul className="list-disc pl-6 space-y-3 marker:text-teal-500">
-              <li><strong>Account Information:</strong> Name, email address, phone number, and Firebase authentication identifiers.</li>
-              <li><strong>Business Information:</strong> Legal entity name, GST (Goods and Services Tax) number, registered address, shop/branch locations, currency, and timezone.</li>
-              <li><strong>Customer & Operational Data:</strong> Data entered into the Platform by the Tenant, including their customers' names, phone numbers, transaction histories, and repair logs. (We act as a Data Processor for this information).</li>
-              <li><strong>Device & Usage Information:</strong> IP addresses, browser types, mobile device identifiers, app crash logs, and general platform usage analytics.</li>
+              <li><strong>Account Information:</strong> Name, business name, email, and phone number for authentication and service delivery.</li>
+              <li><strong>Business Data:</strong> GST details, shop addresses, and operational records required for the POS/SaaS functionality.</li>
+              <li><strong>Usage Information:</strong> Device logs, IP addresses, and browser types for security and performance monitoring.</li>
             </ul>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">2. How We Use Data</h2>
+            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">2. Payment Processing</h2>
+            <p>
+              We use <strong>Razorpay</strong> as our third-party payment gateway for processing subscriptions and recurring payments. 
+            </p>
             <ul className="list-disc pl-6 space-y-3 marker:text-teal-500">
-              <li><strong>Service Delivery:</strong> To provision accounts, process transactions, generate invoices, and facilitate core SaaS features.</li>
-              <li><strong>Security & Fraud Prevention:</strong> To verify identities, enforce role-based access control, and protect against unauthorized access.</li>
-              <li><strong>Analytics & Improvement:</strong> To analyze system performance, troubleshoot bugs, and improve user experience.</li>
-              <li><strong>Customer Support:</strong> To respond to inquiries and provide technical assistance.</li>
+              <li><strong>No Card Storage:</strong> MobiBix does not store your credit card, debit card, or bank account details on our servers. All sensitive payment information is handled directly by Razorpay in compliance with PCI-DSS standards.</li>
+              <li><strong>eMandate Authorization:</strong> For recurring subscriptions, payment tokens are securely managed by Razorpay to facilitate auto-debit based on your authorization.</li>
             </ul>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">3. Legal Basis for Processing</h2>
-            <p>We process data under the following legal bases:</p>
+            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">3. Data Security Measures</h2>
+            <p>
+              We implement industry-standard security protocols to protect your data, including:
+            </p>
             <ul className="list-disc pl-6 space-y-3 marker:text-teal-500">
-              <li><strong>Contractual Necessity:</strong> To perform our obligations under the Terms & Conditions.</li>
-              <li><strong>Consent:</strong> Where you have explicitly opted-in (e.g., for marketing communications).</li>
-              <li><strong>Legal Obligation:</strong> To comply with applicable laws, including Indian tax and IT regulations.</li>
+              <li>End-to-end encryption for data in transit (SSL/TLS).</li>
+              <li>Secure cloud infrastructure with restricted access.</li>
+              <li>Firebase Authentication for robust identity management.</li>
             </ul>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">4. Marketing Consent</h2>
-            <p><strong>Explicit Opt-In:</strong> We will only send promotional or marketing communications if you have explicitly opted in via a clear checkbox during onboarding or within your account settings.</p>
-            <p><strong>Right to Opt-Out:</strong> You may withdraw your consent for marketing communications at any time by clicking the "unsubscribe" link in our emails or updating your preferences in the settings panel.</p>
+            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">4. Third-Party Integrations</h2>
+            <p>
+              We only share data with trusted partners (such as Razorpay for payments and AWS for hosting) to the extent necessary to provide our services. We never sell your data to third parties.
+            </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">5. Data Storage & Security</h2>
-            <p>We implement robust security measures to protect your data. While we implement industry-standard security measures, no system is completely immune from risk.</p>
-            <ul className="list-disc pl-6 space-y-3 marker:text-teal-500">
-              <li><strong>Data Localization:</strong> Data may be processed and stored on secure cloud infrastructure located in India.</li>
-              <li><strong>Encrypted Transport:</strong> All data transit is secured using HTTPS/TLS encryption.</li>
-              <li><strong>Authentication:</strong> We use Firebase Authentication for secure identity management.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">6. Data Sharing</h2>
-            <p><strong>No Sale of Data:</strong> We do not and will not sell your personal, business, or customer data to third parties.</p>
-            <p><strong>Service Providers:</strong> We may share securely limited data with trusted providers (e.g., AWS, Razorpay) strictly for the purpose of operating the Platform.</p>
+            <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">5. User Rights (DPDP Act)</h2>
+            <p>
+              In compliance with the Digital Personal Data Protection Act (2023), you have the right to access, correct, or request the deletion of your personal data. You may also withdraw your consent for recurring payments at any time.
+            </p>
           </section>
 
           <section className="space-y-4 pt-12 border-t border-border">
             <h2 className="text-3xl font-black text-foreground uppercase tracking-tight">Grievance Officer</h2>
-            <p>In compliance with the Digital Personal Data Protection Act, 2023, the contact details are:</p>
+            <p>For any privacy-related queries or complaints, please contact our Grievance Officer:</p>
             <div className="bg-muted p-6 rounded-2xl border border-border">
-              <p className="font-bold text-foreground">Grievance Officer, Aiyal Groups</p>
-              <p>Email: <a href="mailto:legal@aiyalgroups.com" className="text-teal-500 font-black hover:underline tracking-wide">legal@aiyalgroups.com</a></p>
-              <p className="text-sm mt-2">Address: Aiyal Groups, Tech Park, OMR, Chennai, Tamil Nadu, 600119</p>
+              <p className="font-bold text-foreground">Grievance Officer, Velan Kumar</p>
+              <p>Email: <a href="mailto:aiyalgroups@gmail.com" className="text-teal-500 font-black hover:underline tracking-wide">aiyalgroups@gmail.com</a></p>
+              <p className="text-sm mt-2">Address: No-6, Arun Arcade Complex, Ayothiypattanam, Salem, Tamilnadu, india 636103</p>
             </div>
-            <p className="text-xs italic">We will acknowledge complaints within 24 hours and resolve them within 15 days of receipt.</p>
           </section>
         </div>
       </div>

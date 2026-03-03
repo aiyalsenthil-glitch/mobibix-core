@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.aiyal.mobibix.data.network.ShopProduct
+import com.aiyal.mobibix.util.CurrencyUtils
 
 data class InvoiceItemUi(
     var productId: String? = null,
@@ -148,7 +149,7 @@ fun InvoiceItemRow(
         }
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Total: ₹$lineTotal", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Total: ${CurrencyUtils.formatRupees(lineTotal)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
             TextButton(onClick = onRemove) {
                 Text("Remove")

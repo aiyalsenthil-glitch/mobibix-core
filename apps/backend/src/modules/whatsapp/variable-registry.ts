@@ -800,6 +800,11 @@ export function validateTemplateVariables(
   };
 }
 
+import {
+  formatAsINR,
+  paiseToRupees,
+} from '../../core/utils/currency.utils';
+
 /**
  * Format value based on data type
  */
@@ -811,7 +816,8 @@ export function formatVariableValue(
 
   switch (dataType) {
     case VariableDataType.CURRENCY:
-      return `₹${Number(value).toLocaleString('en-IN')}`;
+      // 🚨 CRITICAL FIX: Convert Paise (Int) to Rupees for display
+      return formatAsINR(paiseToRupees(Number(value)));
 
     case VariableDataType.DATE:
       const date = new Date(value);

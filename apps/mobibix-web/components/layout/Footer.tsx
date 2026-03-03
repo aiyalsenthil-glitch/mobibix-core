@@ -37,7 +37,10 @@ export function Footer({ compact = false }: { compact?: boolean }) {
             <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Legal</h4>
             <div className={`flex flex-col gap-3 ${compact ? "text-xs" : "text-sm"} font-bold text-muted-foreground`}>
               <Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
-              <Link href="/terms" className="hover:text-primary transition-colors">Terms of Service</Link>
+              <Link href="/terms" className="hover:text-primary transition-colors">Terms & Conditions</Link>
+              <Link href="/cancellation-and-refund" className="hover:text-primary transition-colors">Cancellation & Refund</Link>
+              <Link href="/shipping-and-exchange" className="hover:text-primary transition-colors">Shipping & Exchange</Link>
+              <Link href="/contact-us" className="hover:text-primary transition-colors">Contact Us</Link>
               <Link href="/data-deletion" className="hover:text-primary transition-colors">Data Deletion</Link>
             </div>
           </div>
