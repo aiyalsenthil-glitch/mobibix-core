@@ -14,16 +14,34 @@ export function normalizePhone(phone: string): string {
 
   const digits = phone.replace(/\D/g, '');
 
-  // Always keep last 10 digits
-  return digits.slice(-10);
+  // If it's an Indian number in common formats, keep the last 10 digits
+  if (digits.length === 10) {
+    return digits;
+  }
+  
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return digits.slice(-10);
+  }
+
+  // For other lengths, return the cleaned digits. 
+  // This avoids truncating global numbers (lengths 8-15).
+  return digits;
 }
 /**
- * Convert canonical phone (10 digits) to WhatsApp format
+ * Convert canonical phone to WhatsApp format
  */
-export function toWhatsAppPhone(phone10: string): string {
-  if (!phone10 || phone10.length !== 10) {
+export function toWhatsAppPhone(phone: string): string {
+  if (!phone) {
     throw new Error('Invalid phone for WhatsApp');
   }
 
-  return `91${phone10}`;
+  const cleaned = phone.replace(/\D/g, '');
+
+  // If it's 10 digits, assume India prepended with 91
+  if (cleaned.length === 10) {
+    return `91${cleaned}`;
+  }
+
+  // If it's already longer, assume it has a country code
+  return cleaned;
 }

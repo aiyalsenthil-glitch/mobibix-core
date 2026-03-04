@@ -1,6 +1,10 @@
 import { HeroSlidesClient } from "../components/landing/HeroSlidesClient";
 import { WhatsAppWidget } from "../components/landing/WhatsAppWidget";
 import type { Metadata } from "next";
+import { getAllPosts } from "../lib/blog";
+import { BlogSection } from "../components/landing/BlogSection";
+import { Header } from "../components/layout/Header";
+import { Footer } from "../components/layout/Footer";
 
 export const metadata: Metadata = {
   title: "MobiBix — Mobile Shop POS, IMEI Tracking & Repair Management Software",
@@ -26,6 +30,7 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
+  const posts = getAllPosts();
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -45,13 +50,16 @@ export default function HomePage() {
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-background transition-colors duration-500 overflow-hidden">
+      <Header />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <HeroSlidesClient />
+      <BlogSection posts={posts} />
       <WhatsAppWidget />
-    </>
+      <Footer />
+    </div>
   );
 }

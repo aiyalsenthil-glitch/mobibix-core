@@ -9,6 +9,11 @@ export type EmailTemplateType =
   | 'SUBSCRIPTION_HALTED'
   | 'PAYMENT_SUCCESS'
   | 'PAYMENT_FAILED'
+  | 'TRIAL_ONBOARDING_DAY1'
+  | 'TRIAL_ONBOARDING_DAY3'
+  | 'TRIAL_ONBOARDING_DAY5'
+  | 'TRIAL_ONBOARDING_DAY7'
+  | 'TRIAL_ONBOARDING_DAY10'
   | 'STAFF_INVITED'
   | 'MEMBER_EXPIRING'
   | 'MEMBERSHIP_EXPIRED'
@@ -63,6 +68,14 @@ export interface EmailTemplateProps {
     retryCount: number;
     payLink: string;
   };
+
+  // Trial Onboarding Nudges
+  TRIAL_ONBOARDING_DAY1: { name: string; dashboardLink: string; productName: string };
+  TRIAL_ONBOARDING_DAY3: { name: string; productName: string };
+  TRIAL_ONBOARDING_DAY5: { name: string; dashboardLink: string; productName: string };
+  TRIAL_ONBOARDING_DAY7: { name: string; statsLink: string; productName: string };
+  TRIAL_ONBOARDING_DAY10: { name: string; upgradeLink: string; productName: string };
+
 
   // Staff
   STAFF_INVITED: {

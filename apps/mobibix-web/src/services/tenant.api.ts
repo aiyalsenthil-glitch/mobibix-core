@@ -258,6 +258,7 @@ export interface CreateTenantDto {
   pincode?: string;
   currency?: string;
   timezone?: string;
+  country?: string;
   marketingConsent?: boolean;
   acceptedPolicyVersion?: string;
   promoCode?: string;

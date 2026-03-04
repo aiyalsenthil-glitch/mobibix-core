@@ -102,7 +102,7 @@ export class TenantService {
         businessType: dto.businessType,
         businessCategoryId: dto.businessCategoryId,
 
-        contactPhone: dto.contactPhone,
+        contactPhone: dto.contactPhone ? normalizePhone(dto.contactPhone) : undefined,
         addressLine1: dto.addressLine1,
         city: dto.city,
         state: dto.state,

@@ -5,8 +5,13 @@ import { WhatsAppModule } from '../modules/whatsapp/variable-registry';
 
 async function verify() {
   const prisma = new PrismaClient();
+  
+  const mockConfigService = {
+    get: (key: string) => process.env[key],
+  };
+
   // Instantiate the service with the raw Prisma client
-  const resolver = new WhatsAppVariableResolver(prisma as any);
+  const resolver = new WhatsAppVariableResolver(prisma as any, mockConfigService as any);
 
   try {
     console.log('🚀 Starting WhatsApp Link Resolution Verification...\n');

@@ -110,6 +110,18 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
             🚀 Restock
           </Link>
 
+          <Link
+            href="/partner"
+            target="_blank"
+            className={`block px-4 py-3 rounded-lg transition-all ${
+              theme === "dark"
+                ? "bg-teal-500/10 border border-teal-500/30 text-teal-400 hover:bg-teal-500/20"
+                : "bg-teal-50 border border-teal-200 text-teal-700 hover:bg-teal-100"
+            } font-bold`}
+          >
+            🤝 Become a Partner
+          </Link>
+
           {/* More Menu */}
           <div>
             <button

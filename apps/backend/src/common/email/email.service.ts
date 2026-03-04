@@ -18,6 +18,11 @@ import { SubscriptionActivatedEmail } from './templates/tenant/subscription-acti
 import { SubscriptionHaltedEmail } from './templates/tenant/subscription-halted';
 import { PaymentSuccessEmail } from './templates/tenant/payment-success';
 import { PaymentFailedEmail } from './templates/tenant/payment-failed';
+import { TrialOnboardingDay1Email } from './templates/tenant/trial-onboarding-day1';
+import { TrialOnboardingDay3Email } from './templates/tenant/trial-onboarding-day3';
+import { TrialOnboardingDay5Email } from './templates/tenant/trial-onboarding-day5';
+import { TrialOnboardingDay7Email } from './templates/tenant/trial-onboarding-day7';
+import { TrialOnboardingDay10Email } from './templates/tenant/trial-onboarding-day10';
 
 import { StaffInvitedEmail } from './templates/staff/staff-invited';
 
@@ -233,6 +238,46 @@ export class EmailService {
           module,
           ...(payload as Omit<
             Parameters<typeof PaymentFailedEmail>[0],
+            'module'
+          >),
+        });
+      case 'TRIAL_ONBOARDING_DAY1':
+        return TrialOnboardingDay1Email({
+          module,
+          ...(payload as Omit<
+            Parameters<typeof TrialOnboardingDay1Email>[0],
+            'module'
+          >),
+        });
+      case 'TRIAL_ONBOARDING_DAY3':
+        return TrialOnboardingDay3Email({
+          module,
+          ...(payload as Omit<
+            Parameters<typeof TrialOnboardingDay3Email>[0],
+            'module'
+          >),
+        });
+      case 'TRIAL_ONBOARDING_DAY5':
+        return TrialOnboardingDay5Email({
+          module,
+          ...(payload as Omit<
+            Parameters<typeof TrialOnboardingDay5Email>[0],
+            'module'
+          >),
+        });
+      case 'TRIAL_ONBOARDING_DAY7':
+        return TrialOnboardingDay7Email({
+          module,
+          ...(payload as Omit<
+            Parameters<typeof TrialOnboardingDay7Email>[0],
+            'module'
+          >),
+        });
+      case 'TRIAL_ONBOARDING_DAY10':
+        return TrialOnboardingDay10Email({
+          module,
+          ...(payload as Omit<
+            Parameters<typeof TrialOnboardingDay10Email>[0],
             'module'
           >),
         });

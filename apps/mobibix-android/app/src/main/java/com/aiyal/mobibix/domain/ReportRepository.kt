@@ -10,6 +10,7 @@ interface ReportRepository {
     suspend fun getInventoryReport(shopId: String?): List<InventoryReportItem>
     suspend fun getProfitSummary(shopId: String?, startDate: String?, endDate: String?): ProfitSummaryResponse
     suspend fun getTaxReport(shopId: String?, startDate: String?, endDate: String?): List<com.aiyal.mobibix.data.network.TaxReportItem>
+    suspend fun getGstr2Report(shopId: String?, startDate: String?, endDate: String?): List<com.aiyal.mobibix.data.network.Gstr2ReportItem>
     suspend fun getReceivables(shopId: String?): List<com.aiyal.mobibix.data.network.OutstandingItem>
     suspend fun getPayables(shopId: String?): List<com.aiyal.mobibix.data.network.OutstandingItem>
     suspend fun getDailySales(shopId: String?, startDate: String?, endDate: String?): List<com.aiyal.mobibix.data.network.DailySalesItem>

@@ -3,6 +3,8 @@ import { Playfair_Display } from "next/font/google";
 import { Geist } from "next/font/google";
 import { Providers } from "./providers";
 import FacebookSDK from "../components/FacebookSDK";
+import ReferralTracker from "../components/ReferralTracker";
+import { Suspense } from "react";
 
 import { Metadata } from 'next';
 
@@ -68,6 +70,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased bg-background text-foreground transition-colors duration-200">
         <Providers>
+          <Suspense fallback={null}>
+            <ReferralTracker />
+          </Suspense>
           {children}
           <FacebookSDK />
         </Providers>

@@ -75,7 +75,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute - prevent brute force
+  @Throttle({ default: { limit: 15, ttl: 60000 } }) // 15 requests per minute - allow more for retries during onboarding
   @Post('REMOVED_AUTH_PROVIDER')
   @HttpCode(200)
   async loginWithFirebase(
@@ -134,7 +134,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute - prevent brute force
+  @Throttle({ default: { limit: 15, ttl: 60000 } }) // 15 requests per minute - allow more for retries during onboarding
   @Post('google/exchange')
   async exchangeToken(
     @Body() dto: GoogleExchangeDto,

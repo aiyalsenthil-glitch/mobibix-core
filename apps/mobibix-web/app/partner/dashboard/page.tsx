@@ -14,6 +14,7 @@ import {
   Bell,
   Loader2,
   AlertCircle,
+  Gift,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -25,6 +26,15 @@ interface PartnerStats {
   totalPaid: number;
   pendingCommission: number;
   totalRevenue: number;
+  promoCodes: Array<{
+    id: string;
+    code: string;
+    type: string;
+    durationDays: number;
+    maxUses: number;
+    usedCount: number;
+    expiresAt: string | null;
+  }>;
   referralList: Array<{
     id: string;
     tenantId: string;
@@ -202,9 +212,44 @@ export default function PartnerDashboard() {
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Referral Link</h3>
                   <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center gap-3 overflow-hidden">
                     <span className="text-sm text-slate-500 font-mono flex-1 truncate">
-                      https://app.REMOVED_DOMAIN/signup?ref={stats.referralCode}
+                      {`https://app.REMOVED_DOMAIN/signup?ref=${stats.referralCode}`}
                     </span>
-                    <ExternalLink className="w-4 h-4 text-slate-400" />
+                    <button onClick={() => {
+                        navigator.clipboard.writeText(`https://app.REMOVED_DOMAIN/signup?ref=${stats.referralCode}`);
+                        alert("Referral link copied!");
+                    }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                      <Copy className="w-4 h-4 text-slate-400" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Promo Codes */}
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Active Promo Codes</h3>
+                    <Gift className="w-5 h-5 text-teal-600" />
+                  </div>
+                  <div className="space-y-4">
+                    {stats.promoCodes.map((pc) => (
+                      <div key={pc.id} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="text-sm font-bold text-teal-600 font-mono tracking-wider">{pc.code}</span>
+                          <button onClick={() => {
+                              navigator.clipboard.writeText(pc.code);
+                              alert(`Promo code ${pc.code} copied!`);
+                          }} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition-colors">
+                            <Copy className="w-3.5 h-3.5 text-slate-400" />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                          <span>{pc.durationDays} Days Free Trial</span>
+                          <span>{pc.usedCount} / {pc.maxUses} Uses</span>
+                        </div>
+                      </div>
+                    ))}
+                    {stats.promoCodes.length === 0 && (
+                      <p className="text-sm text-slate-500 text-center py-4">No active promo codes.</p>
+                    )}
                   </div>
                 </div>
               </div>

@@ -189,11 +189,14 @@ export async function exchangeFirebaseToken(
         errorData = { message: "Failed to parse error response" };
       }
 
+      const message = (errorData.message as string) || `HTTP ${response.status}: Failed to exchange token`;
+      const code = (errorData.code as string) || (response.status === 429 ? "RATE_LIMIT_EXCEEDED" : "EXCHANGE_FAILED");
+
       throw {
-        code: (errorData.code as string) || "EXCHANGE_FAILED",
-        message:
-          (errorData.message as string) ||
-          `HTTP ${response.status}: Failed to exchange token`,
+        code,
+        message: response.status === 429 
+          ? "Rate limit exceeded. Please wait a moment before trying again." 
+          : message,
         details: {
           ...errorData,
           status: response.status,

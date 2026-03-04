@@ -7,13 +7,34 @@ import { motion } from "framer-motion";
 export default function PartnerLoginPage() {
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Logic for partner login
-    setTimeout(() => {
-        window.location.href = "/partner/dashboard";
-    }, 1500);
+    
+    // Get form data
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const email = formData.get("email") as string;
+    const pass = formData.get("password") as string;
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/partner/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, pass }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "Login failed");
+      }
+
+      const data = await res.json();
+      localStorage.setItem("partner_token", data.access_token);
+      window.location.href = "/partner/dashboard";
+    } catch (err: any) {
+      alert(err.message || "Invalid credentials");
+      setLoading(false);
+    }
   };
 
   return (
@@ -38,6 +59,7 @@ export default function PartnerLoginPage() {
                     <input 
                         required 
                         type="email" 
+                        name="email"
                         placeholder="partner@example.com" 
                         className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-teal-500 outline-none transition-all" 
                     />
@@ -50,6 +72,7 @@ export default function PartnerLoginPage() {
                     <input 
                         required 
                         type="password" 
+                        name="password"
                         placeholder="••••••••" 
                         className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-teal-500 outline-none transition-all" 
                     />

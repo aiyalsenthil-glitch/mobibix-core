@@ -31,6 +31,7 @@ export function Header() {
     { name: "Home", href: "/" },
     { name: "Features", href: "/features" },
     { name: "Pricing", href: "/pricing" },
+    { name: "Partners", href: "/partner" },
     { name: "Support", href: "/support" },
   ];
 

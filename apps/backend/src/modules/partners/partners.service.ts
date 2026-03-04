@@ -104,6 +104,20 @@ export class PartnersService {
       },
     });
 
+    // 🚀 Auto-generate a Trial Promo Code for the new partner
+    const promoCode = `${updated.referralCode}-TRIAL`;
+    await this.prisma.promoCode.create({
+      data: {
+        code: promoCode,
+        type: PromoCodeType.FREE_TRIAL,
+        durationDays: 90,
+        maxUses: 500,
+        partnerId: updated.id,
+        createdByAdminId: adminId,
+        description: `Automatic trial code for partner ${updated.businessName}`,
+      },
+    });
+
     // 🔐 Email temp password — NEVER return it in API response
     try {
       await this.emailService.send({
@@ -119,6 +133,7 @@ export class PartnersService {
           name: updated.contactPerson,
           businessName: updated.businessName,
           referralCode: updated.referralCode,
+          promoCode, // Include the new promo code
           tempPassword,
           loginUrl: 'https://app.REMOVED_DOMAIN/partner/login',
         },
@@ -299,6 +314,18 @@ export class PartnersService {
         _count: {
           select: { referredTenants: true },
         },
+        promoCodes: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            code: true,
+            type: true,
+            durationDays: true,
+            maxUses: true,
+            usedCount: true,
+            expiresAt: true,
+          },
+        },
       },
     });
 
@@ -326,6 +353,7 @@ export class PartnersService {
       pendingCommission,
       totalRevenue,
       referralList: referrals,
+      promoCodes: partner.promoCodes,
     };
   }
 }

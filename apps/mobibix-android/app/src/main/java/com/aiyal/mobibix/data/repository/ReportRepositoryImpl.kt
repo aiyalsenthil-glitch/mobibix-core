@@ -32,6 +32,10 @@ class ReportRepositoryImpl @Inject constructor(
         return reportApi.getTaxReport(shopId, startDate, endDate)
     }
 
+    override suspend fun getGstr2Report(shopId: String?, startDate: String?, endDate: String?): List<com.aiyal.mobibix.data.network.Gstr2ReportItem> {
+        return reportApi.getGstr2Report(shopId, startDate, endDate)
+    }
+
     override suspend fun getReceivables(shopId: String?): List<com.aiyal.mobibix.data.network.OutstandingItem> {
         return reportApi.getReceivables(shopId)
     }

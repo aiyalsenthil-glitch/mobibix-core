@@ -20,7 +20,7 @@ object ThemeState {
 
 // ── Catchy Dark Mode ──
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFF00D9A6),       // Bright teal
+    primary = Color(0xFF14B8A6),       // Brand Teal (Matched to Web)
     onPrimary = Color(0xFF00382A),
     primaryContainer = Color(0xFF004D3A),
     onPrimaryContainer = Color(0xFF89F8D4),
@@ -48,7 +48,7 @@ private val DarkColorScheme = darkColorScheme(
 
 // ── Premium Glass Light Mode ──
 private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF00B386),       // Rich teal
+    primary = Color(0xFF14B8A6),       // Brand Teal (Matched to Web)
     onPrimary = Color.White,
     primaryContainer = Color(0xFFE0FFF5),
     onPrimaryContainer = Color(0xFF002E22),

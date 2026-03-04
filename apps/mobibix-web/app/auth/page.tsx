@@ -254,7 +254,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
       {/* Background Effects */}
       <div className="absolute inset-0 pointer-events-none">
          <div className="absolute inset-0 bg-radial-[circle_at_center,_transparent_0%,_#f8fafc_100%] dark:bg-radial-[circle_at_center,_transparent_0%,_#09090b_100%] opacity-80 z-0"></div>
-         <div className="absolute inset-0 aurora-bg opacity-30 dark:opacity-40 animate-[aurora-shift_30s_ease_in_out_infinite,_background-fade_1.5s_ease_forwards] z-10"></div>
+         <div className="absolute inset-0 aurora-bg opacity-60 dark:opacity-40 animate-[aurora-shift_30s_ease_in_out_infinite,_background-fade_1.5s_ease_forwards] z-10"></div>
          <div className="absolute inset-0 opacity-[0.02] dark:opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] z-30"></div>
       </div>
 

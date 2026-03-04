@@ -41,10 +41,20 @@ android {
         )
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("mobibix-release.keystore")
+            storePassword = "Aiyal@143"
+            keyAlias = "mobibix"
+            keyPassword = "Aiyal@143"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

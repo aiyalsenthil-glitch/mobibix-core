@@ -15,6 +15,20 @@ data class SalesReportItem(
     val shopName: String? = null
 )
 
+data class Gstr2ReportItem(
+    val billNumber: String,
+    val billDate: String,
+    val supplierGstin: String?,
+    val supplierName: String?,
+    val invoiceValue: Double,
+    val taxableValue: Double,
+    val cgst: Double,
+    val sgst: Double,
+    val igst: Double,
+    val totalTax: Double,
+    val itcEligible: Boolean
+)
+
 data class InventoryReportItem(
     val product: String,
     val isSerialized: Boolean,
@@ -74,6 +88,13 @@ interface ReportApi {
         @Query("startDate") startDate: String?,
         @Query("endDate") endDate: String?
     ): List<TaxReportItem>
+
+    @GET("api/mobileshop/reports/gstr-2")
+    suspend fun getGstr2Report(
+        @Query("shopId") shopId: String?,
+        @Query("startDate") startDate: String?,
+        @Query("endDate") endDate: String?
+    ): List<Gstr2ReportItem>
 
     @GET("api/mobileshop/reports/receivables-aging")
     suspend fun getReceivables(

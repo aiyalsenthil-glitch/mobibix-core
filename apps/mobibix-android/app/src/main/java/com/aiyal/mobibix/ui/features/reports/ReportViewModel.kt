@@ -24,6 +24,7 @@ data class ReportsUiState(
     val inventoryReport: List<InventoryReportItem> = emptyList(),
     val profitMetrics: ProfitSummaryMetrics? = null,
     val taxReport: List<com.aiyal.mobibix.data.network.TaxReportItem> = emptyList(),
+    val gstr2Report: List<com.aiyal.mobibix.data.network.Gstr2ReportItem> = emptyList(),
     val receivables: List<com.aiyal.mobibix.data.network.OutstandingItem> = emptyList(),
     val payables: List<com.aiyal.mobibix.data.network.OutstandingItem> = emptyList(),
     val dailySales: List<com.aiyal.mobibix.data.network.DailySalesItem> = emptyList(),
@@ -103,6 +104,19 @@ class ReportViewModel @Inject constructor(
             try {
                 val report = reportRepository.getTaxReport(shopId, _uiState.value.startDate, _uiState.value.endDate)
                 _uiState.value = _uiState.value.copy(isLoading = false, taxReport = report)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
+    fun loadGstr2Report() {
+        val shopId = shopContextProvider.getActiveShopId() ?: ""
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val report = reportRepository.getGstr2Report(shopId, _uiState.value.startDate, _uiState.value.endDate)
+                _uiState.value = _uiState.value.copy(isLoading = false, gstr2Report = report)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
             }

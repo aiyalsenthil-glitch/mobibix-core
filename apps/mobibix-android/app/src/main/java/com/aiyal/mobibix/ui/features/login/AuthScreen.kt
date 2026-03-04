@@ -1,24 +1,13 @@
 package com.aiyal.mobibix.ui.features.login
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Lock
@@ -28,18 +17,72 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import com.aiyal.mobibix.R
 import kotlinx.coroutines.delay
+
+@Composable
+fun AuroraBackground() {
+    val infiniteTransition = rememberInfiniteTransition(label = "aurora")
+    
+    // Primary fluid motion
+    val time by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 2 * Math.PI.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(40000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "time"
+    )
+
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF020617))) {
+        // Blob 1 - Top Leftish - Emerald/Teal
+        val x1 = (kotlin.math.sin(time.toDouble()) * 150).dp
+        val y1 = (kotlin.math.cos(time.toDouble() * 0.8) * 100).dp
+        Box(
+            modifier = Modifier
+                .offset(x = x1, y = y1)
+                .size(600.dp)
+                .blur(150.dp)
+                .background(Color(0xFF10B981).copy(alpha = 0.12f), CircleShape)
+        )
+        
+        // Blob 2 - Bottom Rightish - Blue/Teal
+        val x2 = (kotlin.math.cos(time.toDouble() * 1.2) * 200).dp
+        val y2 = (kotlin.math.sin(time.toDouble() * 0.5) * 150).dp
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = x2, y = y2)
+                .size(500.dp)
+                .blur(180.dp)
+                .background(Color(0xFF0EA5E9).copy(alpha = 0.15f), CircleShape)
+        )
+        
+        // Blob 3 - Moving Center - Primary Brand Teal
+        val x3 = (kotlin.math.sin(time.toDouble() * 0.7) * 100).dp
+        val y3 = (kotlin.math.sin(time.toDouble() * 1.1) * 80).dp
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .offset(x = x3, y = y3)
+                .size(700.dp)
+                .blur(200.dp)
+                .background(Color(0xFF14B8A6).copy(alpha = 0.08f), CircleShape)
+        )
+    }
+}
 
 @Composable
 fun AuthScreen(
@@ -59,210 +102,296 @@ fun AuthScreen(
 
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay(150)
+        delay(100)
         isVisible = true
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        Box(
+    Box(modifier = Modifier.fillMaxSize()) {
+        AuroraBackground()
+
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(colors = listOf(Color(0xFF14B8A6), Color(0xFF5EEAD4)))
-                    )
-            )
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("MobiBix", fontSize = 34.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("Business, Simplified.", color = Color.White.copy(alpha = 0.9f), fontSize = 14.sp)
-            }
-        }
-
-        AnimatedVisibility(
-            visible = isVisible,
-            enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(animationSpec = tween(durationMillis = 250)),
-        ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(8.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            // Header Section
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = fadeIn(tween(800)) + slideInVertically(tween(800)) { -40 }
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    val title = when (uiState.step) {
-                        AuthStep.LANDING -> "Welcome to MobiBix"
-                        AuthStep.LOGIN_PASS -> "Sign In"
-                        AuthStep.SIGNUP_PASS -> "Create Account"
-                        AuthStep.VERIFY -> "Verify Email"
-                    }
-                    
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp
-                    )
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    if (uiState.errorMessage != null) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(Color(0xFF10B981), CircleShape)
+                        )
+                        Spacer(Modifier.width(10.dp))
                         Text(
-                            text = uiState.errorMessage,
-                            color = if (uiState.errorMessage.contains("sent", true)) Color(0xFF10B981) else MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                            "MOBIBIX",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 4.sp,
+                            color = Color.White.copy(alpha = 0.5f)
                         )
                     }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = when (uiState.step) {
+                            AuthStep.SIGNUP_PASS -> "Create Account"
+                            AuthStep.VERIFY -> "Verify Email"
+                            else -> "Welcome Back"
+                        },
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+                }
+            }
 
-                    when (uiState.step) {
-                        AuthStep.LANDING -> {
-                            OutlinedTextField(
-                                value = email,
-                                onValueChange = { email = it },
-                                label = { Text("Email") },
-                                enabled = !uiState.isLoading,
-                                modifier = Modifier.fillMaxWidth(),
-                                leadingIcon = { Icon(Icons.Outlined.Email, "Email") }
-                            )
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Button(
-                                onClick = { onEmailContinue(email) },
-                                enabled = !uiState.isLoading && email.contains("@"),
-                                modifier = Modifier.fillMaxWidth().height(56.dp),
-                                shape = RoundedCornerShape(16.dp)
+            Spacer(Modifier.height(32.dp))
+
+            // Glassmorphism Card
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = fadeIn(tween(1000, 200)) + slideInVertically(tween(1000, 200)) { 40 }
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            1.dp,
+                            Brush.verticalGradient(
+                                colors = listOf(Color.White.copy(alpha = 0.1f), Color.Transparent)
+                            ),
+                            RoundedCornerShape(32.dp)
+                        ),
+                    color = Color.White.copy(alpha = 0.05f),
+                    shape = RoundedCornerShape(32.dp),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (uiState.errorMessage != null) {
+                            Surface(
+                                color = if (uiState.errorMessage.contains("sent", true)) 
+                                    Color(0xFF10B981).copy(alpha = 0.1f) 
+                                    else Color(0xFFEF4444).copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
                             ) {
-                                Text("Continue")
+                                Text(
+                                    text = uiState.errorMessage,
+                                    color = if (uiState.errorMessage.contains("sent", true)) 
+                                        Color(0xFF34D399) else Color(0xFFF87171),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(12.dp),
+                                    textAlign = TextAlign.Center
+                                )
                             }
-                            
-                            Spacer(modifier = Modifier.height(18.dp))
-                            HorizontalDivider()
-                            Spacer(modifier = Modifier.height(18.dp))
+                        }
 
-                            OutlinedButton(
-                                onClick = onGoogleLogin,
-                                enabled = !uiState.isLoading,
-                                modifier = Modifier.fillMaxWidth().height(52.dp),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
+                        when (uiState.step) {
+                            AuthStep.LANDING -> {
+                                OutlinedButton(
+                                    onClick = onGoogleLogin,
+                                    enabled = !uiState.isLoading,
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(painter = painterResource(id = R.drawable.ic_google_logo), "Google", modifier = Modifier.size(20.dp), tint = Color.Unspecified)
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text("Continue with Google", fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(24.dp))
+                                
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(painter = painterResource(id = R.drawable.ic_google_logo), "Google", modifier = Modifier.size(24.dp), tint = Color.Unspecified)
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Continue with Google")
+                                    HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.1f))
+                                    Text(" OR ", color = Color.White.copy(alpha = 0.3f), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp))
+                                    HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.1f))
+                                }
+
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                OutlinedTextField(
+                                    value = email,
+                                    onValueChange = { email = it },
+                                    placeholder = { Text("Email Address", color = Color.White.copy(alpha = 0.3f)) },
+                                    enabled = !uiState.isLoading,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        unfocusedTextColor = Color.White,
+                                        focusedTextColor = Color.White,
+                                        unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                                        focusedBorderColor = Color(0xFF14B8A6),
+                                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                        focusedContainerColor = Color.White.copy(alpha = 0.08f)
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { onEmailContinue(email) },
+                                    enabled = !uiState.isLoading && email.contains("@"),
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF14B8A6))
+                                ) {
+                                    Text("Continue", fontWeight = FontWeight.Bold)
                                 }
                             }
-                        }
 
-                        AuthStep.LOGIN_PASS -> {
-                            Text(email, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            OutlinedTextField(
-                                value = password,
-                                onValueChange = { password = it },
-                                label = { Text("Password") },
-                                enabled = !uiState.isLoading,
-                                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                                modifier = Modifier.fillMaxWidth(),
-                                leadingIcon = { Icon(Icons.Outlined.Lock, "Password") },
-                                trailingIcon = {
-                                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                        Icon(if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, "Toggle Visibility")
+                            AuthStep.LOGIN_PASS -> {
+                                Text(email, color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall)
+                                Spacer(modifier = Modifier.height(20.dp))
+                                
+                                OutlinedTextField(
+                                    value = password,
+                                    onValueChange = { password = it },
+                                    placeholder = { Text("Password", color = Color.White.copy(alpha = 0.3f)) },
+                                    enabled = !uiState.isLoading,
+                                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        unfocusedTextColor = Color.White,
+                                        focusedTextColor = Color.White,
+                                        unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                                        focusedBorderColor = Color(0xFF14B8A6),
+                                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                        focusedContainerColor = Color.White.copy(alpha = 0.08f)
+                                    ),
+                                    trailingIcon = {
+                                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                            Icon(if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, null, tint = Color.White.copy(alpha = 0.4f))
+                                        }
                                     }
+                                )
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Button(
+                                    onClick = { onLogin(password) },
+                                    enabled = !uiState.isLoading && password.isNotEmpty(),
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF14B8A6))
+                                ) {
+                                    if (uiState.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                                    else Text("Sign In", fontWeight = FontWeight.Bold)
                                 }
-                            )
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Button(
-                                onClick = { onLogin(password) },
-                                enabled = !uiState.isLoading && password.isNotEmpty(),
-                                modifier = Modifier.fillMaxWidth().height(56.dp),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                if (uiState.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                                else Text("Sign In")
+                                TextButton(onClick = onBack) { Text("Change Email", color = Color(0xFF14B8A6)) }
                             }
-                            TextButton(onClick = onBack) { Text("Change Email") }
-                        }
 
-                        AuthStep.SIGNUP_PASS -> {
-                            Text(email, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.height(16.dp))
+                            AuthStep.SIGNUP_PASS -> {
+                                Text(email, color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall)
+                                Spacer(modifier = Modifier.height(20.dp))
 
-                            OutlinedTextField(
-                                value = fullName,
-                                onValueChange = { fullName = it },
-                                label = { Text("Full Name") },
-                                enabled = !uiState.isLoading,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            OutlinedTextField(
-                                value = password,
-                                onValueChange = { password = it },
-                                label = { Text("Create Password (min 6 chars)") },
-                                enabled = !uiState.isLoading,
-                                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                                modifier = Modifier.fillMaxWidth(),
-                                trailingIcon = {
-                                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                        Icon(if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, "Toggle Visibility")
+                                OutlinedTextField(
+                                    value = fullName,
+                                    onValueChange = { fullName = it },
+                                    placeholder = { Text("Full Name", color = Color.White.copy(alpha = 0.3f)) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        unfocusedTextColor = Color.White,
+                                        focusedTextColor = Color.White,
+                                        unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                                        focusedBorderColor = Color(0xFF14B8A6),
+                                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                        focusedContainerColor = Color.White.copy(alpha = 0.08f)
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                OutlinedTextField(
+                                    value = password,
+                                    onValueChange = { password = it },
+                                    placeholder = { Text("Password", color = Color.White.copy(alpha = 0.3f)) },
+                                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        unfocusedTextColor = Color.White,
+                                        focusedTextColor = Color.White,
+                                        unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                                        focusedBorderColor = Color(0xFF14B8A6),
+                                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                        focusedContainerColor = Color.White.copy(alpha = 0.08f)
+                                    ),
+                                    trailingIcon = {
+                                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                            Icon(if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, null, tint = Color.White.copy(alpha = 0.4f))
+                                        }
                                     }
+                                )
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Button(
+                                    onClick = { onSignup(password, fullName) },
+                                    enabled = !uiState.isLoading && password.length >= 6 && fullName.isNotBlank(),
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF14B8A6))
+                                ) {
+                                    if (uiState.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                                    else Text("Create Account", fontWeight = FontWeight.Bold)
                                 }
-                            )
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Button(
-                                onClick = { onSignup(password, fullName) },
-                                enabled = !uiState.isLoading && password.length >= 6 && fullName.isNotBlank(),
-                                modifier = Modifier.fillMaxWidth().height(56.dp),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                if (uiState.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                                else Text("Create Account")
+                                TextButton(onClick = onBack) { Text("Change Email", color = Color(0xFF14B8A6)) }
                             }
-                            TextButton(onClick = onBack) { Text("Change Email") }
-                        }
 
-                        AuthStep.VERIFY -> {
-                            Icon(Icons.Outlined.Email, null, modifier = Modifier.size(64.dp), tint = Color(0xFF14B8A6))
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                "Check your inbox. We sent a verification link to:",
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(email, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(24.dp))
-                            
-                            Button(
-                                onClick = onCheckVerification,
-                                enabled = !uiState.isLoading,
-                                modifier = Modifier.fillMaxWidth().height(56.dp),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                if (uiState.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                                else Text("I've Verified My Email")
+                            AuthStep.VERIFY -> {
+                                Box(
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .background(Color(0xFF14B8A6).copy(alpha = 0.1f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Outlined.Email, null, modifier = Modifier.size(32.dp), tint = Color(0xFF14B8A6))
+                                }
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Text(
+                                    "Check your inbox. We sent a verification link to:",
+                                    textAlign = TextAlign.Center,
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(email, fontWeight = FontWeight.Bold, color = Color.White)
+                                Spacer(modifier = Modifier.height(32.dp))
+                                
+                                Button(
+                                    onClick = onCheckVerification,
+                                    enabled = !uiState.isLoading,
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF14B8A6))
+                                ) {
+                                    if (uiState.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                                    else Text("I've Verified", fontWeight = FontWeight.Bold)
+                                }
+                                
+                                TextButton(onClick = onResendVerification) {
+                                    Text("Resend Email", color = Color(0xFF14B8A6))
+                                }
                             }
-                            
-                            TextButton(onClick = onResendVerification, enabled = !uiState.isLoading) {
-                                Text("Resend Verification Email")
-                            }
-                            TextButton(onClick = onBack) { Text("Change Email") }
                         }
                     }
                 }
             }
+
+            Spacer(Modifier.height(48.dp))
+            Text(
+                "Secure Access • MobiBix OS",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp,
+                color = Color.White.copy(alpha = 0.2f)
+            )
         }
     }
 }

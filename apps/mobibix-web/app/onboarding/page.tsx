@@ -35,6 +35,7 @@ export default function OnboardingPage() {
     state: "",
     pincode: "",
     gstNumber: "",
+    country: "India",
     currency: "INR",
     timezone: "Asia/Kolkata",
     promoCode: "",
@@ -52,6 +53,16 @@ export default function OnboardingPage() {
       router.push("/dashboard");
     } else {
       setCheckingAuth(false);
+      
+      // ✨ Auto-fill referral/promo code from session
+      const savedRef = sessionStorage.getItem("mb_ref");
+      const savedPromo = sessionStorage.getItem("mb_promo");
+      const codeToUse = savedPromo || savedRef;
+      
+      if (codeToUse) {
+        setFormData(prev => ({ ...prev, promoCode: codeToUse }));
+        console.log("💎 Auto-filled promo/referral code:", codeToUse);
+      }
     }
   }, [authUser?.tenantId]);
 
@@ -67,6 +78,21 @@ export default function OnboardingPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    
+    // ✨ Clean phone numbers
+    if (name === "contactPhone") {
+      let cleaned = value.replace(/\D/g, "");
+      // Only remove leading zero if India is selected
+      if (formData.country === "India" && cleaned.startsWith("0")) {
+        cleaned = cleaned.substring(1);
+      }
+      // Limit to 10 digits for India, 15 for others
+      const maxLen = formData.country === "India" ? 10 : 15;
+      cleaned = cleaned.slice(0, maxLen);
+      setFormData((prev) => ({ ...prev, [name]: cleaned }));
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -76,6 +102,14 @@ export default function OnboardingPage() {
     }
     if (step === 2) {
       if (!formData.contactPhone?.trim()) return "Contact Phone is required";
+      const isIndia = formData.country === "India";
+      if (isIndia) {
+        if (formData.contactPhone.length !== 10) return "Phone number must be exactly 10 digits";
+        if (!/^[6-9]\d{9}$/.test(formData.contactPhone)) return "Please enter a valid 10-digit mobile number (starting with 6-9)";
+      } else {
+        if (formData.contactPhone.length < 8) return "Phone number must be at least 8 digits";
+        if (formData.contactPhone.length > 15) return "Phone number must be at most 15 digits";
+      }
       if (!formData.city?.trim()) return "City is required";
       if (!formData.state?.trim()) return "State is required";
     }
@@ -289,12 +323,29 @@ export default function OnboardingPage() {
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 col-span-2">
+                  <Label>Country <span className="text-red-400">*</span></Label>
+                  <select
+                    name="country"
+                    value={formData.country || "India"}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 bg-stone-900 border border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+                  >
+                    <option value="India">India</option>
+                    <option value="United States">United States</option>
+                    <option value="United Kingdom">United Kingdom</option>
+                    <option value="Canada">Canada</option>
+                    <option value="Australia">Australia</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2 col-span-2">
                   <Label>Contact Phone Number <span className="text-red-400">*</span></Label>
                   <Input 
                     name="contactPhone" 
                     value={formData.contactPhone || ""} 
                     onChange={handleChange} 
-                    placeholder="Primary business phone"
+                    placeholder={formData.country === "India" ? "10-digit mobile number" : "Phone number with country code"}
                     className="bg-stone-900 border-white/10"
                   />
                 </div>
