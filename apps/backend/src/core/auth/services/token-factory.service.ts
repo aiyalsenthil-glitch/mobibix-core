@@ -14,7 +14,7 @@ export class TokenFactoryService {
   ) {}
 
   generateAccessToken(payload: any): string {
-    return this.jwtService.sign(payload);
+    return this.jwtService.sign(payload, { expiresIn: '15m' });
   }
 
   async createRefreshToken(userId: string): Promise<string> {

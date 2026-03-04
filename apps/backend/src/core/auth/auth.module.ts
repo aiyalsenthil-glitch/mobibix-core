@@ -27,7 +27,6 @@ import { RefreshTokenCleanupCron } from './services/refresh-token-cleanup.cron';
         }
         return {
           secret,
-          signOptions: { expiresIn: 604800 }, // 7 days in seconds
         };
       },
     }),
