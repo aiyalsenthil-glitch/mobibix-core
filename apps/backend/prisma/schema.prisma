@@ -137,6 +137,7 @@ model Tenant {
   acceptedPolicyVersion  String?
   consentIpAddress       String?
   consentUserAgent       String?
+  domain                 String?
   deletionRequestPending Boolean           @default(false)
   deletionScheduledAt    DateTime?
   status                 TenantStatus      @default(ACTIVE)

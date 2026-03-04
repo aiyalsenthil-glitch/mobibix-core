@@ -1,0 +1,58 @@
+[
+  {
+    "userId": "02377191-3353-4da1-90f8-98519ad8776b",
+    "tenantId": "cmma9ernt0000j1s4x8qwuy5y",
+    "role": "OWNER",
+    "user": {
+      "id": "02377191-3353-4da1-90f8-98519ad8776b",
+      "email": null,
+      "REMOVED_AUTH_PROVIDERUid": "user-a-1772521289201-362"
+    },
+    "tenant": {
+      "id": "cmma9ernt0000j1s4x8qwuy5y",
+      "code": "TENANT-A-1772521288833-228"
+    }
+  },
+  {
+    "userId": "5249a9b1-0681-4cb4-8cd6-7f9d8c16606a",
+    "tenantId": "cmma9erwa0001j1s4d8pcn1ro",
+    "role": "OWNER",
+    "user": {
+      "id": "5249a9b1-0681-4cb4-8cd6-7f9d8c16606a",
+      "email": null,
+      "REMOVED_AUTH_PROVIDERUid": "user-b-1772521289266-134"
+    },
+    "tenant": {
+      "id": "cmma9erwa0001j1s4d8pcn1ro",
+      "code": "TENANT-B-1772521289143-623"
+    }
+  },
+  {
+    "userId": "521111f7-9aae-486a-a766-a6439476e6ff",
+    "tenantId": "cmma9ernt0000j1s4x8qwuy5y",
+    "role": "OWNER",
+    "user": {
+      "id": "521111f7-9aae-486a-a766-a6439476e6ff",
+      "email": null,
+      "REMOVED_AUTH_PROVIDERUid": "switch-user-1772521289317-74"
+    },
+    "tenant": {
+      "id": "cmma9ernt0000j1s4x8qwuy5y",
+      "code": "TENANT-A-1772521288833-228"
+    }
+  },
+  {
+    "userId": "521111f7-9aae-486a-a766-a6439476e6ff",
+    "tenantId": "cmma9erwa0001j1s4d8pcn1ro",
+    "role": "OWNER",
+    "user": {
+      "id": "521111f7-9aae-486a-a766-a6439476e6ff",
+      "email": null,
+      "REMOVED_AUTH_PROVIDERUid": "switch-user-1772521289317-74"
+    },
+    "tenant": {
+      "id": "cmma9erwa0001j1s4d8pcn1ro",
+      "code": "TENANT-B-1772521289143-623"
+    }
+  }
+]

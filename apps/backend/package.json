@@ -125,7 +125,9 @@
     "moduleFileExtensions": [
       "js",
       "json",
-      "ts"
+      "ts",
+      "tsx",
+      "jsx"
     ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",

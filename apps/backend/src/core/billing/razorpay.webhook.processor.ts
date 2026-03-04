@@ -357,6 +357,34 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     });
 
     if (subscription) {
+      // ─────────────────────────────────────────────────────────────────────
+      // FIX 2A: EXPIRED Resurrection Guard
+      // A delayed webhook can arrive after the 1 AM cron has already expired
+      // the subscription. If autopay was still active on Razorpay and the
+      // charge is legitimate, we treat this as a resurrection and proceed.
+      // Any other non-ACTIVE status (e.g. CANCELLED) is non-retriable — skip.
+      // ─────────────────────────────────────────────────────────────────────
+      if (subscription.status !== 'ACTIVE') {
+        if (
+          subscription.status === 'EXPIRED' &&
+          subscription.autopayStatus === AutopayStatus.ACTIVE
+        ) {
+          this.logger.warn(
+            `[RESURRECTION] subscription.charged arrived after cron expiry for sub ` +
+            `${subscription.id} (tenant: ${subscription.tenantId}). ` +
+            `Autopay charge is legitimate — proceeding with renewal.`,
+          );
+          // Fall through to the renewal transaction below.
+        } else {
+          // Deterministically non-renewable (CANCELLED, DISPUTED, etc). Do NOT retry.
+          this.logger.warn(
+            `[SKIP] subscription.charged for sub ${subscription.id} which is ` +
+            `${subscription.status}. Not eligible for renewal. Ignoring.`,
+          );
+          return;
+        }
+      }
+
       try {
         // Atomic renewal and payment recording
         const { internalPaymentId } = await this.prisma.$transaction(async (tx) => {
@@ -375,27 +403,21 @@ export class RazorpayWebhookProcessor extends WorkerHost {
 
           const newEndDate = this.subscriptionsService['calculateEndDate'](now, nextBillingCycle);
 
-          const renewed = await tx.tenantSubscription.create({
+          const renewed = await tx.tenantSubscription.update({
+            where: { id: subscription.id },
             data: {
-              tenantId: subscription.tenantId,
               planId: nextPlanId,
-              module: subscription.module,
               status: SubscriptionStatus.ACTIVE,
               startDate: now,
               endDate: newEndDate,
-              billingCycle: nextBillingCycle,
+              billingCycle: nextBillingCycle as any,
               priceSnapshot: nextPriceSnapshot,
               autoRenew: true,
               autopayStatus: AutopayStatus.ACTIVE,
               paymentStatus: PaymentStatus.SUCCESS,
-              providerSubscriptionId: subId,
               lastRenewedAt: now,
+              updatedAt: now,
             },
-          });
-
-          await tx.tenantSubscription.update({
-            where: { id: subscription.id },
-            data: { status: SubscriptionStatus.EXPIRED, updatedAt: now },
           });
 
           // 2. Map Payment
@@ -454,6 +476,10 @@ export class RazorpayWebhookProcessor extends WorkerHost {
           `Sub renewal failed for ${subscription.id} via webhook`,
           renewalErr,
         );
+        // FIX 2B: Re-throw so BullMQ can retry transient failures (DB, network).
+        // The EXPIRED resurrection guard and SKIP guard above ensure that
+        // retries only happen for genuinely retriable scenarios.
+        throw renewalErr;
       }
     }
   }
@@ -468,13 +494,30 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     });
 
     if (subscription) {
-      await this.prisma.tenantSubscription.update({
-        where: { id: subscription.id },
-        data: {
-          autopayStatus: AutopayStatus.HALTED,
-          paymentStatus: PaymentStatus.FAILED,
-          updatedAt: new Date(),
-        },
+      // FIX 1: Wrap in $transaction and set status → PAST_DUE so the
+      // TenantStatusGuard enforces read-only mode during the retry window.
+      // Without PAST_DUE, guard's isPastDue check is never true and the
+      // tenant retains full write access despite a failed autopay charge.
+      await this.prisma.$transaction(async (tx) => {
+        await tx.tenantSubscription.update({
+          where: { id: subscription.id },
+          data: {
+            autopayStatus: AutopayStatus.HALTED,
+            paymentStatus: PaymentStatus.FAILED,
+            status: SubscriptionStatus.PAST_DUE, // ← FIX: was missing — guard depends on this
+            updatedAt: new Date(),
+          },
+        });
+
+        await tx.billingEventLog.create({
+          data: {
+            tenantId: subscription.tenantId,
+            eventType: 'subscription.halted',
+            providerReferenceId: subId,
+            statusBefore: subscription.status,
+            statusAfter: 'PAST_DUE',
+          },
+        });
       });
 
       this.eventEmitter.emit('subscription.suspended', {
@@ -505,14 +548,52 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     const subId = subEntity.id;
     this.logger.warn(`Subscription Cancelled: ${subId}`);
 
-    await this.prisma.tenantSubscription.updateMany({
-      where: { providerSubscriptionId: subId },
+    // FIX 1b: Three improvements over the original:
+    //  1. Filter status: { not: 'EXPIRED' } — avoids touching historical rows
+    //     from prior billing cycles that share the same providerSubscriptionId.
+    //  2. Set autoRenew: false — aligns the DB flag with the actual state.
+    //  3. Add BillingEventLog — cancellations were the only major billing event
+    //     without an audit trail entry.
+    const affected = await this.prisma.tenantSubscription.updateMany({
+      where: {
+        providerSubscriptionId: subId,
+        status: { not: SubscriptionStatus.EXPIRED }, // skip historical EXPIRED rows
+      },
       data: {
         autopayStatus: AutopayStatus.CANCELLED,
         status: SubscriptionStatus.CANCELLED,
+        autoRenew: false, // ← FIX: was left as true — misleading flag
         updatedAt: new Date(),
       },
     });
+
+    this.logger.warn(
+      `Subscription cancelled: ${affected.count} active row(s) updated for providerSubId ${subId}.`,
+    );
+
+    // Audit log (best-effort — don't block on failure)
+    await this.prisma.billingEventLog
+      .create({
+        data: {
+          // tenantId resolved via the first matched subscription for the log
+          tenantId: (
+            await this.prisma.tenantSubscription.findFirst({
+              where: { providerSubscriptionId: subId },
+              select: { tenantId: true },
+            })
+          )?.tenantId ?? 'unknown',
+          eventType: 'subscription.cancelled',
+          providerReferenceId: subId,
+          statusBefore: 'ACTIVE',
+          statusAfter: 'CANCELLED',
+        },
+      })
+      .catch((err) =>
+        this.logger.error(
+          `Failed to write BillingEventLog for cancellation of ${subId}`,
+          err,
+        ),
+      );
   }
 
   private async handlePaymentFailed(payment: any) {

@@ -26,6 +26,7 @@ export class ReconciliationCron {
     try {
       await this.reconcileLocalToRazorpay();
       await this.reconcileRazorpayToLocal();
+      await this.reconcileSubscriptionStates(); // FIX 3: detect stuck PENDING mandates
     } catch (err: any) {
       this.logger.error('CRITICAL: Reconciliation job FAILED', err.stack);
     } finally {
@@ -132,6 +133,119 @@ export class ReconciliationCron {
         eventId: syntheticId,
         payload: {
           payment: { entity },
+        },
+        metadata: {
+          reconciled: true,
+          scheduled_at: new Date().toISOString(),
+        },
+      },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: true,
+      },
+    );
+  }
+
+  /**
+   * C) Subscription State Reconciliation (FIX 3)
+   *
+   * Detects autopay subscriptions stuck in PENDING because the eMandate
+   * activation webhook was never delivered (network failure, Razorpay retry
+   * exhausted, etc.). For each stuck sub, fetches the live state from
+   * Razorpay and fires a synthetic webhook so the processor can handle it
+   * through the normal idempotent path.
+   *
+   * Guardrails:
+   *  - autoRenew: true  — excludes manual (MANUAL BillingType) PENDING subs
+   *  - providerSubscriptionId: { not: null }  — confirms it's an autopay sub
+   *  - createdAt: { lt: oneHourAgo }  — avoids racing with brand-new subs
+   */
+  private async reconcileSubscriptionStates() {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+    const stuckPendingSubs = await this.prisma.tenantSubscription.findMany({
+      where: {
+        status: 'PENDING',
+        autoRenew: true,                          // GUARDRAIL: only autopay subs
+        providerSubscriptionId: { not: null },    // must have a Razorpay sub ID
+        autopayStatus: null,                      // mandate never confirmed active
+        createdAt: { lt: oneHourAgo },            // avoid racing brand-new subs
+      },
+    });
+
+    if (stuckPendingSubs.length === 0) {
+      this.logger.log('[RECON][C] No stuck PENDING autopay subscriptions found.');
+      return;
+    }
+
+    this.logger.log(
+      `[RECON][C] Checking ${stuckPendingSubs.length} stuck PENDING autopay subscription(s)...`,
+    );
+
+    for (const sub of stuckPendingSubs) {
+      if (!sub.providerSubscriptionId) continue;
+
+      try {
+        const rpSub = await this.REMOVED_PAYMENT_INFRAService.fetchSubscription(
+          sub.providerSubscriptionId,
+        );
+
+        if (!rpSub) {
+          this.logger.warn(
+            `[RECON][C] Could not fetch Razorpay sub ${sub.providerSubscriptionId} for local sub ${sub.id}. Skipping.`,
+          );
+          continue;
+        }
+
+        this.logger.log(
+          `[RECON][C] Sub ${sub.id}: local=PENDING, REMOVED_PAYMENT_INFRA=${rpSub.status}`,
+        );
+
+        if (rpSub.status === 'halted') {
+          // eMandate failed after retries — fire synthetic halted webhook
+          this.logger.warn(
+            `[RECON][C] Sub ${sub.id} is HALTED on Razorpay. Firing synthetic subscription.halted.`,
+          );
+          await this.queueSyntheticSubscriptionWebhook('subscription.halted', rpSub);
+        } else if (rpSub.status === 'cancelled') {
+          // Cancelled from Razorpay dashboard before even activating
+          this.logger.warn(
+            `[RECON][C] Sub ${sub.id} is CANCELLED on Razorpay. Firing synthetic subscription.cancelled.`,
+          );
+          await this.queueSyntheticSubscriptionWebhook('subscription.cancelled', rpSub);
+        } else if (rpSub.status === 'active') {
+          // Activated on Razorpay but we missed the webhook — fire synthetic activated
+          this.logger.log(
+            `[RECON][C] Sub ${sub.id} is ACTIVE on Razorpay but PENDING locally. Firing synthetic subscription.activated.`,
+          );
+          await this.queueSyntheticSubscriptionWebhook('subscription.activated', rpSub);
+        }
+        // 'created' state means mandate is still pending user auth — do nothing
+      } catch (err: any) {
+        this.logger.error(
+          `[RECON][C] Error checking subscription ${sub.providerSubscriptionId}`,
+          err.message,
+        );
+      }
+    }
+  }
+
+  /**
+   * Queues a synthetic SUBSCRIPTION webhook (distinct from payment webhook)
+   * using the subscription entity as the payload root — matching Razorpay’s
+   * real webhook shape for subscription events.
+   */
+  private async queueSyntheticSubscriptionWebhook(event: string, subEntity: any) {
+    const syntheticId = `reconciliation_sub_${subEntity.id}_${Date.now()}`;
+
+    await this.webhookQueue.add(
+      'process-webhook',
+      {
+        event,
+        eventId: syntheticId,
+        payload: {
+          subscription: { entity: subEntity },
         },
         metadata: {
           reconciled: true,

@@ -34,9 +34,6 @@ export class PrismaService
       'Party',
       'Shop',
       'Invoice',
-      'Payment',
-      'SupplierPayment',
-      'SubscriptionInvoice',
       'Role', // NEW
       'UserTenant', // NEW
       'ShopStaff', // NEW

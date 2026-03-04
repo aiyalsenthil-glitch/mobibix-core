@@ -14,7 +14,13 @@ async function bootstrap() {
   let tenant = await prisma.tenant.findFirst();
   if (!tenant) {
     tenant = await prisma.tenant.create({
-      data: { name: 'Test Tenant', domain: 'test.com', status: 'ACTIVE' }
+      data: { 
+        name: 'Test Tenant', 
+        domain: 'test.com', 
+        status: 'ACTIVE',
+        tenantType: 'MOBILE_SHOP',
+        code: 'TEST_TENANT_' + Date.now()
+      }
     });
   }
 
