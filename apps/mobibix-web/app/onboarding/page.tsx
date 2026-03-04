@@ -14,6 +14,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
+const COUNTRY_CONFIG: Record<string, { prefix: string; currency: string; timezone: string; hasGst: boolean }> = {
+  "India": { prefix: "+91", currency: "INR", timezone: "Asia/Kolkata", hasGst: true },
+  "United Arab Emirates": { prefix: "+971", currency: "AED", timezone: "Asia/Dubai", hasGst: false },
+  "Canada": { prefix: "+1", currency: "CAD", timezone: "America/Toronto", hasGst: false },
+  "Singapore": { prefix: "+65", currency: "SGD", timezone: "Asia/Singapore", hasGst: false },
+  "Malaysia": { prefix: "+60", currency: "MYR", timezone: "Asia/Kuala_Lumpur", hasGst: false },
+  "United States": { prefix: "+1", currency: "USD", timezone: "America/New_York", hasGst: false },
+  "United Kingdom": { prefix: "+44", currency: "GBP", timezone: "Europe/London", hasGst: false },
+  "Australia": { prefix: "+61", currency: "AUD", timezone: "Australia/Sydney", hasGst: false },
+};
+
 // Assumes user is authenticated and holds a backend JWT
 export default function OnboardingPage() {
   const router = useRouter();
@@ -91,6 +102,19 @@ export default function OnboardingPage() {
       cleaned = cleaned.slice(0, maxLen);
       setFormData((prev) => ({ ...prev, [name]: cleaned }));
       return;
+    }
+
+    if (name === "country") {
+      const config = COUNTRY_CONFIG[value];
+      if (config) {
+        setFormData(prev => ({ 
+          ...prev, 
+          country: value,
+          currency: config.currency,
+          timezone: config.timezone
+        }));
+        return;
+      }
     }
 
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -328,26 +352,29 @@ export default function OnboardingPage() {
                     name="country"
                     value={formData.country || "India"}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 bg-stone-900 border border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+                    className="w-full px-3 py-2 bg-stone-900 border border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm appearance-none"
                   >
-                    <option value="India">India</option>
-                    <option value="United States">United States</option>
-                    <option value="United Kingdom">United Kingdom</option>
-                    <option value="Canada">Canada</option>
-                    <option value="Australia">Australia</option>
+                    {Object.keys(COUNTRY_CONFIG).map(c => <option key={c} value={c}>{c}</option>)}
                     <option value="Other">Other</option>
                   </select>
                 </div>
 
                 <div className="space-y-2 col-span-2">
                   <Label>Contact Phone Number <span className="text-red-400">*</span></Label>
-                  <Input 
-                    name="contactPhone" 
-                    value={formData.contactPhone || ""} 
-                    onChange={handleChange} 
-                    placeholder={formData.country === "India" ? "10-digit mobile number" : "Phone number with country code"}
-                    className="bg-stone-900 border-white/10"
-                  />
+                  <div className="relative">
+                    {formData.country !== "Other" && (
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center text-teal-400 font-bold border-r border-white/10 pr-2 pointer-events-none">
+                        {COUNTRY_CONFIG[formData.country as keyof typeof COUNTRY_CONFIG]?.prefix}
+                      </div>
+                    )}
+                    <Input 
+                      name="contactPhone" 
+                      value={formData.contactPhone || ""} 
+                      onChange={handleChange} 
+                      placeholder={formData.country === "India" ? "10-digit mobile number" : "Mobile number"}
+                      className={`bg-stone-900 border-white/10 ${formData.country !== "Other" ? "pl-16" : ""}`}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2 col-span-2">
@@ -384,27 +411,28 @@ export default function OnboardingPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Pincode / Zipcode</Label>
+                  <Label>Pincode / Zip <span className="text-red-400">*</span></Label>
                   <Input 
                     name="pincode" 
                     value={formData.pincode || ""} 
                     onChange={handleChange} 
-                    placeholder="Postal code"
                     className="bg-stone-900 border-white/10"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>GST / Tax Registration Number (Optional)</Label>
-                  <Input 
-                    name="gstNumber" 
-                    value={formData.gstNumber || ""} 
-                    onChange={handleChange} 
-                    placeholder="e.g. 27ABCDE1234F1Z5"
-                    className="bg-stone-900 border-white/10"
-                  />
-                  <p className="text-[10px] text-stone-500">Essential for legal taxation on generated invoices.</p>
-                </div>
+                {formData.country === "India" && (
+                  <div className="space-y-2 col-span-2">
+                    <Label>GST Number (Optional)</Label>
+                    <Input 
+                      name="gstNumber" 
+                      value={formData.gstNumber || ""} 
+                      onChange={handleChange} 
+                      placeholder="e.g. 22AAAAA0000A1Z5"
+                      className="bg-stone-900 border-white/10 uppercase"
+                    />
+                    <p className="text-[10px] text-stone-500">Essential for legal taxation on generated invoices.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
