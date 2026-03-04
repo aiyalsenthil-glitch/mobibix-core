@@ -425,6 +425,12 @@ export class AdminController {
     };
   }
 
+  @Public()
+  @Get('sentry-test')
+  async triggerSentryError() {
+    throw new Error('SENTRY_TEST_PHASE_1_LAUNCH: This is a deliberate crash to verify Sentry event routing to the engineering team.');
+  }
+
   // ─────────────────────────────────────────────
   // CAPITAL OVERVIEW (INVESTOR)
   // ─────────────────────────────────────────────
