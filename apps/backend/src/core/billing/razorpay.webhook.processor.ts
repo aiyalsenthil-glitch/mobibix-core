@@ -432,7 +432,7 @@ export class RazorpayWebhookProcessor extends WorkerHost {
                 planId: nextPlanId,
                 billingCycle: nextBillingCycle,
                 priceSnapshot: nextPriceSnapshot || paymentEntity.amount,
-                amount: paymentEntity.amount,
+                amount: Math.max(paymentEntity.amount || 0, 1), // Minimum 1 paise to prevent ₹0 API crashes
                 currency: paymentEntity.currency || 'INR',
                 status: 'SUCCESS',
                 provider: 'RAZORPAY',
@@ -672,6 +672,12 @@ export class RazorpayWebhookProcessor extends WorkerHost {
 
     if (!internalPayment) {
       this.logger.error(`Internal payment record not found for refund: ${payment.id}`);
+      return;
+    }
+
+    // Double Refund / Chargeback Guard
+    if (internalPayment.status === 'DISPUTED' || internalPayment.status === 'CHARGEBACK') {
+      this.logger.error(`Blocked refund for payment ${payment.id} because status is ${internalPayment.status}. Prevents double loss.`);
       return;
     }
 

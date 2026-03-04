@@ -805,6 +805,7 @@ model TenantSubscription {
   addons SubscriptionAddon[] // Add-ons attached to this subscription
 
   @@unique([tenantId, module])
+  @@index([tenantId, module, status], name: "idx_subscription_lookup")
   @@index([tenantId])
   @@index([planId])
   @@index([module])
@@ -2114,6 +2115,7 @@ enum PaymentStatus {
   EXPIRED
   REFUNDED
   DISPUTED
+  CHARGEBACK
 }
 
 enum SubscriptionStatus {
