@@ -19,9 +19,19 @@ export class GympilotAdminController {
   @Get('stats')
   async getStats() {
     const [tenants, subscriptions] = await Promise.all([
-      this.prisma.tenant.count({ where: { tenantType: 'GYM' } }),
+      this.prisma.tenant.count({
+        where: {
+          tenantType: 'GYM',
+          code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+        },
+      }),
       this.prisma.tenantSubscription.findMany({
-        where: { module: 'GYM' },
+        where: {
+          module: 'GYM',
+          tenant: {
+            code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+          },
+        },
         select: { status: true, priceSnapshot: true, billingCycle: true },
       }),
     ]);
@@ -53,6 +63,7 @@ export class GympilotAdminController {
     return this.prisma.tenant.findMany({
       where: {
         tenantType: 'GYM',
+        code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
       },
       include: {
         subscription: {

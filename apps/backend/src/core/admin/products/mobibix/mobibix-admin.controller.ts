@@ -19,9 +19,19 @@ export class MobibixAdminController {
   @Get('stats')
   async getStats() {
     const [tenants, subscriptions] = await Promise.all([
-      this.prisma.tenant.count({ where: { tenantType: 'MOBILE_SHOP' } }),
+      this.prisma.tenant.count({
+        where: {
+          tenantType: 'MOBILE_SHOP',
+          code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+        },
+      }),
       this.prisma.tenantSubscription.findMany({
-        where: { module: 'MOBILE_SHOP' },
+        where: {
+          module: 'MOBILE_SHOP',
+          tenant: {
+            code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+          },
+        },
         select: { status: true, priceSnapshot: true, billingCycle: true },
       }),
     ]);
@@ -53,6 +63,7 @@ export class MobibixAdminController {
     return this.prisma.tenant.findMany({
       where: {
         tenantType: 'MOBILE_SHOP',
+        code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
       },
       include: {
         subscription: {

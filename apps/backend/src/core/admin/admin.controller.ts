@@ -356,13 +356,20 @@ export class AdminController {
     const thirtyDaysAgo = subDays(today, 30);
 
     // 1. Basic Counts
-    const totalTenants = await this.prisma.tenant.count();
+    const totalTenants = await this.prisma.tenant.count({
+      where: {
+        code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+      },
+    });
     const totalUsers = await this.prisma.user.count();
 
     // 2. MRR Calculation
     const activeSubs = await this.prisma.tenantSubscription.findMany({
       where: {
         status: SubscriptionStatus.ACTIVE,
+        tenant: {
+          code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+        },
       },
       select: {
         priceSnapshot: true,
@@ -385,13 +392,21 @@ export class AdminController {
 
     // 3. Churn Rate (30 Days)
     const activeCount = await this.prisma.tenantSubscription.count({
-      where: { status: SubscriptionStatus.ACTIVE },
+      where: {
+        status: SubscriptionStatus.ACTIVE,
+        tenant: {
+          code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+        },
+      },
     });
 
     const cancelledRecently = await this.prisma.tenantSubscription.count({
       where: {
         status: SubscriptionStatus.CANCELLED,
         updatedAt: { gte: thirtyDaysAgo },
+        tenant: {
+          code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+        },
       },
     });
 

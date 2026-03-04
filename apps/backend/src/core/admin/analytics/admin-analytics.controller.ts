@@ -15,7 +15,11 @@ export class AdminAnalyticsController {
   @Get('global')
   async getGlobalStats() {
     // 1. Total Tenants
-    const totalTenants = await this.prisma.tenant.count();
+    const totalTenants = await this.prisma.tenant.count({
+      where: {
+        code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+      },
+    });
 
     // 2. Total Users
     const totalUsers = await this.prisma.user.count();
@@ -25,6 +29,9 @@ export class AdminAnalyticsController {
     const activeSubs = await this.prisma.tenantSubscription.findMany({
       where: {
         status: 'ACTIVE',
+        tenant: {
+          code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+        },
       },
       include: {
         plan: true,
@@ -49,8 +56,9 @@ export class AdminAnalyticsController {
     const cancelledThisMonth = await this.prisma.tenantSubscription.count({
       where: {
         status: 'CANCELLED',
-        updatedAt: {
-          gte: firstDayOfMonth,
+        updatedAt: { gte: firstDayOfMonth },
+        tenant: {
+          code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
         },
       },
     });
@@ -81,6 +89,7 @@ export class AdminAnalyticsController {
             gte: start,
             lt: nextMonth,
           },
+          code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
         },
       });
 

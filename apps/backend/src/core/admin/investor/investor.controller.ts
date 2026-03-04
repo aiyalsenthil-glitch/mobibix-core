@@ -21,15 +21,31 @@ export class InvestorController {
       'admin:investor:summary',
       async () => {
         const [tenants, paidTenants, aiStats] = await Promise.all([
-          this.prisma.tenant.count(),
-          this.prisma.tenantSubscription.count({ where: { status: 'ACTIVE' } }),
+          this.prisma.tenant.count({
+            where: {
+              code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+            },
+          }),
+          this.prisma.tenantSubscription.count({
+            where: {
+              status: 'ACTIVE',
+              tenant: {
+                code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+              },
+            },
+          }),
           this.prisma.aiUsageLog.aggregate({
             _sum: { costUsd: true },
           }),
         ]);
 
         const subscriptions = await this.prisma.tenantSubscription.findMany({
-          where: { status: 'ACTIVE' },
+          where: {
+            status: 'ACTIVE',
+            tenant: {
+              code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+            },
+          },
           select: { priceSnapshot: true, billingCycle: true },
         });
 
