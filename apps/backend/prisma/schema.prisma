@@ -245,6 +245,7 @@ model User {
   updatedBy   String?
   deletedAt   DateTime?
   deletedBy   String?
+  tokenVersion Int        @default(0)
 
   phone              String?
   welcomeEmailSent   Boolean            @default(false)

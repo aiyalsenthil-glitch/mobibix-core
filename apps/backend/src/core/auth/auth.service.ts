@@ -82,11 +82,18 @@ export class AuthService {
       tenantId,
       userTenantId: userTenant?.id ?? null,
       role,
+      tokenVersion: user.tokenVersion,
     });
+
+    // Refresh Token Rotation: Revoke old and create new
+    await this.tokenFactory.revokeRefreshToken(refreshToken);
+    const newRefreshToken = await this.tokenFactory.createRefreshToken(user.id);
 
     return {
       accessToken,
       accessTokenExpiresIn: this.tokenFactory.accessTokenTtlMs,
+      refreshToken: newRefreshToken,
+      refreshTokenExpiresIn: this.tokenFactory.refreshTokenTtlMs,
     };
   }
 
@@ -136,6 +143,7 @@ export class AuthService {
         userTenantId,
         role,
         isSystemOwner,
+        tokenVersion: user.tokenVersion,
       });
 
       const refreshToken = await this.tokenFactory.createRefreshToken(user.id);

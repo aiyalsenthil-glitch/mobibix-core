@@ -226,6 +226,29 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('logout-all')
+  async logoutAll(@Req() req: any, @Res({ passthrough: true }) res: Response) {
+    const userId = req.user.userId || req.user.sub;
+
+    if (userId) {
+      // 1. Invalidate all Access Tokens via stateless token versioning
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { tokenVersion: { increment: 1 } },
+      });
+
+      // 2. Revoke all currently active Refresh Tokens globally
+      await this.prisma.refreshToken.updateMany({
+        where: { userId },
+        data: { revokedAt: new Date() },
+      });
+    }
+
+    this.clearAuthCookies(res);
+    return { success: true };
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('send-verification-email')
   async sendVerificationEmail(@Req() req: any) {
     const userId = req.user.userId;
