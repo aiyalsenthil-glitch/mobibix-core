@@ -50,21 +50,23 @@ async function createTestTenants() {
     });
 
     if (!plan) {
-      console.warn(`⚠️  Plan ${t.expectedPlan} not found. Skipping subscription setup for ${t.code}.`);
+      console.warn(
+        `⚠️  Plan ${t.expectedPlan} not found. Skipping subscription setup for ${t.code}.`,
+      );
       continue;
     }
 
-    let subStartDate = new Date();
-    let subEndDate = new Date();
+    const subStartDate = new Date();
+    const subEndDate = new Date();
     let subStatus = 'ACTIVE';
 
     if (t.code === 'TEST_EXPIRED') {
-       // Expired 30 days ago (past any grace periods)
-       subEndDate.setDate(subEndDate.getDate() - 30); 
-       subStatus = 'EXPIRED';
+      // Expired 30 days ago (past any grace periods)
+      subEndDate.setDate(subEndDate.getDate() - 30);
+      subStatus = 'EXPIRED';
     } else {
-       // Active for 1 year
-       subEndDate.setFullYear(subEndDate.getFullYear() + 1);
+      // Active for 1 year
+      subEndDate.setFullYear(subEndDate.getFullYear() + 1);
     }
 
     await prisma.tenantSubscription.upsert({
@@ -88,7 +90,9 @@ async function createTestTenants() {
         endDate: subEndDate,
       },
     });
-    console.log(`   - Attached ${subStatus} ${t.expectedPlan} subscription (Expires: ${subEndDate.toISOString().split('T')[0]})`);
+    console.log(
+      `   - Attached ${subStatus} ${t.expectedPlan} subscription (Expires: ${subEndDate.toISOString().split('T')[0]})`,
+    );
   }
 
   console.log('\n🎉 Production Test Ring setup complete!');

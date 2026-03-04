@@ -106,6 +106,61 @@ const envSchema = z.object({
     .describe('Secret for Razorpay webhook signature verification'),
 
   // ═══════════════════════════════════════════════════
+  // FRONTEND URLs (Redirection & Login)
+  // ═══════════════════════════════════════════════════
+  GYM_FRONTEND_URL: z
+    .string()
+    .url('GYM_FRONTEND_URL must be a valid URL')
+    .default('http://localhost_REPLACED:3002')
+    .describe('Production URL for GymPilot frontend'),
+
+  ERP_FRONTEND_URL: z
+    .string()
+    .url('ERP_FRONTEND_URL must be a valid URL')
+    .default('http://localhost_REPLACED:3001')
+    .describe('Production URL for Mobibix frontend'),
+
+  // ═══════════════════════════════════════════════════
+  // EMAIL (Resend)
+  // ═══════════════════════════════════════════════════
+  RESEND_API_KEY: z
+    .string()
+    .min(1, 'RESEND_API_KEY is required for transactional emails')
+    .describe('API key for Resend email service'),
+
+  EMAIL_FROM_GYMPILOT: z
+    .string()
+    .default('GymPilot <notifications@mobibix.in>')
+    .describe('Verified sender address for GymPilot emails'),
+
+  EMAIL_FROM_MOBIBIX: z
+    .string()
+    .default('MobiBix <notifications@mobibix.com>')
+    .describe('Verified sender address for Mobibix emails'),
+
+  // ═══════════════════════════════════════════════════
+  // APP VERSIONING (Gym App)
+  // ═══════════════════════════════════════════════════
+  ANDROID_LATEST_VERSION_CODE: z
+    .string()
+    .default('100')
+    .describe('Latest available version code for Android app'),
+
+  ANDROID_MIN_REQUIRED_VERSION_CODE: z
+    .string()
+    .default('1')
+    .describe('Minimum version code required to force update'),
+
+  // ═══════════════════════════════════════════════════
+  // OBSERVABILITY
+  // ═══════════════════════════════════════════════════
+  SENTRY_DSN: z
+    .string()
+    .url('SENTRY_DSN must be a valid DSN')
+    .optional()
+    .describe('Sentry DSN for error tracking'),
+
+  // ═══════════════════════════════════════════════════
   // OPTIONAL / ENVIRONMENT-SPECIFIC
   // ═══════════════════════════════════════════════════
   NODE_ENV: z

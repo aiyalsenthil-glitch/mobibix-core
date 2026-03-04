@@ -29,6 +29,7 @@ describe('Billing Chaos & Module Guard (E2E)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
 
     prisma = app.get<PrismaService>(PrismaService);
@@ -80,6 +81,7 @@ describe('Billing Chaos & Module Guard (E2E)', () => {
       email: user.email,
       tenantId: tenant.id,
       role: 'OWNER',
+      tokenVersion: 0,
     });
 
     return { tenant, user, token };
@@ -203,7 +205,7 @@ describe('Billing Chaos & Module Guard (E2E)', () => {
       // Act
       // 1. Try to access Gym Members GET (requires active GYM module)
       const resGym = await request(app.getHttpServer())
-        .get('/admin/members')
+        .get('/api/members')
         .set('Authorization', `Bearer ${token}`);
         
       expect(resGym.status).toBe(403);
@@ -212,7 +214,7 @@ describe('Billing Chaos & Module Guard (E2E)', () => {
       // 2. Try to access Shop Staff/Orders GET (requires active MOBILE_SHOP module)
       // Use something mapped to MOBILE_SHOP Scope, e.g. /purchases or /sales
       const resMobile = await request(app.getHttpServer())
-        .get('/sales/invoices') 
+        .get('/api/mobileshop/sales/invoices?shopId=fake') 
         .set('Authorization', `Bearer ${token}`);
         
       // Just assert it's NOT a 403 Forbidden due to gym subscription expiry!

@@ -59,6 +59,29 @@ export class SubscriptionGuard implements CanActivate {
 
     const tenantId = user.tenantId;
 
+    // 🛡️ GLOBAL DELETION SOFT LOCK (Always check, even without module scope)
+    const tenantStatusKey = `tenant:${tenantId}:base-status`;
+    const baseStatus = await this.cacheService.getOrSet(
+      tenantStatusKey,
+      async () => {
+        return this.prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { deletionRequestPending: true },
+        });
+      },
+      1000 * 60, // 60 seconds TTL
+    );
+
+    if (baseStatus?.deletionRequestPending) {
+      const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+      if (isMutation) {
+        this.logger.warn(`Mutation blocked for tenant ${tenantId} (DELETION PENDING)`);
+        throw new ForbiddenException(
+          'Your account is currently pending deletion and most operations are restricted.',
+        );
+      }
+    }
+
     // 🔥 NEW: Read module scope from decorator
     const moduleScope = this.reflector.getAllAndOverride<ModuleType>(
       MODULE_SCOPE_KEY,
@@ -73,12 +96,12 @@ export class SubscriptionGuard implements CanActivate {
       return true;
     }
 
-    // 🔥 CRITICAL FIX: Fetch subscription for SPECIFIC MODULE from Cache (5 Min TTL)
-    const cacheKey = `tenant:${tenantId}:subscription:${moduleScope}`;
+    // 🔥 CRITICAL FIX: Fetch subscription for SPECIFIC MODULE from Cache (30 Sec TTL)
+    const cacheKey = `tenant:${tenantId}:sub:${moduleScope}`;
     const subscription = await this.cacheService.getOrSet(
       cacheKey,
       async () => {
-        const sub = await this.prisma.tenantSubscription.findUnique({
+        return this.prisma.tenantSubscription.findUnique({
           where: {
             tenantId_module: {
               tenantId,
@@ -89,12 +112,6 @@ export class SubscriptionGuard implements CanActivate {
             plan: true,
           },
         });
-        
-        // Ensure status matches the allowed initial states
-        if (sub && ['ACTIVE', 'TRIAL', 'PAST_DUE'].includes(sub.status)) {
-          return sub;
-        }
-        return null;
       },
       1000 * 30, // 30 seconds TTL
     );

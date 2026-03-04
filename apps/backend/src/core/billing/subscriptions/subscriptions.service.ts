@@ -314,10 +314,10 @@ export class SubscriptionsService {
     newPrice: number,
     startDate: Date,
     endDate: Date,
+    now: Date = new Date(), // Allow injecting time for tests
   ): number {
     if (newPrice <= currentPrice) return 0;
 
-    const now = new Date();
     const totalSeconds = Math.max(
       1,
       Math.floor((endDate.getTime() - startDate.getTime()) / 1000),
@@ -331,6 +331,12 @@ export class SubscriptionsService {
 
     const delta = newPrice - currentPrice;
     const proratedDelta = Math.round(delta * (remainingSeconds / totalSeconds));
+
+    // 💰 Enforce ₹1 (100 paise) minimum charge rule
+    // Never allow < 1 Rupee charge in Razorpay. If delta is > 0 but < 100 paise, force 100 paise.
+    if (proratedDelta > 0 && proratedDelta < 100) {
+      return 100;
+    }
 
     return Math.max(0, proratedDelta);
   }

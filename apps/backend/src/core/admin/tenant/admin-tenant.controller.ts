@@ -11,6 +11,7 @@ import {
   ForbiddenException,
   Req,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AdminRolesGuard } from '../guards/admin-roles.guard';
 import { AdminRoles } from '../decorators/admin.decorator';
@@ -26,6 +27,7 @@ export class AdminTenantController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tenantService: TenantService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Get()
@@ -158,9 +160,8 @@ export class AdminTenantController {
       impersonatedBy: adminEmail,
       redirectUrl:
         userTenant.tenant.tenantType === 'GYM'
-          ? 'http://localhost_REPLACED:3001/login/impersonate' // Gym Pilot
-          : 'http://localhost_REPLACED:3000/login/impersonate', // Mobibix
-      // TODO: Use env vars for URLs
+          ? this.configService.get<string>('GYM_FRONTEND_URL', 'http://localhost_REPLACED:3002') + '/login/impersonate'
+          : this.configService.get<string>('ERP_FRONTEND_URL', 'http://localhost_REPLACED:3001') + '/login/impersonate',
     };
   }
 

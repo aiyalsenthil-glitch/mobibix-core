@@ -21,12 +21,7 @@ import { TenantService } from '../tenant/tenant.service';
 import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
 import { PlansService } from '../billing/plans/plans.service';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  UserRole,
-  ModuleType,
-  SubscriptionStatus,
-  BillingCycle,
-} from '@prisma/client';
+import { UserRole, ModuleType, SubscriptionStatus } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
 
 import { subDays } from 'date-fns';
@@ -171,9 +166,9 @@ export class AdminController {
       orderBy: { requestedAt: 'desc' },
       include: {
         tenant: {
-          select: { name: true, tenantType: true, deletionScheduledAt: true }
-        }
-      }
+          select: { name: true, tenantType: true, deletionScheduledAt: true },
+        },
+      },
     });
   }
 
@@ -200,7 +195,10 @@ export class AdminController {
     @Req() req?: any,
   ) {
     // Verify requester is authorized (admin/owner can access)
-    if (req?.user?.role !== UserRole.OWNER && req?.user?.role !== UserRole.ADMIN) {
+    if (
+      req?.user?.role !== UserRole.OWNER &&
+      req?.user?.role !== UserRole.ADMIN
+    ) {
       throw new ForbiddenException(
         'Only admins can access tenant subscription',
       );
@@ -427,8 +425,10 @@ export class AdminController {
 
   @Public()
   @Get('sentry-test')
-  async triggerSentryError() {
-    throw new Error('SENTRY_TEST_PHASE_1_LAUNCH: This is a deliberate crash to verify Sentry event routing to the engineering team.');
+  triggerSentryError() {
+    throw new Error(
+      'SENTRY_TEST_PHASE_1_LAUNCH: This is a deliberate crash to verify Sentry event routing to the engineering team.',
+    );
   }
 
   // ─────────────────────────────────────────────

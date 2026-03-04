@@ -642,6 +642,10 @@ export class WhatsAppUserService {
   ): Promise<WhatsAppCampaignRecord> {
     await this.ensureFeature(tenantId, 'bulkCampaign');
 
+    // 🔥 LIVE LIMIT ENFORCEMENT (Downgrade Bypass Protection)
+    const module = await this.resolveTenantModule(tenantId);
+    await this.planRulesService.checkRuntimeLimits(tenantId, module);
+
     const template = await this.prisma.whatsAppTemplate.findUnique({
       where: { id: dto.templateId },
     });

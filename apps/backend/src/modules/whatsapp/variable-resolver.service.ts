@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import {
   WhatsAppModule,
@@ -43,7 +44,10 @@ export interface VariableResolutionContext {
 
 @Injectable()
 export class WhatsAppVariableResolver {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   /**
    * Resolve all variables for a template based on context
@@ -352,7 +356,9 @@ export class WhatsAppVariableResolver {
       case 'invoiceLink':
       case 'invoice_link': {
         if (!invoiceId) return null;
-        const baseUrl = process.env.FRONTEND_URL || 'https://mobibix.in';
+        const baseUrl = module === WhatsAppModule.GYM 
+          ? this.configService.get('GYM_FRONTEND_URL') || 'https://mobibix.in'
+          : this.configService.get('ERP_FRONTEND_URL') || 'https://shop.mobibix.com';
         return `${baseUrl}/print/invoice/${invoiceId}`;
       }
 
@@ -364,7 +370,9 @@ export class WhatsAppVariableResolver {
           select: { publicToken: true },
         });
         if (!jobCard?.publicToken) return null;
-        const baseUrl = process.env.FRONTEND_URL || 'https://mobibix.in';
+        const baseUrl = module === WhatsAppModule.MOBILE_REPAIR
+          ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.mobibix.com'
+          : this.configService.get('GYM_FRONTEND_URL') || 'https://mobibix.in';
         return `${baseUrl}/track/${jobCard.publicToken}`;
       }
 

@@ -12,6 +12,7 @@ export const billingMetricsProviders = [
   makeCounterProvider({
     name: 'webhooks_processed_total',
     help: 'Total Razorpay webhooks processed',
+    labelNames: ['event'],
   }),
   makeCounterProvider({
     name: 'invoices_generated_total',

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { ModuleType, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppFeature } from './whatsapp-rules';
@@ -221,6 +221,50 @@ export class PlanRulesService {
     }
 
     return rules.features.includes(feature);
+  }
+
+  async checkRuntimeLimits(
+    tenantId: string,
+    module: ModuleType,
+  ): Promise<void> {
+    const rules = await this.getPlanRulesForTenant(tenantId, module);
+    if (!rules) return;
+
+    // 1. Check Members (GYM Only)
+    if (module === ModuleType.GYM && rules.maxMembers !== null) {
+      const memberCount = await this.prisma.member.count({
+        where: { tenantId },
+      });
+      if (memberCount > rules.maxMembers) {
+        throw new ForbiddenException(
+          `PLAN_LIMIT_EXCEEDED: You have ${memberCount} members, but the ${rules.name} plan only allows ${rules.maxMembers}. Please upgrade or remove members first.`,
+        );
+      }
+    }
+
+    // 2. Check Staff (All Modules)
+    if (rules.maxStaff !== null) {
+      const staffCount = await this.prisma.userTenant.count({
+        where: { tenantId, deletedAt: null },
+      });
+      if (staffCount > rules.maxStaff) {
+        throw new ForbiddenException(
+          `PLAN_LIMIT_EXCEEDED: You have ${staffCount} staff members, but the ${rules.name} plan only allows ${rules.maxStaff}. Please upgrade or deactivate staff first.`,
+        );
+      }
+    }
+
+    // 3. Check Shops (Mobile Shop / Business)
+    if (rules.maxShops !== null) {
+      const shopCount = await this.prisma.shop.count({
+        where: { tenantId, isActive: true },
+      });
+      if (shopCount > rules.maxShops) {
+        throw new ForbiddenException(
+          `PLAN_LIMIT_EXCEEDED: You have ${shopCount} active shops, but the ${rules.name} plan only allows ${rules.maxShops}. Please upgrade or deactivate shops first.`,
+        );
+      }
+    }
   }
 
   invalidateByCode(code: string) {

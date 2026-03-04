@@ -14,9 +14,13 @@ import { UserRole } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { TenantStatusGuard } from '../tenant/guards/tenant-status.guard';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModuleType } from '@prisma/client';
 
 @Controller('core/crm-dashboard')
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.MOBILE_SHOP)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, TenantStatusGuard)
 @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.STAFF)
 export class CrmDashboardController {
   constructor(private readonly dashboardService: CrmDashboardService) {}

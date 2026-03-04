@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AdminRolesGuard } from '../guards/admin-roles.guard';
 import { AdminRoles } from '../decorators/admin.decorator';
-import { AdminRole, ModuleType } from '@prisma/client';
+import { AdminRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminCacheService } from '../cache/admin-cache.service';
 
@@ -30,7 +30,9 @@ export class InvestorController {
             where: {
               status: 'ACTIVE',
               tenant: {
-                code: { notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'] },
+                code: {
+                  notIn: ['TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED'],
+                },
               },
             },
           }),
@@ -77,6 +79,7 @@ export class InvestorController {
     return this.cache.getOrSet(
       'admin:investor:growth',
       async () => {
+        await Promise.resolve();
         // Return 12 months growth projection / historical data
         const months = [
           'Jan',
@@ -104,7 +107,7 @@ export class InvestorController {
   }
 
   @Get('retention')
-  async getRetention() {
+  getRetention() {
     return {
       organic: [
         { day: 0, rate: 100 },
@@ -138,7 +141,7 @@ export class InvestorController {
   }
 
   @Get('unit-economics')
-  async getUnitEconomics() {
+  getUnitEconomics() {
     return {
       arpu: 1200,
       cac: 150,
@@ -148,7 +151,7 @@ export class InvestorController {
   }
 
   @Get('projection')
-  async getProjectionSeed() {
+  getProjectionSeed() {
     return {
       currentActiveTenants: 340,
       currentMrr: 340000,
@@ -160,7 +163,7 @@ export class InvestorController {
   }
 
   @Post('projection/simulate')
-  async simulate(@Body() inputs: any) {
+  simulate(@Body() inputs: any) {
     const months: any[] = [];
     let active = inputs.currentActiveTenants;
     const arpu = inputs.arpu || 1000;

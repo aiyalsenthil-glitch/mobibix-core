@@ -23,9 +23,11 @@ import { UpdateMemberDto } from './dto/update-member.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { TenantStatusGuard } from '../tenant/guards/tenant-status.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
 
 @Controller('members')
+@ModuleScope(ModuleType.GYM)
 @UseGuards(
   JwtAuthGuard,
   TenantRequiredGuard,

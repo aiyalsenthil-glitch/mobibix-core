@@ -1,6 +1,0 @@
-src/core/loyalty/loyalty.service.ts(41,7): error TS2322: Type '{ tenantId: string; }' is not assignable to type 'LoyaltyConfigWhereUniqueInput'.
-  Type '{ tenantId: string; }' is not assignable to type '{ id: string; shopId: string; } & { id?: string | undefined; shopId?: string | undefined; AND?: LoyaltyConfigWhereInput | LoyaltyConfigWhereInput[] | undefined; ... 17 more ...; shop?: (Without<...> & ShopWhereInput) | ... 2 more ... | undefined; }'.
-    Type '{ tenantId: string; }' is missing the following properties from type '{ id: string; shopId: string; }': id, shopId
-src/core/loyalty/loyalty.service.ts(70,7): error TS2322: Type '{ tenantId: string; }' is not assignable to type 'LoyaltyConfigWhereUniqueInput'.
-  Type '{ tenantId: string; }' is not assignable to type '{ id: string; shopId: string; } & { id?: string | undefined; shopId?: string | undefined; AND?: LoyaltyConfigWhereInput | LoyaltyConfigWhereInput[] | undefined; ... 17 more ...; shop?: (Without<...> & ShopWhereInput) | ... 2 more ... | undefined; }'.
-    Type '{ tenantId: string; }' is missing the following properties from type '{ id: string; shopId: string; }': id, shopId

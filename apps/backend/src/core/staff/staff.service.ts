@@ -13,6 +13,8 @@ import {
   restoreData,
 } from '../soft-delete/soft-delete.helper';
 import { getCreateAudit, getUpdateAudit } from '../audit/audit.helper';
+import { PlanRulesService } from '../billing/plan-rules.service';
+import { ModuleType } from '@prisma/client';
 
 import { JwtService } from '@nestjs/jwt';
 
@@ -21,54 +23,48 @@ export class StaffService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly planRulesService: PlanRulesService,
   ) {}
 
   // 🔒 Ensure plan allows staff management (PLUS / PRO)
   private async ensureStaffAllowed(tenantId: string) {
-    const subscription = await this.prisma.tenantSubscription.findFirst({
-      where: { tenantId },
-      include: { plan: true },
+    // Determine module scope (staff removal/creation usually happens in context of a module)
+    // For now we assume GYM as primary if not specified, or fallback to the tenant's first active module
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { enabledModules: true },
     });
 
-    if (!subscription) {
-      throw new ForbiddenException(
-        'No active subscription found. Please upgrade.',
-      );
-    }
-    if (!['ACTIVE', 'TRIAL'].includes(subscription.status)) {
-      throw new ForbiddenException(
-        'Your subscription is not active. Please upgrade.',
-      );
-    }
+    const module = tenant?.enabledModules?.[0] || ModuleType.GYM;
 
-    const planCode = (
-      subscription.plan.code ?? subscription.plan.name
-    ).toUpperCase();
-    const capability = PLAN_CAPABILITIES[planCode];
+    // 🔥 1. Check for Downgrade Bypass (already over limit)
+    await this.planRulesService.checkRuntimeLimits(tenantId, module);
 
-    if (!capability?.staffAllowed) {
-      throw new ForbiddenException(
-        'Staff management is not allowed in your current plan',
-      );
+    // 🔥 2. Check Plan Rules for staff permission and specific "add" limit
+    const rules = await this.planRulesService.getPlanRulesForTenant(tenantId, module);
+
+    if (!rules) {
+      throw new ForbiddenException('No active subscription found. Please upgrade.');
     }
 
-    // 🔒 Enforce staff count limit
+    if (rules.maxStaff === 0) {
+      throw new ForbiddenException('Staff management is not allowed in your current plan');
+    }
+
+    // 🔒 Enforce staff count limit for NEW members
     const currentStaffCount = await this.prisma.userTenant.count({
       where: {
         tenantId,
         role: UserRole.STAFF,
+        deletedAt: null, // Only active staff
       },
     });
-    const maxStaff = subscription.plan.maxStaff;
 
-    // null means unlimited
-    if (maxStaff !== null && currentStaffCount >= maxStaff) {
+    if (rules.maxStaff !== null && currentStaffCount >= rules.maxStaff) {
       throw new ForbiddenException(
-        `Staff limit reached (${currentStaffCount}/${maxStaff}) for your current plan`,
+        `Staff limit reached (${currentStaffCount}/${rules.maxStaff}) for your current plan`,
       );
     }
-
-    return subscription;
   }
 
   // ✅ List staff for tenant

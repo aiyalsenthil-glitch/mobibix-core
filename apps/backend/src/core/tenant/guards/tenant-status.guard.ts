@@ -3,7 +3,9 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  Inject,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModuleType, UserRole, SubscriptionStatus } from '@prisma/client';
 import {
@@ -11,10 +13,14 @@ import {
   SOFT_GRACE_PERIOD_DAYS,
   HARD_GRACE_PERIOD_HOURS,
 } from '../../billing/grace-period.constants';
+import { MODULE_SCOPE_KEY } from '../../auth/decorators/module-scope.decorator';
 
 @Injectable()
 export class TenantStatusGuard implements CanActivate {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly reflector: Reflector,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -48,6 +54,14 @@ export class TenantStatusGuard implements CanActivate {
       module = request.query.module;
     } else if (request.body?.module) {
       module = request.body.module;
+    }
+
+    // 🔥 FIX: Automatically detect module via Reflector if not in request
+    if (!module) {
+      module = this.reflector.getAllAndOverride<ModuleType>(MODULE_SCOPE_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
     }
 
     if (!module) {

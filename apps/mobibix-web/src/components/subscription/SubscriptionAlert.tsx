@@ -7,42 +7,67 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export function SubscriptionAlert() {
-  const [status, setStatus] = useState<string | null>(null);
-  const [daysLeft, setDaysLeft] = useState<number | null>(null);
+  const [usage, setUsage] = useState<TenantUsageResponse | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
-    // efficient check, maybe cache this?
     getTenantUsage().then((data) => {
-      setStatus(data.status);
-      setDaysLeft(data.daysLeft);
+      setUsage(data);
     }).catch(() => {
       // silent fail
     });
-  }, [pathname]); // Re-check on navigation
+  }, [pathname]);
 
-  if (status !== "PAST_DUE" && status !== "EXPIRED") return null;
+  if (!usage) return null;
 
+  const { status, membersUsed, membersLimit, plan } = usage;
   const isExpired = status === "EXPIRED";
+  const isPastDue = status === "PAST_DUE";
+
+  // Check for limit violations (Downgrade Bypass detection)
+  const isOverLimit = (
+    (membersLimit !== null && membersUsed > membersLimit) ||
+    (plan?.maxStaff !== null && usage.plan?.maxStaff !== undefined && usage.membersUsed > (usage.plan.memberLimit ?? Infinity)) || // Wait, let's use the actual fields from TenantUsageResponse
+    (plan?.maxStaff !== null && plan?.maxStaff !== undefined && (usage as any).staffUsed > plan.maxStaff) || 
+    (plan?.maxShops !== null && plan?.maxShops !== undefined && (usage as any).shopsUsed > plan.maxShops)
+  );
+  
+  // Refined limit check logic based on TenantUsageResponse structure
+  const hasLimitIssue = 
+    (membersLimit !== null && membersUsed > membersLimit) ||
+    (plan?.maxStaff !== null && (usage as any).staffUsed > (plan?.maxStaff ?? Infinity)) ||
+    (plan?.maxShops !== null && (usage as any).shopsUsed > (plan?.maxShops ?? Infinity));
+
+  if (!isExpired && !isPastDue && !hasLimitIssue) return null;
+
+  let message = "";
+  let bgColor = "bg-amber-500";
+  
+  if (isExpired) {
+    message = "Your subscription has expired. Access to features is restricted.";
+    bgColor = "bg-red-600";
+  } else if (isPastDue) {
+    message = "Your subscription is past due. Please update payment to avoid interruption.";
+    bgColor = "bg-amber-500";
+  } else if (hasLimitIssue) {
+    message = "You are exceeding your plan limits. Some features may be blocked. Please upgrade.";
+    bgColor = "bg-purple-600"; // Use purple for limit issues to distinguish from payment issues
+  }
 
   return (
-    <div className={`w-full px-4 py-3 flex items-center justify-between gap-4 ${
-      isExpired ? "bg-red-600 text-white" : "bg-amber-500 text-white"
-    }`}>
+    <div className={`w-full px-4 py-3 flex items-center justify-between gap-4 text-white ${bgColor} transition-colors duration-300`}>
       <div className="flex items-center gap-3">
         <AlertTriangle className="h-5 w-5" />
         <div className="text-sm font-medium">
-          {isExpired 
-            ? "Your subscription has expired. Access to features is restricted." 
-            : "Your subscription is past due. Please update your payment method to avoid interruption."}
+          {message}
         </div>
       </div>
       <Link 
-        href="/settings"
-        className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm font-bold transition"
+        href="/pricing"
+        className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm font-bold transition whitespace-nowrap"
       >
         <CreditCard className="h-4 w-4" />
-        {isExpired ? "Renew Now" : "Pay Now"}
+        {isExpired || hasLimitIssue ? "Upgrade / Renew" : "Pay Now"}
       </Link>
     </div>
   );

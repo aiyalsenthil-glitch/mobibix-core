@@ -155,6 +155,9 @@ export class MembersService {
       tenantId,
       subscription.module,
     );
+
+    // 🔥 LIVE LIMIT ENFORCEMENT (Downgrade Bypass Protection)
+    await this.planRulesService.checkRuntimeLimits(tenantId, subscription.module);
     const limit = rules?.maxMembers ?? subscription.plan.maxMembers;
     if (limit !== null && limit !== undefined) {
       const count = await this.prisma.member.count({ where: { tenantId } });

@@ -1,9 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ModuleType } from '@prisma/client';
+import { PlanRulesService } from '../billing/plan-rules.service';
 
 @Injectable()
 export class ProductsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly planRulesService: PlanRulesService,
+  ) {}
 
   private fromPaisa(amount: number | null | undefined): number | null {
     if (amount === null || amount === undefined) return null;
@@ -163,6 +168,12 @@ export class ProductsService {
       errors: [] as string[],
       duplicates: [] as string[],
     };
+
+    // 🔥 LIVE LIMIT ENFORCEMENT (Downgrade Bypass Protection)
+    await this.planRulesService.checkRuntimeLimits(
+      tenantId,
+      ModuleType.MOBILE_SHOP,
+    );
 
     // Fetch all existing products for this shop to check duplicates
     const existingProducts = await this.prisma.shopProduct.findMany({

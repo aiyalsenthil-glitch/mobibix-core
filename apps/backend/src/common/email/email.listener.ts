@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { OnEvent } from '@nestjs/event-emitter';
 import { EmailService } from './email.service';
 import { PrismaService } from '../../core/prisma/prisma.service';
@@ -27,6 +28,7 @@ export class EmailListener {
   constructor(
     private readonly emailService: EmailService,
     private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
   ) {}
 
   @OnEvent('tenant.welcome')
@@ -38,6 +40,10 @@ export class EmailListener {
       return;
     }
 
+    const baseUrl = event.module === 'MOBILE_SHOP' 
+      ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.mobibix.com'
+      : this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
+
     await this.emailService.send({
       tenantId: event.tenant.id,
       recipientType: 'TENANT',
@@ -48,7 +54,7 @@ export class EmailListener {
       subject: `Welcome to ${event.module === 'MOBILE_SHOP' ? 'MobiBix' : 'GymPilot'}! 🚀`,
       data: {
         name: event.user.fullName || 'User',
-        link: `https://${event.module === 'MOBILE_SHOP' ? 'shop' : 'gym'}.mobibix.in`,
+        link: baseUrl,
       },
     });
   }
@@ -69,6 +75,10 @@ export class EmailListener {
       return;
     }
 
+    const baseUrl = module === 'MOBILE_SHOP'
+      ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.mobibix.com'
+      : this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
+
     await this.emailService.send({
       tenantId,
       recipientType: 'TENANT',
@@ -80,7 +90,7 @@ export class EmailListener {
       data: {
         tenantName: tenant.name,
         daysLeft,
-        upgradeLink: `https://${module === 'MOBILE_SHOP' ? 'shop' : 'gym'}.mobibix.in/settings/billing`,
+        upgradeLink: `${baseUrl}/settings/billing`,
       },
     });
   }
@@ -90,6 +100,8 @@ export class EmailListener {
     const { tenantId, module, member, expiryDate } = event;
 
     if (module !== 'GYM') return; // Safety check
+
+    const baseUrl = this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
 
     await this.emailService.send({
       tenantId,
@@ -102,7 +114,7 @@ export class EmailListener {
       data: {
         name: member.fullName,
         expiryDate: expiryDate.toDateString(),
-        renewLink: `https://mobibix.in/pay/${tenantId}/${member.id}`,
+        renewLink: `${baseUrl}/pay/${tenantId}/${member.id}`,
       },
     });
   }
@@ -124,6 +136,10 @@ export class EmailListener {
     const ownerEmail = tenant?.users[0]?.email;
     if (!ownerEmail) return;
 
+    const baseUrl = module === 'MOBILE_SHOP'
+      ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.mobibix.com'
+      : this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
+
     await this.emailService.send({
       tenantId,
       recipientType: 'TENANT',
@@ -143,7 +159,7 @@ export class EmailListener {
         nextRetry: nextRetry
           ? nextRetry.toDateString() + ' ' + nextRetry.toLocaleTimeString()
           : null,
-        payLink: `https://${module === 'MOBILE_SHOP' ? 'shop' : 'gym'}.mobibix.in/settings/billing`,
+        payLink: `${baseUrl}/settings/billing`,
       },
     });
   }

@@ -1,6 +1,7 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { YearFormat, ResetPolicy } from '@prisma/client';
+import { YearFormat, ResetPolicy, ModuleType } from '@prisma/client';
+import { PlanRulesService } from '../billing/plan-rules.service';
 import { CreateShopDto } from './dto/create-shop.dto';
 import { UpdateShopDto } from './dto/update-shop.dto';
 import { UpdateShopSettingsDto } from './dto/update-shop-settings.dto';
@@ -18,6 +19,7 @@ export class ShopService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly docNumberService: DocumentNumberService,
+    private readonly planRulesService: PlanRulesService,
   ) {}
 
   async listShops(
@@ -66,36 +68,12 @@ export class ShopService {
     }
 
     // ───────────────────────────────────────────────
-    // 🛡️ MULTI-SHOP GUARD
+    // 🛡️ LIVE LIMIT ENFORCEMENT (Downgrade Bypass Protection)
     // ───────────────────────────────────────────────
-    const shopCount = await this.prisma.shop.count({ where: { tenantId } });
-    if (shopCount >= 1) {
-      // Check if plan allows multi-shop
-      const subscription = await this.prisma.tenantSubscription.findFirst({
-        where: { tenantId, status: 'ACTIVE' },
-        include: { plan: true },
-        orderBy: { startDate: 'desc' },
-      });
-
-      // Default to TRIAL capabilities if no active sub, but safer to be restrictive if we can't determine
-      // Actually, if no sub, they might be in implicit trial or expired.
-      // Let's assume 'MOBIBIX_TRIAL' if nothing found for now, or fetch from tenant type.
-      const planCode = subscription?.plan?.code ?? 'MOBIBIX_TRIAL';
-
-      const capabilities =
-        PLAN_CAPABILITIES[planCode as keyof typeof PLAN_CAPABILITIES];
-
-      const canUseMultiShop =
-        'canUseMultiShop' in capabilities
-          ? capabilities.canUseMultiShop
-          : false;
-
-      if (!canUseMultiShop) {
-        throw new ForbiddenException(
-          'Your current plan does not support multiple shops. Please upgrade to Pro.',
-        );
-      }
-    }
+    await this.planRulesService.checkRuntimeLimits(
+      tenantId,
+      ModuleType.MOBILE_SHOP,
+    );
 
     const shop = await this.prisma.shop.create({
       data: {

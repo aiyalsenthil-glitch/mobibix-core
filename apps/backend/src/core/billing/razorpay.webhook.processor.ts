@@ -87,6 +87,11 @@ export class RazorpayWebhookProcessor extends WorkerHost {
           await this.handlePaymentDisputeCreated(payload.dispute.entity, payload.payment.entity);
           break;
 
+        case 'payment.dispute.won':
+        case 'payment.dispute.lost':
+          await this.handlePaymentDisputeResolved(payload.dispute.entity, payload.payment.entity, event);
+          break;
+
         default:
           this.logger.log(`Unhandled event type: ${event}`);
       }
@@ -268,14 +273,16 @@ export class RazorpayWebhookProcessor extends WorkerHost {
           },
         });
 
-        await this.prisma.billingEventLog.create({
-          data: {
-            tenantId: subscription.tenantId,
-            eventType: 'payment.captured.link_activated',
-            providerReferenceId: payment.id,
-            statusAfter: 'ACTIVE',
-          },
-        });
+        if (subscription.tenantId) {
+          await this.prisma.billingEventLog.create({
+            data: {
+              tenantId: subscription.tenantId,
+              eventType: 'payment.captured.link_activated',
+              providerReferenceId: payment.id,
+              statusAfter: 'ACTIVE',
+            },
+          });
+        }
 
         this.eventEmitter.emit('subscription.active', {
           tenantId: subscription.tenantId,
@@ -572,28 +579,29 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     );
 
     // Audit log (best-effort — don't block on failure)
-    await this.prisma.billingEventLog
-      .create({
-        data: {
-          // tenantId resolved via the first matched subscription for the log
-          tenantId: (
-            await this.prisma.tenantSubscription.findFirst({
-              where: { providerSubscriptionId: subId },
-              select: { tenantId: true },
-            })
-          )?.tenantId ?? 'unknown',
-          eventType: 'subscription.cancelled',
-          providerReferenceId: subId,
-          statusBefore: 'ACTIVE',
-          statusAfter: 'CANCELLED',
-        },
-      })
-      .catch((err) =>
-        this.logger.error(
-          `Failed to write BillingEventLog for cancellation of ${subId}`,
-          err,
-        ),
-      );
+    const logSub = await this.prisma.tenantSubscription.findFirst({
+      where: { providerSubscriptionId: subId },
+      select: { tenantId: true },
+    });
+
+    if (logSub?.tenantId) {
+      await this.prisma.billingEventLog
+        .create({
+          data: {
+            tenantId: logSub.tenantId,
+            eventType: 'subscription.cancelled',
+            providerReferenceId: subId,
+            statusBefore: 'ACTIVE',
+            statusAfter: 'CANCELLED',
+          },
+        })
+        .catch((err) =>
+          this.logger.error(
+            `Failed to write BillingEventLog for cancellation of ${subId}`,
+            err,
+          ),
+        );
+    }
   }
 
   private async handlePaymentFailed(payment: any) {
@@ -673,6 +681,20 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     if (!internalPayment) {
       this.logger.error(`Internal payment record not found for refund: ${payment.id}`);
       return;
+    }
+
+    // 🚩 DOUBLE REFUND / CHARGEBACK PROTECTION
+    if (internalPayment.status === 'DISPUTED') {
+      this.logger.error(`🚨 CRITICAL: Refund received for DISPUTED payment ${internalPayment.id}. This may indicate a double refund risk! Check Razorpay dashboard.`);
+      await this.prisma.billingEventLog.create({
+        data: {
+          tenantId: internalPayment.tenantId,
+          eventType: 'payment.refund_dispute_collision',
+          providerReferenceId: refund?.id || payment.id,
+          statusBefore: 'DISPUTED',
+          statusAfter: 'REFUNDED',
+        }
+      }).catch(err => this.logger.error('Failed to log refund collision', err));
     }
 
     // Double Refund / Chargeback Guard
@@ -797,5 +819,57 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     });
 
     this.logger.warn(`Access suspended for tenant ${internalPayment.tenantId} due to dispute.`);
+  }
+
+  private async handlePaymentDisputeResolved(dispute: any, payment: any, event: string) {
+    const internalPayment = await this.prisma.payment.findFirst({
+      where: { providerPaymentId: payment.id },
+    });
+
+    if (!internalPayment) {
+      this.logger.error(`Internal payment record not found for dispute resolution: ${payment.id}`);
+      return;
+    }
+
+    const isWon = event === 'payment.dispute.won';
+
+    await this.prisma.$transaction(async (tx) => {
+      // Update Payment Status
+      await tx.payment.update({
+        where: { id: internalPayment.id },
+        data: { status: isWon ? 'SUCCESS' : 'CHARGEBACK' },
+      });
+
+      // Update Subscription if needed
+      const sub = await tx.tenantSubscription.findFirst({
+        where: {
+          tenantId: internalPayment.tenantId,
+          module: internalPayment.module,
+          status: 'DISPUTED',
+        },
+      });
+
+      if (sub) {
+        await tx.tenantSubscription.update({
+          where: { id: sub.id },
+          data: {
+            status: isWon ? SubscriptionStatus.ACTIVE : SubscriptionStatus.CANCELLED,
+            updatedAt: new Date(),
+          },
+        });
+      }
+
+      await tx.billingEventLog.create({
+        data: {
+          tenantId: internalPayment.tenantId,
+          eventType: event,
+          providerReferenceId: dispute.id,
+          statusBefore: 'DISPUTED',
+          statusAfter: isWon ? 'SUCCESS' : 'CHARGEBACK',
+        },
+      });
+    });
+
+    this.logger.log(`Dispute ${dispute.id} resolved as ${isWon ? 'WON' : 'LOST'}. Status updated.`);
   }
 }
