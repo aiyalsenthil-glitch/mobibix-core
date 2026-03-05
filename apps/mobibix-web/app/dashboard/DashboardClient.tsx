@@ -7,9 +7,11 @@ import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useTheme } from "@/context/ThemeContext";
 import { Topbar } from "@/components/layout/topbar";
 import { SubscriptionAlert } from "@/components/subscription/SubscriptionAlert";
+import { X } from "lucide-react";
 
 export function DashboardClient({ children }: { children: React.ReactNode }) {
   const [openMore, setOpenMore] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const { theme } = useTheme();
 
@@ -196,12 +198,184 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
         {/* Fixed Topbar across dashboard */}
         <div className="fixed top-0 right-0 left-0 md:left-64 z-20">
             <SubscriptionAlert />
-            <Topbar isCollapsed={false} />
+            <Topbar 
+              isCollapsed={false} 
+              onMenuClick={() => setIsMobileMenuOpen(true)} 
+            />
         </div>
         <div className="pt-28 min-h-screen bg-white dark:bg-black p-4 md:p-8">
           {children}
         </div>
       </main>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm" 
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          
+          {/* Sidebar Sliding Panel */}
+          <aside
+            className={`relative w-64 h-full ${sidebarBg} flex flex-col p-4 overflow-y-auto animate-in slide-in-from-left-full duration-300 shadow-2xl`}
+          >
+            <div className="flex items-center justify-between mb-8 pt-2 px-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-teal-500 rounded-full"></div>
+                <div className="flex flex-col">
+                  <span className="text-lg font-bold">MobiBix</span>
+                  <span className="text-[10px] text-muted-foreground leading-none">
+                    Mobile Shop OS
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <ThemeSwitcher />
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <nav className="space-y-2 flex-1">
+              <Link
+                href="/dashboard"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-4 py-3 rounded-lg transition-all ${
+                  isActive("/dashboard") && pathname === "/dashboard"
+                    ? navItemActive
+                    : navItemInactive
+                }`}
+              >
+                📊 Dashboard
+              </Link>
+              <Link
+                href="/pricing"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-4 py-3 rounded-lg transition-all ${
+                  isActive("/pricing") ? navItemActive : navItemInactive
+                }`}
+              >
+                🏷️ Pricing
+              </Link>
+              <Link
+                href="/sales"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-4 py-3 rounded-lg transition-all ${
+                  isActive("/sales") ? navItemActive : navItemInactive
+                }`}
+              >
+                💰 Sales
+              </Link>
+              <Link
+                href="/jobcards"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-4 py-3 rounded-lg transition-all ${
+                  isActive("/jobcards") ? navItemActive : navItemInactive
+                }`}
+              >
+                🔧 Job Cards
+              </Link>
+              <Link
+                href="/inventory"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-4 py-3 rounded-lg transition-all ${
+                  isActive("/inventory") ? navItemActive : navItemInactive
+                }`}
+              >
+                📦 Inventory
+              </Link>
+              <Link
+                href="/restock"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-4 py-3 rounded-lg transition-all ${
+                  isActive("/restock") ? navItemActive : navItemInactive
+                }`}
+              >
+                🚀 Restock
+              </Link>
+
+              <Link
+                href="/partner"
+                target="_blank"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-4 py-3 rounded-lg transition-all ${
+                  theme === "dark"
+                    ? "bg-teal-500/10 border border-teal-500/30 text-teal-400 hover:bg-teal-500/20"
+                    : "bg-teal-50 border border-teal-200 text-teal-700 hover:bg-teal-100"
+                } font-bold`}
+              >
+                🤝 Become a Partner
+              </Link>
+
+              {/* More Menu */}
+              <div>
+                <button
+                  onClick={() => setOpenMore(!openMore)}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-all flex items-center justify-between ${navItemInactive}`}
+                >
+                  <span>⋯ More</span>
+                  <span
+                    className={`transition-transform ${openMore ? "rotate-180" : ""}`}
+                  >
+                    ▼
+                  </span>
+                </button>
+                {openMore && (
+                  <div
+                    className={`ml-2 mt-1 space-y-1 pl-3 border-l ${
+                      theme === "dark" ? "border-white/10" : "border-gray-300"
+                    }`}
+                  >
+                    <Link
+                      href="/customers"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`block px-4 py-2 rounded-lg transition-all text-sm ${
+                        isActive("/customers") ? navItemActive : navItemInactive
+                      }`}
+                    >
+                      👥 Customers
+                    </Link>
+                    <Link
+                      href="/reports"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`block px-4 py-2 rounded-lg transition-all text-sm ${
+                        isActive("/reports") ? navItemActive : navItemInactive
+                      }`}
+                    >
+                      📊 Reports
+                    </Link>
+                    <Link
+                      href="/shops"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`block px-4 py-2 rounded-lg transition-all text-sm ${
+                        isActive("/shops") ? navItemActive : navItemInactive
+                      }`}
+                    >
+                      🏪 Shops
+                    </Link>
+                    <Link
+                      href="/settings"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`block px-4 py-2 rounded-lg transition-all text-sm ${
+                        isActive("/settings") ? navItemActive : navItemInactive
+                      }`}
+                    >
+                      ⚙️ Settings
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </nav>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }
+

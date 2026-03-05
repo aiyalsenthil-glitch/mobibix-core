@@ -6,8 +6,10 @@ import {
   IsEnum,
   Length,
   Matches,
+  IsNumber,
+  Min,
 } from 'class-validator';
-import { PartnerType } from '@prisma/client';
+import { PartnerType, ModuleType } from '@prisma/client';
 
 export class CreatePartnerDto {
   @IsString()
@@ -54,10 +56,13 @@ export class GeneratePromoDto {
   @IsNotEmpty()
   type: string; // PromoCodeType
 
-  @IsNotEmpty()
+  @IsNumber()
+  @Min(1)
   durationDays: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(1)
   maxUses?: number;
 
   @IsOptional()
@@ -65,5 +70,10 @@ export class GeneratePromoDto {
   partnerId?: string;
 
   @IsOptional()
+  @IsString()
   expiresAt?: string; // ISO date string
+
+  @IsOptional()
+  @IsEnum(ModuleType)
+  module?: ModuleType; // GYM | MOBILE_SHOP — scopes which plan tier to apply
 }

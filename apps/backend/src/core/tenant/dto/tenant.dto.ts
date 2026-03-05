@@ -55,6 +55,10 @@ export class CreateTenantDto {
 
   @IsOptional()
   @IsString()
+  taxSystem?: string;
+
+  @IsOptional()
+  @IsString()
   currency?: string;
 
   @IsOptional()
@@ -126,6 +130,10 @@ export class UpdateTenantSettingsDto {
   @IsOptional()
   @IsString()
   country?: string;
+
+  @IsOptional()
+  @IsString()
+  taxSystem?: string;
 
   @IsOptional()
   @IsString()

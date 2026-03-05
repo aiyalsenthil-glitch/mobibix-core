@@ -26,6 +26,7 @@ import { PlatformModule } from './platform/platform.module';
 import { ReportsHardeningModule } from './reports/reports-hardening.module';
 import { SystemModule } from './system/system.module';
 import { PermissionsModule } from './permissions/permissions.module';
+import { AppConfigModule } from './config/config.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { PermissionsModule } from './permissions/permissions.module';
     ReportsHardeningModule,
     SystemModule,
     PermissionsModule,
+    AppConfigModule,
   ],
   exports: [
     AuthModule,

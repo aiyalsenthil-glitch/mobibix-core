@@ -15,8 +15,10 @@ import {
   Loader2,
   AlertCircle,
   Gift,
+  Menu,
+  X,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface PartnerStats {
   referralCode: string;
@@ -51,6 +53,7 @@ export default function PartnerDashboard() {
   const [stats, setStats] = useState<PartnerStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("partner_token");
@@ -115,9 +118,65 @@ export default function PartnerDashboard() {
     : [];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col lg:flex-row">
-      {/* Sidebar */}
-      <aside className="hidden lg:flex w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col p-6 space-y-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col lg:flex-row relative">
+      {/* Mobile Header */}
+      <div className="lg:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30">
+        <img src="/assets/mobibix-main-logo.png" alt="MobiBix" className="h-8 w-auto object-contain" />
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            />
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+              className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col p-6 space-y-8 z-50 lg:hidden"
+            >
+              <div className="flex items-center justify-between">
+                <img src="/assets/mobibix-main-logo.png" alt="MobiBix" className="h-10 w-auto object-contain" />
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <nav className="flex-1 space-y-1">
+                <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-bold">
+                  <LayoutDashboard className="w-5 h-5" /> Dashboard
+                </a>
+              </nav>
+              <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all w-full"
+                >
+                  <LogOut className="w-5 h-5" /> Logout
+                </button>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col p-6 space-y-8 h-screen sticky top-0">
         <img src="/assets/mobibix-main-logo.png" alt="MobiBix" className="h-12 w-auto object-contain" />
         <nav className="flex-1 space-y-1">
           <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-bold">
@@ -135,7 +194,7 @@ export default function PartnerDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-6 lg:p-10">
+      <main className="flex-1 p-6 lg:p-10 w-full overflow-x-hidden">
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">

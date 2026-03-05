@@ -34,9 +34,22 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.aiyal.mobibix.core.app.AppState
 import com.aiyal.mobibix.data.network.BusinessCategory
+import com.aiyal.mobibix.data.network.CountryOption
 import com.aiyal.mobibix.data.network.CreateTenantRequest
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
+
+// Default fallback list mirrors /api/config/countries response
+private val DEFAULT_COUNTRIES = listOf(
+    CountryOption("IN",  "India",                 "INR", "₹",   "+91",  "GST",  "Asia/Kolkata",      true),
+    CountryOption("AE",  "United Arab Emirates",  "AED", "د.إ", "+971", "VAT",  "Asia/Dubai",        false),
+    CountryOption("SG",  "Singapore",             "SGD", "S\$",  "+65",  "GST",  "Asia/Singapore",    false),
+    CountryOption("MY",  "Malaysia",              "MYR", "RM",  "+60",  "SST",  "Asia/Kuala_Lumpur", false),
+    CountryOption("CA",  "Canada",                "CAD", "C\$",  "+1",   "NONE", "America/Toronto",   false),
+    CountryOption("GB",  "United Kingdom",        "GBP", "£",   "+44",  "VAT",  "Europe/London",     false),
+    CountryOption("US",  "United States",         "USD", "\$",   "+1",   "NONE", "America/New_York",  false),
+    CountryOption("AU",  "Australia",             "AUD", "A\$",  "+61",  "GST",  "Australia/Sydney",  false),
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +79,13 @@ fun TenantRequiredScreen(
     var selectedCategory by remember { mutableStateOf<BusinessCategory?>(null) }
     var isExpanded by remember { mutableStateOf(false) }
 
+    // Country selection — loaded from /api/config/countries with static fallback
+    var countries by remember { mutableStateOf(DEFAULT_COUNTRIES) }
+    var selectedCountry by remember { mutableStateOf(DEFAULT_COUNTRIES.first()) }
+    var currency by remember { mutableStateOf(DEFAULT_COUNTRIES.first().currency) }
+    var timezone by remember { mutableStateOf(DEFAULT_COUNTRIES.first().timezone) }
+    var isCountryExpanded by remember { mutableStateOf(false) }
+
     // Location & Regional Fields
     var contactPhone by remember { mutableStateOf("") }
     var addressLine1 by remember { mutableStateOf("") }
@@ -82,6 +102,7 @@ fun TenantRequiredScreen(
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
+        // Load business categories
         try {
             categories = tenantApi.getBusinessCategories()
             if (categories.isNotEmpty()) {
@@ -91,6 +112,21 @@ fun TenantRequiredScreen(
             error = "Failed to load business categories: ${e.message}"
         } finally {
             categoriesLoading = false
+        }
+
+        // Load dynamic country list from /api/config/countries (fail-safe)
+        try {
+            val fetched = tenantApi.getCountries()
+            if (fetched.isNotEmpty()) {
+                countries = fetched
+                // Re-apply defaults from the loaded list
+                val india = fetched.firstOrNull { it.code == "IN" } ?: fetched.first()
+                selectedCountry = india
+                currency = india.currency
+                timezone = india.timezone
+            }
+        } catch (e: Exception) {
+            // Silent fallback — DEFAULT_COUNTRIES is already set
         }
     }
 
@@ -206,10 +242,61 @@ fun TenantRequiredScreen(
         Text("Location & Tax", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.Start))
         Spacer(Modifier.height(8.dp))
 
+        // Country Selector (dynamic list from API)
+        ExposedDropdownMenuBox(
+            expanded = isCountryExpanded,
+            onExpandedChange = { isCountryExpanded = it },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = selectedCountry.name,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Country *") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCountryExpanded) },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                modifier = Modifier.menuAnchor().fillMaxWidth()
+            )
+
+            ExposedDropdownMenu(
+                expanded = isCountryExpanded,
+                onDismissRequest = { isCountryExpanded = false }
+            ) {
+                countries.forEach { country ->
+                    DropdownMenuItem(
+                        text = { Text("${country.name}  ${country.currencySymbol} ${country.currency}") },
+                        onClick = {
+                            selectedCountry = country
+                            currency = country.currency
+                            timezone = country.timezone
+                            // Clear GST when switching away from India
+                            if (!country.hasGstField) gstNumber = ""
+                            isCountryExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
         OutlinedTextField(
             value = contactPhone,
-            onValueChange = { contactPhone = it },
+            onValueChange = { input ->
+                val cleaned = input.filter { it.isDigit() }
+                contactPhone = if (selectedCountry.code == "IN") {
+                    if (cleaned.startsWith("0")) cleaned.drop(1).take(10) else cleaned.take(10)
+                } else {
+                    cleaned.take(15)
+                }
+            },
             label = { Text("Contact Phone *") },
+            prefix = {
+                Text(text = "${selectedCountry.phonePrefix} ", color = MaterialTheme.colorScheme.primary)
+            },
+            placeholder = {
+                Text(if (selectedCountry.code == "IN") "10-digit number" else "Mobile Number")
+            },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -249,20 +336,22 @@ fun TenantRequiredScreen(
         OutlinedTextField(
             value = pincode,
             onValueChange = { pincode = it },
-            label = { Text("Pincode") },
+            label = { Text("Pincode / Zip") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = gstNumber,
-            onValueChange = { gstNumber = it },
-            label = { Text("GST / Tax Registration (Optional)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
+        // GST field — only shown for India (driven by hasGstField from API)
+        if (selectedCountry.hasGstField) {
+            Spacer(Modifier.height(16.dp))
+            OutlinedTextField(
+                value = gstNumber,
+                onValueChange = { gstNumber = it.uppercase() },
+                label = { Text("GST Number (Optional)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
         Spacer(Modifier.height(24.dp))
 
@@ -312,10 +401,24 @@ fun TenantRequiredScreen(
         Button(
             onClick = {
                 if (loading || selectedCategory == null || isComingSoon) return@Button
+                
+                // Regional phone validation
+                val isPhoneValid = if (selectedCountry.code == "IN") {
+                    contactPhone.length == 10 && contactPhone.first() in '6'..'9'
+                } else {
+                    contactPhone.length >= 8
+                }
+
                 if (businessName.isBlank() || contactPhone.isBlank() || city.isBlank() || state.isBlank()) {
                     error = "Please fill in all required (*) fields"
                     return@Button
                 }
+
+                if (!isPhoneValid) {
+                    error = if (selectedCountry.code == "IN") "Please enter a valid 10-digit mobile number" else "Please enter a valid mobile number"
+                    return@Button
+                }
+
                 if (!agreedToTerms) {
                     error = "You must agree to the Terms and Privacy Policy"
                     return@Button
@@ -326,19 +429,28 @@ fun TenantRequiredScreen(
 
                 scope.launch {
                     try {
+                        // Prepend dialing prefix for non-India numbers
+                        val finalPhone = if (selectedCountry.code != "IN") {
+                            "${selectedCountry.phonePrefix}$contactPhone"
+                        } else {
+                            contactPhone
+                        }
+
                         val response = tenantApi.createTenant(
                             CreateTenantRequest(
                                 name = businessName.trim(),
                                 businessType = selectedCategory!!.name,
                                 businessCategoryId = selectedCategory!!.id,
                                 legalName = legalName.trim().takeIf { it.isNotEmpty() },
-                                contactPhone = contactPhone.trim(),
+                                contactPhone = finalPhone,
                                 addressLine1 = addressLine1.trim().takeIf { it.isNotEmpty() },
+                                city = city.trim(),
                                 state = state.trim(),
                                 pincode = pincode.trim().takeIf { it.isNotEmpty() },
-                                gstNumber = gstNumber.trim().takeIf { it.isNotEmpty() },
-                                currency = "INR",
-                                timezone = "Asia/Kolkata",
+                                gstNumber = if (selectedCountry.hasGstField) gstNumber.trim().takeIf { it.isNotEmpty() } else null,
+                                country = selectedCountry.name,
+                                currency = currency,
+                                timezone = timezone,
                                 marketingConsent = marketingConsent,
                                 acceptedPolicyVersion = "2026-03-01",
                                 promoCode = promoCode.trim().takeIf { it.isNotEmpty() }

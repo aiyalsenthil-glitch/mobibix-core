@@ -99,6 +99,9 @@ export class TenantService {
         legalName: dto.legalName,
         code,
         tenantType: dto.tenantType ?? 'GYM',
+        country: dto.country ?? 'India',
+        currency: dto.currency || 'INR',
+        timezone: dto.timezone || 'Asia/Kolkata',
         businessType: dto.businessType,
         businessCategoryId: dto.businessCategoryId,
 
@@ -107,9 +110,6 @@ export class TenantService {
         city: dto.city,
         state: dto.state,
         pincode: dto.pincode,
-        country: dto.country,
-        currency: dto.currency,
-        timezone: dto.timezone,
         ...getCreateAudit(userId), // ✅ Capture who created
 
         // 🔐 Legal & Compliance Recording
@@ -213,10 +213,12 @@ export class TenantService {
         });
 
         if (promo?.type === 'FREE_TRIAL') {
-          // Set plan = PRO and extend duration
+          // Derive correct plan code per module — seeded codes are MOBIBIX_PRO / GYM_PRO
+          const planCode =
+            effectiveTenantType === 'MOBILE_SHOP' ? 'MOBIBIX_PRO' : 'GYM_PRO';
           const proPlan = await this.prisma.plan.findFirst({
             where: {
-              code: 'PRO',
+              code: planCode,
               module:
                 effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
             },
@@ -289,6 +291,7 @@ export class TenantService {
         businessType: data.businessType,
         currency: data.currency,
         timezone: data.timezone,
+        // taxSystem will be available after: npx prisma generate
         logoUrl: data.logoUrl,
         marketingConsent: data.marketingConsent,
       },
@@ -496,10 +499,18 @@ export class TenantService {
       };
     }
 
-    // 1️⃣ Fetch subscription + plan
+    // 1️⃣ Fetch subscription + plan (scoped to correct module, newest first)
+    const tenantRow = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { tenantType: true },
+    });
+    const tenantModule =
+      tenantRow?.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
+
     const subscription = await this.prisma.tenantSubscription.findFirst({
-      where: { tenantId },
+      where: { tenantId, module: tenantModule },
       include: { plan: true },
+      orderBy: { createdAt: 'desc' },
     });
 
     // 2️⃣ If tenant exists but no subscription yet
@@ -517,19 +528,11 @@ export class TenantService {
 
     const plan = subscription.plan;
 
-    // 3️⃣ Determine module from tenant type
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { tenantType: true },
-    });
-
-    const module =
-      tenant?.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
-
+    // 3️⃣ Module already resolved from tenantRow above — reuse it
     // 4️⃣ Resolve capabilities
     const rules = await this.planRulesService.getPlanRulesForTenant(
       tenantId,
-      module, // 🔥 Pass module
+      tenantModule,
     );
 
     // 4️⃣ Count members
