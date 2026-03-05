@@ -1,5 +1,15 @@
 package com.aiyal.mobibix.core.app
 
+object UserRole {
+    const val OWNER = "OWNER"
+    const val ADMIN = "ADMIN"
+    const val MANAGER = "MANAGER"
+    const val STAFF = "STAFF"
+    const val TECHNICIAN = "TECHNICIAN"
+    const val ACCOUNTANT = "ACCOUNTANT"
+    const val SUPERVISOR = "SUPERVISOR"
+}
+
 sealed class AppState {
     object TenantRequired : AppState()
     object ComingSoonBusiness : AppState()

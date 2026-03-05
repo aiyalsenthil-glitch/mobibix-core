@@ -31,58 +31,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import com.aiyal.mobibix.R
 import kotlinx.coroutines.delay
 
-@Composable
-fun AuroraBackground() {
-    val infiniteTransition = rememberInfiniteTransition(label = "aurora")
-    
-    // Primary fluid motion
-    val time by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 2 * Math.PI.toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(40000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "time"
-    )
-
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF020617))) {
-        // Blob 1 - Top Leftish - Emerald/Teal
-        val x1 = (kotlin.math.sin(time.toDouble()) * 150).dp
-        val y1 = (kotlin.math.cos(time.toDouble() * 0.8) * 100).dp
-        Box(
-            modifier = Modifier
-                .offset(x = x1, y = y1)
-                .size(600.dp)
-                .blur(150.dp)
-                .background(Color(0xFF10B981).copy(alpha = 0.12f), CircleShape)
-        )
-        
-        // Blob 2 - Bottom Rightish - Blue/Teal
-        val x2 = (kotlin.math.cos(time.toDouble() * 1.2) * 200).dp
-        val y2 = (kotlin.math.sin(time.toDouble() * 0.5) * 150).dp
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .offset(x = x2, y = y2)
-                .size(500.dp)
-                .blur(180.dp)
-                .background(Color(0xFF0EA5E9).copy(alpha = 0.15f), CircleShape)
-        )
-        
-        // Blob 3 - Moving Center - Primary Brand Teal
-        val x3 = (kotlin.math.sin(time.toDouble() * 0.7) * 100).dp
-        val y3 = (kotlin.math.sin(time.toDouble() * 1.1) * 80).dp
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .offset(x = x3, y = y3)
-                .size(700.dp)
-                .blur(200.dp)
-                .background(Color(0xFF14B8A6).copy(alpha = 0.08f), CircleShape)
-        )
-    }
-}
+import com.aiyal.mobibix.ui.components.AuroraBackground
 
 @Composable
 fun AuthScreen(
@@ -134,7 +83,7 @@ fun AuthScreen(
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 4.sp,
-                            color = Color.White.copy(alpha = 0.5f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Spacer(Modifier.height(12.dp))
@@ -146,7 +95,7 @@ fun AuthScreen(
                         },
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -158,17 +107,23 @@ fun AuthScreen(
                 visible = isVisible,
                 enter = fadeIn(tween(1000, 200)) + slideInVertically(tween(1000, 200)) { 40 }
             ) {
+                // Get responsive isLight value to drive some alpha/color tweaks inside the glass panel
+                val isLight = MaterialTheme.colorScheme.background.red > 0.5f
+                val glassPanelColor = if (isLight) Color.White.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.05f)
+                val glassBorderStart = if (isLight) Color.White.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f)
+                val glassBorderEnd = if (isLight) Color.White.copy(alpha = 0.2f) else Color.Transparent
+
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .border(
                             1.dp,
                             Brush.verticalGradient(
-                                colors = listOf(Color.White.copy(alpha = 0.1f), Color.Transparent)
+                                colors = listOf(glassBorderStart, glassBorderEnd)
                             ),
                             RoundedCornerShape(32.dp)
                         ),
-                    color = Color.White.copy(alpha = 0.05f),
+                    color = glassPanelColor,
                     shape = RoundedCornerShape(32.dp),
                 ) {
                     Column(
@@ -202,8 +157,8 @@ fun AuthScreen(
                                     enabled = !uiState.isLoading,
                                     modifier = Modifier.fillMaxWidth().height(56.dp),
                                     shape = RoundedCornerShape(20.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                                 ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(painter = painterResource(id = R.drawable.ic_google_logo), "Google", modifier = Modifier.size(20.dp), tint = Color.Unspecified)
@@ -215,9 +170,9 @@ fun AuthScreen(
                                 Spacer(modifier = Modifier.height(24.dp))
                                 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.1f))
-                                    Text(" OR ", color = Color.White.copy(alpha = 0.3f), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp))
-                                    HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.1f))
+                                    HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                                    Text(" OR ", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp))
+                                    HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
                                 }
 
                                 Spacer(modifier = Modifier.height(24.dp))
@@ -225,17 +180,17 @@ fun AuthScreen(
                                 OutlinedTextField(
                                     value = email,
                                     onValueChange = { email = it },
-                                    placeholder = { Text("Email Address", color = Color.White.copy(alpha = 0.3f)) },
+                                    placeholder = { Text("Email Address", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     enabled = !uiState.isLoading,
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(18.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        unfocusedTextColor = Color.White,
-                                        focusedTextColor = Color.White,
-                                        unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
                                         focusedBorderColor = Color(0xFF14B8A6),
-                                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
-                                        focusedContainerColor = Color.White.copy(alpha = 0.08f)
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
+                                        focusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
                                     )
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
@@ -251,28 +206,28 @@ fun AuthScreen(
                             }
 
                             AuthStep.LOGIN_PASS -> {
-                                Text(email, color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall)
+                                Text(email, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                                 Spacer(modifier = Modifier.height(20.dp))
                                 
                                 OutlinedTextField(
                                     value = password,
                                     onValueChange = { password = it },
-                                    placeholder = { Text("Password", color = Color.White.copy(alpha = 0.3f)) },
+                                    placeholder = { Text("Password", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     enabled = !uiState.isLoading,
                                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(18.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        unfocusedTextColor = Color.White,
-                                        focusedTextColor = Color.White,
-                                        unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
                                         focusedBorderColor = Color(0xFF14B8A6),
-                                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
-                                        focusedContainerColor = Color.White.copy(alpha = 0.08f)
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
+                                        focusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
                                     ),
                                     trailingIcon = {
                                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                            Icon(if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, null, tint = Color.White.copy(alpha = 0.4f))
+                                            Icon(if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
                                 )
@@ -291,43 +246,43 @@ fun AuthScreen(
                             }
 
                             AuthStep.SIGNUP_PASS -> {
-                                Text(email, color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall)
+                                Text(email, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                                 Spacer(modifier = Modifier.height(20.dp))
 
                                 OutlinedTextField(
                                     value = fullName,
                                     onValueChange = { fullName = it },
-                                    placeholder = { Text("Full Name", color = Color.White.copy(alpha = 0.3f)) },
+                                    placeholder = { Text("Full Name", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(18.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        unfocusedTextColor = Color.White,
-                                        focusedTextColor = Color.White,
-                                        unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
                                         focusedBorderColor = Color(0xFF14B8A6),
-                                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
-                                        focusedContainerColor = Color.White.copy(alpha = 0.08f)
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
+                                        focusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
                                     )
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 OutlinedTextField(
                                     value = password,
                                     onValueChange = { password = it },
-                                    placeholder = { Text("Password", color = Color.White.copy(alpha = 0.3f)) },
+                                    placeholder = { Text("Password", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(18.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        unfocusedTextColor = Color.White,
-                                        focusedTextColor = Color.White,
-                                        unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+                                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
                                         focusedBorderColor = Color(0xFF14B8A6),
-                                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
-                                        focusedContainerColor = Color.White.copy(alpha = 0.08f)
+                                        unfocusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
+                                        focusedContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
                                     ),
                                     trailingIcon = {
                                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                            Icon(if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, null, tint = Color.White.copy(alpha = 0.4f))
+                                            Icon(if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
                                 )
@@ -358,10 +313,10 @@ fun AuthScreen(
                                 Text(
                                     "Check your inbox. We sent a verification link to:",
                                     textAlign = TextAlign.Center,
-                                    color = Color.White.copy(alpha = 0.7f),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
-                                Text(email, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(email, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                                 Spacer(modifier = Modifier.height(32.dp))
                                 
                                 Button(
@@ -390,7 +345,7 @@ fun AuthScreen(
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp,
-                color = Color.White.copy(alpha = 0.2f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

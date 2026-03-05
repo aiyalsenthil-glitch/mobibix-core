@@ -1,54 +1,48 @@
 package com.aiyal.mobibix.ui.features.onboarding
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.aiyal.mobibix.core.app.AppState
 import com.aiyal.mobibix.data.network.BusinessCategory
 import com.aiyal.mobibix.data.network.CountryOption
 import com.aiyal.mobibix.data.network.CreateTenantRequest
+import com.aiyal.mobibix.ui.components.AuroraBackground
+import com.aiyal.mobibix.ui.components.GlassCard
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
 
-// Default fallback list mirrors /api/config/countries response
+private val TealAccent = Color(0xFF00C896)
+
 private val DEFAULT_COUNTRIES = listOf(
     CountryOption("IN",  "India",                 "INR", "₹",   "+91",  "GST",  "Asia/Kolkata",      true),
     CountryOption("AE",  "United Arab Emirates",  "AED", "د.إ", "+971", "VAT",  "Asia/Dubai",        false),
-    CountryOption("SG",  "Singapore",             "SGD", "S\$",  "+65",  "GST",  "Asia/Singapore",    false),
+    CountryOption("SG",  "Singapore",             "SGD", "S$",  "+65",  "GST",  "Asia/Singapore",    false),
     CountryOption("MY",  "Malaysia",              "MYR", "RM",  "+60",  "SST",  "Asia/Kuala_Lumpur", false),
-    CountryOption("CA",  "Canada",                "CAD", "C\$",  "+1",   "NONE", "America/Toronto",   false),
+    CountryOption("CA",  "Canada",                "CAD", "C$",  "+1",   "NONE", "America/Toronto",   false),
     CountryOption("GB",  "United Kingdom",        "GBP", "£",   "+44",  "VAT",  "Europe/London",     false),
-    CountryOption("US",  "United States",         "USD", "\$",   "+1",   "NONE", "America/New_York",  false),
-    CountryOption("AU",  "Australia",             "AUD", "A\$",  "+61",  "GST",  "Australia/Sydney",  false),
+    CountryOption("US",  "United States",         "USD", "$",   "+1",   "NONE", "America/New_York",  false),
+    CountryOption("AU",  "Australia",             "AUD", "A$",  "+61",  "GST",  "Australia/Sydney",  false),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,10 +51,7 @@ fun TenantRequiredScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
-    val entryPoint = EntryPointAccessors.fromApplication(
-        context,
-        OnboardingEntryPoint::class.java
-    )
+    val entryPoint = EntryPointAccessors.fromApplication(context, OnboardingEntryPoint::class.java)
 
     val tenantApi = entryPoint.tenantApi()
     val tokenStore = entryPoint.tokenStore()
@@ -69,24 +60,23 @@ fun TenantRequiredScreen(
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
-    // Identity Fields
+    // Wizard State
+    var currentStep by remember { mutableStateOf(1) }
+    
+    // Form Data
     var businessName by remember { mutableStateOf("") }
     var legalName by remember { mutableStateOf("") }
     var promoCode by remember { mutableStateOf("") }
-    
-    // Category Fields
     var categories by remember { mutableStateOf<List<BusinessCategory>>(emptyList()) }
     var selectedCategory by remember { mutableStateOf<BusinessCategory?>(null) }
     var isExpanded by remember { mutableStateOf(false) }
 
-    // Country selection — loaded from /api/config/countries with static fallback
     var countries by remember { mutableStateOf(DEFAULT_COUNTRIES) }
     var selectedCountry by remember { mutableStateOf(DEFAULT_COUNTRIES.first()) }
     var currency by remember { mutableStateOf(DEFAULT_COUNTRIES.first().currency) }
     var timezone by remember { mutableStateOf(DEFAULT_COUNTRIES.first().timezone) }
     var isCountryExpanded by remember { mutableStateOf(false) }
 
-    // Location & Regional Fields
     var contactPhone by remember { mutableStateOf("") }
     var addressLine1 by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
@@ -102,150 +92,360 @@ fun TenantRequiredScreen(
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        // Load business categories
         try {
             categories = tenantApi.getBusinessCategories()
             if (categories.isNotEmpty()) {
                 selectedCategory = categories.firstOrNull { it.name == "Mobile Shop" } ?: categories.firstOrNull()
             }
         } catch (e: Exception) {
-            error = "Failed to load business categories: ${e.message}"
+            error = "Failed to load business categories"
         } finally {
             categoriesLoading = false
         }
 
-        // Load dynamic country list from /api/config/countries (fail-safe)
         try {
             val fetched = tenantApi.getCountries()
             if (fetched.isNotEmpty()) {
                 countries = fetched
-                // Re-apply defaults from the loaded list
                 val india = fetched.firstOrNull { it.code == "IN" } ?: fetched.first()
                 selectedCountry = india
                 currency = india.currency
                 timezone = india.timezone
             }
-        } catch (e: Exception) {
-            // Silent fallback — DEFAULT_COUNTRIES is already set
-        }
+        } catch (e: Exception) {}
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 24.dp)
-            .verticalScroll(scrollState),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
+    Box(modifier = Modifier.fillMaxSize()) {
+        AuroraBackground()
+        
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = 24.dp)
+                .verticalScroll(scrollState),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.height(32.dp))
+            
+            // Header
+            Text(
+                text = "Business Setup",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Complete your profile to get started",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(Modifier.height(32.dp))
+
+            // Stepper UI
+            OnboardingStepper(currentStep = currentStep)
+
+            Spacer(Modifier.height(32.dp))
+
+            // Main Card
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    AnimatedContent(
+                        targetState = currentStep,
+                        transitionSpec = {
+                            if (targetState > initialState) {
+                                slideInHorizontally { it } + fadeIn() togetherWith slideOutHorizontally { -it } + fadeOut()
+                            } else {
+                                slideInHorizontally { -it } + fadeIn() togetherWith slideOutHorizontally { it } + fadeOut()
+                            }
+                        },
+                        label = "step_content"
+                    ) { step ->
+                        when(step) {
+                            1 -> IdentityStep(
+                                businessName = businessName,
+                                onBusinessNameChange = { businessName = it },
+                                legalName = legalName,
+                                onLegalNameChange = { legalName = it },
+                                promoCode = promoCode,
+                                onPromoCodeChange = { promoCode = it.uppercase() },
+                                categories = categories,
+                                selectedCategory = selectedCategory,
+                                onCategorySelect = { selectedCategory = it },
+                                categoriesLoading = categoriesLoading,
+                                isExpanded = isExpanded,
+                                onExpandedChange = { isExpanded = it }
+                            )
+                            2 -> LocationStep(
+                                countries = countries,
+                                selectedCountry = selectedCountry,
+                                onCountrySelect = { 
+                                    selectedCountry = it
+                                    currency = it.currency
+                                    timezone = it.timezone
+                                    if (!it.hasGstField) gstNumber = ""
+                                },
+                                contactPhone = contactPhone,
+                                onPhoneChange = { input ->
+                                    val cleaned = input.filter { it.isDigit() }
+                                    contactPhone = if (selectedCountry.code == "IN") {
+                                        if (cleaned.startsWith("0")) cleaned.drop(1).take(10) else cleaned.take(10)
+                                    } else {
+                                        cleaned.take(15)
+                                    }
+                                },
+                                addressLine1 = addressLine1,
+                                onAddressChange = { addressLine1 = it },
+                                city = city,
+                                onCityChange = { city = it },
+                                state = state,
+                                onStateChange = { state = it },
+                                pincode = pincode,
+                                onPincodeChange = { pincode = it },
+                                gstNumber = gstNumber,
+                                onGstChange = { gstNumber = it.uppercase() },
+                                isCountryExpanded = isCountryExpanded,
+                                onCountryExpandedChange = { isCountryExpanded = it }
+                            )
+                            3 -> regionalStep(
+                                selectedCountry = selectedCountry,
+                                currency = currency,
+                                onCurrencyChange = { currency = it },
+                                timezone = timezone,
+                                onTimezoneChange = { timezone = it },
+                                countries = countries,
+                                agreedToTerms = agreedToTerms,
+                                onTermsChange = { agreedToTerms = it },
+                                marketingConsent = marketingConsent,
+                                onMarketingChange = { marketingConsent = it }
+                            )
+                        }
+                    }
+
+                    if (error != null) {
+                        Spacer(Modifier.height(16.dp))
+                        Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+
+                    Spacer(Modifier.height(32.dp))
+
+                    // Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (currentStep > 1) {
+                            TextButton(
+                                onClick = { currentStep--; error = null },
+                                enabled = !loading
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Back")
+                            }
+                        } else {
+                            Box(Modifier.size(1.dp)) // Spacer
+                        }
+
+                        Button(
+                            onClick = {
+                                if (currentStep < 3) {
+                                    if (validateStep(currentStep, businessName, contactPhone, selectedCountry, city, state, agreedToTerms)) {
+                                        currentStep++
+                                        error = null
+                                    } else {
+                                        error = when(currentStep) {
+                                            1 -> "Business name is required"
+                                            2 -> "Required fields (*) missing or invalid"
+                                            else -> null
+                                        }
+                                    }
+                                } else {
+                                    // Submit
+                                    if (!agreedToTerms) {
+                                        error = "Please agree to the Terms & Conditions"
+                                        return@Button
+                                    }
+                                    
+                                    loading = true
+                                    error = null
+                                    scope.launch {
+                                        try {
+                                            val finalPhone = if (selectedCountry.code != "IN") {
+                                                "${selectedCountry.phonePrefix}$contactPhone"
+                                            } else {
+                                                contactPhone
+                                            }
+
+                                            val response = tenantApi.createTenant(
+                                                CreateTenantRequest(
+                                                    name = businessName.trim(),
+                                                    businessType = selectedCategory?.name ?: "Mobile Shop",
+                                                    businessCategoryId = selectedCategory?.id ?: "",
+                                                    legalName = legalName.trim().takeIf { it.isNotEmpty() },
+                                                    contactPhone = finalPhone,
+                                                    addressLine1 = addressLine1.trim().takeIf { it.isNotEmpty() },
+                                                    city = city.trim(),
+                                                    state = state.trim(),
+                                                    pincode = pincode.trim().takeIf { it.isNotEmpty() },
+                                                    gstNumber = if (selectedCountry.hasGstField) gstNumber.trim().takeIf { it.isNotEmpty() } else null,
+                                                    country = selectedCountry.name,
+                                                    currency = currency,
+                                                    timezone = timezone,
+                                                    marketingConsent = marketingConsent,
+                                                    acceptedPolicyVersion = "2026-03-01",
+                                                    promoCode = promoCode.trim().takeIf { it.isNotEmpty() }
+                                                )
+                                            )
+
+                                            tokenStore.saveToken(response.accessToken)
+                                            val tenantState = appStateResolver.resolve()
+                                            navController.navigate(tenantState.toRoute()) {
+                                                popUpTo("tenant_required") { inclusive = true }
+                                            }
+                                        } catch (e: Exception) {
+                                            error = e.message ?: "Submission failed"
+                                        } finally {
+                                            loading = false
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = !loading,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = TealAccent, contentColor = Color.White)
+                        ) {
+                            Text(if (currentStep == 3) (if (loading) "Creating..." else "Complete") else "Continue")
+                            if (currentStep < 3) {
+                                Spacer(Modifier.width(8.dp))
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Spacer(Modifier.height(48.dp))
+        }
+    }
+}
+
+@Composable
+fun OnboardingStepper(currentStep: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Spacer(Modifier.height(48.dp))
+        StepIndicator(label = "Identity", icon = Icons.Default.Business, active = currentStep >= 1, completed = currentStep > 1)
+        Box(modifier = Modifier.weight(1f).height(1.dp).background(if(currentStep > 1) TealAccent else MaterialTheme.colorScheme.outlineVariant))
+        StepIndicator(label = "Location", icon = Icons.Default.Place, active = currentStep >= 2, completed = currentStep > 2)
+        Box(modifier = Modifier.weight(1f).height(1.dp).background(if(currentStep > 2) TealAccent else MaterialTheme.colorScheme.outlineVariant))
+        StepIndicator(label = "Regional", icon = Icons.Default.Public, active = currentStep >= 3, completed = currentStep > 3)
+    }
+}
 
-        Text(
-            text = "Set up your business",
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center
-        )
+@Composable
+fun StepIndicator(label: String, icon: ImageVector, active: Boolean, completed: Boolean) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            shape = CircleShape,
+            color = if (completed) TealAccent else if (active) TealAccent.copy(alpha = 0.15f) else Color.Transparent,
+            modifier = Modifier.size(40.dp),
+            border = if (!completed && !active) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)) else if (active && !completed) androidx.compose.foundation.BorderStroke(2.dp, TealAccent) else null
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                if (completed) {
+                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Icon(icon, contentDescription = null, tint = if (active) TealAccent else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = if (active) TealAccent else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
+    }
+}
 
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            text = "We need some basic details to generate invoices correctly.",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(Modifier.height(32.dp))
-
-        // --- IDENTITY ---
-        Text("Identity", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.Start))
-        Spacer(Modifier.height(8.dp))
-
+@Composable
+fun IdentityStep(
+    businessName: String, onBusinessNameChange: (String) -> Unit,
+    legalName: String, onLegalNameChange: (String) -> Unit,
+    promoCode: String, onPromoCodeChange: (String) -> Unit,
+    categories: List<BusinessCategory>, selectedCategory: BusinessCategory?,
+    onCategorySelect: (BusinessCategory) -> Unit, categoriesLoading: Boolean,
+    isExpanded: Boolean, onExpandedChange: (Boolean) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        StepHeader("Business Identity", "How should customers identify you?")
+        
         OutlinedTextField(
             value = businessName,
-            onValueChange = { businessName = it },
+            onValueChange = onBusinessNameChange,
             label = { Text("Display Name *") },
-            singleLine = true,
+            placeholder = { Text("e.g. Smart Tech Solutions") },
             modifier = Modifier.fillMaxWidth()
         )
-
-        Spacer(Modifier.height(16.dp))
-
+        
         OutlinedTextField(
             value = legalName,
-            onValueChange = { legalName = it },
+            onValueChange = onLegalNameChange,
             label = { Text("Legal Entity Name") },
-            singleLine = true,
+            placeholder = { Text("e.g. Smart Tech Pvt Ltd") },
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = promoCode,
-            onValueChange = { promoCode = it.uppercase() },
-            label = { Text("Promo Code (Optional)") },
-            singleLine = true,
+        @OptIn(ExperimentalMaterial3Api::class)
+        ExposedDropdownMenuBox(
+            expanded = isExpanded,
+            onExpandedChange = onExpandedChange,
             modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        if (categoriesLoading) {
-            Text("Loading categories...", style = MaterialTheme.typography.bodySmall)
-        } else {
-            ExposedDropdownMenuBox(
-                expanded = isExpanded,
-                onExpandedChange = { isExpanded = it },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = selectedCategory?.name ?: "Select Category",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Business Type") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
-                )
-
-                ExposedDropdownMenu(
-                    expanded = isExpanded,
-                    onDismissRequest = { isExpanded = false }
-                ) {
-                    categories.forEach { category ->
-                        DropdownMenuItem(
-                            text = { Text(category.name) },
-                            onClick = {
-                                selectedCategory = category
-                                isExpanded = false
-                            }
-                        )
-                    }
+        ) {
+            OutlinedTextField(
+                value = selectedCategory?.name ?: "Select Type",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Business Category") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
+                modifier = Modifier.menuAnchor().fillMaxWidth()
+            )
+            ExposedDropdownMenu(expanded = isExpanded, onDismissRequest = { onExpandedChange(false) }) {
+                categories.forEach { category ->
+                    DropdownMenuItem(text = { Text(category.name) }, onClick = { onCategorySelect(category); onExpandedChange(false) })
                 }
             }
         }
 
-        val isComingSoon = selectedCategory?.isComingSoon == true || selectedCategory?.name != "Mobile Shop"
-        if (selectedCategory != null && isComingSoon) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Coming soon! Only Mobile Shops are supported during this phase.",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center
-            )
-        }
+        OutlinedTextField(
+            value = promoCode,
+            onValueChange = onPromoCodeChange,
+            label = { Text("Promo Code (Optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = TealAccent, fontWeight = FontWeight.Bold)
+        )
+    }
+}
 
-        Spacer(Modifier.height(32.dp))
+@Composable
+fun LocationStep(
+    countries: List<CountryOption>, selectedCountry: CountryOption, onCountrySelect: (CountryOption) -> Unit,
+    contactPhone: String, onPhoneChange: (String) -> Unit,
+    addressLine1: String, onAddressChange: (String) -> Unit,
+    city: String, onCityChange: (String) -> Unit,
+    state: String, onStateChange: (String) -> Unit,
+    pincode: String, onPincodeChange: (String) -> Unit,
+    gstNumber: String, onGstChange: (String) -> Unit,
+    isCountryExpanded: Boolean, onCountryExpandedChange: (Boolean) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        StepHeader("Location Details", "Where is your business based?")
 
-        // --- LOCATION & TAX ---
-        Text("Location & Tax", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.Start))
-        Spacer(Modifier.height(8.dp))
-
-        // Country Selector (dynamic list from API)
+        @OptIn(ExperimentalMaterial3Api::class)
         ExposedDropdownMenuBox(
             expanded = isCountryExpanded,
-            onExpandedChange = { isCountryExpanded = it },
+            onExpandedChange = onCountryExpandedChange,
             modifier = Modifier.fillMaxWidth()
         ) {
             OutlinedTextField(
@@ -254,229 +454,99 @@ fun TenantRequiredScreen(
                 readOnly = true,
                 label = { Text("Country *") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCountryExpanded) },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                 modifier = Modifier.menuAnchor().fillMaxWidth()
             )
-
-            ExposedDropdownMenu(
-                expanded = isCountryExpanded,
-                onDismissRequest = { isCountryExpanded = false }
-            ) {
+            ExposedDropdownMenu(expanded = isCountryExpanded, onDismissRequest = { onCountryExpandedChange(false) }) {
                 countries.forEach { country ->
-                    DropdownMenuItem(
-                        text = { Text("${country.name}  ${country.currencySymbol} ${country.currency}") },
-                        onClick = {
-                            selectedCountry = country
-                            currency = country.currency
-                            timezone = country.timezone
-                            // Clear GST when switching away from India
-                            if (!country.hasGstField) gstNumber = ""
-                            isCountryExpanded = false
-                        }
-                    )
+                    DropdownMenuItem(text = { Text("${country.name} (${country.phonePrefix})") }, onClick = { onCountrySelect(country); onCountryExpandedChange(false) })
                 }
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-
         OutlinedTextField(
             value = contactPhone,
-            onValueChange = { input ->
-                val cleaned = input.filter { it.isDigit() }
-                contactPhone = if (selectedCountry.code == "IN") {
-                    if (cleaned.startsWith("0")) cleaned.drop(1).take(10) else cleaned.take(10)
-                } else {
-                    cleaned.take(15)
-                }
-            },
+            onValueChange = onPhoneChange,
             label = { Text("Contact Phone *") },
-            prefix = {
-                Text(text = "${selectedCountry.phonePrefix} ", color = MaterialTheme.colorScheme.primary)
-            },
-            placeholder = {
-                Text(if (selectedCountry.code == "IN") "10-digit number" else "Mobile Number")
-            },
-            singleLine = true,
+            prefix = { Text("${selectedCountry.phonePrefix} ", color = TealAccent, fontWeight = FontWeight.Bold) },
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(Modifier.height(16.dp))
+        OutlinedTextField(value = addressLine1, onValueChange = onAddressChange, label = { Text("Address") }, modifier = Modifier.fillMaxWidth())
+        
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(value = city, onValueChange = onCityChange, label = { Text("City *") }, modifier = Modifier.weight(1f))
+            OutlinedTextField(value = state, onValueChange = onStateChange, label = { Text("State *") }, modifier = Modifier.weight(1f))
+        }
 
-        OutlinedTextField(
-            value = addressLine1,
-            onValueChange = { addressLine1 = it },
-            label = { Text("Address") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
+        OutlinedTextField(value = pincode, onValueChange = onPincodeChange, label = { Text("Pincode / Zip") }, modifier = Modifier.fillMaxWidth())
 
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = city,
-            onValueChange = { city = it },
-            label = { Text("City *") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = state,
-            onValueChange = { state = it },
-            label = { Text("State *") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = pincode,
-            onValueChange = { pincode = it },
-            label = { Text("Pincode / Zip") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // GST field — only shown for India (driven by hasGstField from API)
         if (selectedCountry.hasGstField) {
-            Spacer(Modifier.height(16.dp))
-            OutlinedTextField(
-                value = gstNumber,
-                onValueChange = { gstNumber = it.uppercase() },
-                label = { Text("GST Number (Optional)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            OutlinedTextField(value = gstNumber, onValueChange = onGstChange, label = { Text("GST Number (Optional)") }, modifier = Modifier.fillMaxWidth())
         }
+    }
+}
 
-        Spacer(Modifier.height(24.dp))
+@Composable
+fun regionalStep(
+    selectedCountry: CountryOption, currency: String, onCurrencyChange: (String) -> Unit,
+    timezone: String, onTimezoneChange: (String) -> Unit, countries: List<CountryOption>,
+    agreedToTerms: Boolean, onTermsChange: (Boolean) -> Unit,
+    marketingConsent: Boolean, onMarketingChange: (Boolean) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        StepHeader("Regional Preferences", "Confirm your local settings")
+        
+        OutlinedTextField(
+            value = "$currency (${selectedCountry.currencySymbol})",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Local Currency") },
+            modifier = Modifier.fillMaxWidth()
+        )
 
-        // --- COMPLIANCE ---
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = agreedToTerms,
-                onCheckedChange = { agreedToTerms = it }
-            )
-            Text(
-                text = "I agree to the Terms & Conditions and Privacy Policy *",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
+        OutlinedTextField(
+            value = timezone,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Standard Timezone") },
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = marketingConsent,
-                onCheckedChange = { marketingConsent = it }
-            )
-            Text(
-                text = "Receive product updates and offers (Optional)",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
-
-        Spacer(Modifier.height(32.dp))
-
-        if (error != null) {
-            Text(
-                text = error!!,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-
-        Button(
-            onClick = {
-                if (loading || selectedCategory == null || isComingSoon) return@Button
-                
-                // Regional phone validation
-                val isPhoneValid = if (selectedCountry.code == "IN") {
-                    contactPhone.length == 10 && contactPhone.first() in '6'..'9'
-                } else {
-                    contactPhone.length >= 8
-                }
-
-                if (businessName.isBlank() || contactPhone.isBlank() || city.isBlank() || state.isBlank()) {
-                    error = "Please fill in all required (*) fields"
-                    return@Button
-                }
-
-                if (!isPhoneValid) {
-                    error = if (selectedCountry.code == "IN") "Please enter a valid 10-digit mobile number" else "Please enter a valid mobile number"
-                    return@Button
-                }
-
-                if (!agreedToTerms) {
-                    error = "You must agree to the Terms and Privacy Policy"
-                    return@Button
-                }
-
-                loading = true
-                error = null
-
-                scope.launch {
-                    try {
-                        // Prepend dialing prefix for non-India numbers
-                        val finalPhone = if (selectedCountry.code != "IN") {
-                            "${selectedCountry.phonePrefix}$contactPhone"
-                        } else {
-                            contactPhone
-                        }
-
-                        val response = tenantApi.createTenant(
-                            CreateTenantRequest(
-                                name = businessName.trim(),
-                                businessType = selectedCategory!!.name,
-                                businessCategoryId = selectedCategory!!.id,
-                                legalName = legalName.trim().takeIf { it.isNotEmpty() },
-                                contactPhone = finalPhone,
-                                addressLine1 = addressLine1.trim().takeIf { it.isNotEmpty() },
-                                city = city.trim(),
-                                state = state.trim(),
-                                pincode = pincode.trim().takeIf { it.isNotEmpty() },
-                                gstNumber = if (selectedCountry.hasGstField) gstNumber.trim().takeIf { it.isNotEmpty() } else null,
-                                country = selectedCountry.name,
-                                currency = currency,
-                                timezone = timezone,
-                                marketingConsent = marketingConsent,
-                                acceptedPolicyVersion = "2026-03-01",
-                                promoCode = promoCode.trim().takeIf { it.isNotEmpty() }
-                            )
-                        )
-
-                        tokenStore.saveToken(response.accessToken)
-
-                        val tenantState = appStateResolver.resolve()
-                        navController.navigate(tenantState.toRoute()) {
-                            popUpTo("tenant_required") { inclusive = true }
-                        }
-
-                    } catch (e: Exception) {
-                        error = e.message ?: "Tenant creation failed"
-                    } finally {
-                        loading = false
-                    }
-                }
-            },
-            enabled = !loading && !isComingSoon,
-            modifier = Modifier.fillMaxWidth().height(50.dp)
-        ) {
-            Text(if (loading) "Creating..." else "Create Business")
+        
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = agreedToTerms, onCheckedChange = onTermsChange)
+            Text("I agree to the Terms & Privacy Policy *", style = MaterialTheme.typography.bodySmall)
         }
         
-        Spacer(Modifier.height(48.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = marketingConsent, onCheckedChange = onMarketingChange)
+            Text("Receive product updates & offers", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
+fun StepHeader(title: String, subtitle: String) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(16.dp))
+        TextButton(onClick = {}, modifier = Modifier.height(1.dp).fillMaxWidth().background(TealAccent.copy(alpha=0.1f))) {}
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+private fun validateStep(
+    step: Int, name: String, phone: String, country: CountryOption, city: String, state: String, terms: Boolean
+): Boolean {
+    return when(step) {
+        1 -> name.isNotBlank()
+        2 -> {
+            val isPhoneValid = if (country.code == "IN") phone.length == 10 else phone.length >= 8
+            name.isNotBlank() && phone.isNotBlank() && isPhoneValid && city.isNotBlank() && state.isNotBlank()
+        }
+        3 -> terms
+        else -> false
     }
 }

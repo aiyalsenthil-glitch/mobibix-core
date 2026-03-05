@@ -61,6 +61,7 @@ describe('GSTVerificationService - Tier-2 Hardening', () => {
     taxInclusive: false,
     exchangeRate: new Prisma.Decimal(1.0),
     poId: null,
+    taxDetails: null,
   };
 
   beforeEach(async () => {
@@ -156,6 +157,7 @@ describe('GSTVerificationService - Tier-2 Hardening', () => {
           cgstAmount: 0,
           sgstAmount: 0,
           igstAmount: 0,
+          taxDetails: null,
         },
       ]);
 
@@ -293,6 +295,7 @@ describe('GSTR2Service - ITC Tracking & Legacy Exclusion', () => {
     taxInclusive: false,
     exchangeRate: new Prisma.Decimal(1.0),
     poId: null,
+    taxDetails: null,
     gstApproximationReason: null,
     verifiedByUserId: 'admin-123',
     items: [
@@ -313,6 +316,7 @@ describe('GSTR2Service - ITC Tracking & Legacy Exclusion', () => {
         cgstAmount: 900,
         sgstAmount: 900,
         igstAmount: 0,
+        taxDetails: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -366,6 +370,7 @@ describe('GSTR2Service - ITC Tracking & Legacy Exclusion', () => {
     taxInclusive: false,
     exchangeRate: new Prisma.Decimal(1.0),
     poId: null,
+    taxDetails: null,
     gstApproximationReason: 'Legacy',
     verifiedByUserId: null,
     items: [
@@ -386,6 +391,7 @@ describe('GSTR2Service - ITC Tracking & Legacy Exclusion', () => {
         cgstAmount: 450,
         sgstAmount: 450,
         igstAmount: 0,
+        taxDetails: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/hooks/useAuth";
 import { getFollowUpCounts } from "@/services/crm.api";
 import {
   LayoutDashboard,
@@ -29,33 +30,32 @@ interface NavItem {
   label: string;
   href?: string;
   icon: React.ElementType;
+  requiredPermission?: string;
 }
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Sales", href: "/sales", icon: Banknote },
-  { label: "Job Cards", href: "/jobcards", icon: Wrench },
-  { label: "Products", href: "/products", icon: Tags },
-  { label: "Inventory", href: "/inventory", icon: PackageSearch },
+  { label: "Sales", href: "/sales", icon: Banknote, requiredPermission: "sale.view_all" },
+  { label: "Job Cards", href: "/jobcards", icon: Wrench, requiredPermission: "jobcard.view_all" },
+  { label: "Products", href: "/products", icon: Tags, requiredPermission: "inventory.view" },
+  { label: "Inventory", href: "/inventory", icon: PackageSearch, requiredPermission: "inventory.view" },
   // 🔒 Restock (B2B Wholesale): hidden until backend is wired
   // Enable via NEXT_PUBLIC_ENABLE_RESTOCK=true in .env
   ...(process.env.NEXT_PUBLIC_ENABLE_RESTOCK === 'true'
-    ? [{ label: "Restock", href: "/restock", icon: ShoppingBag }]
+    ? [{ label: "Restock", href: "/restock", icon: ShoppingBag, requiredPermission: "inventory.view" }]
     : []),
-  { label: "Customers", href: "/customers", icon: Users },
-  { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare },
-  { label: "Suppliers", href: "/suppliers", icon: Truck },
-  { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift },
-  { label: "Purchase Orders", href: "/purchase-orders", icon: FileText },
-  { label: "Supplier Invoices", href: "/purchases", icon: Inbox },
-  { label: "Sales Receipts", href: "/receipts", icon: CreditCard },
-  { label: "Reports", href: "/reports", icon: LineChart },
-  { label: "Shops", href: "/shops", icon: Store },
-  { label: "Staff Management", href: "/staff-management", icon: ShieldCheck },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Customers", href: "/customers", icon: Users, requiredPermission: "staff.view_all" },
+  { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare, requiredPermission: "staff.view_all" }, // Assuming staff.view_all for now as it links to CRM
+  { label: "Suppliers", href: "/suppliers", icon: Truck, requiredPermission: "inventory.view" },
+  { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift, requiredPermission: "shop.settings_modify" },
+  { label: "Purchase Orders", href: "/purchase-orders", icon: FileText, requiredPermission: "inventory.view" },
+  { label: "Supplier Invoices", href: "/purchases", icon: Inbox, requiredPermission: "inventory.view" },
+  { label: "Sales Receipts", href: "/receipts", icon: CreditCard, requiredPermission: "sale.view_all" },
+  { label: "Reports", href: "/reports", icon: LineChart, requiredPermission: "report.export" },
+  { label: "Shops", href: "/shops", icon: Store, requiredPermission: "shop.settings_modify" },
+  { label: "Staff Management", href: "/staff-management", icon: ShieldCheck, requiredPermission: "staff.view_all" },
+  { label: "Settings", href: "/settings", icon: Settings, requiredPermission: "shop.settings_modify" },
 ];
-
-// ... imports
 
 interface SidebarProps {
   mobileOpen?: boolean;
@@ -65,11 +65,23 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { theme } = useTheme();
+  const { authUser } = useAuth(); // Access auth user to check permissions
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [_expandedSubmenus, _setExpandedSubmenus] = useState<string[]>([]);
   const [counts, setCounts] = useState<{ total: number } | null>(null);
   const isDark = mounted && theme === "dark";
+
+  // Filter items based on permissions or system owner status
+  const visibleItems = useMemo(() => {
+    if (!authUser) return [];
+    if (authUser.isSystemOwner) return navItems;
+
+    return navItems.filter((item) => {
+      if (!item.requiredPermission) return true;
+      return authUser.permissions?.includes(item.requiredPermission);
+    });
+  }, [authUser]);
 
   useEffect(() => {
     async function loadCounts() {
@@ -176,7 +188,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
 
         {/* Navigation */}
         <nav className={`flex-1 p-2 space-y-1.5 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 dark:[&::-webkit-scrollbar-thumb]:bg-gray-700/50 [&::-webkit-scrollbar-thumb]:rounded-full ${effectiveCollapsed ? 'overflow-x-hidden' : ''}`}>
-          {navItems.map((item) => {
+          {visibleItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
             return (

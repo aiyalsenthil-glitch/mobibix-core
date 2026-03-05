@@ -104,6 +104,11 @@ export class StaffService {
               email: true,
               fullName: true,
               phone: true,
+              shopStaffs: {
+                where: { tenantId, deletedAt: null },
+                include: { dynamicRole: true },
+                take: 1, // Get the primary/first role
+              },
             },
           },
         },
@@ -112,13 +117,18 @@ export class StaffService {
     ]);
 
     return {
-      data: staff.map((s) => ({
-        id: s.user.id,
-        email: s.user.email,
-        fullName: s.user.fullName,
-        phone: s.user.phone,
-        role: s.role,
-      })),
+      data: staff.map((s) => {
+        const primaryShopStaff = s.user.shopStaffs[0];
+        const roleName = primaryShopStaff?.dynamicRole?.name || s.role;
+        
+        return {
+          id: s.user.id,
+          email: s.user.email,
+          fullName: s.user.fullName,
+          phone: s.user.phone,
+          role: roleName,
+        };
+      }),
       total,
       skip: options?.skip ?? 0,
       take: options?.take ?? 50,
@@ -346,15 +356,23 @@ export class StaffService {
 
   // ✅ List staff invites
   async listInvites(tenantId: string) {
-    return this.prisma.staffInvite.findMany({
+    const invites = await this.prisma.staffInvite.findMany({
       where: {
         tenantId,
         accepted: false, // 🔥 REQUIRED
+      },
+      include: {
+        dynamicRole: true,
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
+
+    return invites.map((i) => ({
+      ...i,
+      role: i.dynamicRole?.name || i.role,
+    }));
   }
 
   // ✅ Revoke invite

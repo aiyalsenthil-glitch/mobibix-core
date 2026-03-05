@@ -15,34 +15,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aiyal.mobibix.ui.components.SectionHeader
 import com.aiyal.mobibix.ui.components.StatCard
+import com.aiyal.mobibix.ui.components.AuroraBackground
 
 @Composable
 fun StaffDashboardScreen(
     state: StaffDashboardState,
     onOpenDrawer: () -> Unit = {}
 ) {
-    if (state.loading) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+// We need to check StatCard implementation later, but for now wrap everything.
+    Box(modifier = Modifier.fillMaxSize()) {
+        AuroraBackground()
+        
+        if (state.loading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item(span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Jobs") }
+                item { StatCard("In Progress", state.inProgress.toString()) }
+                item { StatCard("Waiting", state.waitingParts.toString()) }
+                item { StatCard("Ready", state.ready.toString()) }
+                item { StatCard("Delivered", state.deliveredToday.toString()) }
+        
+                item(span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Stock Alerts") }
+                item { StatCard("Negative", state.negativeStock.toString()) }
+                item { StatCard("Zero", state.zeroStock.toString()) }
+            }
         }
-        return
-    }
-
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item(span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Jobs") }
-        item { StatCard("In Progress", state.inProgress.toString()) }
-        item { StatCard("Waiting", state.waitingParts.toString()) }
-        item { StatCard("Ready", state.ready.toString()) }
-        item { StatCard("Delivered", state.deliveredToday.toString()) }
-
-        item(span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Stock Alerts") }
-        item { StatCard("Negative", state.negativeStock.toString()) }
-        item { StatCard("Zero", state.zeroStock.toString()) }
     }
 }

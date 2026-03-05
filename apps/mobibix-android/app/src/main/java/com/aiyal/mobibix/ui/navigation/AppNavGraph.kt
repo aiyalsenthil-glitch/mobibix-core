@@ -131,6 +131,10 @@ fun AppNavGraph(
                     LaunchedEffect(state) {
                         navController.navigate("coming_soon_business") { popUpTo(0) }
                     }
+                } else if (state is AppState.TenantRequired) {
+                    LaunchedEffect(state) {
+                        navController.navigate("tenant_required") { popUpTo(0) }
+                    }
                 } else {
                     MainScreen(
                         mainNavController = navController, 

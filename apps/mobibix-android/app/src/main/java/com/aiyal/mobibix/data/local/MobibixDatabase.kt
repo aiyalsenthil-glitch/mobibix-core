@@ -9,7 +9,7 @@ import com.aiyal.mobibix.data.local.entity.ProductEntity
     entities = [
         ProductEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class MobibixDatabase : RoomDatabase() {

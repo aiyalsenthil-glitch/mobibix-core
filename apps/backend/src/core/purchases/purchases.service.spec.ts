@@ -68,6 +68,7 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
     verifiedAt: null,
     exchangeRate: new Prisma.Decimal(1.0),
     poId: null,
+    taxDetails: null,
   };
 
   const mockItems = [
@@ -90,6 +91,7 @@ describe('PurchasesService - Tier-2 Hardening (atomicPurchaseSubmit)', () => {
       cgstAmount: 90,
       sgstAmount: 90,
       igstAmount: 0,
+      taxDetails: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     },

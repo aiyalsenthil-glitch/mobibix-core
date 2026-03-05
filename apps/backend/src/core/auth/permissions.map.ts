@@ -61,4 +61,22 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   USER: [],
   MANAGER: [],
+
+  TECHNICIAN: [
+    Permission.REPAIR_MANAGE,
+    Permission.INVENTORY_VIEW,
+  ],
+
+  ACCOUNTANT: [
+    Permission.SALES_VIEW,
+    Permission.INVENTORY_VIEW,
+  ],
+
+  SUPERVISOR: [
+    Permission.STAFF_VIEW,
+    Permission.REPAIR_MANAGE,
+    Permission.SALES_VIEW,
+    Permission.INVENTORY_VIEW,
+    Permission.SHOP_MANAGE,
+  ],
 };

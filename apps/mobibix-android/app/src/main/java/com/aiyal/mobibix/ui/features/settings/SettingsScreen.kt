@@ -17,22 +17,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Store
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +32,8 @@ import android.content.Intent
 import android.net.Uri
 import com.aiyal.mobibix.core.shop.ShopContextProvider
 import com.aiyal.mobibix.ui.theme.ThemeState
+import com.aiyal.mobibix.ui.components.AuroraBackground
+import com.aiyal.mobibix.ui.components.GlassCard
 
 private val TealAccent = Color(0xFF00C896)
 
@@ -59,167 +47,171 @@ fun SettingsScreen(
     val isSystemDark = isSystemInDarkTheme()
     val isDarkTheme = ThemeState.isDarkMode ?: isSystemDark
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        // ── Header ──
-        Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Configure app, business, and invoicing", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // ── Appearance Section ──
-            item {
-                SettingsSectionHeader("Appearance")
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    if (isDarkTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Dark Mode", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text("Adjust app appearance", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(
-                            checked = isDarkTheme,
-                            onCheckedChange = { 
-                                ThemeState.isDarkMode = it 
-                            }
-                        )
-                    }
-                }
-            }
-
-            // ── Business Settings Section ──
-            item {
-                SettingsSectionHeader("Business Configuration")
-                if (activeShopId.isNotBlank()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        SettingsOptionCard(
-                            title = "Shop Settings",
-                            subtitle = "Name, address, contact details",
-                            icon = Icons.Default.Store,
-                            color = Color(0xFF3B82F6),
-                            onClick = { navController.navigate("shop_settings/$activeShopId") }
-                        )
-                        SettingsOptionCard(
-                            title = "Invoice Settings",
-                            subtitle = "GST, prefixes, footer notes",
-                            icon = Icons.Default.Description,
-                            color = TealAccent,
-                            onClick = { navController.navigate("invoice_settings") }
-                        )
-                        SettingsOptionCard(
-                            title = "Job Card Settings",
-                            subtitle = "Terms & conditions for repair",
-                            icon = Icons.Default.Build,
-                            color = Color(0xFF8B5CF6),
-                            onClick = { navController.navigate("job_card_settings") }
-                        )
-                        SettingsOptionCard(
-                            title = "Loyalty Settings",
-                            subtitle = "Configure loyalty points and rewards",
-                            icon = Icons.Default.Star,
-                            color = Color(0xFFEC4899), // A new color for loyalty
-                            onClick = { navController.navigate("loyalty_settings") }
-                        )
-                    }
-                } else {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            "No active shop selected. Please create or select a shop.",
-                            modifier = Modifier.padding(16.dp),
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
-            }
-
-            // ── Subscription Section ──
-            item {
-                SettingsSectionHeader("Subscription & Billing")
-                SettingsOptionCard(
-                    title = "My Plan",
-                    subtitle = "Manage subscription and payments",
-                    icon = Icons.Default.CreditCard,
-                    color = Color(0xFFF59E0B),
-                    onClick = { navController.navigate("billing") }
+        AuroraBackground()
+        
+        Column(modifier = Modifier.fillMaxSize()) {
+            // ── Header ──
+            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
+                Text(
+                    "Settings",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "Configure app, business, and invoicing",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            // ── Legal & Privacy Section ──
-            item {
-                val context = LocalContext.current
-                SettingsSectionHeader("Legal & Privacy")
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SettingsOptionCard(
-                        title = "Terms of Service",
-                        subtitle = "Read our service agreement",
-                        icon = Icons.Default.Description,
-                        color = Color(0xFF64748B),
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mobibix.com/terms"))
-                            context.startActivity(intent)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                // ── Appearance Section ──
+                item {
+                    SettingsSectionHeader("Appearance")
+                    GlassCard {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        if (isDarkTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Dark Mode", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Adjust app appearance", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = isDarkTheme,
+                                onCheckedChange = { 
+                                    ThemeState.isDarkMode = it 
+                                }
+                            )
                         }
-                    )
-                    SettingsOptionCard(
-                        title = "Privacy Policy",
-                        subtitle = "How we handle your data",
-                        icon = Icons.Default.Shield,
-                        color = Color(0xFF64748B),
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mobibix.com/privacy"))
-                            context.startActivity(intent)
+                    }
+                }
+
+                // ── Business Settings Section ──
+                item {
+                    SettingsSectionHeader("Business Configuration")
+                    if (activeShopId.isNotBlank()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            SettingsOptionCard(
+                                title = "Shop Settings",
+                                subtitle = "Name, address, contact details",
+                                icon = Icons.Default.Store,
+                                color = Color(0xFF3B82F6),
+                                onClick = { navController.navigate("shop_settings/$activeShopId") }
+                            )
+                            SettingsOptionCard(
+                                title = "Invoice Settings",
+                                subtitle = "GST, prefixes, footer notes",
+                                icon = Icons.Default.Description,
+                                color = TealAccent,
+                                onClick = { navController.navigate("invoice_settings") }
+                            )
+                            SettingsOptionCard(
+                                title = "Job Card Settings",
+                                subtitle = "Terms & conditions for repair",
+                                icon = Icons.Default.Build,
+                                color = Color(0xFF8B5CF6),
+                                onClick = { navController.navigate("job_card_settings") }
+                            )
+                            SettingsOptionCard(
+                                title = "Loyalty Settings",
+                                subtitle = "Configure loyalty points and rewards",
+                                icon = Icons.Default.Star,
+                                color = Color(0xFFEC4899),
+                                onClick = { navController.navigate("loyalty_settings") }
+                            )
                         }
-                    )
+                    } else {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                "No active shop selected. Please create or select a shop.",
+                                modifier = Modifier.padding(16.dp),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+
+                // ── Subscription Section ──
+                item {
+                    SettingsSectionHeader("Subscription & Billing")
                     SettingsOptionCard(
-                        title = "Data Deletion",
-                        subtitle = if (isOwner) "Account removal procedures" else "Contact owner to delete account",
-                        icon = Icons.Default.Build,
-                        color = if (isOwner) Color(0xFFEF4444) else Color.Gray,
-                        onClick = {
-                            if (isOwner) {
-                                navController.navigate("delete_account")
-                            } else {
-                                // For staff, maybe just show policy URL as it was before or do nothing
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mobibix.com/data-deletion"))
+                        title = "My Plan",
+                        subtitle = "Manage subscription and payments",
+                        icon = Icons.Default.CreditCard,
+                        color = Color(0xFFF59E0B),
+                        onClick = { navController.navigate("billing") }
+                    )
+                }
+
+                // ── Legal & Privacy Section ──
+                item {
+                    val context = LocalContext.current
+                    SettingsSectionHeader("Legal & Privacy")
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SettingsOptionCard(
+                            title = "Terms of Service",
+                            subtitle = "Read our service agreement",
+                            icon = Icons.Default.Description,
+                            color = Color(0xFF64748B),
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mobibix.com/terms"))
                                 context.startActivity(intent)
                             }
-                        }
-                    )
+                        )
+                        SettingsOptionCard(
+                            title = "Privacy Policy",
+                            subtitle = "How we handle your data",
+                            icon = Icons.Default.Shield,
+                            color = Color(0xFF64748B),
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mobibix.com/privacy"))
+                                context.startActivity(intent)
+                            }
+                        )
+                        SettingsOptionCard(
+                            title = "Data Deletion",
+                            subtitle = if (isOwner) "Account removal procedures" else "Contact owner to delete account",
+                            icon = Icons.Default.Delete,
+                            color = if (isOwner) Color(0xFFEF4444) else Color.Gray,
+                            onClick = {
+                                if (isOwner) {
+                                    navController.navigate("delete_account")
+                                } else {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mobibix.com/data-deletion"))
+                                    context.startActivity(intent)
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -245,10 +237,7 @@ fun SettingsOptionCard(
     color: Color,
     onClick: () -> Unit
 ) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    GlassCard(
         modifier = Modifier.clickable(onClick = onClick).fillMaxWidth()
     ) {
         Row(
@@ -266,7 +255,7 @@ fun SettingsOptionCard(
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)

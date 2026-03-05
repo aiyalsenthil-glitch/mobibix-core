@@ -404,6 +404,43 @@ async function seedEnterpriseRoles() {
       isRoot: false,
       permissions: ['attendance.mark', 'member.view_all'],
     },
+    {
+      name: 'TECHNICIAN',
+      description: 'Mobile Repair Technician',
+      isSystem: true,
+      isRoot: false,
+      permissions: [
+        'jobcard.view_all',
+        'jobcard.update_status',
+        'inventory.view',
+      ],
+    },
+    {
+      name: 'ACCOUNTANT',
+      description: 'Chartered Accountant / Bookkeeper',
+      isSystem: true,
+      isRoot: false,
+      permissions: [
+        'report.export',
+        'sale.view_all',
+        'expense.view',
+        'inventory.view',
+        'jobcard.view_financials',
+      ],
+    },
+    {
+      name: 'SUPERVISOR',
+      description: 'Shop Supervisor / Floor Manager',
+      isSystem: true,
+      isRoot: false,
+      permissions: [
+        'staff.view_all',
+        'report.export',
+        'approval.override',
+        'jobcard.view_all',
+        'sale.view_all',
+      ],
+    },
   ];
 
   // Safe Upsert for System Roles (tenantId is null)
