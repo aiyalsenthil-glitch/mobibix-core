@@ -12,18 +12,6 @@ import { BlogSection } from "./BlogSection";
 import { TestimonialsSection } from "./TestimonialsSection";
 
 // Helper components
-function InventoryIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-foreground/50 group-hover:text-primary transition-colors">
-      <line x1="8" y1="6" x2="21" y2="6" />
-      <line x1="8" y1="12" x2="21" y2="12" />
-      <line x1="8" y1="18" x2="21" y2="18" />
-      <line x1="3" y1="6" x2="3.01" y2="6" />
-      <line x1="3" y1="12" x2="3.01" y2="12" />
-      <line x1="3" y1="18" x2="3.01" y2="18" />
-    </svg>
-  );
-}
 
 function StatItem({ value, unit, label }: { value: string; unit: string; label: string }) {
   return (
@@ -136,23 +124,28 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                 {[
-                  { title: "Never Lose Stock", desc: "Track every IMEI. Stop theft with serial-perfect accuracy.", icon: <InventoryIcon /> },
-                  { title: "Control Repairs", desc: "Track technician parts. Stop disputes with digital proof.", icon: <InventoryIcon /> },
-                  { title: "Instant GST Build", desc: "Generate professional bills in 5 seconds. Look premium.", icon: <InventoryIcon /> },
-                  { title: "WhatsApp Marketing", desc: "Auto-send reminders. Get paid faster and sell accessories.", icon: <InventoryIcon /> },
+                  { title: "Never Lose Stock", desc: "Track every IMEI. Stop theft with serial-perfect accuracy.", icon: "/assets/landing/inventory-icon.png" },
+                  { title: "Control Repairs", desc: "Track technician parts. Stop disputes with digital proof.", icon: "/assets/landing/repairs-icon.png" },
+                  { title: "Instant GST Build", desc: "Generate professional bills in 5 seconds. Look premium.", icon: "/assets/landing/billing-icon.png" },
+                  { title: "WhatsApp Marketing", desc: "Auto-send reminders. Get paid faster and sell accessories.", icon: "/assets/landing/marketing-icon.png" },
                 ].map((feat, i) => (
                   <motion.div 
                     key={i}
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1, duration: 0.5 }}
-                    className="p-10 rounded-[2.5rem] bg-muted/20 border border-border hover:border-primary/50 transition-all duration-500 group"
+                    className="p-10 rounded-[2.5rem] bg-muted/20 border border-border hover:border-primary/50 transition-all duration-500 group relative overflow-hidden"
                   >
-                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-8 border border-primary/20 group-hover:bg-primary transition-colors">
-                          {feat.icon}
+                      {/* Suble hover gradient effect */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      
+                      <div className="relative z-10">
+                        <div className="w-20 h-20 rounded-2xl bg-white/40 dark:bg-muted/30 backdrop-blur-md flex items-center justify-center mb-8 border border-border/50 group-hover:border-primary/30 group-hover:shadow-lg group-hover:shadow-primary/5 transition-all duration-500 overflow-hidden p-4 shadow-sm">
+                            <img src={feat.icon} alt={feat.title} className="w-full h-full object-contain filter drop-shadow-xl group-hover:scale-110 transition-transform duration-500" />
+                        </div>
+                        <h3 className="text-xl font-black mb-4 uppercase tracking-tight">{feat.title}</h3>
+                        <p className="text-muted-foreground font-bold text-sm leading-relaxed">{feat.desc}</p>
                       </div>
-                      <h3 className="text-xl font-black mb-4 uppercase tracking-tight">{feat.title}</h3>
-                      <p className="text-muted-foreground font-bold text-sm leading-relaxed">{feat.desc}</p>
                   </motion.div>
                 ))}
               </div>

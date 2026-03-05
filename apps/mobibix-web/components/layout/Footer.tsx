@@ -24,7 +24,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
             )}
           </div>
           
-          <div className={`col-span-1 ${compact ? "hidden md:block" : ""}`}>
+          <div className="col-span-1">
             <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Company</h4>
             <div className={`flex flex-col gap-3 ${compact ? "text-xs" : "text-sm"} font-bold text-muted-foreground`}>
               <Link href="/features" className="hover:text-primary transition-colors">Features</Link>
@@ -35,31 +35,27 @@ export function Footer({ compact = false }: { compact?: boolean }) {
             </div>
           </div>
 
-          {!compact && (
-            <>
-              <div className="col-span-1 mt-8 md:mt-0">
-                <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Compare</h4>
-                <div className="flex flex-col gap-3 text-sm font-bold text-muted-foreground">
-                  <Link href="/compare/repairdesk" className="hover:text-primary transition-colors">vs RepairDesk</Link>
-                  <Link href="/compare/repairshopr" className="hover:text-primary transition-colors">vs RepairShopr</Link>
-                  <Link href="/compare/fixably" className="hover:text-primary transition-colors">vs Fixably</Link>
-                  <Link href="/compare/vyapar" className="hover:text-primary transition-colors">vs Vyapar</Link>
-                </div>
-              </div>
+          <div className="col-span-1 mt-8 md:mt-0">
+            <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Compare</h4>
+            <div className={`flex flex-col gap-3 ${compact ? "text-xs" : "text-sm"} font-bold text-muted-foreground`}>
+              <Link href="/compare/repairdesk" className="hover:text-primary transition-colors">vs RepairDesk</Link>
+              <Link href="/compare/repairshopr" className="hover:text-primary transition-colors">vs RepairShopr</Link>
+              <Link href="/compare/fixably" className="hover:text-primary transition-colors">vs Fixably</Link>
+              <Link href="/compare/vyapar" className="hover:text-primary transition-colors">vs Vyapar</Link>
+            </div>
+          </div>
 
-              <div className="col-span-1 mt-8 md:mt-0">
-                <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Regions</h4>
-                <div className="flex flex-col gap-3 text-sm font-bold text-muted-foreground">
-                  <Link href="/regions/india" className="hover:text-primary transition-colors">India</Link>
-                  <Link href="/regions/uae" className="hover:text-primary transition-colors">UAE</Link>
-                  <Link href="/regions/saudi-arabia" className="hover:text-primary transition-colors">Saudi Arabia</Link>
-                  <Link href="/regions/pakistan" className="hover:text-primary transition-colors">Pakistan</Link>
-                </div>
-              </div>
-            </>
-          )}
+          <div className="col-span-1 mt-8 md:mt-0">
+            <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Regions</h4>
+            <div className={`flex flex-col gap-3 ${compact ? "text-xs" : "text-sm"} font-bold text-muted-foreground`}>
+              <Link href="/regions/india" className="hover:text-primary transition-colors">India</Link>
+              <Link href="/regions/uae" className="hover:text-primary transition-colors">UAE</Link>
+              <Link href="/regions/saudi-arabia" className="hover:text-primary transition-colors">Saudi Arabia</Link>
+              <Link href="/regions/pakistan" className="hover:text-primary transition-colors">Pakistan</Link>
+            </div>
+          </div>
 
-          <div className={`col-span-1 ${compact ? "hidden md:block" : "mt-8 md:mt-0"}`}>
+          <div className="col-span-1 mt-8 md:mt-0">
             <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Legal</h4>
             <div className={`flex flex-col gap-3 ${compact ? "text-xs" : "text-sm"} font-bold text-muted-foreground`}>
               <Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
