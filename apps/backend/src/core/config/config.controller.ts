@@ -1,4 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
+import { Public } from '../auth/decorators/public.decorator';
+import { SkipSubscriptionCheck } from '../auth/decorators/skip-subscription-check.decorator';
 
 /**
  * GET /api/config/countries
@@ -102,6 +104,16 @@ export const COUNTRIES: CountryOption[] = [
     timezone: 'Australia/Sydney',
     hasGstField: false,
   },
+  {
+    code: 'OTHERS',
+    name: 'Others',
+    currency: 'USD',
+    currencySymbol: '$',
+    phonePrefix: '+1',
+    taxSystem: 'NONE',
+    timezone: 'UTC',
+    hasGstField: false,
+  }
 ];
 
 @Controller('config')
@@ -110,6 +122,8 @@ export class ConfigController {
    * Returns country options for the onboarding country selector.
    * Public — no authentication required.
    */
+  @Public()
+  @SkipSubscriptionCheck()
   @Get('countries')
   getCountries(): CountryOption[] {
     return COUNTRIES;

@@ -21,6 +21,7 @@ import { TenantService } from '../tenant/tenant.service';
 import { SubscriptionsService } from '../billing/subscriptions/subscriptions.service';
 import { PlansService } from '../billing/plans/plans.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationOrchestrator } from '../notifications/notification.orchestrator';
 import { UserRole, ModuleType, SubscriptionStatus } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -28,13 +29,14 @@ import { subDays } from 'date-fns';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class AdminController {
   constructor(
     private readonly tenantService: TenantService,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly plansService: PlansService,
     private readonly prisma: PrismaService,
+    private readonly orchestrator: NotificationOrchestrator,
   ) {}
 
   // ─────────────────────────────────────────────
@@ -977,5 +979,32 @@ export class AdminController {
       expiredCount,
       pendingDeletionCount,
     };
+  }
+
+  // ─────────────────────────────────────────────
+  // SEND NOTIFICATION (ADMIN)
+  // ─────────────────────────────────────────────
+  @Post('notifications/send')
+  async sendNotification(
+    @Body()
+    body: {
+      tenantId: string;
+      userId?: string;
+      module: ModuleType;
+      message: string;
+    },
+  ) {
+    await this.orchestrator.dispatch({
+      tenantId: body.tenantId,
+      userId: body.userId,
+      eventId: 'admin.broadcast',
+      moduleType: body.module,
+      recipient: body.userId || body.tenantId,
+      data: {
+        message: body.message,
+        adminSent: true,
+      },
+    });
+    return { success: true };
   }
 }

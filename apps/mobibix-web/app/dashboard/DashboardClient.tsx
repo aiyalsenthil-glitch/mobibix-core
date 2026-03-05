@@ -7,6 +7,8 @@ import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useTheme } from "@/context/ThemeContext";
 import { Topbar } from "@/components/layout/topbar";
 import { SubscriptionAlert } from "@/components/subscription/SubscriptionAlert";
+import { BroadcastAlert } from "@/components/notifications/BroadcastAlert";
+import { WelcomeAlert } from "@/components/notifications/WelcomeAlert";
 import { X } from "lucide-react";
 
 export function DashboardClient({ children }: { children: React.ReactNode }) {
@@ -202,6 +204,8 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
       <main className={`flex-1 ml-0 md:ml-64 overflow-y-auto transition-colors duration-200 ${mounted ? '' : mainBg}`}>
         {/* Fixed Topbar across dashboard */}
         <div className="fixed top-0 right-0 left-0 md:left-64 z-20">
+            <BroadcastAlert />
+            <WelcomeAlert />
             <SubscriptionAlert />
             <Topbar 
               isCollapsed={false} 

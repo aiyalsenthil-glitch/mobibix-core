@@ -28,6 +28,9 @@ export class NotificationOrchestrator implements OnModuleInit {
     
     // NEW: Welcome notifications with In-App support
     this.registerStrategy('tenant.welcome', [this.emailStrategy, this.inAppStrategy]);
+
+    // NEW: Admin broadcast notifications
+    this.registerStrategy('admin.broadcast', [this.inAppStrategy]);
   }
 
   registerStrategy(eventId: string, strategies: ChannelStrategy[]) {

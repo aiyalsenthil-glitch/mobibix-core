@@ -9,6 +9,7 @@ import { AdminWebhooksController } from './admin-webhooks.controller';
 import { AuditModule } from '../audit/audit.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PartnersModule } from '../../modules/partners/partners.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 import { AdminAnalyticsController } from './analytics/admin-analytics.controller';
 import { AdminTenantController } from './tenant/admin-tenant.controller';
@@ -38,6 +39,7 @@ import { InvestorController } from './investor/investor.controller';
     AuditModule,
     PrismaModule,
     PartnersModule,
+    NotificationsModule,
     BullModule.registerQueue({
       name: 'admin-jobs',
     }),

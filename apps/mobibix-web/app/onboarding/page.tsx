@@ -35,6 +35,8 @@ export default function OnboardingPage() {
   // Dynamic country list (loaded from backend, falls back to static)
   const [countries, setCountries] = useState<CountryOption[]>(COUNTRY_FALLBACK);
   const [selectedCountry, setSelectedCountry] = useState<CountryOption>(DEFAULT_COUNTRY);
+  const [isOtherSelected, setIsOtherSelected] = useState(false);
+  const [customCountryName, setCustomCountryName] = useState("");
 
   // Form State
   const [formData, setFormData] = useState<Partial<CreateTenantDto>>({
@@ -88,16 +90,30 @@ export default function OnboardingPage() {
 
   /** When country changes, auto-fill currency/timezone and update phone rules */
   const handleCountryChange = (countryName: string) => {
-    const found = countries.find(c => c.name === countryName) ?? DEFAULT_COUNTRY;
-    setSelectedCountry(found);
-    setFormData(prev => ({
-      ...prev,
-      country: found.name,
-      currency: found.currency,
-      timezone: found.timezone,
-      // Clear GST number when switching away from India
-      gstNumber: found.hasGstField ? prev.gstNumber : "",
-    }));
+    const found = countries.find(c => c.name === countryName);
+    
+    if (countryName === "Others") {
+      setIsOtherSelected(true);
+      const other = countries.find(c => c.code === "OTHERS") || DEFAULT_COUNTRY;
+      setSelectedCountry(other);
+      setFormData(prev => ({
+        ...prev,
+        country: customCountryName || "Others",
+        currency: other.currency,
+        timezone: other.timezone,
+        gstNumber: "",
+      }));
+    } else if (found) {
+      setIsOtherSelected(false);
+      setSelectedCountry(found);
+      setFormData(prev => ({
+        ...prev,
+        country: found.name,
+        currency: found.currency,
+        timezone: found.timezone,
+        gstNumber: found.hasGstField ? prev.gstNumber : "",
+      }));
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -340,15 +356,31 @@ export default function OnboardingPage() {
                   <Label>Country <span className="text-red-400">*</span></Label>
                   <select
                     name="country"
-                    value={formData.country || DEFAULT_COUNTRY.name}
+                    value={isOtherSelected ? "Others" : (formData.country || DEFAULT_COUNTRY.name)}
                     onChange={handleChange}
                     className="w-full px-3 py-2 bg-stone-900 border border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm appearance-none"
                   >
                     {countries.map(c => (
                       <option key={c.code} value={c.name}>{c.name}</option>
                     ))}
-                    <option value="Other">Other</option>
                   </select>
+
+                  {isOtherSelected && (
+                    <div className="mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <Label className="text-[10px] text-stone-500 mb-1 block">Type your country name</Label>
+                      <Input 
+                        placeholder="Enter country name"
+                        value={customCountryName}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCustomCountryName(val);
+                          setFormData(prev => ({ ...prev, country: val }));
+                        }}
+                        className="bg-stone-900 border-white/10"
+                      />
+                    </div>
+                  )}
+
                   {/* Auto-localization badge */}
                   <p className="text-xs text-stone-500">
                     Currency auto-set to <span className="text-teal-400 font-semibold">{selectedCountry.currencySymbol} {selectedCountry.currency}</span>
@@ -360,7 +392,7 @@ export default function OnboardingPage() {
                 <div className="space-y-2 col-span-2">
                   <Label>Contact Phone Number <span className="text-red-400">*</span></Label>
                   <div className="relative">
-                    {formData.country !== "Other" && (
+                    {!isOtherSelected && (
                       <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center text-teal-400 font-bold border-r border-white/10 pr-2 pointer-events-none">
                         {selectedCountry.phonePrefix}
                       </div>
@@ -371,7 +403,7 @@ export default function OnboardingPage() {
                       value={formData.contactPhone || ""}
                       onChange={handleChange}
                       placeholder={selectedCountry.code === "IN" ? "10-digit mobile number" : "Mobile number"}
-                      className={`bg-stone-900 border-white/10 ${formData.country !== "Other" ? "pl-16" : ""}`}
+                      className={`bg-stone-900 border-white/10 ${!isOtherSelected ? "pl-16" : ""}`}
                     />
                   </div>
                 </div>

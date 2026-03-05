@@ -32,6 +32,7 @@ export const COUNTRY_FALLBACK: CountryOption[] = [
   { code: "GB", name: "United Kingdom",          currency: "GBP", currencySymbol: "£",   phonePrefix: "+44",  taxSystem: "VAT",  timezone: "Europe/London",      hasGstField: false },
   { code: "US", name: "United States",           currency: "USD", currencySymbol: "$",   phonePrefix: "+1",   taxSystem: "NONE", timezone: "America/New_York",   hasGstField: false },
   { code: "AU", name: "Australia",               currency: "AUD", currencySymbol: "A$",  phonePrefix: "+61",  taxSystem: "GST",  timezone: "Australia/Sydney",   hasGstField: false },
+  { code: "OTHERS", name: "Others",               currency: "USD", currencySymbol: "$",   phonePrefix: "+1",  taxSystem: "NONE",  timezone: "UTC",               hasGstField: false },
 ];
 
 /**
