@@ -1,11 +1,14 @@
 "use client";
 
+"use client";
+
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useTheme } from "@/context/ThemeContext";
 import { Header } from "../layout/Header";
 import { Footer } from "../layout/Footer";
 import { motion, AnimatePresence } from "framer-motion";
+import { BlogSection } from "./BlogSection";
 import { TestimonialsSection } from "./TestimonialsSection";
 
 // Helper components
@@ -33,7 +36,7 @@ function StatItem({ value, unit, label }: { value: string; unit: string; label: 
   );
 }
 
-export function HeroSlidesClient() {
+export function HeroSlidesClient({ posts }: { posts: any[] }) {
   const { theme: _theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -46,14 +49,14 @@ export function HeroSlidesClient() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown" && currentSlide < 4) setCurrentSlide(currentSlide + 1);
+      if (e.key === "ArrowDown" && currentSlide < 5) setCurrentSlide(currentSlide + 1);
       else if (e.key === "ArrowUp" && currentSlide > 0) setCurrentSlide(currentSlide - 1);
     };
     const handleWheel = (e: WheelEvent) => {
       const now = Date.now();
       if (now - scrollCooldown.current < 800) return;
-      if (e.deltaY > 30 && currentSlide < 4) { setCurrentSlide(prev => prev + 1); scrollCooldown.current = now; }
-      else if (e.deltaY < -30 && currentSlide > 0) { setCurrentSlide(prev => prev - 1); scrollCooldown.current = now; }
+      if (e.deltaY > 30 && currentSlide < 5) { setCurrentSlide((prev: number) => prev + 1); scrollCooldown.current = now; }
+      else if (e.deltaY < -30 && currentSlide > 0) { setCurrentSlide((prev: number) => prev - 1); scrollCooldown.current = now; }
     };
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("wheel", handleWheel, { passive: false });
@@ -62,7 +65,7 @@ export function HeroSlidesClient() {
 
   if (!mounted) return null;
 
-  const slides = [0, 1, 2, 3, 4];
+  const slides = [0, 1, 2, 3, 4, 5];
 
   return (
     <div className="bg-background text-foreground selection:bg-primary/30 min-h-screen overflow-hidden transition-colors duration-500">
@@ -213,18 +216,23 @@ export function HeroSlidesClient() {
              <TestimonialsSection />
           </div>
 
-          {/* Slide 5: CTA */}
+          {/* Slide 5: Blog */}
+          <div className="h-screen w-screen flex items-center justify-center overflow-hidden relative overflow-y-auto">
+             <BlogSection posts={posts} />
+          </div>
+
+          {/* Slide 6: CTA */}
           <div className="h-screen w-screen flex items-center justify-center overflow-hidden relative">
             <motion.div 
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
-              className="flex flex-col items-center justify-center w-full max-w-5xl px-6 pt-10 pb-96"
+              className="flex flex-col items-center justify-center w-full max-w-5xl px-6 pt-10 pb-[380px]"
             >
-              <h2 className="text-5xl md:text-8xl font-black text-foreground mb-10 tracking-tighter leading-tight uppercase italic">
+              <h2 className="text-5xl md:text-8xl font-black text-foreground mb-10 tracking-tighter leading-tight uppercase italic text-center">
                 Stop Losing <br />Profits.
               </h2>
-              <p className="text-muted-foreground text-lg md:text-xl font-bold max-w-xl mx-auto mb-12">
+              <p className="text-muted-foreground text-lg md:text-xl font-bold max-w-xl mx-auto mb-12 text-center">
                 Join 500+ successful shop owners across India. Set up your digital store in exactly 5 minutes.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-8">
@@ -242,7 +250,7 @@ export function HeroSlidesClient() {
       </div>
 
       {/* Slide Navigation Dots */}
-      <div className={`fixed left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-6 transition-all duration-1000 ${currentSlide === 4 ? "bottom-[420px] md:bottom-[280px]" : "bottom-12"}`}>
+      <div className={`fixed left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-6 transition-all duration-1000 ${currentSlide === 5 ? "bottom-[420px] md:bottom-[280px]" : "bottom-12"}`}>
         <div className="flex gap-3 bg-muted/20 backdrop-blur-3xl p-2.5 rounded-full border border-border/50 shadow-2xl">
           {slides.map((slide) => (
             <button key={slide} onClick={() => setCurrentSlide(slide)}
@@ -255,7 +263,7 @@ export function HeroSlidesClient() {
 
       {/* Footer appearing on last slide */}
       <AnimatePresence>
-        {currentSlide === 4 && (
+        {currentSlide === 5 && (
           <motion.div 
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}

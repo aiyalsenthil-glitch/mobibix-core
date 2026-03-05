@@ -26,6 +26,7 @@ import androidx.navigation.NavController
 import com.aiyal.mobibix.core.app.AppState
 import com.aiyal.mobibix.data.network.BusinessCategory
 import com.aiyal.mobibix.data.network.CountryOption
+import com.aiyal.mobibix.data.network.INDIAN_STATES
 import com.aiyal.mobibix.data.network.CreateTenantRequest
 import com.aiyal.mobibix.ui.components.AuroraBackground
 import com.aiyal.mobibix.ui.components.GlassCard
@@ -76,6 +77,7 @@ fun TenantRequiredScreen(
     var currency by remember { mutableStateOf(DEFAULT_COUNTRIES.first().currency) }
     var timezone by remember { mutableStateOf(DEFAULT_COUNTRIES.first().timezone) }
     var isCountryExpanded by remember { mutableStateOf(false) }
+    var isStateExpanded by remember { mutableStateOf(false) }
 
     var contactPhone by remember { mutableStateOf("") }
     var addressLine1 by remember { mutableStateOf("") }
@@ -204,9 +206,21 @@ fun TenantRequiredScreen(
                                 pincode = pincode,
                                 onPincodeChange = { pincode = it },
                                 gstNumber = gstNumber,
-                                onGstChange = { gstNumber = it.uppercase() },
+                                onGstChange = { 
+                                    var gstVal = it.uppercase()
+                                    if (selectedCountry.code == "IN" && gstVal.length >= 2) {
+                                        val prefix = gstVal.take(2)
+                                        val matchedState = INDIAN_STATES.find { s -> s.gstCode == prefix }
+                                        if (matchedState != null) {
+                                            state = matchedState.name
+                                        }
+                                    }
+                                    gstNumber = gstVal
+                                },
                                 isCountryExpanded = isCountryExpanded,
-                                onCountryExpandedChange = { isCountryExpanded = it }
+                                onCountryExpandedChange = { isCountryExpanded = it },
+                                isStateExpanded = isStateExpanded,
+                                onStateExpandedChange = { isStateExpanded = it }
                             )
                             3 -> regionalStep(
                                 selectedCountry = selectedCountry,
@@ -252,15 +266,12 @@ fun TenantRequiredScreen(
                         Button(
                             onClick = {
                                 if (currentStep < 3) {
-                                    if (validateStep(currentStep, businessName, contactPhone, selectedCountry, city, state, agreedToTerms)) {
+                                    val err = validateStep(currentStep, businessName, contactPhone, selectedCountry, city, state, agreedToTerms, gstNumber)
+                                    if (err == null) {
                                         currentStep++
                                         error = null
                                     } else {
-                                        error = when(currentStep) {
-                                            1 -> "Business name is required"
-                                            2 -> "Required fields (*) missing or invalid"
-                                            else -> null
-                                        }
+                                        error = err
                                     }
                                 } else {
                                     // Submit
@@ -437,7 +448,8 @@ fun LocationStep(
     state: String, onStateChange: (String) -> Unit,
     pincode: String, onPincodeChange: (String) -> Unit,
     gstNumber: String, onGstChange: (String) -> Unit,
-    isCountryExpanded: Boolean, onCountryExpandedChange: (Boolean) -> Unit
+    isCountryExpanded: Boolean, onCountryExpandedChange: (Boolean) -> Unit,
+    isStateExpanded: Boolean, onStateExpandedChange: (Boolean) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         StepHeader("Location Details", "Where is your business based?")
@@ -475,7 +487,30 @@ fun LocationStep(
         
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(value = city, onValueChange = onCityChange, label = { Text("City *") }, modifier = Modifier.weight(1f))
-            OutlinedTextField(value = state, onValueChange = onStateChange, label = { Text("State *") }, modifier = Modifier.weight(1f))
+            if (selectedCountry.code == "IN") {
+                @OptIn(ExperimentalMaterial3Api::class)
+                ExposedDropdownMenuBox(
+                    expanded = isStateExpanded,
+                    onExpandedChange = onStateExpandedChange,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = state,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("State *") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isStateExpanded) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(expanded = isStateExpanded, onDismissRequest = { onStateExpandedChange(false) }) {
+                        INDIAN_STATES.forEach { s ->
+                            DropdownMenuItem(text = { Text(s.name) }, onClick = { onStateChange(s.name); onStateExpandedChange(false) })
+                        }
+                    }
+                }
+            } else {
+                OutlinedTextField(value = state, onValueChange = onStateChange, label = { Text("State *") }, modifier = Modifier.weight(1f))
+            }
         }
 
         OutlinedTextField(value = pincode, onValueChange = onPincodeChange, label = { Text("Pincode / Zip") }, modifier = Modifier.fillMaxWidth())
@@ -538,15 +573,27 @@ fun StepHeader(title: String, subtitle: String) {
 }
 
 private fun validateStep(
-    step: Int, name: String, phone: String, country: CountryOption, city: String, state: String, terms: Boolean
-): Boolean {
+    step: Int, name: String, phone: String, country: CountryOption, city: String, state: String, terms: Boolean, gstNumber: String
+): String? {
     return when(step) {
-        1 -> name.isNotBlank()
+        1 -> if (name.isBlank()) "Business name is required" else null
         2 -> {
             val isPhoneValid = if (country.code == "IN") phone.length == 10 else phone.length >= 8
-            name.isNotBlank() && phone.isNotBlank() && isPhoneValid && city.isNotBlank() && state.isNotBlank()
+            if (name.isBlank() || phone.isBlank() || !isPhoneValid || city.isBlank() || state.isBlank()) {
+                "Required fields (*) missing or invalid"
+            } else if (country.code == "IN" && gstNumber.isNotBlank()) {
+                val regex = Regex("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$")
+                if (!regex.matches(gstNumber)) {
+                    "Invalid GST Number format. Expected: 22AAAAA0000A1Z5"
+                } else {
+                    val selState = INDIAN_STATES.find { it.name == state }
+                    if (selState != null && !gstNumber.startsWith(selState.gstCode)) {
+                        "GST must start with ${selState.gstCode} for ${selState.name}"
+                    } else null
+                }
+            } else null
         }
-        3 -> terms
-        else -> false
+        3 -> if (!terms) "Please agree to the Terms & Conditions" else null
+        else -> "Invalid Step"
     }
 }

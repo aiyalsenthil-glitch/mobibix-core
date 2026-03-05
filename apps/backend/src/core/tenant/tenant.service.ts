@@ -121,15 +121,87 @@ export class TenantService {
         consentUserAgent: audit?.userAgent,
       },
     });
-    // Send welcome email after gym create (Event Driven)
+    // Module 1: Apply Promo Code Logic
+    let promoDescription: string | undefined;
+    if (dto.promoCode) {
+      try {
+        await this.partnersService.applyPromoToTenant(
+          dto.promoCode,
+          tenant.id,
+          userId,
+        );
+
+        const promo = await this.prisma.promoCode.findUnique({
+          where: { code: dto.promoCode },
+        });
+        
+        if (promo) {
+          promoDescription = promo.description || undefined;
+        }
+
+        if (promo?.type === 'FREE_TRIAL') {
+          // Derive correct plan code per module — seeded codes are MOBIBIX_PRO / GYM_PRO
+          const planCode =
+            effectiveTenantType === 'MOBILE_SHOP' ? 'MOBIBIX_PRO' : 'GYM_PRO';
+          const proPlan = await this.prisma.plan.findFirst({
+            where: {
+              code: planCode,
+              module:
+                effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
+            },
+          });
+
+          if (proPlan) {
+            const newEndDate = new Date();
+            newEndDate.setDate(newEndDate.getDate() + promo.durationDays);
+
+            await this.prisma.tenantSubscription.update({
+              where: {
+                tenantId_module: {
+                  tenantId: tenant.id,
+                  module:
+                    effectiveTenantType === 'MOBILE_SHOP'
+                      ? 'MOBILE_SHOP'
+                      : 'GYM',
+                },
+              },
+              data: {
+                planId: proPlan.id,
+                endDate: newEndDate,
+                status: 'ACTIVE', // Activate immediately for 3 months free
+              },
+            });
+            this.logger.log(
+              `🎁 Applied FREE_TRIAL promo ${dto.promoCode}: Plan=PRO, Days=${promo.durationDays}`,
+            );
+          }
+        }
+      } catch (err: any) {
+        this.logger.error(`Failed to apply promo ${dto.promoCode}: ${err.message}`);
+        // Don't fail the whole onboarding if promo fails
+      }
+    }
+
+    // Send welcome email (Event Driven) - MOVED DOWN to include promo info
     if (!user.welcomeEmailSent && user.email) {
       try {
         const module =
-          effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM'; // Resolve module
+          effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM';
 
         await this.eventEmitter.emitAsync(
           'tenant.welcome',
-          new TenantWelcomeEvent(tenant.id, module, new Date(), user, tenant),
+          {
+            tenantId: tenant.id,
+            module,
+            timestamp: new Date(),
+            user,
+            tenant,
+            userId, // Required by NotificationEventBus
+            data: promoDescription ? { 
+              message: promoDescription, 
+              promoCode: dto.promoCode 
+            } : undefined
+          }
         );
 
         await this.prisma.user.update({
@@ -196,64 +268,6 @@ export class TenantService {
         this.logger.error(
           `Failed to auto-create first shop for ${tenant.id}: ${err.message}`,
         );
-      }
-    }
-
-    // Module 1: Apply Promo Code Logic
-    if (dto.promoCode) {
-      try {
-        await this.partnersService.applyPromoToTenant(
-          dto.promoCode,
-          tenant.id,
-          userId,
-        );
-
-        const promo = await this.prisma.promoCode.findUnique({
-          where: { code: dto.promoCode },
-        });
-
-        if (promo?.type === 'FREE_TRIAL') {
-          // Derive correct plan code per module — seeded codes are MOBIBIX_PRO / GYM_PRO
-          const planCode =
-            effectiveTenantType === 'MOBILE_SHOP' ? 'MOBIBIX_PRO' : 'GYM_PRO';
-          const proPlan = await this.prisma.plan.findFirst({
-            where: {
-              code: planCode,
-              module:
-                effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
-            },
-          });
-
-          if (proPlan) {
-            const newEndDate = new Date();
-            newEndDate.setDate(newEndDate.getDate() + promo.durationDays);
-
-            await this.prisma.tenantSubscription.update({
-              where: {
-                tenantId_module: {
-                  tenantId: tenant.id,
-                  module:
-                    effectiveTenantType === 'MOBILE_SHOP'
-                      ? 'MOBILE_SHOP'
-                      : 'GYM',
-                },
-              },
-              data: {
-                planId: proPlan.id,
-                endDate: newEndDate,
-                status: 'ACTIVE', // Activate immediately for 3 months free
-              },
-            });
-            this.logger.log(
-              `🎁 Applied FREE_TRIAL promo ${dto.promoCode}: Plan=PRO, Days=${promo.durationDays}`,
-            );
-          }
-        }
-      } catch (err) {
-        this.logger.error(
-          `Failed to apply promo code ${dto.promoCode}: ${err.message}`,
-        );
-        // Don't fail the whole onboarding if promo fails
       }
     }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
@@ -12,8 +12,13 @@ import { X } from "lucide-react";
 export function DashboardClient({ children }: { children: React.ReactNode }) {
   const [openMore, setOpenMore] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const { theme } = useTheme();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isActive = (path: string) => pathname.startsWith(path);
 
@@ -194,7 +199,7 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-0 md:ml-64 overflow-y-auto transition-colors duration-200">
+      <main className={`flex-1 ml-0 md:ml-64 overflow-y-auto transition-colors duration-200 ${mounted ? '' : mainBg}`}>
         {/* Fixed Topbar across dashboard */}
         <div className="fixed top-0 right-0 left-0 md:left-64 z-20">
             <SubscriptionAlert />
@@ -203,7 +208,7 @@ export function DashboardClient({ children }: { children: React.ReactNode }) {
               onMenuClick={() => setIsMobileMenuOpen(true)} 
             />
         </div>
-        <div className="pt-28 min-h-screen bg-white dark:bg-black p-4 md:p-8">
+        <div className={`pt-28 min-h-screen p-4 md:p-8 ${mounted ? 'bg-white dark:bg-black' : ''}`}>
           {children}
         </div>
       </main>

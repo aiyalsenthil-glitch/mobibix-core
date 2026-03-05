@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import android.content.Intent
 import android.net.Uri
@@ -34,8 +35,6 @@ import com.aiyal.mobibix.core.shop.ShopContextProvider
 import com.aiyal.mobibix.ui.theme.ThemeState
 import com.aiyal.mobibix.ui.components.AuroraBackground
 import com.aiyal.mobibix.ui.components.GlassCard
-
-private val TealAccent = Color(0xFF00C896)
 
 @Composable
 fun SettingsScreen(
@@ -58,13 +57,14 @@ fun SettingsScreen(
                 Text(
                     "Settings",
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     "Configure app, business, and invoicing",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
@@ -84,9 +84,9 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.size(36.dp)
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                modifier = Modifier.size(40.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
@@ -99,8 +99,8 @@ fun SettingsScreen(
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Dark Mode", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                                Text("Adjust app appearance", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Dark Mode", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Adjust app appearance", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                             }
                             Switch(
                                 checked = isDarkTheme,
@@ -128,7 +128,7 @@ fun SettingsScreen(
                                 title = "Invoice Settings",
                                 subtitle = "GST, prefixes, footer notes",
                                 icon = Icons.Default.Description,
-                                color = TealAccent,
+                                color = Color(0xFF14B8A6),
                                 onClick = { navController.navigate("invoice_settings") }
                             )
                             SettingsOptionCard(
@@ -154,7 +154,8 @@ fun SettingsScreen(
                             Text(
                                 "No active shop selected. Please create or select a shop.",
                                 modifier = Modifier.padding(16.dp),
-                                color = MaterialTheme.colorScheme.onErrorContainer
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -201,7 +202,7 @@ fun SettingsScreen(
                             title = "Data Deletion",
                             subtitle = if (isOwner) "Account removal procedures" else "Contact owner to delete account",
                             icon = Icons.Default.Delete,
-                            color = if (isOwner) Color(0xFFEF4444) else Color.Gray,
+                            color = if (isOwner) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             onClick = {
                                 if (isOwner) {
                                     navController.navigate("delete_account")
@@ -223,9 +224,10 @@ fun SettingsSectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.ExtraBold,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
+        letterSpacing = 0.5.sp
     )
 }
 
@@ -245,9 +247,9 @@ fun SettingsOptionCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = color.copy(alpha = 0.12f),
-                modifier = Modifier.size(36.dp)
+                shape = RoundedCornerShape(10.dp),
+                color = color.copy(alpha = 0.15f),
+                modifier = Modifier.size(40.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
@@ -255,8 +257,8 @@ fun SettingsOptionCard(
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
             }
             Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }

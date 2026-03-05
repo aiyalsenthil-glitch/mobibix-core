@@ -19,6 +19,8 @@ export function LowStockAlerts({ shopId, onAdjustStock }: LowStockAlertsProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!shopId) return;
+
     const loadLowStockProducts = async () => {
       try {
         setLoading(true);

@@ -50,16 +50,13 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background transition-colors duration-500 overflow-hidden">
-      <Header />
+    <main className="min-h-screen bg-background transition-colors duration-500 overflow-hidden">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <HeroSlidesClient />
-      <BlogSection posts={posts} />
+      <HeroSlidesClient posts={posts} />
       <WhatsAppWidget />
-      <Footer />
-    </div>
+    </main>
   );
 }

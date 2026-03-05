@@ -1,9 +1,27 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTheme } from "@/context/ThemeContext";
 
 export function ThemeSwitcher() {
   const { theme, toggleTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <button
+        className="px-3 py-2 rounded-lg bg-gray-200 text-slate-700 flex items-center justify-center gap-1 font-medium text-sm"
+        disabled
+      >
+        <div className="h-4 w-4 rounded-full border border-slate-300"></div>
+        <span>...</span>
+      </button>
+    );
+  }
 
   return (
     <button

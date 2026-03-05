@@ -101,7 +101,19 @@ export class NotificationEventBus {
     });
   }
 
-  // ─── OTHER NOTIFICATIONS ─────────────────────────────────────────────
-  
+  @OnEvent('tenant.welcome')
+  async handleTenantWelcome(payload: { tenantId: string; module: 'GYM' | 'MOBILE_SHOP'; userId: string; data?: any }) {
+    await this.orchestrator.dispatch({
+      tenantId: payload.tenantId,
+      eventId: 'tenant.welcome',
+      moduleType: payload.module,
+      userId: payload.userId,
+      recipient: payload.userId,
+      data: payload.data || {
+        welcome: true,
+      },
+    });
+  }
+
   // NOTE: Add @OnEvent hooks here as migration phase from EmailListener occurs...
 }

@@ -30,8 +30,6 @@ import java.util.Locale
 import com.aiyal.mobibix.ui.components.AuroraBackground
 import com.aiyal.mobibix.ui.components.GlassCard
 
-private val TealAccent = Color(0xFF00C896)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductListScreen(
@@ -60,13 +58,14 @@ fun ProductListScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate("add_product") },
-                containerColor = TealAccent,
+                containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Product")
             }
-        }
+        },
+        containerColor = Color.Transparent
     ) { padding ->
         Box(
             modifier = Modifier
@@ -77,17 +76,18 @@ fun ProductListScreen(
             
             Column(modifier = Modifier.fillMaxSize()) {
                 // ── Premium Header ──
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
                     Text(
                         "Inventory",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         "Manage your products and stock",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
                     )
                 }
 
@@ -98,15 +98,21 @@ fun ProductListScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Search products...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    placeholder = { Text("Search products...", fontWeight = FontWeight.Medium) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.outline) },
                     trailingIcon = {
                         IconButton(onClick = { navController.navigate("barcode_scanner") }) {
-                            Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan Barcode", tint = TealAccent)
+                            Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan Barcode", tint = MaterialTheme.colorScheme.primary)
                         }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                    )
                 )
 
                 // ── Content ──
@@ -121,28 +127,28 @@ fun ProductListScreen(
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.padding(8.dp),
                             style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
                 if (uiState.isLoading && uiState.products.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = TealAccent)
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 } else if (uiState.products.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("No products found", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("No products found", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(8.dp))
-                            Text("Tap + to add your first product", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                            Text("Tap + to add your first product", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, fontWeight = FontWeight.Medium)
                         }
                     }
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(uiState.products) { product ->
                             PremiumProductCard(
@@ -162,26 +168,28 @@ fun ProductListScreen(
             ModalBottomSheet(
                 onDismissRequest = { showBottomSheet = false },
                 sheetState = sheetState,
-                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                containerColor = MaterialTheme.colorScheme.surface
             ) {
                 Column(modifier = Modifier.padding(bottom = 32.dp)) {
                     Text(
                         selectedProduct!!.name,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
                     ListItem(
-                        headlineContent = { Text("Edit Product") },
-                        leadingContent = { Icon(Icons.Default.Edit, contentDescription = null, tint = TealAccent) },
+                        headlineContent = { Text("Edit Product", fontWeight = FontWeight.Bold) },
+                        leadingContent = { Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                         modifier = Modifier.clickable {
                             showBottomSheet = false
                             navController.navigate("edit_product/${selectedProduct!!.id}")
                         }
                     )
                     ListItem(
-                        headlineContent = { Text("Stock Adjustment") },
+                        headlineContent = { Text("Stock Adjustment", fontWeight = FontWeight.Bold) },
                         leadingContent = { Icon(Icons.Default.Settings, contentDescription = null, tint = Color(0xFFF59E0B)) },
                         modifier = Modifier.clickable {
                             showBottomSheet = false
@@ -189,7 +197,7 @@ fun ProductListScreen(
                         }
                     )
                     ListItem(
-                        headlineContent = { Text("Stock History") },
+                        headlineContent = { Text("Stock History", fontWeight = FontWeight.Bold) },
                         leadingContent = { Icon(Icons.Default.History, contentDescription = null, tint = Color(0xFF3B82F6)) },
                         modifier = Modifier.clickable { showBottomSheet = false /* TODO */ }
                     )
@@ -209,7 +217,7 @@ fun PremiumProductCard(product: ShopProduct, onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -217,31 +225,32 @@ fun PremiumProductCard(product: ShopProduct, onClick: () -> Unit) {
                 Text(
                     product.name,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (!product.sku.isNullOrBlank()) {
                         Text(
                             "SKU: ${product.sku}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                     Surface(
-                        color = if (product.stockQty <= 0) MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
-                                else TealAccent.copy(alpha = 0.12f),
-                        shape = RoundedCornerShape(6.dp)
+                        color = if (product.stockQty <= 0) Color(0xFFEF4444).copy(alpha = 0.12f)
+                                else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
                             "Stock: ${product.stockQty}",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (product.stockQty <= 0) MaterialTheme.colorScheme.error else TealAccent
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (product.stockQty <= 0) Color(0xFFEF4444) else MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -250,7 +259,7 @@ fun PremiumProductCard(product: ShopProduct, onClick: () -> Unit) {
                 Text(
                     currencyFormatter.format(product.salePrice / 100.0),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary
                 )
             }

@@ -26,6 +26,8 @@ export function InventoryList({ shopId, onAdjustStock }: InventoryListProps) {
 
   // Load products
   useEffect(() => {
+    if (!shopId) return;
+
     const loadProducts = async () => {
       try {
         setLoading(true);

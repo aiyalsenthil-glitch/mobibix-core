@@ -14,6 +14,7 @@ import {
   CountryOption,
   COUNTRY_FALLBACK,
 } from "@/services/country.api";
+import { INDIAN_STATES } from "@/constants/indian-states";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -118,6 +119,39 @@ export default function OnboardingPage() {
       return;
     }
 
+    if (name === "state" && selectedCountry.code === "IN") {
+      const selectedState = INDIAN_STATES.find(s => s.name === value);
+      setFormData(prev => {
+        const next = { ...prev, state: value };
+        // If they select a state, and their GST doesn't start with the correct code, we can optionally update it.
+        // It's safer to just set the prefix for them if the GST is empty or doesn't match:
+        if (selectedState && next.gstNumber) {
+           if (!next.gstNumber.startsWith(selectedState.gstCode)) {
+              // Prepend or replace first 2 chars if they don't match (optional UX enhancement)
+           }
+        }
+        return next;
+      });
+      return;
+    }
+
+    if (name === "gstNumber" && selectedCountry.code === "IN") {
+      const gstVal = value.toUpperCase();
+      setFormData(prev => {
+        const next = { ...prev, gstNumber: gstVal };
+        // If they type a 2 digit prefix that matches a state, auto-select the state
+        if (gstVal.length >= 2) {
+          const prefix = gstVal.substring(0, 2);
+          const matchedState = INDIAN_STATES.find(s => s.gstCode === prefix);
+          if (matchedState) {
+            next.state = matchedState.name;
+          }
+        }
+        return next;
+      });
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -136,6 +170,17 @@ export default function OnboardingPage() {
       }
       if (!formData.city?.trim()) return "City is required";
       if (!formData.state?.trim()) return "State is required";
+
+      if (selectedCountry.code === "IN" && formData.gstNumber) {
+        const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+        if (!gstRegex.test(formData.gstNumber)) {
+          return "Invalid GST Number format. Expected format: 22AAAAA0000A1Z5";
+        }
+        const selectedState = INDIAN_STATES.find(s => s.name === formData.state);
+        if (selectedState && !formData.gstNumber.startsWith(selectedState.gstCode)) {
+          return `GST Number must start with ${selectedState.gstCode} for ${selectedState.name}`;
+        }
+      }
     }
     if (step === 3) {
       if (!agreedToTerms) return "You must agree to the Terms and Privacy Policy to continue";
@@ -266,7 +311,7 @@ export default function OnboardingPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Business Display Name <span className="text-red-400">*</span></Label>
-                  <Input name="name" value={formData.name || ""} onChange={handleChange} placeholder="e.g. Smart Tech Solutions" className="bg-stone-900 border-white/10" />
+                  <Input id="shop-name-input" name="name" value={formData.name || ""} onChange={handleChange} placeholder="e.g. Smart Tech Solutions" className="bg-stone-900 border-white/10" />
                   <p className="text-xs text-stone-500">This is the name your customers will see on invoices.</p>
                 </div>
                 <div className="space-y-2">
@@ -321,6 +366,7 @@ export default function OnboardingPage() {
                       </div>
                     )}
                     <Input
+                      id="phone-input"
                       name="contactPhone"
                       value={formData.contactPhone || ""}
                       onChange={handleChange}
@@ -337,17 +383,32 @@ export default function OnboardingPage() {
 
                 <div className="space-y-2">
                   <Label>City <span className="text-red-400">*</span></Label>
-                  <Input name="city" value={formData.city || ""} onChange={handleChange} placeholder="City" className="bg-stone-900 border-white/10" />
+                  <Input id="city-input" name="city" value={formData.city || ""} onChange={handleChange} placeholder="City" className="bg-stone-900 border-white/10" />
                 </div>
 
                 <div className="space-y-2">
                   <Label>State / Province <span className="text-red-400">*</span></Label>
-                  <Input name="state" value={formData.state || ""} onChange={handleChange} placeholder="State" className="bg-stone-900 border-white/10" />
+                  {selectedCountry.code === "IN" ? (
+                    <select
+                      id="state-select"
+                      name="state"
+                      value={formData.state || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 bg-stone-900 border border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm appearance-none"
+                    >
+                      <option value="">Select State</option>
+                      {INDIAN_STATES.map(s => (
+                        <option key={s.code} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input name="state" value={formData.state || ""} onChange={handleChange} placeholder="State" className="bg-stone-900 border-white/10" />
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Pincode / Zip <span className="text-red-400">*</span></Label>
-                  <Input name="pincode" value={formData.pincode || ""} onChange={handleChange} className="bg-stone-900 border-white/10" />
+                  <Input id="pincode-input" name="pincode" value={formData.pincode || ""} onChange={handleChange} className="bg-stone-900 border-white/10" />
                 </div>
 
                 {/* GST — only shown for India (driven by hasGstField flag from API) */}
@@ -355,6 +416,7 @@ export default function OnboardingPage() {
                   <div className="space-y-2 col-span-2">
                     <Label>GST Number (Optional)</Label>
                     <Input
+                      id="gst-input"
                       name="gstNumber"
                       value={formData.gstNumber || ""}
                       onChange={handleChange}
@@ -413,6 +475,7 @@ export default function OnboardingPage() {
               <div className="space-y-4 pt-6 mt-6 border-t border-white/5">
                 <label className="flex items-start gap-3 cursor-pointer group">
                   <input
+                    id="terms-checkbox"
                     type="checkbox"
                     checked={agreedToTerms}
                     onChange={e => setAgreedToTerms(e.target.checked)}
@@ -448,11 +511,11 @@ export default function OnboardingPage() {
           ) : <div />}
 
           {step < 3 ? (
-            <Button onClick={handleNext} className="bg-teal-500 hover:bg-teal-400 text-black">
+            <Button id="onboarding-next-btn" onClick={handleNext} className="bg-teal-500 hover:bg-teal-400 text-black">
               Continue <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
-            <Button onClick={handleCreateBusiness} disabled={loading} className="bg-teal-500 hover:bg-teal-400 text-black">
+            <Button id="onboarding-finish-btn" onClick={handleCreateBusiness} disabled={loading} className="bg-teal-500 hover:bg-teal-400 text-black">
               {loading ? "Creating..." : "Complete Setup"}
               {!loading && <Check className="w-4 h-4 ml-2" />}
             </Button>

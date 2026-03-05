@@ -32,18 +32,6 @@ import java.util.*
 import com.aiyal.mobibix.ui.components.AuroraBackground
 import com.aiyal.mobibix.ui.components.GlassCard
 
-// ── Color constants for premium design ──
-private val BrandPrimary = Color(0xFF00C896)
-private val AppBackground = Color(0xFFF8F9FA)
-private val SurfaceWhite = Color(0xFFFFFFFF)
-private val TextPrimary = Color(0xFF0F172A)
-private val TextSecondary = Color(0xFF64748B)
-private val SuccessColor = Color(0xFF10B981)
-private val DangerColor = Color(0xFFEF4444)
-private val WarningColor = Color(0xFFF59E0B)
-private val InfoColor = Color(0xFF3B82F6)
-private val MutedText = Color(0xFF9CA3AF)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OwnerDashboardScreen(
@@ -60,7 +48,7 @@ fun OwnerDashboardScreen(
     if (state.loading) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             AuroraBackground()
-            CircularProgressIndicator(color = BrandPrimary)
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         }
         return
     }
@@ -104,7 +92,7 @@ fun OwnerDashboardScreen(
 
             item { Spacer(Modifier.height(20.dp)) }
 
-            // 4. Today Revenue & Profit
+            // 4. Today Financials
             item {
                 TodayFinancials(
                     todaySales = state.todaySales,
@@ -133,14 +121,20 @@ fun OwnerDashboardScreen(
             // 7. Operations Cards
             item {
                 Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                    Text("QUICK OPERATIONS", style = MaterialTheme.typography.labelSmall, color = TextSecondary, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(
+                        "QUICK OPERATIONS", 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, 
+                        fontWeight = FontWeight.ExtraBold, 
+                        letterSpacing = 1.sp
+                    )
                     Spacer(Modifier.height(12.dp))
                     
                     PremiumOperationsCard(
                         title = "Inventory Management",
                         icon = Icons.Default.Inventory,
                         stats = listOf("Total Products: ${state.totalProducts}", "Dead Stock: ${state.deadStock}"),
-                        accentColor = WarningColor,
+                        accentColor = Color(0xFFF59E0B),
                         onClick = onNavigateToInventory
                     )
                     
@@ -150,7 +144,7 @@ fun OwnerDashboardScreen(
                         title = "Service & Repairs",
                         icon = Icons.Default.Build,
                         stats = listOf("Waiting Parts: ${state.waitingParts}", "Ready: ${state.ready}"),
-                        accentColor = InfoColor,
+                        accentColor = Color(0xFF3B82F6),
                         onClick = onNavigateToJobs
                     )
                 }
@@ -186,7 +180,7 @@ fun DashboardHeader(
             Box {
                 Surface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
                     modifier = Modifier
                         .clip(CircleShape)
                         .clickable { showShopSelector = true }
@@ -198,11 +192,11 @@ fun DashboardHeader(
                         Text(
                             text = state.shops.find { it.id == state.selectedShopId }?.name ?: "All Businesses",
                             style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(Modifier.width(4.dp))
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     }
                 }
                 DropdownMenu(expanded = showShopSelector, onDismissRequest = { showShopSelector = false }) {
@@ -214,18 +208,19 @@ fun DashboardHeader(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         Text(
             "Overview",
-            style = MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp),
+            style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             "Monitor your performance in real-time",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
         )
 
         Spacer(Modifier.height(24.dp))
@@ -239,7 +234,7 @@ fun DashboardHeader(
 
         Button(
             onClick = onNavigateToReports,
-            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary, contentColor = Color.White),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
@@ -258,7 +253,7 @@ fun DashboardHeader(
             contentPadding = PaddingValues(0.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                Text("Detailed Reports", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Detailed Reports", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
                 Spacer(Modifier.width(8.dp))
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(20.dp))
             }
@@ -269,7 +264,13 @@ fun DashboardHeader(
 @Composable
 fun OperationalAlerts(pendingJobs: Int, negativeStock: Int, onJobsClick: () -> Unit, onStockClick: () -> Unit) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-        Text("ACTION REQUIRED", style = MaterialTheme.typography.labelSmall, color = TextSecondary, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Text(
+            "ACTION REQUIRED", 
+            style = MaterialTheme.typography.labelSmall, 
+            color = MaterialTheme.colorScheme.onSurfaceVariant, 
+            fontWeight = FontWeight.ExtraBold, 
+            letterSpacing = 1.sp
+        )
         Spacer(Modifier.height(8.dp))
         var expanded by remember { mutableStateOf(true) }
         
@@ -280,11 +281,11 @@ fun OperationalAlerts(pendingJobs: Int, negativeStock: Int, onJobsClick: () -> U
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Warning, contentDescription = null, tint = WarningColor)
+                    Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFF59E0B))
                     Spacer(Modifier.width(8.dp))
                     Text(
                         "${(if(pendingJobs>0) 1 else 0) + (if(negativeStock>0) 1 else 0)} Alerts found", 
-                        fontWeight = FontWeight.Bold, 
+                        fontWeight = FontWeight.ExtraBold, 
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(Modifier.weight(1f))
@@ -298,7 +299,7 @@ fun OperationalAlerts(pendingJobs: Int, negativeStock: Int, onJobsClick: () -> U
                                 icon = Icons.Default.Inventory,
                                 text = "$negativeStock items have negative stock",
                                 onClick = onStockClick,
-                                color = DangerColor
+                                color = Color(0xFFEF4444)
                             )
                         }
                         if (pendingJobs > 0) {
@@ -307,7 +308,7 @@ fun OperationalAlerts(pendingJobs: Int, negativeStock: Int, onJobsClick: () -> U
                                 icon = Icons.Default.Build,
                                 text = "$pendingJobs jobs pending/delayed",
                                 onClick = onJobsClick,
-                                color = WarningColor
+                                color = Color(0xFFF59E0B)
                             )
                         }
                     }
@@ -325,14 +326,14 @@ fun AlertItem(icon: ImageVector, text: String, onClick: () -> Unit, color: Color
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .clickable { onClick() }
-            .background(color.copy(alpha = 0.05f))
+            .background(color.copy(alpha = 0.08f))
             .padding(12.dp)
     ) {
-        Surface(shape = CircleShape, color = color.copy(alpha=0.15f), modifier = Modifier.size(32.dp)) {
+        Surface(shape = CircleShape, color = color.copy(alpha=0.2f), modifier = Modifier.size(32.dp)) {
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.padding(6.dp))
         }
         Spacer(Modifier.width(12.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+        Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
         Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
     }
 }
@@ -348,10 +349,10 @@ fun BusinessPerformanceKpi(state: OwnerDashboardState) {
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Business Performance", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text("Business Performance", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.weight(1f))
-                Surface(color = BrandPrimary.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
-                    Text("This Month", style = MaterialTheme.typography.labelSmall, color = BrandPrimary, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontWeight = FontWeight.Bold)
+                Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), shape = RoundedCornerShape(8.dp)) {
+                    Text("This Month", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontWeight = FontWeight.ExtraBold)
                 }
             }
             
@@ -359,7 +360,7 @@ fun BusinessPerformanceKpi(state: OwnerDashboardState) {
             
             Row(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Revenue", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Revenue", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     Text(
                         currencyFormatter.format(state.monthSales),
@@ -370,20 +371,20 @@ fun BusinessPerformanceKpi(state: OwnerDashboardState) {
                 }
                 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Growth", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                    Text("Growth", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     val isPositive = state.percentageChange >= 0
-                    val growthColor = if (isPositive) SuccessColor else DangerColor
+                    val growthColor = if (isPositive) Color(0xFF10B981) else Color(0xFFEF4444)
                     val growthIcon = if (isPositive) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = CircleShape, color = growthColor.copy(alpha=0.1f), modifier = Modifier.size(24.dp)) {
+                        Surface(shape = CircleShape, color = growthColor.copy(alpha=0.15f), modifier = Modifier.size(24.dp)) {
                             Icon(growthIcon, contentDescription = null, tint = growthColor, modifier = Modifier.padding(4.dp))
                         }
                         Spacer(Modifier.width(8.dp))
                         Text(
                             "${String.format("%.1f", state.percentageChange)}%",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.ExtraBold,
                             color = growthColor
                         )
                     }
@@ -391,40 +392,40 @@ fun BusinessPerformanceKpi(state: OwnerDashboardState) {
             }
             
             Spacer(Modifier.height(24.dp))
-            HorizontalDivider(color = AppBackground, thickness = 2.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 1.dp)
             Spacer(Modifier.height(24.dp))
             
             Row(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Collection Rate", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Collection Rate", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
-                    Text("100%", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("100%", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
                     Spacer(Modifier.height(6.dp))
                     LinearProgressIndicator(
                         progress = { 1f },
                         modifier = Modifier
-                            .height(4.dp)
-                            .width(60.dp)
-                            .clip(RoundedCornerShape(2.dp)),
-                        color = SuccessColor,
+                            .height(6.dp)
+                            .width(80.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = Color(0xFF10B981),
                         trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                     )
                 }
                 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Active Jobs", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Active Jobs", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("${state.inProgress}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("${state.inProgress}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
                         if (state.inProgress > 0) {
                             Spacer(Modifier.width(8.dp))
-                            Surface(color = WarningColor, shape = CircleShape) {
+                            Surface(color = Color(0xFFF59E0B), shape = CircleShape) {
                                 Text(
                                     "Pending", 
                                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp), 
                                     color = Color.White, 
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), 
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.ExtraBold
                                 )
                             }
                         }
@@ -441,21 +442,32 @@ fun TodayFinancials(todaySales: Double, onNavigateToNewSale: () -> Unit) {
     val profit = todaySales * 0.3
 
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-        Text("TODAY'S SNAPSHOT", style = MaterialTheme.typography.labelSmall, color = TextSecondary, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Text(
+            "TODAY'S SNAPSHOT", 
+            style = MaterialTheme.typography.labelSmall, 
+            color = MaterialTheme.colorScheme.onSurfaceVariant, 
+            fontWeight = FontWeight.ExtraBold, 
+            letterSpacing = 1.sp
+        )
         Spacer(Modifier.height(12.dp))
         
         if (todaySales <= 0.0) {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(32.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Surface(shape = CircleShape, color = BrandPrimary.copy(alpha = 0.1f), modifier = Modifier.size(64.dp)) {
-                        Icon(Icons.Default.AddShoppingCart, contentDescription = null, tint = BrandPrimary, modifier = Modifier.padding(16.dp))
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), modifier = Modifier.size(64.dp)) {
+                        Icon(Icons.Default.AddShoppingCart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(16.dp))
                     }
                     Spacer(Modifier.height(16.dp))
-                    Text("No sales yet today", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Start by creating your first sale.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("No sales yet today", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Start by creating your first sale.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(20.dp))
-                    Button(onClick = onNavigateToNewSale, colors = ButtonDefaults.buttonColors(containerColor = TextPrimary), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                        Text("Create Sale")
+                    Button(
+                        onClick = onNavigateToNewSale, 
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.inverseSurface), 
+                        shape = RoundedCornerShape(12.dp), 
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Create Sale", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -463,21 +475,21 @@ fun TodayFinancials(todaySales: Double, onNavigateToNewSale: () -> Unit) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 GlassCard(modifier = Modifier.weight(1f)) {
                     Column(modifier = Modifier.padding(20.dp)) {
-                        Surface(shape = CircleShape, color = BrandPrimary.copy(alpha=0.15f), modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Default.AttachMoney, contentDescription = null, tint = BrandPrimary, modifier = Modifier.padding(8.dp))
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha=0.2f), modifier = Modifier.size(40.dp)) {
+                            Icon(Icons.Default.AttachMoney, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(8.dp))
                         }
                         Spacer(Modifier.height(12.dp))
-                        Text("Revenue", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Revenue", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                         Text(currencyFormatter.format(todaySales), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
                 GlassCard(modifier = Modifier.weight(1f)) {
                     Column(modifier = Modifier.padding(20.dp)) {
-                        Surface(shape = CircleShape, color = InfoColor.copy(alpha=0.15f), modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null, tint = InfoColor, modifier = Modifier.padding(8.dp))
+                        Surface(shape = CircleShape, color = Color(0xFF3B82F6).copy(alpha=0.2f), modifier = Modifier.size(40.dp)) {
+                            Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null, tint = Color(0xFF3B82F6), modifier = Modifier.padding(8.dp))
                         }
                         Spacer(Modifier.height(12.dp))
-                        Text("Profit (Est)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Profit (Est)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                         Text(currencyFormatter.format(profit), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
@@ -490,16 +502,16 @@ fun TodayFinancials(todaySales: Double, onNavigateToNewSale: () -> Unit) {
 fun PremiumOperationsCard(title: String, icon: ImageVector, stats: List<String>, accentColor: Color, onClick: () -> Unit) {
     GlassCard(modifier = Modifier.fillMaxWidth().clickable { onClick() }) {
         Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(color = accentColor.copy(alpha = 0.12f), shape = RoundedCornerShape(14.dp), modifier = Modifier.size(48.dp)) {
+            Surface(color = accentColor.copy(alpha = 0.15f), shape = RoundedCornerShape(14.dp), modifier = Modifier.size(48.dp)) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(24.dp))
                 }
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.height(4.dp))
-                Text(stats.joinToString(" • "), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stats.joinToString(" • "), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
             }
             Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
         }

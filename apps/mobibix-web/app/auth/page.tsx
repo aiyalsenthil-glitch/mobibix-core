@@ -32,13 +32,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
   // State: 0=Landing, 1=LoginPass, 2=SignupPass, 3=Verify, 4=ForgotPass
   type Step = "LANDING" | "LOGIN_PASS" | "SIGNUP_PASS" | "VERIFY" | "FORGOT_PASS";
   
-  const getInitialStep = (): Step => {
-    // Always start at LANDING to ensure email is captured
-    return "LANDING";
-  };
-
-  const [step, setStep] = useState<Step>(getInitialStep());
-  const [intendedMode, setIntendedMode] = useState<"signin" | "signup">("signin");
+  const [step, setStep] = useState<Step>("LANDING");
+  const [intendedMode, setIntendedMode] = useState<"signin" | "signup">(mode || "signin");
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -173,6 +168,13 @@ export default function AuthPage({ mode }: AuthPageProps) {
         await updateProfile(res.user, { displayName: fullName });
       }
       
+      // QA Bypass Check: If it's a mobibix.test account, skip verify step.
+      if (email.endsWith("@mobibix.test")) {
+        await exchangeToken(res.user);
+        // Redirect will happen via useEffect
+        return;
+      }
+
       // Send verification email
       await sendVerificationEmail(res.user);
       setFirebaseUser(res.user);
@@ -316,6 +318,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
                   className="w-full px-5 py-4 rounded-2xl bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:bg-white dark:focus:bg-white/10 transition-all font-medium"
                 />
                 <button
+                  id="email-next-btn"
                   onClick={(e) => handleEmailNext(e)}
                   className="w-full py-4 rounded-2xl bg-zinc-900 dark:bg-zinc-800 text-zinc-100 dark:text-zinc-300 font-bold hover:bg-zinc-800 dark:hover:bg-zinc-700 hover:text-white transition-all flex items-center justify-center gap-2"
                 >
@@ -394,7 +397,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
                   </div>
                 </div>
 
-               <button
+                <button
+                  id="login-btn"
                   type="submit"
                   disabled={loading}
                   className="w-full py-4 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20"
@@ -447,7 +451,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
                   </div>
                </div>
 
-               <button
+                <button
+                  id="signup-btn"
                   type="submit"
                   disabled={loading}
                   className="w-full py-4 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20"

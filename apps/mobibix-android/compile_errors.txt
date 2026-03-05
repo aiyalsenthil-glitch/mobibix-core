@@ -1,4 +1,3 @@
-Starting a Gradle Daemon, 1 incompatible and 2 stopped Daemons could not be reused, use --status for details
 > Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preDebugBuild UP-TO-DATE
@@ -20,11 +19,23 @@ Starting a Gradle Daemon, 1 incompatible and 2 stopped Daemons could not be reus
 > Task :app:processDebugManifest UP-TO-DATE
 > Task :app:processDebugManifestForPackage UP-TO-DATE
 > Task :app:processDebugResources UP-TO-DATE
-> Task :app:kspDebugKotlin
+> Task :app:kspDebugKotlin UP-TO-DATE
 
-> Task :app:compileDebugKotlin
-w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/onboarding/TenantRequiredScreen.kt:412:37 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
-w: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/onboarding/TenantRequiredScreen.kt:457:37 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+> Task :app:compileDebugKotlin FAILED
+e: file:///E:/Projects/gym-saas/apps/mobibix-android/app/src/main/java/com/aiyal/mobibix/ui/features/settings/SettingsScreen.kt:229:29 Unresolved reference 'sp'.
 
-BUILD SUCCESSFUL in 56s
-20 actionable tasks: 2 executed, 18 up-to-date
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 28s
+20 actionable tasks: 1 executed, 19 up-to-date
