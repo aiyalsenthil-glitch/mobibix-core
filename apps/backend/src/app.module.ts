@@ -23,6 +23,7 @@ import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { GymAppModule } from './modules/gymapp/gym-app.module';
 import { NotificationsModule } from './core/notifications/notifications.module';
+import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { MobileShopModule } from './modules/mobileshop/mobileshop.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { PartnersModule } from './modules/partners/partners.module';
@@ -153,6 +154,7 @@ type LoggerRequest = {
     ShopProductsModule,
     // 🩺 Platform infra
     HealthModule,
+    WaitlistModule,
     MobileShopModule,
     LedgerModule,
     CacheModule.registerAsync({

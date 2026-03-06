@@ -1,4 +1,5 @@
 export type EmailTemplateType =
+  | 'WAITLIST_CONFIRMED'
   | 'TENANT_WELCOME'
   | 'TRIAL_STARTED'
   | 'TRIAL_EXPIRING'
@@ -105,6 +106,7 @@ export interface EmailTemplateProps {
   };
 
   // Customer
+  WAITLIST_CONFIRMED: { phone: string };
   INVOICE_GENERATED: {
     customerName: string;
     invoiceNumber: string;

@@ -2887,3 +2887,24 @@ model CountryConfig {
 
   @@index([isActive])
 }
+
+enum WaitlistSource {
+  FEATURES_PAGE
+  APP_DASHBOARD
+  OTHER
+}
+
+model WaitlistLead {
+  id        String         @id @default(cuid())
+  phone     String         @unique // Shop WhatsApp Number
+  email     String?
+  source    WaitlistSource @default(FEATURES_PAGE)
+  status    String         @default("PENDING") // PENDING, NOTIFIED, CONVERTED
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([phone])
+  @@index([status])
+  @@index([createdAt])
+  @@map("mb_waitlist_lead")
+}
