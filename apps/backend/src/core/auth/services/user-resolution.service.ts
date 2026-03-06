@@ -7,8 +7,21 @@ export class UserResolutionService {
   constructor(private readonly prisma: PrismaService) {}
 
   async resolveUser(decodedToken: any) {
-    let user = await this.prisma.user.findUnique({
+    const normalizedEmail = decodedToken.email?.toLowerCase() ?? null;
+
+    let user = await this.prisma.user.upsert({
       where: { REMOVED_AUTH_PROVIDERUid: decodedToken.uid },
+      update: {
+        email: normalizedEmail,
+        fullName: decodedToken.name ?? undefined,
+      },
+      create: {
+        REMOVED_AUTH_PROVIDERUid: decodedToken.uid,
+        email: normalizedEmail,
+        fullName: decodedToken.name ?? null,
+        role: UserRole.USER,
+        tenantId: null,
+      },
       include: {
         userTenants: {
           include: {
@@ -23,60 +36,6 @@ export class UserResolutionService {
         },
       },
     });
-
-    if (!user) {
-      const normalizedEmail = decodedToken.email?.toLowerCase() ?? null;
-      user = await this.prisma.user.create({
-        data: {
-          REMOVED_AUTH_PROVIDERUid: decodedToken.uid,
-          email: normalizedEmail,
-          fullName: decodedToken.name ?? null,
-          role: UserRole.USER,
-          tenantId: null,
-        },
-        include: {
-          userTenants: {
-            include: {
-              tenant: {
-                select: {
-                  id: true,
-                  name: true,
-                  code: true,
-                },
-              },
-            },
-          },
-        },
-      });
-    } else {
-      // Async update user meta if changed
-      const needsUpdate =
-        (decodedToken.email && user.email !== decodedToken.email) ||
-        (decodedToken.name && user.fullName !== decodedToken.name);
-
-      if (needsUpdate) {
-        const normalizedEmail = decodedToken.email?.toLowerCase() ?? user.email;
-        this.prisma.user
-          .update({
-            where: { id: user.id },
-            data: {
-              email: normalizedEmail,
-              fullName: decodedToken.name ?? user.fullName,
-            },
-          })
-          .catch((e) =>
-            console.warn('⚠️  Failed to update user meta:', e.message),
-          );
-      } else if (user.email && user.email !== user.email.toLowerCase()) {
-        // Proactively normalize existing user email if mixed case
-        this.prisma.user
-          .update({
-            where: { id: user.id },
-            data: { email: user.email.toLowerCase() },
-          })
-          .catch(() => null);
-      }
-    }
 
     return user;
   }
