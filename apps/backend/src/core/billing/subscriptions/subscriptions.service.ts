@@ -157,8 +157,8 @@ export class SubscriptionsService {
     });
 
     // Check for existing subscription
-    const existingSub = await this.prisma.tenantSubscription.findUnique({
-      where: { tenantId_module: { tenantId, module } },
+    const existingSub = await this.prisma.tenantSubscription.findFirst({
+      where: { tenantId, module, status: { in: ['ACTIVE', 'TRIAL'] } },
       select: {
         id: true,
         status: true,
@@ -620,20 +620,32 @@ export class SubscriptionsService {
     const newStartDate = new Date();
     const newEndDate = this.calculateEndDate(newStartDate, nextBillingCycle);
 
-    // Create new subscription row
-    const renewed = await this.prisma.tenantSubscription.create({
-      data: {
-        tenantId: current.tenantId,
-        planId: nextPlanId,
-        module: current.module,
-        billingCycle: nextBillingCycle,
-        priceSnapshot: nextPriceSnapshot,
-        autoRenew: current.autoRenew,
-        status: SubscriptionStatus.ACTIVE,
-        startDate: newStartDate,
-        endDate: newEndDate,
-        lastRenewedAt: new Date(),
-      },
+    // Use transaction to avoid unique constraint violation on [tenantId, module]
+    const renewed = await this.prisma.$transaction(async (tx) => {
+      // 1. Mark old subscription as EXPIRED first to free up the unique constraint
+      await tx.tenantSubscription.update({
+        where: { id: subscriptionId },
+        data: {
+          status: SubscriptionStatus.EXPIRED,
+          updatedAt: new Date(),
+        },
+      });
+
+      // 2. Create new subscription row
+      return tx.tenantSubscription.create({
+        data: {
+          tenantId: current.tenantId,
+          planId: nextPlanId,
+          module: current.module,
+          billingCycle: nextBillingCycle,
+          priceSnapshot: nextPriceSnapshot,
+          autoRenew: current.autoRenew,
+          status: SubscriptionStatus.ACTIVE,
+          startDate: newStartDate,
+          endDate: newEndDate,
+          lastRenewedAt: new Date(),
+        },
+      });
     });
 
     this.eventEmitter.emit('subscription.active', {
@@ -641,15 +653,6 @@ export class SubscriptionsService {
       module: current.module,
       planId: nextPlanId,
       expiryDate: newEndDate,
-    });
-
-    // Mark old subscription as EXPIRED
-    await this.prisma.tenantSubscription.update({
-      where: { id: subscriptionId },
-      data: {
-        status: SubscriptionStatus.EXPIRED,
-        updatedAt: new Date(),
-      },
     });
 
     this.eventEmitter.emit('subscription.expired', {
@@ -789,13 +792,20 @@ export class SubscriptionsService {
       include: { tenant: true },
     });
 
+    this.logger.log(
+      `🔄 Toggling auto-renew for sub ${subscriptionId} (Tenant: ${subscription?.tenantId}) to ${enabled}`,
+    );
+
     if (!subscription) {
       throw new NotFoundException(`Subscription not found: ${subscriptionId}`);
     }
 
-    if (subscription.status !== SubscriptionStatus.ACTIVE) {
+    if (
+      subscription.status !== SubscriptionStatus.ACTIVE &&
+      subscription.status !== SubscriptionStatus.TRIAL
+    ) {
       throw new BadRequestException(
-        `Cannot toggle auto-renew for non-ACTIVE subscription`,
+        `Cannot toggle auto-renew for subscription with status: ${subscription.status}`,
       );
     }
 
@@ -845,8 +855,8 @@ export class SubscriptionsService {
     tenantId: string,
     module: ModuleType,
   ): Promise<TenantSubscription | null> {
-    const subscription = await this.prisma.tenantSubscription.findUnique({
-      where: { tenantId_module: { tenantId, module } },
+    const subscription = await this.prisma.tenantSubscription.findFirst({
+      where: { tenantId, module, status: { in: ['ACTIVE', 'TRIAL'] } },
     });
 
     if (!subscription) {

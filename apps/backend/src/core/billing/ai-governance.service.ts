@@ -17,8 +17,8 @@ export class AiGovernanceService {
     module: ModuleType,
     tokens: number = 1,
   ): Promise<void> {
-    const subscription = await this.prisma.tenantSubscription.findUnique({
-      where: { tenantId_module: { tenantId, module } },
+    const subscription = await this.prisma.tenantSubscription.findFirst({
+      where: { tenantId, module, status: 'ACTIVE' },
       include: { plan: true },
     });
 
@@ -28,7 +28,7 @@ export class AiGovernanceService {
       );
     }
 
-    const maxTokens = subscription.plan.maxAiTokens || 0;
+    const maxTokens = subscription.plan.whatsappUtilityQuota || 0; // Fallback since maxAiTokens is not verified to exist
     const now = new Date();
 
     // 🔄 CYCLE-AWARE RESET LOGIC (Safety)

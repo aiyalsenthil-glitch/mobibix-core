@@ -155,22 +155,40 @@ export class TenantService {
             const newEndDate = new Date();
             newEndDate.setDate(newEndDate.getDate() + promo.durationDays);
 
-            await this.prisma.tenantSubscription.update({
+            const resolvedModule = effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM';
+
+            const activeSub = await this.prisma.tenantSubscription.findFirst({
               where: {
-                tenantId_module: {
-                  tenantId: tenant.id,
-                  module:
-                    effectiveTenantType === 'MOBILE_SHOP'
-                      ? 'MOBILE_SHOP'
-                      : 'GYM',
-                },
-              },
-              data: {
-                planId: proPlan.id,
-                endDate: newEndDate,
-                status: 'ACTIVE', // Activate immediately for 3 months free
+                tenantId: tenant.id,
+                module: resolvedModule,
+                status: { in: ['ACTIVE', 'TRIAL'] }
               },
             });
+
+            if (activeSub) {
+              await this.prisma.tenantSubscription.update({
+                where: { id: activeSub.id },
+                data: {
+                  planId: proPlan.id,
+                  endDate: newEndDate,
+                  status: 'ACTIVE',
+                },
+              });
+            } else {
+              await this.prisma.tenantSubscription.create({
+                data: {
+                  tenantId: tenant.id,
+                  planId: proPlan.id,
+                  module: resolvedModule,
+                  status: 'ACTIVE',
+                  startDate: new Date(),
+                  endDate: newEndDate,
+                  autoRenew: true,
+                  billingCycle: 'MONTHLY',
+                  priceSnapshot: 0
+                },
+              });
+            }
             this.logger.log(
               `🎁 Applied FREE_TRIAL promo ${dto.promoCode}: Plan=PRO, Days=${promo.durationDays}`,
             );

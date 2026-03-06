@@ -101,17 +101,21 @@ export class SubscriptionGuard implements CanActivate {
     const subscription = await this.cacheService.getOrSet(
       cacheKey,
       async () => {
-        return this.prisma.tenantSubscription.findUnique({
-          where: {
-            tenantId_module: {
+          const subscription = await this.prisma.tenantSubscription.findFirst({
+            where: {
               tenantId,
               module: moduleScope,
+              status: { in: ['ACTIVE', 'TRIAL'] }
             },
-          },
-          include: {
-            plan: true,
-          },
-        });
+            include: {
+              plan: {
+                include: {
+                  planFeatures: true,
+                },
+              },
+            },
+          });
+          return subscription;
       },
       1000 * 30, // 30 seconds TTL
     );
@@ -183,9 +187,9 @@ export class SubscriptionGuard implements CanActivate {
     // Store subscription info in request for later use
     request.subscription = subscription;
 
-    this.logger.verbose(
-      `Subscription check passed: tenant ${tenantId} has active ${moduleScope} subscription (${subscription.plan.name})`,
-    );
+      this.logger.debug(
+        `Subscription check passed: tenant ${tenantId} has active ${moduleScope} subscription (${subscription.plan.name})`,
+      );
 
     return true;
   }

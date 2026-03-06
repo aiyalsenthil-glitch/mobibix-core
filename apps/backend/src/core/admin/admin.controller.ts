@@ -90,31 +90,40 @@ export class AdminController {
 
     const resolvedModule = plan.module;
 
-    // 1. Upsert Subscription
-    const sub = await this.prisma.tenantSubscription.upsert({
+    // 1. Check for existing active/trial subscription
+    const existingSub = await this.prisma.tenantSubscription.findFirst({
       where: {
-        tenantId_module: {
-          tenantId: tenantId,
-          module: resolvedModule,
-        },
-      },
-      update: {
-        status: 'ACTIVE',
-        planId: planId,
-        startDate: new Date(),
-        endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-        autoRenew: true,
-      },
-      create: {
         tenantId: tenantId,
-        planId: planId,
         module: resolvedModule,
-        status: 'ACTIVE',
-        startDate: new Date(),
-        endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-        autoRenew: true,
+        status: { in: ['ACTIVE', 'TRIAL'] },
       },
     });
+
+    let sub;
+    if (existingSub) {
+      sub = await this.prisma.tenantSubscription.update({
+        where: { id: existingSub.id },
+        data: {
+          status: 'ACTIVE',
+          planId: planId,
+          startDate: new Date(),
+          endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+          autoRenew: true,
+        },
+      });
+    } else {
+      sub = await this.prisma.tenantSubscription.create({
+        data: {
+          tenantId: tenantId,
+          planId: planId,
+          module: resolvedModule,
+          status: 'ACTIVE',
+          startDate: new Date(),
+          endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+          autoRenew: true,
+        },
+      });
+    }
 
     // 2. Update Tenant Settings if it's WhatsApp CRM
     if (resolvedModule === 'WHATSAPP_CRM') {

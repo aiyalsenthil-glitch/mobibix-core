@@ -784,7 +784,7 @@ model TenantSubscription {
   // Phase 1: Billing Migration Fields
   billingCycle      BillingCycle? // MONTHLY, QUARTERLY, YEARLY (null = use plan.billingCycle for compat)
   priceSnapshot     Int? // Price locked at subscription creation (paise)
-  autoRenew         Boolean       @default(true) // Auto-renew enabled by default
+  autoRenew         Boolean       @default(false) // Auto-renew disabled by default
   nextPlanId        String? // For scheduled downgrades
   nextBillingCycle  BillingCycle? // For scheduled duration changes
   nextPriceSnapshot Int? // Price for next cycle (when upgrading)
@@ -805,7 +805,7 @@ model TenantSubscription {
   tenant Tenant              @relation(fields: [tenantId], references: [id])
   addons SubscriptionAddon[] // Add-ons attached to this subscription
 
-  @@unique([tenantId, module])
+  @@unique([tenantId, module, status])
   @@index([tenantId, module, status], name: "idx_subscription_lookup")
   @@index([tenantId])
   @@index([planId])
