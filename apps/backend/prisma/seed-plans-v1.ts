@@ -146,31 +146,31 @@ const PLAN_FEATURES: Record<string, WhatsAppFeature[]> = {
  * Prices are per billingCycle, stored in PlanPrice table
  * GYM_TRIAL has no pricing (free)
  */
-const PLAN_PRICES: Record<string, Record<BillingCycle, number>> = {
+const PLAN_PRICES: Record<string, Record<BillingCycle, { price: number; rzpId?: string }>> = {
   GYM_STANDARD: {
-    MONTHLY: 19900,
-    QUARTERLY: 49900,
-    YEARLY: 179900,
+    MONTHLY: { price: 19900, rzpId: 'plan_SHBOsZJTYHebiW' },
+    QUARTERLY: { price: 49900, rzpId: 'plan_SHBPLvynxI8DHm' },
+    YEARLY: { price: 179900, rzpId: 'plan_SHBPmj5c3CvVIf' },
   },
   GYM_PRO: {
-    MONTHLY: 39900,
-    QUARTERLY: 99900,
-    YEARLY: 359900,
+    MONTHLY: { price: 39900, rzpId: 'plan_SHBQ79swgdys0w' },
+    QUARTERLY: { price: 99900, rzpId: 'plan_SHBQRsgv145eT3' },
+    YEARLY: { price: 359900, rzpId: 'plan_SHBQkjqOEiBFMV' },
   },
   MOBIBIX_STANDARD: {
-    MONTHLY: 29900,
-    QUARTERLY: 79900,
-    YEARLY: 299900,
+    MONTHLY: { price: 29900, rzpId: 'plan_SHBR5Wloh9IpvS' },
+    QUARTERLY: { price: 79900, rzpId: 'plan_SHBR0tMAfnvz1P' },
+    YEARLY: { price: 299900, rzpId: 'plan_SHBRhzJtBLtjnK' },
   },
   MOBIBIX_PRO: {
-    MONTHLY: 49900,
-    QUARTERLY: 139900,
-    YEARLY: 499900,
+    MONTHLY: { price: 49900, rzpId: 'plan_SHBS7oI1veoGlY' },
+    QUARTERLY: { price: 139900, rzpId: 'plan_SHBUe12IEyECwq' },
+    YEARLY: { price: 499900, rzpId: 'plan_SHBU6VWrCKq5m4' },
   },
   WHATSAPP_CRM: {
-    MONTHLY: 149900,
-    QUARTERLY: 399900,
-    YEARLY: 1499900,
+    MONTHLY: { price: 149900 },
+    QUARTERLY: { price: 399900 },
+    YEARLY: { price: 1499900 },
   },
 };
 
@@ -278,12 +278,14 @@ async function seedPlans() {
     });
 
     // Create prices per billing cycle
-    for (const [billingCycle, price] of Object.entries(prices)) {
+    for (const [billingCycle, data] of Object.entries(prices)) {
+      const { price, rzpId } = data as { price: number; rzpId?: string };
       await prisma.planPrice.create({
         data: {
           planId: plan.id,
           billingCycle: billingCycle as BillingCycle,
           price,
+          REMOVED_PAYMENT_INFRAPlanId: rzpId || null,
         },
       });
       priceCount++;
@@ -291,8 +293,9 @@ async function seedPlans() {
 
     const cycles = Object.keys(prices).join(', ');
     console.log(`✅ ${planCode}: ${cycles}`);
-    for (const [cycle, price] of Object.entries(prices)) {
-      console.log(`   ${cycle.padEnd(10)} = ₹${(price / 100).toFixed(2)}`);
+    for (const [cycle, data] of Object.entries(prices)) {
+      const { price, rzpId } = data as { price: number; rzpId?: string };
+      console.log(`   ${cycle.padEnd(10)} = ₹${(price / 100).toFixed(2)}${rzpId ? ` [RZP: ${rzpId}]` : ''}`);
     }
   }
 

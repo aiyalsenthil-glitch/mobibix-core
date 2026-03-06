@@ -79,7 +79,10 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
 
     return navItems.filter((item) => {
       if (!item.requiredPermission) return true;
-      return authUser.permissions?.includes(item.requiredPermission);
+      return (
+        authUser.permissions?.includes("*") ||
+        authUser.permissions?.includes(item.requiredPermission)
+      );
     });
   }, [authUser]);
 

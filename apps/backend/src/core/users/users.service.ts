@@ -98,7 +98,8 @@ export class UsersService {
       },
     });
 
-    const isSystemOwner = userTenant?.isSystemOwner ?? false;
+    const isSystemOwner =
+      userTenant?.isSystemOwner ?? userTenant?.role === UserRole.OWNER;
     let grantedPermissions: string[] = [];
 
     if (isSystemOwner) {

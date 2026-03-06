@@ -64,7 +64,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [processingPlanId, setProcessingPlanId] = useState<string | null>(null);
   const [autoRenewLoading, setAutoRenewLoading] = useState(false);
-  const [selectedCycle, setSelectedCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
+  const [selectedCycle, setSelectedCycle] = useState<"MONTHLY" | "QUARTERLY" | "YEARLY">("MONTHLY");
   const [billingType, setBillingType] = useState<"AUTOPAY" | "MANUAL">("AUTOPAY");
 
   // Downgrade Modal State
@@ -126,13 +126,32 @@ export default function SettingsPage() {
 
   const handleAutoRenewToggle = async () => {
     if (!subscription) return;
+    
+    // Safety: ensure it's not a restricted trial if we still want that, 
+    // but for your PRO Promo (which is status: ACTIVE), it should work.
+    const enabling = !subscription.autoRenew;
+    let message = "";
+
+    if (enabling) {
+        if (subscription.billingType === "AUTOPAY") {
+            message = "Enable Auto-Renewal? Your saved card will be automatically charged at the end of the current cycle.";
+        } else {
+            message = "Enable Auto-Renewal? You will receive an email and a payment link 7 days before your plan expires to help you renew manually.";
+        }
+    } else {
+        message = "Turn off Auto-Renewal? Your plan will not renew automatically and will expire at the end of the current cycle.";
+    }
+
+    if (!confirm(message)) return;
+
     try {
       setAutoRenewLoading(true);
       const newState = !subscription.autoRenew;
-      await toggleAutoRenew(newState);
-      setSubscription(prev => prev ? { ...prev, autoRenew: newState } : null);
+      const result = await toggleAutoRenew(newState);
+      // Sync with backend result
+      setSubscription(prev => prev ? { ...prev, autoRenew: result.autoRenew } : null);
     } catch (err: any) {
-      alert("Failed to update auto-renewal settings");
+      alert("Failed to update auto-renewal settings: " + err.message);
     } finally {
       setAutoRenewLoading(false);
     }
@@ -400,14 +419,23 @@ export default function SettingsPage() {
                 >
                   {subscription.subscriptionStatus}
                 </span>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
+                    subscription.billingType === "AUTOPAY"
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-purple-100 text-purple-700"
+                  }`}
+                >
+                  {subscription.billingType === "AUTOPAY" ? "Auto-Debit" : "Manual Renewal"}
+                </span>
               </div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {subscription.plan}
               </h2>
               <p className="text-gray-500 text-sm mt-1">
-                {subscription.isTrial
-                  ? `Trial ends in ${subscription.daysLeft} days`
-                  : `Renews in ${subscription.daysLeft} days`}
+                {subscription.autoRenew 
+                  ? `Renews in ${subscription.daysLeft} days` 
+                  : `Expires in ${subscription.daysLeft} days`}
               </p>
             </div>
             
@@ -416,7 +444,7 @@ export default function SettingsPage() {
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Auto Renewal</span>
                 <button
                     onClick={handleAutoRenewToggle}
-                    disabled={autoRenewLoading || subscription.isTrial} // Disable for trial? Usually trial doesn't auto-renew unless card attached
+                    disabled={autoRenewLoading}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
                         subscription.autoRenew ? "bg-indigo-600" : "bg-gray-200"
                     }`}
@@ -430,19 +458,18 @@ export default function SettingsPage() {
              </div>
           </div>
           
-           {/* Limits / Usage */}
-           <div className="mt-6 pt-6 border-t border-gray-100 dark:border-stone-800 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-stone-800 grid grid-cols-2 sm:grid-cols-4 gap-4">
                <div>
                   <div className="text-xs text-gray-500 uppercase">Shops</div>
-                  <div className="font-semibold text-gray-900">{subscription.maxShops === null ? "Unlimited" : subscription.maxShops}</div>
+                  <div className="font-semibold text-gray-900 dark:text-gray-100">{subscription.maxShops === null ? "Unlimited" : subscription.maxShops}</div>
                </div>
                <div>
                   <div className="text-xs text-gray-500 uppercase">Staff</div>
-                  <div className="font-semibold text-gray-900">{subscription.maxStaff === null ? "Unlimited" : subscription.maxStaff}</div>
+                  <div className="font-semibold text-gray-900 dark:text-gray-100">{subscription.maxStaff === null ? "Unlimited" : subscription.maxStaff}</div>
                </div>
                <div>
                   <div className="text-xs text-gray-500 uppercase">Members</div>
-                   <div className="font-semibold text-gray-900">{subscription.memberLimit === null ? "Unlimited" : subscription.memberLimit}</div>
+                   <div className="font-semibold text-gray-900 dark:text-gray-100">{subscription.memberLimit === null ? "Unlimited" : subscription.memberLimit}</div>
                </div>
            </div>
         </div>
@@ -493,6 +520,16 @@ export default function SettingsPage() {
                     }`}
                 >
                     Monthly
+                </button>
+                <button
+                    onClick={() => setSelectedCycle("QUARTERLY")}
+                    className={`px-6 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                    selectedCycle === "QUARTERLY"
+                        ? "bg-gray-900 dark:bg-stone-700 text-white shadow-md"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                >
+                    Quarterly <span className="text-[10px] bg-blue-500 text-white px-1.5 py-0.5 rounded-full">-5%</span>
                 </button>
                 <button
                     onClick={() => setSelectedCycle("YEARLY")}

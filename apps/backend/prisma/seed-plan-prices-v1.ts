@@ -52,35 +52,35 @@ const prisma = new PrismaClient({ adapter });
  */
 const V1_PRICING = {
   GYM_TRIAL: {
-    MONTHLY: 0, // Free
+    MONTHLY: { price: 0 }, // Free
   },
   GYM_STANDARD: {
-    MONTHLY: 19900, // ₹199
-    QUARTERLY: 49900, // ₹499
-    YEARLY: 179900, // ₹1799
+    MONTHLY: { price: 19900, rzpId: 'plan_SHBOsZJTYHebiW' },
+    QUARTERLY: { price: 49900, rzpId: 'plan_SHBPLvynxI8DHm' },
+    YEARLY: { price: 179900, rzpId: 'plan_SHBPmj5c3CvVIf' },
   },
   GYM_PRO: {
-    MONTHLY: 39900, // ₹399
-    QUARTERLY: 99900, // ₹999
-    YEARLY: 359900, // ₹3599
+    MONTHLY: { price: 39900, rzpId: 'plan_SHBQ79swgdys0w' },
+    QUARTERLY: { price: 99900, rzpId: 'plan_SHBQRsgv145eT3' },
+    YEARLY: { price: 359900, rzpId: 'plan_SHBQkjqOEiBFMV' },
   },
   WHATSAPP_CRM: {
-    MONTHLY: 29900, // ₹299
-    QUARTERLY: 74900, // ₹749
-    YEARLY: 269900, // ₹2699
+    MONTHLY: { price: 29900 },
+    QUARTERLY: { price: 74900 },
+    YEARLY: { price: 269900 },
   },
   MOBIBIX_TRIAL: {
-    MONTHLY: 0,
+    MONTHLY: { price: 0 },
   },
   MOBIBIX_STANDARD: {
-    MONTHLY: 29900,
-    QUARTERLY: 79900,
-    YEARLY: 299900,
+    MONTHLY: { price: 29900, rzpId: 'plan_SHBR5Wloh9IpvS' },
+    QUARTERLY: { price: 79900, rzpId: 'plan_SHBR0tMAfnvz1P' },
+    YEARLY: { price: 299900, rzpId: 'plan_SHBRhzJtBLtjnK' },
   },
   MOBIBIX_PRO: {
-    MONTHLY: 49900,
-    QUARTERLY: 139900,
-    YEARLY: 499900,
+    MONTHLY: { price: 49900, rzpId: 'plan_SHBS7oI1veoGlY' },
+    QUARTERLY: { price: 139900, rzpId: 'plan_SHBUe12IEyECwq' },
+    YEARLY: { price: 499900, rzpId: 'plan_SHBU6VWrCKq5m4' },
   },
 };
 
@@ -114,7 +114,8 @@ async function seedPlanPrices() {
 
     console.log(`📋 ${plan.name} (${plan.code})`);
 
-    for (const [cycle, price] of Object.entries(planPrices)) {
+    for (const [cycle, data] of Object.entries(planPrices)) {
+      const { price, rzpId } = data as { price: number; rzpId?: string };
       try {
         await prisma.planPrice.upsert({
           where: {
@@ -125,18 +126,20 @@ async function seedPlanPrices() {
           },
           update: {
             price: price,
+            REMOVED_PAYMENT_INFRAPlanId: rzpId || null,
             isActive: true,
           },
           create: {
             planId: plan.id,
             billingCycle: cycle as any,
             price: price,
+            REMOVED_PAYMENT_INFRAPlanId: rzpId || null,
             isActive: true,
           },
         });
 
         const rupees = price / 100;
-        console.log(`   ${cycle}: ₹${rupees.toFixed(2)}`);
+        console.log(`   ${cycle}: ₹${rupees.toFixed(2)}${rzpId ? ` [RZP: ${rzpId}]` : ''}`);
         priceCount++;
       } catch (error: any) {
         console.error(`   ❌ Failed to seed ${cycle} price:`, error.message);

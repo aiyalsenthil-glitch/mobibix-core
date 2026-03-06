@@ -17,7 +17,7 @@ async function main() {
         durationDays: 90,
         maxUses: 500,
         isActive: true,
-        description: 'Launch Partner 90-Day Free Trial',
+        description: 'Repairguru Academy Promo: Pro Pack (90 Days)',
       },
     });
     console.log('✅ Seeded Promo Code: RG-MB-01');

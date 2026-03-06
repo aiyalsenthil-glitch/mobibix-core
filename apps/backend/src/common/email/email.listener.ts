@@ -18,6 +18,11 @@ type TenantWelcomePayload = {
   };
   tenant: {
     id: string;
+    name: string;
+  };
+  data?: {
+    promoCode?: string;
+    message?: string;
   };
 };
 
@@ -54,7 +59,10 @@ export class EmailListener {
       subject: `Welcome to ${event.module === 'MOBILE_SHOP' ? 'MobiBix' : 'GymPilot'}! 🚀`,
       data: {
         name: event.user.fullName || 'User',
+        tenantName: event.tenant.name,
         link: baseUrl,
+        promoCode: event.data?.promoCode,
+        promoDescription: event.data?.message,
       },
     });
   }

@@ -5,14 +5,11 @@ const prisma = new PrismaClient();
 async function main() {
     const tenant = await prisma.tenant.findFirst({
         where: { name: { contains: 'Repairguru', mode: 'insensitive' } },
-        include: { subscription: true }
+        select: { id: true, name: true, tenantType: true }
     });
 
     if (tenant) {
-        console.log(`Tenant: ${tenant.name} (${tenant.id})`);
-        tenant.subscription.forEach((s: any) => {
-            console.log(`- Sub: ${s.id} | Status: ${s.status} | Auto: ${s.autoRenew} | End: ${s.endDate}`);
-        });
+        console.log('Tenant Record:', tenant);
     } else {
         console.log('Tenant not found');
     }

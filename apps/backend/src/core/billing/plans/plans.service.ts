@@ -191,19 +191,33 @@ export class PlansService {
         const monthlyPrice = plan.planPrices.find(
           (p) => p.billingCycle === 'MONTHLY',
         )?.price;
+        const quarterlyPrice = plan.planPrices.find(
+          (p) => p.billingCycle === 'QUARTERLY',
+        )?.price;
         const yearlyPrice = plan.planPrices.find(
           (p) => p.billingCycle === 'YEARLY',
         )?.price;
 
+        let quarterlySavings = 0;
+        let quarterlySavingsPercent = 0;
         let yearlySavings = 0;
         let yearlySavingsPercent = 0;
 
-        if (monthlyPrice && yearlyPrice) {
-          const yearlyEquivalent = monthlyPrice * 12;
-          yearlySavings = yearlyEquivalent - yearlyPrice;
-          yearlySavingsPercent = Math.round(
-            (yearlySavings / yearlyEquivalent) * 100,
-          );
+        if (monthlyPrice) {
+          if (quarterlyPrice) {
+            const quarterlyEquivalent = monthlyPrice * 3;
+            quarterlySavings = quarterlyEquivalent - quarterlyPrice;
+            quarterlySavingsPercent = Math.round(
+              (quarterlySavings / quarterlyEquivalent) * 100,
+            );
+          }
+          if (yearlyPrice) {
+            const yearlyEquivalent = monthlyPrice * 12;
+            yearlySavings = yearlyEquivalent - yearlyPrice;
+            yearlySavingsPercent = Math.round(
+              (yearlySavings / yearlyEquivalent) * 100,
+            );
+          }
         }
 
         acc[moduleKey].push({
@@ -228,6 +242,9 @@ export class PlansService {
             analyticsHistoryDays: plan.analyticsHistoryDays,
           },
           savings: {
+            quarterly: quarterlySavings,
+            quarterlyPercent: quarterlySavingsPercent,
+            quarterlyFormatted: `₹${(quarterlySavings / 100).toFixed(0)}`,
             yearly: yearlySavings,
             yearlyPercent: yearlySavingsPercent,
             yearlyFormatted: `₹${(yearlySavings / 100).toFixed(0)}`,

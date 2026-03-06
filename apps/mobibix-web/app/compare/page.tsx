@@ -8,6 +8,8 @@ export default function CompareIndexPage() {
     { name: "RepairShopr", slug: "repairshopr", desc: "US-focused ticketing system" },
     { name: "Fixably", slug: "fixably", desc: "Authorised service provider tool" },
     { name: "Vyapar", slug: "vyapar", desc: "Generic Indian billing app" },
+    { name: "Tally", slug: "tally", desc: "Powerful Indian accounting ERP" },
+    { name: "Busy", slug: "busy", desc: "Feature-rich business ERP" },
     { name: "KhataBook", slug: "khatabook", desc: "Basic digital ledger" },
   ];
 

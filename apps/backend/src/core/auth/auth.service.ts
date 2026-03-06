@@ -134,7 +134,8 @@ export class AuthService {
       const tenantId = activeUserTenant?.tenantId ?? null;
       const userTenantId = activeUserTenant?.id ?? null;
       const role = activeUserTenant?.role ?? user.role;
-      const isSystemOwner = activeUserTenant?.isSystemOwner ?? false;
+      const isSystemOwner = 
+        activeUserTenant?.isSystemOwner || activeUserTenant?.role === UserRole.OWNER;
 
       // 6️⃣ Issue JWT & Refresh Token
       const token = this.tokenFactory.generateAccessToken({

@@ -42,6 +42,7 @@ export interface SubscriptionDetails {
   subscriptionStatus: "ACTIVE" | "TRIAL" | "PAST_DUE" | "EXPIRED";
 
   autoRenew: boolean;
+  billingType: "MANUAL" | "AUTOPAY";
   subscriptionId: string;
   price?: number;
 }

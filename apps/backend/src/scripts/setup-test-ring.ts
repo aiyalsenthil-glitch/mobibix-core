@@ -69,27 +69,34 @@ async function createTestTenants() {
       subEndDate.setFullYear(subEndDate.getFullYear() + 1);
     }
 
-    await prisma.tenantSubscription.upsert({
+    const existingSub = await prisma.tenantSubscription.findFirst({
       where: {
-        tenantId_module: {
-          tenantId: tenant.id,
-          module: 'GYM',
-        },
-      },
-      update: {
-        planId: plan.id,
-        status: subStatus as any,
-        endDate: subEndDate,
-      },
-      create: {
         tenantId: tenant.id,
         module: 'GYM',
-        planId: plan.id,
-        status: subStatus as any,
-        startDate: subStartDate,
-        endDate: subEndDate,
       },
     });
+
+    if (existingSub) {
+      await prisma.tenantSubscription.update({
+        where: { id: existingSub.id },
+        data: {
+          planId: plan.id,
+          status: subStatus as any,
+          endDate: subEndDate,
+        },
+      });
+    } else {
+      await prisma.tenantSubscription.create({
+        data: {
+          tenantId: tenant.id,
+          module: 'GYM',
+          planId: plan.id,
+          status: subStatus as any,
+          startDate: subStartDate,
+          endDate: subEndDate,
+        },
+      });
+    }
     console.log(
       `   - Attached ${subStatus} ${t.expectedPlan} subscription (Expires: ${subEndDate.toISOString().split('T')[0]})`,
     );

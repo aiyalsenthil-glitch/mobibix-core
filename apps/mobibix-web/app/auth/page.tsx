@@ -14,7 +14,8 @@ import { auth, googleProvider } from "@/lib/REMOVED_AUTH_PROVIDER";
 import { useAuth } from "@/hooks/useAuth";
 import { getRoleRedirect } from "@/lib/auth-routes";
 import { sendVerificationEmail, requestPasswordReset } from "@/services/auth.api";
-import { Eye, EyeOff, Loader2, Check, Mail, ArrowRight, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { Eye, EyeOff, Loader2, Check, Mail, ArrowRight, ArrowLeft, AlertCircle } from "lucide-react";
 
 interface AuthPageProps {
   mode?: "signin" | "signup";
@@ -252,6 +253,19 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
   return (
     <div className="min-h-screen w-full bg-white dark:bg-zinc-950 flex items-center justify-center relative overflow-hidden selection:bg-emerald-500/30 selection:text-emerald-900 dark:selection:text-emerald-200">
+      
+      {/* Back to Home Navigation */}
+      <Link 
+        href="/" 
+        className="fixed top-8 left-8 md:top-12 md:left-12 flex items-center gap-3 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all duration-300 group z-[60]"
+      >
+        <div className="h-10 w-10 rounded-full border border-zinc-200 dark:border-white/10 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-md group-hover:border-primary/50 group-hover:bg-primary/5 shadow-sm">
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        </div>
+        <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all duration-300">
+          Back to Home
+        </span>
+      </Link>
       
       {/* Background Effects */}
       <div className="absolute inset-0 pointer-events-none">

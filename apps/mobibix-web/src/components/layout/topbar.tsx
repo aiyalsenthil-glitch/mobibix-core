@@ -6,6 +6,7 @@ import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { Bell, PhoneCall } from "lucide-react";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 interface TopbarProps {
   isCollapsed?: boolean;
@@ -99,18 +100,7 @@ export function Topbar({ isCollapsed = false, onMenuClick }: TopbarProps) {
         </a>
 
         {/* Notifications Icon */}
-        <button
-          className={`relative p-2 rounded-xl transition-all duration-200 ${
-            isDark
-              ? "text-gray-400 hover:bg-gray-800 hover:text-white"
-              : "text-teal-600 hover:bg-teal-100 hover:text-teal-800"
-          }`}
-          title="Notifications & Approvals"
-        >
-          <Bell size={20} />
-          {/* Static badge indicator for now; can be wired to approval count later */}
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-950"></span>
-        </button>
+        <NotificationDropdown />
 
         {/* Theme Switcher - Improved Clickable Area */}
         <div

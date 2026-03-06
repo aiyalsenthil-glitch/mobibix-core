@@ -349,7 +349,7 @@ export class AutomationService {
    * ────────────────────────────────────────────────
    */
   async handleEvent(event: {
-    moduleType: 'GYM' | 'MOBILE_SHOP';
+    moduleType: ModuleType;
     eventType: string;
     tenantId: string;
     entityId: string;

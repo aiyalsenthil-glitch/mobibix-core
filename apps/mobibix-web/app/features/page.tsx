@@ -8,6 +8,8 @@ import { motion } from "framer-motion";
 
 export default function FeaturesPage() {
   const [mounted, setMounted] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [joinedWaitlist, setJoinedWaitlist] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -239,13 +241,48 @@ export default function FeaturesPage() {
                 <div className="p-12 rounded-[3.5rem] bg-gradient-to-br from-card to-background border border-border shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full blur-[80px]" />
                     <h3 className="text-2xl font-black uppercase tracking-tighter mb-4 text-foreground relative z-10 italic">Skip the Line. Get It First.</h3>
-                    <p className="text-muted-foreground font-bold mb-8 max-w-xl mx-auto relative z-10">We be releasing this exact feature module to beta users very soon. Enter your shop&apos;s WhatsApp number to get priority access.</p>
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-xl mx-auto relative z-10">
-                        <input type="tel" placeholder="+91 Shop WhatsApp Number" className="w-full sm:w-2/3 px-6 py-4 rounded-2xl border border-border bg-background/50 backdrop-blur-md text-foreground placeholder:text-muted-foreground font-bold focus:outline-none focus:border-green-500/50 transition-colors" />
-                        <button className="w-full sm:w-1/3 px-6 py-4 rounded-2xl bg-green-500 text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 shadow-lg shadow-green-500/20 active:scale-95 transition-all">
-                            Join Waitlist
-                        </button>
-                    </div>
+                    
+                    {!joinedWaitlist ? (
+                        <>
+                            <p className="text-muted-foreground font-bold mb-8 max-w-xl mx-auto relative z-10">We be releasing this exact feature module to beta users very soon. Enter your shop&apos;s WhatsApp number to get priority access.</p>
+                            <form 
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    if (phoneNumber.length >= 10) {
+                                        setJoinedWaitlist(true);
+                                    }
+                                }}
+                                className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-xl mx-auto relative z-10"
+                            >
+                                <input 
+                                    type="tel" 
+                                    placeholder="+91 Shop WhatsApp Number" 
+                                    required
+                                    value={phoneNumber}
+                                    onChange={(e) => setPhoneNumber(e.target.value)}
+                                    className="w-full sm:w-2/3 px-6 py-4 rounded-2xl border border-border bg-background/50 backdrop-blur-md text-foreground placeholder:text-muted-foreground font-bold focus:outline-none focus:border-green-500/50 transition-colors" 
+                                />
+                                <button 
+                                    type="submit"
+                                    className="w-full sm:w-1/3 px-6 py-4 rounded-2xl bg-green-500 text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 shadow-lg shadow-green-500/20 active:scale-95 transition-all"
+                                >
+                                    Join Waitlist
+                                </button>
+                            </form>
+                        </>
+                    ) : (
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="relative z-10 py-4"
+                        >
+                            <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-green-500 border border-green-500/20">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                            </div>
+                            <h4 className="text-xl font-black text-foreground uppercase tracking-tight mb-2">You&apos;re on the list!</h4>
+                            <p className="text-muted-foreground font-bold">We&apos;ll notify you at {phoneNumber} as soon as we launch.</p>
+                        </motion.div>
+                    )}
                 </div>
             </motion.div>
         </div>

@@ -92,8 +92,8 @@ export default function SupportPage() {
             <p className="text-muted-foreground font-bold mb-8 max-w-lg mx-auto leading-relaxed">
                 Detailed guides on managing inventory, GST billing, and staff permissions. Empower your team with our library.
             </p>
-            <Link href="/" className="inline-block px-12 py-5 rounded-2xl border border-border text-foreground font-black uppercase tracking-widest hover:bg-muted transition-all active:scale-95">
-                Coming Soon
+            <Link href="/support/kb" className="inline-block px-12 py-5 rounded-2xl bg-foreground text-background font-black uppercase tracking-widest hover:brightness-110 shadow-xl transition-all active:scale-95">
+                Browse Guides
             </Link>
         </motion.div>
       </div>

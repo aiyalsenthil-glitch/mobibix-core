@@ -186,6 +186,7 @@ export class SubscriptionsController {
         isTrial: sub.status === 'TRIAL',
         subscriptionStatus,
         autoRenew: sub.autoRenew,
+        billingType: sub.billingType,
         subscriptionId: sub.id,
       },
       upcoming: upcoming

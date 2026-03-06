@@ -213,6 +213,64 @@ const competitors: Record<string, CompetitorData> = {
       },
     ],
   },
+  tally: {
+    name: "TallyPrime",
+    slug: "tally",
+    tagline: "The king of Indian accounting — but a nightmare for repair shops",
+    targetAudience: "CA-managed Indian businesses & large traders",
+    pricingUSD: "~$20/month",
+    pricingINR: "₹1,500+/month",
+    strengths: [
+      "Gold standard for Indian accounting & audit",
+      "Deep inventory & reports for standard goods",
+      "Favored by Accountants & Chartered Accountants",
+      "Works 100% offline",
+    ],
+    weaknesses: [
+      "Steep learning curve (requires accounting knowledge)",
+      "No native mobile repair 'Job Card' system",
+      "No automated WhatsApp notifications for repair updates",
+      "Extremely complex to track hundreds of unique IMEIs",
+      "Not cloud-native — difficult to access from home/mobile",
+    ],
+    verdict:
+      "Tally is perfect for your CA, but wrong for your counter. While Tally is unbeatable for final balance sheets, it slows down your daily repair intake. MobiBix is designed for speed at the repair desk, with a UI that anyone can learn in 5 minutes.",
+    faq: [
+      {
+        q: "Is Tally better than MobiBix for mobile shops?",
+        a: "Tally is better for heavy accounting and auditing. MobiBix is better for daily operations, repair job cards, and WhatsApp CRM. Most modern shops use MobiBix for the counter and give reports to their CAs from it.",
+      },
+    ],
+  },
+  busy: {
+    name: "Busy Accounting",
+    slug: "busy",
+    tagline: "Feature-rich Indian ERP — but over-complicated for repairs",
+    targetAudience: "SMEs and large retailers in India",
+    pricingUSD: "~$15/month",
+    pricingINR: "₹1,200+/year",
+    strengths: [
+      "Highly configurable GST reports",
+      "Strong inventory management for hardware stores",
+      "Multi-branch accounting features",
+      "One-time purchase options available",
+    ],
+    weaknesses: [
+      "Legacy Windows-based UI (feels outdated)",
+      "No specialized repair workflow (Intake -> Technician -> Delivery)",
+      "Limited WhatsApp integration compared to official API",
+      "Difficult for staff to learn without formal training",
+      "No customer-facing repair status tracking",
+    ],
+    verdict:
+      "Busy is a powerful ERP for wholesalers. But if you run a service-first mobile shop, Busy lacks the 'heart' of a repair business: the Job Card. MobiBix provides a modern, cloud-native experience that focuses on service efficiency.",
+    faq: [
+      {
+        q: "Should I switch from Busy to MobiBix?",
+        a: "If you are struggling to track which repair belongs to which customer or constantly getting calls from customers asking 'Is it fixed?', yes. MobiBix automates the service loop while Busy focuses only on the invoice.",
+      },
+    ],
+  },
 };
 
 // ─── Metadata ───────────────────────────────────────────────────────────────
@@ -269,16 +327,23 @@ export default async function ComparePage({ params }: { params: Promise<{ compet
     a: item.a.replaceAll("{{price}}", basePrice)
   }));
 
+  const isVyapar = resolvedParams.competitor === "vyapar";
+  const isKhatabook = resolvedParams.competitor === "khatabook";
+  const isTally = resolvedParams.competitor === "tally";
+  const isBusy = resolvedParams.competitor === "busy";
+  const isGlobal = !isVyapar && !isKhatabook && !isTally && !isBusy;
+  const isIndianAcc = isVyapar || isTally || isBusy;
+
   const comparisonRows = [
-    { feature: "WhatsApp Notifications", mobibix: true, competitor: false },
-    { feature: "GST Billing (CGST/SGST/IGST)", mobibix: true, competitor: false },
-    { feature: "UPI / Razorpay Payment Collection", mobibix: true, competitor: false },
-    { feature: "INR Pricing", mobibix: true, competitor: false },
-    { feature: "Repair Job Card Management", mobibix: true, competitor: resolvedParams.competitor !== "vyapar" && resolvedParams.competitor !== "khatabook" },
+    { feature: "WhatsApp Notifications", mobibix: true, competitor: isVyapar || isTally || isBusy },
+    { feature: "GST Billing (CGST/SGST/IGST)", mobibix: true, competitor: isIndianAcc },
+    { feature: "UPI / Razorpay Payment Collection", mobibix: true, competitor: isIndianAcc },
+    { feature: "INR Pricing", mobibix: true, competitor: isIndianAcc || isKhatabook },
+    { feature: "Repair Job Card Management", mobibix: true, competitor: !isIndianAcc && !isKhatabook },
     { feature: "IMEI & Serial Number Tracking", mobibix: true, competitor: false },
-    { feature: "Multi-Shop Management", mobibix: true, competitor: resolvedParams.competitor === "repairdesk" || resolvedParams.competitor === "repairshopr" },
+    { feature: "Multi-Shop Management", mobibix: true, competitor: !isIndianAcc && !isKhatabook },
     { feature: "Technician Performance Tracking", mobibix: true, competitor: false },
-    { feature: "India-Time Customer Support", mobibix: true, competitor: false },
+    { feature: "India-Time Customer Support", mobibix: true, competitor: isIndianAcc || isKhatabook },
     { feature: "Free 14-Day Trial", mobibix: true, competitor: true },
   ];
 
@@ -375,11 +440,15 @@ export default async function ComparePage({ params }: { params: Promise<{ compet
                   </div>
                 </div>
                 <div className="text-3xl font-black mb-1">{c.pricingINR}<span className="text-base font-bold text-muted-foreground">/month</span></div>
-                <div className="text-sm font-bold text-red-500 mb-6">{c.pricingUSD} (USD pricing)</div>
+                {isGlobal ? (
+                  <div className="text-sm font-bold text-red-500 mb-6">{c.pricingUSD} (USD pricing)</div>
+                ) : (
+                  <div className="text-sm font-bold text-primary mb-6">Priced in INR</div>
+                )}
                 <ul className="space-y-3">
                   {c.weaknesses.slice(0, 4).map((w) => (
                     <li key={w} className="flex items-center gap-3 text-sm font-bold text-muted-foreground">
-                      <Cross /> {w}
+                      {isGlobal ? <Cross /> : <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 mr-1" />} {w}
                     </li>
                   ))}
                 </ul>
