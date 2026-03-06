@@ -34,9 +34,9 @@ async function main() {
   
   // Ensure default pricing is mapped (required by auto renew logic to grab the renewal price)
   await prisma.planPrice.upsert({
-    where: { planId_billingCycle: { planId: plan.id, billingCycle: 'MONTHLY' } },
+    where: { planId_billingCycle_currency: { planId: plan.id, billingCycle: 'MONTHLY', currency: 'INR' } },
     update: { price: 49900 },
-    create: { planId: plan.id, billingCycle: 'MONTHLY', price: 49900, isActive: true }
+    create: { planId: plan.id, billingCycle: 'MONTHLY', currency: 'INR', price: 49900, isActive: true }
   });
 
   // 3. Clear old subs

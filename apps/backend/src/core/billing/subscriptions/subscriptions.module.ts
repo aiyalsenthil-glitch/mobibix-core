@@ -20,10 +20,12 @@ import { makeCounterProvider } from '@willsoto/nestjs-prometheus';
     makeCounterProvider({
       name: 'renewals_success_total',
       help: 'Total number of successful renewals',
+      labelNames: ['planId'],
     }),
     makeCounterProvider({
       name: 'renewals_failed_total',
       help: 'Total number of failed renewals',
+      labelNames: ['planId'],
     }),
   ],
   controllers: [SubscriptionsController],

@@ -189,6 +189,8 @@ model NotificationLog {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
   sentAt      DateTime?
+  readAt      DateTime? // null = unread, set = read — powers in-app bell badge
+  title       String?   // Short title for bell display (e.g. "🎁 Promo Activated!")
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   user   User?  @relation(fields: [userId], references: [id])
@@ -198,6 +200,7 @@ model NotificationLog {
   @@index([status])
   @@index([eventId])
   @@index([createdAt])
+  @@index([tenantId, channel, readAt]) // unread bell query optimization
   @@map("mb_notification_log")
 }
 
@@ -747,14 +750,15 @@ model PlanPrice {
   id             String       @id @default(cuid())
   planId         String
   billingCycle   BillingCycle
-  price          Int // Price in paise (₹0.01 units)
+  currency       String       @default("INR")
+  price          Int // Price in smallest unit (paise/cents)
   REMOVED_PAYMENT_INFRAPlanId String? // For AutoPay (Razorpay Subscription Plan ID)
   isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   plan           Plan         @relation(fields: [planId], references: [id], onDelete: Cascade)
 
-  @@unique([planId, billingCycle])
+  @@unique([planId, billingCycle, currency])
   @@index([planId])
 }
 
@@ -805,7 +809,7 @@ model TenantSubscription {
   tenant Tenant              @relation(fields: [tenantId], references: [id])
   addons SubscriptionAddon[] // Add-ons attached to this subscription
 
-  @@unique([tenantId, module, status])
+  @@unique([tenantId, module, endDate])
   @@index([tenantId, module, status], name: "idx_subscription_lookup")
   @@index([tenantId])
   @@index([planId])

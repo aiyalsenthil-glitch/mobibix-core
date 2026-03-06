@@ -94,9 +94,10 @@ export class PaymentsController {
       // 2️⃣ Get price from PlanPrice table
       const planPrice = await this.prisma.planPrice.findUnique({
         where: {
-          planId_billingCycle: {
+          planId_billingCycle_currency: {
             planId: body.planId,
             billingCycle: body.billingCycle,
+            currency: tenant.currency || 'INR',
           },
         },
       });

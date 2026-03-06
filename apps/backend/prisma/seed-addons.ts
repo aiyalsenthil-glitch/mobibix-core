@@ -69,9 +69,10 @@ async function main() {
     // We'll use 'MONTHLY' as a placeholder for "Unit Price" in the PlanPrice table for consistency.
     await prisma.planPrice.upsert({
       where: {
-        planId_billingCycle: {
+        planId_billingCycle_currency: {
           planId: plan.id,
           billingCycle: BillingCycle.MONTHLY,
+          currency: 'INR',
         },
       },
       update: {
@@ -80,6 +81,7 @@ async function main() {
       create: {
         planId: plan.id,
         billingCycle: BillingCycle.MONTHLY,
+        currency: 'INR',
         price: pack.price,
       },
     });

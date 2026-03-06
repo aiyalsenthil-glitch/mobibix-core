@@ -17,11 +17,13 @@ import { BillingCycle } from '@prisma/client';
 export interface PlanPriceInput {
   planId: string;
   billingCycle: BillingCycle;
+  currency?: string;
 }
 
 export interface PlanPriceResponse {
   price: number;
   billingCycle: BillingCycle;
+  currency: string;
   REMOVED_PAYMENT_INFRAPlanId?: string;
 }
 
@@ -35,19 +37,21 @@ export class PlanPriceService {
    * Get price for a Plan + BillingCycle combo
    */
   async getPlanPrice(input: PlanPriceInput): Promise<PlanPriceResponse> {
-    const { planId, billingCycle } = input;
+    const { planId, billingCycle, currency = 'INR' } = input;
 
     const planPrice = await this.prisma.planPrice.findUnique({
       where: {
-        planId_billingCycle: {
+        planId_billingCycle_currency: {
           planId,
           billingCycle,
+          currency,
         },
       },
       select: {
         price: true,
         isActive: true,
         REMOVED_PAYMENT_INFRAPlanId: true,
+        currency: true,
       },
     });
 
@@ -55,6 +59,7 @@ export class PlanPriceService {
       return {
         price: planPrice.price,
         billingCycle,
+        currency: planPrice.currency,
         REMOVED_PAYMENT_INFRAPlanId: planPrice.REMOVED_PAYMENT_INFRAPlanId || undefined,
       };
     }
@@ -97,15 +102,17 @@ export class PlanPriceService {
 
     const planPrice = await this.prisma.planPrice.upsert({
       where: {
-        planId_billingCycle: {
+        planId_billingCycle_currency: {
           planId,
           billingCycle,
+          currency: 'INR', // Default to INR for setPlanPrice if not specified (legacy)
         },
       },
       create: {
         planId,
         billingCycle,
         price,
+        currency: 'INR',
         isActive: true,
       },
       update: {
@@ -128,9 +135,10 @@ export class PlanPriceService {
   async disablePlanPrice(planId: string, billingCycle: BillingCycle) {
     return this.prisma.planPrice.update({
       where: {
-        planId_billingCycle: {
+        planId_billingCycle_currency: {
           planId,
           billingCycle,
+          currency: 'INR', // Default for now
         },
       },
       data: {

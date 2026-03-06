@@ -11,6 +11,7 @@ import {
   SubscriptionStatus,
   PaymentStatus,
   AutopayStatus,
+  BillingType,
 } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
@@ -395,35 +396,40 @@ export class RazorpayWebhookProcessor extends WorkerHost {
       try {
         // Atomic renewal and payment recording
         const { internalPaymentId } = await this.prisma.$transaction(async (tx) => {
-          // 1. Process local renewal
-          // Note: SubscriptionsService.renewSubscription isn't using transaction internally, 
-          // so we'll have to either pass tx or implement a simplified version here.
-          // For now, let's stick to consistent status updates within this transaction.
+          // 1. Process local renewal (Create new row for history)
+          const rzStart = subEntity.current_start ? new Date(subEntity.current_start * 1000) : new Date();
+          const rzEnd = subEntity.current_end ? new Date(subEntity.current_end * 1000) : this.subscriptionsService['calculateEndDate'](rzStart, subscription.billingCycle || 'MONTHLY');
           
-          const now = new Date();
-          
-          // Re-implementing a simplified atomic version of 'renewSubscription' logic here 
-          // to ensure transaction integrity if we don't refactor the service yet.
           const nextPlanId = subscription.nextPlanId || subscription.planId;
           const nextBillingCycle = subscription.nextBillingCycle || subscription.billingCycle || 'MONTHLY';
           const nextPriceSnapshot = subscription.nextPriceSnapshot ?? subscription.priceSnapshot;
 
-          const newEndDate = this.subscriptionsService['calculateEndDate'](now, nextBillingCycle);
-
-          const renewed = await tx.tenantSubscription.update({
+          // Mark current as EXPIRED
+          await tx.tenantSubscription.update({
             where: { id: subscription.id },
             data: {
+              status: SubscriptionStatus.EXPIRED,
+              updatedAt: new Date(),
+            },
+          });
+
+          // Create new record for the new cycle
+          const renewed = await tx.tenantSubscription.create({
+            data: {
+              tenantId: subscription.tenantId,
               planId: nextPlanId,
-              status: SubscriptionStatus.ACTIVE,
-              startDate: now,
-              endDate: newEndDate,
+              module: subscription.module,
               billingCycle: nextBillingCycle as any,
               priceSnapshot: nextPriceSnapshot,
-              autoRenew: true,
-              autopayStatus: AutopayStatus.ACTIVE,
+              autoRenew: subscription.autoRenew,
+              status: SubscriptionStatus.ACTIVE,
               paymentStatus: PaymentStatus.SUCCESS,
-              lastRenewedAt: now,
-              updatedAt: now,
+              autopayStatus: AutopayStatus.ACTIVE,
+              startDate: rzStart,
+              endDate: rzEnd,
+              lastRenewedAt: new Date(),
+              providerSubscriptionId: subId,
+              billingType: BillingType.AUTOPAY
             },
           });
 
@@ -437,9 +443,10 @@ export class RazorpayWebhookProcessor extends WorkerHost {
               data: {
                 tenantId: subscription.tenantId,
                 planId: nextPlanId,
+                module: subscription.module,
                 billingCycle: nextBillingCycle,
                 priceSnapshot: nextPriceSnapshot || paymentEntity.amount,
-                amount: Math.max(paymentEntity.amount || 0, 1), // Minimum 1 paise to prevent ₹0 API crashes
+                amount: Math.max(paymentEntity.amount || 0, 1),
                 currency: paymentEntity.currency || 'INR',
                 status: 'SUCCESS',
                 provider: 'RAZORPAY',
@@ -455,7 +462,7 @@ export class RazorpayWebhookProcessor extends WorkerHost {
               tenantId: subscription.tenantId,
               eventType: 'subscription.charged.renewed',
               providerReferenceId: paymentEntity.id,
-              statusBefore: 'ACTIVE',
+              statusBefore: subscription.status,
               statusAfter: 'ACTIVE',
             },
           });

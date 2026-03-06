@@ -21,7 +21,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { SubscriptionStatus, ModuleType, BillingCycle } from '@prisma/client';
+import { SubscriptionStatus, ModuleType, BillingCycle, BillingType } from '@prisma/client';
 import { SubscriptionsService } from './subscriptions/subscriptions.service';
 
 @Injectable()
@@ -78,6 +78,7 @@ export class AutoRenewCronService {
           where: {
             status: 'ACTIVE' as SubscriptionStatus,
             autoRenew: true,
+            billingType: { not: BillingType.AUTOPAY },
             endDate: {
               gte: cutoffDate, // Catch-up window
               lte: new Date(), // Up to now
@@ -166,7 +167,7 @@ export class AutoRenewCronService {
         // Exponential backoff: 2s, 4s, 8s
         const delayMs = 1000 * Math.pow(2, attempt);
         this.logger.warn(
-          `Retry attempt ${attempt}/${maxRetries} failed, waiting ${delayMs}ms...`,
+          `Retry attempt ${attempt}/${maxRetries} failed: ${err instanceof Error ? err.message : err}. Waiting ${delayMs}ms...`,
         );
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }

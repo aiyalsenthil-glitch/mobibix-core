@@ -192,6 +192,41 @@ export class TenantService {
             this.logger.log(
               `🎁 Applied FREE_TRIAL promo ${dto.promoCode}: Plan=PRO, Days=${promo.durationDays}`,
             );
+
+            // --- IN-APP Welcome Notification (Bell) ---
+            try {
+              const planLabel = effectiveTenantType === 'MOBILE_SHOP' ? 'Mobibix Pro' : 'GymPilot Pro';
+              const notifTitle = `🎉 Welcome! ${promo.durationDays} days of ${planLabel} activated`;
+              const notifBody = promo.description
+                ? `${promo.description} — Enjoy your extended trial access! Your plan is active until ${newEndDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}.`
+                : `Your promo code gave you ${promo.durationDays} free days on ${planLabel}. Enjoy the full experience!`;
+
+              await this.prisma.notificationLog.create({
+                data: {
+                  tenantId: tenant.id,
+                  userId,
+                  eventId: 'promo.activated',
+                  channel: 'IN_APP',
+                  recipient: user.email || userId,
+                  title: notifTitle,
+                  status: 'SENT',
+                  sentAt: new Date(),
+                  payload: {
+                    type: 'promo_welcome',
+                    promoCode: dto.promoCode,
+                    planName: planLabel,
+                    durationDays: promo.durationDays,
+                    expiresAt: newEndDate.toISOString(),
+                    description: promo.description,
+                    body: notifBody,
+                  },
+                },
+              });
+              this.logger.log(`🔔 IN_APP promo notification created for tenant ${tenant.id}`);
+            } catch (notifErr: any) {
+              this.logger.error(`Failed to create promo notification: ${notifErr.message}`);
+              // Non-fatal
+            }
           }
         }
       } catch (err: any) {

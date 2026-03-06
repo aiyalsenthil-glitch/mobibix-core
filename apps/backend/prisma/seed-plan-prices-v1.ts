@@ -78,9 +78,12 @@ const V1_PRICING = {
     YEARLY: { price: 299900, rzpId: 'plan_SHBRhzJtBLtjnK' },
   },
   MOBIBIX_PRO: {
-    MONTHLY: { price: 49900, rzpId: 'plan_SHBS7oI1veoGlY' },
-    QUARTERLY: { price: 139900, rzpId: 'plan_SHBUe12IEyECwq' },
-    YEARLY: { price: 499900, rzpId: 'plan_SHBU6VWrCKq5m4' },
+    MONTHLY: [
+      { price: 49900, rzpId: 'plan_SHBS7oI1veoGlY', currency: 'INR' },
+      { price: 4900, rzpId: 'plan_PRO_USD_ABC', currency: 'USD' }, // Demonstrating USD
+    ],
+    QUARTERLY: { price: 139900, rzpId: 'plan_SHBUe12IEyECwq', currency: 'INR' },
+    YEARLY: { price: 499900, rzpId: 'plan_SHBU6VWrCKq5m4', currency: 'INR' },
   },
 };
 
@@ -114,36 +117,42 @@ async function seedPlanPrices() {
 
     console.log(`📋 ${plan.name} (${plan.code})`);
 
-    for (const [cycle, data] of Object.entries(planPrices)) {
-      const { price, rzpId } = data as { price: number; rzpId?: string };
-      try {
-        await prisma.planPrice.upsert({
-          where: {
-            planId_billingCycle: {
+    for (const [cycle, entry] of Object.entries(planPrices)) {
+      const entries = Array.isArray(entry) ? entry : [entry];
+      
+      for (const data of entries) {
+        const { price, rzpId, currency = 'INR' } = data as { price: number; rzpId?: string; currency?: string };
+        try {
+          await prisma.planPrice.upsert({
+            where: {
+              planId_billingCycle_currency: {
+                planId: plan.id,
+                billingCycle: cycle as any,
+                currency: currency,
+              },
+            },
+            update: {
+              price: price,
+              REMOVED_PAYMENT_INFRAPlanId: rzpId || null,
+              isActive: true,
+            },
+            create: {
               planId: plan.id,
               billingCycle: cycle as any,
+              currency: currency,
+              price: price,
+              REMOVED_PAYMENT_INFRAPlanId: rzpId || null,
+              isActive: true,
             },
-          },
-          update: {
-            price: price,
-            REMOVED_PAYMENT_INFRAPlanId: rzpId || null,
-            isActive: true,
-          },
-          create: {
-            planId: plan.id,
-            billingCycle: cycle as any,
-            price: price,
-            REMOVED_PAYMENT_INFRAPlanId: rzpId || null,
-            isActive: true,
-          },
-        });
+          });
 
-        const rupees = price / 100;
-        console.log(`   ${cycle}: ₹${rupees.toFixed(2)}${rzpId ? ` [RZP: ${rzpId}]` : ''}`);
-        priceCount++;
-      } catch (error: any) {
-        console.error(`   ❌ Failed to seed ${cycle} price:`, error.message);
-        throw error;
+          const formattedPrice = currency === 'INR' ? `₹${(price / 100).toFixed(2)}` : `$${(price / 100).toFixed(2)}`;
+          console.log(`   ${cycle} [${currency}]: ${formattedPrice}${rzpId ? ` [RZP: ${rzpId}]` : ''}`);
+          priceCount++;
+        } catch (error: any) {
+          console.error(`   ❌ Failed to seed ${cycle} price for ${currency}:`, error.message);
+          throw error;
+        }
       }
     }
     console.log();

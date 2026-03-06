@@ -135,7 +135,7 @@ export class SubscriptionsService {
     // Validate tenant exists
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { id: true, name: true, contactEmail: true, contactPhone: true }, // Added contact info for Razorpay
+      select: { id: true, name: true, contactEmail: true, contactPhone: true, currency: true }, // Added contact + currency
     });
     if (!tenant) {
       throw new NotFoundException(`Tenant not found: ${tenantId}`);
@@ -150,10 +150,11 @@ export class SubscriptionsService {
       throw new BadRequestException(`Plan not found or inactive: ${planId}`);
     }
 
-    // Get price for this plan + billingCycle combo
+    // Get price for this plan + billingCycle + currency combo
     const priceResponse = await this.planPriceService.getPlanPrice({
       planId,
       billingCycle,
+      currency: tenant.currency || 'INR',
     });
 
     // Check for existing subscription
@@ -196,7 +197,7 @@ export class SubscriptionsService {
         // Create Razorpay Payment Link
         const link = await this.REMOVED_PAYMENT_INFRAService.createPaymentLink(
           priceResponse.price,
-          'INR',
+          priceResponse.currency,
           `Subscription for ${plan.name} (${billingCycle})`,
           {
             name: tenant.name,
