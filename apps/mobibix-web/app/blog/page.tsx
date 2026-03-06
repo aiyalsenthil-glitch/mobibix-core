@@ -13,15 +13,23 @@ export const metadata: Metadata = {
   }
 };
 
-export default function BlogIndex() {
-  const posts = getAllPosts();
+export default async function BlogIndex({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const { page } = await searchParams;
+  const currentPage = parseInt(page || '1');
+  const postsPerPage = 6;
+  
+  const allPosts = getAllPosts();
+  const totalPosts = allPosts.length;
+  const totalPages = Math.ceil(totalPosts / postsPerPage);
+  
+  const posts = allPosts.slice((currentPage - 1) * postsPerPage, currentPage * postsPerPage);
 
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors duration-500 overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-500">
       <Header />
       
       {/* Background Ambience */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none text-center">
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none text-center text-center">
         <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
@@ -62,6 +70,41 @@ export default function BlogIndex() {
               </div>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="mt-20 flex items-center justify-center gap-4">
+            {currentPage > 1 ? (
+              <Link 
+                href={`/blog?page=${currentPage - 1}`}
+                className="px-8 py-4 rounded-2xl border border-border bg-card/50 backdrop-blur-md text-[10px] font-black uppercase tracking-widest hover:border-primary/50 transition-all"
+              >
+                Previous
+              </Link>
+            ) : (
+              <div className="px-8 py-4 rounded-2xl border border-border opacity-30 text-[10px] font-black uppercase tracking-widest cursor-not-allowed">
+                Previous
+              </div>
+            )}
+
+            <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                Page {currentPage} of {totalPages}
+            </div>
+
+            {currentPage < totalPages ? (
+              <Link 
+                href={`/blog?page=${currentPage + 1}`}
+                className="px-8 py-4 rounded-2xl border border-border bg-card/50 backdrop-blur-md text-[10px] font-black uppercase tracking-widest hover:border-primary/50 transition-all"
+              >
+                Next
+              </Link>
+            ) : (
+              <div className="px-8 py-4 rounded-2xl border border-border opacity-30 text-[10px] font-black uppercase tracking-widest cursor-not-allowed">
+                Next
+              </div>
+            )}
+          </div>
+        )}
       </div>
       <Footer compact={false} />
     </div>

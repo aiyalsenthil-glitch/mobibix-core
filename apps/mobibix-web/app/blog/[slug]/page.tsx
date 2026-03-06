@@ -102,13 +102,41 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             </div>
         </header>
 
-        {/* Post Content (MVP JSON parsing rendering) */}
-        <article className="prose prose-invert prose-lg max-w-none text-muted-foreground font-bold leading-relaxed space-y-8">
-             {post.content.split('\n\n').map((paragraph, idx) => {
-                 if (paragraph.startsWith('###')) {
-                     return <h3 key={idx} className="text-2xl font-black uppercase tracking-tight text-foreground mt-12 mb-4">{paragraph.replace('###', '').trim()}</h3>
+        {/* Post Content (Improved JSON parsing rendering) */}
+        <article className="prose prose-invert prose-lg max-w-none text-muted-foreground font-bold leading-relaxed">
+             {post.content.split('\n\n').map((block, idx) => {
+                 // Headers
+                 if (block.startsWith('###')) {
+                     return <h3 key={idx} className="text-2xl font-black uppercase tracking-tight text-foreground mt-12 mb-6">{block.replace('###', '').trim()}</h3>
                  }
-                 return <p key={idx}>{paragraph}</p>
+                 if (block.startsWith('##')) {
+                    return <h2 key={idx} className="text-3xl font-black uppercase tracking-tight text-foreground mt-16 mb-8">{block.replace('##', '').trim()}</h2>
+                 }
+
+                 // Lists
+                 if (block.includes('\n* ') || block.startsWith('* ')) {
+                    const items = block.split('\n').map(item => item.replace('* ', '').replace('-', '').trim()).filter(Boolean);
+                    return (
+                        <ul key={idx} className="space-y-4 my-8 list-none p-0">
+                            {items.map((item, i) => (
+                                <li key={i} className="flex gap-4 items-start text-lg">
+                                    <span className="text-primary mt-1">✦</span>
+                                    <span>
+                                        {/* Simple bold replacement */}
+                                        {item.split('**').map((part, pidx) => pidx % 2 === 1 ? <strong key={pidx} className="text-foreground">{part}</strong> : part)}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    );
+                 }
+
+                 // Standard Paragraphs with bold support
+                 return (
+                    <p key={idx} className="mb-6">
+                        {block.split('**').map((part, pidx) => pidx % 2 === 1 ? <strong key={pidx} className="text-foreground">{part}</strong> : part)}
+                    </p>
+                 );
              })}
         </article>
       </div>
