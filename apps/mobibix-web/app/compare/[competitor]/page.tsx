@@ -3,6 +3,22 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Header } from "../../../components/layout/Header";
 import { Footer } from "../../../components/layout/Footer";
+import { Plan } from "../../pricing/page";
+
+async function fetchBasePrice(): Promise<string> {
+  try {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
+    const res = await fetch(`${apiBase}/plans/public/pricing?module=MOBILE_SHOP`, { next: { revalidate: 3600 } });
+    if (!res.ok) return "999";
+    const json = await res.json();
+    const plans: Plan[] = json?.data?.MOBILE_SHOP ?? json?.MOBILE_SHOP ?? [];
+    const proPlan = plans.find(p => p.level === 2) || plans[0];
+    const monthlyPrice = proPlan?.pricing?.find(p => p.cycle === "MONTHLY")?.price ?? 99900;
+    return (monthlyPrice / 100).toString();
+  } catch {
+    return "999";
+  }
+}
 
 // ─── Competitor Data ────────────────────────────────────────────────────────
 interface CompetitorData {
@@ -53,7 +69,7 @@ const competitors: Record<string, CompetitorData> = {
       },
       {
         q: "Which is cheaper — RepairDesk or MobiBix?",
-        a: "MobiBix starts from ₹999/month, while RepairDesk starts from approximately ₹6,200/month (~$75 USD). MobiBix is 6× cheaper.",
+        a: `MobiBix starts from ₹${basePrice}/month, while RepairDesk starts from approximately ₹6,200/month (~$75 USD). MobiBix is dramatically cheaper.`,
       },
       {
         q: "Does RepairDesk support GST billing?",
@@ -94,7 +110,7 @@ const competitors: Record<string, CompetitorData> = {
       },
       {
         q: "How does MobiBix compare to RepairShopr for India?",
-        a: "MobiBix is purpose-built for Indian repair shops — with INR pricing (₹999/month), GST billing, WhatsApp CRM, UPI collection, and India-time customer support. RepairShopr has none of these.",
+        a: `MobiBix is purpose-built for Indian repair shops — with INR pricing (starting at ₹${basePrice}/month), GST billing, WhatsApp CRM, UPI collection, and India-time customer support. RepairShopr has none of these.`,
       },
     ],
   },
@@ -123,7 +139,7 @@ const competitors: Record<string, CompetitorData> = {
     faq: [
       {
         q: "Is Fixably good for Indian repair shops?",
-        a: "No. Fixably is designed for Apple-authorised repair centres in Europe/US and costs ₹13,500+/month. MobiBix is purpose-built for Indian repair shops at ₹999/month.",
+        a: `No. Fixably is designed for Apple-authorised repair centres in Europe/US and costs ₹13,500+/month. MobiBix is purpose-built for Indian repair shops starting at ₹${basePrice}/month.`,
       },
       {
         q: "What is the best Fixably alternative for India?",
@@ -134,34 +150,33 @@ const competitors: Record<string, CompetitorData> = {
   vyapar: {
     name: "Vyapar",
     slug: "vyapar",
-    tagline: "Generic GST billing app — not built for repair shops",
+    tagline: "Excellent GST billing app — but missing essential repair tools",
     targetAudience: "General Indian retailers and traders",
     pricingUSD: "~$5–$10/month",
     pricingINR: "₹400–₹800/month",
     strengths: [
       "Very affordable for general retail",
-      "Simple GST billing for products",
+      "Excellent GST billing and easy UI",
       "Offline mode for billing",
       "Popular in tier-2/3 Indian cities",
     ],
     weaknesses: [
       "No repair job card management",
       "No IMEI or serial number tracking",
-      "No WhatsApp repair status notifications",
+      "No WhatsApp repair status notifications (only payment links)",
       "No technician assignment or commission tracking",
       "No repair job pipeline or ticket system",
-      "Cannot track spare parts usage per job card",
     ],
     verdict:
-      "Vyapar is a great basic billing app for general retail. It is not a repair shop management system. If you run a mobile repair shop, you need job cards, IMEI tracking, and repair workflows that Vyapar simply does not offer.",
+      "Vyapar is a fantastic, well-built billing app for general retail, and yes, it excels at GST invoicing. But it is not a repair shop management system. If you run a mobile repair shop, you need job cards, IMEI tracking, and automated WhatsApp repair workflows that Vyapar simply does not offer.",
     faq: [
       {
         q: "Can Vyapar manage mobile repair jobs?",
-        a: "No. Vyapar is a billing app and cannot manage repair job cards, IMEI tracking, technician assignments, or WhatsApp status notifications. MobiBix is purpose-built for repair shops.",
+        a: "No. Vyapar is an excellent billing app but cannot manage repair job cards, IMEI tracking, technician assignments, or WhatsApp status notifications tailored for repairs. MobiBix is purpose-built specifically for repair shops.",
       },
       {
-        q: "Should I use Vyapar or MobiBix for my mobile repair shop?",
-        a: "Use MobiBix. Vyapar handles invoices; MobiBix manages your entire repair business — from job intake to WhatsApp notifications to parts inventory to collection.",
+        q: "Does Vyapar support GST Invoicing?",
+        a: "Yes! Vyapar natively supports GST invoicing and is very popular for it. However, MobiBix also fully supports GST Invoices, while adding all the mobile-shop specific IMEI tracking on top.",
       },
     ],
   },
@@ -204,9 +219,10 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: { competitor: string };
+  params: Promise<{ competitor: string }>;
 }): Promise<Metadata> {
-  const c = competitors[params.competitor];
+  const resolvedParams = await params;
+  const c = competitors[resolvedParams.competitor];
   if (!c) return { title: "Compare" };
   return {
     title: `MobiBix vs ${c.name} (${new Date().getFullYear()}) — Best Repair Shop Software for India`,
@@ -232,18 +248,21 @@ const Cross = () => (
   </svg>
 );
 
-export default function ComparePage({ params }: { params: { competitor: string } }) {
-  const c = competitors[params.competitor];
+export default async function ComparePage({ params }: { params: Promise<{ competitor: string }> }) {
+  const resolvedParams = await params;
+  const c = competitors[resolvedParams.competitor];
   if (!c) notFound();
+
+  const basePrice = await fetchBasePrice();
 
   const comparisonRows = [
     { feature: "WhatsApp Notifications", mobibix: true, competitor: false },
     { feature: "GST Billing (CGST/SGST/IGST)", mobibix: true, competitor: false },
     { feature: "UPI / Razorpay Payment Collection", mobibix: true, competitor: false },
     { feature: "INR Pricing", mobibix: true, competitor: false },
-    { feature: "Repair Job Card Management", mobibix: true, competitor: params.competitor !== "vyapar" && params.competitor !== "khatabook" },
+    { feature: "Repair Job Card Management", mobibix: true, competitor: resolvedParams.competitor !== "vyapar" && resolvedParams.competitor !== "khatabook" },
     { feature: "IMEI & Serial Number Tracking", mobibix: true, competitor: false },
-    { feature: "Multi-Shop Management", mobibix: true, competitor: params.competitor === "repairdesk" || params.competitor === "repairshopr" },
+    { feature: "Multi-Shop Management", mobibix: true, competitor: resolvedParams.competitor === "repairdesk" || resolvedParams.competitor === "repairshopr" },
     { feature: "Technician Performance Tracking", mobibix: true, competitor: false },
     { feature: "India-Time Customer Support", mobibix: true, competitor: false },
     { feature: "Free 14-Day Trial", mobibix: true, competitor: true },
@@ -319,7 +338,7 @@ export default function ComparePage({ params }: { params: { competitor: string }
                     <div className="text-xs font-bold text-primary uppercase tracking-widest">Built for India</div>
                   </div>
                 </div>
-                <div className="text-3xl font-black mb-1">₹999<span className="text-base font-bold text-muted-foreground">/month</span></div>
+                <div className="text-3xl font-black mb-1">₹{basePrice}<span className="text-base font-bold text-muted-foreground">/month</span></div>
                 <div className="text-sm font-bold text-muted-foreground mb-6">14-day free trial · No credit card</div>
                 <ul className="space-y-3">
                   {["WhatsApp + GST + UPI — all built-in", "IMEI & repair job management", "INR pricing, India-time support", "Multi-shop from one dashboard"].map((f) => (

@@ -226,7 +226,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                 Stop Losing <br />Profits.
               </h2>
               <p className="text-muted-foreground text-lg md:text-xl font-bold max-w-xl mx-auto mb-12 text-center">
-                Join 500+ successful shop owners across India. Set up your digital store in exactly 5 minutes.
+                Join 5000+ successful shop owners across World. Set up your digital store in exactly 5 minutes.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-8">
                 <Link href="/auth" className="w-full sm:w-auto px-12 py-5 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-2xl shadow-primary/20">

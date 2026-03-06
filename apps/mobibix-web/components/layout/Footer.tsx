@@ -42,6 +42,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
               <Link href="/compare/repairshopr" className="hover:text-primary transition-colors">vs RepairShopr</Link>
               <Link href="/compare/fixably" className="hover:text-primary transition-colors">vs Fixably</Link>
               <Link href="/compare/vyapar" className="hover:text-primary transition-colors">vs Vyapar</Link>
+              <Link href="/compare/khatabook" className="hover:text-primary transition-colors">vs KhataBook</Link>
             </div>
           </div>
 
@@ -51,7 +52,8 @@ export function Footer({ compact = false }: { compact?: boolean }) {
               <Link href="/regions/india" className="hover:text-primary transition-colors">India</Link>
               <Link href="/regions/uae" className="hover:text-primary transition-colors">UAE</Link>
               <Link href="/regions/saudi-arabia" className="hover:text-primary transition-colors">Saudi Arabia</Link>
-              <Link href="/regions/pakistan" className="hover:text-primary transition-colors">Pakistan</Link>
+              <Link href="/regions/malaysia" className="hover:text-primary transition-colors">Malaysia</Link>
+              <Link href="/regions/indonesia" className="hover:text-primary transition-colors">Indonesia</Link>
             </div>
           </div>
 

@@ -25,7 +25,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/regions/uae`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${baseUrl}/regions/saudi-arabia`, lastModified: now, changeFrequency: 'monthly', priority: 0.82 },
     { url: `${baseUrl}/regions/malaysia`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
-    { url: `${baseUrl}/regions/pakistan`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
     { url: `${baseUrl}/regions/indonesia`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
 
     // ── Comparison Pages ───────────────────────────────

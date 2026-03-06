@@ -8,7 +8,6 @@ export default function RegionsIndexPage() {
     { name: "UAE", slug: "uae", flag: "🇦🇪" },
     { name: "Saudi Arabia", slug: "saudi-arabia", flag: "🇸🇦" },
     { name: "Malaysia", slug: "malaysia", flag: "🇲🇾" },
-    { name: "Pakistan", slug: "pakistan", flag: "🇵🇰" },
     { name: "Indonesia", slug: "indonesia", flag: "🇮🇩" },
   ];
 

@@ -3,6 +3,22 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Header } from "../../../components/layout/Header";
 import { Footer } from "../../../components/layout/Footer";
+import { Plan } from "../../pricing/page";
+
+async function fetchBasePrice(): Promise<string> {
+  try {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
+    const res = await fetch(`${apiBase}/plans/public/pricing?module=MOBILE_SHOP`, { next: { revalidate: 3600 } });
+    if (!res.ok) return "999";
+    const json = await res.json();
+    const plans: Plan[] = json?.data?.MOBILE_SHOP ?? json?.MOBILE_SHOP ?? [];
+    const proPlan = plans.find(p => p.level === 2) || plans[0];
+    const monthlyPrice = proPlan?.pricing?.find(p => p.cycle === "MONTHLY")?.price ?? 99900;
+    return (monthlyPrice / 100).toString();
+  } catch {
+    return "999";
+  }
+}
 
 // ─── Region Data ────────────────────────────────────────────────────────────
 interface RegionData {
@@ -50,7 +66,7 @@ const regions: Record<string, RegionData> = {
     seoTitle:
       "Mobile Repair Shop Software India — GST, WhatsApp & UPI | MobiBix",
     seoDesc:
-      "MobiBix is the #1 mobile repair shop software for India. Job cards, GST billing, WhatsApp notifications & UPI collection — starting at ₹999/month. 14-day free trial.",
+      "MobiBix is the #1 mobile repair shop software for India. Job cards, GST billing, WhatsApp notifications & UPI collection. 14-day free trial.",
   },
   uae: {
     slug: "uae",
@@ -136,34 +152,6 @@ const regions: Record<string, RegionData> = {
     seoDesc:
       "MobiBix is the best repair shop software for Malaysia. WhatsApp notifications, job card management, and SST billing. Try free for 14 days.",
   },
-  pakistan: {
-    slug: "pakistan",
-    name: "Pakistan",
-    currency: "PKR",
-    currencySymbol: "PKR",
-    price: "PKR 4,999",
-    lang: "English & Urdu",
-    headline: "Mobile Repair Shop Software for Pakistan",
-    subheadline:
-      "Used by repair shops in Karachi, Lahore, and Islamabad — manage job cards, track inventory, and send WhatsApp notifications all from one place.",
-    localFeatures: [
-      "WhatsApp repair alert automation",
-      "Job card management with technician tracking",
-      "IMEI and serial number inventory",
-      "PKR pricing",
-      "Multi-shop management",
-      "English & Urdu support",
-    ],
-    paymentMethods: ["Easypaisa", "JazzCash", "Bank Transfer", "Credit Card"],
-    testimonialName: "Usman Malik",
-    testimonialCity: "Lahore",
-    testimonialText:
-      "MobiBix made my repair shop professional. From job cards to WhatsApp updates to invoices — everything is in one place now.",
-    seoTitle:
-      "Mobile Repair Shop Software Pakistan — WhatsApp & Job Cards | MobiBix",
-    seoDesc:
-      "MobiBix is the best repair shop software for Pakistan. WhatsApp notifications, job card management, and IMEI tracking. Try free for 14 days.",
-  },
   indonesia: {
     slug: "indonesia",
     name: "Indonesia",
@@ -201,9 +189,10 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: { region: string };
+  params: Promise<{ region: string }>;
 }): Promise<Metadata> {
-  const r = regions[params.region];
+  const resolvedParams = await params;
+  const r = regions[resolvedParams.region];
   if (!r) return { title: "Region" };
   return {
     title: r.seoTitle,
@@ -218,9 +207,15 @@ export async function generateMetadata({
   };
 }
 
-export default function RegionPage({ params }: { params: { region: string } }) {
-  const r = regions[params.region];
+export default async function RegionPage({ params }: { params: Promise<{ region: string }> }) {
+  const resolvedParams = await params;
+  const r = regions[resolvedParams.region];
   if (!r) notFound();
+
+  const basePrice = await fetchBasePrice();
+  
+  // Use fetched base price for India, otherwise use predefined regional price 
+  const displayPrice = r.slug === "india" ? `₹${basePrice}` : r.price;
 
   const localBusinessSchema = {
     "@context": "https://schema.org",
@@ -231,7 +226,7 @@ export default function RegionPage({ params }: { params: { region: string } }) {
     url: `https://REMOVED_DOMAIN/regions/${r.slug}`,
     offers: {
       "@type": "Offer",
-      price: r.price.replace(/[^0-9]/g, ""),
+      price: displayPrice.replace(/[^0-9]/g, ""),
       priceCurrency: r.currency,
       priceValidUntil: "2027-01-01",
     },
@@ -287,7 +282,7 @@ export default function RegionPage({ params }: { params: { region: string } }) {
           <div className="container mx-auto max-w-4xl">
             <div className="p-10 rounded-[3rem] bg-gradient-to-br from-primary/10 to-blue-500/5 border border-primary/20 text-center">
               <div className="text-5xl font-black mb-2">
-                {r.price}
+                {displayPrice}
                 <span className="text-2xl font-bold text-muted-foreground">/month</span>
               </div>
               <p className="text-muted-foreground font-bold mb-6">
