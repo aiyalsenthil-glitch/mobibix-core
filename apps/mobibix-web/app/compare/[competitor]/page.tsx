@@ -69,7 +69,7 @@ const competitors: Record<string, CompetitorData> = {
       },
       {
         q: "Which is cheaper — RepairDesk or MobiBix?",
-        a: `MobiBix starts from ₹${basePrice}/month, while RepairDesk starts from approximately ₹6,200/month (~$75 USD). MobiBix is dramatically cheaper.`,
+        a: "MobiBix starts from ₹{{price}}/month, while RepairDesk starts from approximately ₹6,200/month (~$75 USD). MobiBix is dramatically cheaper.",
       },
       {
         q: "Does RepairDesk support GST billing?",
@@ -110,7 +110,7 @@ const competitors: Record<string, CompetitorData> = {
       },
       {
         q: "How does MobiBix compare to RepairShopr for India?",
-        a: `MobiBix is purpose-built for Indian repair shops — with INR pricing (starting at ₹${basePrice}/month), GST billing, WhatsApp CRM, UPI collection, and India-time customer support. RepairShopr has none of these.`,
+        a: "MobiBix is purpose-built for Indian repair shops — with INR pricing (starting at ₹{{price}}/month), GST billing, WhatsApp CRM, UPI collection, and India-time customer support. RepairShopr has none of these.",
       },
     ],
   },
@@ -139,7 +139,7 @@ const competitors: Record<string, CompetitorData> = {
     faq: [
       {
         q: "Is Fixably good for Indian repair shops?",
-        a: `No. Fixably is designed for Apple-authorised repair centres in Europe/US and costs ₹13,500+/month. MobiBix is purpose-built for Indian repair shops starting at ₹${basePrice}/month.`,
+        a: "No. Fixably is designed for Apple-authorised repair centres in Europe/US and costs ₹13,500+/month. MobiBix is purpose-built for Indian repair shops starting at ₹{{price}}/month.",
       },
       {
         q: "What is the best Fixably alternative for India?",
@@ -150,33 +150,37 @@ const competitors: Record<string, CompetitorData> = {
   vyapar: {
     name: "Vyapar",
     slug: "vyapar",
-    tagline: "Excellent GST billing app — but missing essential repair tools",
-    targetAudience: "General Indian retailers and traders",
+    tagline: "India's favorite billing app — but not built for the repair workflow",
+    targetAudience: "Small Indian retail shops & traders",
     pricingUSD: "~$5–$10/month",
     pricingINR: "₹400–₹800/month",
     strengths: [
-      "Very affordable for general retail",
-      "Excellent GST billing and easy UI",
-      "Offline mode for billing",
-      "Popular in tier-2/3 Indian cities",
+      "Industry standard for simple GST billing in India",
+      "Very affordable and works offline",
+      "Excellent inventory management for boxed products",
+      "Huge adoption across small towns in India",
     ],
     weaknesses: [
-      "No repair job card management",
-      "No IMEI or serial number tracking",
-      "No WhatsApp repair status notifications (only payment links)",
-      "No technician assignment or commission tracking",
-      "No repair job pipeline or ticket system",
+      "No specialized 'Job Card' system (essential for repair intake)",
+      "Cannot track unique IMEIs effectively for repair history",
+      "No repair status updates on WhatsApp (only billing), leading to more customer calls",
+      "No technician performance or commission tracking for repairs",
+      "No repair pipeline (Pending -> In-Progress -> Finished) system",
     ],
     verdict:
-      "Vyapar is a fantastic, well-built billing app for general retail, and yes, it excels at GST invoicing. But it is not a repair shop management system. If you run a mobile repair shop, you need job cards, IMEI tracking, and automated WhatsApp repair workflows that Vyapar simply does not offer.",
+      "Vyapar is a brilliant Indian success story for general billing and accounting. If you sell products across a counter, it is arguably the best. However, a mobile repair shop doesn't just 'sell'; it manages service cycles. MobiBix is built for that cycle — from IMEI-linked job cards to automated WhatsApp updates when a phone is fixed.",
     faq: [
       {
-        q: "Can Vyapar manage mobile repair jobs?",
-        a: "No. Vyapar is an excellent billing app but cannot manage repair job cards, IMEI tracking, technician assignments, or WhatsApp status notifications tailored for repairs. MobiBix is purpose-built specifically for repair shops.",
+        q: "Does Vyapar support GST billing for mobile shops?",
+        a: "Yes, Vyapar is extremely strong at GST billing. However, MobiBix also generates 100% compliant Indian GST invoices (CGST/SGST/IGST) but adds mobile repair job cards and IMEI tracking on top.",
       },
       {
-        q: "Does Vyapar support GST Invoicing?",
-        a: "Yes! Vyapar natively supports GST invoicing and is very popular for it. However, MobiBix also fully supports GST Invoices, while adding all the mobile-shop specific IMEI tracking on top.",
+        q: "Can I track repair statuses in Vyapar?",
+        a: "No. Vyapar does not have a repair pipeline. You cannot see which phones are pending or finished. MobiBix provides a visual repair dashboard and notifies customers automatically via WhatsApp.",
+      },
+      {
+        q: "Why should a mobile shop owner choose MobiBix over Vyapar?",
+        a: "Choose Vyapar if you only sell mobile accessories. Choose MobiBix if you do repairs. MobiBix manages the unique IMEIs of inward devices, assigns them to technicians, and sends automated 'Ready for Delivery' alerts.",
       },
     ],
   },
@@ -224,9 +228,13 @@ export async function generateMetadata({
   const resolvedParams = await params;
   const c = competitors[resolvedParams.competitor];
   if (!c) return { title: "Compare" };
+  
+  const basePrice = await fetchBasePrice();
+  const description = `Honest comparison of MobiBix vs ${c.name}. See why Indian mobile repair shops are switching — WhatsApp notifications, GST billing, UPI collection, and starting at ₹${basePrice}/month.`.replace("{{price}}", basePrice);
+
   return {
     title: `MobiBix vs ${c.name} (${new Date().getFullYear()}) — Best Repair Shop Software for India`,
-    description: `Honest comparison of MobiBix vs ${c.name}. See why Indian mobile repair shops are switching — WhatsApp notifications, GST billing, UPI collection, and INR pricing. Free 14-day trial.`,
+    description,
     alternates: { canonical: `https://REMOVED_DOMAIN/compare/${c.slug}` },
     openGraph: {
       title: `MobiBix vs ${c.name} — For Indian Repair Shops`,
@@ -255,6 +263,12 @@ export default async function ComparePage({ params }: { params: Promise<{ compet
 
   const basePrice = await fetchBasePrice();
 
+  // Dynamically inject basePrice into FAQ
+  const processedFaq = c.faq.map(item => ({
+    q: item.q,
+    a: item.a.replaceAll("{{price}}", basePrice)
+  }));
+
   const comparisonRows = [
     { feature: "WhatsApp Notifications", mobibix: true, competitor: false },
     { feature: "GST Billing (CGST/SGST/IGST)", mobibix: true, competitor: false },
@@ -271,7 +285,7 @@ export default async function ComparePage({ params }: { params: Promise<{ compet
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: c.faq.map(({ q, a }) => ({
+    mainEntity: processedFaq.map(({ q, a }) => ({
       "@type": "Question",
       name: q,
       acceptedAnswer: { "@type": "Answer", text: a },
@@ -429,7 +443,7 @@ export default async function ComparePage({ params }: { params: Promise<{ compet
               Frequently Asked Questions
             </h2>
             <div className="space-y-4">
-              {c.faq.map(({ q, a }) => (
+              {processedFaq.map(({ q, a }) => (
                 <div key={q} className="p-8 rounded-[2rem] border border-border bg-card/30">
                   <h3 className="font-black text-lg mb-3 uppercase tracking-tight">{q}</h3>
                   <p className="text-muted-foreground font-bold leading-relaxed">{a}</p>
