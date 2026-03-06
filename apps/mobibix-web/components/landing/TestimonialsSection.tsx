@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 interface Testimonial {
   text: string;
@@ -91,15 +92,13 @@ export function TestimonialsSection() {
           >
             <div className="flex justify-between items-start mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-primary/20 shadow-lg relative">
-                  <img 
+                <div className="w-12 h-12 rounded-xl border-2 border-primary/20 shadow-lg relative overflow-hidden flex-shrink-0">
+                  <Image 
                     src={t.image} 
-                    alt={t.name} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = "https://ui-avatars.com/api/?name=" + t.name;
-                    }}
+                    alt={t.name}
+                    width={48}
+                    height={48}
+                    className="object-cover absolute inset-0 w-full h-full"
                   />
                 </div>
                 <div>

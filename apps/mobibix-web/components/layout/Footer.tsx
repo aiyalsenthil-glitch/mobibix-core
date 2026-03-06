@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 export function Footer({ compact = false }: { compact?: boolean }) {
   return (
@@ -9,7 +10,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
         <div className={`grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-16 ${compact ? "mb-10" : "mb-20"}`}>
           <div className="md:col-span-2 space-y-4 md:space-y-8">
             <div className="flex items-center gap-4">
-              <img src="/assets/mobibix-main-logo.png" alt="MobiBix" className="h-8 w-auto opacity-90 dark:brightness-200" />
+              <Image src="/assets/mobibix-main-logo.png" alt="MobiBix" width={100} height={32} className="h-8 w-auto opacity-90 dark:brightness-200" />
               <span className="text-xl font-black tracking-tighter uppercase text-foreground">MobiBix</span>
             </div>
             {!compact && (
@@ -43,6 +44,8 @@ export function Footer({ compact = false }: { compact?: boolean }) {
               <Link href="/compare/fixably" className="hover:text-primary transition-colors">vs Fixably</Link>
               <Link href="/compare/vyapar" className="hover:text-primary transition-colors">vs Vyapar</Link>
               <Link href="/compare/khatabook" className="hover:text-primary transition-colors">vs KhataBook</Link>
+              <Link href="/compare/tally" className="hover:text-primary transition-colors">vs TallyPrime</Link>
+              <Link href="/compare/busy" className="hover:text-primary transition-colors">vs Busy</Link>
             </div>
           </div>
 

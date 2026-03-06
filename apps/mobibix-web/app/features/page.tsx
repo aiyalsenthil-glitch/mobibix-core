@@ -10,6 +10,8 @@ export default function FeaturesPage() {
   const [mounted, setMounted] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [joinedWaitlist, setJoinedWaitlist] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -246,10 +248,31 @@ export default function FeaturesPage() {
                         <>
                             <p className="text-muted-foreground font-bold mb-8 max-w-xl mx-auto relative z-10">We be releasing this exact feature module to beta users very soon. Enter your shop&apos;s WhatsApp number to get priority access.</p>
                             <form 
-                                onSubmit={(e) => {
+                                onSubmit={async (e) => {
                                     e.preventDefault();
                                     if (phoneNumber.length >= 10) {
-                                        setJoinedWaitlist(true);
+                                        setIsLoading(true);
+                                        setErrorMsg("");
+                                        try {
+                                          const res = await fetch("http://localhost_REPLACED:3005/api/v1/public/waitlist", {
+                                            method: "POST",
+                                            headers: {
+                                              "Content-Type": "application/json"
+                                            },
+                                            body: JSON.stringify({ phone: phoneNumber })
+                                          });
+                                          
+                                          if (!res.ok) {
+                                            const errorData = await res.json();
+                                            throw new Error(errorData.message || "Failed to join waitlist");
+                                          }
+
+                                          setJoinedWaitlist(true);
+                                        } catch (err: any) {
+                                          setErrorMsg(err.message || "Something went wrong. Please try again.");
+                                        } finally {
+                                          setIsLoading(false);
+                                        }
                                     }
                                 }}
                                 className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-xl mx-auto relative z-10"
@@ -264,11 +287,15 @@ export default function FeaturesPage() {
                                 />
                                 <button 
                                     type="submit"
-                                    className="w-full sm:w-1/3 px-6 py-4 rounded-2xl bg-green-500 text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 shadow-lg shadow-green-500/20 active:scale-95 transition-all"
+                                    disabled={isLoading}
+                                    className="w-full sm:w-1/3 px-6 py-4 rounded-2xl bg-green-500 text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 shadow-lg shadow-green-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    Join Waitlist
+                                    {isLoading ? "Joining..." : "Join Waitlist"}
                                 </button>
                             </form>
+                            {errorMsg && (
+                              <p className="text-red-500 text-sm font-bold mt-4 relative z-10">{errorMsg}</p>
+                            )}
                         </>
                     ) : (
                         <motion.div 

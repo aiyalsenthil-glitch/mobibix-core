@@ -10,6 +10,8 @@ type BlogPost = {
   date: string;
   excerpt: string;
   content: string; // Markdown or raw text
+  author?: string;
+  keywords?: string[];
 };
 
 export function getAllPosts(): BlogPost[] {

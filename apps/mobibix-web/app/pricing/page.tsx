@@ -5,6 +5,9 @@ export const metadata: Metadata = {
   title: "Pricing — MobiBix Mobile Shop OS",
   description:
     "Simple, transparent pricing for Indian mobile shop owners. Start free for 14 days — no credit card required.",
+  alternates: {
+    canonical: "https://REMOVED_DOMAIN/pricing"
+  }
 };
 
 interface PricingCycle {
@@ -55,5 +58,45 @@ async function fetchPricing(): Promise<Plan[]> {
 
 export default async function PricingPage() {
   const plans = await fetchPricing();
-  return <PricingToggleClient plans={plans} />;
+
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Does MobiBix support WhatsApp Business API for repair updates?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes! We integrate officially via WhatsApp Cloud API allowing automated repair tickets, job card delivery, and digital GST invoices instantly sent to your customers."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I track mobile serial numbers and IMEI?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Absolutely. Our platform is built specifically for electronic shops, so IMEI tracking is native to every purchase, sale, and stock transfer with complete history lookup."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Are there any hidden costs for multi-shop synchronization?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Multi-location synchronization is fully baked into all pro levels. Extra locations simply run on per-seat pricing scaling linearly."
+        }
+      }
+    ]
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+      <PricingToggleClient plans={plans} />
+    </>
+  );
 }

@@ -23,6 +23,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: `${post.title} | MobiBix Blog`,
     description: post.excerpt,
+    keywords: post.keywords,
+    authors: post.author ? [{ name: post.author }] : [{ name: 'MobiBix' }],
+    openGraph: {
+      title: post.title,
+      description: post.excerpt,
+      type: "article",
+      authors: post.author ? [post.author] : ["MobiBix"],
+    },
     alternates: {
       canonical: `https://REMOVED_DOMAIN/blog/${post.slug}`
     }
@@ -39,6 +47,22 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-500 overflow-hidden">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "headline": post.title,
+            "description": post.excerpt,
+            "datePublished": post.date,
+            "author": {
+              "@type": "Organization",
+              "name": post.author || "Mobibix"
+            }
+          })
+        }}
+      />
       <Header />
       
       {/* Background Ambience */}
@@ -59,9 +83,14 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         
         {/* Post Header */}
         <header className="mb-16 border-b border-border pb-16">
-            <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-4 py-2 rounded-full mb-8 inline-block shadow-sm">
-                Retail Tactics
-            </span>
+            <div className="flex flex-col gap-3 mb-8">
+                <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/10 px-4 py-2 rounded-full inline-block shadow-sm w-fit">
+                    Retail Tactics
+                </span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                    By {post.author || "Mobibix"}
+                </span>
+            </div>
             <h1 className="text-4xl md:text-6xl font-black mb-8 tracking-tighter uppercase leading-tight">
                 {post.title}
             </h1>

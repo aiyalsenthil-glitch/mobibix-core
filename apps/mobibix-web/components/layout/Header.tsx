@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "../../src/context/ThemeContext";
 import { motion } from "framer-motion";
@@ -47,9 +48,11 @@ export function Header() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">
           <div className="p-1.5 rounded-xl bg-primary/10 border border-primary/20 group-hover:border-primary/50 transition-all duration-300 transform group-hover:scale-110">
-            <img 
+            <Image
               src="/assets/mobibix-main-logo.png" 
               alt="MobiBix" 
+              width={100}
+              height={32}
               className={`h-8 w-auto ${isDark ? "invert brightness-200" : ""}`} 
             />
           </div>

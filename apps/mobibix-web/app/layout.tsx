@@ -68,6 +68,41 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+             __html: JSON.stringify({
+               "@context": "https://schema.org",
+               "@type": "Organization",
+               "name": "MobiBix",
+               "url": "https://REMOVED_DOMAIN",
+               "logo": "https://REMOVED_DOMAIN/assets/mobibix-app-icon.png",
+               "contactPoint": {
+                 "@type": "ContactPoint",
+                 "contactType": "customer support"
+               }
+             })
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+             __html: JSON.stringify({
+               "@context": "https://schema.org",
+               "@type": "SoftwareApplication",
+               "name": "MobiBix POS",
+               "operatingSystem": "Web",
+               "applicationCategory": "BusinessApplication",
+               "offers": {
+                 "@type": "Offer",
+                 "price": "999",
+                 "priceCurrency": "INR"
+               }
+             })
+          }}
+        />
+      </head>
       <body className="antialiased bg-background text-foreground transition-colors duration-200">
         <Providers>
           <Suspense fallback={null}>

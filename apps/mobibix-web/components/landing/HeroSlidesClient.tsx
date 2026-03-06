@@ -4,6 +4,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useTheme } from "@/context/ThemeContext";
 import { Header } from "../layout/Header";
 import { Footer } from "../layout/Footer";
@@ -100,9 +101,9 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                     <Link href="/auth" className="w-full sm:w-auto px-10 py-5 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-2xl shadow-primary/20">
                         Start Free Trial
                     </Link>
-                    <button onClick={() => setCurrentSlide(1)} className="w-full sm:w-auto px-10 py-5 rounded-2xl border border-border text-foreground font-black uppercase tracking-widest hover:bg-muted transition-all">
-                        Book A Demo
-                    </button>
+                    <Link href="/pricing" className="w-full sm:w-auto px-10 py-5 rounded-2xl border border-border text-foreground text-center font-black uppercase tracking-widest hover:bg-muted transition-all">
+                        View Pricing
+                    </Link>
                 </div>
             </motion.div>
             {/* Background Effects */}
@@ -140,8 +141,8 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       
                       <div className="relative z-10">
-                        <div className="w-20 h-20 rounded-2xl bg-white/40 dark:bg-muted/30 backdrop-blur-md flex items-center justify-center mb-8 border border-border/50 group-hover:border-primary/30 group-hover:shadow-lg group-hover:shadow-primary/5 transition-all duration-500 overflow-hidden p-4 shadow-sm">
-                            <img src={feat.icon} alt={feat.title} className="w-full h-full object-contain filter drop-shadow-xl group-hover:scale-110 transition-transform duration-500" />
+                        <div className="w-20 h-20 rounded-2xl bg-white/40 dark:bg-muted/30 backdrop-blur-md flex items-center justify-center mb-8 border border-border/50 group-hover:border-primary/30 group-hover:shadow-lg group-hover:shadow-primary/5 transition-all duration-500 overflow-hidden p-4 shadow-sm relative">
+                            <Image src={feat.icon} alt={feat.title} fill className="object-contain filter drop-shadow-xl group-hover:scale-110 transition-transform duration-500 p-4" />
                         </div>
                         <h3 className="text-xl font-black mb-4 uppercase tracking-tight">{feat.title}</h3>
                         <p className="text-muted-foreground font-bold text-sm leading-relaxed">{feat.desc}</p>

@@ -33,10 +33,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/compare/fixably`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
     { url: `${baseUrl}/compare/vyapar`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
     { url: `${baseUrl}/compare/khatabook`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
+    { url: `${baseUrl}/compare/tally`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
+    { url: `${baseUrl}/compare/busy`, lastModified: now, changeFrequency: 'monthly', priority: 0.75 },
 
     // ── Legal & Auth ───────────────────────────────────
     { url: `${baseUrl}/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${baseUrl}/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${baseUrl}/cancellation-and-refund`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${baseUrl}/contact-us`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${baseUrl}/shipping-and-exchange`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${baseUrl}/support/kb`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
   ];
 
   return routes;

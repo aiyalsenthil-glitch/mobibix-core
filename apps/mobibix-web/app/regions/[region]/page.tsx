@@ -197,7 +197,18 @@ export async function generateMetadata({
   return {
     title: r.seoTitle,
     description: r.seoDesc,
-    alternates: { canonical: `https://REMOVED_DOMAIN/regions/${r.slug}` },
+    alternates: {
+      canonical: `https://REMOVED_DOMAIN/regions/${r.slug}`,
+      // Only inject hreflang tags if the region is UAE
+      ...(r.slug === "uae"
+        ? {
+            languages: {
+              en: "https://REMOVED_DOMAIN/regions/uae",
+              ar: "https://REMOVED_DOMAIN/ar/regions/uae",
+            },
+          }
+        : {}),
+    },
     openGraph: {
       title: r.seoTitle,
       description: r.seoDesc,
