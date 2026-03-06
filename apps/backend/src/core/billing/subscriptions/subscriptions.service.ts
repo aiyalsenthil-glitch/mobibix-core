@@ -135,7 +135,13 @@ export class SubscriptionsService {
     // Validate tenant exists
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { id: true, name: true, contactEmail: true, contactPhone: true, currency: true }, // Added contact + currency
+      select: {
+        id: true,
+        name: true,
+        contactEmail: true,
+        contactPhone: true,
+        currency: true,
+      }, // Added contact + currency
     });
     if (!tenant) {
       throw new NotFoundException(`Tenant not found: ${tenantId}`);

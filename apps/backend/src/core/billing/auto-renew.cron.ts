@@ -21,7 +21,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { SubscriptionStatus, ModuleType, BillingCycle, BillingType } from '@prisma/client';
+import {
+  SubscriptionStatus,
+  ModuleType,
+  BillingCycle,
+  BillingType,
+} from '@prisma/client';
 import { SubscriptionsService } from './subscriptions/subscriptions.service';
 
 @Injectable()

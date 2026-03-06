@@ -81,16 +81,26 @@ export class RazorpayWebhookProcessor extends WorkerHost {
           break;
 
         case 'payment.refunded':
-          await this.handlePaymentRefunded(payload.payment.entity, payload.refund?.entity);
+          await this.handlePaymentRefunded(
+            payload.payment.entity,
+            payload.refund?.entity,
+          );
           break;
 
         case 'payment.dispute.created':
-          await this.handlePaymentDisputeCreated(payload.dispute.entity, payload.payment.entity);
+          await this.handlePaymentDisputeCreated(
+            payload.dispute.entity,
+            payload.payment.entity,
+          );
           break;
 
         case 'payment.dispute.won':
         case 'payment.dispute.lost':
-          await this.handlePaymentDisputeResolved(payload.dispute.entity, payload.payment.entity, event);
+          await this.handlePaymentDisputeResolved(
+            payload.dispute.entity,
+            payload.payment.entity,
+            event,
+          );
           break;
 
         default:
@@ -379,15 +389,15 @@ export class RazorpayWebhookProcessor extends WorkerHost {
         ) {
           this.logger.warn(
             `[RESURRECTION] subscription.charged arrived after cron expiry for sub ` +
-            `${subscription.id} (tenant: ${subscription.tenantId}). ` +
-            `Autopay charge is legitimate — proceeding with renewal.`,
+              `${subscription.id} (tenant: ${subscription.tenantId}). ` +
+              `Autopay charge is legitimate — proceeding with renewal.`,
           );
           // Fall through to the renewal transaction below.
         } else {
           // Deterministically non-renewable (CANCELLED, DISPUTED, etc). Do NOT retry.
           this.logger.warn(
             `[SKIP] subscription.charged for sub ${subscription.id} which is ` +
-            `${subscription.status}. Not eligible for renewal. Ignoring.`,
+              `${subscription.status}. Not eligible for renewal. Ignoring.`,
           );
           return;
         }
@@ -395,96 +405,122 @@ export class RazorpayWebhookProcessor extends WorkerHost {
 
       try {
         // Atomic renewal and payment recording
-        const { internalPaymentId } = await this.prisma.$transaction(async (tx) => {
-          // 1. Process local renewal (Create new row for history)
-          const rzStart = subEntity.current_start ? new Date(subEntity.current_start * 1000) : new Date();
-          const rzEnd = subEntity.current_end ? new Date(subEntity.current_end * 1000) : this.subscriptionsService['calculateEndDate'](rzStart, subscription.billingCycle || 'MONTHLY');
-          
-          const nextPlanId = subscription.nextPlanId || subscription.planId;
-          const nextBillingCycle = subscription.nextBillingCycle || subscription.billingCycle || 'MONTHLY';
-          const nextPriceSnapshot = subscription.nextPriceSnapshot ?? subscription.priceSnapshot;
+        const { internalPaymentId } = await this.prisma.$transaction(
+          async (tx) => {
+            // 1. Process local renewal (Create new row for history)
+            const rzStart = subEntity.current_start
+              ? new Date(subEntity.current_start * 1000)
+              : new Date();
+            const rzEnd = subEntity.current_end
+              ? new Date(subEntity.current_end * 1000)
+              : this.subscriptionsService['calculateEndDate'](
+                  rzStart,
+                  subscription.billingCycle || 'MONTHLY',
+                );
 
-          // Mark current as EXPIRED
-          await tx.tenantSubscription.update({
-            where: { id: subscription.id },
-            data: {
-              status: SubscriptionStatus.EXPIRED,
-              updatedAt: new Date(),
-            },
-          });
+            const nextPlanId = subscription.nextPlanId || subscription.planId;
+            const nextBillingCycle =
+              subscription.nextBillingCycle ||
+              subscription.billingCycle ||
+              'MONTHLY';
+            const nextPriceSnapshot =
+              subscription.nextPriceSnapshot ?? subscription.priceSnapshot;
 
-          // Create new record for the new cycle
-          const renewed = await tx.tenantSubscription.create({
-            data: {
-              tenantId: subscription.tenantId,
-              planId: nextPlanId,
-              module: subscription.module,
-              billingCycle: nextBillingCycle as any,
-              priceSnapshot: nextPriceSnapshot,
-              autoRenew: subscription.autoRenew,
-              status: SubscriptionStatus.ACTIVE,
-              paymentStatus: PaymentStatus.SUCCESS,
-              autopayStatus: AutopayStatus.ACTIVE,
-              startDate: rzStart,
-              endDate: rzEnd,
-              lastRenewedAt: new Date(),
-              providerSubscriptionId: subId,
-              billingType: BillingType.AUTOPAY
-            },
-          });
+            // Mark current as EXPIRED
+            await tx.tenantSubscription.update({
+              where: { id: subscription.id },
+              data: {
+                status: SubscriptionStatus.EXPIRED,
+                updatedAt: new Date(),
+              },
+            });
 
-          // 2. Map Payment
-          let internalPayment = await tx.payment.findFirst({
-            where: { providerPaymentId: paymentEntity.id },
-          });
-
-          if (!internalPayment) {
-            internalPayment = await tx.payment.create({
+            // Create new record for the new cycle
+            const renewed = await tx.tenantSubscription.create({
               data: {
                 tenantId: subscription.tenantId,
                 planId: nextPlanId,
                 module: subscription.module,
-                billingCycle: nextBillingCycle,
-                priceSnapshot: nextPriceSnapshot || paymentEntity.amount,
-                amount: Math.max(paymentEntity.amount || 0, 1),
-                currency: paymentEntity.currency || 'INR',
-                status: 'SUCCESS',
-                provider: 'RAZORPAY',
-                providerOrderId: paymentEntity.order_id || `autopay_${Date.now()}`,
-                providerPaymentId: paymentEntity.id,
+                billingCycle: nextBillingCycle as any,
+                priceSnapshot: nextPriceSnapshot,
+                autoRenew: subscription.autoRenew,
+                status: SubscriptionStatus.ACTIVE,
+                paymentStatus: PaymentStatus.SUCCESS,
+                autopayStatus: AutopayStatus.ACTIVE,
+                startDate: rzStart,
+                endDate: rzEnd,
+                lastRenewedAt: new Date(),
+                providerSubscriptionId: subId,
+                billingType: BillingType.AUTOPAY,
               },
             });
-          }
 
-          // 3. Log Event
-          await tx.billingEventLog.create({
-            data: {
-              tenantId: subscription.tenantId,
-              eventType: 'subscription.charged.renewed',
-              providerReferenceId: paymentEntity.id,
-              statusBefore: subscription.status,
-              statusAfter: 'ACTIVE',
-            },
-          });
+            // 2. Map Payment
+            let internalPayment = await tx.payment.findFirst({
+              where: { providerPaymentId: paymentEntity.id },
+            });
 
-          return { internalPaymentId: internalPayment.id, renewedSub: renewed };
-        });
+            if (!internalPayment) {
+              internalPayment = await tx.payment.create({
+                data: {
+                  tenantId: subscription.tenantId,
+                  planId: nextPlanId,
+                  module: subscription.module,
+                  billingCycle: nextBillingCycle,
+                  priceSnapshot: nextPriceSnapshot || paymentEntity.amount,
+                  amount: Math.max(paymentEntity.amount || 0, 1),
+                  currency: paymentEntity.currency || 'INR',
+                  status: 'SUCCESS',
+                  provider: 'RAZORPAY',
+                  providerOrderId:
+                    paymentEntity.order_id || `autopay_${Date.now()}`,
+                  providerPaymentId: paymentEntity.id,
+                },
+              });
+            }
 
-        this.logger.log(`✅ TenantSubscription renewed & payment recorded atomically.`);
+            // 3. Log Event
+            await tx.billingEventLog.create({
+              data: {
+                tenantId: subscription.tenantId,
+                eventType: 'subscription.charged.renewed',
+                providerReferenceId: paymentEntity.id,
+                statusBefore: subscription.status,
+                statusAfter: 'ACTIVE',
+              },
+            });
+
+            return {
+              internalPaymentId: internalPayment.id,
+              renewedSub: renewed,
+            };
+          },
+        );
+
+        this.logger.log(
+          `✅ TenantSubscription renewed & payment recorded atomically.`,
+        );
 
         // Post-Transaction: Async tasks
         try {
           await this.invoiceService.createInvoiceForPayment(internalPaymentId);
         } catch (invErr) {
-          this.logger.error(`Failed to generate invoice for AutoPay payment ${internalPaymentId}`, invErr);
+          this.logger.error(
+            `Failed to generate invoice for AutoPay payment ${internalPaymentId}`,
+            invErr,
+          );
         }
 
         try {
-          await this.eventEmitter.emitAsync('payment.webhook.success', { paymentId: internalPaymentId });
+          await this.eventEmitter.emitAsync('payment.webhook.success', {
+            paymentId: internalPaymentId,
+          });
         } catch (evtErr) {
-          this.logger.error(`Failed to emit payment.webhook.success for ${internalPaymentId}`, evtErr);
+          this.logger.error(
+            `Failed to emit payment.webhook.success for ${internalPaymentId}`,
+            evtErr,
+          );
         }
-
       } catch (renewalErr) {
         this.logger.error(
           `Sub renewal failed for ${subscription.id} via webhook`,
@@ -686,27 +722,40 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     });
 
     if (!internalPayment) {
-      this.logger.error(`Internal payment record not found for refund: ${payment.id}`);
+      this.logger.error(
+        `Internal payment record not found for refund: ${payment.id}`,
+      );
       return;
     }
 
     // 🚩 DOUBLE REFUND / CHARGEBACK PROTECTION
     if (internalPayment.status === 'DISPUTED') {
-      this.logger.error(`🚨 CRITICAL: Refund received for DISPUTED payment ${internalPayment.id}. This may indicate a double refund risk! Check Razorpay dashboard.`);
-      await this.prisma.billingEventLog.create({
-        data: {
-          tenantId: internalPayment.tenantId,
-          eventType: 'payment.refund_dispute_collision',
-          providerReferenceId: refund?.id || payment.id,
-          statusBefore: 'DISPUTED',
-          statusAfter: 'REFUNDED',
-        }
-      }).catch(err => this.logger.error('Failed to log refund collision', err));
+      this.logger.error(
+        `🚨 CRITICAL: Refund received for DISPUTED payment ${internalPayment.id}. This may indicate a double refund risk! Check Razorpay dashboard.`,
+      );
+      await this.prisma.billingEventLog
+        .create({
+          data: {
+            tenantId: internalPayment.tenantId,
+            eventType: 'payment.refund_dispute_collision',
+            providerReferenceId: refund?.id || payment.id,
+            statusBefore: 'DISPUTED',
+            statusAfter: 'REFUNDED',
+          },
+        })
+        .catch((err) =>
+          this.logger.error('Failed to log refund collision', err),
+        );
     }
 
     // Double Refund / Chargeback Guard
-    if (internalPayment.status === 'DISPUTED' || internalPayment.status === 'CHARGEBACK') {
-      this.logger.error(`Blocked refund for payment ${payment.id} because status is ${internalPayment.status}. Prevents double loss.`);
+    if (
+      internalPayment.status === 'DISPUTED' ||
+      internalPayment.status === 'CHARGEBACK'
+    ) {
+      this.logger.error(
+        `Blocked refund for payment ${payment.id} because status is ${internalPayment.status}. Prevents double loss.`,
+      );
       return;
     }
 
@@ -725,7 +774,9 @@ export class RazorpayWebhookProcessor extends WorkerHost {
       await tx.billingEventLog.create({
         data: {
           tenantId: internalPayment.tenantId,
-          eventType: isFullRefund ? 'payment.refund.full' : 'payment.refund.partial',
+          eventType: isFullRefund
+            ? 'payment.refund.full'
+            : 'payment.refund.partial',
           providerReferenceId: refund?.id || payment.id,
           statusBefore: 'SUCCESS',
           statusAfter: 'REFUNDED',
@@ -751,7 +802,9 @@ export class RazorpayWebhookProcessor extends WorkerHost {
             },
           });
 
-          this.logger.log(`Subscription ${activeSub.id} cancelled due to full refund.`);
+          this.logger.log(
+            `Subscription ${activeSub.id} cancelled due to full refund.`,
+          );
         }
       }
     });
@@ -763,21 +816,28 @@ export class RazorpayWebhookProcessor extends WorkerHost {
         status: 'CANCELLED',
         providerSubscriptionId: { not: null },
       },
-      orderBy: { updatedAt: 'desc' }
+      orderBy: { updatedAt: 'desc' },
     });
 
     if (activeSub?.providerSubscriptionId && isFullRefund) {
       try {
         await this.subscriptionsService.toggleAutoRenew(activeSub.id, false);
-        this.logger.log(`External mandate cancelled for refunded sub ${activeSub.id}`);
+        this.logger.log(
+          `External mandate cancelled for refunded sub ${activeSub.id}`,
+        );
       } catch (err) {
-        this.logger.error(`Failed to cancel external mandate after refund for sub ${activeSub.id}`, err);
+        this.logger.error(
+          `Failed to cancel external mandate after refund for sub ${activeSub.id}`,
+          err,
+        );
       }
     }
   }
 
   private async handlePaymentDisputeCreated(dispute: any, payment: any) {
-    this.logger.warn(`Dispute Created: ${dispute.id} for Payment: ${payment.id}`);
+    this.logger.warn(
+      `Dispute Created: ${dispute.id} for Payment: ${payment.id}`,
+    );
 
     const internalPayment = await this.prisma.payment.findFirst({
       where: { providerPaymentId: payment.id },
@@ -785,7 +845,9 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     });
 
     if (!internalPayment) {
-      this.logger.error(`Internal payment record not found for dispute: ${payment.id}`);
+      this.logger.error(
+        `Internal payment record not found for dispute: ${payment.id}`,
+      );
       return;
     }
 
@@ -825,16 +887,24 @@ export class RazorpayWebhookProcessor extends WorkerHost {
       });
     });
 
-    this.logger.warn(`Access suspended for tenant ${internalPayment.tenantId} due to dispute.`);
+    this.logger.warn(
+      `Access suspended for tenant ${internalPayment.tenantId} due to dispute.`,
+    );
   }
 
-  private async handlePaymentDisputeResolved(dispute: any, payment: any, event: string) {
+  private async handlePaymentDisputeResolved(
+    dispute: any,
+    payment: any,
+    event: string,
+  ) {
     const internalPayment = await this.prisma.payment.findFirst({
       where: { providerPaymentId: payment.id },
     });
 
     if (!internalPayment) {
-      this.logger.error(`Internal payment record not found for dispute resolution: ${payment.id}`);
+      this.logger.error(
+        `Internal payment record not found for dispute resolution: ${payment.id}`,
+      );
       return;
     }
 
@@ -860,7 +930,9 @@ export class RazorpayWebhookProcessor extends WorkerHost {
         await tx.tenantSubscription.update({
           where: { id: sub.id },
           data: {
-            status: isWon ? SubscriptionStatus.ACTIVE : SubscriptionStatus.CANCELLED,
+            status: isWon
+              ? SubscriptionStatus.ACTIVE
+              : SubscriptionStatus.CANCELLED,
             updatedAt: new Date(),
           },
         });
@@ -877,6 +949,8 @@ export class RazorpayWebhookProcessor extends WorkerHost {
       });
     });
 
-    this.logger.log(`Dispute ${dispute.id} resolved as ${isWon ? 'WON' : 'LOST'}. Status updated.`);
+    this.logger.log(
+      `Dispute ${dispute.id} resolved as ${isWon ? 'WON' : 'LOST'}. Status updated.`,
+    );
   }
 }

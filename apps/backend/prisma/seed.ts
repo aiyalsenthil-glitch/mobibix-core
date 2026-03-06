@@ -1,15 +1,11 @@
 import {
   PrismaClient,
-  UserRole,
   ModuleType,
-  AdminRole,
-  SubscriptionStatus,
   BillingCycle,
   PromoCodeType,
 } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import { subDays } from 'date-fns';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -52,6 +48,37 @@ const FEATURES_WHATSAPP_GROWTH = [
   'WHATSAPP_WEBHOOKS',
 ];
 
+const ADDON_PACKS = [
+  {
+    code: 'WA_ADDON_500',
+    name: 'WhatsApp Pack 500 (Utility)',
+    level: 0,
+    module: ModuleType.GYM,
+    isAddon: true,
+    meta: {
+      quota: {
+        utility: 500,
+        marketing: 0,
+      },
+    },
+    price: 19900,
+  },
+  {
+    code: 'WA_ADDON_200',
+    name: 'WhatsApp Pack 200 (Marketing)',
+    level: 0,
+    module: ModuleType.GYM,
+    isAddon: true,
+    meta: {
+      quota: {
+        utility: 0,
+        marketing: 200,
+      },
+    },
+    price: 19900,
+  },
+];
+
 const V1_PLANS = [
   {
     code: 'TRIAL',
@@ -89,7 +116,8 @@ const V1_PLANS = [
     whatsappMarketingQuota: 0,
     analyticsHistoryDays: 90,
     tagline: 'Essential management for single-location gyms.',
-    description: 'Manage your gym efficiently with attendance and basic staff roles.',
+    description:
+      'Manage your gym efficiently with attendance and basic staff roles.',
     featuresJson: [
       'Up to 200 Members',
       '3 Staff Accounts',
@@ -111,7 +139,8 @@ const V1_PLANS = [
     whatsappMarketingQuota: 100,
     analyticsHistoryDays: 365,
     tagline: 'Advanced growth tools for high-performance gyms.',
-    description: 'Everything in Standard plus premium WhatsApp automations and unlimited growth.',
+    description:
+      'Everything in Standard plus premium WhatsApp automations and unlimited growth.',
     featuresJson: [
       'Unlimited Members',
       'Unlimited Staff',
@@ -133,7 +162,8 @@ const V1_PLANS = [
     whatsappMarketingQuota: 0,
     analyticsHistoryDays: 30,
     tagline: 'Experience the full power of Mobibix.',
-    description: '14-day free trial with access to all premium retail features.',
+    description:
+      '14-day free trial with access to all premium retail features.',
     featuresJson: [
       'Inventory Management',
       'Sales & Billing',
@@ -156,7 +186,8 @@ const V1_PLANS = [
     whatsappMarketingQuota: 100,
     analyticsHistoryDays: 365,
     tagline: 'Scale your retail empire with multi-store power.',
-    description: 'The ultimate retail solution with multi-shop support and premium WhatsApp CRM.',
+    description:
+      'The ultimate retail solution with multi-shop support and premium WhatsApp CRM.',
     featuresJson: [
       'Multi-Store Support',
       'Unlimited Staff',
@@ -307,7 +338,7 @@ const MOBIBIX_TEMPLATES = [
 async function ensureMaterializedViews() {
   console.log('📊 Ensuring Materialized Views...');
   try {
-    await prisma.$executeRawUnsafe(`
+    await prisma.$executeRaw`
       DO $$
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'admin_global_kpis') THEN
@@ -322,8 +353,8 @@ async function ensureMaterializedViews() {
             FROM "User"
           ),
           active_subs AS (
-            SELECT 
-              "priceSnapshot", 
+            SELECT
+              "priceSnapshot",
               "billingCycle"
             FROM "TenantSubscription" s
             JOIN "Tenant" t ON s."tenantId" = t.id
@@ -331,9 +362,9 @@ async function ensureMaterializedViews() {
               AND t.code NOT IN ('TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED')
           ),
           mrr_calc AS (
-            SELECT 
+            SELECT
               COALESCE(SUM(
-                CASE 
+                CASE
                   WHEN "billingCycle" = 'MONTHLY' THEN "priceSnapshot"
                   WHEN "billingCycle" = 'QUARTERLY' THEN "priceSnapshot" / 3
                   WHEN "billingCycle" = 'YEARLY' THEN "priceSnapshot" / 12
@@ -343,25 +374,25 @@ async function ensureMaterializedViews() {
             FROM active_subs
           ),
           churn_calc AS (
-            SELECT 
+            SELECT
               (SELECT COUNT(*) FROM "TenantSubscription" s JOIN "Tenant" t ON s."tenantId" = t.id WHERE s.status = 'ACTIVE' AND t.code NOT IN ('TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED')) as active_count,
               (SELECT COUNT(*) FROM "TenantSubscription" s JOIN "Tenant" t ON s."tenantId" = t.id WHERE s.status = 'CANCELLED' AND s."updatedAt" >= NOW() - INTERVAL '30 days' AND t.code NOT IN ('TEST_FREE', 'TEST_SUB_ACTIVE', 'TEST_EXPIRED')) as cancelled_recently
           )
-          SELECT 
+          SELECT
             tc.total_tenants as "totalTenants",
             uc.total_users as "totalUsers",
             ROUND(mc.mrr_paise / 100.0) as "mrr",
-            CASE 
-              WHEN (cc.active_count + cc.cancelled_recently) > 0 
+            CASE
+              WHEN (cc.active_count + cc.cancelled_recently) > 0
               THEN ROUND((cc.cancelled_recently::float / (cc.active_count + cc.cancelled_recently)) * 100)
-              ELSE 0 
+              ELSE 0
             END as "churnRate"
           FROM tenant_counts tc, user_counts uc, mrr_calc mc, churn_calc cc;
         END IF;
 
         IF NOT EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'admin_revenue_monthly') THEN
           CREATE MATERIALIZED VIEW admin_revenue_monthly AS
-          SELECT 
+          SELECT
             TO_CHAR(DATE_TRUNC('month', "createdAt"), 'YYYY-MM') as "month",
             SUM(amount)::integer as "totalRevenue",
             COUNT(*)::integer as "paymentCount"
@@ -371,7 +402,7 @@ async function ensureMaterializedViews() {
           ORDER BY 1 DESC;
         END IF;
       END $$;
-    `);
+    `;
     console.log('✅ Materialized views verified/created');
   } catch (err) {
     console.error('❌ Failed to create materialized views:', err);
@@ -488,6 +519,55 @@ async function seedGlobalGymAutomations() {
   console.log('✅ Global gym automations seeded');
 }
 
+async function seedAddonPacks() {
+  console.log('🌱 Seeding V1 Add-on Packs...');
+
+  for (const pack of ADDON_PACKS) {
+    const plan = await prisma.plan.upsert({
+      where: { code: pack.code },
+      update: {
+        name: pack.name,
+        isAddon: true,
+        meta: pack.meta as any,
+      },
+      create: {
+        code: pack.code,
+        name: pack.name,
+        level: pack.level,
+        module: pack.module,
+        isActive: true,
+        isPublic: true,
+        isAddon: true,
+        meta: pack.meta as any,
+      },
+    });
+
+    console.log(`✅ Plan ensured: ${plan.code}`);
+
+    await prisma.planPrice.upsert({
+      where: {
+        planId_billingCycle_currency: {
+          planId: plan.id,
+          billingCycle: BillingCycle.MONTHLY,
+          currency: 'INR',
+        },
+      },
+      update: {
+        price: pack.price,
+      },
+      create: {
+        planId: plan.id,
+        billingCycle: BillingCycle.MONTHLY,
+        currency: 'INR',
+        price: pack.price,
+      },
+    });
+    console.log(`   Price set: ₹${pack.price / 100}`);
+  }
+
+  console.log('✨ Add-on Seeding Complete.');
+}
+
 async function seedPromoCodes() {
   const codes = [
     {
@@ -522,8 +602,10 @@ async function seedPromoCodes() {
 
 async function seedModulePhoneNumbers() {
   console.log('🌱 Seeding Module Phone Numbers...');
-  const DEFAULT_PHONE_NUMBER = process.env.WHATSAPP_PHONE_NUMBER || '++918667551566';
-  const DEFAULT_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '100609346426084';
+  const DEFAULT_PHONE_NUMBER =
+    process.env.WHATSAPP_PHONE_NUMBER || '++918667551566';
+  const DEFAULT_PHONE_NUMBER_ID =
+    process.env.WHATSAPP_PHONE_NUMBER_ID || '100609346426084';
   const DEFAULT_WABA_ID = process.env.WHATSAPP_WABA_ID || '105862215560119';
 
   const numbers = [
@@ -558,7 +640,10 @@ async function seedModulePhoneNumbers() {
       });
       created++;
     } catch (err) {
-      console.warn(`⚠️ Skipped seeding phone number for ${n.module}:`, (err as Error).message);
+      console.warn(
+        `⚠️ Skipped seeding phone number for ${n.module}:`,
+        (err as Error).message,
+      );
     }
   }
   return { created, skipped };
@@ -576,7 +661,11 @@ async function main() {
     await prisma.hSNCode.upsert({
       where: { code: hsn.code },
       update: { description: hsn.description, taxRate: hsn.taxRate },
-      create: { code: hsn.code, description: hsn.description, taxRate: hsn.taxRate },
+      create: {
+        code: hsn.code,
+        description: hsn.description,
+        taxRate: hsn.taxRate,
+      },
     });
   }
 
@@ -638,12 +727,18 @@ async function main() {
       for (const cycle of cycles) {
         if (pricing[cycle] !== undefined) {
           let rzpId = null;
-          if (cycle === 'MONTHLY' && pricing.RAZORPAY_MONTHLY) rzpId = pricing.RAZORPAY_MONTHLY;
-          if (cycle === 'YEARLY' && pricing.RAZORPAY_YEARLY) rzpId = pricing.RAZORPAY_YEARLY;
+          if (cycle === 'MONTHLY' && pricing.RAZORPAY_MONTHLY)
+            rzpId = pricing.RAZORPAY_MONTHLY;
+          if (cycle === 'YEARLY' && pricing.RAZORPAY_YEARLY)
+            rzpId = pricing.RAZORPAY_YEARLY;
 
           await prisma.planPrice.upsert({
             where: {
-              planId_billingCycle_currency: { planId: plan.id, billingCycle: cycle as any, currency: 'INR' },
+              planId_billingCycle_currency: {
+                planId: plan.id,
+                billingCycle: cycle as any,
+                currency: 'INR',
+              },
             },
             update: { price: pricing[cycle], REMOVED_PAYMENT_INFRAPlanId: rzpId },
             create: {
@@ -660,15 +755,27 @@ async function main() {
       // For Addons that might have a single unit price
       await prisma.planPrice.upsert({
         where: {
-          planId_billingCycle_currency: { planId: plan.id, billingCycle: BillingCycle.MONTHLY, currency: 'INR' },
+          planId_billingCycle_currency: {
+            planId: plan.id,
+            billingCycle: BillingCycle.MONTHLY,
+            currency: 'INR',
+          },
         },
         update: { price: (p as any).price },
-        create: { planId: plan.id, billingCycle: BillingCycle.MONTHLY, currency: 'INR', price: (p as any).price },
+        create: {
+          planId: plan.id,
+          billingCycle: BillingCycle.MONTHLY,
+          currency: 'INR',
+          price: (p as any).price,
+        },
       });
     }
   }
 
-  // 4. Promo Codes
+  // 4. WhatsApp Addon Packs
+  await seedAddonPacks();
+
+  // 5. Promo Codes
   await seedPromoCodes();
 
   // 5. WhatsApp Templates
