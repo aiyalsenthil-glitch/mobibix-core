@@ -4,6 +4,7 @@ import { getAllPosts, getPostBySlug } from "../../../lib/blog";
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Breadcrumbs } from "../../../components/layout/Breadcrumbs";
 
 export async function generateStaticParams() {
   const posts = getAllPosts();
@@ -72,14 +73,13 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       </div>
 
       <div className="container mx-auto max-w-4xl pt-44 pb-32 px-6 relative z-10 w-full">
-        {/* Back Link */}
-        <Link 
-            href="/blog" 
-            className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors mb-12"
-        >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" /></svg>
-            Back to Hub
-        </Link>
+        <Breadcrumbs 
+          items={[
+            { name: "Home", item: "https://REMOVED_DOMAIN/" },
+            { name: "Blog", item: "https://REMOVED_DOMAIN/blog" },
+            { name: post.title, item: `https://REMOVED_DOMAIN/blog/${post.slug}` }
+          ]} 
+        />
         
         {/* Post Header */}
         <header className="mb-16 border-b border-border pb-16">

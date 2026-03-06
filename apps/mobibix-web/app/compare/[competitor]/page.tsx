@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Header } from "../../../components/layout/Header";
 import { Footer } from "../../../components/layout/Footer";
+import { Breadcrumbs } from "../../../components/layout/Breadcrumbs";
 import { Plan } from "../../pricing/page";
 
 async function fetchBasePrice(): Promise<string> {
@@ -372,8 +373,17 @@ export default async function ComparePage({ params }: { params: Promise<{ compet
             <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/8 rounded-full blur-[130px]" />
             <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/8 rounded-full blur-[130px]" />
           </div>
-          <div className="container mx-auto max-w-4xl text-center relative z-10">
-            <span className="inline-block py-1 px-4 rounded-full border border-border bg-muted/50 text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-8">
+          <div className="container mx-auto max-w-4xl text-center relative z-10 flex flex-col items-center">
+            
+            <Breadcrumbs 
+              items={[
+                { name: "Home", item: "https://REMOVED_DOMAIN/" },
+                { name: "Compare", item: "https://REMOVED_DOMAIN/compare" },
+                { name: c.name, item: `https://REMOVED_DOMAIN/compare/${c.slug}` }
+              ]}
+            />
+
+            <span className="inline-block py-1 px-4 rounded-full border border-border bg-muted/50 text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-8 mt-4">
               Software Comparison {new Date().getFullYear()}
             </span>
             <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter leading-[0.9] uppercase italic">

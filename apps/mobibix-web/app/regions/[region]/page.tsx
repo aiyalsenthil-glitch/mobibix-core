@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Header } from "../../../components/layout/Header";
 import { Footer } from "../../../components/layout/Footer";
+import { Breadcrumbs } from "../../../components/layout/Breadcrumbs";
 import { Plan } from "../../pricing/page";
 
 async function fetchBasePrice(): Promise<string> {
@@ -261,8 +262,17 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
 
         {/* Hero */}
         <section className="relative pt-40 pb-24 px-6 text-center z-10">
-          <div className="container mx-auto max-w-4xl">
-            <span className="inline-block py-1 px-4 rounded-full border border-border bg-muted/50 text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-8">
+          <div className="container mx-auto max-w-4xl flex flex-col items-center">
+            
+            <Breadcrumbs 
+              items={[
+                { name: "Home", item: "https://REMOVED_DOMAIN/" },
+                { name: "Regions", item: "https://REMOVED_DOMAIN/regions" },
+                { name: r.name, item: `https://REMOVED_DOMAIN/regions/${r.slug}` }
+              ]}
+            />
+
+            <span className="inline-block py-1 px-4 rounded-full border border-border bg-muted/50 text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-8 mt-4">
               🌍 {r.name}
             </span>
             <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter leading-[0.9] uppercase italic">
