@@ -5,6 +5,7 @@ import { Providers } from "./providers";
 import FacebookSDK from "../components/FacebookSDK";
 import ReferralTracker from "../components/ReferralTracker";
 import { Suspense } from "react";
+import Script from "next/script";
 
 import { Metadata } from 'next';
 
@@ -102,6 +103,20 @@ export default function RootLayout({
              })
           }}
         />
+        <Script 
+          async 
+          src="https://www.googletagmanager.com/gtag/js?id=G-D8LB3XZ1XQ" 
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-D8LB3XZ1XQ');
+          `}
+        </Script>
       </head>
       <body className="antialiased bg-background text-foreground transition-colors duration-200">
         <Providers>

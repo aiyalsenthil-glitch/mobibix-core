@@ -291,15 +291,15 @@ export class SuppliersService {
         tenantId,
         partyType: { in: ['VENDOR', 'BOTH'] },
       },
+      select: { currentOutstanding: true },
     });
 
     if (!supplier) {
       throw new NotFoundException(`Supplier with ID "${supplierId}" not found`);
     }
 
-    // TODO: Implement actual outstanding calculation from Purchase/Payments
-    // For now returning 0 as ShopSupplier is removed
-    return 0;
+    // currentOutstanding is in Paisa, return in Rupees
+    return (supplier.currentOutstanding || 0) / 100;
   }
 
   /**
@@ -356,6 +356,7 @@ export class SuppliersService {
       paymentDueDays: supplier.supplierProfile?.paymentDueDays,
       creditLimit: supplier.supplierProfile?.creditLimit,
       preferredCurrency: supplier.supplierProfile?.preferredCurrency,
+      outstandingBalance: (supplier.currentOutstanding || 0) / 100,
     };
   }
 }

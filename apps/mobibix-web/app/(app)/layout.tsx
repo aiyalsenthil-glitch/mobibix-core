@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { authGuard } from "@/lib/authGuard";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { SubscriptionBanner } from "@/components/layout/SubscriptionBanner";
+import { getSubscription, type SubscriptionDetails } from "@/services/tenant.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -19,6 +21,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme: _theme } = useTheme();
+  const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null);
+
+  useEffect(() => {
+    if (isLoading || !authUser || !authUser.tenantId) return;
+    
+    const fetchSub = async () => {
+      try {
+        const data = await getSubscription();
+        setSubscription(data.current);
+      } catch (err) {
+        console.warn("Failed to fetch subscription for banner", err);
+      }
+    };
+    fetchSub();
+  }, [authUser, isLoading]);
 
   useEffect(() => {
     // Don't check guard until auth has finished loading
@@ -68,7 +85,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setMobileMenuOpen(false);
   }, [router]);
 
-  if (!isReady || isRedirecting) {
+  // Only show full-screen loader on initial app boot
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  useEffect(() => {
+    if (!isLoading && isReady) {
+      setIsInitialLoad(false);
+    }
+  }, [isLoading, isReady]);
+
+  if (isInitialLoad && (isLoading || !isReady)) {
     return (
       <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
@@ -77,6 +103,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </p>
       </div>
     );
+  }
+
+  if (isRedirecting) {
+    return null; // Let the router handle redirection
   }
 
   const marginLeft = mounted && isCollapsed ? "lg:ml-20" : "lg:ml-60";
@@ -91,8 +121,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         isCollapsed={mounted && isCollapsed}
         onMenuClick={() => setMobileMenuOpen(!mobileMenuOpen)}
       />
+      {subscription && (
+        <div className={`${marginLeft} pt-16 transition-all duration-300`}>
+          <SubscriptionBanner 
+            daysLeft={subscription.daysLeft} 
+            status={subscription.subscriptionStatus} 
+          />
+        </div>
+      )}
       <main
-        className={`${marginLeft} pt-20 px-4 lg:px-8 py-8 transition-all duration-300 bg-white dark:bg-slate-950 min-h-screen`}
+        className={`${marginLeft} ${subscription ? 'pt-4' : 'pt-20'} px-4 lg:px-8 py-8 transition-all duration-300 bg-white dark:bg-slate-950 min-h-screen`}
       >
         <GlobalApprovalInterceptor />
         {children}

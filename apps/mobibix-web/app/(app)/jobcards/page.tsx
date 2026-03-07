@@ -202,24 +202,31 @@ export default function JobCardsPage() {
 
   // Use modern hook for async data loading with built-in race condition prevention
   const {
-    data: jobCards = [],
+    data,
     isLoading,
     error,
     reload,
   } = useDeferredAsyncData(
     useCallback(
-      () =>
-        selectedShopId
-          ? listJobCards(selectedShopId, {
-              status: statusFilter === "ALL" ? undefined : (statusFilter as JobStatus),
-              customerName: debouncedCustomerName || undefined,
-            })
-          : Promise.resolve([]),
-      [selectedShopId, statusFilter, debouncedCustomerName],
+      async () => {
+        if (!selectedShopId) return { jobCards: [], total: 0 };
+        const result = await listJobCards(selectedShopId, {
+          status: statusFilter === "ALL" ? undefined : (statusFilter as JobStatus),
+          customerName: debouncedCustomerName || undefined,
+          skip: currentPage * 50,
+          take: 50
+        });
+        return result;
+      },
+      [selectedShopId, statusFilter, debouncedCustomerName, currentPage],
     ),
-    [selectedShopId, statusFilter, debouncedCustomerName],
-    initialData,
+    [selectedShopId, statusFilter, debouncedCustomerName, currentPage],
+    { jobCards: [], total: 0 },
   );
+
+  const jobCards = data?.jobCards || [];
+  const total = data?.total || 0;
+  const totalPages = Math.ceil(total / 50);
 
   const handleStatusChange = async (job: JobCard, status: JobStatus) => {
     // 💸 ADVANCE REFUND CHECK FOR CANCELLATION
@@ -751,6 +758,55 @@ export default function JobCardsPage() {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className={`p-4 border-t flex items-center justify-between ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
+              <p className="text-sm text-gray-500">
+                Showing {currentPage * 50 + 1} to {Math.min((currentPage + 1) * 50, total)} of {total} job cards
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={currentPage === 0}
+                  onClick={() => setCurrentPage(prev => prev - 1)}
+                  className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 disabled:opacity-50 hover:bg-gray-50 dark:border-stone-700 dark:hover:bg-white/5"
+                >
+                  Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum = i;
+                    // basic sliding window if totalPages > 5
+                    if (totalPages > 5 && currentPage > 2) {
+                        pageNum = currentPage - 2 + i;
+                        if (pageNum >= totalPages) pageNum = totalPages - 5 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
+                          currentPage === pageNum
+                            ? "bg-teal-500 text-white"
+                            : "hover:bg-gray-100 dark:hover:bg-white/5"
+                        }`}
+                      >
+                        {pageNum + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  disabled={currentPage >= totalPages - 1}
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 disabled:opacity-50 hover:bg-gray-50 dark:border-stone-700 dark:hover:bg-white/5"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

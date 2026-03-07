@@ -48,8 +48,15 @@ export class JobCardsController extends TenantScopedController {
     @Req() req: any,
     @Query('status') status?: JobStatus,
     @Query('search') search?: string,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
   ) {
-    return this.service.list(req.user, shopId, { status, search });
+    return this.service.list(req.user, shopId, { 
+      status, 
+      search, 
+      skip: skip ? parseInt(skip) : undefined, 
+      take: take ? parseInt(take) : undefined 
+    });
   }
   @Get(':id')
   getOne(

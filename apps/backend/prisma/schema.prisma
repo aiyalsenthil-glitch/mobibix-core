@@ -130,6 +130,7 @@ model Tenant {
   approvalRequests         ApprovalRequest[]
   distributorLinks         DistributorTenantLink[]
   b2bPurchaseOrders        B2BPurchaseOrder[]
+  invites                  StaffInvite[]
 
   // 🔐 Compliance & Legal Tracking
   termsAcceptedAt        DateTime?
@@ -190,7 +191,7 @@ model NotificationLog {
   updatedAt   DateTime            @updatedAt
   sentAt      DateTime?
   readAt      DateTime? // null = unread, set = read — powers in-app bell badge
-  title       String?   // Short title for bell display (e.g. "🎁 Promo Activated!")
+  title       String? // Short title for bell display (e.g. "🎁 Promo Activated!")
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   user   User?  @relation(fields: [userId], references: [id])
@@ -236,21 +237,21 @@ model UserTenant {
 }
 
 model User {
-  id          String    @id @default(uuid())
-  REMOVED_AUTH_PROVIDERUid String    @unique
-  email       String?
-  fullName    String?
-  avatar      String?
-  role        UserRole
-  tenantId    String?
-  permissions Json?
-  createdAt   DateTime  @default(now())
-  createdBy   String?
-  updatedAt   DateTime  @updatedAt
-  updatedBy   String?
-  deletedAt   DateTime?
-  deletedBy   String?
-  tokenVersion Int        @default(0)
+  id           String    @id @default(uuid())
+  REMOVED_AUTH_PROVIDERUid  String    @unique
+  email        String?
+  fullName     String?
+  avatar       String?
+  role         UserRole
+  tenantId     String?
+  permissions  Json?
+  createdAt    DateTime  @default(now())
+  createdBy    String?
+  updatedAt    DateTime  @updatedAt
+  updatedBy    String?
+  deletedAt    DateTime?
+  deletedBy    String?
+  tokenVersion Int       @default(0)
 
   phone              String?
   welcomeEmailSent   Boolean            @default(false)
@@ -671,27 +672,38 @@ model LedgerPayment {
 }
 
 model StaffInvite {
-  id        String    @id @default(cuid())
-  email     String
-  tenantId  String
-  createdAt DateTime  @default(now())
-  accepted  Boolean   @default(false)
-  role      UserRole  @default(STAFF) // LEGACY: Kept for Phase 2 Migration
-  roleId    String? // Made optional for Phase 1/2 Migration
-  name      String?
-  phone     String?
-  shopIds   String[]  @default([])
-  deletedAt DateTime?
-  deletedBy String?
+  id          String            @id @default(cuid())
+  email       String
+  tenantId    String
+  status      StaffInviteStatus @default(PENDING)
+  inviteToken String?           @unique @default(cuid())
+  role        UserRole          @default(STAFF) // LEGACY: Kept for Phase 2 Migration
+  roleId      String? // Made optional for Phase 1/2 Migration
+  name        String?
+  phone       String?
+  shopIds     String[]          @default([])
+  expiresAt   DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime?         @updatedAt
+  deletedAt   DateTime?
+  deletedBy   String?
 
-  dynamicRole Role? @relation(fields: [roleId], references: [id])
+  tenant      Tenant @relation(fields: [tenantId], references: [id])
+  dynamicRole Role?  @relation(fields: [roleId], references: [id])
 
-  @@unique([tenantId, email])
-  @@index([email, accepted, deletedAt])
+  @@unique([tenantId, email, status], name: "invite_composite_key") // Allow re-inviting even if previous exists if its REJECTED/EXPIRED
+  @@index([email, status, deletedAt])
   @@index([email])
   @@index([tenantId])
-  @@index([accepted])
+  @@index([status])
   @@index([tenantId, deletedAt])
+}
+
+enum StaffInviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
 }
 
 model MemberPayment {
@@ -1575,7 +1587,7 @@ model Invoice {
   invoiceType     InvoiceType   @default(SALES)
   isGstApplicable Boolean       @default(true)
   currency        String        @default("INR") // Snapshot at invoice time — never changes
-  taxDetails      Json?         // Localized tax breakdown (strategy-aware)
+  taxDetails      Json? // Localized tax breakdown (strategy-aware)
   jobCardId       String? // Link to JobCard for auto-generated invoices
   voidReason      String? // Reason for void (e.g., "Job cancelled")
   voidedAt        DateTime?
@@ -1597,6 +1609,8 @@ model Invoice {
   @@index([tenantId])
   @@index([shopId])
   @@index([customerId])
+  @@index([tenantId, invoiceDate])
+  @@index([shopId, invoiceDate])
   @@index([tenantId, shopId, createdAt])
   @@index([tenantId, deletedAt])
   @@map("mb_invoice")
@@ -1619,7 +1633,7 @@ model InvoiceItem {
   sgstAmount    Int?
   igstAmount    Int?
   lineTotal     Int
-  taxDetails    Json?         // Per-item tax breakdown
+  taxDetails    Json? // Per-item tax breakdown
 
   // Warranty & Tracking
   warrantyDays  Int?
@@ -1703,7 +1717,7 @@ model Purchase {
   updatedAt                DateTime       @updatedAt
   createdBy                String?
   currency                 String         @default("INR")
-  taxDetails               Json?          // Localized tax breakdown
+  taxDetails               Json? // Localized tax breakdown
   exchangeRate             Decimal        @default(1.0) @db.Decimal(18, 6)
   poId                     String?
 
@@ -1739,7 +1753,7 @@ model PurchaseItem {
   sgstAmount    Int?
   igstAmount    Int?
   totalAmount   Int
-  taxDetails    Json?         // Per-item tax breakdown
+  taxDetails    Json? // Per-item tax breakdown
   createdAt     DateTime     @default(now())
   purchase      Purchase     @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   product       ShopProduct? @relation(fields: [shopProductId], references: [id])
@@ -2873,17 +2887,18 @@ model BillingEventLog {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
+
 model CountryConfig {
-  id           String   @id @default(cuid())
-  code         String   @unique // ISO 2-letter (IN, AE, US)
-  name         String
-  currency     String
-  timezone     String
-  phonePrefix  String
-  taxSystem    String   @default("GST")
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String   @id @default(cuid())
+  code        String   @unique // ISO 2-letter (IN, AE, US)
+  name        String
+  currency    String
+  timezone    String
+  phonePrefix String
+  taxSystem   String   @default("GST")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([isActive])
 }

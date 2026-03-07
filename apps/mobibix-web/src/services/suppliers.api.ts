@@ -23,6 +23,7 @@ export interface Supplier {
   paymentDueDays?: number;
   creditLimit?: number;
   preferredCurrency?: string;
+  outstandingBalance?: number;
 }
 
 export interface CreateSupplierDto {

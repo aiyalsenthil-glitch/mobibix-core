@@ -143,6 +143,16 @@ export interface ExchangeTokenResponse {
     planCode?: string;
   }>;
   tenantCount?: number;
+  pendingInvite?: {
+    id: string;
+    tenantId: string;
+    role: string;
+    shopIds: string[];
+    tenant: {
+      name: string;
+      code: string;
+    };
+  } | null;
 }
 
 interface AuthError {

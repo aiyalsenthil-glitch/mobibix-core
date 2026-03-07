@@ -74,7 +74,8 @@ export default function SettingsPage() {
   const [deletionDialogOpen, setDeletionDialogOpen] = useState(false);
 
   const { authUser } = useAuth();
-  const isOwner = authUser?.role === "OWNER";
+  // Fix: Comparison should be lowercase as useAuth normalizes the role
+  const isOwner = authUser?.role === "owner" || authUser?.isSystemOwner;
 
   const loadData = async () => {
     try {

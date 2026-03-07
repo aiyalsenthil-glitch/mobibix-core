@@ -106,6 +106,7 @@ export class TenantController {
       tenantId: tenant.id,
       userTenantId: userTenant.id,
       role: UserRole.OWNER,
+      tokenVersion: req.user.tokenVersion,
     });
 
     const isProd = process.env.NODE_ENV === 'production';

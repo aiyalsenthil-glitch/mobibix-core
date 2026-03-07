@@ -144,7 +144,7 @@ export class JobStatusValidator {
    * ERP-Correct: Auto-invoice disabled in favor of Interactive Billing Modal
    */
   shouldCreateInvoice(status: JobStatus): boolean {
-    return false;
+    return status === JobStatus.READY;
   }
 
   /**

@@ -115,5 +115,20 @@ export class NotificationEventBus {
     });
   }
 
+  @OnEvent('staff.invite.rejected')
+  async handleStaffInviteRejected(payload: { tenantId: string; email: string }) {
+    await this.orchestrator.dispatch({
+      tenantId: payload.tenantId,
+      eventId: 'staff.invite.rejected',
+      moduleType: 'MOBILE_SHOP', // Defaulting to MOBILE_SHOP for this flow
+      recipient: payload.tenantId, // Orchestrator handles finding the OWNER of the tenant
+      data: {
+        staffEmail: payload.email,
+        title: 'Staff Invitation Rejected',
+        message: `User with email ${payload.email} has rejected your staff invitation.`,
+      },
+    });
+  }
+
   // NOTE: Add @OnEvent hooks here as migration phase from EmailListener occurs...
 }

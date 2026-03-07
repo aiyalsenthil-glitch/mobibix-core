@@ -212,21 +212,33 @@ export class MobileShopDashboardService {
       select: { customerId: true, sentAt: true },
     });
 
+    // Index WhatsApp logs by customerId for O(1) lookup
+    const logsByCustomer = new Map<string, Date[]>();
+    for (const log of whatsappLogs) {
+      if (!log.customerId) continue;
+      const logs = logsByCustomer.get(log.customerId) || [];
+      logs.push(log.sentAt);
+      logsByCustomer.set(log.customerId, logs);
+    }
+
     let whatsappRecoveryAmount = 0;
     for (const inv of thisMonthInvoices) {
       if (!inv.customerId) continue;
 
-      const windowStart = new Date(
-        inv.createdAt.getTime() - 48 * 60 * 60 * 1000,
-      );
-      const reminder = whatsappLogs.find(
-        (log) =>
-          log.customerId === inv.customerId &&
-          log.sentAt >= windowStart &&
-          log.sentAt <= inv.createdAt,
+      const customerLogs = logsByCustomer.get(inv.customerId);
+      if (!customerLogs) continue;
+
+      const windowStart = inv.createdAt.getTime() - 48 * 60 * 60 * 1000;
+      const invTime = inv.createdAt.getTime();
+
+      const hasReminder = customerLogs.some(
+        (sentAt) => {
+          const sentTime = sentAt.getTime();
+          return sentTime >= windowStart && sentTime <= invTime;
+        }
       );
 
-      if (reminder) {
+      if (hasReminder) {
         whatsappRecoveryAmount += inv.totalAmount;
       }
     }

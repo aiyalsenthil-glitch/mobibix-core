@@ -113,3 +113,35 @@ export async function removeStaff(staffId: string, status: "ACTIVE" | "INVITED")
     throw new Error(err.message || "Failed to remove staff");
   }
 }
+
+/**
+ * Accept a staff invitation
+ */
+export async function acceptStaffInvite(token: string): Promise<any> {
+  const response = await authenticatedFetch("/staff/invite/accept", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+
+  if (!response.ok) {
+    const err = await extractData(response);
+    throw new Error(err.message || "Failed to accept invite");
+  }
+
+  return extractData(response);
+}
+
+/**
+ * Reject a staff invitation
+ */
+export async function rejectStaffInvite(token: string): Promise<void> {
+  const response = await authenticatedFetch("/staff/invite/reject", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+
+  if (!response.ok) {
+    const err = await extractData(response);
+    throw new Error(err.message || "Failed to reject invite");
+  }
+}

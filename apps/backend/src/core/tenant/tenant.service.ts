@@ -76,9 +76,13 @@ export class TenantService {
     });
 
     if (existingUserTenant) {
-      throw new BadRequestException(
-        `Tenant already exists for type ${effectiveTenantType}`,
+      this.logger.warn(
+        `User ${userId} already has a tenant of type ${effectiveTenantType}. Returning existing.`,
       );
+      return {
+        tenant: existingUserTenant.tenant,
+        userTenant: existingUserTenant,
+      };
     }
 
     const trialPlan = await this.plansService.getOrCreateTrialPlan(
@@ -104,6 +108,11 @@ export class TenantService {
         timezone: dto.timezone || 'Asia/Kolkata',
         businessType: dto.businessType,
         businessCategoryId: dto.businessCategoryId,
+        enabledModules: [
+          effectiveTenantType === 'MOBILE_SHOP'
+            ? ModuleType.MOBILE_SHOP
+            : ModuleType.GYM,
+        ],
 
         contactPhone: dto.contactPhone
           ? normalizePhone(dto.contactPhone)
@@ -279,11 +288,31 @@ export class TenantService {
       }
     }
 
-    await this.subscriptionsService.assignTrialSubscription(
-      tenant.id,
-      trialPlan.id,
-      effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
-    );
+    // 🚀 Only assign standard trial if no promo was applied (promo logic already creates sub)
+    const existingSub = await this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId: tenant.id,
+        module: effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
+      },
+    });
+    
+    if (!existingSub) {
+      await this.subscriptionsService.assignTrialSubscription(
+        tenant.id,
+        trialPlan.id,
+        effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
+      );
+    }
+
+    // 🔥 SYNC: Update the root User record with the default tenant and role
+    // This allows refresh tokens/search to work before the next login
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        tenantId: tenant.id,
+        role: UserRole.OWNER,
+      },
+    });
 
     this.logger.log(
       `✅ Trial subscription created for tenant ${tenant.id} (${effectiveTenantType})`,
@@ -1019,6 +1048,7 @@ export class TenantService {
       tenantId: string | null;
       userTenantId: string | null;
       role: UserRole;
+      tokenVersion?: number;
     },
     expiresIn?: string | number,
   ) {
@@ -1027,6 +1057,7 @@ export class TenantService {
       tenantId: payload.tenantId,
       userTenantId: payload.userTenantId,
       role: payload.role,
+      tokenVersion: payload.tokenVersion ?? 0,
     };
 
     if (expiresIn) {

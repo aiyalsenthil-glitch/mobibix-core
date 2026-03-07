@@ -151,7 +151,7 @@ export default function StaffTab() {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                        staff.role === "OWNER" 
+                        (staff.isSystemOwner || staff.role?.toUpperCase() === "OWNER")
                           ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
                           : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
                       }`}>
@@ -176,7 +176,7 @@ export default function StaffTab() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {staff.role !== "OWNER" && (
+                      {!(staff.isSystemOwner || staff.role?.toUpperCase() === "OWNER") && (
                         <button
                           onClick={() => handleRemove(staff)}
                           className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"

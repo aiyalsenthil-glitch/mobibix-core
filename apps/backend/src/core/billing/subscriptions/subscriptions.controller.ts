@@ -108,15 +108,16 @@ export class SubscriptionsController {
     }
 
     const now = new Date();
+    const endDate = new Date(sub.endDate);
     const daysLeft = Math.max(
       Math.ceil(
-        (sub.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+        (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
       ),
       0,
     );
 
     const subscriptionStatus: 'ACTIVE' | 'TRIAL' | 'EXPIRED' =
-      sub.endDate < now
+      endDate < now
         ? 'EXPIRED'
         : sub.status === 'TRIAL'
           ? 'TRIAL'

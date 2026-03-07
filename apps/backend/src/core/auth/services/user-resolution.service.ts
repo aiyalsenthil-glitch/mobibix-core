@@ -1,9 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { UserRole } from '@prisma/client';
+import { UserRole, StaffInviteStatus } from '@prisma/client';
 
 @Injectable()
 export class UserResolutionService {
+  private readonly logger = new Logger(UserResolutionService.name);
   constructor(private readonly prisma: PrismaService) {}
 
   async resolveUser(decodedToken: any) {
@@ -45,7 +46,20 @@ export class UserResolutionService {
     return this.prisma.staffInvite.findFirst({
       where: {
         email: { equals: email, mode: 'insensitive' },
-        accepted: false,
+        status: StaffInviteStatus.PENDING,
+        OR: [
+          { expiresAt: { gt: new Date() } },
+          { expiresAt: null }, // Backwards compatibility
+        ],
+      },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
       },
     });
   }
@@ -126,11 +140,11 @@ export class UserResolutionService {
         ...shopStaffCreations,
         this.prisma.staffInvite.update({
           where: { id: staffInvite.id },
-          data: { accepted: true },
+          data: { status: StaffInviteStatus.ACCEPTED },
         }),
       ]);
     } catch (err: any) {
-      console.warn('⚠️  Failed to accept staff invite:', err?.message);
+      this.logger.warn(`Failed to accept staff invite: ${err?.message}`);
     }
   }
 }

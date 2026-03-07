@@ -51,19 +51,22 @@ export default function SuppliersPage() {
       const data = await listSuppliers();
       setSuppliers(data);
 
-      // Load outstanding for each supplier
-      const outstandingData: Record<string, SupplierOutstanding> = {};
-      for (const supplier of data) {
+      // Load outstanding for each supplier in parallel
+      const outstandingPromises = data.map(async (supplier) => {
         try {
           const out = await getSupplierOutstanding(supplier.id);
-          outstandingData[supplier.id] = out;
+          return { id: supplier.id, out };
         } catch (err) {
-          console.error(
-            `Failed to load outstanding for supplier ${supplier.id}:`,
-            err,
-          );
+          console.error(`Failed to load outstanding for supplier ${supplier.id}:`, err);
+          return { id: supplier.id, out: null };
         }
-      }
+      });
+
+      const outstandingResults = await Promise.all(outstandingPromises);
+      const outstandingData: Record<string, SupplierOutstanding> = {};
+      outstandingResults.forEach(res => {
+        if (res.out) outstandingData[res.id] = res.out;
+      });
       setOutstanding(outstandingData);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load suppliers");

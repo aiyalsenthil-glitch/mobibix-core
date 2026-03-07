@@ -34,27 +34,27 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Sales", href: "/sales", icon: Banknote, requiredPermission: "sale.view_all" },
-  { label: "Job Cards", href: "/jobcards", icon: Wrench, requiredPermission: "jobcard.view_all" },
-  { label: "Products", href: "/products", icon: Tags, requiredPermission: "inventory.view" },
-  { label: "Inventory", href: "/inventory", icon: PackageSearch, requiredPermission: "inventory.view" },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, requiredPermission: "DASHBOARD_VIEW" },
+  { label: "Sales", href: "/sales", icon: Banknote, requiredPermission: "SALES_VIEW" },
+  { label: "Job Cards", href: "/jobcards", icon: Wrench, requiredPermission: "REPAIR_MANAGE" },
+  { label: "Products", href: "/products", icon: Tags, requiredPermission: "INVENTORY_VIEW" },
+  { label: "Inventory", href: "/inventory", icon: PackageSearch, requiredPermission: "INVENTORY_VIEW" },
   // 🔒 Restock (B2B Wholesale): hidden until backend is wired
   // Enable via NEXT_PUBLIC_ENABLE_RESTOCK=true in .env
   ...(process.env.NEXT_PUBLIC_ENABLE_RESTOCK === 'true'
-    ? [{ label: "Restock", href: "/restock", icon: ShoppingBag, requiredPermission: "inventory.view" }]
+    ? [{ label: "Restock", href: "/restock", icon: ShoppingBag, requiredPermission: "INVENTORY_VIEW" }]
     : []),
-  { label: "Customers", href: "/customers", icon: Users, requiredPermission: "staff.view_all" },
-  { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare, requiredPermission: "staff.view_all" }, // Assuming staff.view_all for now as it links to CRM
-  { label: "Suppliers", href: "/suppliers", icon: Truck, requiredPermission: "inventory.view" },
-  { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift, requiredPermission: "shop.settings_modify" },
-  { label: "Purchase Orders", href: "/purchase-orders", icon: FileText, requiredPermission: "inventory.view" },
-  { label: "Supplier Invoices", href: "/purchases", icon: Inbox, requiredPermission: "inventory.view" },
-  { label: "Sales Receipts", href: "/receipts", icon: CreditCard, requiredPermission: "sale.view_all" },
-  { label: "Reports", href: "/reports", icon: LineChart, requiredPermission: "report.export" },
-  { label: "Shops", href: "/shops", icon: Store, requiredPermission: "shop.settings_modify" },
-  { label: "Staff Management", href: "/staff-management", icon: ShieldCheck, requiredPermission: "staff.view_all" },
-  { label: "Settings", href: "/settings", icon: Settings, requiredPermission: "shop.settings_modify" },
+  { label: "Customers", href: "/customers", icon: Users, requiredPermission: "MEMBER_VIEW" },
+  { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare, requiredPermission: "MEMBER_VIEW" },
+  { label: "Suppliers", href: "/suppliers", icon: Truck, requiredPermission: "INVENTORY_VIEW" },
+  { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift, requiredPermission: "SHOP_MANAGE" },
+  { label: "Purchase Orders", href: "/purchase-orders", icon: FileText, requiredPermission: "INVENTORY_VIEW" },
+  { label: "Supplier Invoices", href: "/purchases", icon: Inbox, requiredPermission: "INVENTORY_VIEW" },
+  { label: "Sales Receipts", href: "/receipts", icon: CreditCard, requiredPermission: "SALES_VIEW" },
+  { label: "Reports", href: "/reports", icon: LineChart, requiredPermission: "SALES_VIEW" }, // Using SALES_VIEW as reports are mostly sales-based
+  { label: "Shops", href: "/shops", icon: Store, requiredPermission: "SHOP_MANAGE" },
+  { label: "Staff Management", href: "/staff-management", icon: ShieldCheck, requiredPermission: "STAFF_MANAGE" }, // Fixed permission
+  { label: "Settings", href: "/settings", icon: Settings, requiredPermission: "SHOP_MANAGE" },
 ];
 
 interface SidebarProps {

@@ -108,6 +108,64 @@ export class PermissionService {
     return perm?.approvalPolicy || null;
   }
 
+  /**
+   * 🛡️ Get flattened permissions for a user in a tenant (and optionally a shop)
+   * Format: "resource.action" (matches frontend sidebar requiredPermissions)
+   */
+  async getConsolidatedPermissions(
+    userId: string,
+    tenantId: string,
+    shopId?: string | null,
+  ): Promise<string[]> {
+    // 1. System Owner / Owner Role = Super Admin
+    const userTenant = await this.prisma.userTenant.findFirst({
+      where: { userId, tenantId, deletedAt: null },
+    });
+
+    if (userTenant?.isSystemOwner || userTenant?.role === 'OWNER') {
+      return ["*"];
+    }
+
+    // 2. Resolve roles for this user in this tenant
+    // If shopId is provided, get roles for that shop. 
+    // If not, get all roles across all shops to give them a "global" view for now
+    const shopStaffs = await this.prisma.shopStaff.findMany({
+      where: {
+        userId,
+        tenantId,
+        isActive: true,
+        deletedAt: null,
+        ...(shopId ? { shopId } : {}),
+      },
+      select: { roleId: true },
+    });
+
+    const roleIds = shopStaffs
+      .map((s) => s.roleId)
+      .filter((id): id is string => !!id);
+
+    if (roleIds.length === 0) return [];
+
+    // 3. Fetch all mapped permissions
+    const mappings = await this.prisma.rolePermission.findMany({
+      where: { roleId: { in: roleIds } },
+      include: {
+        permission: {
+          include: { resource: true },
+        },
+      },
+    });
+
+    // 4. Transform to frontend strings: "resource.action"
+    // Note: We use Set to dedup permissions across multiple roles/shops
+    const perms = new Set<string>();
+    mappings.forEach((m) => {
+      perms.add(`${m.permission.resource.name}.${m.permission.action}`);
+    });
+
+    return Array.from(perms);
+  }
+
   // --- Role Management CRUD ---
 
   async listRoles(tenantId: string) {

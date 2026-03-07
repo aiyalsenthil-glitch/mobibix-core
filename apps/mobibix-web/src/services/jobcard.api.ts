@@ -146,11 +146,13 @@ export interface UpdateJobCardDto {
  */
 export async function listJobCards(
   shopId: string,
-  filters?: { status?: string; customerName?: string },
-): Promise<JobCard[]> {
+  filters?: { status?: string; customerName?: string; skip?: number; take?: number },
+): Promise<{ jobCards: JobCard[]; total: number }> {
   const query = new URLSearchParams();
   if (filters?.status) query.append("status", filters.status);
-  if (filters?.customerName) query.append("customerName", filters.customerName);
+  if (filters?.customerName) query.append("search", filters.customerName); // Backend uses 'search'
+  if (filters?.skip !== undefined) query.append("skip", filters.skip.toString());
+  if (filters?.take !== undefined) query.append("take", filters.take.toString());
 
   const url = `/mobileshop/shops/${shopId}/job-cards${query.toString() ? `?${query.toString()}` : ""}`;
   const response = await authenticatedFetch(url);
@@ -161,8 +163,10 @@ export async function listJobCards(
   }
 
   const data: any = await extractData(response);
-  // Backend returns { jobCards: [...], empty: false }
-  return data.jobCards || [];
+  return {
+    jobCards: data.jobCards || [],
+    total: data.total || 0
+  };
 }
 
 /**

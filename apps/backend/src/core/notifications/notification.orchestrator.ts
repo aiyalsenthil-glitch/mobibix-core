@@ -31,6 +31,9 @@ export class NotificationOrchestrator implements OnModuleInit {
 
     // NEW: Admin broadcast notifications
     this.registerStrategy('admin.broadcast', [this.inAppStrategy]);
+
+    // STAFF FLOW
+    this.registerStrategy('staff.invite.rejected', [this.emailStrategy, this.inAppStrategy]);
   }
 
   registerStrategy(eventId: string, strategies: ChannelStrategy[]) {

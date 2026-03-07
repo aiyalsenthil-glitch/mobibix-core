@@ -1008,7 +1008,7 @@ export class JobCardsService {
   async list(
     user,
     shopId: string,
-    filters?: { status?: JobStatus; search?: string },
+    filters?: { status?: JobStatus; search?: string; skip?: number; take?: number },
   ) {
     try {
       await this.assertAccess(user, shopId);
@@ -1043,16 +1043,21 @@ export class JobCardsService {
       ];
     }
 
-    const jobCards = await this.prisma.jobCard.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        invoices: true,
-        parts: user.role === 'OWNER' ? { include: { product: true } } : false,
-      },
-    });
+    const [jobCards, total] = await Promise.all([
+      this.prisma.jobCard.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: filters?.skip,
+        take: filters?.take,
+        include: {
+          invoices: true,
+          parts: user.role === 'OWNER' ? { include: { product: true } } : false,
+        },
+      }),
+      this.prisma.jobCard.count({ where }),
+    ]);
 
-    return { jobCards, empty: false };
+    return { jobCards, total, empty: total === 0 };
   }
 
   /**
@@ -1349,6 +1354,7 @@ export class JobCardsService {
           gstRate: gstRatePercent,
           gstAmount: lineTaxPaisa,
           lineTotal: lineTotalPaisa,
+          costPrice: part.costPrice, // SNAPSHOT: Use the cost price from JobCardPart (Paise)
         });
 
         partsSubtotalPaisa += lineSubtotalPaisa;
@@ -1411,6 +1417,7 @@ export class JobCardsService {
         gstRate: serviceGstRate,
         gstAmount: serviceTaxPaisa,
         lineTotal: serviceChargePaisa, // Total including GST
+        costPrice: 0, // Services have zero direct product cost
       });
     }
 
@@ -1435,6 +1442,7 @@ export class JobCardsService {
           rate: item.rate,
           gstRate: item.gstRate,
           hsnCode: item.hsnCode,
+          costPrice: item.costPrice, // Pass the captured cost price (Paise)
           isSerialized: false, // Mobile repairs parts are usually bulk here, or specific IMEI logic handled elsewhere if needed
         })),
         paymentMode: PaymentMode.CASH, // Default draft payment mode

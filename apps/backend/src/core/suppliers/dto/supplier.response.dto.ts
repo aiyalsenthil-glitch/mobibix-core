@@ -28,4 +28,5 @@ export class SupplierResponseDto {
   paymentDueDays?: number;
   creditLimit?: number;
   preferredCurrency?: string;
+  outstandingBalance?: number;
 }

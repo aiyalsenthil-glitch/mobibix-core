@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { User, UserRole } from '@prisma/client';
+import { User, UserRole, StaffInviteStatus } from '@prisma/client';
 import { normalizePhone } from '../../common/utils/phone.util';
 
 @Injectable()
@@ -127,15 +127,22 @@ export class UsersService {
     let invite: { id: string } | null = null;
     if (user.email) {
       invite = await this.prisma.staffInvite.findFirst({
-        where: { email: user.email, accepted: false },
+        where: {
+          email: user.email,
+          status: StaffInviteStatus.PENDING,
+          expiresAt: {
+            gt: new Date(),
+          },
+        },
         select: { id: true },
       });
     }
 
     return {
       ...user,
+      name: user.fullName, // Map for frontend
 
-      // 🔥 EFFECTIVE CONTEXT
+      // EFFECTIVE CONTEXT
       role: userTenant?.role ?? UserRole.USER,
       tenantId: userTenant?.tenantId ?? null,
       tenantType: userTenant?.tenant?.tenantType ?? null,
@@ -144,7 +151,7 @@ export class UsersService {
       isComingSoon: userTenant?.tenant?.businessCategory?.isComingSoon ?? false,
       isSystemOwner,
       enabledModules: userTenant?.tenant?.enabledModules ?? [],
-      grantedPermissions,
+      permissions: grantedPermissions, // Map for frontend
       inviteToken: invite?.id ?? null,
     };
   }

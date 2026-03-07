@@ -35,6 +35,16 @@ export interface AuthUser {
   permissions?: string[];
   tenantId?: string;
   planCode?: string;
+  pendingInvite?: {
+    id: string;
+    tenantId: string;
+    role: string;
+    shopIds: string[];
+    tenant: {
+      name: string;
+      code: string;
+    };
+  } | null;
 }
 
 export interface AuthContextType {
@@ -82,7 +92,11 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
         try {
           const response = await exchangeFirebaseToken(await user.getIdToken());
-          setAuthUser(response.user);
+          setAuthUser({
+            ...response.user,
+            role: response.user.role?.toLowerCase(), // ✅ Normalize Role
+            pendingInvite: response.pendingInvite,
+          });
         } catch (err: unknown) {
           console.error("Auth exchange error:", err);
           setError((err as any)?.message || "Authentication failed");
@@ -109,7 +123,11 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
 
         const response = await exchangeFirebaseToken(idToken, tenantCode);
 
-        setAuthUser(response.user);
+        setAuthUser({
+          ...response.user,
+          role: response.user.role?.toLowerCase(), // ✅ Normalize Role
+          pendingInvite: response.pendingInvite,
+        });
         setFirebaseUser(REMOVED_AUTH_PROVIDERUser);
 
         // Post-login redirect based on tenant count/role

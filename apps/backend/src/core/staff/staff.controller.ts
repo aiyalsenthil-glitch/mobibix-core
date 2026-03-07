@@ -31,10 +31,10 @@ import { GranularPermissionGuard } from '../permissions/guards/granular-permissi
 @Controller('staff')
 export class StaffController {
   constructor(
-    private readonly staffService: StaffService, // ✅ inject
+    private readonly staffService: StaffService, // inject
   ) {}
 
-  // ✅ OWNER: list staff
+  // OWNER: list staff
   @UseGuards(
     JwtAuthGuard,
     RolesGuard,
@@ -59,7 +59,7 @@ export class StaffController {
     });
   }
 
-  // ✅ OWNER: TEMP create staff (staff must have logged in once)
+  // OWNER: create staff (staff must have logged in once) - LEGACY
   @UseGuards(
     JwtAuthGuard,
     RolesGuard,
@@ -78,7 +78,7 @@ export class StaffController {
       REMOVED_AUTH_PROVIDERUid: string;
       email?: string;
       fullName?: string;
-      shopId?: string; // 👈 ADD THIS
+      shopId?: string; // option for branch assignment
     },
   ) {
     return this.staffService.createStaff(req.user.tenantId, req.user.sub, {
@@ -89,7 +89,7 @@ export class StaffController {
     });
   }
 
-  // ✅ OWNER: INVITE staff by email (PROPER FLOW)
+  // OWNER: INVITE staff by email
   @UseGuards(
     JwtAuthGuard,
     RolesGuard,
@@ -133,13 +133,17 @@ export class StaffController {
     return this.staffService.listInvites(req.user.tenantId);
   }
 
-  // ✅ USER: Accept an invite (Bypasses TenantRequired & Roles constraints)
+  // USER: Accept an invite (Bypasses TenantRequired & Roles constraints)
   @UseGuards(JwtAuthGuard)
   @Post('invite/accept')
   async acceptInvite(@Req() req: any, @Body('token') token: string) {
-    // Note: Since this controller is globally guarded by TenantRequiredGuard, this request will normally bounce.
-    // However, if we put it here, Android needs to not send a tenant ID. Let's fix this in the main controller structure.
     return this.staffService.acceptInvite(req.user.sub, token);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('invite/reject')
+  async rejectInvite(@Req() req: any, @Body('token') token: string) {
+    return this.staffService.rejectInvite(req.user.sub, token);
   }
   //Staff Invite Revoke
   @UseGuards(
@@ -154,7 +158,7 @@ export class StaffController {
   async revokeInvite(@Req() req: any, @Param('id') inviteId: string) {
     return this.staffService.revokeInvite(req.user.tenantId, inviteId);
   }
-  // ✅ OWNER: Remove staff from tenant
+  // OWNER: Remove staff from tenant
   @UseGuards(
     JwtAuthGuard,
     RolesGuard,

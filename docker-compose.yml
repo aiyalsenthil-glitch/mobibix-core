@@ -1,4 +1,20 @@
 services:
+  # Redis (Used for BullMQ and Caching)
+  redis:
+    image: redis:alpine
+    container_name: mobibix-redis
+    restart: unless-stopped
+    ports:
+      - "16379:6379"
+    networks:
+      - public_net
+      - ai_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # PostgreSQL Database
   postgres:
     image: pgvector/pgvector:pg16

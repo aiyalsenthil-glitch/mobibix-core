@@ -31,6 +31,7 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [decidingInvite, setDecidingInvite] = useState(false);
 
   // Dynamic country list (loaded from backend, falls back to static)
   const [countries, setCountries] = useState<CountryOption[]>(COUNTRY_FALLBACK);
@@ -69,6 +70,12 @@ export default function OnboardingPage() {
       router.push("/dashboard");
     } else {
       setCheckingAuth(false);
+      
+      // 🔥 SAAS FLOW: Check if user has a pending invite
+      if (authUser?.pendingInvite) {
+        setDecidingInvite(true);
+      }
+
       const savedRef = sessionStorage.getItem("mb_ref");
       const savedPromo = sessionStorage.getItem("mb_promo");
       const codeToUse = savedPromo || savedRef;
@@ -76,7 +83,39 @@ export default function OnboardingPage() {
         setFormData(prev => ({ ...prev, promoCode: codeToUse }));
       }
     }
-  }, [authUser?.tenantId]);
+  }, [authUser?.tenantId, authUser?.pendingInvite]);
+
+  const handleJoinStaff = async () => {
+    if (!authUser?.pendingInvite) return;
+    try {
+      setLoading(true);
+      const { acceptStaffInvite } = await import("@/services/staff.api");
+      await acceptStaffInvite(authUser.pendingInvite.id);
+      window.location.href = "/dashboard";
+    } catch (err: any) {
+      setError(err.message || "Failed to join shop");
+      setLoading(false);
+    }
+  };
+
+  const handleRejectAndOnboard = async () => {
+    if (!authUser?.pendingInvite) {
+        setDecidingInvite(false);
+        return;
+    }
+    try {
+      setLoading(true);
+      const { rejectStaffInvite } = await import("@/services/staff.api");
+      await rejectStaffInvite(authUser.pendingInvite.id);
+      setDecidingInvite(false);
+      setLoading(false);
+    } catch (err: any) {
+      console.error("Reject invite error:", err);
+      // Even if rejection fails (e.g. already deleted), let them onboard
+      setDecidingInvite(false);
+      setLoading(false);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -137,17 +176,7 @@ export default function OnboardingPage() {
 
     if (name === "state" && selectedCountry.code === "IN") {
       const selectedState = INDIAN_STATES.find(s => s.name === value);
-      setFormData(prev => {
-        const next = { ...prev, state: value };
-        // If they select a state, and their GST doesn't start with the correct code, we can optionally update it.
-        // It's safer to just set the prefix for them if the GST is empty or doesn't match:
-        if (selectedState && next.gstNumber) {
-           if (!next.gstNumber.startsWith(selectedState.gstCode)) {
-              // Prepend or replace first 2 chars if they don't match (optional UX enhancement)
-           }
-        }
-        return next;
-      });
+      setFormData(prev => ({ ...prev, state: value }));
       return;
     }
 
@@ -155,7 +184,6 @@ export default function OnboardingPage() {
       const gstVal = value.toUpperCase();
       setFormData(prev => {
         const next = { ...prev, gstNumber: gstVal };
-        // If they type a 2 digit prefix that matches a state, auto-select the state
         if (gstVal.length >= 2) {
           const prefix = gstVal.substring(0, 2);
           const matchedState = INDIAN_STATES.find(s => s.gstCode === prefix);
@@ -233,7 +261,6 @@ export default function OnboardingPage() {
 
       const exchange = await exchangeFirebaseToken(await REMOVED_AUTH_PROVIDERUser.getIdToken());
 
-      // Prepend dialing prefix for non-India numbers
       const phoneWithPrefix = selectedCountry.code !== "IN"
         ? `${selectedCountry.phonePrefix}${formData.contactPhone}`
         : formData.contactPhone;
@@ -248,7 +275,6 @@ export default function OnboardingPage() {
         city: formData.city,
         state: formData.state,
         pincode: formData.pincode,
-        // Only send GST for India — hidden + cleared for others
         gstNumber: selectedCountry.hasGstField ? formData.gstNumber : undefined,
         country: selectedCountry.name,
         currency: selectedCountry.currency,
@@ -264,8 +290,6 @@ export default function OnboardingPage() {
       console.error("Create tenant error:", e);
       if (e.message?.includes("User not found")) {
         setError("Your session is invalid. Please sign out and sign in again.");
-        localStorage.removeItem("accessToken");
-        sessionStorage.removeItem("accessToken");
         setAccessToken(null);
       } else {
         setError(e.message || "Something went wrong");
@@ -295,23 +319,6 @@ export default function OnboardingPage() {
           </button>
         </div>
 
-        {/* STEPPER */}
-        <div className="flex items-center justify-between mb-10 relative">
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-stone-800 -z-10 -translate-y-1/2"></div>
-          {[
-            { label: "Identity", icon: <Building2 className="w-5 h-5" />, s: 1 },
-            { label: "Location", icon: <MapPin className="w-5 h-5" />, s: 2 },
-            { label: "Regional", icon: <Globe className="w-5 h-5" />, s: 3 },
-          ].map(({ label, icon, s }) => (
-            <div key={s} className="flex flex-col items-center gap-2 bg-stone-950 px-2">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${step >= s ? "border-teal-500 bg-teal-500/10 text-teal-400" : "border-stone-700 bg-stone-900 text-stone-500"}`}>
-                {icon}
-              </div>
-              <span className={`text-xs ${step >= s ? "text-teal-400" : "text-stone-500"}`}>{label}</span>
-            </div>
-          ))}
-        </div>
-
         {error && (
           <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4 flex items-start gap-3">
             <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-400" />
@@ -319,240 +326,269 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* WIZARD CONTENT */}
-        <div className="min-h-[300px]">
-          {/* ── Step 1: Identity ── */}
-          {step === 1 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Business Display Name <span className="text-red-400">*</span></Label>
-                  <Input id="shop-name-input" name="name" value={formData.name || ""} onChange={handleChange} placeholder="e.g. Smart Tech Solutions" className="bg-stone-900 border-white/10" />
-                  <p className="text-xs text-stone-500">This is the name your customers will see on invoices.</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Legal / Registered Entity Name</Label>
-                  <Input name="legalName" value={formData.legalName || ""} onChange={handleChange} placeholder="e.g. Smart Tech Pvt Ltd" className="bg-stone-900 border-white/10" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Business Category (Optional)</Label>
-                  <Input name="businessType" value={formData.businessType || ""} onChange={handleChange} placeholder="e.g. Mobile Retailer, Electronics Repair" className="bg-stone-900 border-white/10" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Promo Code (Optional)</Label>
-                  <Input name="promoCode" value={formData.promoCode || ""} onChange={handleChange} placeholder="Have a referral or promo code?" className="bg-stone-900 border-white/10 text-teal-400 uppercase font-bold" />
-                </div>
-              </div>
+        {decidingInvite ? (
+          <div className="space-y-8 animate-in fade-in zoom-in duration-500">
+            <div className="text-center space-y-4">
+               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-500/20 text-teal-400 mb-2">
+                 <Building2 className="w-8 h-8" />
+               </div>
+               <h2 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">
+                 Invitation Detected
+               </h2>
+               <p className="text-stone-400 text-sm max-w-sm mx-auto">
+                 <span className="text-white font-semibold">{authUser?.pendingInvite?.tenant.name}</span> has invited you to join their shop as <span className="text-teal-400 font-medium">{authUser?.pendingInvite?.role}</span>.
+               </p>
             </div>
-          )}
 
-          {/* ── Step 2: Location ── */}
-          {step === 2 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-              <div className="grid grid-cols-2 gap-4">
-
-                {/* Country selector — loaded from /api/config/countries */}
-                <div className="space-y-2 col-span-2">
-                  <Label>Country <span className="text-red-400">*</span></Label>
-                  <select
-                    name="country"
-                    value={isOtherSelected ? "Others" : (formData.country || DEFAULT_COUNTRY.name)}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 bg-stone-900 border border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm appearance-none"
-                  >
-                    {countries.map(c => (
-                      <option key={c.code} value={c.name}>{c.name}</option>
-                    ))}
-                  </select>
-
-                  {isOtherSelected && (
-                    <div className="mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <Label className="text-[10px] text-stone-500 mb-1 block">Type your country name</Label>
-                      <Input 
-                        placeholder="Enter country name"
-                        value={customCountryName}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setCustomCountryName(val);
-                          setFormData(prev => ({ ...prev, country: val }));
-                        }}
-                        className="bg-stone-900 border-white/10"
-                      />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div 
+                  onClick={handleJoinStaff}
+                  className="group relative cursor-pointer overflow-hidden rounded-xl border border-teal-500/30 bg-teal-500/5 p-6 hover:border-teal-500 hover:bg-teal-500/10 transition-all duration-300"
+               >
+                  <div className="flex flex-col h-full justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-white mb-2">Join as Staff</h3>
+                      <p className="text-xs text-stone-400 leading-relaxed">
+                        Access the shop dashboard, manage inventory, and process sales as part of the team.
+                      </p>
                     </div>
-                  )}
+                    <div className="mt-6 flex items-center text-teal-400 text-sm font-bold">
+                      Accept Invitation <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+               </div>
 
-                  {/* Auto-localization badge */}
-                  <p className="text-xs text-stone-500">
-                    Currency auto-set to <span className="text-teal-400 font-semibold">{selectedCountry.currencySymbol} {selectedCountry.currency}</span>
-                    {" · "} Prefix <span className="text-teal-400 font-semibold">{selectedCountry.phonePrefix}</span>
-                  </p>
+               <div 
+                  onClick={handleRejectAndOnboard}
+                  className="group relative cursor-pointer overflow-hidden rounded-xl border border-white/10 bg-white/5 p-6 hover:border-white/30 hover:bg-white/10 transition-all duration-300"
+               >
+                  <div className="flex flex-col h-full justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-white mb-2">Create My Shop</h3>
+                      <p className="text-xs text-stone-400 leading-relaxed">
+                        Decline the invite and start fresh by setting up your own business on MobiBix.
+                      </p>
+                    </div>
+                    <div className="mt-6 flex items-center text-stone-300 text-sm font-bold">
+                      Start Onboarding <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+               </div>
+            </div>
+
+            <p className="text-[10px] text-center text-stone-600 italic">
+               * Declining this invite will inform the owner that you've rejected the request.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* STEPPER */}
+            <div className="flex items-center justify-between mb-10 relative">
+              <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-stone-800 -z-10 -translate-y-1/2"></div>
+              {[
+                { label: "Identity", icon: <Building2 className="w-5 h-5" />, s: 1 },
+                { label: "Location", icon: <MapPin className="w-5 h-5" />, s: 2 },
+                { label: "Regional", icon: <Globe className="w-5 h-5" />, s: 3 },
+              ].map(({ label, icon, s }) => (
+                <div key={s} className="flex flex-col items-center gap-2 bg-stone-950 px-2">
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${step >= s ? "border-teal-500 bg-teal-500/10 text-teal-400" : "border-stone-700 bg-stone-900 text-stone-500"}`}>
+                    {icon}
+                  </div>
+                  <span className={`text-xs ${step >= s ? "text-teal-400" : "text-stone-500"}`}>{label}</span>
                 </div>
+              ))}
+            </div>
 
-                {/* Phone with country prefix */}
-                <div className="space-y-2 col-span-2">
-                  <Label>Contact Phone Number <span className="text-red-400">*</span></Label>
-                  <div className="relative">
-                    {!isOtherSelected && (
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center text-teal-400 font-bold border-r border-white/10 pr-2 pointer-events-none">
-                        {selectedCountry.phonePrefix}
+            {/* WIZARD CONTENT */}
+            <div className="min-h-[300px]">
+              {step === 1 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Business Display Name <span className="text-red-400">*</span></Label>
+                      <Input id="shop-name-input" name="name" value={formData.name || ""} onChange={handleChange} placeholder="e.g. Smart Tech Solutions" className="bg-stone-900 border-white/10" />
+                      <p className="text-xs text-stone-500">This is the name your customers will see on invoices.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Legal / Registered Entity Name</Label>
+                      <Input name="legalName" value={formData.legalName || ""} onChange={handleChange} placeholder="e.g. Smart Tech Pvt Ltd" className="bg-stone-900 border-white/10" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Business Category (Optional)</Label>
+                      <Input name="businessType" value={formData.businessType || ""} onChange={handleChange} placeholder="e.g. Mobile Retailer, Electronics Repair" className="bg-stone-900 border-white/10" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Promo Code (Optional)</Label>
+                      <Input name="promoCode" value={formData.promoCode || ""} onChange={handleChange} placeholder="Have a referral or promo code?" className="bg-stone-900 border-white/10 text-teal-400 uppercase font-bold" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {step === 2 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 col-span-2">
+                      <Label>Country <span className="text-red-400">*</span></Label>
+                      <select
+                        name="country"
+                        value={isOtherSelected ? "Others" : (formData.country || DEFAULT_COUNTRY.name)}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 bg-stone-900 border border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm appearance-none"
+                      >
+                        {countries.map(c => (
+                          <option key={c.code} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                      {isOtherSelected && (
+                        <div className="mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <Label className="text-[10px] text-stone-500 mb-1 block">Type your country name</Label>
+                          <Input 
+                            placeholder="Enter country name"
+                            value={customCountryName}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setCustomCountryName(val);
+                              setFormData(prev => ({ ...prev, country: val }));
+                            }}
+                            className="bg-stone-900 border-white/10"
+                          />
+                        </div>
+                      )}
+                      <p className="text-xs text-stone-500">
+                        Currency auto-set to <span className="text-teal-400 font-semibold">{selectedCountry.currencySymbol} {selectedCountry.currency}</span>
+                        {" · "} Prefix <span className="text-teal-400 font-semibold">{selectedCountry.phonePrefix}</span>
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 col-span-2">
+                      <Label>Contact Phone Number <span className="text-red-400">*</span></Label>
+                      <div className="relative">
+                        {!isOtherSelected && (
+                          <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center text-teal-400 font-bold border-r border-white/10 pr-2 pointer-events-none">
+                            {selectedCountry.phonePrefix}
+                          </div>
+                        )}
+                        <Input
+                          id="phone-input"
+                          name="contactPhone"
+                          value={formData.contactPhone || ""}
+                          onChange={handleChange}
+                          placeholder={selectedCountry.code === "IN" ? "10-digit mobile number" : "Mobile number"}
+                          className={`bg-stone-900 border-white/10 ${!isOtherSelected ? "pl-16" : ""}`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 col-span-2">
+                      <Label>Address Line 1</Label>
+                      <Input name="addressLine1" value={formData.addressLine1 || ""} onChange={handleChange} placeholder="Shop/Building number, Street" className="bg-stone-900 border-white/10" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>City <span className="text-red-400">*</span></Label>
+                      <Input id="city-input" name="city" value={formData.city || ""} onChange={handleChange} placeholder="City" className="bg-stone-900 border-white/10" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>State / Province <span className="text-red-400">*</span></Label>
+                      {selectedCountry.code === "IN" ? (
+                        <select
+                          id="state-select"
+                          name="state"
+                          value={formData.state || ""}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 bg-stone-900 border border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm appearance-none"
+                        >
+                          <option value="">Select State</option>
+                          {INDIAN_STATES.map(s => (
+                            <option key={s.code} value={s.name}>{s.name}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Input name="state" value={formData.state || ""} onChange={handleChange} placeholder="State" className="bg-stone-900 border-white/10" />
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Pincode / Zip <span className="text-red-400">*</span></Label>
+                      <Input id="pincode-input" name="pincode" value={formData.pincode || ""} onChange={handleChange} className="bg-stone-900 border-white/10" />
+                    </div>
+
+                    {selectedCountry.hasGstField && (
+                      <div className="space-y-2 col-span-2">
+                        <Label>GST Number (Optional)</Label>
+                        <Input
+                          id="gst-input"
+                          name="gstNumber"
+                          value={formData.gstNumber || ""}
+                          onChange={handleChange}
+                          placeholder="e.g. 22AAAAA0000A1Z5"
+                          className="bg-stone-900 border-white/10 uppercase"
+                        />
                       </div>
                     )}
-                    <Input
-                      id="phone-input"
-                      name="contactPhone"
-                      value={formData.contactPhone || ""}
-                      onChange={handleChange}
-                      placeholder={selectedCountry.code === "IN" ? "10-digit mobile number" : "Mobile number"}
-                      className={`bg-stone-900 border-white/10 ${!isOtherSelected ? "pl-16" : ""}`}
-                    />
                   </div>
                 </div>
+              )}
 
-                <div className="space-y-2 col-span-2">
-                  <Label>Address Line 1</Label>
-                  <Input name="addressLine1" value={formData.addressLine1 || ""} onChange={handleChange} placeholder="Shop/Building number, Street" className="bg-stone-900 border-white/10" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>City <span className="text-red-400">*</span></Label>
-                  <Input id="city-input" name="city" value={formData.city || ""} onChange={handleChange} placeholder="City" className="bg-stone-900 border-white/10" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>State / Province <span className="text-red-400">*</span></Label>
-                  {selectedCountry.code === "IN" ? (
-                    <select
-                      id="state-select"
-                      name="state"
-                      value={formData.state || ""}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 bg-stone-900 border border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm appearance-none"
-                    >
-                      <option value="">Select State</option>
-                      {INDIAN_STATES.map(s => (
-                        <option key={s.code} value={s.name}>{s.name}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <Input name="state" value={formData.state || ""} onChange={handleChange} placeholder="State" className="bg-stone-900 border-white/10" />
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Pincode / Zip <span className="text-red-400">*</span></Label>
-                  <Input id="pincode-input" name="pincode" value={formData.pincode || ""} onChange={handleChange} className="bg-stone-900 border-white/10" />
-                </div>
-
-                {/* GST — only shown for India (driven by hasGstField flag from API) */}
-                {selectedCountry.hasGstField && (
-                  <div className="space-y-2 col-span-2">
-                    <Label>GST Number (Optional)</Label>
-                    <Input
-                      id="gst-input"
-                      name="gstNumber"
-                      value={formData.gstNumber || ""}
-                      onChange={handleChange}
-                      placeholder="e.g. 22AAAAA0000A1Z5"
-                      className="bg-stone-900 border-white/10 uppercase"
-                    />
-                    <p className="text-[10px] text-stone-500">Essential for legal taxation on generated invoices.</p>
+              {step === 3 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Currency</Label>
+                      <select name="currency" value={formData.currency || "INR"} onChange={handleChange} className="flex h-10 w-full rounded-md border border-white/10 bg-stone-900 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">
+                        {countries.map(c => (
+                          <option key={c.code} value={c.currency}>{c.name} — {c.currencySymbol} {c.currency}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Timezone</Label>
+                      <select name="timezone" value={formData.timezone || "Asia/Kolkata"} onChange={handleChange} className="flex h-10 w-full rounded-md border border-white/10 bg-stone-900 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">
+                        {countries.map(c => (
+                          <option key={c.code} value={c.timezone}>{c.name} — {c.timezone}</option>
+                        ))}
+                        <option value="UTC">UTC</option>
+                      </select>
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 3: Regional (auto-filled, confirmable) ── */}
-          {step === 3 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-              <p className="text-stone-400 text-sm mb-4">
-                Regional preferences are auto-configured for <span className="text-teal-400 font-semibold">{selectedCountry.name}</span>. You can adjust below.
-              </p>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Currency</Label>
-                  <select
-                    name="currency"
-                    value={formData.currency || "INR"}
-                    onChange={handleChange}
-                    className="flex h-10 w-full rounded-md border border-white/10 bg-stone-900 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
-                  >
-                    {countries.map(c => (
-                      <option key={c.code} value={c.currency}>
-                        {c.name} — {c.currencySymbol} {c.currency}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="space-y-4 pt-6 mt-6 border-t border-white/5">
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <input id="terms-checkbox" type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} className="mt-1 w-5 h-5 rounded border-white/10 bg-stone-900 text-teal-600 focus:ring-teal-500" />
+                      <span className="text-sm text-stone-300">
+                        I agree to the <a href="/terms" target="_blank" className="text-teal-400 hover:underline">Terms & Conditions</a> and <a href="/privacy" target="_blank" className="text-teal-400 hover:underline">Privacy Policy</a> <span className="text-red-400">*</span>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <input type="checkbox" checked={marketingConsent} onChange={e => setMarketingConsent(e.target.checked)} className="mt-1 w-5 h-5 rounded border-white/10 bg-stone-900 text-teal-600 focus:ring-teal-500" />
+                      <span className="text-sm text-stone-300">I want to receive product updates, news, and promotional offers. (Optional)</span>
+                    </label>
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Timezone</Label>
-                  <select
-                    name="timezone"
-                    value={formData.timezone || "Asia/Kolkata"}
-                    onChange={handleChange}
-                    className="flex h-10 w-full rounded-md border border-white/10 bg-stone-900 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
-                  >
-                    {countries.map(c => (
-                      <option key={c.code} value={c.timezone}>
-                        {c.name} — {c.timezone}
-                      </option>
-                    ))}
-                    <option value="UTC">UTC</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-4 pt-6 mt-6 border-t border-white/5">
-                <label className="flex items-start gap-3 cursor-pointer group">
-                  <input
-                    id="terms-checkbox"
-                    type="checkbox"
-                    checked={agreedToTerms}
-                    onChange={e => setAgreedToTerms(e.target.checked)}
-                    className="mt-1 w-5 h-5 rounded border-white/10 bg-stone-900 text-teal-600 focus:ring-teal-500"
-                  />
-                  <span className="text-sm text-stone-300">
-                    I agree to the <a href="/terms" target="_blank" className="text-teal-400 hover:underline">Terms & Conditions</a> and <a href="/privacy" target="_blank" className="text-teal-400 hover:underline">Privacy Policy</a> <span className="text-red-400">*</span>
-                  </span>
-                </label>
-
-                <label className="flex items-start gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={marketingConsent}
-                    onChange={e => setMarketingConsent(e.target.checked)}
-                    className="mt-1 w-5 h-5 rounded border-white/10 bg-stone-900 text-teal-600 focus:ring-teal-500"
-                  />
-                  <span className="text-sm text-stone-300">
-                    I want to receive product updates, news, and promotional offers. (Optional)
-                  </span>
-                </label>
-              </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* FOOTER CONTROLS */}
-        <div className="mt-8 flex items-center justify-between pt-6 border-t border-white/5">
-          {step > 1 ? (
-            <Button variant="outline" onClick={handleBack} disabled={loading} className="bg-transparent border-white/10 text-white hover:bg-white/5 hover:text-white">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back
-            </Button>
-          ) : <div />}
-
-          {step < 3 ? (
-            <Button id="onboarding-next-btn" onClick={handleNext} className="bg-teal-500 hover:bg-teal-400 text-black">
-              Continue <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          ) : (
-            <Button id="onboarding-finish-btn" onClick={handleCreateBusiness} disabled={loading} className="bg-teal-500 hover:bg-teal-400 text-black">
-              {loading ? "Creating..." : "Complete Setup"}
-              {!loading && <Check className="w-4 h-4 ml-2" />}
-            </Button>
-          )}
-        </div>
+            {/* FOOTER CONTROLS */}
+            <div className="mt-8 flex items-center justify-between pt-6 border-t border-white/5">
+              {step > 1 ? (
+                <Button variant="outline" onClick={handleBack} disabled={loading} className="bg-transparent border-white/10 text-white hover:bg-white/5 hover:text-white">
+                  <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                </Button>
+              ) : <div />}
+              {step < 3 ? (
+                <Button id="onboarding-next-btn" onClick={handleNext} className="bg-teal-500 hover:bg-teal-400 text-black">
+                  Continue <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              ) : (
+                <Button id="onboarding-finish-btn" onClick={handleCreateBusiness} disabled={loading} className="bg-teal-500 hover:bg-teal-400 text-black">
+                  {loading ? "Creating..." : "Complete Setup"}
+                  {!loading && <Check className="w-4 h-4 ml-2" />}
+                </Button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

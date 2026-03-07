@@ -11,6 +11,7 @@ import { UserResolutionService } from './services/user-resolution.service';
 import { TokenFactoryService } from './services/token-factory.service';
 import { FirebaseAdminService } from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
 import { EmailService } from '../../common/email/email.service';
+import { ROLE_PERMISSIONS } from './permissions.map';
 
 @Injectable()
 export class AuthService {
@@ -77,12 +78,16 @@ export class AuthService {
     const tenantId = userTenant?.tenantId ?? user.tenantId ?? null;
     const role = userTenant?.role ?? user.role;
 
+    const roleKey = (role?.toUpperCase() || UserRole.USER) as UserRole;
+    const permissions = ROLE_PERMISSIONS[roleKey] || [];
+
     const accessToken = this.tokenFactory.generateAccessToken({
       sub: user.id,
       tenantId,
       userTenantId: userTenant?.id ?? null,
       role,
       tokenVersion: user.tokenVersion,
+      permissions,
     });
 
     // Refresh Token Rotation: Revoke old and create new
@@ -116,12 +121,11 @@ export class AuthService {
         this.userResolution.checkInvites(decoded.email),
       ]);
 
-      // 3️⃣ Process Invite IF it exists (CRITICAL for correct initial redirect)
-      if (staffInvite) {
-        await this.userResolution.processStaffInvite(user.id, staffInvite);
-        // Re-fetch user to include newly linked tenants
-        user = await this.userResolution.resolveUser(decoded);
-      }
+      // 3️⃣ REMOVED: Auto-processing invite (Client will now ask for confirmation)
+      // if (staffInvite) {
+      //   await this.userResolution.processStaffInvite(user.id, staffInvite);
+      //   user = await this.userResolution.resolveUser(decoded);
+      // }
 
       // 4️⃣ Resolve active tenant context
       const activeUserTenant = await this.userResolution.resolveActiveTenant(
@@ -138,6 +142,9 @@ export class AuthService {
         activeUserTenant?.isSystemOwner || activeUserTenant?.role === UserRole.OWNER;
 
       // 6️⃣ Issue JWT & Refresh Token
+      const roleKey = (role?.toUpperCase() || UserRole.USER) as UserRole;
+      const permissions = ROLE_PERMISSIONS[roleKey] || [];
+
       const token = this.tokenFactory.generateAccessToken({
         sub: user.id,
         tenantId,
@@ -145,6 +152,7 @@ export class AuthService {
         role,
         isSystemOwner,
         tokenVersion: user.tokenVersion,
+        permissions, // Include permissions in JWT for frontend/guards
       });
 
       const refreshToken = await this.tokenFactory.createRefreshToken(user.id);
@@ -183,6 +191,15 @@ export class AuthService {
             }
           : null,
         tenantCount: userTenantCount,
+        pendingInvite: staffInvite
+          ? {
+              id: staffInvite.id,
+              tenantId: staffInvite.tenantId,
+              role: staffInvite.role,
+              shopIds: staffInvite.shopIds,
+              tenant: staffInvite.tenant, // Include tenant info for frontend
+            }
+          : null,
       };
     } catch (err) {
       if (

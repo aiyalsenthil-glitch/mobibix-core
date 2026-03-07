@@ -99,7 +99,7 @@ export class GSTR1Service {
         invoiceDate: invoice.invoiceDate,
         customerName: invoice.customer?.name || invoice.customerName,
         gstinUin: invoice.customer?.gstNumber || '',
-        invoiceAmount: paiseToRupees(invoice.subTotal),
+        invoiceAmount: paiseToRupees(invoice.totalAmount),
         taxableAmount: paiseToRupees(baseAmount),
         cgstAmount: paiseToRupees(invoice.cgst || 0),
         sgstAmount: paiseToRupees(invoice.sgst || 0),

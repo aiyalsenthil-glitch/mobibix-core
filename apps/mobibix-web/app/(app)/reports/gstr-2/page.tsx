@@ -57,7 +57,7 @@ export default function Gstr2ReportPage() {
         const val = row[fieldName];
         // Divide by 100 for numeric fields that contain "Amount", "Value", "cgst", "sgst", "igst", "TotalTax", "itc" (case insensitive)
         const isNumericAmount = /amount|value|cgst|sgst|igst|tax|itc/i.test(fieldName) && typeof val === "number";
-        const formattedVal = isNumericAmount ? (val / 100).toFixed(2) : val;
+        const formattedVal = isNumericAmount ? val.toFixed(2) : val;
         return JSON.stringify(formattedVal, (_, v) => v === null ? "" : v);
       }).join(","))
     ].join("\n");
@@ -82,7 +82,7 @@ export default function Gstr2ReportPage() {
     new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-    }).format(val / 100);
+    }).format(val);
 
   const isDark = theme === "dark";
 

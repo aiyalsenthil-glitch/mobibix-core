@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserRole } from '@prisma/client';
+import { UserRole, StaffInviteStatus } from '@prisma/client';
 import { PLAN_CAPABILITIES } from '../billing/plan-capabilities';
 import {
   excludeDeleted,
@@ -17,6 +17,8 @@ import { PlanRulesService } from '../billing/plan-rules.service';
 import { ModuleType } from '@prisma/client';
 
 import { JwtService } from '@nestjs/jwt';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class StaffService {
@@ -24,23 +26,29 @@ export class StaffService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly planRulesService: PlanRulesService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly auditService: AuditService,
   ) {}
 
-  // 🔒 Ensure plan allows staff management (PLUS / PRO)
+  // Ensure plan allows staff management (PLUS / PRO)
   private async ensureStaffAllowed(tenantId: string) {
     // Determine module scope (staff removal/creation usually happens in context of a module)
     // For now we assume GYM as primary if not specified, or fallback to the tenant's first active module
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { enabledModules: true },
+      select: { enabledModules: true, tenantType: true },
     });
 
-    const module = tenant?.enabledModules?.[0] || ModuleType.GYM;
+    const module =
+      tenant?.enabledModules?.[0] ||
+      ((tenant as any)?.tenantType === 'MOBILE_SHOP'
+        ? ModuleType.MOBILE_SHOP
+        : ModuleType.GYM);
 
-    // 🔥 1. Check for Downgrade Bypass (already over limit)
+    // 1. Check for Downgrade Bypass (already over limit)
     await this.planRulesService.checkRuntimeLimits(tenantId, module);
 
-    // 🔥 2. Check Plan Rules for staff permission and specific "add" limit
+    // 2. Check Plan Rules for staff permission and specific "add" limit
     const rules = await this.planRulesService.getPlanRulesForTenant(tenantId, module);
 
     if (!rules) {
@@ -51,7 +59,7 @@ export class StaffService {
       throw new ForbiddenException('Staff management is not allowed in your current plan');
     }
 
-    // 🔒 Enforce staff count limit for NEW members
+    // Enforce staff count limit for NEW members
     const currentStaffCount = await this.prisma.userTenant.count({
       where: {
         tenantId,
@@ -67,7 +75,7 @@ export class StaffService {
     }
   }
 
-  // ✅ List staff for tenant
+  // List staff for tenant
   async listStaff(
     tenantId: string,
     options?: { skip?: number; take?: number; search?: string },
@@ -135,38 +143,15 @@ export class StaffService {
     };
   }
 
-  // ✅ Accept invite
   async acceptInvite(userId: string, targetToken: string) {
+    // SECURITY: Use inviteToken instead of ID
     const invite = await this.prisma.staffInvite.findUnique({
-      where: { id: targetToken },
+      where: { inviteToken: targetToken },
     });
 
-    if (!invite || invite.accepted) {
+    if (!invite || invite.status !== StaffInviteStatus.PENDING || (invite.expiresAt && invite.expiresAt < new Date())) {
       throw new BadRequestException('Invalid or expired invite');
     }
-
-    const shopStaffCreations = (invite.shopIds || []).map((shopId: string) =>
-      this.prisma.shopStaff.upsert({
-        where: {
-          userId_tenantId_shopId: {
-            userId,
-            tenantId: invite.tenantId,
-            shopId: shopId,
-          },
-        },
-        update: {
-          roleId: invite.roleId || null,
-          isActive: true,
-        },
-        create: {
-          userId,
-          tenantId: invite.tenantId,
-          shopId: shopId,
-          roleId: invite.roleId || null,
-          role: UserRole.STAFF,
-        },
-      }),
-    );
 
     const ut = await this.prisma.$transaction(async (tx) => {
       const userTenant = await tx.userTenant.upsert({
@@ -186,14 +171,50 @@ export class StaffService {
         },
       });
 
-      await Promise.all(shopStaffCreations);
+      // Fix: Move shop staff creations INSIDE the transaction
+      if (invite.shopIds && invite.shopIds.length > 0) {
+        await Promise.all(
+          invite.shopIds.map((shopId: string) =>
+            tx.shopStaff.upsert({
+              where: {
+                userId_tenantId_shopId: {
+                  userId,
+                  tenantId: invite.tenantId,
+                  shopId: shopId,
+                },
+              },
+              update: {
+                roleId: invite.roleId || null,
+                isActive: true,
+              },
+              create: {
+                userId,
+                tenantId: invite.tenantId,
+                shopId: shopId,
+                roleId: invite.roleId || null,
+                role: UserRole.STAFF,
+              },
+            }),
+          ),
+        );
+      }
 
       await tx.staffInvite.update({
         where: { id: invite.id },
-        data: { accepted: true },
+        data: { status: StaffInviteStatus.ACCEPTED },
       });
 
       return userTenant;
+    });
+
+    // Audit Log: STAFF_INVITE_ACCEPTED
+    await this.auditService.log({
+      tenantId: invite.tenantId,
+      userId: userId,
+      action: 'STAFF_INVITE_ACCEPTED',
+      entity: 'StaffInvite',
+      entityId: invite.id,
+      meta: { email: invite.email },
     });
 
     // Issue new JWT with branch access
@@ -210,7 +231,51 @@ export class StaffService {
     };
   }
 
-  // ✅ Create staff (attach existing user to tenant)
+  // Reject invite
+  async rejectInvite(userId: string, inviteId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+
+    const invite = await this.prisma.staffInvite.findUnique({
+      where: { id: inviteId },
+    });
+
+    if (!invite || invite.email.toLowerCase() !== user?.email?.toLowerCase()) {
+      throw new NotFoundException('Invite not found');
+    }
+
+    if (invite.status === StaffInviteStatus.ACCEPTED) {
+      throw new BadRequestException('Cannot reject an already accepted invite');
+    }
+
+    // Notify Owner
+    this.eventEmitter.emit('staff.invite.rejected', {
+      tenantId: invite.tenantId,
+      email: invite.email,
+    });
+
+    // Audit Log: STAFF_INVITE_REJECTED
+    await this.auditService.log({
+      tenantId: invite.tenantId,
+      userId: userId,
+      action: 'STAFF_INVITE_REJECTED',
+      entity: 'StaffInvite',
+      entityId: invite.id,
+      meta: { email: invite.email },
+    });
+
+    // Mark as REJECTED (Do not delete for audit)
+    await this.prisma.staffInvite.update({
+      where: { id: inviteId },
+      data: { status: StaffInviteStatus.REJECTED },
+    });
+
+    return { success: true };
+  }
+
+  // Create staff (attach existing user to tenant)
   async createStaff(
     tenantId: string,
     creatorId: string,
@@ -218,7 +283,7 @@ export class StaffService {
       REMOVED_AUTH_PROVIDERUid: string;
       email?: string;
       fullName?: string;
-      shopId?: string; // 👈 ADD THIS
+      shopId?: string; // option for branch assignment
     },
   ) {
     await this.ensureStaffAllowed(tenantId);
@@ -233,7 +298,7 @@ export class StaffService {
       throw new BadRequestException('User does not exist');
     }
 
-    // ✅ Attach user as STAFF with audit trail
+    // Attach user as STAFF with audit trail
     await this.prisma.userTenant.upsert({
       where: {
         userId_tenantId: {
@@ -252,7 +317,7 @@ export class StaffService {
         ...getCreateAudit(creatorId),
       },
     });
-    // 🔹 MOBILE ERP ONLY: assign staff to shop
+    // MOBILE ERP ONLY: assign staff to shop
     if (data.shopId) {
       await this.prisma.shopStaff.upsert({
         where: {
@@ -274,12 +339,17 @@ export class StaffService {
       });
     }
 
-    // 🔥 FIX: remove invite once accepted
+    // Mark pending invites as ACCEPTED for audit history
     if (existingUser.email) {
-      await this.prisma.staffInvite.deleteMany({
+      await this.prisma.staffInvite.updateMany({
         where: {
           tenantId,
           email: existingUser.email,
+          status: StaffInviteStatus.PENDING,
+        },
+        data: {
+          status: StaffInviteStatus.ACCEPTED,
+          updatedAt: new Date(),
         },
       });
     }
@@ -287,7 +357,7 @@ export class StaffService {
     return { success: true };
   }
 
-  // ✅ Invite staff by email
+  // Invite staff by email
   async inviteByEmail(
     tenantId: string,
     creatorId: string,
@@ -306,6 +376,23 @@ export class StaffService {
     });
 
     if (existingUser) {
+      // SAAS FLOW: Check if user is already an OWNER of a MOBILE_SHOP
+      const existingOwnerStatus = await this.prisma.userTenant.findFirst({
+        where: {
+          userId: existingUser.id,
+          role: UserRole.OWNER,
+          tenant: {
+            tenantType: 'MOBILE_SHOP',
+          },
+        },
+      });
+
+      if (existingOwnerStatus) {
+        throw new BadRequestException(
+          'You cannot invite another shop owner as staff. Please use a different email ID.',
+        );
+      }
+
       const exists = await this.prisma.userTenant.findUnique({
         where: {
           userId_tenantId: {
@@ -318,28 +405,49 @@ export class StaffService {
       if (exists) {
         return {
           status: 'ALREADY_JOINED',
-          message: 'User is already staff in this gym',
+          message: 'User is already staff in this shop',
         };
       }
     }
 
+    // DUPLICATE CHECK: Only one PENDING invite per tenant + email
+    const existingPendingInvite = await this.prisma.staffInvite.findFirst({
+      where: {
+        tenantId,
+        email: normalizedEmail,
+        status: StaffInviteStatus.PENDING,
+        OR: [
+          { expiresAt: { gt: new Date() } },
+          { expiresAt: null },
+        ],
+      },
+    });
+
+    if (existingPendingInvite) {
+      throw new BadRequestException('User already has a pending valid invitation.');
+    }
+
     // allow re-invite if user exists but has no tenant
     const sanitizedRoleId = roleId === '' ? null : roleId;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // Default 7 days
 
-    await this.prisma.staffInvite.upsert({
+    const invite = await this.prisma.staffInvite.upsert({
       where: {
-        tenantId_email: {
+        invite_composite_key: {
           tenantId,
           email: normalizedEmail,
+          status: StaffInviteStatus.PENDING,
         },
       },
       update: {
-        accepted: false, // reset invite
+        status: StaffInviteStatus.PENDING, // ensure pending
         createdAt: new Date(), // refresh timestamp (optional)
         name,
         phone,
         roleId: sanitizedRoleId,
         shopIds: branchIds || [],
+        expiresAt,
       },
 
       create: {
@@ -350,16 +458,27 @@ export class StaffService {
         roleId: sanitizedRoleId,
         shopIds: branchIds || [],
         role: UserRole.STAFF,
+        expiresAt,
       },
+    });
+
+    // Audit Log: STAFF_INVITED
+    await this.auditService.log({
+      tenantId,
+      userId: creatorId,
+      action: 'STAFF_INVITED',
+      entity: 'StaffInvite',
+      entityId: invite.id,
+      meta: { email: normalizedEmail, roleId: sanitizedRoleId },
     });
   }
 
-  // ✅ List staff invites
+  // List staff invites
   async listInvites(tenantId: string) {
     const invites = await this.prisma.staffInvite.findMany({
       where: {
         tenantId,
-        accepted: false, // 🔥 REQUIRED
+        status: StaffInviteStatus.PENDING,
       },
       include: {
         dynamicRole: true,
@@ -375,7 +494,7 @@ export class StaffService {
     }));
   }
 
-  // ✅ Revoke invite
+  // Revoke invite
   async revokeInvite(tenantId: string, inviteId: string) {
     await this.ensureStaffAllowed(tenantId);
 
@@ -387,51 +506,71 @@ export class StaffService {
       throw new NotFoundException('Invite not found');
     }
 
-    if (invite.accepted) {
+    if (invite.status === StaffInviteStatus.ACCEPTED) {
       throw new ForbiddenException('Cannot revoke accepted invite');
     }
 
-    await this.prisma.staffInvite.delete({
+    await this.prisma.staffInvite.update({
       where: { id: inviteId },
+      data: { status: StaffInviteStatus.REJECTED }, // or REVOKED, using REJECTED for now
     });
 
     return { success: true };
   }
-  // ✅ Remove staff from tenant (soft delete)
+  // Remove staff from tenant (soft delete)
   async removeStaff(
     tenantId: string,
     staffUserId: string,
     requesterUserId?: string,
   ) {
-    // 🔒 Prevent self-removal
+    // Prevent self-removal
     if (staffUserId === requesterUserId) {
-      throw new ForbiddenException('Owner cannot remove themselves');
+      throw new ForbiddenException(
+        'Owner cannot remove themselves from their own tenant',
+      );
     }
 
-    const staff = await this.prisma.userTenant.findUnique({
+    const staffRelation = await this.prisma.userTenant.findUnique({
       where: {
         userId_tenantId: {
           userId: staffUserId,
           tenantId,
         },
       },
-      include: { user: true },
     });
 
-    if (!staff) {
-      throw new NotFoundException('Staff not found');
+    if (!staffRelation) {
+      throw new NotFoundException('Staff not found in this tenant context');
     }
 
-    // 🔒 Prevent removing OWNER
-    if (staff.role === UserRole.OWNER) {
-      throw new ForbiddenException('Cannot remove owner');
+    // Prevent removing OWNER
+    if (staffRelation.role === UserRole.OWNER) {
+      throw new ForbiddenException(
+        'Cannot remove the shop owner via staff management',
+      );
     }
 
-    // 🔥 Soft delete the user instead of hard delete
-    await this.prisma.user.update({
-      where: { id: staffUserId },
-      data: softDeleteData(requesterUserId || staffUserId) as any,
-    });
+    // SAAS FIX: Only remove the RELATIONSHIP, not the User account itself
+    await this.prisma.$transaction([
+      // 1. Soft delete tenant access
+      this.prisma.userTenant.update({
+        where: { id: staffRelation.id },
+        data: {
+          deletedAt: new Date(),
+        },
+      }),
+      // 2. Clear branch assignments
+      this.prisma.shopStaff.updateMany({
+        where: {
+          tenantId,
+          userId: staffUserId,
+        },
+        data: {
+          isActive: false,
+          deletedAt: new Date(),
+        },
+      }),
+    ]);
 
     return { success: true };
   }

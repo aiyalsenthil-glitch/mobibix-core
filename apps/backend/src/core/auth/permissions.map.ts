@@ -39,6 +39,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     Permission.SALES_CREATE,
     Permission.SALES_VIEW,
     Permission.REPAIR_MANAGE,
+    Permission.DASHBOARD_VIEW,
   ],
 
   ADMIN: [
