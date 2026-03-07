@@ -5,6 +5,7 @@ import { CrmIntegrationService } from './services/crm-integration.service';
 import { MobileShopCrmController } from './crm-integration.controller';
 import { CrmEventListener } from './services/crm-event.listener';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
+import { FollowUpsModule } from '../../core/follow-ups/follow-ups.module';
 
 /**
  * MobileShop Integration Module
@@ -44,6 +45,7 @@ import { WhatsAppModule } from '../whatsapp/whatsapp.module';
       inject: [ConfigService],
     }),
     WhatsAppModule,
+    FollowUpsModule,
   ],
   controllers: [MobileShopCrmController],
   providers: [CrmIntegrationService, CrmEventListener],
