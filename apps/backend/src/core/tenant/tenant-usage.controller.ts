@@ -227,4 +227,61 @@ export class TenantUsageController {
 
     return history;
   }
+
+  /**
+   * GET /tenant/ai-quota
+   *
+   * Returns the AI token quota for the current tenant's active subscription.
+   * Used by frontend AI quota badge. Safe to call even in grace period.
+   */
+  @Get('ai-quota')
+  @SkipSubscriptionCheck()
+  async getAiQuota(@Req() req: any): Promise<{
+    aiTokensUsed: number;
+    aiTokensLimit: number;
+    resetAt: string | null;
+  }> {
+    const { tenantId } = req.user;
+
+    // Determine tenant module
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { tenantType: true },
+    });
+
+    const module =
+      tenant?.tenantType === 'MOBILE_SHOP' || tenant?.tenantType === 'MOBILE_REPAIR'
+        ? 'MOBILE_SHOP'
+        : 'GYM';
+
+    const subscription = await this.prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+        module,
+        status: { in: ['ACTIVE', 'TRIAL', 'PAST_DUE', 'GRACE_PERIOD'] },
+      },
+      include: {
+        plan: {
+          include: { features: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!subscription) {
+      return { aiTokensUsed: 0, aiTokensLimit: 0, resetAt: null };
+    }
+
+    // AI token limit from plan features
+    const aiTokenFeature = subscription.plan?.features?.find(
+      (f: any) => f.featureKey === 'AI_TOKENS_PER_MONTH',
+    );
+    const aiTokensLimit = aiTokenFeature?.limitValue ?? 0;
+
+    return {
+      aiTokensUsed: subscription.aiTokensUsed ?? 0,
+      aiTokensLimit,
+      resetAt: subscription.lastQuotaResetAt?.toISOString() ?? null,
+    };
+  }
 }

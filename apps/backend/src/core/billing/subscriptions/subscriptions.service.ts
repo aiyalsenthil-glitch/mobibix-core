@@ -639,6 +639,8 @@ export class SubscriptionsService {
       });
 
       // 2. Create new subscription row
+      // FIX 1: Reset AI token quota on each new billing cycle
+      // FIX 2: Preserve billingType + providerSubscriptionId (prevents AUTOPAY→MANUAL silent downgrade)
       return tx.tenantSubscription.create({
         data: {
           tenantId: current.tenantId,
@@ -647,10 +649,14 @@ export class SubscriptionsService {
           billingCycle: nextBillingCycle,
           priceSnapshot: nextPriceSnapshot,
           autoRenew: current.autoRenew,
+          billingType: current.billingType ?? BillingType.MANUAL,           // FIX 2
+          providerSubscriptionId: current.providerSubscriptionId ?? null,   // FIX 2
           status: SubscriptionStatus.ACTIVE,
           startDate: newStartDate,
           endDate: newEndDate,
           lastRenewedAt: new Date(),
+          aiTokensUsed: 0,                                                   // FIX 1
+          lastQuotaResetAt: new Date(),                                      // FIX 1
         },
       });
     });

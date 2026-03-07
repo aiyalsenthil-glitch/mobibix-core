@@ -348,6 +348,10 @@ export interface TenantUsageResponse {
     service: number;
     startOfPeriod: string;
   };
+  // AI Usage
+  aiTokensUsed: number;
+  aiTokensLimit: number;
+  aiTokensResetAt: string | null;
 }
 
 export async function getTenantUsage(): Promise<TenantUsageResponse> {
@@ -370,4 +374,24 @@ export async function requestDeletion(dto: RequestDeletionDto): Promise<any> {
   }
   const json = await extractData(response);
   return unwrapStandardResponse(json);
+}
+
+export interface AiQuotaResponse {
+  aiTokensUsed: number;
+  aiTokensLimit: number;
+  resetAt: string | null;
+}
+
+/**
+ * Fetch current AI token quota for the active subscription
+ */
+export async function getAiQuota(): Promise<AiQuotaResponse | null> {
+  try {
+    const response = await authenticatedFetch("/tenant/ai-quota");
+    if (!response.ok) return null;
+    const json = await extractData<AiQuotaResponse>(response);
+    return unwrapStandardResponse<AiQuotaResponse>(json);
+  } catch {
+    return null;
+  }
 }

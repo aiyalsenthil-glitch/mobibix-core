@@ -25,6 +25,7 @@ import {
   ShoppingBag,
   FileText,
 } from "lucide-react";
+import { AiQuotaBadge } from "@/components/common/AiQuotaBadge";
 
 interface NavItem {
   label: string;
@@ -237,6 +238,11 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
             );
           })}
         </nav>
+
+        {/* AI Token Quota — only visible when sidebar is expanded */}
+        {!effectiveCollapsed && (
+          <AiQuotaBadge className="mx-2 mb-2" />
+        )}
 
         {/* Toggle Button (Desktop Only) */}
         <div

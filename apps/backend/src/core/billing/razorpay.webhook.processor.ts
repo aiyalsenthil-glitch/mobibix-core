@@ -452,6 +452,8 @@ export class RazorpayWebhookProcessor extends WorkerHost {
                 lastRenewedAt: new Date(),
                 providerSubscriptionId: subId,
                 billingType: BillingType.AUTOPAY,
+                aiTokensUsed: 0,                    // FIX 1: Reset AI quota on AutoPay renewal
+                lastQuotaResetAt: new Date(),        // FIX 1
               },
             });
 
@@ -662,6 +664,18 @@ export class RazorpayWebhookProcessor extends WorkerHost {
           data: { status: 'FAILED' },
         });
 
+        // FIX 3: Row-level lock before state transition to prevent concurrent webhook race condition.
+        // Two simultaneous payment.failed webhooks for the same tenant would otherwise both read
+        // ACTIVE, both try to set PAST_DUE, and the second would be a no-op at best or cause
+        // inconsistent audit logs at worst.
+        await tx.$executeRaw`
+          SELECT id FROM "mb_tenant_subscription"
+          WHERE "tenantId" = ${internalPayment.tenantId}
+            AND "planId" = ${internalPayment.planId}
+            AND status IN ('ACTIVE', 'PENDING')
+          FOR UPDATE
+        `;
+
         const activeSub = await tx.tenantSubscription.findFirst({
           where: {
             tenantId: internalPayment.tenantId,
@@ -711,6 +725,7 @@ export class RazorpayWebhookProcessor extends WorkerHost {
         }
       });
     }
+
   }
 
   private async handlePaymentRefunded(payment: any, refund: any) {

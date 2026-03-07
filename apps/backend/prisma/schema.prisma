@@ -291,9 +291,30 @@ model RefreshToken {
   @@index([userId])
 }
 
+model Contact {
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  phone           String
+  normalizedPhone String
+  email           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  parties Party[]
+  members Member[]
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, normalizedPhone])
+  @@index([tenantId])
+  @@map("mb_contact")
+}
+
 model Member {
   id                String              @id @default(uuid())
   tenantId          String
+  contactId         String? // Link to Unified Contact
   fullName          String
   phone             String
   gender            Gender
@@ -324,6 +345,7 @@ model Member {
   attendances         GymAttendance[]
   gymMemberships      GymMembership[]
   customer            Party?          @relation(fields: [customerId], references: [id])
+  contact             Contact?        @relation(fields: [contactId], references: [id])
   tenant              Tenant          @relation("TenantMembers", fields: [tenantId], references: [id])
   payments            MemberPayment[]
 
@@ -338,6 +360,7 @@ model Member {
 model Party {
   id                  String       @id @default(cuid())
   tenantId            String
+  contactId           String? // Link to Unified Contact
   name                String
   phone               String
   email               String?
@@ -368,6 +391,7 @@ model Party {
   supplierProfile SupplierProfile?
 
   tenant              Tenant               @relation("TenantParties", fields: [tenantId], references: [id])
+  contact             Contact?             @relation(fields: [contactId], references: [id])
   alerts              CustomerAlert[]
   followUps           CustomerFollowUp[]
   reminders           CustomerReminder[]

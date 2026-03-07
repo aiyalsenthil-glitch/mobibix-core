@@ -44,9 +44,11 @@ export class PrismaService
       'CustomerAlert',
       'CustomerFollowUp',
       'CustomerReminder',
+      'Contact',
     ]);
 
     const multiTenantModels = new Set<string>([
+      'Contact',
       'Member',
       'Party',
       'Shop',
