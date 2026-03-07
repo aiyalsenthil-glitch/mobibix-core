@@ -29,9 +29,8 @@ export default function FollowUpsPage() {
       {/* Follow-ups Widget */}
       <MyFollowUpsWidget />
 
-      {/* Add Follow-up Modal (generic, no specific customer) */}
+      {/* Add Follow-up Modal — customer search built into modal */}
       <AddFollowUpModal
-        customerId=""
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSuccess={() => setShowAddModal(false)}

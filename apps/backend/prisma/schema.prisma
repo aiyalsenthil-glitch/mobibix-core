@@ -377,6 +377,7 @@ model Party {
   defaultCreditLimit  Int?
   defaultCurrency     String       @default("INR")
   tags                String[]     @default([])
+  customerLifecycle   CustomerLifecycle?            // Only meaningful for CUSTOMER/BOTH partyTypes
   createdBy           String?
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
@@ -468,11 +469,12 @@ model CustomerFollowUp {
   customerId       String
   shopId           String?
   type             FollowUpType
-  purpose          FollowUpPurpose
+  purpose          String
   note             String?
   followUpAt       DateTime
   status           FollowUpStatus  @default(PENDING)
   assignedToUserId String?
+  sourceJobId      String?         // tracks auto-created follow-ups; prevents duplicates
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   assignedToUser   User?           @relation(fields: [assignedToUserId], references: [id])
@@ -481,11 +483,13 @@ model CustomerFollowUp {
   tenant           Tenant          @relation("TenantCustomerFollowUps", fields: [tenantId], references: [id])
 
   @@index([tenantId])
+  @@index([tenantId, customerId])
   @@index([customerId])
   @@index([shopId])
   @@index([assignedToUserId])
   @@index([followUpAt])
   @@index([status])
+  @@index([sourceJobId])
   @@index([tenantId, assignedToUserId, status, followUpAt])
   @@map("mb_customer_follow_up")
 }
@@ -2365,26 +2369,25 @@ enum ResetPolicy {
 }
 
 enum FollowUpType {
-  CALL
+  PHONE_CALL
   WHATSAPP
   VISIT
   EMAIL
   SMS
 }
 
-enum FollowUpPurpose {
-  SALE
-  SERVICE
-  PAYMENT
-  FEEDBACK
-  RETENTION
-  OTHER
-}
 
 enum FollowUpStatus {
   PENDING
   DONE
   CANCELLED
+}
+
+enum CustomerLifecycle {
+  PROSPECT
+  ACTIVE
+  INACTIVE
+  CHURNED
 }
 
 enum ModuleType {

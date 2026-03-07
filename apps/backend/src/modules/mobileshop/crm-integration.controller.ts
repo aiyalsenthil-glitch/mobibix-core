@@ -1,53 +1,130 @@
 import {
+  Body,
   Controller,
   Get,
-  Post,
-  Body,
   Param,
+  Patch,
+  Post,
   Query,
-  UseGuards,
   Request,
+  UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { CrmIntegrationService } from './services/crm-integration.service';
+import { FollowUpsService } from '../../core/follow-ups/follow-ups.service';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
-import { UserRole, ModuleType } from '@prisma/client';
+import { UserRole, ModuleType, FollowUpStatus } from '@prisma/client';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
 import { TenantScopedController } from '../../core/auth/tenant-scoped.controller';
 import { ModuleScope } from '../../core/auth/decorators/module-scope.decorator';
+import { CreateFollowUpDto } from '../../core/follow-ups/dto/create-follow-up.dto';
 
 /**
- * Example Controller: MobileShop CRM Dashboard Integration
+ * MobileShop CRM Controller
  *
- * Shows how MobileShop screens call CORE CRM APIs through CrmIntegrationService
- * This is NOT a CORE CRM controller - it's a MobileShop consumer
+ * Follow-up routes call FollowUpsService directly (no HTTP hop).
+ * Dashboard, timeline, and WhatsApp routes proxy via CrmIntegrationService.
  */
 @Controller('mobileshop/crm')
 @ModuleScope(ModuleType.MOBILE_SHOP)
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class MobileShopCrmController extends TenantScopedController {
-  constructor(private readonly crmIntegration: CrmIntegrationService) {
+  constructor(
+    private readonly crmIntegration: CrmIntegrationService,
+    private readonly followUpsService: FollowUpsService,
+  ) {
     super();
   }
 
-  /**
-   * Extract JWT from cookies (httpOnly) or Authorization header (fallback)
-   * Supports both cookie-based and bearer token auth
-   */
   private getAccessToken(req: any): string {
     return (
-      req.cookies?.accessToken ||
+      req.cookies?.mobi_session_token ||
       req.headers.authorization?.replace('Bearer ', '') ||
       ''
     );
   }
 
+  // ─────────────────────────────────────────────
+  // FOLLOW-UPS — direct service calls (no HTTP hop)
+  // ─────────────────────────────────────────────
+
+  /**
+   * GET /mobileshop/crm/follow-ups
+   */
+  @Get('follow-ups')
+  async getMyFollowUps(
+    @Request() req,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
+    const tenantId = req.user.tenantId;
+    const userId = req.user.userId || req.user.sub;
+
+    return this.followUpsService.listMyFollowUps(
+      tenantId,
+      userId,
+      {},
+      false,
+      {
+        skip: skip ? parseInt(skip, 10) : undefined,
+        take: take ? parseInt(take, 10) : undefined,
+      },
+    );
+  }
+
+  /**
+   * GET /mobileshop/crm/follow-ups/counts
+   */
+  @Get('follow-ups/counts')
+  async getFollowUpCounts(@Request() req) {
+    const tenantId = req.user.tenantId;
+    const userId = req.user.userId || req.user.sub;
+
+    return this.followUpsService.getMyFollowUpCounts(tenantId, userId);
+  }
+
+  /**
+   * POST /mobileshop/crm/follow-ups
+   */
+  @Post('follow-ups')
+  async createFollowUp(@Request() req, @Body() dto: CreateFollowUpDto) {
+    const tenantId = req.user.tenantId;
+    const userId = req.user.userId || req.user.sub;
+    const role = req.user.role as UserRole;
+
+    return this.followUpsService.createFollowUp(tenantId, userId, role, dto);
+  }
+
+  /**
+   * PATCH /mobileshop/crm/follow-ups/:followUpId/status
+   */
+  @Patch('follow-ups/:followUpId/status')
+  async updateFollowUpStatus(
+    @Request() req,
+    @Param('followUpId') followUpId: string,
+    @Body('status') status: FollowUpStatus,
+  ) {
+    const tenantId = req.user.tenantId;
+    const userId = req.user.userId || req.user.sub;
+    const role = req.user.role as UserRole;
+
+    return this.followUpsService.updateStatus(
+      tenantId,
+      userId,
+      role,
+      followUpId,
+      status,
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // DASHBOARD — HTTP proxy (complex aggregation)
+  // ─────────────────────────────────────────────
+
   /**
    * GET /mobileshop/crm/dashboard
-   * Get CRM metrics for MobileShop home screen
-   * Proxy to CORE: GET /api/core/crm-dashboard
    */
   @Get('dashboard')
   async getDashboard(
@@ -58,67 +135,15 @@ export class MobileShopCrmController extends TenantScopedController {
     const headers = this.crmIntegration.buildAuthHeaders(
       this.getAccessToken(req),
     );
-
     return this.crmIntegration.getDashboardMetrics(headers, preset, shopId);
   }
 
-  /**
-   * GET /mobileshop/crm/follow-ups
-   * Get follow-ups assigned to current user
-   * Proxy to CORE: GET /api/core/follow-ups/my
-   */
-  @Get('follow-ups')
-  async getMyFollowUps(@Request() req) {
-    const headers = this.crmIntegration.buildAuthHeaders(
-      this.getAccessToken(req),
-    );
-
-    return this.crmIntegration.getMyFollowUps(headers);
-  }
-
-  /**
-   * GET /mobileshop/crm/follow-ups/counts
-   * Get counts of pending and overdue follow-ups
-   * Proxy to CORE: GET /api/core/follow-ups/counts
-   */
-  @Get('follow-ups/counts')
-  async getFollowUpCounts(@Request() req) {
-    const headers = this.crmIntegration.buildAuthHeaders(
-      this.getAccessToken(req),
-    );
-
-    return this.crmIntegration.getFollowUpCounts(headers);
-  }
-
-  /**
-   * POST /mobileshop/crm/follow-ups
-   * Create a follow-up from Job Card or Customer screen
-   * Proxy to CORE: POST /api/core/follow-ups
-   */
-  @Post('follow-ups')
-  async createFollowUp(
-    @Request() req,
-    @Body()
-    data: {
-      customerId: string;
-      type: string;
-      purpose: string;
-      followUpAt: string;
-      assignedToUserId?: string;
-      shopId?: string;
-    },
-  ) {
-    const headers = this.crmIntegration.buildAuthHeaders(
-      this.getAccessToken(req),
-    );
-
-    return this.crmIntegration.createFollowUp(headers, data);
-  }
+  // ─────────────────────────────────────────────
+  // CUSTOMER TIMELINE — HTTP proxy
+  // ─────────────────────────────────────────────
 
   /**
    * GET /mobileshop/crm/customer-timeline/:customerId
-   * Get timeline for a customer
-   * Proxy to CORE: GET /api/core/customer-timeline/{customerId}
    */
   @Get('customer-timeline/:customerId')
   async getCustomerTimeline(
@@ -129,18 +154,15 @@ export class MobileShopCrmController extends TenantScopedController {
     const headers = this.crmIntegration.buildAuthHeaders(
       this.getAccessToken(req),
     );
-
-    return this.crmIntegration.getCustomerTimeline(
-      headers,
-      customerId,
-      sources,
-    );
+    return this.crmIntegration.getCustomerTimeline(headers, customerId, sources);
   }
+
+  // ─────────────────────────────────────────────
+  // WHATSAPP — direct sender
+  // ─────────────────────────────────────────────
 
   /**
    * POST /mobileshop/crm/whatsapp/send
-   * Send WhatsApp message from MobileShop event
-   * Proxy to CORE: POST /api/modules/whatsapp/send
    */
   @Post('whatsapp/send')
   async sendWhatsApp(
@@ -150,27 +172,24 @@ export class MobileShopCrmController extends TenantScopedController {
       customerId: string;
       phone: string;
       message: string;
-      source?: string; // e.g., 'JOB_READY', 'INVOICE_CREATED'
+      source?: string;
       sourceId?: string;
     },
   ) {
     const headers = this.crmIntegration.buildAuthHeaders(
       this.getAccessToken(req),
     );
-
     return this.crmIntegration.sendWhatsAppMessage(headers, data);
   }
 
   /**
-   * HEALTH CHECK
-   * Optional: Verify CRM is reachable
+   * GET /mobileshop/crm/health
    */
   @Get('health')
   async health(@Request() req) {
     const headers = this.crmIntegration.buildAuthHeaders(
       this.getAccessToken(req),
     );
-
     const isHealthy = await this.crmIntegration.healthCheck(headers);
     return { status: isHealthy ? 'OK' : 'DOWN', service: 'CRM' };
   }

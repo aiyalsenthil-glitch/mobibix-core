@@ -41,10 +41,10 @@ export class PrismaService
       'ApprovalRequest',
       'JobCard',
       'B2BPurchaseOrder',
-      'CustomerAlert',
-      'CustomerFollowUp',
-      'CustomerReminder',
-      'Contact',
+      // CustomerAlert - no deletedAt field (uses resolved boolean)
+      // CustomerFollowUp - no deletedAt field (uses status: PENDING/DONE/CANCELLED)
+      // CustomerReminder - no deletedAt field (uses status: SCHEDULED/SENT/FAILED)
+      // Contact - no deletedAt field
     ]);
 
     const multiTenantModels = new Set<string>([
