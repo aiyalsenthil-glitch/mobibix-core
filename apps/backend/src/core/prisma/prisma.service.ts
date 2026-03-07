@@ -34,12 +34,16 @@ export class PrismaService
       'Party',
       'Shop',
       'Invoice',
-      'Role', // NEW
-      'UserTenant', // NEW
-      'ShopStaff', // NEW
-      'StaffInvite', // NEW
-      'ApprovalRequest', // NEW
-      'JobCard', // NEW
+      'Role',
+      'UserTenant',
+      'ShopStaff',
+      'StaffInvite',
+      'ApprovalRequest',
+      'JobCard',
+      'B2BPurchaseOrder',
+      'CustomerAlert',
+      'CustomerFollowUp',
+      'CustomerReminder',
     ]);
 
     const multiTenantModels = new Set<string>([
@@ -56,10 +60,29 @@ export class PrismaService
       'StaffInvite',
       'ApprovalRequest',
       'JobCard',
-      'Product',
-      'StockLog',
-      'Inventory',
+      'ShopProduct', // FIXED: Was missing!
+      'StockLedger', // FIXED: Was missing!
+      'StockCorrection', // FIXED: Was missing!
+      'IMEI', // FIXED: Was missing!
+      'NotificationLog', // FIXED: Was missing!
+      'AiUsageLog', // FIXED: Was missing!
+      'UsageSnapshot', // FIXED: Was missing!
+      'FeatureFlag', // FIXED: Was missing!
+      'CustomerAlert',
+      'CustomerFollowUp',
+      'CustomerReminder',
+      'B2BPurchaseOrder',
+      'GRN',
+      'FinancialEntry',
+      'LoyaltyTransaction',
+      'LoyaltyAdjustment',
+      'LoyaltyConfig',
       'DeletionRequest',
+      'EmailLog',
+      'WhatsAppLog',
+      'WhatsAppCampaign',
+      'WhatsAppDailyUsage',
+      'AuditLog', // FIXED: Was missing!
     ]);
 
     const extendedClient = this.$extends({
@@ -89,13 +112,37 @@ export class PrismaService
                 }
               }
 
-              // 2. Tenant Isolation
+              // 2. Tenant Isolation & Global Deletion Lock
               if (
                 model &&
                 multiTenantModels.has(model) &&
                 tenantId &&
                 !skipTenantCheck
               ) {
+                // 🛡️ GLOBAL DELETION LOCK: Block mutations for deletion-pending tenants
+                const isMutation = [
+                  'create',
+                  'createMany',
+                  'update',
+                  'updateMany',
+                  'delete',
+                  'deleteMany',
+                  'upsert',
+                ].includes(operation);
+
+                if (isMutation) {
+                  const tenant = await this.tenant.findUnique({
+                    where: { id: tenantId },
+                    select: { deletionRequestPending: true },
+                  });
+
+                  if (tenant?.deletionRequestPending) {
+                    throw new Error(
+                      'TENANT_DELETION_PENDING: Mutations are blocked for accounts pending deletion.',
+                    );
+                  }
+                }
+
                 if (
                   [
                     'findUnique',
@@ -118,9 +165,18 @@ export class PrismaService
                   };
                 }
 
-                if (['create', 'upsert'].includes(operation)) {
+                if (['create', 'upsert', 'createMany'].includes(operation)) {
                   if (operation === 'create') {
                     args.data = { ...(args.data ?? {}), tenantId };
+                  } else if (operation === 'createMany') {
+                    if (Array.isArray(args.data)) {
+                      args.data = args.data.map((item: any) => ({
+                        ...item,
+                        tenantId,
+                      }));
+                    } else if (args.data) {
+                      args.data.tenantId = tenantId;
+                    }
                   } else if (operation === 'upsert') {
                     args.create = { ...(args.create ?? {}), tenantId };
                     args.where = { ...(args.where ?? {}), tenantId };
@@ -133,7 +189,7 @@ export class PrismaService
               const duration = Date.now() - start;
               if (duration > 500) {
                 console.warn(
-                  `⚠️  Slow DB Query: ${model}.${operation} took ${duration}ms`,
+                  `⚠️ Slow DB Query: ${model}.${operation} took ${duration}ms`,
                   JSON.stringify(args).slice(0, 200),
                 );
               }
@@ -144,6 +200,7 @@ export class PrismaService
     });
 
     Object.assign(this, extendedClient);
+
   }
 
   async onModuleInit() {

@@ -112,6 +112,9 @@ export class TenantStatusGuard implements CanActivate {
           ],
         },
       },
+      include: {
+        plan: true,
+      },
       orderBy: [
         { status: 'asc' }, // ACTIVE > PAST_DUE > TRIAL
         { startDate: 'desc' },
@@ -126,6 +129,20 @@ export class TenantStatusGuard implements CanActivate {
       if (scheduled) throw new ForbiddenException('SUBSCRIPTION_NOT_STARTED');
 
       throw new ForbiddenException('SUBSCRIPTION_REQUIRED');
+    }
+
+    // 🛡️ AI TOKEN QUOTA CHECK
+    const isAiRequest = originalUrl.includes('/ai/') || originalUrl.includes('/assistant/');
+    if (isAiRequest) {
+      const limit = subscription.plan.maxAiTokens ?? 0;
+      if (limit > 0 && subscription.aiTokensUsed >= limit) {
+        throw new ForbiddenException({
+          message: 'AI_TOKEN_QUOTA_EXCEEDED',
+          limit,
+          used: subscription.aiTokensUsed,
+          resetAt: subscription.lastQuotaResetAt,
+        });
+      }
     }
 
     const softGracePeriodEnd = new Date(subscription.endDate || now);
@@ -147,6 +164,7 @@ export class TenantStatusGuard implements CanActivate {
     const isBeyondMutationGrace = now > mutationGraceEnd;
     const isBeyondSoftGrace = subscription.endDate && now > softGracePeriodEnd;
     const isPastDue = subscription.status === SubscriptionStatus.PAST_DUE;
+
 
     // 2️⃣ Hard Block: EXPIRED or beyond Soft Grace Period (14 days)
     if (subscription.status === SubscriptionStatus.EXPIRED || isBeyondSoftGrace) {
