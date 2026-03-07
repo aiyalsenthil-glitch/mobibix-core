@@ -3115,3 +3115,17 @@ enum CreditNoteStatus {
   REFUNDED
   VOIDED
 }
+
+model SystemAiConfig {
+  id               String   @id @default(cuid())
+  provider         String   @default("OLLAMA") // OLLAMA, OPENAI, ANTHROPIC 
+  baseUrl          String?  // e.g., http://localhost_REPLACED:11434
+  apiKey           String?  // Keep null for OLLAMA, use API keys for cloud providers
+  defaultModel     String   @default("llama3:8b")
+  embeddingModel   String?  @default("nomic-embed-text")
+  isActive         Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now())
+
+  @@map("mb_system_ai_config")
+}
