@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Req, Body, Patch } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AdminRolesGuard } from '../guards/admin-roles.guard';
 import { AdminRoles } from '../decorators/admin.decorator';
@@ -49,6 +49,41 @@ export class AdminAiController {
       features: Object.values(aggregate),
       recentLogs: logs.slice(0, 50),
     };
+  }
+
+  @Get('config')
+  async getConfig() {
+    let config = await this.prisma.systemAiConfig.findFirst();
+    if (!config) {
+      config = await this.prisma.systemAiConfig.create({
+        data: {}, // Uses defaults
+      });
+    }
+    return config;
+  }
+
+  @Patch('config')
+  async updateConfig(@Body() body: any) {
+    let config = await this.prisma.systemAiConfig.findFirst();
+    if (!config) {
+      config = await this.prisma.systemAiConfig.create({ data: {} });
+    }
+    
+    // Whitelist allowed fields
+    const { provider, baseUrl, apiKey, defaultModel, embeddingModel, isActive } = body;
+    const dataToUpdate: any = {};
+    if (provider !== undefined) dataToUpdate.provider = provider;
+    if (baseUrl !== undefined) dataToUpdate.baseUrl = baseUrl;
+    if (apiKey !== undefined) dataToUpdate.apiKey = apiKey;
+    if (defaultModel !== undefined) dataToUpdate.defaultModel = defaultModel;
+    if (embeddingModel !== undefined) dataToUpdate.embeddingModel = embeddingModel;
+    if (isActive !== undefined) dataToUpdate.isActive = isActive;
+
+    const updated = await this.prisma.systemAiConfig.update({
+      where: { id: config.id },
+      data: dataToUpdate,
+    });
+    return updated;
   }
 
   @Get('logs')

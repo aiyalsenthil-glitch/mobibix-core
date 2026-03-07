@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { catchError, timeout } from 'rxjs/operators';
 import { randomUUID } from 'crypto';
+import { PrismaService } from '../prisma/prisma.service';
 
 export interface AiTaskRequest {
   tenantJwt: string;
@@ -12,6 +13,12 @@ export interface AiTaskRequest {
   sessionId?: string;
   language?: string;
   context?: Record<string, unknown>;
+  modelConfig?: {
+    provider: string;
+    baseUrl: string | null;
+    apiKey: string | null;
+    model: string;
+  };
 }
 
 export interface AiTaskResult {
@@ -38,6 +45,7 @@ export class AiCoreClient {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly prisma: PrismaService,
   ) {
     this.aiCoreUrl = this.configService.get<string>('AI_CORE_URL') || 'http://localhost_REPLACED:3002';
     // Match INTERNAL_API_KEY from AI Core config
@@ -47,6 +55,22 @@ export class AiCoreClient {
   async sendTask(dto: AiTaskRequest): Promise<AiTaskResult> {
     const requestId = randomUUID();
     this.logger.debug(`Sending task ${requestId} to ai-core`);
+
+    // Fetch dynamic AI Config globally configured via Admin Panel
+    const config = await this.prisma.systemAiConfig.findFirst();
+    if (config && config.isActive) {
+      dto.modelConfig = {
+        provider: config.provider,
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        model: config.defaultModel,
+      };
+    } else if (config && !config.isActive) {
+      throw new HttpException(
+        'AI Services are currently disabled across the platform by the administrator.',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
 
     try {
       const { data } = await firstValueFrom(

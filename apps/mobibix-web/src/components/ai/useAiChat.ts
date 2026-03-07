@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { fetchProtectedClient } from "@/lib/auth/fetch-client";
+import { authenticatedFetch, extractData } from "@/services/auth.api";
 
 export interface ChatMessage {
   id: string;
@@ -33,7 +33,7 @@ export function useAiChat(options: { module: string; language?: string }) {
     setQuotaExhausted(false);
 
     try {
-      const { data, res } = await fetchProtectedClient("/ai/chat", {
+      const res = await authenticatedFetch("/ai/chat", {
         method: "POST",
         body: JSON.stringify({
           message: text,
@@ -42,6 +42,8 @@ export function useAiChat(options: { module: string; language?: string }) {
           language: options.language || "ENGLISH",
         }),
       });
+
+      const data = await extractData(res);
 
       if (!res.ok) {
         throw data;
