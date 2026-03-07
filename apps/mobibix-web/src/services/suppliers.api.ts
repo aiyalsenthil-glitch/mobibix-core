@@ -197,3 +197,21 @@ export async function getSupplierOutstanding(
 
   return extractData(response);
 }
+
+/**
+ * Get supplier transactions
+ */
+export async function getSupplierTransactions(
+  supplierId: string,
+): Promise<{ purchases: any[]; payments: any[] }> {
+  const response = await authenticatedFetch(
+    `/suppliers/${supplierId}/transactions`,
+  );
+
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch transactions");
+  }
+
+  return extractData(response);
+}

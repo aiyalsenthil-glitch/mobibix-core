@@ -258,11 +258,11 @@ export class TenantUsageController {
       where: {
         tenantId,
         module,
-        status: { in: ['ACTIVE', 'TRIAL', 'PAST_DUE', 'GRACE_PERIOD'] },
+        status: { in: ['ACTIVE', 'TRIAL', 'PAST_DUE'] },
       },
       include: {
         plan: {
-          include: { features: true },
+          include: { planFeatures: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -272,11 +272,7 @@ export class TenantUsageController {
       return { aiTokensUsed: 0, aiTokensLimit: 0, resetAt: null };
     }
 
-    // AI token limit from plan features
-    const aiTokenFeature = subscription.plan?.features?.find(
-      (f: any) => f.featureKey === 'AI_TOKENS_PER_MONTH',
-    );
-    const aiTokensLimit = aiTokenFeature?.limitValue ?? 0;
+    const aiTokensLimit = subscription.plan?.maxAiTokens ?? 0;
 
     return {
       aiTokensUsed: subscription.aiTokensUsed ?? 0,

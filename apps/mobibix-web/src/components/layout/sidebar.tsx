@@ -24,6 +24,8 @@ import {
   Gift,
   ShoppingBag,
   FileText,
+  ClipboardList,
+  FileMinus,
 } from "lucide-react";
 import { AiQuotaBadge } from "@/components/common/AiQuotaBadge";
 
@@ -38,6 +40,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, requiredPermission: "DASHBOARD_VIEW" },
   { label: "Sales", href: "/sales", icon: Banknote, requiredPermission: "SALES_VIEW" },
   { label: "Job Cards", href: "/jobcards", icon: Wrench, requiredPermission: "REPAIR_MANAGE" },
+  { label: "Quotations", href: "/quotations", icon: ClipboardList, requiredPermission: "SALES_VIEW" },
   { label: "Products", href: "/products", icon: Tags, requiredPermission: "INVENTORY_VIEW" },
   { label: "Inventory", href: "/inventory", icon: PackageSearch, requiredPermission: "INVENTORY_VIEW" },
   // 🔒 Restock (B2B Wholesale): hidden until backend is wired
@@ -51,6 +54,7 @@ const navItems: NavItem[] = [
   { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift, requiredPermission: "SHOP_MANAGE" },
   { label: "Purchase Orders", href: "/purchase-orders", icon: FileText, requiredPermission: "INVENTORY_VIEW" },
   { label: "Supplier Invoices", href: "/purchases", icon: Inbox, requiredPermission: "INVENTORY_VIEW" },
+  { label: "Credit Notes", href: "/credit-notes", icon: FileMinus, requiredPermission: "SALES_VIEW" },
   { label: "Sales Receipts", href: "/receipts", icon: CreditCard, requiredPermission: "SALES_VIEW" },
   { label: "Reports", href: "/reports", icon: LineChart, requiredPermission: "SALES_VIEW" }, // Using SALES_VIEW as reports are mostly sales-based
   { label: "Shops", href: "/shops", icon: Store, requiredPermission: "SHOP_MANAGE" },

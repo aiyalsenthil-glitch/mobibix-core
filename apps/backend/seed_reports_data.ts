@@ -52,7 +52,8 @@ async function main() {
     const date = job.createdAt;
     
     // Calculate totals
-    let subTotal = (job.laborCharge || 0) * 100;
+    const laborRate = job.laborCharge || 500;
+    let subTotal = laborRate;
     interface InvoiceItemData {
         id: string;
         invoiceId: string;
@@ -66,39 +67,40 @@ async function main() {
         costAtSale: number;
     }
     let items: InvoiceItemData[] = [];
-    
+
     // Add Labor Item
     items.push({
         id: createId(),
         invoiceId: invId,
         shopProductId: serviceProduct.id,
         quantity: 1,
-        rate: job.laborCharge || 500,
+        rate: laborRate,
         hsnCode: '9987',
         gstRate: 18,
-        gstAmount: Math.round(subTotal * 0.18),
-        lineTotal: Math.round(subTotal * 1.18),
+        gstAmount: Math.round(laborRate * 0.18),
+        lineTotal: Math.round(laborRate * 1.18),
         costAtSale: 0
     });
 
-    // Add Parts
+    // Add Parts (salePrice/costPrice stored in paise; rate/subTotal in rupees)
     for (const part of job.parts) {
         if (!part.product) continue;
-        const partPrice = (part.product.salePrice || 1000);
-        const partCost = (part.product.costPrice || 800);
+        const partRateRupees = Math.round((part.product.salePrice || 1000) / 100);
+        const partCostRupees = Math.round((part.product.costPrice || 800) / 100);
+        const lineBase = partRateRupees * part.quantity;
         items.push({
             id: createId(),
             invoiceId: invId,
             shopProductId: part.shopProductId,
             quantity: part.quantity,
-            rate: Math.round(partPrice / 100),
+            rate: partRateRupees,
             hsnCode: part.product.hsnCode || '8517',
             gstRate: 18,
-            gstAmount: Math.round(partPrice * 0.18),
-            lineTotal: Math.round(partPrice * 1.18),
-            costAtSale: partCost
+            gstAmount: Math.round(lineBase * 0.18),
+            lineTotal: Math.round(lineBase * 1.18),
+            costAtSale: partCostRupees
         });
-        subTotal += partPrice;
+        subTotal += lineBase;
     }
 
     const totalGst = Math.round(subTotal * 0.18);

@@ -324,6 +324,55 @@ export class SuppliersService {
   }
 
   /**
+   * Get recent transactions (purchases and payments) for a supplier
+   */
+  async getTransactions(tenantId: string, supplierId: string) {
+    const supplier = await this.prisma.party.findFirst({
+      where: {
+        id: supplierId,
+        tenantId,
+        partyType: { in: ['VENDOR', 'BOTH'] },
+      },
+    });
+
+    if (!supplier) {
+      throw new NotFoundException(`Supplier with ID "${supplierId}" not found`);
+    }
+
+    const purchases = await this.prisma.purchase.findMany({
+      where: { tenantId, globalSupplierId: supplierId },
+      orderBy: { invoiceDate: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        invoiceNumber: true,
+        invoiceDate: true,
+        grandTotal: true,
+        paidAmount: true,
+        status: true,
+      },
+    });
+
+    const payments = await this.prisma.supplierPayment.findMany({
+      where: { tenantId, globalSupplierId: supplierId },
+      orderBy: { paymentDate: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        amount: true,
+        paymentMethod: true,
+        paymentDate: true,
+        paymentReference: true,
+      },
+    });
+
+    return {
+      purchases,
+      payments,
+    };
+  }
+
+  /**
    * Map Prisma supplier to response DTO
    */
   private mapToResponseDto(supplier: any): SupplierResponseDto {

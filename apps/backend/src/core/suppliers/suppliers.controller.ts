@@ -137,4 +137,13 @@ export class SuppliersController {
     );
     return { gstin, isDuplicate };
   }
+
+  /**
+   * GET /api/suppliers/:id/transactions
+   * Get recent transactions for a supplier
+   */
+  @Get(':id/transactions')
+  async getTransactions(@Req() req: any, @Param('id') id: string) {
+    return this.suppliersService.getTransactions(req.user.tenantId, id);
+  }
 }

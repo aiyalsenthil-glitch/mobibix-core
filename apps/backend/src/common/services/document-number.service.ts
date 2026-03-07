@@ -389,6 +389,16 @@ export class DocumentNumberService {
           numberLength: 4,
           resetPolicy: ResetPolicy.YEARLY,
         },
+        {
+          shopId,
+          documentType: DocumentType.CREDIT_NOTE,
+          prefix: shopPrefix,
+          separator: '-',
+          documentCode: 'CN',
+          yearFormat: YearFormat.FY,
+          numberLength: 4,
+          resetPolicy: ResetPolicy.YEARLY,
+        },
       ];
 
       // Use createMany to insert all settings at once
