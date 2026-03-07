@@ -27,6 +27,7 @@ import { ReportsHardeningModule } from './reports/reports-hardening.module';
 import { SystemModule } from './system/system.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { AppConfigModule } from './config/config.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { AppConfigModule } from './config/config.module';
     SystemModule,
     PermissionsModule,
     AppConfigModule,
+    AiModule,
   ],
   exports: [
     AuthModule,

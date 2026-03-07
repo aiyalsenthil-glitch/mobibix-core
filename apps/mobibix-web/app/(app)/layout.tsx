@@ -9,8 +9,9 @@ import { SubscriptionBanner } from "@/components/layout/SubscriptionBanner";
 import { getSubscription, type SubscriptionDetails } from "@/services/tenant.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
-
 import { GlobalApprovalInterceptor } from "@/components/auth/GlobalApprovalInterceptor";
+import { AiChatPanel } from "@/components/ai/AiChatPanel";
+import { SparklesIcon } from "lucide-react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -22,6 +23,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme: _theme } = useTheme();
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [initialPrompt, setInitialPrompt] = useState<string | undefined>();
+
+  useEffect(() => {
+    const handleOpenAi = (e: CustomEvent) => {
+      setAiOpen(true);
+      if (e.detail?.prompt) {
+        setInitialPrompt(e.detail.prompt);
+      }
+    };
+    window.addEventListener("open-ai-chat", handleOpenAi as EventListener);
+    return () => window.removeEventListener("open-ai-chat", handleOpenAi as EventListener);
+  }, []);
 
   useEffect(() => {
     if (isLoading || !authUser || !authUser.tenantId) return;
@@ -135,6 +149,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <GlobalApprovalInterceptor />
         {children}
       </main>
+
+      {/* Global AI Chat Integration */}
+      <AiChatPanel 
+        isOpen={aiOpen} 
+        onClose={() => {
+          setAiOpen(false);
+          setInitialPrompt(undefined);
+        }} 
+        initialPrompt={initialPrompt}
+      />
+      {!aiOpen && (
+        <button
+          onClick={() => setAiOpen(true)}
+          className="fixed bottom-6 right-6 z-40 bg-teal-600 hover:bg-teal-700 text-white rounded-full p-4 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-2 group border-4 border-white dark:border-slate-900 focus:outline-none focus:ring-4 focus:ring-teal-500/30"
+          title="Ask AI Assistant"
+        >
+          <SparklesIcon className="w-6 h-6 animate-pulse" />
+          <span className="font-semibold px-1 max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap">
+            Ask AI
+          </span>
+        </button>
+      )}
     </div>
   );
 }

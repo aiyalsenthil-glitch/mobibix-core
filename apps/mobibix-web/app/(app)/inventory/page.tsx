@@ -28,6 +28,7 @@ import {
   Store,
   Box
 } from "lucide-react";
+import { TriggerAiButton } from "@/components/ai/TriggerAiButton";
 
 export default function InventoryPage() {
   const { theme } = useTheme();
@@ -112,9 +113,15 @@ export default function InventoryPage() {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className={`text-2xl font-bold mb-1 ${isDark ? "text-white" : "text-gray-900"}`}>
-            Inventory Management
-          </h1>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className={`text-2xl font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
+              Inventory Management
+            </h1>
+            <TriggerAiButton 
+              prompt="Analyze my inventory and tell me which items need restocking urgently." 
+              label="✨ AI Stock Advice"
+            />
+          </div>
           <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
             Track stock levels, manage costs, and monitor inventory health
           </p>

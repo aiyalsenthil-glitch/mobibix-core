@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { ValueSnapshotWidget } from "@/components/dashboard/ValueSnapshotWidget";
 import type { Shop } from "@/services/shops.api";
+import { TriggerAiButton } from "@/components/ai/TriggerAiButton";
 
 interface DashboardData {
   today?: {
@@ -207,10 +208,16 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              {isAllShops ? "Enterprise Overview" : "Dashboard Overview"}
-            </h1>
-            <p className="text-muted-foreground text-sm">
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                {isAllShops ? "Enterprise Overview" : "Dashboard Overview"}
+              </h1>
+              <TriggerAiButton 
+                prompt="Summarize today's shop performance, including total revenue and pending repair jobs." 
+                label="✨ AI Shop Analysis"
+              />
+            </div>
+            <p className="text-muted-foreground text-sm mt-1">
               {isAllShops
                 ? "Consolidated metrics across all shops."
                 : "Monitor your business performance in real-time."}
