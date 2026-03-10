@@ -492,4 +492,30 @@ export class StockService {
       potentialRevenue,
     };
   }
+
+  async getImeiDetails(tenantId: string, imei: string) {
+    const imeiRecord = await this.prisma.iMEI.findUnique({
+      where: { tenantId_imei: { tenantId, imei } },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            isSerialized: true,
+            salePrice: true,
+            costPrice: true,
+            gstRate: true,
+            hsnCode: true,
+          },
+        },
+      },
+    });
+
+    if (!imeiRecord) {
+      throw new BadRequestException(`IMEI "${imei}" not found in your inventory.`);
+    }
+
+    return imeiRecord;
+  }
 }

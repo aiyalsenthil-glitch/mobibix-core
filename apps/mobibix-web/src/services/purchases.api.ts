@@ -22,6 +22,8 @@ export interface PurchaseItem {
   subTotal: number;
   gstAmount: number;
   total: number;
+  imeis?: string[];
+  serialNumbers?: string[];
 }
 
 export interface SupplierPayment {
@@ -67,6 +69,8 @@ export interface PurchaseItemDto {
   quantity: number;
   purchasePrice: number;
   gstRate?: number;
+  imeis?: string[];
+  serialNumbers?: string[];
 }
 
 export interface CreatePurchaseDto {

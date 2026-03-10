@@ -10,6 +10,7 @@ import {
   type PurchaseItemDto,
   type PaymentMode,
 } from "@/services/purchases.api";
+import { listProducts, type ShopProduct } from "@/services/products.api";
 import { listPurchaseOrders, type PurchaseOrder } from "@/services/purchase-orders.api";
 import { listGrns, type GRN } from "@/services/grn.api";
 import { authenticatedFetch } from "@/services/auth.api";
@@ -58,6 +59,13 @@ export default function NewPurchasePage() {
   const [selectedVoucherId, setSelectedVoucherId] = useState<string>("");
   const [selectedVoucherBalance, setSelectedVoucherBalance] = useState<number>(0);
   const [applyAdvanceAmount, setApplyAdvanceAmount] = useState<number>(0);
+
+  // Product Search
+  const [products, setProducts] = useState<ShopProduct[]>([]);
+  const [productSearch, setProductSearch] = useState("");
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+  const [imeisText, setImeisText] = useState("");
+  const [serialNumbersText, setSerialNumbersText] = useState("");
 
   // Fetch advance vouchers when supplier is selected
   const fetchSupplierAdvances = async (supplierId: string) => {
@@ -112,7 +120,7 @@ export default function NewPurchasePage() {
     gstRate: 18,
   });
 
-  // Load shops and suppliers
+  // Load shops and products
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -126,6 +134,14 @@ export default function NewPurchasePage() {
           shopsData = await listShops();
           if (shopsData.length > 0) {
             setFormData((prev) => ({ ...prev, shopId: shopsData[0].id }));
+            
+            // Load products for the first shop
+            try {
+              const productsResult = await listProducts(shopsData[0].id);
+              setProducts(Array.isArray(productsResult) ? productsResult : productsResult.data);
+            } catch (pErr) {
+              console.error("Failed to load products:", pErr);
+            }
           }
         } catch (err: unknown) {
           console.error("Failed to load shops:", err);
@@ -141,10 +157,52 @@ export default function NewPurchasePage() {
     loadData();
   }, []);
 
+  // Hotfix: reload products when shopId changes
+  useEffect(() => {
+    if (formData.shopId) {
+      listProducts(formData.shopId).then(res => {
+        setProducts(Array.isArray(res) ? res : res.data);
+      }).catch(console.error);
+    }
+  }, [formData.shopId]);
+
+  const selectProduct = (product: ShopProduct) => {
+    setCurrentItem({
+      ...currentItem,
+      shopProductId: product.id,
+      description: product.name,
+      purchasePrice: product.costPrice || 0,
+      gstRate: product.gstRate || 0,
+    });
+    setProductSearch(product.name);
+    setIsProductDropdownOpen(false);
+  };
+
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(productSearch.toLowerCase())
+  ).slice(0, 10);
+
   const handleAddItem = () => {
     if (!currentItem.description || currentItem.quantity <= 0) {
       setError("Please fill in item details");
       return;
+    }
+
+    const selectedProd = products.find(p => p.id === currentItem.shopProductId);
+    const isSerialized = selectedProd?.isSerialized;
+
+    // Process IMEIs/Serials
+    const imeis = imeisText.split(/[\n,]/).map(s => s.trim()).filter(s => s.length > 0);
+    const serialNumbers = serialNumbersText.split(/[\n,]/).map(s => s.trim()).filter(s => s.length > 0);
+
+    if (isSerialized) {
+      const trackingType = selectedProd?.type === "DEVICE" ? "IMEIs" : "Serial Numbers";
+      const actualCount = selectedProd?.type === "DEVICE" ? imeis.length : serialNumbers.length;
+      
+      if (actualCount !== currentItem.quantity) {
+        setError(`Please enter exactly ${currentItem.quantity} ${trackingType}. (Got ${actualCount})`);
+        return;
+      }
     }
 
     const subtotal = currentItem.quantity * currentItem.purchasePrice;
@@ -156,6 +214,8 @@ export default function NewPurchasePage() {
       total: number;
     } = {
       ...currentItem,
+      imeis: imeis.length > 0 ? imeis : undefined,
+      serialNumbers: serialNumbers.length > 0 ? serialNumbers : undefined,
       subTotal: subtotal,
       gstAmount,
       total: subtotal + gstAmount,
@@ -172,6 +232,9 @@ export default function NewPurchasePage() {
       purchasePrice: 0,
       gstRate: 18,
     });
+    setProductSearch("");
+    setImeisText("");
+    setSerialNumbersText("");
     setError(null);
   };
 
@@ -730,30 +793,48 @@ export default function NewPurchasePage() {
             {/* Current Item Input */}
             <div className="mb-6 p-4 bg-gray-500/10 rounded-lg">
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
+                <div className="relative">
                   <label
                     className={`block text-sm font-medium mb-2 ${
                       theme === "dark" ? "text-gray-300" : "text-gray-700"
                     }`}
                   >
-                    Description
+                    Product / Description *
                   </label>
                   <input
                     type="text"
-                    value={currentItem.description}
-                    onChange={(e) =>
-                      setCurrentItem({
-                        ...currentItem,
-                        description: e.target.value,
-                      })
-                    }
+                    value={productSearch}
+                    onChange={(e) => {
+                      setProductSearch(e.target.value);
+                      setCurrentItem({ ...currentItem, description: e.target.value });
+                      setIsProductDropdownOpen(true);
+                    }}
+                    onFocus={() => setIsProductDropdownOpen(true)}
                     className={`w-full px-3 py-2 rounded-lg border ${
                       theme === "dark"
                         ? "bg-gray-800 border-gray-700 text-white"
                         : "bg-white border-gray-300 text-gray-900"
                     }`}
-                    placeholder="Item description"
+                    placeholder="Search product or enter description..."
                   />
+                  
+                  {isProductDropdownOpen && filteredProducts.length > 0 && (
+                    <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+                      {filteredProducts.map(p => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => selectProduct(p)}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                        >
+                          <div className="font-medium dark:text-white">{p.name}</div>
+                          <div className="text-xs text-gray-500">
+                            Type: {p.type} | Stock: {p.stockQty}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -837,6 +918,42 @@ export default function NewPurchasePage() {
                 </div>
               </div>
 
+              {/* Serialization Entry */}
+              {(() => {
+                const selectedProd = products.find(p => p.id === currentItem.shopProductId);
+                if (!selectedProd?.isSerialized) return null;
+
+                const isDevice = selectedProd.type === "DEVICE";
+                return (
+                  <div className="mb-4">
+                    <label
+                      className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
+                        theme === "dark" ? "text-gray-400" : "text-gray-500"
+                      }`}
+                    >
+                      {isDevice ? "IMEIs" : "Serial Numbers"} (Enter {currentItem.quantity})
+                    </label>
+                    <textarea
+                      value={isDevice ? imeisText : serialNumbersText}
+                      onChange={(e) => isDevice ? setImeisText(e.target.value) : setSerialNumbersText(e.target.value)}
+                      placeholder={`Enter ${isDevice ? "IMEIs" : "Serial Numbers"} separated by commas or new lines...`}
+                      className={`w-full p-3 text-sm rounded-lg border ${
+                        theme === "dark"
+                          ? "bg-gray-800 border-gray-700 text-white"
+                          : "bg-white border-gray-300 text-gray-900"
+                      } focus:ring-2 focus:ring-teal-500 outline-none`}
+                      rows={Math.min(currentItem.quantity, 5) || 2}
+                    />
+                    <div className="mt-1 text-[10px] text-gray-500 flex justify-between">
+                      <span>Separate each with a comma or new line</span>
+                      <span>
+                        Count: {(isDevice ? imeisText : serialNumbersText).split(/[\n,]/).filter(s => s.trim()).length} / {currentItem.quantity}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <button
                 type="button"
                 onClick={handleAddItem}
@@ -885,7 +1002,19 @@ export default function NewPurchasePage() {
                               : "border-gray-200"
                           }`}
                         >
-                          <td className="py-3 px-4">{item.description}</td>
+                          <td className="py-3 px-4">
+                            <div className="font-medium">{item.description}</div>
+                            {item.imeis && item.imeis.length > 0 && (
+                              <div className="text-[10px] text-gray-500 mt-1">
+                                IMEIs: {item.imeis.join(", ")}
+                              </div>
+                            )}
+                            {item.serialNumbers && item.serialNumbers.length > 0 && (
+                              <div className="text-[10px] text-gray-500 mt-1">
+                                Serials: {item.serialNumbers.join(", ")}
+                              </div>
+                            )}
+                          </td>
                           <td className="text-right py-3 px-4">
                             {item.quantity}
                           </td>

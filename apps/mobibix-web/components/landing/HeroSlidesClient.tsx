@@ -30,26 +30,59 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
   const [mounted, setMounted] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const scrollCooldown = useRef(0);
+  const slideRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
+  // Reset internal scroll positions when currentSlide changes
+  useEffect(() => {
+    Object.values(slideRefs.current).forEach(ref => {
+      if (ref) ref.scrollTop = 0;
+    });
+  }, [currentSlide]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowDown" && currentSlide < 5) setCurrentSlide(currentSlide + 1);
       else if (e.key === "ArrowUp" && currentSlide > 0) setCurrentSlide(currentSlide - 1);
     };
+
     const handleWheel = (e: WheelEvent) => {
       const now = Date.now();
       if (now - scrollCooldown.current < 800) return;
-      if (e.deltaY > 30 && currentSlide < 5) { setCurrentSlide((prev: number) => prev + 1); scrollCooldown.current = now; }
-      else if (e.deltaY < -30 && currentSlide > 0) { setCurrentSlide((prev: number) => prev - 1); scrollCooldown.current = now; }
+
+      const activeSlideRef = slideRefs.current[currentSlide];
+
+      // Handle internal scroll scrolling
+      if (activeSlideRef) {
+        const isAtBottom = Math.abs(activeSlideRef.scrollHeight - activeSlideRef.clientHeight - activeSlideRef.scrollTop) < 2;
+        const isAtTop = activeSlideRef.scrollTop <= 0;
+
+        // If scrolling down but not at bottom yet, let native scroll happen
+        if (e.deltaY > 0 && !isAtBottom) return;
+        // If scrolling up but not at top yet, let native scroll happen
+        if (e.deltaY < 0 && !isAtTop) return;
+      }
+
+      if (e.deltaY > 30 && currentSlide < 5) { 
+        setCurrentSlide((prev: number) => prev + 1); 
+        scrollCooldown.current = now; 
+      }
+      else if (e.deltaY < -30 && currentSlide > 0) { 
+        setCurrentSlide((prev: number) => prev - 1); 
+        scrollCooldown.current = now; 
+      }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("wheel", handleWheel, { passive: false });
-    return () => { window.removeEventListener("keydown", handleKeyDown); window.removeEventListener("wheel", handleWheel); };
+    return () => { 
+      window.removeEventListener("keydown", handleKeyDown); 
+      window.removeEventListener("wheel", handleWheel); 
+    };
   }, [currentSlide]);
 
   if (!mounted) return null;
@@ -74,12 +107,11 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
           }}
         >
           {/* Slide 1: Hero */}
-          <div className="h-screen w-screen flex items-center justify-center overflow-hidden relative">
+          <div className="h-screen w-screen flex flex-col items-center justify-start overflow-hidden relative pt-24 md:pt-32">
             <motion.div 
-               initial={{ opacity: 0, scale: 0.9, y: 50 }}
-               whileInView={{ opacity: 1, scale: 1, y: 0 }}
+               animate={currentSlide === 0 ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.9, y: 50 }}
                transition={{ duration: 0.8, delay: 0.2 }}
-               className="relative z-10 w-full max-w-5xl px-6 text-center pt-20"
+               className="relative z-10 w-full max-w-5xl px-6 text-center"
             >
                 <div className="mb-8 inline-flex items-center gap-3 px-4 py-1.5 rounded-full border border-border bg-muted/30 backdrop-blur-xl">
                     <span className="relative flex h-2 w-2">
@@ -89,16 +121,16 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Trusted by 500+ Mobile Retailers</span>
                 </div>
                 
-                <h1 className="text-5xl md:text-8xl font-black mb-8 tracking-tighter leading-tight text-foreground uppercase">
+                <h1 className="text-4xl md:text-8xl font-black mb-6 md:mb-8 tracking-tighter leading-tight text-foreground uppercase">
                     Run Your Mobile Shop <br />
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-500 to-indigo-500">Without the Chaos.</span>
                 </h1>
                 
-                <p className="text-muted-foreground text-lg md:text-xl font-bold max-w-2xl mx-auto mb-12 leading-relaxed italic">
+                <p className="text-muted-foreground text-lg md:text-xl font-bold max-w-2xl mx-auto mb-10 md:mb-12 leading-relaxed italic">
                     Stop losing track of IMEIs, repairs, and stock. Generate GST bills in 5 seconds. The #1 Billing & Inventory app for Indian Mobile Retailers.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                    <Link href="/auth" className="w-full sm:w-auto px-10 py-5 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-2xl shadow-primary/20">
+                    <Link href="/auth" className="w-full sm:w-auto px-10 py-5 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-2xl shadow-primary/20 text-center">
                         Start Free Trial
                     </Link>
                     <Link href="/pricing" className="w-full sm:w-auto px-10 py-5 rounded-2xl border border-border text-foreground text-center font-black uppercase tracking-widest hover:bg-muted transition-all">
@@ -112,12 +144,11 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
           </div>
 
           {/* Slide 2: Features */}
-          <div className="h-screen w-screen flex items-center justify-center overflow-hidden relative">
+          <div className="h-screen w-screen flex flex-col items-center justify-start overflow-hidden relative pt-24 md:pt-32">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              animate={currentSlide === 1 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.8 }}
-              className="w-full max-w-7xl px-6 py-20"
+              className="w-full max-w-7xl px-6 pb-20"
             >
               <div className="mb-14 text-center">
                 <span className="text-primary text-[10px] font-black uppercase tracking-[0.4em]">Stop Leaking Profits</span>
@@ -156,10 +187,9 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
           {/* Slide 3: Stats */}
           <div className="h-screen w-screen flex items-center justify-center overflow-hidden relative">
             <motion.div 
-               initial={{ opacity: 0, x: -50 }}
-               whileInView={{ opacity: 1, x: 0 }}
+               animate={currentSlide === 2 ? { opacity: 1, x: 0 } : { opacity: 0, x: -50 }}
                transition={{ duration: 0.8 }}
-               className="w-full max-w-7xl px-6 py-20"
+               className="w-full max-w-7xl px-6 pt-32 pb-32"
             >
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
                 <div>
@@ -211,40 +241,48 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
           </div>
 
           {/* Slide 5: Blog */}
-          <div className="h-screen w-screen flex items-center justify-center overflow-hidden relative overflow-y-auto">
+          <div 
+            ref={(el) => { if (el) slideRefs.current[4] = el; }}
+            className="h-screen w-screen overflow-y-auto overflow-x-hidden relative bg-background scrolls-custom"
+          >
              <BlogSection posts={posts} />
           </div>
 
-          {/* Slide 6: CTA */}
-          <div className="h-screen w-screen flex items-center justify-center overflow-hidden relative">
-            <motion.div 
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="flex flex-col items-center justify-center w-full max-w-5xl px-6 pt-10 pb-[380px]"
-            >
-              <h2 className="text-5xl md:text-8xl font-black text-foreground mb-10 tracking-tighter leading-tight uppercase italic text-center">
-                Stop Losing <br />Profits.
-              </h2>
-              <p className="text-muted-foreground text-lg md:text-xl font-bold max-w-xl mx-auto mb-12 text-center">
-                Join 5000+ successful shop owners across World. Set up your digital store in exactly 5 minutes.
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-8">
-                <Link href="/auth" className="w-full sm:w-auto px-12 py-5 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-2xl shadow-primary/20">
-                    Get Started Free
-                </Link>
-                <Link href="/pricing" className="w-full sm:w-auto px-12 py-5 rounded-2xl border border-border text-foreground font-black uppercase tracking-widest hover:bg-muted transition-all">
-                    View Pricing
-                </Link>
-              </div>
-              <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">No credit card required · 14-day free trial</p>
-            </motion.div>
+          {/* Slide 6: CTA + Footer */}
+          <div 
+            ref={(el) => { if (el) slideRefs.current[5] = el; }}
+            className="h-screen w-screen overflow-y-auto overflow-x-hidden relative bg-background scrolls-custom"
+          >
+             <div className="min-h-screen flex flex-col items-center justify-center py-32 md:py-48 px-6">
+                <motion.div 
+                  animate={currentSlide === 5 ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
+                  transition={{ duration: 0.8 }}
+                  className="flex flex-col items-center justify-center w-full max-w-5xl"
+                >
+                  <h2 className="text-5xl md:text-8xl font-black text-foreground mb-10 tracking-tighter leading-tight uppercase italic text-center">
+                    Stop Losing <br />Profits.
+                  </h2>
+                  <p className="text-muted-foreground text-lg md:text-xl font-bold max-w-xl mx-auto mb-12 text-center leading-relaxed">
+                    Join 5000+ successful shop owners across World. Set up your digital store in exactly 5 minutes.
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-8">
+                    <Link href="/auth" className="w-full sm:w-auto px-12 py-5 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-2xl shadow-primary/20 text-center">
+                        Get Started Free
+                    </Link>
+                    <Link href="/pricing" className="w-full sm:w-auto px-12 py-5 rounded-2xl border border-border text-foreground font-black uppercase tracking-widest hover:bg-muted transition-all text-center">
+                        View Pricing
+                    </Link>
+                  </div>
+                  <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">No credit card required · 14-day free trial</p>
+                </motion.div>
+             </div>
+             <Footer compact={true} />
           </div>
         </motion.div>
       </div>
 
       {/* Slide Navigation Dots */}
-      <div className={`fixed left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-6 transition-all duration-1000 ${currentSlide === 5 ? "bottom-[420px] md:bottom-[280px]" : "bottom-12"}`}>
+      <div className={`fixed left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-6 transition-all duration-700 ${currentSlide === 5 ? "bottom-[-100px] opacity-0 pointer-events-none" : "bottom-12 opacity-100"}`}>
         <div className="flex gap-3 bg-muted/20 backdrop-blur-3xl p-2.5 rounded-full border border-border/50 shadow-2xl">
           {slides.map((slide) => (
             <button key={slide} onClick={() => setCurrentSlide(slide)}
@@ -254,20 +292,6 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
           ))}
         </div>
       </div>
-
-      {/* Footer appearing on last slide */}
-      <AnimatePresence>
-        {currentSlide === 5 && (
-          <motion.div 
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            className="fixed bottom-0 left-0 w-full z-50 transform translate-y-0 shadow-2xl"
-          >
-            <Footer compact={true} />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -109,3 +109,17 @@ export async function getStockOverview(
 
   return extractData(response);
 }
+
+/**
+ * Get details for a specific IMEI
+ */
+export async function getImeiDetails(imei: string): Promise<any> {
+  const response = await authenticatedFetch(`/mobileshop/stock/imei/${encodeURIComponent(imei)}`);
+
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error((error as any).message || "IMEI not found");
+  }
+
+  return extractData(response);
+}

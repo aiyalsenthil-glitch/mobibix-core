@@ -79,6 +79,77 @@ export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoice
     ]);
   }, [shopGstEnabled]);
 
+  const addItemWithDetails = useCallback((product: ShopProduct, imei?: string) => {
+    setItems((prev) => {
+      // Check if product already exists in items
+      const existingIdx = prev.findIndex(item => item.shopProductId === product.id);
+      
+      if (existingIdx > -1) {
+        const newItems = [...prev];
+        const item = { ...newItems[existingIdx] };
+        
+        if (imei && !item.imeis.includes(imei)) {
+          item.imeis = [...item.imeis, imei];
+          item.quantity = item.imeis.length;
+        } else if (!imei) {
+          item.quantity += 1;
+        }
+        
+        // Recalculate
+        const baseAmount = item.quantity * item.rate;
+        if (pricesIncludeTax) {
+          const divisor = 1 + item.gstRate / 100;
+          const base = baseAmount / divisor;
+          item.gstAmount = Math.round((baseAmount - base) * 100) / 100;
+          item.total = baseAmount;
+        } else {
+          item.gstAmount = Math.round(((baseAmount * item.gstRate) / 100) * 100) / 100;
+          item.total = Math.round((baseAmount + item.gstAmount) * 100) / 100;
+        }
+        
+        newItems[existingIdx] = item;
+        return newItems;
+      }
+
+      // New item
+      const quantity = 1;
+      const rate = (product.salePrice || 0) / 100;
+      const gstRate = shopGstEnabled ? product.gstRate || 18 : 0;
+      const baseAmount = quantity * rate;
+      let gstAmount = 0;
+      let total = 0;
+
+      if (pricesIncludeTax) {
+        const divisor = 1 + gstRate / 100;
+        const base = baseAmount / divisor;
+        gstAmount = Math.round((baseAmount - base) * 100) / 100;
+        total = baseAmount;
+      } else {
+        gstAmount = Math.round(((baseAmount * gstRate) / 100) * 100) / 100;
+        total = Math.round((baseAmount + gstAmount) * 100) / 100;
+      }
+
+      return [
+        ...prev,
+        {
+          id: Math.random().toString(),
+          shopProductId: product.id,
+          productName: product.name,
+          hsnSac: product.hsnCode || "",
+          quantity,
+          rate,
+          gstRate,
+          gstAmount,
+          total,
+          imeis: imei ? [imei] : [],
+          serialNumbers: [],
+          costPrice: product.costPrice ?? null,
+          warrantyDays: product.warrantyDays,
+        },
+      ];
+    });
+  }, [shopGstEnabled, pricesIncludeTax]);
+
   const removeItem = useCallback((id: string) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
@@ -225,6 +296,7 @@ export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoice
     splitPayments,
     setSplitPayments,
     addItem,
+    addItemWithDetails,
     removeItem,
     updateItem,
     totals: {

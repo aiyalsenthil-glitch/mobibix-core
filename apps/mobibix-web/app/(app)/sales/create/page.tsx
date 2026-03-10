@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { listProducts, type ShopProduct } from "@/services/products.api";
-import { getStockBalances } from "@/services/stock.api";
+import { getStockBalances, getImeiDetails } from "@/services/stock.api";
 import { createInvoice, type CreateInvoiceDto, type PaymentMode } from "@/services/sales.api";
 import { useShop } from "@/context/ShopContext";
 import { CustomerModal } from "../../customers/CustomerModal";
@@ -49,6 +49,7 @@ export default function CreateInvoicePage() {
     splitPayments,
     setSplitPayments,
     addItem,
+    addItemWithDetails,
     removeItem,
     updateItem,
     totals: { subtotal, totalGst, grandTotal },
@@ -66,6 +67,8 @@ export default function CreateInvoicePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imeiHighlight, setImeiHighlight] = useState(false);
+  const [globalScan, setGlobalScan] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
 
   // Load products when shop is selected
   useEffect(() => {
@@ -286,6 +289,27 @@ export default function CreateInvoicePage() {
     }
   };
 
+  const handleGlobalScan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!globalScan.trim()) return;
+
+    try {
+      setIsScanning(true);
+      setError(null);
+      const imeiData = await getImeiDetails(globalScan.trim());
+      
+      // ImeiData includes .product
+      if (imeiData.product) {
+        addItemWithDetails(imeiData.product, globalScan.trim());
+        setGlobalScan(""); // Clear for next scan
+      }
+    } catch (err: any) {
+      setError(err.message || "Could not find this IMEI in stock.");
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
   if (isLoadingShops) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-[#0b0f14] text-slate-700 dark:text-slate-200 flex items-center justify-center">
@@ -432,6 +456,29 @@ export default function CreateInvoicePage() {
                 Add products, quantities, and GST.
               </p>
             </div>
+            
+            {/* Global Scan Bar */}
+            <div className="mb-6">
+              <form onSubmit={handleGlobalScan} className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                  <span className="text-xl">🔍</span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="FAST SCAN: Scan IMEI or Serial Number to add product instantly..."
+                  value={globalScan}
+                  onChange={(e) => setGlobalScan(e.target.value)}
+                  disabled={isScanning}
+                  className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-teal-500/30 bg-teal-500/5 dark:bg-teal-500/10 text-slate-900 dark:text-white placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-4 focus:ring-teal-500/10 transition shadow-inner"
+                />
+                {isScanning && (
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                    <div className="h-5 w-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+              </form>
+            </div>
+
             <InvoiceProductTable
               items={items}
               products={products}
