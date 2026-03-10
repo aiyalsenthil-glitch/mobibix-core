@@ -49,7 +49,7 @@ export class CustomerNotesService {
 
     // Only owner or the author can delete
     if (role !== UserRole.OWNER && note.authorId !== userId) {
-      throw new ForbiddenException('Cannot delete another user\'s note');
+      throw new ForbiddenException("Cannot delete another user's note");
     }
 
     return this.prisma.customerNote.update({

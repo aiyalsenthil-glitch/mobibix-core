@@ -115,7 +115,11 @@ export class CustomersController {
     @Body('lifecycle') lifecycle: string | null,
   ) {
     const tenantId = req.user.tenantId;
-    return this.service.updateCustomerLifecycle(tenantId, customerId, lifecycle);
+    return this.service.updateCustomerLifecycle(
+      tenantId,
+      customerId,
+      lifecycle,
+    );
   }
 
   @Patch(':customerId/tags')

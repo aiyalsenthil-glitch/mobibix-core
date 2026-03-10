@@ -10,7 +10,13 @@ import { SalesModule } from '../../../core/sales/sales.module';
 import { FollowUpsModule } from '../../../core/follow-ups/follow-ups.module';
 
 @Module({
-  imports: [PrismaModule, StockModule, CommonModule, SalesModule, FollowUpsModule],
+  imports: [
+    PrismaModule,
+    StockModule,
+    CommonModule,
+    SalesModule,
+    FollowUpsModule,
+  ],
   controllers: [JobCardsController, PublicJobController],
   providers: [JobCardsService, JobStatusValidator],
 })

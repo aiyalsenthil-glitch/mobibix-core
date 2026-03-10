@@ -14,10 +14,8 @@ export class CustomersService {
   ) {}
 
   async createCustomer(tenantId: string, dto: CreateCustomerDto) {
-    const normalizedPhone = this.phoneService.normalize(
-      dto.phone,
-      dto.countryCode || 'IN',
-    ) || "";
+    const normalizedPhone =
+      this.phoneService.normalize(dto.phone, dto.countryCode || 'IN') || '';
 
     // prevent duplicate phone per tenant
     // 🔒 B2B GSTIN validation
@@ -198,10 +196,11 @@ export class CustomersService {
 
     let normalizedPhone: string = customer.normalizedPhone;
     if (dto.phone) {
-      normalizedPhone = this.phoneService.normalize(
-        dto.phone,
-        dto.countryCode || customer.countryCode || 'IN',
-      ) || "";
+      normalizedPhone =
+        this.phoneService.normalize(
+          dto.phone,
+          dto.countryCode || customer.countryCode || 'IN',
+        ) || '';
 
       // Check for uniqueness if phone changed
       if (normalizedPhone !== customer.normalizedPhone) {
@@ -359,59 +358,74 @@ export class CustomersService {
   }
 
   async getCustomerStats(tenantId: string, customerId: string) {
-    const [party, jobStats, invoiceStats, nextFollowUp, lastJob, lastInvoice, latestLoyalty] =
-      await Promise.all([
-        this.prisma.party.findFirst({
-          where: { id: customerId, tenantId },
-          select: { currentOutstanding: true },
-        }),
-        this.prisma.jobCard.aggregate({
-          where: { customerId, tenantId },
-          _count: { id: true },
-          _max: { createdAt: true },
-        }),
-        this.prisma.invoice.aggregate({
-          where: { customerId, tenantId },
-          _count: { id: true },
-          _sum: { totalAmount: true },
-          _max: { createdAt: true },
-        }),
-        this.prisma.customerFollowUp.findFirst({
-          where: {
-            customerId,
-            tenantId,
-            status: 'PENDING',
-            followUpAt: { gt: new Date() },
-          },
-          orderBy: { followUpAt: 'asc' },
-          select: { followUpAt: true, purpose: true, type: true },
-        }),
-        this.prisma.jobCard.findFirst({
-          where: { customerId, tenantId },
-          orderBy: { createdAt: 'desc' },
-          select: { createdAt: true, jobNumber: true, deviceBrand: true, deviceModel: true, status: true },
-        }),
-        this.prisma.invoice.findFirst({
-          where: { customerId, tenantId },
-          orderBy: { createdAt: 'desc' },
-          select: { createdAt: true, invoiceNumber: true, totalAmount: true, status: true },
-        }),
-        this.prisma.loyaltyAdjustment.findFirst({
-          where: { partyId: customerId, tenantId },
-          orderBy: { createdAt: 'desc' },
-          select: { afterPoints: true },
-        }),
-      ]);
+    const [
+      party,
+      jobStats,
+      invoiceStats,
+      nextFollowUp,
+      lastJob,
+      lastInvoice,
+      latestLoyalty,
+    ] = await Promise.all([
+      this.prisma.party.findFirst({
+        where: { id: customerId, tenantId },
+        select: { currentOutstanding: true },
+      }),
+      this.prisma.jobCard.aggregate({
+        where: { customerId, tenantId },
+        _count: { id: true },
+        _max: { createdAt: true },
+      }),
+      this.prisma.invoice.aggregate({
+        where: { customerId, tenantId },
+        _count: { id: true },
+        _sum: { totalAmount: true },
+        _max: { createdAt: true },
+      }),
+      this.prisma.customerFollowUp.findFirst({
+        where: {
+          customerId,
+          tenantId,
+          status: 'PENDING',
+          followUpAt: { gt: new Date() },
+        },
+        orderBy: { followUpAt: 'asc' },
+        select: { followUpAt: true, purpose: true, type: true },
+      }),
+      this.prisma.jobCard.findFirst({
+        where: { customerId, tenantId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          createdAt: true,
+          jobNumber: true,
+          deviceBrand: true,
+          deviceModel: true,
+          status: true,
+        },
+      }),
+      this.prisma.invoice.findFirst({
+        where: { customerId, tenantId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          createdAt: true,
+          invoiceNumber: true,
+          totalAmount: true,
+          status: true,
+        },
+      }),
+      this.prisma.loyaltyAdjustment.findFirst({
+        where: { partyId: customerId, tenantId },
+        orderBy: { createdAt: 'desc' },
+        select: { afterPoints: true },
+      }),
+    ]);
 
-    const dates = [
-      jobStats._max.createdAt,
-      invoiceStats._max.createdAt,
-    ].filter(Boolean) as Date[];
+    const dates = [jobStats._max.createdAt, invoiceStats._max.createdAt].filter(
+      Boolean,
+    ) as Date[];
 
     const lastInteractionDate =
-      dates.length > 0
-        ? dates.reduce((a, b) => (a > b ? a : b))
-        : null;
+      dates.length > 0 ? dates.reduce((a, b) => (a > b ? a : b)) : null;
 
     return {
       currentOutstanding: party?.currentOutstanding ?? 0,
@@ -443,7 +457,9 @@ export class CustomersService {
     tags: string[],
   ) {
     // Normalize tags: trim + lowercase + deduplicate
-    const normalized = [...new Set(tags.map((t) => t.trim().toLowerCase()).filter(Boolean))];
+    const normalized = [
+      ...new Set(tags.map((t) => t.trim().toLowerCase()).filter(Boolean)),
+    ];
     return this.prisma.party.update({
       where: { id: customerId, tenantId },
       data: { tags: normalized },

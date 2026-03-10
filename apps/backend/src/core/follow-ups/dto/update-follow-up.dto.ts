@@ -1,4 +1,10 @@
-import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { FollowUpStatus, FollowUpType } from '@prisma/client';
 
 export class UpdateFollowUpDto {

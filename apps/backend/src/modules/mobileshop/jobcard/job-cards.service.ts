@@ -719,7 +719,10 @@ export class JobCardsService {
     return this.prisma.$transaction(async (tx) => {
       // Step 1: Restore all used parts to inventory
       for (const part of job.parts) {
-        if ((part as any).isDeducted && (part as any).product.type !== ProductType.SERVICE) {
+        if (
+          (part as any).isDeducted &&
+          (part as any).product.type !== ProductType.SERVICE
+        ) {
           await this.stockService.recordStockIn(
             user.tenantId,
             shopId,
@@ -1012,7 +1015,12 @@ export class JobCardsService {
   async list(
     user,
     shopId: string,
-    filters?: { status?: JobStatus; search?: string; skip?: number; take?: number },
+    filters?: {
+      status?: JobStatus;
+      search?: string;
+      skip?: number;
+      take?: number;
+    },
   ) {
     try {
       await this.assertAccess(user, shopId);
@@ -1142,7 +1150,9 @@ export class JobCardsService {
         // [Risk S-01] Stock Reconciliation (Optimized via Batching)
         if (job.parts.length > 0) {
           const partsToRestore = job.parts.filter(
-            (p) => (p as any).isDeducted && (p as any).product.type !== ProductType.SERVICE,
+            (p) =>
+              (p as any).isDeducted &&
+              (p as any).product.type !== ProductType.SERVICE,
           );
 
           if (partsToRestore.length > 0) {
@@ -1370,12 +1380,11 @@ export class JobCardsService {
     const isGstApplicable = shop.gstEnabled ?? false;
 
     // Generate Document Number
-    const invoiceNumber =
-      await this.documentNumberService.generateDocumentNumber(
-        job.shopId,
-        docType,
-        new Date(),
-      );
+    await this.documentNumberService.generateDocumentNumber(
+      job.shopId,
+      docType,
+      new Date(),
+    );
 
     // Calculate Totals & Items
     const itemsData: any[] = [];
@@ -1476,8 +1485,6 @@ export class JobCardsService {
     const invoiceSubtotalPaisa = partsSubtotalPaisa + serviceSubtotalPaisa;
     const invoiceTaxPaisa = partsTaxPaisa + serviceTaxPaisa;
     const invoiceGrandTotalPaisa = invoiceSubtotalPaisa + invoiceTaxPaisa;
-
-    const fy = getFinancialYear(new Date());
 
     // 5. Create Invoice via BillingService
     const invoice = await this.billingService.createInvoice(
