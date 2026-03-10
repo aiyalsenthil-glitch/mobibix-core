@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 type ViewTab = "mine" | "all";
 
 export default function FollowUpsPage() {
-  const { user } = useAuth();
+  const { authUser: user } = useAuth();
   const isOwner = user?.role === "owner";
 
   const [showAddModal, setShowAddModal] = useState(false);

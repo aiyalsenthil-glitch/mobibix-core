@@ -207,8 +207,8 @@ export default function QuotationsPage() {
     });
   }
 
-  const subTotal = form.items.reduce((s, it) => s + it.lineTotal, 0);
-  const gstTotal = form.items.reduce((s, it) => s + it.gstAmount, 0);
+  const subTotal = form.items.reduce((s, it) => s + (it.lineTotal || 0), 0);
+  const gstTotal = form.items.reduce((s, it) => s + (it.gstAmount || 0), 0);
   const grandTotal = subTotal + gstTotal;
 
   // ─── Actions ───────────────────────────────────────────────────────────────
@@ -583,7 +583,7 @@ export default function QuotationsPage() {
                         </div>
                       </div>
                       <div className={`text-right text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                        {fmt(item.lineTotal)} + GST {fmt(item.gstAmount)} = <span className="font-semibold">{fmt(item.totalAmount)}</span>
+                        {fmt(item.lineTotal || 0)} + GST {fmt(item.gstAmount || 0)} = <span className="font-semibold">{fmt(item.totalAmount)}</span>
                       </div>
                     </div>
                   ))}

@@ -298,7 +298,7 @@ export default function CustomerProfilePage() {
           <CustomerTimeline
             customerId={customerId}
             showFilter={false}
-            sources="follow_ups"
+            defaultSource="CRM"
           />
         </div>
       )}
