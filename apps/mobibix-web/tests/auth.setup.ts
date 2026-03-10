@@ -9,6 +9,70 @@ const TEST_PASSWORD = process.env.PLAYWRIGHT_TEST_PASSWORD ?? 'Test@123';
 setup('authenticate', async ({ page }) => {
   try {
     console.log(`[playwright setup] Starting authentication for ${TEST_EMAIL}...`);
+
+    // 🛡️ Mock Backend API calls for CI stability (allows tests to run without a live backend)
+    await page.route('**/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=*', async (route) => {
+      console.log('[playwright mock] Intercepted Firebase Sign-In request');
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          idToken: 'mock_REMOVED_AUTH_PROVIDER_id_token',
+          email: TEST_EMAIL,
+          refreshToken: 'mock_REMOVED_AUTH_PROVIDER_refresh_token',
+          expiresIn: '3600',
+          localId: 'mock_REMOVED_AUTH_PROVIDER_uid',
+          registered: true,
+        }),
+      });
+    });
+
+    await page.route('**/api/auth/google/exchange', async (route) => {
+      console.log('[playwright mock] Intercepted exchange request');
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 'mock_access_token',
+          refreshToken: 'mock_refresh_token',
+          user: {
+            id: 'mock_user_id',
+            email: TEST_EMAIL,
+            name: 'Test User',
+            REMOVED_AUTH_PROVIDERUid: 'mock_REMOVED_AUTH_PROVIDER_uid',
+            role: 'owner',
+            isSystemOwner: true,
+            tenantId: 'mock_tenant_id',
+            tenantCode: 'test-tenant',
+          },
+          tenant: {
+            id: 'mock_tenant_id',
+            name: 'Mock Tenant',
+            code: 'test-tenant',
+          },
+          tenantCount: 1,
+        }),
+      });
+    });
+
+    await page.route('**/api/users/me', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'mock_user_id',
+          email: TEST_EMAIL,
+          fullName: 'Test User',
+          role: 'owner',
+          isSystemOwner: true,
+          tenantId: 'mock_tenant_id',
+          tenantCode: 'test-tenant',
+          tenantType: 'MOBILE_SHOP',
+          tenantName: 'Mock Tenant',
+        }),
+      });
+    });
+
     await page.goto('/signin', { timeout: 15000, waitUntil: 'networkidle' });
     
     // Fill email
