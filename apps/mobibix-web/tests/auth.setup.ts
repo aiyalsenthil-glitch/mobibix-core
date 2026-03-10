@@ -8,26 +8,48 @@ const TEST_PASSWORD = process.env.PLAYWRIGHT_TEST_PASSWORD ?? 'Test@123';
 
 setup('authenticate', async ({ page }) => {
   try {
-    await page.goto('/signin', { timeout: 10000 });
+    console.log(`[playwright setup] Starting authentication for ${TEST_EMAIL}...`);
+    await page.goto('/signin', { timeout: 15000, waitUntil: 'networkidle' });
+    
+    // Fill email
     await page.fill('input[type="email"]', TEST_EMAIL, { timeout: 5000 });
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
-    await page.locator('input[type="password"]').waitFor({
+    
+    // Click Continue - use ID for reliability
+    const continueBtn = page.locator('#email-next-btn');
+    await continueBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await continueBtn.click();
+    
+    // Wait for password field
+    const passwordInput = page.locator('input[type="password"]');
+    await passwordInput.waitFor({
       state: 'visible',
-      timeout: 5000,
+      timeout: 10000,
     });
-    await page.fill('input[type="password"]', TEST_PASSWORD, { timeout: 5000 });
-    await page.getByRole('button', { name: /Sign In/i }).click();
+    
+    // Fill password
+    await passwordInput.fill(TEST_PASSWORD, { timeout: 5000 });
+    
+    // Click Sign In - use ID for reliability
+    const signInBtn = page.locator('#login-btn');
+    await signInBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await signInBtn.click();
+
+    console.log('[playwright setup] Sign in clicked, waiting for redirect...');
 
     // Best-effort only: don't fail setup if auth flow stalls in CI.
     await page.waitForFunction(() => {
       const path = window.location.pathname.toLowerCase();
       return path !== '/signin' && path !== '/auth';
-    }, { timeout: 8000 });
-  } catch {
+    }, { timeout: 15000 });
+    
+    console.log(`[playwright setup] Authentication successful! Redirected to: ${new URL(page.url()).pathname}`);
+  } catch (err: any) {
     const currentPath = new URL(page.url()).pathname.toLowerCase();
+    const pageTitle = await page.title().catch(() => 'unknown');
     console.warn(
-      `[playwright setup] auth did not complete within timeout; continuing from ${currentPath}`,
+      `[playwright setup] WARNING: auth did not complete within timeout. Path: ${currentPath}, Title: ${pageTitle}`,
     );
+    console.warn(`[playwright setup] Error: ${err?.message || 'Unknown error'}`);
   }
 
   // Always persist a usable auth file so dependent projects can proceed.
