@@ -182,6 +182,7 @@ const envSchema = z.object({
     .describe('Allowed CORS origins (comma-separated)'),
 
   // Redis (if used for caching)
+  REDIS_URL: z.string().optional().describe('Unified Redis connection URL'),
   REDIS_HOST: z.string().optional().describe('Redis host'),
   REDIS_PORT: z.string().optional().describe('Redis port'),
   REDIS_PASSWORD: z.string().optional().describe('Redis password'),

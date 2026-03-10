@@ -67,13 +67,13 @@ type LoggerRequest = {
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: () => ({
-        connection: {
+        connection: (process.env.REDIS_URL || {
           host: process.env.REDIS_HOST || 'localhost',
           port: process.env.REDIS_PORT
             ? parseInt(process.env.REDIS_PORT)
             : 6379,
           password: process.env.REDIS_PASSWORD || undefined,
-        },
+        }) as any,
       }),
     }),
 
@@ -160,14 +160,21 @@ type LoggerRequest = {
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
-      useFactory: () => ({
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        store: require('cache-manager-ioredis'),
-        host: process.env.REDIS_HOST || 'localhost',
-        port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
-        password: process.env.REDIS_PASSWORD || undefined,
-        ttl: 60,
-      }),
+      useFactory: () => {
+        const url = process.env.REDIS_URL;
+        return {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          store: require('cache-manager-ioredis'),
+          ...(url 
+            ? { url } 
+            : {
+                host: process.env.REDIS_HOST || 'localhost',
+                port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
+                password: process.env.REDIS_PASSWORD || undefined,
+              }),
+          ttl: 60,
+        } as any;
+      },
     }),
   ],
   controllers: [AppController],

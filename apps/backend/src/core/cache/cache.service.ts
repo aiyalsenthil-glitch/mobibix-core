@@ -24,14 +24,20 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
+    const url = this.configService.get<string>('REDIS_URL');
     const host = this.configService.get<string>('REDIS_HOST');
     const port = this.configService.get<number>('REDIS_PORT') || 6379;
     const password = this.configService.get<string>('REDIS_PASSWORD');
 
-    if (host) {
+    if (url || host) {
       try {
-        this.redis = new Redis({ host, port, password });
-        this.pubsub = new Redis({ host, port, password });
+        if (url) {
+          this.redis = new Redis(url);
+          this.pubsub = new Redis(url);
+        } else {
+          this.redis = new Redis({ host, port, password });
+          this.pubsub = new Redis({ host, port, password });
+        }
 
         this.pubsub.subscribe('cache-invalidation', (err) => {
           if (err) this.logger.error(`Redis PubSub Error: ${err.message}`);

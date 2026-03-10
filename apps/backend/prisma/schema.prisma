@@ -879,6 +879,7 @@ model TenantSubscription {
 
   @@unique([tenantId, module, endDate])
   @@index([tenantId, module, status], name: "idx_subscription_lookup")
+  @@index([tenantId, module, status, startDate(sort: Desc)], name: "idx_subscription_lookup_sorted") // covers orderBy startDate
   @@index([tenantId])
   @@index([planId])
   @@index([module])
@@ -1458,6 +1459,8 @@ model JobCard {
   @@index([tenantId, shopId, status, createdAt])
   @@index([shopId, createdAt(sort: Desc)])
   @@index([tenantId, deletedAt])
+  @@index([tenantId, shopId, deletedAt, createdAt]) // dashboard count + date range
+  @@index([tenantId, shopId, deletedAt, status])    // groupBy status with soft-delete
   @@map("mb_job_card")
 }
 
@@ -1599,6 +1602,7 @@ model StockLedger {
   @@index([tenantId, shopId, createdAt])
   @@index([shopProductId, createdAt])
   @@index([tenantId, shopId, type])
+  @@index([tenantId, shopId, type, createdAt]) // groupBy type+date filter
   @@index([referenceType, referenceId])
   @@map("mb_stock_ledger")
 }
@@ -1681,6 +1685,8 @@ model Invoice {
   @@index([shopId, invoiceDate])
   @@index([tenantId, shopId, createdAt])
   @@index([tenantId, deletedAt])
+  @@index([tenantId, shopId, deletedAt, createdAt]) // aggregate + findMany with soft-delete
+  @@index([tenantId, shopId, deletedAt, status])    // status-filtered aggregates
   @@map("mb_invoice")
 }
 
