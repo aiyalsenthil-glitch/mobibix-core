@@ -23,10 +23,16 @@ export class PurchaseAuditService {
     status: 'ATTEMPT' | 'SUCCESS' | 'FAILED',
     metadata?: Record<string, unknown>,
   ): Promise<void> {
-    // Store in audit log (implementation: store in JSON or create AuditLog table)
-    // For now, rely on Prisma audit trail via createdAt/updatedAt + transaction logs
-    // TODO: Persist to dedicated AuditLog table when created
-    // Currently a no-op placeholder
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action: `PURCHASE_SUBMISSION_${status}`,
+        entity: 'PURCHASE',
+        entityId: purchaseId,
+        meta: (metadata ?? {}) as any,
+      },
+    });
   }
 
   /**

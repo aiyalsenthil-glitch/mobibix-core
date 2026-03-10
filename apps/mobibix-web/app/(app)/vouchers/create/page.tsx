@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   createVoucher,
@@ -8,6 +8,7 @@ import {
   VoucherType,
   PaymentMode,
 } from "@/services/vouchers.api";
+import { searchParties, Party } from "@/services/parties.api";
 import { AlertCircle, Check, Loader } from "lucide-react";
 
 export default function CreateVoucherPage() {
@@ -21,6 +22,30 @@ export default function CreateVoucherPage() {
     amount: 0,
     voucherType: "EXPENSE",
   });
+
+  // Supplier async search state
+  const [supplierQuery, setSupplierQuery] = useState("");
+  const [supplierResults, setSupplierResults] = useState<Party[]>([]);
+  const [supplierSelected, setSupplierSelected] = useState<Party | null>(null);
+  const [supplierSearching, setSupplierSearching] = useState(false);
+  const supplierDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (supplierQuery.length < 2) {
+      setSupplierResults([]);
+      return;
+    }
+    if (supplierDebounce.current) clearTimeout(supplierDebounce.current);
+    supplierDebounce.current = setTimeout(async () => {
+      setSupplierSearching(true);
+      try {
+        const results = await searchParties(supplierQuery, "VENDOR", 8);
+        setSupplierResults(results);
+      } finally {
+        setSupplierSearching(false);
+      }
+    }, 300);
+  }, [supplierQuery]);
 
   const handleChange = (field: keyof CreateVoucherRequest, value: any) => {
     setFormData((prev) => ({
@@ -145,31 +170,64 @@ export default function CreateVoucherPage() {
             </p>
           </div>
 
-          {/* Supplier ID (Optional, Required for SUPPLIER type) */}
+          {/* Supplier Search */}
           {formData.voucherType === "SUPPLIER" && (
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Supplier <span className="text-red-600">*</span>
               </label>
-              <div className="relative">
-                 {/* TODO: Upgrade to PartySelector for Supplier when available */}
-                <input
-                  type="text"
-                  value={formData.globalSupplierId || ""}
-                  onChange={(e) =>
-                    handleChange("globalSupplierId", e.target.value || undefined)
-                  }
-                  placeholder="Enter supplier ID or name"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                 {/* Placeholder for Balance Display - Logic to be connected with getPartyBalance when Supplier Selector is ready */}
-                 <p className="text-xs text-gray-500 mt-1">
-                    Balance check will be enabled with Supplier Selection.
-                 </p>
-              </div>
-              <p className="text-sm text-gray-600 mt-2">
-                Required for supplier payments
-              </p>
+              {supplierSelected ? (
+                <div className="flex items-center justify-between px-4 py-2 border border-green-300 rounded-lg bg-green-50">
+                  <div>
+                    <p className="font-medium text-gray-900">{supplierSelected.name}</p>
+                    <p className="text-xs text-gray-500">{supplierSelected.phone}{supplierSelected.gstNumber ? ` · GST: ${supplierSelected.gstNumber}` : ""}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSupplierSelected(null);
+                      setSupplierQuery("");
+                      handleChange("globalSupplierId", undefined);
+                    }}
+                    className="text-xs text-red-500 underline ml-4"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={supplierQuery}
+                    onChange={(e) => setSupplierQuery(e.target.value)}
+                    placeholder="Search supplier by name or phone…"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  {supplierSearching && (
+                    <Loader size={14} className="absolute right-3 top-3 animate-spin text-gray-400" />
+                  )}
+                  {supplierResults.length > 0 && (
+                    <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-auto">
+                      {supplierResults.map((s) => (
+                        <li
+                          key={s.id}
+                          className="px-4 py-2 cursor-pointer hover:bg-blue-50"
+                          onClick={() => {
+                            setSupplierSelected(s);
+                            setSupplierResults([]);
+                            setSupplierQuery("");
+                            handleChange("globalSupplierId", s.id);
+                          }}
+                        >
+                          <p className="font-medium text-gray-900">{s.name}</p>
+                          <p className="text-xs text-gray-500">{s.phone}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              <p className="text-sm text-gray-600 mt-2">Required for supplier payments</p>
             </div>
           )}
 

@@ -2,6 +2,7 @@ import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { WhatsAppSender } from '../../whatsapp/whatsapp.sender';
+import { PrismaService } from '../../../core/prisma/prisma.service';
 
 @Injectable()
 export class CrmIntegrationService {
@@ -10,6 +11,7 @@ export class CrmIntegrationService {
   constructor(
     private readonly http: HttpService,
     private readonly whatsAppSender: WhatsAppSender,
+    private readonly prisma: PrismaService,
   ) {}
 
   // ========================
@@ -205,24 +207,57 @@ export class CrmIntegrationService {
   }
 
   /**
-   * Send Transactional WhatsApp Message (Bypasses HTTP/Auth)
-   * Uses WhatsAppSender service directly.
-   * Requires: ACTIVE template for the given feature in this tenant.
+   * Send Transactional WhatsApp Message (direct, bypasses automation rules).
+   * Looks up the active WhatsAppTemplate by moduleType + templateKey (= feature),
+   * then dispatches via WhatsAppSender.
    */
   async sendTransactionalMessage(
     tenantId: string,
     phone: string,
-    feature: string, // e.g., 'INVOICE_CREATED', 'JOB_COMPLETED'
+    feature: string, // e.g., 'JOB_READY', 'INVOICE_CREATED'
     templateParams: string[],
   ) {
     try {
-      this.logger.warn(
-        `Transactional WhatsApp not fully implemented yet - requires Template Lookup. Logged: ${feature} to ${phone}`,
+      // 1. Resolve active template for this event type
+      const template = await this.prisma.whatsAppTemplate.findFirst({
+        where: {
+          moduleType: 'MOBILE_SHOP',
+          templateKey: feature,
+          status: 'ACTIVE',
+        },
+      });
+
+      if (!template) {
+        this.logger.warn(
+          `No active WhatsApp template for feature "${feature}" — skipping transactional send to ${phone}`,
+        );
+        return { success: false, reason: `No active template for ${feature}` };
+      }
+
+      // 2. Send via WhatsAppSender
+      const result = await this.whatsAppSender.sendTemplateMessage(
+        tenantId,
+        feature,
+        phone,
+        template.metaTemplateName,
+        templateParams,
       );
-      return { success: false, reason: 'Template lookup not implemented' };
+
+      if (result.success) {
+        this.logger.log(
+          `Transactional WhatsApp sent: feature=${feature} phone=${phone} msgId=${result.messageId}`,
+        );
+      } else {
+        this.logger.warn(
+          `Transactional WhatsApp skipped/failed: feature=${feature} reason=${result.reason ?? result.error}`,
+        );
+      }
+
+      return result;
     } catch (error) {
       this.logger.error(
         `Failed to send transactional WhatsApp: ${error.message}`,
+        error.stack,
       );
       return { success: false, error: error.message };
     }

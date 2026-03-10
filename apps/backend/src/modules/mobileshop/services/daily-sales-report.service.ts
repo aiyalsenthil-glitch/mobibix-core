@@ -90,10 +90,11 @@ export class DailySalesReportService {
       day.paidAmount += invoice.paidAmount;
       day.pendingAmount += invoice.totalAmount - invoice.paidAmount;
 
-      // GST breakdown (CGST + SGST for intrastate, IGST for interstate)
-      // Assuming intrastate: CGST = SGST = gstAmount / 2
-      day.gstBreakdown.cgst += invoice.gstAmount / 2;
-      day.gstBreakdown.sgst += invoice.gstAmount / 2;
+      // GST breakdown: use actual per-invoice cgst/sgst/igst stored at billing time
+      // Invoice stores these directly (intrastate → cgst+sgst, interstate → igst)
+      day.gstBreakdown.cgst += invoice.cgst ?? 0;
+      day.gstBreakdown.sgst += invoice.sgst ?? 0;
+      day.gstBreakdown.igst += invoice.igst ?? 0;
     }
 
     const result = Array.from(dailyMap.values()).sort((a, b) =>

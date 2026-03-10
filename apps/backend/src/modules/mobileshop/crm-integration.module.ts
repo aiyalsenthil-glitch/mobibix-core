@@ -5,6 +5,7 @@ import { CrmIntegrationService } from './services/crm-integration.service';
 import { MobileShopCrmController } from './crm-integration.controller';
 import { CrmEventListener } from './services/crm-event.listener';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
+import { PrismaModule } from '../../core/prisma/prisma.module';
 import { FollowUpsModule } from '../../core/follow-ups/follow-ups.module';
 
 /**
@@ -46,6 +47,7 @@ import { FollowUpsModule } from '../../core/follow-ups/follow-ups.module';
     }),
     WhatsAppModule,
     FollowUpsModule,
+    PrismaModule,
   ],
   controllers: [MobileShopCrmController],
   providers: [CrmIntegrationService, CrmEventListener],
