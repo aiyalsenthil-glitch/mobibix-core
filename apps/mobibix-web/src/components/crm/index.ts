@@ -12,3 +12,4 @@ export { CustomerTimeline } from "./CustomerTimeline";
 export { MyFollowUpsWidget } from "./MyFollowUpsWidget";
 export { AddFollowUpModal } from "./AddFollowUpModal";
 export { WhatsAppQuickAction } from "./WhatsAppQuickAction";
+export { CustomerNotes } from "./CustomerNotes";

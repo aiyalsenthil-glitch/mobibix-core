@@ -95,6 +95,7 @@ model Tenant {
   customerAlerts           CustomerAlert[]         @relation("TenantCustomerAlerts")
   customerFollowUps        CustomerFollowUp[]      @relation("TenantCustomerFollowUps")
   customerReminders        CustomerReminder[]      @relation("TenantCustomerReminders")
+  customerNotes            CustomerNote[]          @relation("TenantCustomerNotes")
   financialEntries         FinancialEntry[]
   imeis                    IMEI[]
   invoices                 Invoice[]               @relation("TenantInvoices")
@@ -261,6 +262,7 @@ model User {
   privacyAcceptedAt  DateTime?
   auditLogs          AuditLog[]
   assignedFollowUps  CustomerFollowUp[]
+  customerNotes      CustomerNote[]
   platformAuditLogs  PlatformAuditLog[]
   shopStaffs         ShopStaff[]
   ledgerPayments     LedgerPayment[]
@@ -417,8 +419,9 @@ model Party {
   mergesFrom         Party[]             @relation("PartyMerge")
   loyaltyAdjustments LoyaltyAdjustment[]
 
-  customerCreditNotes CreditNote[] @relation("CustomerCreditNotes")
-  supplierCreditNotes CreditNote[] @relation("SupplierCreditNotes")
+  customerCreditNotes CreditNote[]    @relation("CustomerCreditNotes")
+  supplierCreditNotes CreditNote[]    @relation("SupplierCreditNotes")
+  customerNotes       CustomerNote[]
 
   @@unique([tenantId, phone]) // Legacy unique constraint
   @@unique([tenantId, normalizedPhone]) // Global identity constraint
@@ -519,6 +522,26 @@ model CustomerReminder {
   @@index([status, channel, scheduledAt]) // Optimized for cron reminder fetch
   @@index([tenantId, status, scheduledAt]) // Composite for fetching pending reminders by time
   @@map("mb_customer_reminder")
+}
+
+model CustomerNote {
+  id         String   @id @default(cuid())
+  tenantId   String
+  customerId String
+  authorId   String
+  content    String
+  deletedAt  DateTime?
+  deletedBy  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Party  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  author   User   @relation(fields: [authorId], references: [id])
+  tenant   Tenant @relation("TenantCustomerNotes", fields: [tenantId], references: [id])
+
+  @@index([tenantId, customerId])
+  @@index([tenantId])
+  @@map("mb_customer_note")
 }
 
 model LoyaltyConfig {

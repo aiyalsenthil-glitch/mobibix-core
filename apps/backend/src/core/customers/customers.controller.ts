@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Patch,
   Post,
   Query,
   Req,
@@ -87,6 +88,8 @@ export class CustomersController {
     @Query('skip') skip?: string,
     @Query('take') take?: string,
     @Query('search') search?: string,
+    @Query('lifecycle') lifecycle?: string,
+    @Query('tags') tags?: string,
   ) {
     const tenantId = req.user.tenantId;
 
@@ -94,7 +97,35 @@ export class CustomersController {
       skip: skip ? parseInt(skip, 10) : undefined,
       take: take ? parseInt(take, 10) : undefined,
       search,
+      lifecycle: lifecycle || undefined,
+      tags: tags ? tags.split(',').filter(Boolean) : undefined,
     });
+  }
+
+  @Get(':customerId/stats')
+  async getStats(@Req() req, @Param('customerId') customerId: string) {
+    const tenantId = req.user.tenantId;
+    return this.service.getCustomerStats(tenantId, customerId);
+  }
+
+  @Patch(':customerId/lifecycle')
+  async updateLifecycle(
+    @Req() req,
+    @Param('customerId') customerId: string,
+    @Body('lifecycle') lifecycle: string | null,
+  ) {
+    const tenantId = req.user.tenantId;
+    return this.service.updateCustomerLifecycle(tenantId, customerId, lifecycle);
+  }
+
+  @Patch(':customerId/tags')
+  async updateTags(
+    @Req() req,
+    @Param('customerId') customerId: string,
+    @Body('tags') tags: string[],
+  ) {
+    const tenantId = req.user.tenantId;
+    return this.service.updateCustomerTags(tenantId, customerId, tags);
   }
 
   @Get(':customerId')

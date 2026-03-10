@@ -4,6 +4,7 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { isValidIndianGSTIN } from '../../common/validators/gstin.validator';
 import { PhoneService } from '../../common/services/phone.service';
+import { CustomerLifecycle } from '@prisma/client';
 
 @Injectable()
 export class CustomersService {
@@ -72,7 +73,13 @@ export class CustomersService {
 
   async listCustomers(
     tenantId: string,
-    options?: { skip?: number; take?: number; search?: string },
+    options?: {
+      skip?: number;
+      take?: number;
+      search?: string;
+      lifecycle?: string;
+      tags?: string[];
+    },
   ) {
     const where: any = {
       tenantId,
@@ -86,6 +93,14 @@ export class CustomersService {
       ];
     }
 
+    if (options?.lifecycle) {
+      where.customerLifecycle = options.lifecycle;
+    }
+
+    if (options?.tags?.length) {
+      where.tags = { hasSome: options.tags };
+    }
+
     const [items, total] = await Promise.all([
       this.prisma.party.findMany({
         where,
@@ -97,11 +112,15 @@ export class CustomersService {
           name: true,
           phone: true,
           email: true,
+          state: true,
           businessType: true,
           partyType: true,
           gstNumber: true,
           isActive: true,
+          tags: true,
+          customerLifecycle: true,
           createdAt: true,
+          updatedAt: true,
         },
       }),
       this.prisma.party.count({ where }),
@@ -336,6 +355,98 @@ export class CustomersService {
         targetId,
         mergedRecordsCount: 'ALL_LINKED_DATA_TRANSFERRED',
       };
+    });
+  }
+
+  async getCustomerStats(tenantId: string, customerId: string) {
+    const [party, jobStats, invoiceStats, nextFollowUp, lastJob, lastInvoice, latestLoyalty] =
+      await Promise.all([
+        this.prisma.party.findFirst({
+          where: { id: customerId, tenantId },
+          select: { currentOutstanding: true },
+        }),
+        this.prisma.jobCard.aggregate({
+          where: { customerId, tenantId },
+          _count: { id: true },
+          _max: { createdAt: true },
+        }),
+        this.prisma.invoice.aggregate({
+          where: { customerId, tenantId },
+          _count: { id: true },
+          _sum: { totalAmount: true },
+          _max: { createdAt: true },
+        }),
+        this.prisma.customerFollowUp.findFirst({
+          where: {
+            customerId,
+            tenantId,
+            status: 'PENDING',
+            followUpAt: { gt: new Date() },
+          },
+          orderBy: { followUpAt: 'asc' },
+          select: { followUpAt: true, purpose: true, type: true },
+        }),
+        this.prisma.jobCard.findFirst({
+          where: { customerId, tenantId },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true, jobNumber: true, deviceBrand: true, deviceModel: true, status: true },
+        }),
+        this.prisma.invoice.findFirst({
+          where: { customerId, tenantId },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true, invoiceNumber: true, totalAmount: true, status: true },
+        }),
+        this.prisma.loyaltyAdjustment.findFirst({
+          where: { partyId: customerId, tenantId },
+          orderBy: { createdAt: 'desc' },
+          select: { afterPoints: true },
+        }),
+      ]);
+
+    const dates = [
+      jobStats._max.createdAt,
+      invoiceStats._max.createdAt,
+    ].filter(Boolean) as Date[];
+
+    const lastInteractionDate =
+      dates.length > 0
+        ? dates.reduce((a, b) => (a > b ? a : b))
+        : null;
+
+    return {
+      currentOutstanding: party?.currentOutstanding ?? 0,
+      loyaltyBalance: latestLoyalty?.afterPoints ?? 0,
+      jobCount: jobStats._count.id,
+      invoiceCount: invoiceStats._count.id,
+      totalSpend: invoiceStats._sum.totalAmount ?? 0,
+      lastInteractionDate,
+      lastJob: lastJob ?? null,
+      lastInvoice: lastInvoice ?? null,
+      nextFollowUp: nextFollowUp ?? null,
+    };
+  }
+
+  async updateCustomerLifecycle(
+    tenantId: string,
+    customerId: string,
+    lifecycle: string | null,
+  ) {
+    return this.prisma.party.update({
+      where: { id: customerId, tenantId },
+      data: { customerLifecycle: (lifecycle as CustomerLifecycle) ?? null },
+    });
+  }
+
+  async updateCustomerTags(
+    tenantId: string,
+    customerId: string,
+    tags: string[],
+  ) {
+    // Normalize tags: trim + lowercase + deduplicate
+    const normalized = [...new Set(tags.map((t) => t.trim().toLowerCase()).filter(Boolean))];
+    return this.prisma.party.update({
+      where: { id: customerId, tenantId },
+      data: { tags: normalized },
     });
   }
 }

@@ -175,6 +175,33 @@ export async function getFollowUpCounts(): Promise<{
 }
 
 /**
+ * Get ALL follow-ups for tenant (OWNER only)
+ */
+export async function getAllFollowUps(options?: {
+  bucket?: string;
+  assignedToUserId?: string;
+  skip?: number;
+  take?: number;
+}): Promise<{ data: FollowUp[]; total: number; skip: number; take: number }> {
+  const params = new URLSearchParams();
+  if (options?.bucket) params.append("bucket", options.bucket);
+  if (options?.assignedToUserId)
+    params.append("assignedToUserId", options.assignedToUserId);
+  if (options?.skip !== undefined)
+    params.append("skip", options.skip.toString());
+  if (options?.take !== undefined)
+    params.append("take", options.take.toString());
+
+  const url = `/core/follow-ups/all${params.toString() ? "?" + params.toString() : ""}`;
+  const response = await authenticatedFetch(url);
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to fetch all follow-ups");
+  }
+  return extractData(response);
+}
+
+/**
  * Create a new follow-up
  */
 export async function createFollowUp(data: {

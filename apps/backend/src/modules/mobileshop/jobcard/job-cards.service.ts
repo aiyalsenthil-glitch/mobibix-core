@@ -31,6 +31,9 @@ import { JobStatusValidator } from './job-status-validator.service';
 import { DocumentNumberService } from '../../../common/services/document-number.service';
 import { StockService } from '../../../core/stock/stock.service';
 import { StockValidationService } from '../../../core/stock/stock-validation.service';
+import { FollowUpsService } from '../../../core/follow-ups/follow-ups.service';
+
+const AUTO_FOLLOW_UP_DAYS = 7;
 
 @Injectable()
 export class JobCardsService {
@@ -42,6 +45,7 @@ export class JobCardsService {
     private stockService: StockService,
     private stockValidation: StockValidationService,
     private billingService: BillingService,
+    private followUpsService: FollowUpsService,
   ) {}
 
   private async validateStaffAssignment(
@@ -1256,7 +1260,54 @@ export class JobCardsService {
         );
       }
 
+      // 7️⃣ Auto follow-up on DELIVERED (outside transaction — non-critical)
+      if (newStatus === 'DELIVERED' && updatedJob.customerId) {
+        this.scheduleAutoFollowUp(
+          user.tenantId,
+          updatedJob.customerId,
+          id,
+          user.userId || user.sub,
+        ).catch((err) =>
+          console.error('[auto-follow-up] Failed to create:', err.message),
+        );
+      }
+
       return updatedJob;
+    });
+  }
+
+  private async scheduleAutoFollowUp(
+    tenantId: string,
+    customerId: string,
+    jobId: string,
+    userId: string,
+  ) {
+    // Deduplicate: only one auto follow-up per job
+    const existing = await this.prisma.customerFollowUp.findFirst({
+      where: { tenantId, sourceJobId: jobId },
+    });
+    if (existing) return;
+
+    const followUpAt = new Date();
+    followUpAt.setDate(followUpAt.getDate() + AUTO_FOLLOW_UP_DAYS);
+
+    // Fetch job details for the note
+    const job = await this.prisma.jobCard.findUnique({
+      where: { id: jobId },
+      select: { jobNumber: true, deviceBrand: true, deviceModel: true },
+    });
+
+    await this.prisma.customerFollowUp.create({
+      data: {
+        tenantId,
+        customerId,
+        type: 'PHONE_CALL',
+        purpose: `Post-repair follow-up — ${job?.deviceBrand ?? ''} ${job?.deviceModel ?? ''} (Job #${job?.jobNumber ?? jobId})`,
+        followUpAt,
+        status: 'PENDING',
+        assignedToUserId: userId,
+        sourceJobId: jobId,
+      },
     });
   }
 

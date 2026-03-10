@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   listCustomersPaginated,
   deleteCustomer,
@@ -263,8 +264,9 @@ export default function CustomersPage() {
                           >
                             {customer.name?.charAt(0)?.toUpperCase() || "?"}
                           </div>
-                          <span
-                            className={`font-medium ${
+                          <Link
+                            href={`/dashboard/customers/${customer.id}`}
+                            className={`font-medium hover:text-teal-500 transition-colors ${
                               !customer.isActive
                                 ? isDark
                                   ? "text-stone-500 line-through"
@@ -275,7 +277,7 @@ export default function CustomersPage() {
                             }`}
                           >
                             {customer.name}
-                          </span>
+                          </Link>
                         </div>
                       </td>
 

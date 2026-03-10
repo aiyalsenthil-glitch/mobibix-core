@@ -1,5 +1,5 @@
-import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
-import { FollowUpPurpose, FollowUpStatus, FollowUpType } from '@prisma/client';
+import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { FollowUpStatus, FollowUpType } from '@prisma/client';
 
 export class UpdateFollowUpDto {
   @IsOptional()
@@ -7,8 +7,9 @@ export class UpdateFollowUpDto {
   type?: FollowUpType;
 
   @IsOptional()
-  @IsEnum(FollowUpPurpose as object)
-  purpose?: FollowUpPurpose;
+  @IsString()
+  @IsNotEmpty()
+  purpose?: string;
 
   @IsOptional()
   @IsString()
