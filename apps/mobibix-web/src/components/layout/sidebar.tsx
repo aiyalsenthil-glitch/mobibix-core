@@ -39,27 +39,27 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, requiredPermission: "DASHBOARD_VIEW", category: "Core" },
-  { label: "Sales", href: "/sales", icon: Banknote, requiredPermission: "SALES_VIEW", category: "Transactions" },
-  { label: "Job Cards", href: "/jobcards", icon: Wrench, requiredPermission: "REPAIR_MANAGE", category: "Transactions" },
-  { label: "Quotations", href: "/quotations", icon: ClipboardList, requiredPermission: "SALES_VIEW", category: "Transactions" },
-  { label: "Credit Notes", href: "/credit-notes", icon: FileMinus, requiredPermission: "SALES_VIEW", category: "Transactions" },
-  { label: "Sales Receipts", href: "/receipts", icon: CreditCard, requiredPermission: "SALES_VIEW", category: "Transactions" },
-  { label: "Customers", href: "/customers", icon: Users, requiredPermission: "MEMBER_VIEW", category: "CRM & Marketing" },
-  { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare, requiredPermission: "MEMBER_VIEW", category: "CRM & Marketing" },
-  { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift, requiredPermission: "SHOP_MANAGE", category: "CRM & Marketing" },
-  { label: "Products", href: "/products", icon: Tags, requiredPermission: "INVENTORY_VIEW", category: "Inventory" },
-  { label: "Inventory", href: "/inventory", icon: PackageSearch, requiredPermission: "INVENTORY_VIEW", category: "Inventory" },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, requiredPermission: "core.dashboard.dashboard.view", category: "Core" },
+  { label: "Sales", href: "/sales", icon: Banknote, requiredPermission: "mobile_shop.sales.sale.view", category: "Transactions" },
+  { label: "Job Cards", href: "/jobcards", icon: Wrench, requiredPermission: "mobile_shop.job_cards.job_card.view", category: "Transactions" },
+  { label: "Quotations", href: "/quotations", icon: ClipboardList, requiredPermission: "mobile_shop.quotations.quotation.view", category: "Transactions" },
+  { label: "Credit Notes", href: "/credit-notes", icon: FileMinus, requiredPermission: "mobile_shop.sales.sale.view", category: "Transactions" },
+  { label: "Sales Receipts", href: "/receipts", icon: CreditCard, requiredPermission: "mobile_shop.sales.sale.view", category: "Transactions" },
+  { label: "Customers", href: "/customers", icon: Users, requiredPermission: "mobile_shop.customers.customer.view", category: "CRM & Marketing" },
+  { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare, requiredPermission: "mobile_shop.customers.customer.view", category: "CRM & Marketing" },
+  { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift, requiredPermission: "core.admin.shop.manage", category: "CRM & Marketing" },
+  { label: "Products", href: "/products", icon: Tags, requiredPermission: "mobile_shop.inventory.inventory.view", category: "Inventory" },
+  { label: "Inventory", href: "/inventory", icon: PackageSearch, requiredPermission: "mobile_shop.inventory.inventory.view", category: "Inventory" },
   ...(process.env.NEXT_PUBLIC_ENABLE_RESTOCK === 'true'
-    ? [{ label: "Restock", href: "/restock", icon: ShoppingBag, requiredPermission: "INVENTORY_VIEW", category: "Inventory" }]
+    ? [{ label: "Restock", href: "/restock", icon: ShoppingBag, requiredPermission: "mobile_shop.inventory.inventory.view", category: "Inventory" }]
     : []),
-  { label: "Suppliers", href: "/suppliers", icon: Truck, requiredPermission: "INVENTORY_VIEW", category: "Inventory" },
-  { label: "Purchase Orders", href: "/purchase-orders", icon: FileText, requiredPermission: "INVENTORY_VIEW", category: "Inventory" },
-  { label: "Supplier Invoices", href: "/purchases", icon: Inbox, requiredPermission: "INVENTORY_VIEW", category: "Inventory" },
-  { label: "Reports", href: "/reports", icon: LineChart, requiredPermission: "SALES_VIEW", category: "Management" },
-  { label: "Shops", href: "/shops", icon: Store, requiredPermission: "SHOP_MANAGE", category: "Management" },
-  { label: "Staff Management", href: "/staff-management", icon: ShieldCheck, requiredPermission: "STAFF_MANAGE", category: "Management" },
-  { label: "Settings", href: "/settings", icon: Settings, requiredPermission: "SHOP_MANAGE", category: "Management" },
+  { label: "Suppliers", href: "/suppliers", icon: Truck, requiredPermission: "mobile_shop.inventory.inventory.view", category: "Inventory" },
+  { label: "Purchase Orders", href: "/purchase-orders", icon: FileText, requiredPermission: "mobile_shop.inventory.inventory.view", category: "Inventory" },
+  { label: "Supplier Invoices", href: "/purchases", icon: Inbox, requiredPermission: "mobile_shop.inventory.inventory.view", category: "Inventory" },
+  { label: "Reports", href: "/reports", icon: LineChart, requiredPermission: "core.finance.report.view_financials", category: "Management" },
+  { label: "Shops", href: "/shops", icon: Store, requiredPermission: "core.admin.shop.manage", category: "Management" },
+  { label: "Staff Management", href: "/staff-management", icon: ShieldCheck, requiredPermission: "core.admin.staff.manage", category: "Management" },
+  { label: "Settings", href: "/settings", icon: Settings, requiredPermission: "core.admin.shop.manage", category: "Management" },
 ];
 
 interface SidebarProps {
@@ -231,6 +231,20 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
         </nav>
 
         <div className={`px-4 mt-auto space-y-3 pb-4 pt-2 border-t mt-4 ${isDark ? 'border-slate-800/50' : 'border-slate-100'} ${effectiveCollapsed ? 'flex flex-col items-center px-2 space-y-2' : ''}`}>
+
+          {/* Upgrade CTA for trial/starter users */}
+          {!effectiveCollapsed && authUser?.planCode && (authUser.planCode.includes('TRIAL') || authUser.planCode.includes('STARTER')) && (
+            <Link
+              href="/settings?tab=billing"
+              className={`block w-full px-3 py-2.5 rounded-xl text-center text-xs font-bold transition-all ${
+                isDark
+                  ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-400 hover:from-amber-500/30 hover:to-orange-500/30'
+                  : 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-700 hover:border-amber-300'
+              }`}
+            >
+              ⚡ Upgrade to Pro — unlock WhatsApp & more
+            </Link>
+          )}
 
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("open-ai-chat", { detail: { prompt: "" } }))}

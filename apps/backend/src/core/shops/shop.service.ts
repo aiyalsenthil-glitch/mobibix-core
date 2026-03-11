@@ -181,6 +181,12 @@ export class ShopService {
         tagline: true,
         headerConfig: true,
 
+        // ✅ Print Settings (were missing — caused save not reflecting)
+        invoicePrinterType: true,
+        invoiceTemplate: true,
+        jobCardPrinterType: true,
+        jobCardTemplate: true,
+
         bankName: true,
         accountNumber: true,
         ifscCode: true,
@@ -188,6 +194,11 @@ export class ShopService {
 
         repairInvoiceNumberingMode: true,
         repairGstDefault: true,
+
+        isActive: true,
+        tenantId: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
 

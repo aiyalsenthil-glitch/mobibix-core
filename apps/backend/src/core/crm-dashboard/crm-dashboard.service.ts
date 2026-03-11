@@ -257,7 +257,7 @@ export class CrmDashboardService {
       },
     });
 
-    const totalOutstanding = unpaidInvoices._sum?.totalAmount || 0;
+    const totalOutstanding = (unpaidInvoices._sum?.totalAmount || 0) / 100;
 
     // 2️⃣ High-value customers (top 10 by total spend)
     const topSpenders = await this.prisma.invoice.groupBy({
@@ -308,7 +308,7 @@ export class CrmDashboardService {
       .map((s) => ({
         customerId: s.customerId as string,
         customerName: customerMap.get(s.customerId as string) || 'Unknown',
-        totalSpent: s._sum?.totalAmount || 0,
+        totalSpent: (s._sum?.totalAmount || 0) / 100,
         invoiceCount: s._count?.id || 0,
         lastInvoiceDate: s._max?.invoiceDate || new Date(),
       }));

@@ -103,7 +103,7 @@ export function validateInvoiceForm(
   }
 
   // Items validation
-  const itemErrors = validateInvoiceItems(data.items || []);
+  const itemErrors = validateInvoiceItems(data.items || [], !!data.isGstApplicable);
   if (!itemErrors.valid) {
     errors.push({
       field: "items",
@@ -118,7 +118,10 @@ export function validateInvoiceForm(
  * Validate invoice items - checks for sanity
  * GST should not exceed 100% of item value, quantities and rates must be valid
  */
-export function validateInvoiceItems(items: InvoiceItemInput[]): {
+export function validateInvoiceItems(
+  items: InvoiceItemInput[],
+  isGstApplicable: boolean = false,
+): {
   valid: boolean;
   error?: string;
 } {
@@ -175,6 +178,14 @@ export function validateInvoiceItems(items: InvoiceItemInput[]): {
       return {
         valid: false,
         error: `Item ${i + 1}: GST rate cannot exceed 100%`,
+      };
+    }
+
+    // HSN Code mandatory for GST invoices
+    if (isGstApplicable && (!item.hsnCode || item.hsnCode.trim() === "")) {
+      return {
+        valid: false,
+        error: `Item ${i + 1}: HSN/SAC code is mandatory for GST invoices`,
       };
     }
   }

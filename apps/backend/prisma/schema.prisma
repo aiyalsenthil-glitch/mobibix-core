@@ -2854,6 +2854,15 @@ model Partner {
   passwordResetToken   String?   @unique
   passwordResetExpiry  DateTime?
 
+  // Bank / payout details
+  bankAccountName   String?
+  bankAccountNumber String?
+  bankIfsc          String?
+  bankName          String?
+  upiId             String?
+  payoutRequestedAt DateTime?  // Set when partner requests payout
+  lastPayoutAt      DateTime?  // Set when admin processes payout
+
   // Relations
   referredTenants Tenant[]
   promoCodes      PromoCode[]

@@ -109,10 +109,10 @@ export default function RoleEditScreen() {
       if (isNew || role?.isSystem) {
         // We always CREATE a new custom role if it's "new" or we are cloning a system role
         await createRole({ ...payload, isSystem: false });
-        router.push("/roles");
+        router.push("/staff-management?tab=roles");
       } else {
         await updateRole(roleId, payload);
-        router.push("/roles");
+        router.push("/staff-management?tab=roles");
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to save role");
@@ -141,7 +141,7 @@ export default function RoleEditScreen() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <Link href="/roles" className="text-gray-400 hover:text-teal-500 transition">
+            <Link href="/staff-management?tab=roles" className="text-gray-400 hover:text-teal-500 transition">
               ← Back to Roles
             </Link>
           </div>
@@ -158,7 +158,7 @@ export default function RoleEditScreen() {
         
         <div className="flex items-center gap-3 w-full md:w-auto">
           <button
-            onClick={() => router.push("/roles")}
+            onClick={() => router.push("/staff-management?tab=roles")}
             className="px-4 py-2 font-medium text-gray-700 bg-white border border-gray-300 dark:bg-transparent dark:text-gray-300 dark:border-stone-700 hover:bg-gray-50 dark:hover:bg-stone-800 rounded-lg transition flex-1 md:flex-none"
           >
             Cancel

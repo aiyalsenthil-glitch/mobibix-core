@@ -254,9 +254,14 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
         <div className="animate-fade-in">
           <ShopPrintSettings
             shop={shop}
-            onUpdate={() =>
-              window.dispatchEvent(new CustomEvent("shopUpdated"))
-            }
+            onUpdate={async () => {
+              // Re-fetch the shop settings so the prop stays fresh after save
+              try {
+                const fresh = await getShopSettings(shopId);
+                setShop(fresh);
+              } catch (_) { /* silent refresh failure is ok */ }
+              window.dispatchEvent(new CustomEvent("shopUpdated"));
+            }}
           />
         </div>
       ) : activeTab === "DOCUMENT" ? (

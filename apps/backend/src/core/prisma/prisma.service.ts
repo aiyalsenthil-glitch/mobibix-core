@@ -87,6 +87,7 @@ export class PrismaService
       'AuditLog', // FIXED: Was missing!
     ]);
 
+    const rootClient = this as any;
     const extendedClient = this.$extends({
       query: {
         $allModels: {
@@ -133,7 +134,7 @@ export class PrismaService
                 ].includes(operation);
 
                 if (isMutation) {
-                  const tenant = await this.tenant.findUnique({
+                  const tenant = await rootClient.tenant.findUnique({
                     where: { id: tenantId },
                     select: { deletionRequestPending: true },
                   });

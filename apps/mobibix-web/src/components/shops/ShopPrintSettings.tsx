@@ -68,17 +68,72 @@ export function ShopPrintSettings({ shop, onUpdate }: ShopPrintSettingsProps) {
     jobCardPrinterType: (shop.jobCardPrinterType || "NORMAL") as "NORMAL" | "THERMAL",
     jobCardTemplate: shop.jobCardTemplate || "CLASSIC",
     tagline: shop.tagline || "",
+    email: (shop as any).email || "",
     headerConfig: shop.headerConfig || {
-      layout: "CLASSIC",
+      layout: "CLASSIC" as const,
       showLogo: true,
       showTagline: false,
       accentColor: "#000000",
+      professionalHeader: {
+        logoPosition: "LEFT" as const,
+        contactDisplay: "RIGHT" as const,
+        showCell: true,
+        showEmail: true,
+        showTaglineBanner: true,
+        customTagline: "",
+      },
     },
   });
+
+  // Helper: update just the professionalHeader sub-object
+  const updatePH = (patch: Partial<NonNullable<typeof settings.headerConfig.professionalHeader>>) =>
+    setSettings(prev => ({
+      ...prev,
+      headerConfig: {
+        ...prev.headerConfig,
+        professionalHeader: {
+          logoPosition: "LEFT" as const,
+          contactDisplay: "RIGHT" as const,
+          showCell: true,
+          showEmail: true,
+          showTaglineBanner: true,
+          customTagline: "",
+          ...(prev.headerConfig.professionalHeader ?? {}),
+          ...patch,
+        },
+      },
+    }));
 
   // Preview Mode
   const [previewMode, setPreviewMode] = useState<"INVOICE" | "JOBCARD">("INVOICE");
   const [localLogoUrl, setLocalLogoUrl] = useState<string | null>(null);
+
+  // ✅ Re-sync settings when the shop prop is updated externally (e.g. after save + re-fetch)
+  useEffect(() => {
+    setSettings({
+      invoicePrinterType: (shop.invoicePrinterType || "NORMAL") as "NORMAL" | "THERMAL",
+      invoiceTemplate: shop.invoiceTemplate || "CLASSIC",
+      jobCardPrinterType: (shop.jobCardPrinterType || "NORMAL") as "NORMAL" | "THERMAL",
+      jobCardTemplate: shop.jobCardTemplate || "CLASSIC",
+      tagline: shop.tagline || "",
+      email: (shop as any).email || "",
+      headerConfig: shop.headerConfig || {
+        layout: "CLASSIC" as const,
+        showLogo: true,
+        showTagline: false,
+        accentColor: "#000000",
+        professionalHeader: {
+          logoPosition: "LEFT" as const,
+          contactDisplay: "RIGHT" as const,
+          showCell: true,
+          showEmail: true,
+          showTaglineBanner: true,
+          customTagline: "",
+        },
+      },
+    });
+    setLocalLogoUrl(null); // reset local logo so we use the fresh shop.logoUrl
+  }, [shop.id, shop.invoiceTemplate, shop.invoicePrinterType, shop.jobCardTemplate, shop.headerConfig]);
 
   // Effect: Enforce valid template when printer type changes
   useEffect(() => {
@@ -123,7 +178,9 @@ export function ShopPrintSettings({ shop, onUpdate }: ShopPrintSettingsProps) {
         ],
         contactInfo: [
           `Ph: ${shop.phone || "+91 98765 43210"}`,
-          shop.website ? `Web: ${shop.website}` : "Email: support@mobibix.com",
+          settings.email
+            ? `Email: ${settings.email}`
+            : (shop.website ? `Web: ${shop.website}` : "Email: support@mobibix.com"),
         ],
         gstNumber: shop.gstEnabled ? (shop.gstNumber || "29ABCDE1234F1Z5") : undefined,
       },
@@ -319,7 +376,8 @@ export function ShopPrintSettings({ shop, onUpdate }: ShopPrintSettingsProps) {
       // Merging local logo url if changed
       const payload = {
           ...settings,
-          logoUrl: localLogoUrl || shop.logoUrl // Include only if we want to update it.
+          logoUrl: localLogoUrl || shop.logoUrl, // Include only if we want to update it.
+          email: settings.email || undefined,
       };
 
       await updateShopSettings(shop.id, payload);
@@ -506,10 +564,119 @@ export function ShopPrintSettings({ shop, onUpdate }: ShopPrintSettingsProps) {
                         className="w-full px-4 py-2 border rounded-lg text-sm bg-transparent outline-none focus:border-blue-500 dark:border-white/20 dark:text-white"
                     />
                 )}
-                
+
+                {/* ─── EMAIL FOR HEADER ─── */}
+                <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Shop Email (for header)</label>
+                    <input
+                        type="email"
+                        value={settings.email}
+                        onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+                        placeholder="yourshop@gmail.com"
+                        className="w-full px-3 py-2 border rounded-lg text-sm bg-transparent outline-none focus:border-blue-500 dark:border-white/20 dark:text-white"
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1">Shown in top-right corner on Professional template</p>
+                </div>
 
             </div>
         </div>
+
+        {/* ─── PROFESSIONAL HEADER DESIGNER ─── */}
+        {settings.invoiceTemplate === "PROFESSIONAL" && (() => {
+          const ph = settings.headerConfig.professionalHeader ?? {
+            logoPosition: 'LEFT' as const,
+            contactDisplay: 'RIGHT' as const,
+            showCell: true,
+            showEmail: true,
+            showTaglineBanner: true,
+            customTagline: '',
+          };
+          return (
+          <div className="bg-white dark:bg-white/5 rounded-2xl border-2 border-blue-200 dark:border-blue-500/30 p-5 shadow-sm">
+            <h3 className="font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+              📋 Professional Header Designer
+            </h3>
+            <p className="text-[11px] text-gray-500 mb-4">Customise how your A4 invoice header looks — like Tally / Vyapar</p>
+
+            <div className="space-y-4">
+
+              {/* Logo Position */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Logo Position</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([['LEFT', '◀ Left'], ['CENTER', '▶ Center'], ['NONE', '✕ No Logo']] as const).map(([val, lbl]) => (
+                    <button key={val} type="button"
+                      onClick={() => updatePH({ logoPosition: val })}
+                      className={`py-2 px-2 rounded-lg border text-xs font-semibold transition-all ${
+                        ph.logoPosition === val
+                          ? 'border-blue-600 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-500/10 dark:text-blue-400'
+                          : 'border-gray-200 text-gray-500 hover:border-blue-300 dark:border-white/10 dark:hover:border-white/25'
+                      }`}
+                    >{lbl}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Contact Display */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Cell / Email Placement</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([['RIGHT', '▶ Top Right'], ['BELOW_ADDRESS', '▼ Below Addr'], ['NONE', '✕ Hide']] as const).map(([val, lbl]) => (
+                    <button key={val} type="button"
+                      onClick={() => updatePH({ contactDisplay: val })}
+                      className={`py-2 px-2 rounded-lg border text-xs font-semibold transition-all ${
+                        ph.contactDisplay === val
+                          ? 'border-blue-600 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-500/10 dark:text-blue-400'
+                          : 'border-gray-200 text-gray-500 hover:border-blue-300 dark:border-white/10 dark:hover:border-white/25'
+                      }`}
+                    >{lbl}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Show Cell / Email toggles */}
+              {ph.contactDisplay !== 'NONE' && (
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={ph.showCell}
+                      onChange={e => updatePH({ showCell: e.target.checked })}
+                      className="w-4 h-4 rounded text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Show Cell Number</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={ph.showEmail}
+                      onChange={e => updatePH({ showEmail: e.target.checked })}
+                      className="w-4 h-4 rounded text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Show Email</span>
+                  </label>
+                </div>
+              )}
+
+              {/* Tagline Banner */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 p-3 border rounded-xl bg-gray-50 dark:bg-white/5 cursor-pointer">
+                  <input type="checkbox" checked={ph.showTaglineBanner}
+                    onChange={e => updatePH({ showTaglineBanner: e.target.checked })}
+                    className="w-5 h-5 rounded text-blue-600"
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Show Tagline Banner Strip</span>
+                </label>
+                {ph.showTaglineBanner && (
+                  <input type="text"
+                    value={ph.customTagline || ''}
+                    onChange={e => updatePH({ customTagline: e.target.value })}
+                    placeholder={settings.tagline || 'e.g. Multi Brand Mobiles & Accessories Wholesale'}
+                    className="w-full px-3 py-2 border rounded-lg text-xs bg-transparent outline-none focus:border-blue-500 dark:border-white/20 dark:text-white"
+                  />
+                )}
+              </div>
+
+            </div>
+          </div>
+          );
+        })()}
 
         {/* 2. Invoice Config */}
         <div className="bg-white dark:bg-white/5 rounded-2xl border border-gray-200 dark:border-white/10 p-5 shadow-sm">

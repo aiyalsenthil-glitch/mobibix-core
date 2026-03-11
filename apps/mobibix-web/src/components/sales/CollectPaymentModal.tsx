@@ -173,7 +173,7 @@ export function CollectPaymentModal({
                       updateRow(index, "mode", e.target.value as PaymentMode)
                     }
                     disabled={isSubmitting}
-                    className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-black/20 border-slate-300 dark:border-white/20 text-slate-900 dark:text-white"
+                                    className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-gray-800 border-slate-300 dark:border-white/20 text-slate-900 dark:text-white"
                   >
                     <option value="CASH">Cash</option>
                     <option value="UPI">UPI</option>
@@ -194,7 +194,7 @@ export function CollectPaymentModal({
                     disabled={isSubmitting}
                     min="1"
                     step="0.01"
-                    className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-black/20 border-slate-300 dark:border-white/20 text-slate-900 dark:text-white"
+                                    className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-gray-800 border-slate-300 dark:border-white/20 text-slate-900 dark:text-white"
                   />
                 </div>
                 {rows.length > 1 && (
@@ -229,7 +229,7 @@ export function CollectPaymentModal({
                 onChange={(e) => setTransactionRef(e.target.value)}
                 placeholder="Check No, UPI Ref, etc."
                 disabled={isSubmitting}
-                className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-black/20 border-slate-300 dark:border-white/20 text-slate-900 dark:text-white"
+                className="w-full p-2 rounded border focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-slate-800 border-slate-300 dark:border-white/20 text-slate-900 dark:text-white"
               />
             </div>
           </div>

@@ -47,6 +47,10 @@ export class SalesInvoiceItemDto {
   @IsOptional()
   @IsArray()
   serialNumbers?: string[]; // Non-IMEI serial numbers
+
+  @IsOptional()
+  @IsString()
+  hsnCode?: string;
 }
 
 export class PaymentMethodDto {

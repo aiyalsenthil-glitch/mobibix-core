@@ -178,7 +178,7 @@ export function InvoiceProductTable({
                 Product / Description
               </th>
               <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase w-32">
-                HSN/SAC
+                HSN/SAC {selectedShop?.gstEnabled && <span className="text-red-500">*</span>}
               </th>
               <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase w-24">
                 Qty
@@ -355,7 +355,12 @@ export function InvoiceProductTable({
                           products,
                         )
                       }
-                      className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 outline-none text-sm py-1"
+                      className={`w-full bg-transparent border-b outline-none text-sm py-1 text-gray-900 dark:text-white transition ${
+                        selectedShop?.gstEnabled && (!item.hsnSac || item.hsnSac.trim() === "")
+                          ? "border-amber-400 focus:border-amber-500"
+                          : "border-gray-200 dark:border-gray-700 focus:border-teal-500"
+                      }`}
+                      placeholder={selectedShop?.gstEnabled ? "Required" : ""}
                     />
                   </td>
                   <td className="px-4 py-4 align-top">
@@ -372,7 +377,7 @@ export function InvoiceProductTable({
                             products,
                           )
                         }
-                        className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 outline-none text-sm py-1"
+                        className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 outline-none text-sm py-1 text-gray-900 dark:text-white"
                       />
                       <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-1">
                          <span>Wrty (Days):</span>
@@ -406,7 +411,7 @@ export function InvoiceProductTable({
                           products,
                         )
                       }
-                      className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 outline-none text-sm py-1"
+                      className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 outline-none text-sm py-1 text-gray-900 dark:text-white"
                     />
                   </td>
                   {selectedShop?.gstEnabled && (
@@ -421,14 +426,14 @@ export function InvoiceProductTable({
                             products,
                           )
                         }
-                        className="w-full bg-transparent border-b border-gray-200 dark:border-gray-700 outline-none text-sm py-1"
-                      >
-                        <option value="0">0%</option>
-                        <option value="5">5%</option>
-                        <option value="12">12%</option>
-                        <option value="18">18%</option>
-                        <option value="28">28%</option>
-                      </select>
+                        className="w-full bg-transparent dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 outline-none text-sm py-1 text-gray-900 dark:text-white"
+>
+                          <option value="0" className="dark:bg-gray-800">0%</option>
+                          <option value="5" className="dark:bg-gray-800">5%</option>
+                          <option value="12" className="dark:bg-gray-800">12%</option>
+                          <option value="18" className="dark:bg-gray-800">18%</option>
+                          <option value="28" className="dark:bg-gray-800">28%</option>
+                        </select>
                     </td>
                   )}
                   <td className="px-4 py-4 text-right align-top font-medium text-gray-900 dark:text-white">

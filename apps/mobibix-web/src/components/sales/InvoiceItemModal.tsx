@@ -211,6 +211,7 @@ export function InvoiceItemModal({
         gstRate: effectiveGstRate,
         gstAmount: finalGstAmount,
         imeis: finalProduct.isSerialized ? [] : undefined,
+        hsnCode: finalProduct.hsnCode || undefined,
       };
 
       await onAdd(item);

@@ -78,7 +78,7 @@ export function mapInvoiceToPrintData(ctx: AdapterContext): PrintDocumentData {
 
   const contactInfo = [
     shop.phone ? `Phone: ${shop.phone}` : null,
-    // shop.email ? `Email: ${shop.email}` : null // Shop interface doesn't have email yet
+    shop.email ? `Email: ${shop.email}` : null,
   ].filter(Boolean) as string[];
 
   // 5. Final Assembly

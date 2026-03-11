@@ -11,13 +11,15 @@ import { AuthModule } from '../../auth/auth.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { InvoiceModule } from '../invoices/invoice.module';
+import { PartnersModule } from '../../../modules/partners/partners.module';
 
 @Module({
   imports: [
     AuthModule,
-    PrismaModule, // ✅ for PrismaService
+    PrismaModule,
     SubscriptionsModule,
-    InvoiceModule, // ✅ for InvoiceService
+    InvoiceModule,
+    PartnersModule,
   ],
   providers: [
     PaymentsService,

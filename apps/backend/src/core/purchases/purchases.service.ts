@@ -652,6 +652,13 @@ export class PurchasesService {
       }
     });
 
-    return report;
+    return {
+      current: report.current / 100,
+      '1-30': report['1-30'] / 100,
+      '31-60': report['31-60'] / 100,
+      '61-90': report['61-90'] / 100,
+      over90: report.over90 / 100,
+      totalOutstanding: report.totalOutstanding / 100,
+    };
   }
 }

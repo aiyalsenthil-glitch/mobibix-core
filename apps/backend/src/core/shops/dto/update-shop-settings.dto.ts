@@ -75,15 +75,15 @@ export class UpdateShopSettingsDto {
 
   @IsOptional()
   @IsString()
-  invoiceTemplate?: 'CLASSIC' | 'MODERN' | 'CORPORATE' | 'COMPACT' | 'THERMAL';
+  invoiceTemplate?: 'CLASSIC' | 'MODERN' | 'CORPORATE' | 'COMPACT' | 'THERMAL' | 'SIMPLE' | 'RECEIPT_THERMAL' | 'PROFESSIONAL';
 
   @IsOptional()
   @IsString()
-  jobCardPrinterType?: 'THERMAL';
+  jobCardPrinterType?: 'NORMAL' | 'THERMAL';
 
   @IsOptional()
   @IsString()
-  jobCardTemplate?: 'SIMPLE' | 'DETAILED' | 'THERMAL';
+  jobCardTemplate?: 'SIMPLE' | 'DETAILED' | 'THERMAL' | 'CLASSIC' | 'VOUCHER_CLASSIC';
 
   @IsOptional()
   headerConfig?: any; // Using any for Json, could be specific DTO
@@ -91,6 +91,10 @@ export class UpdateShopSettingsDto {
   @IsOptional()
   @IsString()
   tagline?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
 
   @IsOptional()
   @IsString()

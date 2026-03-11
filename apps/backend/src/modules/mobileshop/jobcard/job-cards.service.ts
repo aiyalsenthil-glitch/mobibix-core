@@ -48,6 +48,20 @@ export class JobCardsService {
     private followUpsService: FollowUpsService,
   ) {}
 
+  private mapJobCard(job: any) {
+    if (!job) return null;
+    return {
+      ...job,
+      invoices: job.invoices?.map((inv: any) => ({
+        ...inv,
+        subTotal: (inv.subTotal || 0) / 100,
+        gstAmount: (inv.gstAmount || 0) / 100,
+        totalAmount: (inv.totalAmount || 0) / 100,
+        paidAmount: (inv.paidAmount || 0) / 100,
+      })),
+    };
+  }
+
   private async validateStaffAssignment(
     tenantId: string,
     shopId: string,
@@ -845,15 +859,15 @@ export class JobCardsService {
       const revenueRupees = revenuePaisa / 100;
       const profit = revenueRupees - jobPartsCostRupees;
 
-      return {
+      return this.mapJobCard({
         ...job,
         jobCost: jobPartsCostRupees, // Return Rupees
         profit: profit,
         revenue: revenueRupees,
-      };
+      });
     }
 
-    return job; // Staff don't see profit
+    return this.mapJobCard(job); // Staff don't see profit
   }
 
   async update(user: any, shopId: string, id: string, dto: UpdateJobCardDto) {
@@ -1069,7 +1083,11 @@ export class JobCardsService {
       this.prisma.jobCard.count({ where }),
     ]);
 
-    return { jobCards, total, empty: total === 0 };
+    return { 
+      jobCards: jobCards.map(job => this.mapJobCard(job)), 
+      total, 
+      empty: total === 0 
+    };
   }
 
   /**

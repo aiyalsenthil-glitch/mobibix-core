@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { ModuleType, Prisma } from '@prisma/client';
 import { CacheService } from '../cache/cache.service';
+import { runPermissionSeed } from './permissions.seed-logic';
 
 @Injectable()
 export class PermissionService {
@@ -16,6 +17,10 @@ export class PermissionService {
     private readonly prisma: PrismaService,
     private readonly cacheService: CacheService,
   ) {}
+
+  async seedPermissions() {
+    return runPermissionSeed(this.prisma as any);
+  }
 
   async hasPermission(
     userId: string,
@@ -156,11 +161,13 @@ export class PermissionService {
       },
     });
 
-    // 4. Transform to frontend strings: "resource.action"
+    // 4. Transform to frontend strings: "module.resource.action"
     // Note: We use Set to dedup permissions across multiple roles/shops
     const perms = new Set<string>();
     mappings.forEach((m) => {
-      perms.add(`${m.permission.resource.name}.${m.permission.action}`);
+      perms.add(
+        `${m.permission.resource.moduleType.toLowerCase()}.${m.permission.resource.name}.${m.permission.action}`,
+      );
     });
 
     return Array.from(perms);
@@ -432,115 +439,5 @@ export class PermissionService {
     }
 
     return deletedRole;
-  }
-
-  async seedPermissions() {
-    const dictionary = [
-      {
-        module: 'MOBILE_SHOP',
-        resources: [
-          {
-            name: 'sales',
-            actions: [
-              { id: 'sale.create', sensitive: false },
-              { id: 'sale.view', sensitive: false },
-              { id: 'sale.view_profit', sensitive: true },
-              { id: 'sale.refund', sensitive: true },
-            ],
-          },
-          {
-            name: 'inventory',
-            actions: [
-              { id: 'inventory.view', sensitive: false },
-              { id: 'inventory.create', sensitive: false },
-              { id: 'inventory.adjust', sensitive: false },
-            ],
-          },
-          {
-            name: 'customers',
-            actions: [
-              { id: 'customer.view', sensitive: false },
-              { id: 'customer.create', sensitive: false },
-            ],
-          },
-        ],
-      },
-      {
-        module: 'GYM',
-        resources: [
-          {
-            name: 'members',
-            actions: [
-              { id: 'member.view', sensitive: false },
-              { id: 'member.view_financials', sensitive: false },
-              { id: 'attendance.mark', sensitive: false },
-            ],
-          },
-        ],
-      },
-      {
-        module: 'CORE',
-        resources: [
-          {
-            name: 'finance',
-            actions: [
-              { id: 'report.view_financials', sensitive: true },
-              { id: 'report.export', sensitive: true },
-            ],
-          },
-          {
-            name: 'admin',
-            actions: [{ id: 'approval.override', sensitive: true }],
-          },
-        ],
-      },
-    ];
-
-    for (const mod of dictionary) {
-      for (const res of mod.resources) {
-        const dbRes = await this.prisma.resource.upsert({
-          where: {
-            moduleType_name: {
-              moduleType: mod.module as ModuleType,
-              name: res.name,
-            },
-          },
-          update: {},
-          create: {
-            moduleType: mod.module as ModuleType,
-            name: res.name,
-          },
-        });
-
-        for (const act of res.actions) {
-          const [_, actionName] = act.id.includes('.')
-            ? act.id.split('.')
-            : [null, act.id];
-          const finalAction = actionName || act.id;
-
-          await this.prisma.permission.upsert({
-            where: {
-              resourceId_action: {
-                resourceId: dbRes.id,
-                action: finalAction,
-              },
-            },
-            update: {
-              approvalPolicy: act.sensitive
-                ? { requiresApproval: true }
-                : Prisma.DbNull,
-            },
-            create: {
-              resourceId: dbRes.id,
-              action: finalAction,
-              approvalPolicy: act.sensitive
-                ? { requiresApproval: true }
-                : Prisma.DbNull,
-            },
-          });
-        }
-      }
-    }
-    return { success: true };
   }
 }

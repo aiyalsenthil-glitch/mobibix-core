@@ -17,6 +17,38 @@ export class CreditNotesService {
     private stockService: StockService,
   ) {}
 
+  private toPaisa(amount: number): number {
+    return Math.round(amount * 100);
+  }
+
+  private fromPaisa(amount: number): number {
+    return amount / 100;
+  }
+
+  private mapCreditNote(cn: any) {
+    if (!cn) return null;
+    return {
+      ...cn,
+      subTotal: this.fromPaisa(cn.subTotal),
+      gstAmount: this.fromPaisa(cn.gstAmount),
+      totalAmount: this.fromPaisa(cn.totalAmount),
+      appliedAmount: this.fromPaisa(cn.appliedAmount || 0),
+      refundedAmount: this.fromPaisa(cn.refundedAmount || 0),
+      items: cn.items?.map((item: any) => ({
+        ...item,
+        rate: this.fromPaisa(item.rate),
+        gstAmount: this.fromPaisa(item.gstAmount),
+        lineTotal: this.fromPaisa(item.lineTotal),
+      })),
+      applications: cn.applications?.map((app: any) => ({
+        ...app,
+        amount: this.fromPaisa(app.amount),
+        invoice: app.invoice ? { ...app.invoice, totalAmount: this.fromPaisa(app.invoice.totalAmount) } : undefined,
+        purchase: app.purchase ? { ...app.purchase, grandTotal: this.fromPaisa(app.purchase.grandTotal) } : undefined,
+      })),
+    };
+  }
+
   async listCreditNotes(tenantId: string, shopId: string, params?: any) {
     const { type, status, search, page = 1, limit = 20 } = params || {};
     const skip = (page - 1) * limit;
@@ -48,7 +80,7 @@ export class CreditNotesService {
     ]);
 
     return {
-      data: items,
+      data: items.map(item => this.mapCreditNote(item)),
       meta: {
         total,
         page,
@@ -76,7 +108,7 @@ export class CreditNotesService {
       throw new NotFoundException('Credit Note not found');
     }
 
-    return creditNote;
+    return this.mapCreditNote(creditNote);
   }
 
   async createCreditNote(tenantId: string, shopId: string, dto: CreateCreditNoteDto) {
@@ -86,8 +118,9 @@ export class CreditNotesService {
       let gstAmount = 0;
 
       const itemsData = dto.items.map((item) => {
-        const itemSubTotal = item.rate * item.quantity;
-        const itemGstAmount = (itemSubTotal * (item.gstRate || 0)) / 100;
+        const ratePaisa = this.toPaisa(item.rate);
+        const itemSubTotal = ratePaisa * item.quantity;
+        const itemGstAmount = Math.round((itemSubTotal * (item.gstRate || 0)) / 100);
         
         subTotal += itemSubTotal;
         gstAmount += itemGstAmount;
@@ -96,7 +129,7 @@ export class CreditNotesService {
           shopProductId: item.shopProductId,
           description: item.description,
           quantity: item.quantity,
-          rate: item.rate,
+          rate: ratePaisa,
           hsnCode: item.hsnCode,
           gstRate: item.gstRate || 0,
           gstAmount: itemGstAmount,
@@ -133,7 +166,7 @@ export class CreditNotesService {
         include: { items: true },
       });
 
-      return creditNote;
+      return this.mapCreditNote(creditNote);
     });
   }
 
@@ -171,13 +204,14 @@ export class CreditNotesService {
       }
 
       // 3. Update status to ISSUED
-      return tx.creditNote.update({
+      const updated = await tx.creditNote.update({
         where: { id },
         data: {
           creditNoteNo,
           status: CreditNoteStatus.ISSUED,
         },
       });
+      return this.mapCreditNote(updated);
     });
   }
 
@@ -188,7 +222,10 @@ export class CreditNotesService {
       throw new BadRequestException('Credit note must be ISSUED or partially applied to use');
     }
 
-    const availableAmount = creditNote.totalAmount - (creditNote.appliedAmount || 0) - (creditNote.refundedAmount || 0);
+    const totalAmount = creditNote.totalAmount; // Already converted to Rupees by mapCreditNote
+    const appliedAmount = (creditNote.appliedAmount || 0);
+    const refundedAmount = (creditNote.refundedAmount || 0);
+    const availableAmount = totalAmount - appliedAmount - refundedAmount;
     
     if (dto.amount > availableAmount + 0.01) { // Floating point buffer
        throw new BadRequestException(`Cannot apply ${dto.amount}. Available amount: ${availableAmount}`);
@@ -196,24 +233,29 @@ export class CreditNotesService {
 
     return this.prisma.$transaction(async (tx) => {
       // 1. Create Application record
+      const amountPaisa = this.toPaisa(dto.amount);
       await tx.creditNoteApplication.create({
         data: {
           creditNoteId: id,
           invoiceId: dto.invoiceId,
           purchaseId: dto.purchaseId,
-          amount: dto.amount,
+          amount: amountPaisa,
           appliedBy: userId,
         },
       });
 
       // 2. Update Credit Note totals
-      const newAppliedAmount = (creditNote.appliedAmount || 0) + dto.amount;
-      const isFull = (newAppliedAmount + (creditNote.refundedAmount || 0)) >= creditNote.totalAmount - 0.01;
+      const currentAppliedPaisa = Math.round((creditNote.appliedAmount || 0) * 100);
+      const newAppliedPaisa = currentAppliedPaisa + this.toPaisa(dto.amount);
+      const totalAmountPaisa = Math.round(creditNote.totalAmount * 100);
+      const refundedAmountPaisa = Math.round((creditNote.refundedAmount || 0) * 100);
+      
+      const isFull = (newAppliedPaisa + refundedAmountPaisa) >= totalAmountPaisa - 1; // 1 paisa buffer
 
       await tx.creditNote.update({
         where: { id },
         data: {
-          appliedAmount: newAppliedAmount,
+          appliedAmount: newAppliedPaisa,
           status: isFull ? CreditNoteStatus.FULLY_APPLIED : CreditNoteStatus.PARTIALLY_APPLIED,
         },
       });
@@ -230,7 +272,7 @@ export class CreditNotesService {
         await tx.invoice.update({
           where: { id: dto.invoiceId },
           data: {
-            paidAmount: { increment: Math.round(dto.amount * 100) },
+            paidAmount: { increment: this.toPaisa(dto.amount) },
           },
         });
         
@@ -242,7 +284,7 @@ export class CreditNotesService {
         await tx.purchase.update({
           where: { id: dto.purchaseId },
           data: {
-            paidAmount: { increment: Math.round(dto.amount * 100) },
+            paidAmount: { increment: this.toPaisa(dto.amount) },
           },
         });
       }
@@ -258,20 +300,27 @@ export class CreditNotesService {
       throw new BadRequestException('Credit note must be ISSUED or partially applied to refund');
     }
 
-    const availableAmount = creditNote.totalAmount - (creditNote.appliedAmount || 0) - (creditNote.refundedAmount || 0);
+    const totalAmount = creditNote.totalAmount; // Rupees
+    const appliedAmount = (creditNote.appliedAmount || 0);
+    const refundedAmount = (creditNote.refundedAmount || 0);
+    const availableAmount = totalAmount - appliedAmount - refundedAmount;
     
     if (amount > availableAmount + 0.01) {
        throw new BadRequestException(`Cannot refund ${amount}. Available amount: ${availableAmount}`);
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const newRefundedAmount = (creditNote.refundedAmount || 0) + amount;
-      const isFull = ((creditNote.appliedAmount || 0) + newRefundedAmount) >= creditNote.totalAmount - 0.01;
+      const currentRefundedPaisa = Math.round((creditNote.refundedAmount || 0) * 100);
+      const newRefundedPaisa = currentRefundedPaisa + this.toPaisa(amount);
+      const totalAmountPaisa = Math.round(creditNote.totalAmount * 100);
+      const appliedAmountPaisa = Math.round((creditNote.appliedAmount || 0) * 100);
+
+      const isFull = (appliedAmountPaisa + newRefundedPaisa) >= totalAmountPaisa - 1;
 
       await tx.creditNote.update({
         where: { id },
         data: {
-          refundedAmount: newRefundedAmount,
+          refundedAmount: newRefundedPaisa,
           status: isFull ? CreditNoteStatus.REFUNDED : CreditNoteStatus.PARTIALLY_APPLIED,
         },
       });
@@ -284,7 +333,7 @@ export class CreditNotesService {
           tenantId,
           shopId,
           type: 'OUT',
-          amount: Math.round(amount * 100),
+          amount: this.toPaisa(amount),
           mode: 'CASH',
           referenceType: 'CREDIT_NOTE' as any,
           referenceId: id,

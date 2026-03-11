@@ -15,6 +15,7 @@ export type EmailTemplateType =
   | 'TRIAL_ONBOARDING_DAY5'
   | 'TRIAL_ONBOARDING_DAY7'
   | 'TRIAL_ONBOARDING_DAY10'
+  | 'TRIAL_ONBOARDING_DAY12'
   | 'STAFF_INVITED'
   | 'MEMBER_EXPIRING'
   | 'MEMBERSHIP_EXPIRED'
@@ -76,7 +77,7 @@ export interface EmailTemplateProps {
   TRIAL_ONBOARDING_DAY5: { name: string; dashboardLink: string; productName: string };
   TRIAL_ONBOARDING_DAY7: { name: string; statsLink: string; productName: string };
   TRIAL_ONBOARDING_DAY10: { name: string; upgradeLink: string; productName: string };
-
+  TRIAL_ONBOARDING_DAY12: { name: string; upgradeLink: string; productName: string };
 
   // Staff
   STAFF_INVITED: {

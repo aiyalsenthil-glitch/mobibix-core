@@ -4,6 +4,7 @@ import {
   BillingCycle,
   PromoCodeType,
 } from '@prisma/client';
+import { runPermissionSeed } from '../src/core/permissions/permissions.seed-logic';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
@@ -794,6 +795,9 @@ async function main() {
   for (const t of tenants) {
     await seedWhatsAppSettingsForTenant(t.id);
   }
+
+  // 9. Permissions & Roles
+  await runPermissionSeed(prisma);
 
   console.log('✨ Master Seed Complete!');
 }

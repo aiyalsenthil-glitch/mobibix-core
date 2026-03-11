@@ -4,6 +4,7 @@ import { PartnersController } from './partners.controller';
 import { PartnerAuthService } from './auth/partner-auth.service';
 import { PartnerAuthController } from './auth/partner-auth.controller';
 import { PartnerJwtStrategy } from './auth/strategies/partner-jwt.strategy';
+import { PartnerExpiryCron } from './partner-expiry.cron';
 import { PrismaModule } from '../../core/prisma/prisma.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -25,7 +26,7 @@ import { EmailModule } from '../../common/email/email.module';
     }),
   ],
   controllers: [PartnersController, PartnerAuthController],
-  providers: [PartnersService, PartnerAuthService, PartnerJwtStrategy],
+  providers: [PartnersService, PartnerAuthService, PartnerJwtStrategy, PartnerExpiryCron],
   exports: [PartnersService],
 })
 export class PartnersModule {}

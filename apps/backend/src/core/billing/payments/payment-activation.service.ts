@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { InvoiceService } from '../invoices/invoice.service';
 import { PaymentRetryService } from './payment-retry.service';
+import { PartnersService } from '../../../modules/partners/partners.service';
 import { PaymentStatus } from '@prisma/client';
 
 /**
@@ -23,6 +24,7 @@ export class PaymentActivationService {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly invoiceService: InvoiceService,
     private readonly paymentRetryService: PaymentRetryService,
+    private readonly partnersService: PartnersService,
   ) {}
 
   /**
@@ -93,7 +95,7 @@ export class PaymentActivationService {
           `[PAYMENT] ✅ Activation complete: Payment ${payment.id} → Subscription ${subscription.id}`,
         );
 
-        // Module 6: Partner Referral & Commission Logic (tiered: 30% first / 10% renewal)
+        // Module 6: Partner Referral & Commission Logic (tiered: 30% first / dynamic renewal)
         try {
           const tenant = await tx.tenant.findUnique({
             where: { id: payment.tenantId },
@@ -112,9 +114,20 @@ export class PaymentActivationService {
               });
               const isFirstPayment = priorReferrals === 0;
 
+              // ─── Dynamic tier-based renewal commission ────────────────────────
+              // Count distinct active shops referred by this partner to determine tier
+              // Tier thresholds: Starter 0-4 → 5%, Growth 5-20 → 10%, Pro 21-50 → 15%, Elite 51+ → 20%
+              const activeShopCount = await tx.tenant.count({
+                where: { partnerId: partner.id },
+              });
+              const tierRenewalPct =
+                activeShopCount >= 51 ? 20 :
+                activeShopCount >= 21 ? 15 :
+                activeShopCount >= 5  ? 10 : 5;
+
               const commissionPct = isFirstPayment
-                ? partner.firstCommissionPct   // 30%
-                : partner.renewalCommissionPct; // 10%
+                ? partner.firstCommissionPct   // always 30%
+                : tierRenewalPct;              // tier-based: 5/10/15/20%
               const commissionAmount = (payment.amount * commissionPct) / 100;
 
               await tx.partnerReferral.create({
@@ -136,8 +149,17 @@ export class PaymentActivationService {
                 data: { totalEarned: { increment: commissionAmount } },
               });
 
+              const tierName = activeShopCount >= 51 ? 'Elite' : activeShopCount >= 21 ? 'Pro' : activeShopCount >= 5 ? 'Growth' : 'Starter';
               this.logger.log(
-                `💰 Partner Commission: ₹${commissionAmount} (${commissionPct}% — ${isFirstPayment ? 'first payment' : 'renewal'}) for Partner ${partner.id}`,
+                `💰 Partner Commission: ₹${commissionAmount} (${commissionPct}% — ${isFirstPayment ? 'first payment' : `renewal · ${tierName} tier`}) for Partner ${partner.id}`,
+              );
+
+              // Notify partner of commission earned (fire-and-forget)
+              const tenantName = (await tx.tenant.findUnique({ where: { id: payment.tenantId }, select: { name: true } }))?.name ?? 'A shop';
+              setImmediate(() =>
+                this.partnersService.notifyCommissionEarned(
+                  partner.id, commissionAmount, tenantName, isFirstPayment,
+                ),
               );
 
               // Apply SUBSCRIPTION_BONUS (+3 months) on first payment only

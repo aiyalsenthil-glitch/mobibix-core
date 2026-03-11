@@ -24,6 +24,22 @@ export class InventoryService {
     return Math.round(amount * 100);
   }
 
+  private fromPaisa(
+    amount: number | undefined | null,
+  ): number | undefined | null {
+    if (amount === undefined || amount === null) return amount;
+    return amount / 100;
+  }
+
+  private mapProduct(product: any) {
+    if (!product) return null;
+    return {
+      ...product,
+      salePrice: this.fromPaisa(product.salePrice),
+      costPrice: this.fromPaisa(product.costPrice),
+    };
+  }
+
   async createProduct(tenantId: string, dto: CreateProductDto) {
     // Name is required for creation
     if (!dto.name || !dto.shopId) {
@@ -65,7 +81,7 @@ export class InventoryService {
     }
 
     try {
-      return await this.prisma.shopProduct.create({
+      const product = await this.prisma.shopProduct.create({
         data: {
           tenantId,
           shopId: dto.shopId,
@@ -80,6 +96,7 @@ export class InventoryService {
           isActive: true,
         },
       });
+      return this.mapProduct(product);
     } catch (error) {
       console.error('Error creating product:', error);
       throw new BadRequestException(
@@ -150,13 +167,14 @@ export class InventoryService {
     if (dto.hsnCode !== undefined) updateData.hsnCode = dto.hsnCode;
     if (dto.gstRate !== undefined) updateData.gstRate = dto.gstRate;
 
-    return this.prisma.shopProduct.update({
+    const updated = await this.prisma.shopProduct.update({
       where: {
         id,
         tenantId,
       },
       data: updateData,
     });
+    return this.mapProduct(updated);
   }
 
   async getLowStock(tenantId: string, threshold = 5): Promise<StockBalance[]> {

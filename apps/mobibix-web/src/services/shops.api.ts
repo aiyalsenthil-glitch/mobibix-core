@@ -8,6 +8,7 @@ export interface Shop {
   tenantId: string;
   name: string;
   phone?: string;
+  email?: string;  // Shop email (shown in invoice header)
   addressLine1?: string;
   addressLine2?: string;
   city?: string;
@@ -18,28 +19,36 @@ export interface Shop {
   gstEnabled?: boolean;
   invoicePrefix?: string;
   invoiceFooter?: string;
-    logoUrl?: string;
-    tagline?: string;
-    terms?: string[];
-    isActive: boolean;
-    createdAt: Date | string;
-    updatedAt: Date | string;
-    currency?: string;
-  
-    // Print Settings
-    invoicePrinterType?: "NORMAL" | "THERMAL";
-    invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL" | "SIMPLE" | "RECEIPT_THERMAL" | "PROFESSIONAL";
-    jobCardPrinterType?: "NORMAL" | "THERMAL";
-    jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL" | "CLASSIC" | "VOUCHER_CLASSIC";
-  
-    // Custom Header
-    headerConfig?: {
-      layout: "CLASSIC" | "CENTERED" | "SPLIT" | "MINIMAL";
-      showLogo: boolean;
-      showTagline: boolean;
-      accentColor?: string;
-      enableWarrantyJobs?: boolean;
+  logoUrl?: string;
+  tagline?: string;
+  terms?: string[];
+  isActive: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  currency?: string;
+
+  // Print Settings
+  invoicePrinterType?: "NORMAL" | "THERMAL";
+  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL" | "SIMPLE" | "RECEIPT_THERMAL" | "PROFESSIONAL";
+  jobCardPrinterType?: "NORMAL" | "THERMAL";
+  jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL" | "CLASSIC" | "VOUCHER_CLASSIC";
+
+  // Custom Header (synced with print/types.ts HeaderConfig)
+  headerConfig?: {
+    layout: "CLASSIC" | "CENTERED" | "SPLIT" | "MINIMAL";
+    showLogo: boolean;
+    showTagline: boolean;
+    accentColor?: string;
+    enableWarrantyJobs?: boolean;
+    professionalHeader?: {
+      logoPosition: 'LEFT' | 'CENTER' | 'NONE';
+      contactDisplay: 'RIGHT' | 'BELOW_ADDRESS' | 'NONE';
+      showCell: boolean;
+      showEmail: boolean;
+      showTaglineBanner: boolean;
+      customTagline?: string;
     };
+  };
   // Bank Details
   bankName?: string;
   accountNumber?: string;
@@ -87,6 +96,7 @@ export interface UpdateShopDto {
 export interface UpdateShopSettingsDto {
   name?: string;
   phone?: string;
+  email?: string;
   addressLine1?: string;
   addressLine2?: string;
   city?: string;
@@ -113,6 +123,14 @@ export interface UpdateShopSettingsDto {
     showTagline: boolean;
     accentColor?: string;
     enableWarrantyJobs?: boolean;
+    professionalHeader?: {
+      logoPosition: 'LEFT' | 'CENTER' | 'NONE';
+      contactDisplay: 'RIGHT' | 'BELOW_ADDRESS' | 'NONE';
+      showCell: boolean;
+      showEmail: boolean;
+      showTaglineBanner: boolean;
+      customTagline?: string;
+    };
   };
   // Bank Details
   bankName?: string;

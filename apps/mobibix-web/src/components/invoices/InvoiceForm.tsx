@@ -294,6 +294,7 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
           gstRate: item.gstRate,
           gstAmount: ((item.quantity * item.rate) / 100) * item.gstRate || 0,
           imeis: item.imeis,
+          hsnCode: item.hsnCode,
         })),
         pricesIncludeTax: false,
       };
@@ -358,7 +359,7 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
         <select
           value={shopId}
           onChange={(e) => setShopId(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           required
         >
           <option value="">Select a shop</option>
@@ -437,7 +438,7 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder="Customer name"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               required
             />
           </div>
@@ -451,7 +452,7 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value.slice(0, 10))}
               placeholder="10-digit phone"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               maxLength={10}
             />
           </div>
@@ -465,7 +466,7 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
               value={customerState}
               onChange={(e) => setCustomerState(e.target.value)}
               placeholder="e.g., Maharashtra"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             />
           </div>
 
@@ -480,7 +481,7 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
                 setCustomerGstin(e.target.value.slice(0, 15).toUpperCase())
               }
               placeholder="e.g., 27AAFCR5055K1Z0"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               maxLength={15}
             />
           </div>
@@ -508,7 +509,7 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
                   onChange={(e) => setIsGstApplicable(e.target.checked)}
                   className="w-4 h-4 rounded cursor-pointer"
                 />
-                <span className="font-medium text-gray-900">
+                <span className="font-medium text-gray-900 dark:text-gray-100">
                   Apply GST to this invoice
                 </span>
               </label>
@@ -599,7 +600,7 @@ export function InvoiceForm({ onSuccess, onCancel }: InvoiceFormProps) {
       </div>
 
       {/* Totals Display */}
-      <div className="space-y-3 rounded-lg bg-white border border-gray-200 p-4">
+      <div className="space-y-3 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4">
         <h3 className="font-medium text-gray-900">Invoice Summary</h3>
 
         <div className="space-y-2 text-sm">
@@ -696,7 +697,7 @@ function ItemRowComponent({
   isGstApplicable: boolean;
 }) {
   return (
-    <div className="space-y-3 rounded-lg border border-gray-300 bg-white p-3">
+    <div className="space-y-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
       {/* Product & Quantity Row */}
       <div className="grid gap-3 md:grid-cols-4">
         <div className="space-y-1">
@@ -731,7 +732,7 @@ function ItemRowComponent({
               onUpdate(item.tempId, "quantity", parseInt(e.target.value) || 0)
             }
             min="1"
-            className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
             required
           />
         </div>
@@ -763,7 +764,7 @@ function ItemRowComponent({
               onUpdate(item.tempId, "gstRate", parseFloat(e.target.value) || 0)
             }
             disabled={!isGstApplicable}
-            className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed"
           >
             <option value="0">0%</option>
             <option value="5">5%</option>
@@ -784,14 +785,19 @@ function ItemRowComponent({
       <div className="grid gap-3 md:grid-cols-3">
         <div className="space-y-1">
           <label className="block text-xs font-medium text-gray-600">
-            HSN Code
+            HSN Code {isGstApplicable && <span className="text-red-500">*</span>}
           </label>
           <input
             type="text"
             value={item.hsnCode || ""}
             onChange={(e) => onUpdate(item.tempId, "hsnCode", e.target.value)}
             placeholder="e.g., 8517"
-            className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={`w-full rounded-lg border px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white ${
+              isGstApplicable && (!item.hsnCode || item.hsnCode.trim() === "")
+                ? "border-amber-400 focus:ring-amber-500"
+                : "border-gray-300 dark:border-gray-700"
+            }`}
+            required={isGstApplicable}
           />
         </div>
 

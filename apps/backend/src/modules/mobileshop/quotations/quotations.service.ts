@@ -18,6 +18,30 @@ export class QuotationsService {
     private salesService: SalesService,
     private jobCardsService: JobCardsService,
   ) {}
+  
+  private toPaisa(amount: number): number {
+    return Math.round(amount * 100);
+  }
+
+  private fromPaisa(amount: number): number {
+    return amount / 100;
+  }
+
+  private mapQuotation(quotation: any) {
+    return {
+      ...quotation,
+      subTotal: this.fromPaisa(quotation.subTotal),
+      gstAmount: this.fromPaisa(quotation.gstAmount),
+      totalAmount: this.fromPaisa(quotation.totalAmount),
+      items: quotation.items?.map((item: any) => ({
+        ...item,
+        price: this.fromPaisa(item.price),
+        gstAmount: this.fromPaisa(item.gstAmount),
+        lineTotal: this.fromPaisa(item.lineTotal),
+        totalAmount: this.fromPaisa(item.totalAmount),
+      })),
+    };
+  }
 
   async listQuotations(tenantId: string, shopId: string, params?: any) {
     const { status, search, page = 1, limit = 20 } = params || {};
@@ -52,7 +76,7 @@ export class QuotationsService {
     ]);
 
     return {
-      data: items,
+      data: items.map(item => this.mapQuotation(item)),
       meta: {
         total,
         page,
@@ -72,7 +96,7 @@ export class QuotationsService {
       throw new NotFoundException('Quotation not found');
     }
 
-    return quotation;
+    return this.mapQuotation(quotation);
   }
 
   async createQuotation(tenantId: string, shopId: string, dto: CreateQuotationDto, userId: string) {
@@ -90,8 +114,9 @@ export class QuotationsService {
       let gstAmount = 0;
 
       const itemsData = dto.items.map((item) => {
-        const itemSubTotal = item.price * item.quantity;
-        const itemGstAmount = (itemSubTotal * (item.gstRate || 0)) / 100;
+        const pricePaisa = this.toPaisa(item.price);
+        const itemSubTotal = pricePaisa * item.quantity;
+        const itemGstAmount = Math.round((itemSubTotal * (item.gstRate || 0)) / 100);
         
         subTotal += itemSubTotal;
         gstAmount += itemGstAmount;
@@ -100,7 +125,7 @@ export class QuotationsService {
           shopProductId: item.shopProductId,
           description: item.description,
           quantity: item.quantity,
-          price: item.price,
+          price: pricePaisa,
           gstRate: item.gstRate || 0,
           gstAmount: itemGstAmount,
           lineTotal: itemSubTotal,
@@ -134,7 +159,7 @@ export class QuotationsService {
         include: { items: true },
       });
 
-      return quotation;
+      return this.mapQuotation(quotation);
     });
   }
 
@@ -155,8 +180,9 @@ export class QuotationsService {
         let gstAmount = 0;
 
         const itemsData = dto.items.map((item) => {
-          const itemSubTotal = item.price * item.quantity;
-          const itemGstAmount = (itemSubTotal * (item.gstRate || 0)) / 100;
+          const pricePaisa = this.toPaisa(item.price);
+          const itemSubTotal = pricePaisa * item.quantity;
+          const itemGstAmount = Math.round((itemSubTotal * (item.gstRate || 0)) / 100);
           
           subTotal += itemSubTotal;
           gstAmount += itemGstAmount;
@@ -166,7 +192,7 @@ export class QuotationsService {
             shopProductId: item.shopProductId,
             description: item.description,
             quantity: item.quantity,
-            price: item.price,
+            price: pricePaisa,
             gstRate: item.gstRate || 0,
             gstAmount: itemGstAmount,
             lineTotal: itemSubTotal,
@@ -176,7 +202,7 @@ export class QuotationsService {
 
         const totalAmount = subTotal + gstAmount;
 
-        return tx.quotation.update({
+        const updated = await tx.quotation.update({
           where: { id },
           data: {
             customerName: dto.customerName,
@@ -194,10 +220,11 @@ export class QuotationsService {
           },
           include: { items: true },
         });
+        return this.mapQuotation(updated);
       }
 
       // 2. Simple update without items
-      return tx.quotation.update({
+      const updated = await tx.quotation.update({
         where: { id },
         data: {
           customerName: dto.customerName,
@@ -209,6 +236,7 @@ export class QuotationsService {
         },
         include: { items: true },
       });
+      return this.mapQuotation(updated);
     });
   }
 
@@ -252,7 +280,7 @@ export class QuotationsService {
       items: quotation.items.map((item) => ({
         shopProductId: item.shopProductId,
         quantity: item.quantity,
-        rate: item.price,
+        rate: item.price, // mapQuotation already converted this to Rupees
         gstRate: item.gstRate,
       })),
       paymentMode: 'CASH', // Default

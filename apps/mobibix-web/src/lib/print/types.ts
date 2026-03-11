@@ -7,6 +7,16 @@ export interface HeaderConfig {
   showLogo: boolean;
   showTagline: boolean;
   accentColor?: string; // Hex
+
+  // Professional A4 template header customization (Indian ERP style)
+  professionalHeader?: {
+    logoPosition: 'LEFT' | 'CENTER' | 'NONE';   // Where logo appears
+    contactDisplay: 'RIGHT' | 'BELOW_ADDRESS' | 'NONE'; // Cell/Email placement
+    showCell: boolean;     // Show phone in top-right corner
+    showEmail: boolean;    // Show email in top-right corner
+    showTaglineBanner: boolean; // Show tagline/distributor tagline strip
+    customTagline?: string; // Override tagline in the strip
+  };
 }
 
 export interface PrintDocumentData {

@@ -104,6 +104,7 @@ export interface InvoiceItem {
   imeis?: string[];         // IMEI numbers for serialized products
   warrantyDays?: number;    // Warranty duration; backend computes warrantyEndAt server-side
   serialNumbers?: string[]; // Non-IMEI serial numbers
+  hsnCode?: string;         // HSN/SAC code override
 }
 
 export interface CreateInvoiceDto {

@@ -487,9 +487,9 @@ export class StockService {
     return {
       totalProducts,
       totalItems,
-      totalValue: Number(totalValue),
+      totalValue: Number(totalValue) / 100,
       lowStockItems,
-      potentialRevenue,
+      potentialRevenue: potentialRevenue / 100,
     };
   }
 
@@ -514,6 +514,11 @@ export class StockService {
 
     if (!imeiRecord) {
       throw new BadRequestException(`IMEI "${imei}" not found in your inventory.`);
+    }
+
+    if (imeiRecord.product) {
+      (imeiRecord.product as any).salePrice = (imeiRecord.product.salePrice || 0) / 100;
+      (imeiRecord.product as any).costPrice = (imeiRecord.product.costPrice || 0) / 100;
     }
 
     return imeiRecord;

@@ -113,7 +113,7 @@ export function InventoryList({ shopId, onAdjustStock }: InventoryListProps) {
 
   if (loading) {
     return (
-      <div className="rounded-lg bg-white border border-gray-200 p-6">
+      <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Inventory</h3>
         <div className="flex items-center justify-center p-8">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
@@ -139,7 +139,7 @@ export function InventoryList({ shopId, onAdjustStock }: InventoryListProps) {
       </div>
 
       {/* Controls */}
-      <div className="rounded-lg bg-white border border-gray-200 p-4 space-y-3">
+      <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 space-y-3">
         <div className="grid gap-3 md:grid-cols-3">
           {/* Search */}
           <div>
@@ -151,7 +151,7 @@ export function InventoryList({ shopId, onAdjustStock }: InventoryListProps) {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Product name or SKU..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400"
             />
           </div>
 
@@ -172,14 +172,14 @@ export function InventoryList({ shopId, onAdjustStock }: InventoryListProps) {
                     | "OVERSTOCK",
                 )
               }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="CRITICAL">Critical</option>
-              <option value="LOW">Low</option>
-              <option value="NORMAL">Normal</option>
-              <option value="OVERSTOCK">Overstock</option>
-            </select>
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+>
+                <option value="ALL">All Statuses</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="LOW">Low</option>
+                <option value="NORMAL">Normal</option>
+                <option value="OVERSTOCK">Overstock</option>
+              </select>
           </div>
 
           {/* Sort */}
@@ -191,7 +191,7 @@ export function InventoryList({ shopId, onAdjustStock }: InventoryListProps) {
               <select
                 value={sortField}
                 onChange={(e) => setSortField(e.target.value as SortField)}
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 <option value="name">Product</option>
                 <option value="stock">Stock Qty</option>
@@ -202,7 +202,7 @@ export function InventoryList({ shopId, onAdjustStock }: InventoryListProps) {
                 onClick={() =>
                   setSortOrder(sortOrder === "asc" ? "desc" : "asc")
                 }
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
               >
                 {sortOrder === "asc" ? "↑" : "↓"}
               </button>
@@ -212,7 +212,7 @@ export function InventoryList({ shopId, onAdjustStock }: InventoryListProps) {
       </div>
 
       {/* Products Table */}
-      <div className="rounded-lg bg-white border border-gray-200 overflow-hidden">
+      <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 overflow-hidden">
         {error ? (
           <div className="p-6">
             <div className="rounded-lg bg-red-50 border border-red-200 p-3">

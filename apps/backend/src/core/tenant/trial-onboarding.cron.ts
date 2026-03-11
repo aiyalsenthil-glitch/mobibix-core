@@ -76,7 +76,7 @@ export class TrialOnboardingCron {
 
         const sendNudge = async (
           day: number,
-          emailType: 'TRIAL_ONBOARDING_DAY1' | 'TRIAL_ONBOARDING_DAY3' | 'TRIAL_ONBOARDING_DAY5' | 'TRIAL_ONBOARDING_DAY7' | 'TRIAL_ONBOARDING_DAY10',
+          emailType: 'TRIAL_ONBOARDING_DAY1' | 'TRIAL_ONBOARDING_DAY3' | 'TRIAL_ONBOARDING_DAY5' | 'TRIAL_ONBOARDING_DAY7' | 'TRIAL_ONBOARDING_DAY10' | 'TRIAL_ONBOARDING_DAY12',
           subject: string,
           data: any,
         ) => {
@@ -137,6 +137,14 @@ export class TrialOnboardingCron {
             10,
             'TRIAL_ONBOARDING_DAY10',
             `Only 4 days left — let's make sure you're getting value`,
+            { upgradeLink: `${baseUrl}/settings/billing` }
+          );
+
+          // Day 12: Final push — 2 days left
+          await sendNudge(
+            12,
+            'TRIAL_ONBOARDING_DAY12',
+            `⚡ 2 days left — your shop data is waiting for you`,
             { upgradeLink: `${baseUrl}/settings/billing` }
           );
         } catch (err) {

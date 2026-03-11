@@ -23,6 +23,7 @@ import { TrialOnboardingDay3Email } from './templates/tenant/trial-onboarding-da
 import { TrialOnboardingDay5Email } from './templates/tenant/trial-onboarding-day5';
 import { TrialOnboardingDay7Email } from './templates/tenant/trial-onboarding-day7';
 import { TrialOnboardingDay10Email } from './templates/tenant/trial-onboarding-day10';
+import { TrialOnboardingDay12Email } from './templates/tenant/trial-onboarding-day12';
 
 import { StaffInvitedEmail } from './templates/staff/staff-invited';
 
@@ -278,6 +279,14 @@ export class EmailService {
           module,
           ...(payload as Omit<
             Parameters<typeof TrialOnboardingDay10Email>[0],
+            'module'
+          >),
+        });
+      case 'TRIAL_ONBOARDING_DAY12':
+        return TrialOnboardingDay12Email({
+          module,
+          ...(payload as Omit<
+            Parameters<typeof TrialOnboardingDay12Email>[0],
             'module'
           >),
         });

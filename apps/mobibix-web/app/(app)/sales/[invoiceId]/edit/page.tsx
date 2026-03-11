@@ -222,6 +222,7 @@ export default function EditInvoicePage() {
           imeis: item.imeis && item.imeis.length > 0 ? item.imeis : undefined,
           serialNumbers: item.serialNumbers && item.serialNumbers.length > 0 ? item.serialNumbers : undefined,
           warrantyDays: item.warrantyDays,
+          hsnCode: item.hsnCode,
         })),
       };
 
@@ -533,6 +534,7 @@ export default function EditInvoicePage() {
               gstRate: newItem.gstRate,
               gstAmount: newItem.gstAmount,
               lineTotal: newItem.rate * newItem.quantity + (newItem.gstAmount || 0),
+              hsnCode: newItem.hsnCode,
             };
             setEditableItems([...editableItems, detail]);
           }}

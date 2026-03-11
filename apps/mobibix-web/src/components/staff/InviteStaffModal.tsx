@@ -27,6 +27,7 @@ export function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteStaffModa
 
   const [shops, setShops] = useState<Shop[]>([]);
   const [roles, setRoles] = useState<RoleDto[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,9 +41,11 @@ export function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteStaffModa
       setSelectedBranches(new Set());
       setSelectedRoleId(null);
       setError(null);
-      
-      listShops().then(setShops).catch(console.error);
-      listRoles().then(setRoles).catch(console.error);
+      setIsInitialLoading(true);
+      Promise.all([
+        listShops().then(setShops).catch(console.error),
+        listRoles().then(setRoles).catch(console.error)
+      ]).finally(() => setIsInitialLoading(false));
     }
   }, [isOpen]);
 
@@ -163,8 +166,10 @@ export function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteStaffModa
                 <label className="block text-sm font-semibold text-slate-700 dark:text-stone-300 mb-3 border-b border-gray-100 dark:border-stone-800 pb-2">
                   Where will they work? *
                 </label>
-                {shops.length === 0 ? (
+                {isInitialLoading ? (
                   <div className="text-sm text-gray-500 animate-pulse">Loading branches...</div>
+                ) : shops.length === 0 ? (
+                  <div className="text-sm text-gray-500 italic">No branches found. Please ensure you have a branch set up.</div>
                 ) : (
                   <div className="grid sm:grid-cols-2 gap-3">
                     {shops.map(shop => (
@@ -195,32 +200,48 @@ export function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteStaffModa
           ) : (
             <div className="space-y-6">
               {/* Role Templates Grid (Simple Mode) */}
-              <div className="grid sm:grid-cols-2 gap-4">
-                {roles.filter(r => r.name !== "System Owner").map(role => (
-                  <div 
-                    key={role.id}
-                    onClick={() => setSelectedRoleId(role.id)}
-                    className={`relative p-5 rounded-xl border-2 cursor-pointer transition-all ${
-                      selectedRoleId === role.id 
-                        ? "border-teal-500 bg-teal-50 dark:bg-teal-500/10 dark:border-teal-500" 
-                        : "border-gray-200 bg-white hover:border-teal-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-600"
-                    }`}
-                  >
-                    {selectedRoleId === role.id && (
-                      <div className="absolute top-4 right-4 text-teal-500">
-                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
-                      </div>
-                    )}
-                    <h3 className="font-bold text-gray-900 dark:text-white pr-8">{role.name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-stone-400 mt-2 line-clamp-3">
-                      {role.description}
-                    </p>
-                    {!role.isSystem && (
-                      <span className="inline-block mt-3 px-2 py-0.5 bg-gray-100 text-gray-600 dark:bg-stone-800 dark:text-stone-300 text-xs rounded font-medium">Custom</span>
-                    )}
+              {isInitialLoading ? (
+                <div className="text-sm text-gray-500 animate-pulse">Loading roles...</div>
+              ) : roles.filter(r => r.name !== "System Owner").length === 0 ? (
+                <div className="p-8 text-center border-2 border-dashed border-gray-200 dark:border-stone-800 rounded-xl bg-gray-50 dark:bg-stone-900/50">
+                  <div className="text-gray-400 dark:text-stone-500 mb-3">
+                    <svg className="w-12 h-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
                   </div>
-                ))}
-              </div>
+                  <p className="text-gray-900 dark:text-white font-medium mb-1">No predefined roles found</p>
+                  <p className="text-sm text-gray-500 dark:text-stone-400 max-w-sm mx-auto">
+                    You can create custom roles to define what this staff member can do by using the advanced editor.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {roles.filter(r => r.name !== "System Owner").map(role => (
+                    <div 
+                      key={role.id}
+                      onClick={() => setSelectedRoleId(role.id)}
+                      className={`relative p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                        selectedRoleId === role.id 
+                          ? "border-teal-500 bg-teal-50 dark:bg-teal-500/10 dark:border-teal-500" 
+                          : "border-gray-200 bg-white hover:border-teal-300 dark:border-stone-800 dark:bg-stone-900 dark:hover:border-stone-600"
+                      }`}
+                    >
+                      {selectedRoleId === role.id && (
+                        <div className="absolute top-4 right-4 text-teal-500">
+                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
+                        </div>
+                      )}
+                      <h3 className="font-bold text-gray-900 dark:text-white pr-8">{role.name}</h3>
+                      <p className="text-sm text-gray-500 dark:text-stone-400 mt-2 line-clamp-3">
+                        {role.description}
+                      </p>
+                      {!role.isSystem && (
+                        <span className="inline-block mt-3 px-2 py-0.5 bg-gray-100 text-gray-600 dark:bg-stone-800 dark:text-stone-300 text-xs rounded font-medium">Custom</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Advanced Breakout */}
               <div className="mt-8 pt-6 border-t border-gray-100 dark:border-stone-800">

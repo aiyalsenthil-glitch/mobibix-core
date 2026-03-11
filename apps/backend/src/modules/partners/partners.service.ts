@@ -451,7 +451,11 @@ export class PartnersService {
       }),
       this.prisma.partner.update({
         where: { id: partnerId },
-        data: { totalPaid: { increment: totalPayout } },
+        data: {
+          totalPaid: { increment: totalPayout },
+          lastPayoutAt: now,
+          payoutRequestedAt: null, // clear request flag after processing
+        },
       }),
     ]);
 
@@ -553,6 +557,128 @@ export class PartnersService {
       );
     }
     return expiring.length;
+  }
+
+  // ─────────────────────────────────────────────
+  // MODULE 11: Partner Profile — Get + Update
+  // ─────────────────────────────────────────────
+  async getPartnerProfile(partnerId: string) {
+    const partner = await this.prisma.partner.findUnique({
+      where: { id: partnerId },
+      select: {
+        id: true,
+        businessName: true,
+        contactPerson: true,
+        email: true,
+        phone: true,
+        region: true,
+        partnerType: true,
+        referralCode: true,
+        status: true,
+        firstCommissionPct: true,
+        renewalCommissionPct: true,
+        totalEarned: true,
+        totalPaid: true,
+        bankAccountName: true,
+        bankAccountNumber: true,
+        bankIfsc: true,
+        bankName: true,
+        upiId: true,
+        payoutRequestedAt: true,
+        lastPayoutAt: true,
+        approvedAt: true,
+        createdAt: true,
+      },
+    });
+    if (!partner) throw new NotFoundException('Partner not found');
+    return partner;
+  }
+
+  async requestPayout(partnerId: string) {
+    const partner = await this.prisma.partner.findUnique({
+      where: { id: partnerId },
+      select: { id: true, payoutRequestedAt: true },
+    });
+    if (!partner) throw new NotFoundException('Partner not found');
+
+    // Calculate pending (CONFIRMED but unpaid) commission
+    const confirmed = await this.prisma.partnerReferral.aggregate({
+      where: { partnerId, status: 'CONFIRMED' },
+      _sum: { commissionAmount: true },
+    });
+    const pendingAmount = confirmed._sum.commissionAmount ?? 0;
+
+    if (pendingAmount <= 0) {
+      throw new BadRequestException('No confirmed commissions available for payout');
+    }
+
+    await this.prisma.partner.update({
+      where: { id: partnerId },
+      data: { payoutRequestedAt: new Date() },
+    });
+
+    // Notify admin via partner notification (self-notification skipped; admin panel will show flag)
+    this.logger.log(`💸 Payout requested by partner ${partnerId}: ₹${(pendingAmount / 100).toFixed(2)}`);
+
+    return {
+      message: 'Payout request submitted. Admin will process by the 5th of next month.',
+      pendingAmount,
+    };
+  }
+
+  // ─────────────────────────────────────────────
+  // MODULE 11: Partner Profile Update
+  // ─────────────────────────────────────────────
+  async updateProfile(
+    partnerId: string,
+    data: {
+      businessName?: string;
+      contactPerson?: string;
+      phone?: string;
+      region?: string;
+      bankAccountName?: string;
+      bankAccountNumber?: string;
+      bankIfsc?: string;
+      bankName?: string;
+      upiId?: string;
+    },
+  ) {
+    const partner = await this.prisma.partner.findUnique({
+      where: { id: partnerId },
+    });
+    if (!partner) throw new NotFoundException('Partner not found');
+
+    const updated = await this.prisma.partner.update({
+      where: { id: partnerId },
+      data: {
+        ...(data.businessName && { businessName: data.businessName }),
+        ...(data.contactPerson && { contactPerson: data.contactPerson }),
+        ...(data.phone && { phone: data.phone }),
+        ...(data.region !== undefined && { region: data.region }),
+        ...(data.bankAccountName !== undefined && { bankAccountName: data.bankAccountName }),
+        ...(data.bankAccountNumber !== undefined && { bankAccountNumber: data.bankAccountNumber }),
+        ...(data.bankIfsc !== undefined && { bankIfsc: data.bankIfsc.toUpperCase() }),
+        ...(data.bankName !== undefined && { bankName: data.bankName }),
+        ...(data.upiId !== undefined && { upiId: data.upiId }),
+      },
+      select: {
+        id: true,
+        businessName: true,
+        contactPerson: true,
+        email: true,
+        phone: true,
+        region: true,
+        partnerType: true,
+        referralCode: true,
+        bankAccountName: true,
+        bankAccountNumber: true,
+        bankIfsc: true,
+        bankName: true,
+        upiId: true,
+      },
+    });
+
+    return updated;
   }
 
   // ─────────────────────────────────────────────

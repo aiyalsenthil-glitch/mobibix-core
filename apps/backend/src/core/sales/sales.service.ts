@@ -355,7 +355,7 @@ export class SalesService {
             quantity: item.quantity,
             rate: item.rate,
             gstRate: item.gstRate,
-            hsnCode: product?.hsnCode || undefined,
+            hsnCode: item.hsnCode || product?.hsnCode || undefined,
             costPrice: product?.costPrice || 0,
             productType: product?.type,
             imeis: item.imeis,
@@ -709,7 +709,7 @@ export class SalesService {
         quantity: i.quantity,
         ratePaisa: this.toPaisa(i.rate), // Send as Paise!
         gstRate: i.gstRate,
-        hsnCode: productHsnMap.get(i.shopProductId) || undefined,
+        hsnCode: i.hsnCode || productHsnMap.get(i.shopProductId) || undefined,
       }));
 
       const calc = calculateInvoiceTotals(lineInputs, {
@@ -1387,7 +1387,7 @@ export class SalesService {
         return {
           shopProductId: item.shopProductId,
           quantity: item.quantity,
-          rate: item.rate, // Rate is typically unit price, usually stored as Float in generic apps, but likely Int here?
+          rate: this.fromPaisa(item.rate), // Fix: Paisa -> Rupee
           hsnCode: item.hsnCode || undefined,
           gstRate: item.gstRate || undefined,
           gstAmount,
@@ -1456,7 +1456,7 @@ export class SalesService {
       items: (invoice as any).items.map((item: any) => ({
         description: item.product.name,
         quantity: item.quantity,
-        rate: item.rate,
+        rate: this.fromPaisa(item.rate), // Fix: Paisa -> Rupee
         total: this.fromPaisa(item.lineTotal),
       })),
     };

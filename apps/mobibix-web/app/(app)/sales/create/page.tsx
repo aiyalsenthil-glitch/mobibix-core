@@ -162,6 +162,14 @@ export default function CreateInvoicePage() {
       return;
     }
 
+    // HSN validation for GST invoices
+    if (selectedShop?.gstEnabled) {
+      if (items.some((i) => !i.hsnSac || i.hsnSac.trim() === "")) {
+        setError("HSN/SAC code is mandatory for all items in a GST invoice.");
+        return;
+      }
+    }
+
     // Serialized validation: IMEIs required and must match quantity
     const serializedMissing = items.some((i) => {
       const p = products.find((pp) => pp.id === i.shopProductId);
@@ -232,6 +240,7 @@ export default function CreateInvoicePage() {
           imeis: item.imeis && item.imeis.length > 0 ? item.imeis : undefined,
           serialNumbers: item.serialNumbers && item.serialNumbers.length > 0 ? item.serialNumbers : undefined,
           warrantyDays: item.warrantyDays,
+          hsnCode: item.hsnSac,
         })),
         loyaltyPointsRedeemed: loyalty.points > 0 ? loyalty.points : undefined,
       };
