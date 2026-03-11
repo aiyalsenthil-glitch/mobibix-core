@@ -15,7 +15,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Public } from '../auth/decorators/public.decorator';
 
-@Controller('billing/webhook/REMOVED_PAYMENT_INFRA')
+@Controller(['billing/webhook/REMOVED_PAYMENT_INFRA', 'payments/webhook'])
 export class RazorpayWebhookController {
   private readonly logger = new Logger(RazorpayWebhookController.name);
 

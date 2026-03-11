@@ -2837,10 +2837,11 @@ model Partner {
   partnerType          PartnerType
   region               String?
   status               PartnerStatus @default(PENDING)
-  referralCode         String        @unique
-  commissionPercentage Float         @default(0)
-  totalEarned          Float         @default(0)
-  totalPaid            Float         @default(0)
+  referralCode          String        @unique
+  firstCommissionPct    Float         @default(30) // 30% on first subscription payment
+  renewalCommissionPct  Float         @default(10) // 10% on every renewal
+  totalEarned           Float         @default(0)
+  totalPaid             Float         @default(0)
   passwordHash         String
 
   // Relations
@@ -2872,7 +2873,8 @@ model PromoCode {
   code               String        @unique
   description        String?
   type               PromoCodeType
-  durationDays       Int
+  durationDays       Int           @default(0) // For FREE_TRIAL: days of free access
+  bonusMonths        Int           @default(0) // For SUBSCRIPTION_BONUS: extra months on first paid plan
   discountPercentage Float?
   maxUses            Int           @default(500)
   usedCount          Int           @default(0)
@@ -2890,8 +2892,9 @@ model PromoCode {
 }
 
 enum PromoCodeType {
-  FREE_TRIAL
-  DISCOUNT
+  FREE_TRIAL          // Gives N days of free plan access
+  DISCOUNT            // Discount % off first purchase
+  SUBSCRIPTION_BONUS  // On first paid subscription: extends endDate by bonusMonths (+3 mo)
 }
 
 model PartnerReferral {
@@ -2902,6 +2905,7 @@ model PartnerReferral {
   subscriptionAmount   Float
   commissionPercentage Float
   commissionAmount     Float
+  isFirstPayment       Boolean        @default(true) // true=30% first, false=10% renewal
   status               ReferralStatus @default(PENDING)
 
   partner Partner @relation(fields: [partnerId], references: [id])

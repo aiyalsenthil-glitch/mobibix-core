@@ -32,7 +32,7 @@ export default function PartnerProgramPage() {
 
         <div className="container mx-auto max-w-4xl relative z-10">
           <span className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full border border-primary/20 bg-primary/5 text-xs font-black uppercase tracking-widest text-primary mb-8">
-            <DollarSign className="w-4 h-4" /> Earn 30% Recurring Commission
+            <DollarSign className="w-4 h-4" /> 30% First Payment · 10% Every Renewal
           </span>
           <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter leading-[0.9] uppercase italic">
             Grow With <br className="hidden md:block" /> The MobiBix Platform
@@ -125,9 +125,9 @@ export default function PartnerProgramPage() {
               
               <ul className="space-y-5 pt-4">
                 {[
-                  { icon: TrendingUp, title: "30% First Year Revenue", desc: "Get 30% commission on every subscriber you refer for their entire first year." },
-                  { icon: Clock, title: "60-Day Cookie Window", desc: "Your link gets credited even if they wait up to two months before signing up." },
-                  { icon: ShieldCheck, title: "Transparent Tracking", desc: "Monitor your clicks, signups, and commission payouts in real-time." },
+                  { icon: TrendingUp, title: "30% on First Payment", desc: "Earn 30% commission every time a shop you referred makes their first subscription payment." },
+                  { icon: Clock, title: "10% on Every Renewal", desc: "Keep earning 10% on every renewal — monthly, quarterly, or annual — for as long as they stay subscribed." },
+                  { icon: ShieldCheck, title: "+3 Months Free for Your Referrals", desc: "Shops that sign up using your code get 3 extra months free on their first paid plan — a powerful conversion tool." },
                 ].map((item, i) => (
                   <li key={i} className="flex gap-4">
                     <div className="mt-1 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -145,13 +145,31 @@ export default function PartnerProgramPage() {
             <div className="lg:w-1/2 w-full">
               <div className="aspect-square w-full max-w-md mx-auto relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-blue-600/30 rounded-[3rem] rotate-6 transform-gpu" />
-                <div className="absolute inset-0 bg-card border border-border rounded-[3rem] -rotate-3 p-10 flex flex-col justify-center items-center text-center transform-gpu shadow-2xl">
-                  <span className="text-6xl font-black italic mb-4">30%</span>
-                  <p className="text-lg font-bold mb-6">Revenue Share for 12 Months</p>
-                  <div className="w-full h-px bg-border my-6" />
-                  <p className="text-sm font-bold text-muted-foreground">
-                    Example: Refer 50 shops at $50/mo. <br/> You earn <span className="text-foreground">$750/month</span> pure recurring profit.
-                  </p>
+                <div className="absolute inset-0 bg-card border border-border rounded-[3rem] -rotate-3 p-8 flex flex-col justify-center items-center text-center transform-gpu shadow-2xl">
+                  <div className="flex items-end gap-4 mb-5">
+                    <div className="text-center">
+                      <span className="text-5xl font-black italic">30%</span>
+                      <p className="text-xs font-bold text-muted-foreground mt-1">First Payment</p>
+                    </div>
+                    <span className="text-3xl font-black text-muted-foreground mb-4">+</span>
+                    <div className="text-center">
+                      <span className="text-5xl font-black italic">10%</span>
+                      <p className="text-xs font-bold text-muted-foreground mt-1">Every Renewal</p>
+                    </div>
+                  </div>
+                  <div className="w-full h-px bg-border mb-5" />
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Annual Plan · 50 Shops Example</p>
+                  <div className="w-full space-y-2">
+                    <div className="flex justify-between items-center px-3 py-2 bg-muted/60 rounded-xl">
+                      <span className="text-xs font-bold text-muted-foreground">Year 1 commission</span>
+                      <span className="text-lg font-black text-foreground">₹44,985</span>
+                    </div>
+                    <div className="flex justify-between items-center px-3 py-2 bg-primary/8 rounded-xl border border-primary/20">
+                      <span className="text-xs font-bold text-primary">Recurring / year</span>
+                      <span className="text-lg font-black text-primary">₹14,995</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/50 mt-4">Based on ₹2,999/yr plan · referrals get +3 months free</p>
                 </div>
               </div>
             </div>

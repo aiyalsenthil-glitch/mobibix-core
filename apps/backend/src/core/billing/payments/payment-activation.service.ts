@@ -93,11 +93,11 @@ export class PaymentActivationService {
           `[PAYMENT] ✅ Activation complete: Payment ${payment.id} → Subscription ${subscription.id}`,
         );
 
-        // Module 6: Partner Referral & Commission Logic
+        // Module 6: Partner Referral & Commission Logic (tiered: 30% first / 10% renewal)
         try {
           const tenant = await tx.tenant.findUnique({
             where: { id: payment.tenantId },
-            select: { partnerId: true },
+            select: { partnerId: true, promoCodeId: true },
           });
 
           if (tenant?.partnerId) {
@@ -106,8 +106,16 @@ export class PaymentActivationService {
             });
 
             if (partner && partner.status === 'APPROVED') {
-              const commissionAmount =
-                (payment.amount * partner.commissionPercentage) / 100;
+              // Determine if this is first payment or a renewal
+              const priorReferrals = await tx.partnerReferral.count({
+                where: { partnerId: partner.id, tenantId: payment.tenantId },
+              });
+              const isFirstPayment = priorReferrals === 0;
+
+              const commissionPct = isFirstPayment
+                ? partner.firstCommissionPct   // 30%
+                : partner.renewalCommissionPct; // 10%
+              const commissionAmount = (payment.amount * commissionPct) / 100;
 
               await tx.partnerReferral.create({
                 data: {
@@ -115,23 +123,50 @@ export class PaymentActivationService {
                   tenantId: payment.tenantId,
                   subscriptionPlan: plan.name,
                   subscriptionAmount: payment.amount,
-                  commissionPercentage: partner.commissionPercentage,
-                  commissionAmount: commissionAmount,
-                  status: 'CONFIRMED', // Auto-confirm on payment success
+                  commissionPercentage: commissionPct,
+                  commissionAmount,
+                  isFirstPayment,
+                  status: 'CONFIRMED',
                   confirmedAt: new Date(),
                 },
               });
 
               await tx.partner.update({
                 where: { id: partner.id },
-                data: {
-                  totalEarned: { increment: commissionAmount },
-                },
+                data: { totalEarned: { increment: commissionAmount } },
               });
 
               this.logger.log(
-                `💰 Partner Commission Generated: ₹${commissionAmount} for Partner ${partner.id}`,
+                `💰 Partner Commission: ₹${commissionAmount} (${commissionPct}% — ${isFirstPayment ? 'first payment' : 'renewal'}) for Partner ${partner.id}`,
               );
+
+              // Apply SUBSCRIPTION_BONUS (+3 months) on first payment only
+              if (isFirstPayment && tenant.promoCodeId) {
+                const promo = await tx.promoCode.findUnique({
+                  where: { id: tenant.promoCodeId },
+                  select: { type: true, bonusMonths: true },
+                });
+
+                if (promo?.type === 'SUBSCRIPTION_BONUS' && promo.bonusMonths > 0) {
+                  const sub = await tx.tenantSubscription.findFirst({
+                    where: { tenantId: payment.tenantId, status: 'ACTIVE' },
+                    orderBy: { startDate: 'desc' },
+                    select: { id: true, endDate: true },
+                  });
+
+                  if (sub) {
+                    const newEndDate = new Date(sub.endDate);
+                    newEndDate.setMonth(newEndDate.getMonth() + promo.bonusMonths);
+                    await tx.tenantSubscription.update({
+                      where: { id: sub.id },
+                      data: { endDate: newEndDate },
+                    });
+                    this.logger.log(
+                      `🎁 Subscription bonus applied: +${promo.bonusMonths} months → new end ${newEndDate.toISOString()}`,
+                    );
+                  }
+                }
+              }
             }
           }
         } catch (partnerErr) {

@@ -4,6 +4,7 @@ import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { Counter } from 'prom-client';
 import { Logger } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions/subscriptions.service';
+import { PaymentActivationService } from './payments/payment-activation.service';
 import { InvoiceService } from './invoices/invoice.service';
 import { EmailService } from '../../common/email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -24,6 +25,7 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly invoiceService: InvoiceService,
     private readonly emailService: EmailService,
+    private readonly paymentActivationService: PaymentActivationService,
     @InjectMetric('webhooks_processed_total')
     private readonly webhooksProcessedCounter: Counter<string>,
     private readonly eventEmitter: EventEmitter2,
@@ -167,145 +169,19 @@ export class RazorpayWebhookProcessor extends WorkerHost {
       `Payment Captured: ${payment.id} for ₹${payment.amount / 100}`,
     );
 
-    const paymentLinkId = payment.payment_link_id;
-
     const internalPayment = await this.prisma.payment.findFirst({
       where: { providerPaymentId: payment.id },
-      include: { tenant: true },
     });
 
     if (internalPayment) {
-      const receivedAmount = payment.amount / 100;
-
-      if (
-        receivedAmount !== internalPayment.amount ||
-        payment.currency !== internalPayment.currency ||
-        payment.status !== 'captured'
-      ) {
-        this.logger.error(
-          `[FRAUD ALERT] Payment tampering detected! ID: ${internalPayment.id}`,
-        );
-        throw new Error('Payment mismatch: Fraud Validation Triggered');
-      }
-
-      const activeSub = await this.prisma.tenantSubscription.findFirst({
-        where: {
-          tenantId: internalPayment.tenantId,
-          planId: internalPayment.planId,
-          status: 'PENDING',
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-
-      if (activeSub) {
-        const endDate = this.subscriptionsService['calculateEndDate'](
-          new Date(),
-          activeSub.billingCycle || 'MONTHLY',
-        );
-
-        await this.prisma.$transaction(async (tx) => {
-          await tx.payment.update({
-            where: { id: internalPayment.id },
-            data: { status: 'SUCCESS' },
-          });
-
-          await tx.tenantSubscription.update({
-            where: { id: activeSub.id },
-            data: {
-              status: SubscriptionStatus.ACTIVE,
-              paymentStatus: PaymentStatus.SUCCESS,
-              updatedAt: new Date(),
-              startDate: new Date(),
-              endDate: endDate,
-            },
-          });
-
-          await tx.billingEventLog.create({
-            data: {
-              tenantId: internalPayment.tenantId,
-              eventType: 'payment.captured.activated',
-              providerReferenceId: payment.id,
-              statusBefore: 'PENDING',
-              statusAfter: 'ACTIVE',
-            },
-          });
-        });
-
-        this.eventEmitter.emit('subscription.active', {
-          tenantId: internalPayment.tenantId,
-          module: activeSub.module,
-          planId: activeSub.planId,
-          expiryDate: endDate,
-        });
-
-        this.logger.log(
-          `✅ TenantSubscription ${activeSub.id} activated (Manual).`,
-        );
-
-        // Generate Invoice (Outside transaction)
-        try {
-          await this.invoiceService.createInvoiceForPayment(internalPayment.id);
-        } catch (invErr) {
-          this.logger.error(
-            `Failed to generate invoice for payment ${internalPayment.id}`,
-            invErr,
-          );
-        }
-      } else {
-        await this.prisma.payment.update({
-          where: { id: internalPayment.id },
-          data: { status: 'SUCCESS' },
-        });
-      }
-
-      // Trigger Cache Refresh (Outside transaction)
-      try {
-        await this.eventEmitter.emitAsync('payment.webhook.success', {
-          paymentId: internalPayment.id,
-        });
-      } catch (evtErr) {
-        this.logger.error(
-          `Failed to emit payment.webhook.success for ${internalPayment.id}`,
-          evtErr,
-        );
-      }
-    } else if (paymentLinkId) {
-      const subscription = await this.prisma.tenantSubscription.findFirst({
-        where: { providerPaymentLinkId: paymentLinkId },
-      });
-
-      if (subscription) {
-        await this.prisma.tenantSubscription.update({
-          where: { id: subscription.id },
-          data: {
-            status: SubscriptionStatus.ACTIVE,
-            paymentStatus: PaymentStatus.SUCCESS,
-            updatedAt: new Date(),
-          },
-        });
-
-        if (subscription.tenantId) {
-          await this.prisma.billingEventLog.create({
-            data: {
-              tenantId: subscription.tenantId,
-              eventType: 'payment.captured.link_activated',
-              providerReferenceId: payment.id,
-              statusAfter: 'ACTIVE',
-            },
-          });
-        }
-
-        this.eventEmitter.emit('subscription.active', {
-          tenantId: subscription.tenantId,
-          module: subscription.module,
-          planId: subscription.planId,
-          expiryDate: subscription.endDate,
-        });
-
-        this.logger.log(
-          `✅ TenantSubscription ${subscription.id} activated (PaymentLink).`,
-        );
-      }
+      // ✅ Use Unified Activation Path
+      await this.paymentActivationService.activateSubscriptionFromPayment(internalPayment.id);
+      
+      this.logger.log(
+        `✅ Payment ${internalPayment.id} activated via PaymentActivationService.`,
+      );
+    } else {
+      this.logger.warn(`No internal payment record found for provider ID: ${payment.id}`);
     }
   }
 

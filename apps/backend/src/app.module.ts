@@ -73,6 +73,7 @@ type LoggerRequest = {
             ? parseInt(process.env.REDIS_PORT)
             : 6379,
           password: process.env.REDIS_PASSWORD || undefined,
+          tls: process.env.REDIS_TLS === 'true' ? {} : undefined,
         }) as any,
       }),
     }),
@@ -214,9 +215,9 @@ type LoggerRequest = {
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(rawBodyMiddleware).forRoutes({
-      path: 'billing/webhook/REMOVED_PAYMENT_INFRA',
-      method: RequestMethod.POST,
-    });
+    consumer.apply(rawBodyMiddleware).forRoutes(
+      { path: 'billing/webhook/REMOVED_PAYMENT_INFRA', method: RequestMethod.POST },
+      { path: 'payments/webhook', method: RequestMethod.POST },
+    );
   }
 }

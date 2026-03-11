@@ -78,7 +78,8 @@ export class PartnersService {
   async approvePartner(
     partnerId: string,
     adminId: string,
-    commissionPercentage: number,
+    firstCommissionPct: number = 30,
+    renewalCommissionPct: number = 10,
   ) {
     const partner = await this.prisma.partner.findUnique({
       where: { id: partnerId },
@@ -97,26 +98,45 @@ export class PartnersService {
       where: { id: partnerId },
       data: {
         status: PartnerStatus.APPROVED,
-        commissionPercentage,
+        firstCommissionPct,
+        renewalCommissionPct,
         passwordHash,
         approvedAt: new Date(),
         approvedByAdminId: adminId,
       },
     });
 
-    // 🚀 Auto-generate a Trial Promo Code for the new partner
-    const promoCode = `${updated.referralCode}-TRIAL`;
-    await this.prisma.promoCode.create({
-      data: {
-        code: promoCode,
-        type: PromoCodeType.FREE_TRIAL,
-        durationDays: 90,
-        maxUses: 500,
-        partnerId: updated.id,
-        createdByAdminId: adminId,
-        description: `Automatic trial code for partner ${updated.businessName}`,
-      },
-    });
+    // Auto-generate two starter promo codes for the partner:
+    // 1. 14-day FREE_TRIAL code (platform default trial)
+    // 2. SUBSCRIPTION_BONUS code (+3 months on first paid plan)
+    const trialCode = `${updated.referralCode}-TRIAL`;
+    const bonusCode = `${updated.referralCode}-BONUS`;
+    await Promise.all([
+      this.prisma.promoCode.create({
+        data: {
+          code: trialCode,
+          type: PromoCodeType.FREE_TRIAL,
+          durationDays: 14,
+          bonusMonths: 0,
+          maxUses: 500,
+          partnerId: updated.id,
+          createdByAdminId: adminId,
+          description: `14-day free trial for partner ${updated.businessName}`,
+        },
+      }),
+      this.prisma.promoCode.create({
+        data: {
+          code: bonusCode,
+          type: PromoCodeType.SUBSCRIPTION_BONUS,
+          durationDays: 0,
+          bonusMonths: 3,
+          maxUses: 500,
+          partnerId: updated.id,
+          createdByAdminId: adminId,
+          description: `+3 months bonus on first paid subscription — partner ${updated.businessName}`,
+        },
+      }),
+    ]);
 
     // 🔐 Email temp password — NEVER return it in API response
     try {
@@ -133,7 +153,8 @@ export class PartnersService {
           name: updated.contactPerson,
           businessName: updated.businessName,
           referralCode: updated.referralCode,
-          promoCode, // Include the new promo code
+          trialCode,
+          bonusCode,
           tempPassword,
           loginUrl: 'https://app.REMOVED_DOMAIN/partner/login',
         },
@@ -176,7 +197,8 @@ export class PartnersService {
         region: true,
         referralCode: true,
         status: true,
-        commissionPercentage: true,
+        firstCommissionPct: true,
+        renewalCommissionPct: true,
         totalEarned: true,
         totalPaid: true,
         approvedAt: true,
@@ -194,7 +216,8 @@ export class PartnersService {
       data: {
         code: data.code,
         type: data.type as PromoCodeType,
-        durationDays: data.durationDays,
+        durationDays: data.durationDays ?? 0,
+        bonusMonths: data.bonusMonths ?? 0,
         maxUses: data.maxUses ?? 500,
         partnerId: data.partnerId,
         createdByAdminId: data.adminId,
@@ -321,6 +344,7 @@ export class PartnersService {
             code: true,
             type: true,
             durationDays: true,
+            bonusMonths: true,
             maxUses: true,
             usedCount: true,
             expiresAt: true,
@@ -347,6 +371,8 @@ export class PartnersService {
     return {
       referralCode: partner.referralCode,
       businessName: partner.businessName,
+      firstCommissionPct: partner.firstCommissionPct,
+      renewalCommissionPct: partner.renewalCommissionPct,
       totalReferrals: partner._count.referredTenants,
       totalEarned: partner.totalEarned,
       totalPaid: partner.totalPaid,
@@ -355,5 +381,68 @@ export class PartnersService {
       referralList: referrals,
       promoCodes: partner.promoCodes,
     };
+  }
+
+  // ─────────────────────────────────────────────
+  // MODULE 8: Admin Payout — mark all CONFIRMED referrals as PAID
+  // ─────────────────────────────────────────────
+  async markPartnerPayout(partnerId: string) {
+    const confirmed = await this.prisma.partnerReferral.findMany({
+      where: { partnerId, status: 'CONFIRMED' },
+      select: { id: true, commissionAmount: true },
+    });
+
+    if (confirmed.length === 0) {
+      return { paid: 0, totalPaid: 0 };
+    }
+
+    const totalPayout = confirmed.reduce((s, r) => s + r.commissionAmount, 0);
+    const now = new Date();
+
+    await this.prisma.$transaction([
+      this.prisma.partnerReferral.updateMany({
+        where: { id: { in: confirmed.map((r) => r.id) } },
+        data: { status: 'PAID', paidAt: now },
+      }),
+      this.prisma.partner.update({
+        where: { id: partnerId },
+        data: { totalPaid: { increment: totalPayout } },
+      }),
+    ]);
+
+    this.logger.log(
+      `💸 Payout marked: Partner ${partnerId} — ₹${totalPayout / 100} across ${confirmed.length} referrals`,
+    );
+
+    return { paid: confirmed.length, totalPaid: totalPayout };
+  }
+
+  // ─────────────────────────────────────────────
+  // MODULE 9: Partner self-service promo creation (max 5 custom codes)
+  // ─────────────────────────────────────────────
+  async createPartnerPromoCode(
+    partnerId: string,
+    data: { code: string; type: string; durationDays?: number; bonusMonths?: number; maxUses?: number; expiresAt?: string },
+  ) {
+    const existing = await this.prisma.promoCode.count({
+      where: { partnerId, createdByAdminId: null }, // only partner-created
+    });
+    if (existing >= 5) {
+      throw new BadRequestException(
+        'Maximum 5 custom promo codes allowed per partner. Contact support to create more.',
+      );
+    }
+    return this.prisma.promoCode.create({
+      data: {
+        code: data.code.toUpperCase(),
+        type: data.type as PromoCodeType,
+        durationDays: data.durationDays ?? 0,
+        bonusMonths: data.bonusMonths ?? 0,
+        maxUses: data.maxUses ?? 100,
+        partnerId,
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+        description: `Custom campaign code by partner`,
+      },
+    });
   }
 }

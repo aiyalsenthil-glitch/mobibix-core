@@ -61,14 +61,15 @@ export class PartnersController {
   @Patch(':id/approve')
   async approve(
     @Param('id') id: string,
-    @Body('commission') commission: number,
+    @Body('firstCommissionPct') firstCommissionPct: number = 30,
+    @Body('renewalCommissionPct') renewalCommissionPct: number = 10,
     @Request() req: any,
   ) {
-    // tempPassword is emailed by the service — NOT returned here
     const { partner } = await this.partnersService.approvePartner(
       id,
       req.user.userId,
-      commission,
+      firstCommissionPct,
+      renewalCommissionPct,
     );
     return { partner };
   }
@@ -99,14 +100,31 @@ export class PartnersController {
 
   // ─────────────────────────────────────────────
   // MODULE 1: Apply Promo to Tenant (🔒 AUTHENTICATED — tenantId from JWT)
-  // Previously unguarded — SECURITY FIX
   // ─────────────────────────────────────────────
   @UseGuards(JwtAuthGuard)
   @SkipSubscriptionCheck()
   @Post('promo/apply')
   async applyPromo(@Body() dto: ApplyPromoDto, @Request() req: any) {
-    // tenantId AND userId MUST come from authenticated JWT — not from request body
     const { tenantId, userId } = req.user;
     return this.partnersService.applyPromoToTenant(dto.code, tenantId, userId);
+  }
+
+  // ─────────────────────────────────────────────
+  // MODULE 8: Admin Payout — mark all CONFIRMED referrals as PAID
+  // ─────────────────────────────────────────────
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch(':id/payout')
+  async markPayout(@Param('id') id: string) {
+    return this.partnersService.markPartnerPayout(id);
+  }
+
+  // ─────────────────────────────────────────────
+  // MODULE 9: Partner self-service promo creation
+  // ─────────────────────────────────────────────
+  @UseGuards(PartnerJwtGuard)
+  @Post('promo/my')
+  async createMyPromo(@Body() body: any, @Request() req: any) {
+    return this.partnersService.createPartnerPromoCode(req.user.sub, body);
   }
 }

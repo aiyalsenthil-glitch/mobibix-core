@@ -150,7 +150,33 @@ export class TenantService {
           promoDescription = promo.description || undefined;
         }
 
-        if (promo?.type === 'FREE_TRIAL') {
+        if (promo?.type === 'SUBSCRIPTION_BONUS') {
+          // No free access granted immediately — bonus months applied on first paid subscription.
+          // Send in-app notification confirming code registration.
+          try {
+            const bonusMonths = promo.bonusMonths ?? 3;
+            await this.prisma.notificationLog.create({
+              data: {
+                tenantId: tenant.id,
+                userId,
+                eventId: 'promo.bonus_registered',
+                channel: 'IN_APP',
+                recipient: user.email || userId,
+                title: `🎁 Bonus unlocked — +${bonusMonths} months free on your first paid plan`,
+                status: 'SENT',
+                sentAt: new Date(),
+                payload: {
+                  type: 'subscription_bonus',
+                  promoCode: dto.promoCode,
+                  bonusMonths,
+                  body: `Your referral code "${dto.promoCode}" is registered. When you subscribe to any paid plan, we will automatically add ${bonusMonths} extra months to your subscription at no charge — one time only.`,
+                },
+              },
+            });
+          } catch (notifErr: any) {
+            this.logger.error(`Failed to create bonus notification: ${notifErr.message}`);
+          }
+        } else if (promo?.type === 'FREE_TRIAL') {
           // Derive correct plan code per module — seeded codes are MOBIBIX_PRO / GYM_PRO
           const planCode =
             effectiveTenantType === 'MOBILE_SHOP' ? 'MOBIBIX_PRO' : 'GYM_PRO';
@@ -204,6 +230,7 @@ export class TenantService {
             this.logger.log(
               `🎁 Applied FREE_TRIAL promo ${dto.promoCode}: Plan=PRO, Days=${promo.durationDays}`,
             );
+
 
             // --- IN-APP Welcome Notification (Bell) ---
             try {

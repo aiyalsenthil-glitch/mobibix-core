@@ -102,7 +102,7 @@ async function bootstrap() {
    * MUST be on Express, NOT Nest app
    */
   server.use(
-    '/api/billing/webhook/REMOVED_PAYMENT_INFRA',
+    /^\/(api\/)?(billing\/webhook\/REMOVED_PAYMENT_INFRA|payments\/webhook)$/,
     bodyParser.json({
       verify: (req: any, _res, buf) => {
         req.rawBody = buf;

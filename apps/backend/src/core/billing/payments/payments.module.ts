@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { PaymentsController } from './payments.controller';
 import { PaymentsVerifyController } from './payments.verify.controller';
-import { PaymentsWebhookController } from './payments.webhook.controller';
+
 import { PaymentRetryController } from './payment-retry.controller';
 import { PaymentCleanupCron } from './payment-cleanup.cron';
 import { PaymentActivationService } from './payment-activation.service';
@@ -28,7 +28,6 @@ import { InvoiceModule } from '../invoices/invoice.module';
   controllers: [
     PaymentsController,
     PaymentsVerifyController,
-    PaymentsWebhookController,
     PaymentRetryController,
   ],
   exports: [PaymentActivationService],

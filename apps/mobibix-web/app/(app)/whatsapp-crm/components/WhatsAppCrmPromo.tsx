@@ -35,15 +35,42 @@ export default function WhatsAppCrmPromo() {
 
     try {
       const billingCycle = 'MONTHLY';
-      // BYPASS FOR TESTING: Skip Razorpay and activate directly
-      const { bypassPayment } = await import('@/services/payments.api');
-      await bypassPayment(plan.id, billingCycle);
       
-      router.push('/whatsapp?onboarding=true');
+      // 1. Create Razorpay Order
+      const order = await createOrder(plan.id, billingCycle);
+      
+      // 2. Open Razorpay Modal
+      await openPayment({
+        order_id: order.orderId,
+        amount: order.amount,
+        currency: order.currency,
+        key: order.key,
+        name: 'WhatsApp CRM',
+        description: `Activation for ${plan.name}`,
+        handler: async (response: { REMOVED_PAYMENT_INFRA_payment_id: string; REMOVED_PAYMENT_INFRA_order_id: string; REMOVED_PAYMENT_INFRA_signature: string }) => {
+          try {
+            setLoading(true);
+            // 3. Verify Payment
+            await verifyPayment({
+              orderId: response.REMOVED_PAYMENT_INFRA_order_id,
+              paymentId: response.REMOVED_PAYMENT_INFRA_payment_id,
+              signature: response.REMOVED_PAYMENT_INFRA_signature,
+              planId: plan.id,
+              billingCycle,
+            });
+            
+            router.push('/whatsapp?onboarding=true');
+          } catch (err) {
+            console.error('Payment verification failed', err);
+            alert('Payment verification failed. Please contact support.');
+          } finally {
+            setLoading(false);
+          }
+        },
+      });
     } catch (error: unknown) {
-      console.error('Activation failed', error);
-      alert(error instanceof Error ? error.message : 'Failed to activate plan');
-    } finally {
+      console.error('Order creation failed', error);
+      alert(error instanceof Error ? error.message : 'Failed to initiate payment');
       setLoading(false);
     }
   };

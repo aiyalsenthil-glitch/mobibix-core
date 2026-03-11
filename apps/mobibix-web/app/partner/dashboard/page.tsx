@@ -17,6 +17,8 @@ import {
   Gift,
   Menu,
   X,
+  Plus,
+  CheckCircle2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -31,8 +33,9 @@ interface PartnerStats {
   promoCodes: Array<{
     id: string;
     code: string;
-    type: string;
+    type: string;        // FREE_TRIAL | SUBSCRIPTION_BONUS | DISCOUNT
     durationDays: number;
+    bonusMonths: number;
     maxUses: number;
     usedCount: number;
     expiresAt: string | null;
@@ -43,9 +46,20 @@ interface PartnerStats {
     subscriptionPlan: string;
     subscriptionAmount: number;
     commissionAmount: number;
+    commissionPercentage: number;
+    isFirstPayment: boolean;
     status: string;
     createdAt: string;
   }>;
+}
+
+interface CreatePromoForm {
+  code: string;
+  type: string;
+  durationDays: number;
+  bonusMonths: number;
+  maxUses: number;
+  expiresAt: string;
 }
 
 export default function PartnerDashboard() {
@@ -54,6 +68,20 @@ export default function PartnerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Create promo code state
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState<CreatePromoForm>({
+    code: "",
+    type: "FREE_TRIAL",
+    durationDays: 14,
+    bonusMonths: 3,
+    maxUses: 100,
+    expiresAt: "",
+  });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createSuccess, setCreateSuccess] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("partner_token");
@@ -91,6 +119,47 @@ export default function PartnerDashboard() {
   const handleLogout = () => {
     localStorage.removeItem("partner_token");
     window.location.href = "/partner/login";
+  };
+
+  const handleCreatePromo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateLoading(true);
+    setCreateError(null);
+    const token = localStorage.getItem("partner_token");
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/partners/promo/my`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          code: createForm.code.toUpperCase(),
+          type: createForm.type,
+          durationDays: createForm.type === "FREE_TRIAL" ? Number(createForm.durationDays) : 0,
+          bonusMonths: createForm.type === "SUBSCRIPTION_BONUS" ? Number(createForm.bonusMonths) : 0,
+          maxUses: Number(createForm.maxUses),
+          expiresAt: createForm.expiresAt || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.message || "Failed to create code");
+      }
+      setCreateSuccess(true);
+      setShowCreateForm(false);
+      setCreateForm({ code: "", type: "FREE_TRIAL", durationDays: 14, bonusMonths: 3, maxUses: 100, expiresAt: "" });
+      // Refresh stats
+      const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/partners/dashboard/stats`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (statsRes.ok) setStats(await statsRes.json());
+      setTimeout(() => setCreateSuccess(false), 3000);
+    } catch (err: any) {
+      setCreateError(err.message);
+    } finally {
+      setCreateLoading(false);
+    }
   };
 
   const statCards = stats
@@ -261,7 +330,7 @@ export default function PartnerDashboard() {
                       </button>
                     </div>
                     <p className="text-sm opacity-70 mt-4 leading-relaxed">
-                      Share this code with shop owners to provide them with a free trial.
+                      Share your promo codes below — shops get a free trial or +3 months on first paid plan.
                     </p>
                   </div>
                   <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
@@ -286,8 +355,127 @@ export default function PartnerDashboard() {
                 <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white">Active Promo Codes</h3>
-                    <Gift className="w-5 h-5 text-teal-600" />
+                    <button
+                      onClick={() => { setShowCreateForm((v) => !v); setCreateError(null); }}
+                      className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Create Code
+                    </button>
                   </div>
+
+                  {/* Create promo form */}
+                  <AnimatePresence>
+                    {showCreateForm && (
+                      <motion.form
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        onSubmit={handleCreatePromo}
+                        className="mb-6 overflow-hidden"
+                      >
+                        <div className="p-5 bg-slate-50 dark:bg-slate-800 rounded-2xl space-y-3">
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">New Campaign Code (max 5)</p>
+
+                          <input
+                            required
+                            placeholder="Code (e.g. SUMMER25)"
+                            value={createForm.code}
+                            onChange={(e) => setCreateForm({ ...createForm, code: e.target.value.toUpperCase() })}
+                            className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm font-mono font-bold uppercase text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          />
+
+                          <select
+                            value={createForm.type}
+                            onChange={(e) => setCreateForm({ ...createForm, type: e.target.value })}
+                            className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          >
+                            <option value="FREE_TRIAL">Free Trial (N days)</option>
+                            <option value="SUBSCRIPTION_BONUS">+N Months on First Paid Plan</option>
+                          </select>
+
+                          {createForm.type === "FREE_TRIAL" && (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min={1}
+                                required
+                                placeholder="Trial days"
+                                value={createForm.durationDays}
+                                onChange={(e) => setCreateForm({ ...createForm, durationDays: Number(e.target.value) })}
+                                className="flex-1 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              />
+                              <span className="text-xs font-bold text-slate-500">days</span>
+                            </div>
+                          )}
+
+                          {createForm.type === "SUBSCRIPTION_BONUS" && (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min={1}
+                                required
+                                placeholder="Bonus months"
+                                value={createForm.bonusMonths}
+                                onChange={(e) => setCreateForm({ ...createForm, bonusMonths: Number(e.target.value) })}
+                                className="flex-1 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              />
+                              <span className="text-xs font-bold text-slate-500">months</span>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Max Uses</p>
+                              <input
+                                type="number"
+                                min={1}
+                                value={createForm.maxUses}
+                                onChange={(e) => setCreateForm({ ...createForm, maxUses: Number(e.target.value) })}
+                                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Expires (optional)</p>
+                              <input
+                                type="date"
+                                value={createForm.expiresAt}
+                                onChange={(e) => setCreateForm({ ...createForm, expiresAt: e.target.value })}
+                                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              />
+                            </div>
+                          </div>
+
+                          {createError && (
+                            <p className="text-xs text-red-600 font-medium">{createError}</p>
+                          )}
+
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              type="submit"
+                              disabled={createLoading}
+                              className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                            >
+                              {createLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" /> Create Code</>}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowCreateForm(false)}
+                              className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-sm font-bold hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </motion.form>
+                    )}
+                  </AnimatePresence>
+
+                  {createSuccess && (
+                    <div className="mb-4 flex items-center gap-2 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle2 className="w-4 h-4" /> Promo code created successfully!
+                    </div>
+                  )}
+
                   <div className="space-y-4">
                     {stats.promoCodes.map((pc) => (
                       <div key={pc.id} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
@@ -301,13 +489,19 @@ export default function PartnerDashboard() {
                           </button>
                         </div>
                         <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                          <span>{pc.durationDays} Days Free Trial</span>
+                          <span>
+                            {pc.type === "FREE_TRIAL"
+                              ? `${pc.durationDays}-Day Free Trial`
+                              : pc.type === "SUBSCRIPTION_BONUS"
+                              ? `+${pc.bonusMonths} Months on First Plan`
+                              : "Discount Code"}
+                          </span>
                           <span>{pc.usedCount} / {pc.maxUses} Uses</span>
                         </div>
                       </div>
                     ))}
                     {stats.promoCodes.length === 0 && (
-                      <p className="text-sm text-slate-500 text-center py-4">No active promo codes.</p>
+                      <p className="text-sm text-slate-500 text-center py-4">No active promo codes. Create your first campaign code above.</p>
                     )}
                   </div>
                 </div>
@@ -331,6 +525,7 @@ export default function PartnerDashboard() {
                           <tr>
                             <th className="text-left px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Plan</th>
                             <th className="text-left px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Amount</th>
+                            <th className="text-left px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
                             <th className="text-left px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Commission</th>
                             <th className="text-left px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                           </tr>
@@ -341,6 +536,11 @@ export default function PartnerDashboard() {
                               <td className="px-8 py-5 font-medium text-slate-900 dark:text-white">{r.subscriptionPlan}</td>
                               <td className="px-8 py-5 text-sm text-slate-600 dark:text-slate-400">
                                 ₹{(r.subscriptionAmount / 100).toLocaleString("en-IN")}
+                              </td>
+                              <td className="px-8 py-5">
+                                <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${r.isFirstPayment ? "bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"}`}>
+                                  {r.isFirstPayment ? `First (${r.commissionPercentage}%)` : `Renewal (${r.commissionPercentage}%)`}
+                                </span>
                               </td>
                               <td className="px-8 py-5 text-sm text-teal-600 font-semibold">
                                 ₹{(r.commissionAmount / 100).toLocaleString("en-IN")}

@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import Razorpay from 'REMOVED_PAYMENT_INFRA';
 import * as crypto from 'crypto';
 
@@ -6,17 +7,25 @@ import * as crypto from 'crypto';
 export class RazorpayService {
   private REMOVED_PAYMENT_INFRA: Razorpay;
   private readonly logger = new Logger(RazorpayService.name);
+  private keyId: string;
+  private keySecret: string;
 
-  constructor() {
-    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      this.logger.warn(
-        '⚠️ Razorpay credentials are not set in environment variables!',
+  constructor(private configService: ConfigService) {
+    const kid = this.configService.get<string>('RAZORPAY_KEY_ID');
+    const ksec = this.configService.get<string>('RAZORPAY_KEY_SECRET');
+
+    if (!kid || !ksec) {
+      throw new Error(
+        'RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is not defined in environment variables',
       );
     }
 
+    this.keyId = kid;
+    this.keySecret = ksec;
+
     this.REMOVED_PAYMENT_INFRA = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID || 'test_key', // prevent crash in dev
-      key_secret: process.env.RAZORPAY_KEY_SECRET || 'test_secret',
+      key_id: this.keyId,
+      key_secret: this.keySecret,
     });
   }
 

@@ -54,11 +54,17 @@ export class GeneratePromoDto {
 
   @IsString()
   @IsNotEmpty()
-  type: string; // PromoCodeType
+  type: string; // PromoCodeType: FREE_TRIAL | DISCOUNT | SUBSCRIPTION_BONUS
 
+  @IsOptional()
   @IsNumber()
-  @Min(1)
-  durationDays: number;
+  @Min(0)
+  durationDays?: number; // For FREE_TRIAL: days of free access
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  bonusMonths?: number; // For SUBSCRIPTION_BONUS: extra months on first paid plan
 
   @IsOptional()
   @IsNumber()
