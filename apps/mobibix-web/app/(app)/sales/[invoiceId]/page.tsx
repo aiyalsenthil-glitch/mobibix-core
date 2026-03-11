@@ -112,20 +112,25 @@ export default function InvoiceDetailPage() {
   let statusText: string = invoice.status;
   let statusColor = "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
 
+  // Prioritize payment status over overall status to handle partial payments correctly
   if (invoice.status === "VOIDED") {
+    statusText = "VOIDED";
     statusColor = "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
-  } else if (invoice.status === "DRAFT") {
-     statusColor = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
-  } else if (invoice.status === "PAID") {
-    statusColor = "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
-  } else if (invoice.status === "CREDIT") {
-     statusColor = "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
-  } else if (invoice.paymentStatus === "PARTIALLY_PAID") {
+  } else if (invoice.paymentStatus === "PARTIALLY_PAID" || (hasBalance && invoice.paidAmount && invoice.paidAmount > 0)) {
     statusText = "PARTIALLY PAID";
     statusColor = "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300";
-  } else if (invoice.paymentStatus === "UNPAID") {
-      statusText = "UNPAID"; // Show UNPAID instead of FINAL
-      statusColor = "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
+  } else if (invoice.paymentStatus === "UNPAID" || (hasBalance && (!invoice.paidAmount || invoice.paidAmount === 0))) {
+    statusText = "UNPAID";
+    statusColor = "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
+  } else if (invoice.status === "PAID") {
+    statusText = "PAID";
+    statusColor = "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
+  } else if (invoice.status === "DRAFT") {
+     statusText = "DRAFT";
+     statusColor = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+  } else if (invoice.status === "CREDIT") {
+     statusText = "CREDIT";
+     statusColor = "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
   }
 
   return (

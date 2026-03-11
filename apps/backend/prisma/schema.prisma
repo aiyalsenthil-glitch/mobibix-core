@@ -1460,7 +1460,8 @@ model JobCard {
   @@index([shopId, createdAt(sort: Desc)])
   @@index([tenantId, deletedAt])
   @@index([tenantId, shopId, deletedAt, createdAt]) // dashboard count + date range
-  @@index([tenantId, shopId, deletedAt, status])    // groupBy status with soft-delete
+  @@index([tenantId, shopId, deletedAt, status])           // Covering groupBy status
+  @@index([tenantId, shopId, status, updatedAt])           // Turnaround time optimization
   @@map("mb_job_card")
 }
 
@@ -1604,6 +1605,7 @@ model StockLedger {
   @@index([tenantId, shopId, type])
   @@index([tenantId, shopId, type, createdAt]) // groupBy type+date filter
   @@index([referenceType, referenceId])
+  @@index([tenantId, shopId, shopProductId, type, quantity]) // Balance calculation optimization
   @@map("mb_stock_ledger")
 }
 
@@ -1685,8 +1687,10 @@ model Invoice {
   @@index([shopId, invoiceDate])
   @@index([tenantId, shopId, createdAt])
   @@index([tenantId, deletedAt])
-  @@index([tenantId, shopId, deletedAt, createdAt]) // aggregate + findMany with soft-delete
-  @@index([tenantId, shopId, deletedAt, status])    // status-filtered aggregates
+  @@index([tenantId, shopId, deletedAt, createdAt, totalAmount]) // Covering aggregate
+  @@index([tenantId, shopId, deletedAt, status, createdAt, totalAmount]) // Covering PAID revenue
+  @@index([tenantId, deletedAt, status, invoiceDate])     // Report optimization: GSTR1
+  @@index([tenantId, deletedAt, invoiceDate])             // Report optimization: Date range
   @@map("mb_invoice")
 }
 
@@ -1810,6 +1814,8 @@ model Purchase {
   @@index([tenantId])
   @@index([shopId])
   @@index([globalSupplierId])
+  @@index([tenantId, status, invoiceDate])     // Report optimization: GSTR2
+  @@index([tenantId, invoiceDate])             // Report optimization: Purchase date range
   @@map("mb_purchase")
 }
 
@@ -1894,6 +1900,8 @@ model Receipt {
   @@index([customerId])
   @@index([linkedInvoiceId])
   @@index([linkedJobCardId])
+  @@index([tenantId, shopId, createdAt])
+  @@index([tenantId, shopId, status, createdAt, amount])   // Covering Receipt status/date aggregation
   @@map("mb_receipt")
 }
 
@@ -2843,11 +2851,14 @@ model Partner {
   totalEarned           Float         @default(0)
   totalPaid             Float         @default(0)
   passwordHash         String
+  passwordResetToken   String?   @unique
+  passwordResetExpiry  DateTime?
 
   // Relations
   referredTenants Tenant[]
   promoCodes      PromoCode[]
   referrals       PartnerReferral[]
+  notifications   PartnerNotification[]
 
   approvedAt        DateTime?
   approvedByAdminId String?
@@ -2921,6 +2932,27 @@ enum ReferralStatus {
   PENDING
   CONFIRMED
   PAID
+}
+
+model PartnerNotification {
+  id        String                     @id @default(cuid())
+  partnerId String
+  partner   Partner                    @relation(fields: [partnerId], references: [id])
+  type      PartnerNotificationType
+  title     String
+  body      String
+  isRead    Boolean                    @default(false)
+  createdAt DateTime                   @default(now())
+
+  @@map("mb_partner_notification")
+}
+
+enum PartnerNotificationType {
+  PROMO_USED
+  COMMISSION_EARNED
+  COMMISSION_PAID
+  SUBSCRIPTION_EXPIRING
+  SUBSCRIPTION_RENEWED
 }
 
 enum AdminRole {

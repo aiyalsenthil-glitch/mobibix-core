@@ -1,9 +1,12 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, ModuleType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
   const plans = await prisma.plan.findMany({
+    where: {
+      module: ModuleType.MOBILE_SHOP,
+    },
     include: {
       planPrices: true,
     },

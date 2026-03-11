@@ -20,25 +20,27 @@ export default function Gstr1ReportPage() {
   const [reportData, setReportData] = useState<Gstr1ReportType | null>(null);
   const [hsnSummary, setHsnSummary] = useState<Gstr1SummaryItem[]>([]);
   const [view, setView] = useState<"B2B" | "HSN">("B2B");
+  const [page, setPage] = useState(1);
 
   // Default to previous month
   const [month, setMonth] = useState(
     format(subMonths(new Date(), 1), "yyyy-MM")
   );
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (targetPage: number = 1) => {
     setLoading(true);
+    setPage(targetPage);
     try {
       const start = startOfMonth(new Date(month));
       const end = endOfMonth(new Date(month));
 
       const [salesData, hsnData] = await Promise.all([
-        getGstr1SalesRegister(start.toISOString(), end.toISOString()),
-        getGstr1HsnSummary(start.toISOString(), end.toISOString()),
+        getGstr1SalesRegister(start.toISOString(), end.toISOString(), targetPage),
+        targetPage === 1 ? getGstr1HsnSummary(start.toISOString(), end.toISOString()) : Promise.resolve(hsnSummary),
       ]);
 
       setReportData(salesData);
-      setHsnSummary(hsnData);
+      if (targetPage === 1) setHsnSummary(hsnData);
     } catch (error) {
       console.error("Failed to fetch GSTR-1 data:", error);
       alert("Failed to fetch report data");
@@ -111,7 +113,7 @@ export default function Gstr1ReportPage() {
                 className={`border rounded-lg px-3 py-2 flex-1 md:flex-none ${isDark ? "bg-gray-900 border-gray-700 text-white" : "bg-white border-gray-300"}`}
               />
               <button
-                onClick={handleGenerate}
+                onClick={() => handleGenerate(1)}
                 disabled={loading}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium disabled:opacity-50 transition-colors"
               >
@@ -126,22 +128,22 @@ export default function Gstr1ReportPage() {
           <div className={`${isDark ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"} p-6 rounded-xl border shadow-sm`}>
             <p className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-500"} mb-1`}>Total Taxable Value</p>
             <p className="text-2xl font-bold">
-              {formatCurrency(reportData?.totalTaxableAmount || 0)}
+              {formatCurrency(reportData?.summary?.totalTaxableAmount || 0)}
             </p>
           </div>
           <div className={`${isDark ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"} p-6 rounded-xl border shadow-sm`}>
             <p className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-500"} mb-1`}>Total Tax Liability</p>
             <p className="text-2xl font-bold">
               {formatCurrency(
-                (reportData?.totalCgst || 0) +
-                (reportData?.totalSgst || 0) +
-                (reportData?.totalIgst || 0)
+                (reportData?.summary?.totalCgst || 0) +
+                (reportData?.summary?.totalSgst || 0) +
+                (reportData?.summary?.totalIgst || 0)
               )}
             </p>
           </div>
           <div className={`${isDark ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"} p-6 rounded-xl border shadow-sm`}>
             <p className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-500"} mb-1`}>Total Invoices</p>
-            <p className="text-2xl font-bold">{reportData?.totalInvoices || 0}</p>
+            <p className="text-2xl font-bold">{reportData?.summary?.totalInvoices || 0}</p>
           </div>
         </div>
 
@@ -186,45 +188,76 @@ export default function Gstr1ReportPage() {
 
           <div className="overflow-x-auto">
             {view === "B2B" ? (
-               <table className="w-full text-sm text-left">
-                  <thead className={`${isDark ? "bg-gray-800/50 text-gray-300" : "bg-gray-50 text-gray-700"} font-medium border-b ${isDark ? "border-gray-800" : "border-gray-200"}`}>
-                      <tr>
-                          <th className="px-6 py-3">Invoice No</th>
-                          <th className="px-6 py-3">Date</th>
-                          <th className="px-6 py-3">Customer (GSTIN)</th>
-                          <th className="px-6 py-3 text-right">Value</th>
-                          <th className="px-6 py-3 text-right">Taxable</th>
-                          <th className="px-6 py-3 text-right">IGST</th>
-                          <th className="px-6 py-3 text-right">CGST</th>
-                          <th className="px-6 py-3 text-right">SGST</th>
-                      </tr>
-                  </thead>
-                  <tbody className={`divide-y ${isDark ? "divide-gray-800" : "divide-gray-200"}`}>
-                      {!reportData || reportData.records.length === 0 ? (
-                          <tr>
-                              <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                                  {loading ? <Loader className="animate-spin mx-auto" /> : "No data generated. Select a month and click Generate."}
-                              </td>
-                          </tr>
-                      ) : (
-                          reportData.records.map((row, i) => (
-                              <tr key={i} className={`hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors`}>
-                                  <td className={`px-6 py-3 font-medium ${isDark ? "text-white" : "text-gray-900"}`}>{row.invoiceNumber}</td>
-                                  <td className="px-6 py-3">{new Date(row.invoiceDate).toLocaleDateString()}</td>
-                                  <td className="px-6 py-3">
-                                      <div className="font-medium">{row.customerName}</div>
-                                      <div className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>{row.gstinUin || "B2C"}</div>
-                                  </td>
-                                  <td className="px-6 py-3 text-right font-medium">{formatCurrency(row.invoiceAmount)}</td>
-                                  <td className="px-6 py-3 text-right">{formatCurrency(row.taxableAmount)}</td>
-                                  <td className="px-6 py-3 text-right text-indigo-600 dark:text-indigo-400">{formatCurrency(row.igstAmount)}</td>
-                                  <td className="px-6 py-3 text-right">{formatCurrency(row.cgstAmount)}</td>
-                                  <td className="px-6 py-3 text-right">{formatCurrency(row.sgstAmount)}</td>
-                              </tr>
-                          ))
-                      )}
-                  </tbody>
-               </table>
+               <>
+                 <table className="w-full text-sm text-left">
+                    <thead className={`${isDark ? "bg-gray-800/50 text-gray-300" : "bg-gray-50 text-gray-700"} font-medium border-b ${isDark ? "border-gray-800" : "border-gray-200"}`}>
+                        <tr>
+                            <th className="px-6 py-3">Invoice No</th>
+                            <th className="px-6 py-3">Date</th>
+                            <th className="px-6 py-3">Customer (GSTIN)</th>
+                            <th className="px-6 py-3 text-right">Value</th>
+                            <th className="px-6 py-3 text-right">Taxable</th>
+                            <th className="px-6 py-3 text-right">IGST</th>
+                            <th className="px-6 py-3 text-right">CGST</th>
+                            <th className="px-6 py-3 text-right">SGST</th>
+                        </tr>
+                    </thead>
+                    <tbody className={`divide-y ${isDark ? "divide-gray-800" : "divide-gray-200"}`}>
+                        {!reportData || reportData.records.length === 0 ? (
+                            <tr>
+                                <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                                    {loading ? <Loader className="animate-spin mx-auto" /> : "No data generated. Select a month and click Generate."}
+                                </td>
+                            </tr>
+                        ) : (
+                            reportData.records.map((row, i) => (
+                                <tr key={i} className={`hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors`}>
+                                    <td className={`px-6 py-3 font-medium ${isDark ? "text-white" : "text-gray-900"}`}>{row.invoiceNumber}</td>
+                                    <td className="px-6 py-3">{new Date(row.invoiceDate).toLocaleDateString()}</td>
+                                    <td className="px-6 py-3">
+                                        <div className="font-medium">{row.customerName}</div>
+                                        <div className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>{row.gstinUin || "B2C"}</div>
+                                    </td>
+                                    <td className="px-6 py-3 text-right font-medium">{formatCurrency(row.invoiceAmount)}</td>
+                                    <td className="px-6 py-3 text-right">{formatCurrency(row.taxableAmount)}</td>
+                                    <td className="px-6 py-3 text-right text-indigo-600 dark:text-indigo-400">{formatCurrency(row.igstAmount)}</td>
+                                    <td className="px-6 py-3 text-right">{formatCurrency(row.cgstAmount)}</td>
+                                    <td className="px-6 py-3 text-right">{formatCurrency(row.sgstAmount)}</td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                 </table>
+                 
+                 {reportData?.meta && reportData.meta.totalPages > 1 && (
+                   <div className="flex items-center justify-between px-6 py-4 border-t dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Showing {(reportData.meta.page - 1) * reportData.meta.limit + 1} to{" "}
+                        {Math.min(reportData.meta.page * reportData.meta.limit, reportData.meta.totalRecords)} of{" "}
+                        {reportData.meta.totalRecords} entries
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <button
+                          onClick={() => handleGenerate(page - 1)}
+                          disabled={page === 1 || loading}
+                          className="px-3 py-1.5 text-sm font-medium border rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 bg-white hover:bg-gray-50 border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700"
+                        >
+                          Previous
+                        </button>
+                        <span className="text-sm px-2 font-medium text-gray-700 dark:text-gray-400">
+                          Page {page} of {reportData.meta.totalPages}
+                        </span>
+                        <button
+                          onClick={() => handleGenerate(page + 1)}
+                          disabled={page === reportData.meta.totalPages || loading}
+                          className="px-3 py-1.5 text-sm font-medium border rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 bg-white hover:bg-gray-50 border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700"
+                        >
+                          Next
+                        </button>
+                      </div>
+                   </div>
+                 )}
+               </>
             ) : (
                <table className="w-full text-sm text-left">
                   <thead className={`${isDark ? "bg-gray-800/50 text-gray-300" : "bg-gray-50 text-gray-700"} font-medium border-b ${isDark ? "border-gray-800" : "border-gray-200"}`}>

@@ -32,6 +32,9 @@ export interface Plan {
     whatsappMarketingQuota: number;
   };
   savings: {
+    quarterly: number;
+    quarterlyPercent: number;
+    quarterlyFormatted: string;
     yearly: number;
     yearlyPercent: number;
     yearlyFormatted: string;

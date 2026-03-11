@@ -220,29 +220,28 @@ export class MobileShopDashboardService {
     });
 
     // Index WhatsApp logs by customerId for O(1) lookup
-    const logsByCustomer = new Map<string, Date[]>();
+    const logsByCustomer = new Map<string, number[]>();
     for (const log of whatsappLogs) {
       if (!log.customerId) continue;
       const logs = logsByCustomer.get(log.customerId) || [];
-      logs.push(log.sentAt);
+      logs.push(log.sentAt.getTime());
       logsByCustomer.set(log.customerId, logs);
     }
 
     let whatsappRecoveryAmount = 0;
+    const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+
     for (const inv of thisMonthInvoices) {
       if (!inv.customerId) continue;
 
       const customerLogs = logsByCustomer.get(inv.customerId);
       if (!customerLogs) continue;
 
-      const windowStart = inv.createdAt.getTime() - 48 * 60 * 60 * 1000;
       const invTime = inv.createdAt.getTime();
+      const windowStart = invTime - FORTY_EIGHT_HOURS_MS;
 
       const hasReminder = customerLogs.some(
-        (sentAt) => {
-          const sentTime = sentAt.getTime();
-          return sentTime >= windowStart && sentTime <= invTime;
-        }
+        (sentTime) => sentTime >= windowStart && sentTime <= invTime
       );
 
       if (hasReminder) {
@@ -309,45 +308,31 @@ export class MobileShopDashboardService {
       value: (stat._sum.totalAmount ?? 0) / 100,
     }));
 
-    // 🔹 NEW: SALES TREND (Last 7 days)
+    // 📊 TRENDS: Sales Trend (Last 7 days)
     const trendStart = new Date();
     trendStart.setDate(trendStart.getDate() - 7);
     trendStart.setHours(0, 0, 0, 0);
 
+    // Using groupBy + in-memory date splitting for PostgreSQL (Prisma doesn't support DATE_TRUNC)
+    // For small-medium volume, fetching daily field and grouping is better than findMany on all data
     const salesTrendRaw = await this.prisma.invoice.groupBy({
       by: ['createdAt'],
       where: {
         tenantId,
         shopId: { in: shopIds },
         createdAt: { gte: trendStart },
+        deletedAt: null,
       },
       _sum: { totalAmount: true },
     });
 
-    // Group by Date (YYYY-MM-DD) manually since Prisma groupBy by date part isn't direct
-    // Actually, fetching raw data might be better for trend if volume is low, or using raw query.
-    // For now, let's stick to a simpler approach:
-    // Since we need daily sums, we can use a raw query or just fetch essential fields and aggregate in memory
-    // (efficient enough for 7 days).
-
-    // Better: Use `findMany` and aggregate in memory for last 7 days (usually < 1000 invoices)
-    const trendInvoices = await this.prisma.invoice.findMany({
-      where: {
-        tenantId,
-        shopId: { in: shopIds },
-        createdAt: { gte: trendStart },
-      },
-      select: { createdAt: true, totalAmount: true },
-    });
-
     const trendMap = new Map<string, number>();
-    trendInvoices.forEach((inv) => {
-      const date = inv.createdAt.toISOString().split('T')[0];
-      const amount = (inv.totalAmount ?? 0) / 100;
-      trendMap.set(date, (trendMap.get(date) ?? 0) + amount);
+    salesTrendRaw.forEach((stat) => {
+      const dateKey = stat.createdAt.toISOString().split('T')[0];
+      const amount = (stat._sum.totalAmount ?? 0) / 100;
+      trendMap.set(dateKey, (trendMap.get(dateKey) ?? 0) + amount);
     });
 
-    // Format for chart (last 7 days filled)
     const salesTrend: { date: string; sales: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
@@ -359,7 +344,7 @@ export class MobileShopDashboardService {
       });
       salesTrend.push({
         date: displayDate,
-        sales: trendMap.get(dateKey) ?? 0,
+        sales: Math.round((trendMap.get(dateKey) ?? 0) * 100) / 100,
       });
     }
 
@@ -428,40 +413,53 @@ export class MobileShopDashboardService {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
     const shops = await this.prisma.shop.findMany({
-      where: { tenantId },
+      where: { tenantId, isActive: true },
       select: { id: true, name: true },
     });
 
-    const breakdown = await Promise.all(
-      shops.map(async (shop) => {
-        const [salesAgg, jobCardCount] = await Promise.all([
-          this.prisma.invoice.aggregate({
-            where: {
-              tenantId,
-              shopId: shop.id,
-              createdAt: { gte: monthStart },
-            },
-            _sum: { totalAmount: true },
-            _count: { id: true },
-          }),
-          this.prisma.jobCard.count({
-            where: {
-              tenantId,
-              shopId: shop.id,
-              createdAt: { gte: monthStart },
-            },
-          }),
-        ]);
+    if (shops.length === 0) return [];
 
-        return {
-          shopId: shop.id,
-          shopName: shop.name,
-          revenue: (salesAgg._sum.totalAmount ?? 0) / 100,
-          salesCount: salesAgg._count.id,
-          jobCardCount,
-        };
+    const shopIds = shops.map((s) => s.id);
+
+    // 🚀 BATCHED QUERIES - Fetch all shop data in two queries
+    const [salesAggs, jobCardAggs] = await Promise.all([
+      this.prisma.invoice.groupBy({
+        by: ['shopId'],
+        where: {
+          tenantId,
+          shopId: { in: shopIds },
+          createdAt: { gte: monthStart },
+          deletedAt: null,
+        },
+        _sum: { totalAmount: true },
+        _count: { id: true },
       }),
-    );
+      this.prisma.jobCard.groupBy({
+        by: ['shopId'],
+        where: {
+          tenantId,
+          shopId: { in: shopIds },
+          createdAt: { gte: monthStart },
+          deletedAt: null,
+        },
+        _count: { id: true },
+      }),
+    ]);
+
+    // Construct maps for O(1) lookup
+    const salesMap = new Map(salesAggs.map((s) => [s.shopId, s]));
+    const jobCardMap = new Map(jobCardAggs.map((j) => [j.shopId, j._count.id]));
+
+    const breakdown = shops.map((shop) => {
+      const sales = salesMap.get(shop.id);
+      return {
+        shopId: shop.id,
+        shopName: shop.name,
+        revenue: (sales?._sum.totalAmount ?? 0) / 100,
+        salesCount: sales?._count.id ?? 0,
+        jobCardCount: jobCardMap.get(shop.id) ?? 0,
+      };
+    });
 
     return breakdown.sort((a, b) => b.revenue - a.revenue);
   }

@@ -159,18 +159,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }} 
         initialPrompt={initialPrompt}
       />
-      {!aiOpen && (
-        <button
-          onClick={() => setAiOpen(true)}
-          className="fixed bottom-6 right-6 z-40 bg-teal-600 hover:bg-teal-700 text-white rounded-full p-4 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-2 group border-4 border-white dark:border-slate-900 focus:outline-none focus:ring-4 focus:ring-teal-500/30"
-          title="Ask AI Assistant"
-        >
-          <SparklesIcon className="w-6 h-6 animate-pulse" />
-          <span className="font-semibold px-1 max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap">
-            Ask AI
-          </span>
-        </button>
-      )}
     </div>
   );
 }

@@ -20,14 +20,22 @@ async function getAiQuota(): Promise<AiQuotaData | null> {
   }
 }
 
+import { useTheme } from "@/context/ThemeContext";
+import { Zap } from "lucide-react";
+
 export function AiQuotaBadge({ className = "" }: { className?: string }) {
   const [quota, setQuota] = useState<AiQuotaData | null>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     getAiQuota().then(setQuota);
   }, []);
 
-  if (!quota || quota.aiTokensLimit === 0) return null;
+  // Hydration safety since useTheme uses window
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted || !quota || quota.aiTokensLimit === 0) return null;
 
   const pct = Math.min(
     100,
@@ -35,49 +43,52 @@ export function AiQuotaBadge({ className = "" }: { className?: string }) {
   );
   const isNearLimit = pct >= 80;
   const isExhausted = pct >= 100;
+  const isDark = theme === "dark";
 
   const barColor = isExhausted
-    ? "bg-red-500"
+    ? "bg-rose-500"
     : isNearLimit
-    ? "bg-amber-400"
-    : "bg-indigo-500";
+    ? "bg-amber-500"
+    : "bg-gradient-to-r from-indigo-500 to-purple-500";
 
   const textColor = isExhausted
-    ? "text-red-600"
+    ? isDark ? "text-rose-400" : "text-rose-600"
     : isNearLimit
-    ? "text-amber-600"
-    : "text-slate-600";
+    ? isDark ? "text-amber-400" : "text-amber-600"
+    : isDark ? "text-indigo-400" : "text-indigo-600";
 
   return (
-    <div className={`rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs ${className}`}>
-      <div className="flex justify-between items-center mb-2">
+    <div className={`rounded-xl p-3.5 flex flex-col gap-2.5 transition-colors shadow-sm ${isDark ? "bg-slate-800/60 border border-slate-700/50" : "bg-white border border-slate-200"} ${className}`}>
+      <div className="flex justify-between items-center">
         <div className="flex items-center gap-1.5">
-          <span className="text-base">🤖</span>
-          <span className="font-semibold text-slate-700">AI Tokens</span>
+          <Zap size={14} className={textColor} strokeWidth={2.5} />
+          <span className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}>AI Tokens</span>
         </div>
-        <span className={`font-bold ${textColor}`}>
+        <span className={`text-[11px] font-bold ${textColor}`}>
           {quota.aiTokensUsed.toLocaleString()} / {quota.aiTokensLimit.toLocaleString()}
         </span>
       </div>
-      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden mb-1.5">
+      
+      <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? "bg-slate-700" : "bg-slate-100"}`}>
         <div
-          className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+          className={`h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(0,0,0,0.1)] ${barColor}`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      {isExhausted ? (
-        <p className="text-red-600 font-medium">
-          AI quota exhausted.{" "}
-          <a href="/pricing" className="underline hover:no-underline">
-            Upgrade to continue.
-          </a>
-        </p>
-      ) : (
-        <p className={textColor}>
-          {pct}% used
-          {quota.resetAt && ` · Resets ${new Date(quota.resetAt).toLocaleDateString("en-IN")}`}
-        </p>
-      )}
+
+      <div className={`text-[10px] sm:text-[11px] font-medium ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+        {isExhausted ? (
+          <span className="text-rose-500">
+            Quota exhausted.{" "}
+            <a href="/pricing" className="underline hover:no-underline">Upgrade</a>
+          </span>
+        ) : (
+          <div className="flex justify-between items-center">
+            <span>{pct}% used</span>
+            {quota.resetAt && <span>Renews {new Date(quota.resetAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

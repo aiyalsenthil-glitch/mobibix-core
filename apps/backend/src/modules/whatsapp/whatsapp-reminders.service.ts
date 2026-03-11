@@ -28,13 +28,6 @@ type ReminderWithRelations = Prisma.CustomerReminderGetPayload<{
         name: true;
         tenantType: true;
         whatsappReminderNumberId: true;
-        subscription: {
-          select: {
-            plan: {
-              select: { code: true; meta: true };
-            };
-          };
-        };
       };
     };
   };
@@ -115,16 +108,6 @@ export class WhatsAppRemindersService {
               name: true,
               tenantType: true,
               whatsappReminderNumberId: true,
-              subscription: {
-                where: { status: 'ACTIVE' },
-                orderBy: { startDate: 'desc' },
-                take: 1,
-                select: {
-                  plan: {
-                    select: { code: true, meta: true },
-                  },
-                },
-              },
             },
           },
         },
@@ -138,6 +121,8 @@ export class WhatsAppRemindersService {
       }
 
       // 2️⃣ Process each reminder
+      const quotaCache = new Map<string, number | null>();
+
       for (const reminder of pendingReminders) {
         remindersToProcess.push(reminder.id);
 
@@ -146,7 +131,7 @@ export class WhatsAppRemindersService {
         );
 
         try {
-          await this.processSingleReminder(reminder);
+          await this.processSingleReminder(reminder, quotaCache);
         } catch (err) {
           // ⚠️ Fail gracefully - don't crash on individual reminder errors
           this.logger.error(
@@ -180,6 +165,7 @@ export class WhatsAppRemindersService {
    */
   private async processSingleReminder(
     reminder: ReminderWithRelations,
+    quotaCache: Map<string, number | null>,
   ): Promise<void> {
     const { id: reminderId, tenantId, customer, templateKey } = reminder;
 
@@ -216,12 +202,24 @@ export class WhatsAppRemindersService {
       const whatsAppNumberId = reminder.tenant?.whatsappReminderNumberId;
 
       // 🛡️ QUOTA CHECK: Daily Reminder Limit
-      const activeSub = reminder.tenant?.subscription?.[0];
-      const planMeta =
-        (activeSub?.plan?.meta as {
-          reminderQuotaPerDay?: number | null;
-        } | null) ?? null;
-      const reminderQuotaPerDay = planMeta?.reminderQuotaPerDay ?? null;
+      let reminderQuotaPerDay: number | null = null;
+      if (quotaCache.has(tenantId)) {
+        reminderQuotaPerDay = quotaCache.get(tenantId) ?? null;
+      } else {
+        const activeSub = await this.prisma.tenantSubscription.findFirst({
+          where: { tenantId, status: 'ACTIVE' },
+          orderBy: { startDate: 'desc' },
+          select: {
+            plan: {
+              select: { meta: true },
+            },
+          },
+        });
+        
+        const planMeta = (activeSub?.plan?.meta as { reminderQuotaPerDay?: number | null; } | null) ?? null;
+        reminderQuotaPerDay = planMeta?.reminderQuotaPerDay ?? null;
+        quotaCache.set(tenantId, reminderQuotaPerDay);
+      }
 
       if (reminderQuotaPerDay !== null && reminderQuotaPerDay !== undefined) {
         const todayStart = new Date();

@@ -19,5 +19,6 @@ import { FollowUpsModule } from '../../../core/follow-ups/follow-ups.module';
   ],
   controllers: [JobCardsController, PublicJobController],
   providers: [JobCardsService, JobStatusValidator],
+  exports: [JobCardsService],
 })
 export class JobCardsModule {}

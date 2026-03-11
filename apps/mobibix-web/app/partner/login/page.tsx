@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ShieldCheck, Lock, Mail, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 
 export default function PartnerLoginPage() {
@@ -66,15 +67,20 @@ export default function PartnerLoginPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                        <Lock className="w-4 h-4" /> Password
-                    </label>
-                    <input 
-                        required 
-                        type="password" 
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                          <Lock className="w-4 h-4" /> Password
+                      </label>
+                      <Link href="/partner/forgot-password" className="text-xs text-teal-600 hover:text-teal-700 font-semibold transition-colors">
+                        Forgot password?
+                      </Link>
+                    </div>
+                    <input
+                        required
+                        type="password"
                         name="password"
-                        placeholder="••••••••" 
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-teal-500 outline-none transition-all" 
+                        placeholder="••••••••"
+                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-teal-500 outline-none transition-all"
                     />
                 </div>
 

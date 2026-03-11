@@ -8,7 +8,7 @@ import type { Plan } from "../../app/pricing/page";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function PricingToggleClient({ plans }: { plans: Plan[] }) {
-  const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "YEARLY">(
+  const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "QUARTERLY" | "YEARLY">(
     "YEARLY"
   );
   const [_openFaq, _setOpenFaq] = useState<number | null>(null);
@@ -44,7 +44,7 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
           
           {/* Billing Toggle - Compact */}
           <div className="relative inline-flex items-center p-1 rounded-full bg-muted/50 border border-border backdrop-blur-md shadow-xl mt-4">
-            {(["MONTHLY", "YEARLY"] as const).map((cycle) => (
+            {(["MONTHLY", "QUARTERLY", "YEARLY"] as const).map((cycle) => (
               <button
                 key={cycle}
                 onClick={() => setBillingCycle(cycle)}
@@ -62,16 +62,26 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
                   />
                 )}
                 <span className="relative">
-                  {cycle === "MONTHLY" ? "Monthly" : "Yearly"}
+                  {cycle === "MONTHLY" ? "Monthly" : cycle === "QUARTERLY" ? "Quarterly" : "Yearly"}
                 </span>
                 {cycle === "YEARLY" && (
                    <motion.span 
                      initial={{ scale: 0.8, rotate: 12 }}
                      animate={{ scale: [1, 1.1, 1], rotate: [12, 14, 12] }}
                      transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                     className="absolute -top-8 -right-6 md:-top-10 md:-right-8 bg-primary text-primary-foreground text-xs md:text-sm font-black px-3 md:px-4 py-1.5 rounded-xl shadow-2xl border-2 border-background z-20"
+                     className="absolute -top-8 -right-6 md:-top-10 md:-right-8 bg-primary text-primary-foreground text-[10px] md:text-sm font-black px-3 md:px-4 py-1.5 rounded-xl shadow-2xl border-2 border-background z-20"
                    >
-                    2 MO FREE
+                    BEST VALUE
+                   </motion.span>
+                )}
+                {cycle === "QUARTERLY" && (
+                   <motion.span 
+                     initial={{ scale: 0.8, rotate: 12 }}
+                     animate={{ opacity: [0.7, 1, 0.7] }}
+                     transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                     className="absolute -top-8 -left-2 bg-blue-500 text-white text-[8px] md:text-[10px] font-black px-2 py-1 rounded-lg shadow-xl border border-background z-20 pointer-events-none"
+                   >
+                    POPULAR
                    </motion.span>
                 )}
               </button>
@@ -127,7 +137,7 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
                           {pricing?.priceFormatted ?? "—"}
                         </span>
                         <span className="text-muted-foreground font-black text-sm uppercase tracking-tighter">
-                          /{billingCycle === "MONTHLY" ? "mo" : "yr"}
+                          /{billingCycle === "MONTHLY" ? "mo" : billingCycle === "QUARTERLY" ? "qtr" : "yr"}
                         </span>
                       </div>
                       <AnimatePresence mode="wait">
@@ -139,6 +149,16 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
                             className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-black uppercase tracking-widest ring-1 ring-primary/20"
                           >
                              Save {plan.savings.yearlyFormatted}
+                          </motion.div>
+                        )}
+                        {billingCycle === "QUARTERLY" && (plan as any).savings?.quarterly > 0 && (
+                          <motion.div 
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-500 text-xs font-black uppercase tracking-widest ring-1 ring-blue-500/20"
+                          >
+                             Save {(plan as any).savings.quarterlyFormatted}
                           </motion.div>
                         )}
                       </AnimatePresence>

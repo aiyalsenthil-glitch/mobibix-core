@@ -19,12 +19,12 @@ async function testGSTR1Report() {
   const report = await gstr1Service.generateSalesRegister(tenantId, startDate, endDate);
   console.log('Report Summary:', {
       period: report.period,
-      totalInvoices: report.totalInvoices,
-      b2bCount: report.b2bCount,
-      b2cCount: report.b2cCount,
-      totalTaxableAmount: report.totalTaxableAmount,
-      totalCgst: report.totalCgst,
-      totalSgst: report.totalSgst,
+      totalInvoices: report.summary.totalInvoices,
+      b2bCount: report.summary.b2bCount,
+      b2cCount: report.summary.b2cCount,
+      totalTaxableAmount: report.summary.totalTaxableAmount,
+      totalCgst: report.summary.totalCgst,
+      totalSgst: report.summary.totalSgst,
   });
 
   // 2. Verify Consistency (Sample 100 invoices to avoid OOM in this script environment)

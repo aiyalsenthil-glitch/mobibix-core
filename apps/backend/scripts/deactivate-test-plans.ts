@@ -3,13 +3,17 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  const plans = await prisma.plan.findMany({
-    include: {
-      planPrices: true,
+  const result = await prisma.plan.updateMany({
+    where: {
+      code: 'TEST_DAILY',
+    },
+    data: {
+      isActive: false,
+      isPublic: false,
     },
   });
 
-  console.log(JSON.stringify(plans, null, 2));
+  console.log(`Deactivated ${result.count} test plans.`);
 }
 
 main()

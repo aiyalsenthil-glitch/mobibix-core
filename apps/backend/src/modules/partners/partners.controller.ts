@@ -39,10 +39,12 @@ export class PartnersController {
   // ─────────────────────────────────────────────
   // MODULE 7: Partner Dashboard (Protected by PartnerJwt)
   // ─────────────────────────────────────────────
+  @Public()
+  @SkipSubscriptionCheck()
   @UseGuards(PartnerJwtGuard)
   @Get('dashboard/stats')
   async getDashboard(@Request() req: any) {
-    return this.partnersService.getPartnerStats(req.user.sub);
+    return this.partnersService.getPartnerStats(req.user.userId);
   }
 
   // ─────────────────────────────────────────────
@@ -122,9 +124,11 @@ export class PartnersController {
   // ─────────────────────────────────────────────
   // MODULE 9: Partner self-service promo creation
   // ─────────────────────────────────────────────
+  @Public()
+  @SkipSubscriptionCheck()
   @UseGuards(PartnerJwtGuard)
   @Post('promo/my')
   async createMyPromo(@Body() body: any, @Request() req: any) {
-    return this.partnersService.createPartnerPromoCode(req.user.sub, body);
+    return this.partnersService.createPartnerPromoCode(req.user.userId, body);
   }
 }

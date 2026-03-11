@@ -317,13 +317,22 @@ export class PartnersService {
       });
 
       // Link promo + partner to tenant
-      return tx.tenant.update({
+      const updated = await tx.tenant.update({
         where: { id: tenantId },
         data: {
           promoCodeId: promo.id,
           partnerId: promo.partnerId,
         },
       });
+
+      // Notify partner that their promo was used
+      if (promo.partnerId) {
+        setImmediate(() =>
+          this.notifyPromoUsed(promo.partnerId!, promo.code, updated.name),
+        );
+      }
+
+      return updated;
     });
   }
 
@@ -333,32 +342,48 @@ export class PartnersService {
   async getPartnerStats(partnerId: string) {
     const partner = await this.prisma.partner.findUnique({
       where: { id: partnerId },
-      include: {
-        _count: {
-          select: { referredTenants: true },
-        },
-        promoCodes: {
-          where: { isActive: true },
-          select: {
-            id: true,
-            code: true,
-            type: true,
-            durationDays: true,
-            bonusMonths: true,
-            maxUses: true,
-            usedCount: true,
-            expiresAt: true,
-          },
-        },
-      },
     });
 
     if (!partner) throw new NotFoundException('Partner not found');
 
-    const referrals = await this.prisma.partnerReferral.findMany({
-      where: { partnerId },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [promoCodes, referredTenantsCount] = await Promise.all([
+      this.prisma.promoCode.findMany({
+        where: { partnerId, isActive: true },
+        select: {
+          id: true,
+          code: true,
+          type: true,
+          durationDays: true,
+          bonusMonths: true,
+          maxUses: true,
+          usedCount: true,
+          expiresAt: true,
+        },
+      }),
+      this.prisma.tenant.count({ where: { partnerId } }),
+    ]);
+
+    const [referrals, referredTenants] = await Promise.all([
+      this.prisma.partnerReferral.findMany({
+        where: { partnerId },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.tenant.findMany({
+        where: { partnerId },
+        select: {
+          id: true,
+          name: true,
+          contactPhone: true,
+          city: true,
+          createdAt: true,
+          subscription: {
+            where: { status: 'ACTIVE' },
+            take: 1,
+            select: { status: true },
+          },
+        },
+      }),
+    ]);
 
     const totalRevenue = referrals.reduce(
       (acc, curr) => acc + curr.subscriptionAmount,
@@ -368,18 +393,38 @@ export class PartnersService {
       .filter((r) => r.status === 'PENDING')
       .reduce((acc, curr) => acc + curr.commissionAmount, 0);
 
+    // CRM: aggregate per tenant from referral records
+    const latestPlanByTenant: Record<string, string> = {};
+    const commissionByTenant: Record<string, number> = {};
+    for (const r of referrals) {
+      latestPlanByTenant[r.tenantId] ??= r.subscriptionPlan;
+      commissionByTenant[r.tenantId] = (commissionByTenant[r.tenantId] ?? 0) + r.commissionAmount;
+    }
+
+    const referredShops = referredTenants.map((t) => ({
+      id: t.id,
+      name: t.name,
+      phone: t.contactPhone,
+      city: t.city,
+      plan: latestPlanByTenant[t.id] ?? null,
+      isActive: t.subscription.length > 0,
+      totalCommission: commissionByTenant[t.id] ?? 0,
+      joinedAt: t.createdAt,
+    }));
+
     return {
       referralCode: partner.referralCode,
       businessName: partner.businessName,
       firstCommissionPct: partner.firstCommissionPct,
       renewalCommissionPct: partner.renewalCommissionPct,
-      totalReferrals: partner._count.referredTenants,
+      totalReferrals: referredTenantsCount,
       totalEarned: partner.totalEarned,
       totalPaid: partner.totalPaid,
       pendingCommission,
       totalRevenue,
       referralList: referrals,
-      promoCodes: partner.promoCodes,
+      promoCodes,
+      referredShops,
     };
   }
 
@@ -414,7 +459,100 @@ export class PartnersService {
       `💸 Payout marked: Partner ${partnerId} — ₹${totalPayout / 100} across ${confirmed.length} referrals`,
     );
 
+    setImmediate(() =>
+      this.notifyPayoutDone(partnerId, totalPayout, confirmed.length),
+    );
+
     return { paid: confirmed.length, totalPaid: totalPayout };
+  }
+
+  // ─────────────────────────────────────────────
+  // MODULE 10: Partner Notifications
+  // ─────────────────────────────────────────────
+  private async notify(
+    partnerId: string,
+    type: string,
+    title: string,
+    body: string,
+  ) {
+    try {
+      await (this.prisma as any).partnerNotification.create({
+        data: { partnerId, type, title, body },
+      });
+    } catch (e) {
+      this.logger.warn(`Failed to create partner notification: ${e.message}`);
+    }
+  }
+
+  async getNotifications(partnerId: string) {
+    const items = await (this.prisma as any).partnerNotification.findMany({
+      where: { partnerId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    const unreadCount = items.filter((n: any) => !n.isRead).length;
+    return { items, unreadCount };
+  }
+
+  async markNotificationsRead(partnerId: string) {
+    await (this.prisma as any).partnerNotification.updateMany({
+      where: { partnerId, isRead: false },
+      data: { isRead: true },
+    });
+    return { ok: true };
+  }
+
+  async notifyPromoUsed(partnerId: string, code: string, shopName: string) {
+    await this.notify(
+      partnerId,
+      'PROMO_USED',
+      '🎉 Promo Code Used!',
+      `${shopName} just applied your code ${code} and signed up.`,
+    );
+  }
+
+  async notifyCommissionEarned(
+    partnerId: string,
+    amount: number,
+    shopName: string,
+    isFirst: boolean,
+  ) {
+    await this.notify(
+      partnerId,
+      'COMMISSION_EARNED',
+      '💰 Commission Earned',
+      `You earned ₹${(amount / 100).toFixed(2)} from ${shopName}'s ${isFirst ? 'first payment' : 'renewal'}.`,
+    );
+  }
+
+  async notifyPayoutDone(partnerId: string, totalPaid: number, count: number) {
+    await this.notify(
+      partnerId,
+      'COMMISSION_PAID',
+      '🏦 Payout Processed',
+      `₹${(totalPaid / 100).toFixed(2)} across ${count} referrals has been deposited to your account.`,
+    );
+  }
+
+  async notifyExpiringShops(partnerId: string) {
+    const in7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const expiring = await (this.prisma as any).tenantSubscription.findMany({
+      where: {
+        tenant: { partnerId },
+        status: 'ACTIVE',
+        endDate: { lte: in7Days },
+      },
+      include: { tenant: { select: { name: true } } },
+    });
+    for (const sub of expiring) {
+      await this.notify(
+        partnerId,
+        'SUBSCRIPTION_EXPIRING',
+        '⚠️ Shop Subscription Expiring',
+        `${sub.tenant.name}'s subscription expires on ${new Date(sub.endDate).toLocaleDateString('en-IN')}. Follow up to help them renew!`,
+      );
+    }
+    return expiring.length;
   }
 
   // ─────────────────────────────────────────────
@@ -432,17 +570,30 @@ export class PartnersService {
         'Maximum 5 custom promo codes allowed per partner. Contact support to create more.',
       );
     }
-    return this.prisma.promoCode.create({
-      data: {
-        code: data.code.toUpperCase(),
-        type: data.type as PromoCodeType,
-        durationDays: data.durationDays ?? 0,
-        bonusMonths: data.bonusMonths ?? 0,
-        maxUses: data.maxUses ?? 100,
-        partnerId,
-        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
-        description: `Custom campaign code by partner`,
-      },
-    });
+    if (data.type === 'SUBSCRIPTION_BONUS' && (data.bonusMonths ?? 0) > 3) {
+      throw new BadRequestException('Maximum 3 bonus months allowed per promo code.');
+    }
+
+    try {
+      return await this.prisma.promoCode.create({
+        data: {
+          code: data.code.toUpperCase(),
+          type: data.type as PromoCodeType,
+          durationDays: data.durationDays ?? 0,
+          bonusMonths: Math.min(data.bonusMonths ?? 0, 3),
+          maxUses: data.maxUses ?? 100,
+          partnerId,
+          expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+          description: `Custom campaign code by partner`,
+        },
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002') {
+        throw new ConflictException(
+          `Promo code "${data.code.toUpperCase()}" is already taken. Please choose a different code.`,
+        );
+      }
+      throw e;
+    }
   }
 }

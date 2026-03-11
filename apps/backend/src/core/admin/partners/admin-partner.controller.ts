@@ -30,18 +30,23 @@ export class AdminPartnerController {
   @Patch(':id/approve')
   async approvePartner(
     @Param('id') id: string,
-    @Body('commission') commission: number,
+    @Body('firstCommissionPct') firstCommissionPct: number = 30,
+    @Body('renewalCommissionPct') renewalCommissionPct: number = 10,
     @Req() req: any,
   ) {
-    // adminId from the adminUser object attached by AdminRolesGuard
     const adminId = req.adminUser.userId;
-    return this.partnersService.approvePartner(id, adminId, commission);
+    return this.partnersService.approvePartner(id, adminId, firstCommissionPct, renewalCommissionPct);
   }
 
   @Patch(':id/suspend')
   async suspendPartner(@Param('id') id: string, @Req() req: any) {
     const adminId = req.adminUser.userId;
     return this.partnersService.suspendPartner(id, adminId);
+  }
+
+  @Patch(':id/payout')
+  async markPayout(@Param('id') id: string) {
+    return this.partnersService.markPartnerPayout(id);
   }
 
   @Get('promos')

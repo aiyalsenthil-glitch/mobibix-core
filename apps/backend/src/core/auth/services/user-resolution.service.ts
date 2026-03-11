@@ -10,33 +10,61 @@ export class UserResolutionService {
   async resolveUser(decodedToken: any) {
     const normalizedEmail = decodedToken.email?.toLowerCase() ?? null;
 
-    let user = await this.prisma.user.upsert({
+    // 🛡️ OPTIMIZATION: Try finding user first to avoid expensive upsert/write lock on every request
+    let user = await this.prisma.user.findUnique({
       where: { REMOVED_AUTH_PROVIDERUid: decodedToken.uid },
-      update: {
-        email: normalizedEmail,
-        fullName: decodedToken.name ?? undefined,
-      },
-      create: {
-        REMOVED_AUTH_PROVIDERUid: decodedToken.uid,
-        email: normalizedEmail,
-        fullName: decodedToken.name ?? null,
-        role: UserRole.USER,
-        tenantId: null,
-      },
       include: {
         userTenants: {
           include: {
             tenant: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-              },
+              select: { id: true, name: true, code: true },
             },
           },
         },
       },
     });
+
+    const fullName = decodedToken.name ?? null;
+
+    if (!user) {
+      // Create new user if not exists
+      user = await this.prisma.user.create({
+        data: {
+          REMOVED_AUTH_PROVIDERUid: decodedToken.uid,
+          email: normalizedEmail,
+          fullName: fullName,
+          role: UserRole.USER,
+          tenantId: null,
+        },
+        include: {
+          userTenants: {
+            include: {
+              tenant: {
+                select: { id: true, name: true, code: true },
+              },
+            },
+          },
+        },
+      });
+    } else if (user.email !== normalizedEmail || user.fullName !== fullName) {
+      // ⚡ Only update if critical metadata changed
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          email: normalizedEmail,
+          fullName: fullName,
+        },
+        include: {
+          userTenants: {
+            include: {
+              tenant: {
+                select: { id: true, name: true, code: true },
+              },
+            },
+          },
+        },
+      });
+    }
 
     return user;
   }

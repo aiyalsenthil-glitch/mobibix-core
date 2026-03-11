@@ -18,15 +18,23 @@ interface GSTR1Record {
 export interface GSTR1Report {
   period: string;
   generatedDate: Date;
-  totalInvoices: number;
-  b2bCount: number;
-  b2cCount: number;
-  exportCount: number;
-  totalTaxableAmount: number;
-  totalCgst: number;
-  totalSgst: number;
-  totalIgst: number;
+  summary: {
+    totalInvoices: number;
+    b2bCount: number;
+    b2cCount: number;
+    exportCount: number;
+    totalTaxableAmount: number;
+    totalCgst: number;
+    totalSgst: number;
+    totalIgst: number;
+  };
   records: GSTR1Record[];
+  meta: {
+    page: number;
+    limit: number;
+    totalPages: number;
+    totalRecords: number;
+  };
 }
 
 @Injectable()
@@ -40,61 +48,51 @@ export class GSTR1Service {
     tenantId: string,
     startDate: Date,
     endDate: Date,
+    page: number = 1,
+    limit: number = 50,
   ): Promise<GSTR1Report> {
-    // Get all invoices (excluding cancellations) in period
-    const invoices = await this.prisma.invoice.findMany({
-      where: {
-        tenantId,
-        invoiceDate: {
-          gte: startDate,
-          lte: endDate,
+    const skip = (page - 1) * limit;
+    const where: any = {
+      tenantId,
+      invoiceDate: { gte: startDate, lte: endDate },
+      status: { not: 'VOIDED' },
+      deletedAt: null,
+    };
+
+    // 1. Run summary aggregations and paginated fetch in parallel
+    const [summaryAgg, b2bCount, invoices, totalRecords] = await Promise.all([
+      // Total revenue and tax sums
+      this.prisma.invoice.aggregate({
+        where,
+        _sum: { totalAmount: true, cgst: true, sgst: true, igst: true },
+        _count: { id: true },
+      }),
+      // Count of B2B invoices (those with a GST number captured at time of sale)
+      this.prisma.invoice.count({
+        where: {
+          ...where,
+          AND: [
+            { customerGstin: { not: null } },
+            { customerGstin: { not: "" } },
+          ],
         },
-        status: {
-          not: 'VOIDED', // Exclude voided invoices
-        },
-      },
-      include: {
-        items: true,
-        customer: true,
-      },
-    });
+      }),
+      // Paginated records
+      this.prisma.invoice.findMany({
+        where,
+        include: { items: true, customer: true },
+        orderBy: { invoiceDate: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.invoice.count({ where }),
+    ]);
 
-    const records: GSTR1Record[] = [];
-    let b2bCount = 0;
-    let b2cCount = 0;
-    const exportCount = 0;
-    let totalTaxableAmount = 0;
-    let totalCgst = 0;
-    let totalSgst = 0;
-    let totalIgst = 0;
+    const records: GSTR1Record[] = invoices.map((invoice) => {
+      const baseAmount = invoice.items.reduce((sum, item) => sum + item.lineTotal, 0);
+      const isB2B = !!invoice.customer?.gstNumber;
 
-    for (const invoice of invoices) {
-      // Skip if any item is legacy GST approximation and unverified
-      const hasUnverifiedLegacy = invoice.items.some((item) => {
-        // Would need to check related Purchase's legacy flag
-        // For now, assume invoices from purchases are verified
-        return false;
-      });
-
-      if (hasUnverifiedLegacy) {
-        continue; // Skip unverified legacy data
-      }
-
-      const baseAmount = invoice.items.reduce(
-        (sum, item) => sum + item.lineTotal,
-        0,
-      );
-
-      // Determine category
-      let category: 'B2B' | 'B2C' | 'EXPORT' | 'DEEMED' = 'B2C';
-      if (invoice.customer?.gstNumber) {
-        category = 'B2B';
-      } else if (invoice.customer?.state) {
-        // For inter-state without GST, could be B2C Large or Export
-        category = 'B2C';
-      }
-
-      records.push({
+      return {
         invoiceNumber: invoice.invoiceNumber,
         invoiceDate: invoice.invoiceDate,
         customerName: invoice.customer?.name || invoice.customerName,
@@ -104,30 +102,30 @@ export class GSTR1Service {
         cgstAmount: paiseToRupees(invoice.cgst || 0),
         sgstAmount: paiseToRupees(invoice.sgst || 0),
         igstAmount: paiseToRupees(invoice.igst || 0),
-        category,
-      });
-
-      if (category === 'B2B') b2bCount++;
-      else if (category === 'B2C') b2cCount++;
-
-      totalTaxableAmount += baseAmount;
-      totalCgst += invoice.cgst || 0;
-      totalSgst += invoice.sgst || 0;
-      totalIgst += invoice.igst || 0;
-    }
+        category: isB2B ? 'B2B' : 'B2C',
+      };
+    });
 
     return {
       period: `${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`,
       generatedDate: new Date(),
-      totalInvoices: invoices.length,
-      b2bCount,
-      b2cCount,
-      exportCount,
-      totalTaxableAmount: paiseToRupees(totalTaxableAmount),
-      totalCgst: paiseToRupees(totalCgst),
-      totalSgst: paiseToRupees(totalSgst),
-      totalIgst: paiseToRupees(totalIgst),
+      summary: {
+        totalInvoices: summaryAgg._count.id,
+        b2bCount,
+        b2cCount: summaryAgg._count.id - b2bCount,
+        exportCount: 0,
+        totalTaxableAmount: paiseToRupees(summaryAgg._sum.totalAmount || 0),
+        totalCgst: paiseToRupees(summaryAgg._sum.cgst || 0),
+        totalSgst: paiseToRupees(summaryAgg._sum.sgst || 0),
+        totalIgst: paiseToRupees(summaryAgg._sum.igst || 0),
+      },
       records,
+      meta: {
+        page,
+        limit,
+        totalPages: Math.ceil(totalRecords / limit),
+        totalRecords,
+      },
     };
   }
 
@@ -152,70 +150,36 @@ export class GSTR1Service {
       igstAmount: number;
     }>
   > {
-    const items = await this.prisma.invoiceItem.findMany({
+    const hsnGroups = await this.prisma.invoiceItem.groupBy({
+      by: ['hsnCode', 'cgstRate', 'sgstRate', 'igstRate'],
       where: {
         invoice: {
           tenantId,
           invoiceDate: { gte: startDate, lte: endDate },
           status: { not: 'VOIDED' },
+          deletedAt: null,
         },
+      },
+      _sum: {
+        quantity: true,
+        lineTotal: true,
+        cgstAmount: true,
+        sgstAmount: true,
+        igstAmount: true,
       },
     });
 
-    // Group by HSN and aggregate
-    const hsnMap = new Map<
-      string,
-      {
-        quantity: number;
-        totalAmount: number;
-        cgstAmount: number;
-        sgstAmount: number;
-        igstAmount: number;
-        cgstRate: number;
-        sgstRate: number;
-        igstRate: number;
-        count: number;
-      }
-    >();
-
-    for (const item of items) {
-      const key = item.hsnCode || 'UNKNOWN';
-      const existing = hsnMap.get(key) || {
-        quantity: 0,
-        totalAmount: 0,
-        cgstAmount: 0,
-        sgstAmount: 0,
-        igstAmount: 0,
-        cgstRate: 0,
-        sgstRate: 0,
-        igstRate: 0,
-        count: 0,
-      };
-
-      existing.quantity += item.quantity;
-      existing.totalAmount += item.lineTotal;
-      existing.cgstAmount += item.cgstAmount || 0;
-      existing.sgstAmount += item.sgstAmount || 0;
-      existing.igstAmount += item.igstAmount || 0;
-      existing.cgstRate = Number(item.cgstRate);
-      existing.sgstRate = Number(item.sgstRate);
-      existing.igstRate = Number(item.igstRate);
-      existing.count++;
-
-      hsnMap.set(key, existing);
-    }
-
-    return Array.from(hsnMap.entries()).map(([hsnCode, data]) => ({
-      hsnCode,
-      quantity: data.quantity,
-      unitPrice: paiseToRupees(Math.round(data.totalAmount / data.quantity)),
-      totalAmount: paiseToRupees(data.totalAmount),
-      cgstRate: data.cgstRate,
-      cgstAmount: paiseToRupees(data.cgstAmount),
-      sgstRate: data.sgstRate,
-      sgstAmount: paiseToRupees(data.sgstAmount),
-      igstRate: data.igstRate,
-      igstAmount: paiseToRupees(data.igstAmount),
+    return hsnGroups.map((group) => ({
+      hsnCode: group.hsnCode || 'UNKNOWN',
+      quantity: group._sum.quantity || 0,
+      unitPrice: paiseToRupees(Math.round((group._sum.lineTotal || 0) / (group._sum.quantity || 1))),
+      totalAmount: paiseToRupees(group._sum.lineTotal || 0),
+      cgstRate: Number(group.cgstRate),
+      cgstAmount: paiseToRupees(group._sum.cgstAmount || 0),
+      sgstRate: Number(group.sgstRate),
+      sgstAmount: paiseToRupees(group._sum.sgstAmount || 0),
+      igstRate: Number(group.igstRate),
+      igstAmount: paiseToRupees(group._sum.igstAmount || 0),
     }));
   }
 

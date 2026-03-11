@@ -214,22 +214,37 @@ export interface Gstr1Record {
 export interface Gstr1Report {
   period: string;
   generatedDate: string;
-  totalInvoices: number;
-  b2bCount: number;
-  b2cCount: number;
-  exportCount: number;
-  totalTaxableAmount: number;
-  totalCgst: number;
-  totalSgst: number;
-  totalIgst: number;
+  summary: {
+    totalInvoices: number;
+    b2bCount: number;
+    b2cCount: number;
+    exportCount: number;
+    totalTaxableAmount: number;
+    totalCgst: number;
+    totalSgst: number;
+    totalIgst: number;
+  };
   records: Gstr1Record[];
+  meta: {
+    page: number;
+    limit: number;
+    totalPages: number;
+    totalRecords: number;
+  };
 }
 
 export async function getGstr1SalesRegister(
   startDate: string,
-  endDate: string
+  endDate: string,
+  page: number = 1,
+  limit: number = 50
 ): Promise<Gstr1Report> {
-  const query = new URLSearchParams({ startDate, endDate });
+  const query = new URLSearchParams({ 
+    startDate, 
+    endDate, 
+    page: page.toString(), 
+    limit: limit.toString() 
+  });
   const response = await authenticatedFetch(
     `/reports/gstr1?${query}`
   );

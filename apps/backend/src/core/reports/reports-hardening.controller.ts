@@ -25,6 +25,8 @@ export class ReportsHardeningController {
   async getGSTR1(
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
+    @Query('page') page: string,
+    @Query('limit') limit: string,
     @Request() req: any,
   ) {
     const tenantId = req.user.tenantId;
@@ -32,6 +34,8 @@ export class ReportsHardeningController {
       tenantId,
       new Date(startDate),
       new Date(endDate),
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 50,
     );
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   listJobCards,
   updateJobCardStatus,
@@ -180,22 +180,56 @@ export default function JobCardsPage() {
 
   const [billingJob, setBillingJob] = useState<JobCard | null>(null);
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalInvoices, setTotalInvoices] = useState(0);
+  // URL Syncing
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
 
-  // Filters State
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [customerNameFilter, setCustomerNameFilter] = useState<string>("");
-  const [debouncedCustomerName, setDebouncedCustomerName] = useState("");
+  // Filters State initializing from URL
+  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get("status") || "ALL");
+  const [customerNameFilter, setCustomerNameFilter] = useState<string>(searchParams.get("search") || "");
+  const [debouncedCustomerName, setDebouncedCustomerName] = useState(searchParams.get("search") || "");
+
+  // Pagination state initializing from URL
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page") || "1") - 1);
+
+  // Helper to update URL params
+  const updateUrl = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === "ALL" || value === "") {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    });
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, pathname, router]);
+
+  // Sync state with URL if URL changes (back button support)
+  useEffect(() => {
+    const page = parseInt(searchParams.get("page") || "1") - 1;
+    const status = searchParams.get("status") || "ALL";
+    const search = searchParams.get("search") || "";
+    
+    if (page !== currentPage) setCurrentPage(page);
+    if (status !== statusFilter) setStatusFilter(status);
+    if (search !== customerNameFilter) {
+      setCustomerNameFilter(search);
+      setDebouncedCustomerName(search);
+    }
+  }, [searchParams]);
 
   // Simple debounce for customer name
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedCustomerName(customerNameFilter);
+      if (customerNameFilter !== (searchParams.get("search") || "")) {
+        updateUrl({ search: customerNameFilter, page: "1" }); // Reset to page 1 on search
+        setCurrentPage(0);
+      }
     }, 500);
     return () => clearTimeout(timer);
-  }, [customerNameFilter]);
+  }, [customerNameFilter, updateUrl, searchParams]);
 
   // Stable empty initial data to prevent re-render loops
   const initialData: JobCard[] = [];
@@ -370,7 +404,14 @@ export default function JobCardsPage() {
               </label>
               <select
                 value={selectedShopId || ""}
-                onChange={(e) => selectShop(e.target.value)}
+                onChange={(e) => {
+                  const newShopId = e.target.value;
+                  selectShop(newShopId);
+                  setCurrentPage(0);
+                  setStatusFilter("ALL");
+                  setCustomerNameFilter("");
+                  updateUrl({ page: "1", status: null, search: null });
+                }}
                 className={`w-full px-4 py-2 rounded-lg font-medium focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 border ${
                   theme === "dark"
                     ? "bg-stone-900 border-white/10 text-white"
@@ -394,7 +435,14 @@ export default function JobCardsPage() {
             >
               Status
             </label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select 
+              value={statusFilter} 
+              onValueChange={(val) => {
+                setStatusFilter(val);
+                updateUrl({ status: val, page: "1" }); // Reset to page 1 on filter change
+                setCurrentPage(0);
+              }}
+            >
               <SelectTrigger
                 className={`${theme === "dark" ? "bg-stone-900 border-white/10 text-white" : "bg-gray-50 border-gray-300 text-black"}`}
               >
@@ -442,6 +490,8 @@ export default function JobCardsPage() {
               onClick={() => {
                 setStatusFilter("ALL");
                 setCustomerNameFilter("");
+                setCurrentPage(0);
+                updateUrl({ status: null, search: null, page: "1" });
               }}
               className="px-4 py-2 text-sm font-medium text-teal-500 hover:text-teal-400 transition-colors whitespace-nowrap mb-1"
             >
@@ -761,46 +811,82 @@ export default function JobCardsPage() {
           
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className={`p-4 border-t flex items-center justify-between ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
-              <p className="text-sm text-gray-500">
-                Showing {currentPage * 50 + 1} to {Math.min((currentPage + 1) * 50, total)} of {total} job cards
-              </p>
-              <div className="flex items-center gap-2">
+            <div
+              className={`mt-4 flex items-center justify-between px-4 py-3 rounded-lg border ${
+                theme === "dark"
+                  ? "border-white/10 bg-white/5"
+                  : "border-gray-200 bg-gray-50"
+              }`}
+            >
+              <div
+                className={`text-sm ${theme === "dark" ? "text-stone-400" : "text-gray-600"}`}
+              >
+                Showing {currentPage * 50 + 1} to{" "}
+                {Math.min((currentPage + 1) * 50, total)} of{" "}
+                {total} job cards
+              </div>
+              <div className="flex items-center gap-3">
                 <button
+                  onClick={() => {
+                    const next = Math.max(0, currentPage - 1);
+                    setCurrentPage(next);
+                    updateUrl({ page: (next + 1).toString() });
+                  }}
                   disabled={currentPage === 0}
-                  onClick={() => setCurrentPage(prev => prev - 1)}
-                  className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 disabled:opacity-50 hover:bg-gray-50 dark:border-stone-700 dark:hover:bg-white/5"
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    currentPage === 0
+                      ? theme === "dark"
+                        ? "bg-white/5 text-stone-600 cursor-not-allowed"
+                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : theme === "dark"
+                        ? "bg-white/10 hover:bg-white/20 text-stone-300"
+                        : "bg-white hover:bg-gray-100 text-gray-700"
+                  }`}
                 >
                   Previous
                 </button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum = i;
-                    // basic sliding window if totalPages > 5
-                    if (totalPages > 5 && currentPage > 2) {
-                        pageNum = currentPage - 2 + i;
-                        if (pageNum >= totalPages) pageNum = totalPages - 5 + i;
-                    }
-                    
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
-                          currentPage === pageNum
-                            ? "bg-teal-500 text-white"
-                            : "hover:bg-gray-100 dark:hover:bg-white/5"
-                        }`}
-                      >
-                        {pageNum + 1}
-                      </button>
-                    );
-                  })}
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm ${theme === "dark" ? "text-stone-300" : "text-gray-700"}`}>
+                    Page
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={currentPage + 1}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                        setCurrentPage(val - 1);
+                        updateUrl({ page: val.toString() });
+                      }
+                    }}
+                    className={`w-16 px-2 py-1 text-center rounded border focus:outline-none focus:ring-2 focus:ring-teal-500/50 ${
+                      theme === "dark"
+                        ? "bg-stone-900 border-white/10 text-stone-200"
+                        : "bg-white border-gray-300 text-gray-900"
+                    }`}
+                  />
+                  <span className={`text-sm ${theme === "dark" ? "text-stone-300" : "text-gray-700"}`}>
+                    of {totalPages}
+                  </span>
                 </div>
                 <button
+                  onClick={() => {
+                    const next = currentPage + 1;
+                    setCurrentPage(next);
+                    updateUrl({ page: (next + 1).toString() });
+                  }}
                   disabled={currentPage >= totalPages - 1}
-                  onClick={() => setCurrentPage(prev => prev + 1)}
-                  className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 disabled:opacity-50 hover:bg-gray-50 dark:border-stone-700 dark:hover:bg-white/5"
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    currentPage >= totalPages - 1
+                      ? theme === "dark"
+                        ? "bg-white/5 text-stone-600 cursor-not-allowed"
+                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : theme === "dark"
+                        ? "bg-white/10 hover:bg-white/20 text-stone-300"
+                        : "bg-white hover:bg-gray-100 text-gray-700"
+                  }`}
                 >
                   Next
                 </button>
@@ -810,16 +896,6 @@ export default function JobCardsPage() {
         </div>
       )}
 
-      {/* Floating Action Button */}
-      {selectedShopId && (
-        <button
-          onClick={handleAddNew}
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-linear-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white shadow-lg hover:shadow-xl transition flex items-center justify-center text-xl font-bold z-40"
-          title="Create new job card"
-        >
-          +
-        </button>
-      )}
 
       {isModalOpen && (
         <JobCardModal

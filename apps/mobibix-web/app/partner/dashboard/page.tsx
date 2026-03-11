@@ -19,6 +19,7 @@ import {
   X,
   Plus,
   CheckCircle2,
+  KeyRound,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -50,6 +51,16 @@ interface PartnerStats {
     isFirstPayment: boolean;
     status: string;
     createdAt: string;
+  }>;
+  referredShops: Array<{
+    id: string;
+    name: string;
+    phone: string | null;
+    city: string | null;
+    plan: string | null;
+    isActive: boolean;
+    totalCommission: number;
+    joinedAt: string;
   }>;
 }
 
@@ -83,6 +94,13 @@ export default function PartnerDashboard() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState(false);
 
+  // Change password state
+  const [showChangePw, setShowChangePw] = useState(false);
+  const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState(false);
+
   useEffect(() => {
     const token = localStorage.getItem("partner_token");
     if (!token) {
@@ -102,7 +120,8 @@ export default function PartnerDashboard() {
         if (!res.ok) throw new Error("Failed to load dashboard");
         return res.json();
       })
-      .then((data) => {
+      .then((json) => {
+        const data = json?.data ?? json;
         if (data) setStats(data);
       })
       .catch((err) => setError(err.message))
@@ -153,7 +172,7 @@ export default function PartnerDashboard() {
       const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/partners/dashboard/stats`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (statsRes.ok) setStats(await statsRes.json());
+      if (statsRes.ok) { const j = await statsRes.json(); setStats(j?.data ?? j); }
       setTimeout(() => setCreateSuccess(false), 3000);
     } catch (err: any) {
       setCreateError(err.message);
@@ -162,24 +181,58 @@ export default function PartnerDashboard() {
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pwForm.next !== pwForm.confirm) {
+      setPwError("Passwords do not match");
+      return;
+    }
+    if (pwForm.next.length < 8) {
+      setPwError("New password must be at least 8 characters");
+      return;
+    }
+    setPwLoading(true);
+    setPwError(null);
+    const token = localStorage.getItem("partner_token");
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/partner/auth/change-password`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.next }),
+        }
+      );
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.message || "Failed");
+      setPwSuccess(true);
+      setPwForm({ current: "", next: "", confirm: "" });
+      setTimeout(() => { setPwSuccess(false); setShowChangePw(false); }, 3000);
+    } catch (err: any) {
+      setPwError(err.message);
+    } finally {
+      setPwLoading(false);
+    }
+  };
+
   const statCards = stats
     ? [
-        { label: "Active Shops", value: stats.totalReferrals.toString(), icon: Users, color: "bg-blue-500" },
+        { label: "Active Shops", value: String(stats.totalReferrals ?? 0), icon: Users, color: "bg-blue-500" },
         {
           label: "Total Revenue",
-          value: `₹${(stats.totalRevenue / 100).toLocaleString("en-IN")}`,
+          value: `₹${((stats.totalRevenue ?? 0) / 100).toLocaleString("en-IN")}`,
           icon: TrendingUp,
           color: "bg-teal-500",
         },
         {
           label: "Commission Earned",
-          value: `₹${(stats.totalEarned / 100).toLocaleString("en-IN")}`,
+          value: `₹${((stats.totalEarned ?? 0) / 100).toLocaleString("en-IN")}`,
           icon: Wallet,
           color: "bg-purple-500",
         },
         {
           label: "Pending Payout",
-          value: `₹${(stats.pendingCommission / 100).toLocaleString("en-IN")}`,
+          value: `₹${((stats.pendingCommission ?? 0) / 100).toLocaleString("en-IN")}`,
           icon: Clock,
           color: "bg-orange-500",
         },
@@ -230,6 +283,12 @@ export default function PartnerDashboard() {
                 <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-bold">
                   <LayoutDashboard className="w-5 h-5" /> Dashboard
                 </a>
+                <button
+                  onClick={() => { setShowChangePw((v) => !v); setPwError(null); setPwSuccess(false); }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all w-full font-medium"
+                >
+                  <KeyRound className="w-5 h-5" /> Change Password
+                </button>
               </nav>
               <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
                 <button
@@ -251,6 +310,12 @@ export default function PartnerDashboard() {
           <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-bold">
             <LayoutDashboard className="w-5 h-5" /> Dashboard
           </a>
+          <button
+            onClick={() => { setShowChangePw((v) => !v); setPwError(null); setPwSuccess(false); }}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all w-full font-medium ${showChangePw ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+          >
+            <KeyRound className="w-5 h-5" /> Change Password
+          </button>
         </nav>
         <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
           <button
@@ -267,7 +332,7 @@ export default function PartnerDashboard() {
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              Welcome back{stats ? `, ${stats.businessName}` : ""}!
+              Welcome back{stats?.businessName ? `, ${stats.businessName}` : ""}!
             </h1>
             <p className="text-slate-500">Here&apos;s how your referral network is performing.</p>
           </div>
@@ -316,6 +381,86 @@ export default function PartnerDashboard() {
                 </motion.div>
               ))}
             </div>
+
+            {/* Change Password Panel */}
+            <AnimatePresence>
+              {showChangePw && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden mb-2"
+                >
+                  <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-8 max-w-md">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                      <KeyRound className="w-5 h-5 text-teal-600" /> Change Password
+                    </h3>
+                    {pwSuccess ? (
+                      <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-emerald-700 dark:text-emerald-400 text-sm font-bold">
+                        <CheckCircle2 className="w-5 h-5" /> Password changed successfully!
+                      </div>
+                    ) : (
+                      <form onSubmit={handleChangePassword} className="space-y-4">
+                        <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Current Password</label>
+                          <input
+                            required
+                            type="password"
+                            value={pwForm.current}
+                            onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })}
+                            placeholder="••••••••"
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">New Password</label>
+                          <input
+                            required
+                            type="password"
+                            value={pwForm.next}
+                            onChange={(e) => setPwForm({ ...pwForm, next: e.target.value })}
+                            placeholder="Min 8 characters"
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Confirm New Password</label>
+                          <input
+                            required
+                            type="password"
+                            value={pwForm.confirm}
+                            onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
+                            placeholder="Repeat new password"
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                          />
+                        </div>
+                        {pwError && (
+                          <p className="text-xs text-red-600 font-medium flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5" /> {pwError}
+                          </p>
+                        )}
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            type="submit"
+                            disabled={pwLoading}
+                            className="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                          >
+                            {pwLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" /> Update Password</>}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowChangePw(false)}
+                            className="px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="grid lg:grid-cols-3 gap-8">
               {/* Referral Code */}
@@ -413,13 +558,14 @@ export default function PartnerDashboard() {
                               <input
                                 type="number"
                                 min={1}
+                                max={3}
                                 required
-                                placeholder="Bonus months"
+                                placeholder="Bonus months (max 3)"
                                 value={createForm.bonusMonths}
-                                onChange={(e) => setCreateForm({ ...createForm, bonusMonths: Number(e.target.value) })}
+                                onChange={(e) => setCreateForm({ ...createForm, bonusMonths: Math.min(3, Math.max(1, Number(e.target.value))) })}
                                 className="flex-1 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                               />
-                              <span className="text-xs font-bold text-slate-500">months</span>
+                              <span className="text-xs font-bold text-slate-500">months (max 3)</span>
                             </div>
                           )}
 
@@ -477,7 +623,7 @@ export default function PartnerDashboard() {
                   )}
 
                   <div className="space-y-4">
-                    {stats.promoCodes.map((pc) => (
+                    {(stats.promoCodes ?? []).map((pc) => (
                       <div key={pc.id} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <span className="text-sm font-bold text-teal-600 font-mono tracking-wider">{pc.code}</span>
@@ -500,7 +646,7 @@ export default function PartnerDashboard() {
                         </div>
                       </div>
                     ))}
-                    {stats.promoCodes.length === 0 && (
+                    {(stats.promoCodes ?? []).length === 0 && (
                       <p className="text-sm text-slate-500 text-center py-4">No active promo codes. Create your first campaign code above.</p>
                     )}
                   </div>
@@ -513,7 +659,7 @@ export default function PartnerDashboard() {
                   <div className="p-8 border-b border-slate-100 dark:border-slate-800">
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white">Active Referrals</h3>
                   </div>
-                  {stats.referralList.length === 0 ? (
+                  {(stats.referralList ?? []).length === 0 ? (
                     <div className="p-12 text-center text-slate-500">
                       <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
                       <p>No referrals yet. Share your referral code to get started.</p>
@@ -531,7 +677,7 @@ export default function PartnerDashboard() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {stats.referralList.map((r) => (
+                          {(stats.referralList ?? []).map((r) => (
                             <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                               <td className="px-8 py-5 font-medium text-slate-900 dark:text-white">{r.subscriptionPlan}</td>
                               <td className="px-8 py-5 text-sm text-slate-600 dark:text-slate-400">
@@ -567,6 +713,58 @@ export default function PartnerDashboard() {
                 </div>
               </div>
             </div>
+
+            {/* My Shops CRM */}
+            {(stats.referredShops ?? []).length > 0 && (
+              <div className="mt-8 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">My Shops</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Businesses using your referral code</p>
+                  </div>
+                  <span className="text-xs font-bold bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 px-3 py-1.5 rounded-full">
+                    {(stats.referredShops ?? []).length} shops
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-slate-50 dark:bg-slate-800/50">
+                      <tr>
+                        <th className="text-left px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Shop</th>
+                        <th className="text-left px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Location</th>
+                        <th className="text-left px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Plan</th>
+                        <th className="text-left px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                        <th className="text-left px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Your Commission</th>
+                        <th className="text-left px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Joined</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {(stats.referredShops ?? []).map((shop) => (
+                        <tr key={shop.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="px-8 py-5">
+                            <div className="font-semibold text-slate-900 dark:text-white text-sm">{shop.name}</div>
+                            {shop.phone && <div className="text-xs text-slate-400 mt-0.5">{shop.phone}</div>}
+                          </td>
+                          <td className="px-8 py-5 text-sm text-slate-500">{shop.city ?? "—"}</td>
+                          <td className="px-8 py-5 text-sm text-slate-600 dark:text-slate-400">{shop.plan ?? "—"}</td>
+                          <td className="px-8 py-5">
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${shop.isActive ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400" : "bg-slate-100 dark:bg-slate-800 text-slate-500"}`}>
+                              {shop.isActive ? "Active" : "Inactive"}
+                            </span>
+                          </td>
+                          <td className="px-8 py-5 text-sm font-semibold text-teal-600">
+                            ₹{(shop.totalCommission / 100).toLocaleString("en-IN")}
+                          </td>
+                          <td className="px-8 py-5 text-xs text-slate-400">
+                            {new Date(shop.joinedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </>
         )}
       </main>

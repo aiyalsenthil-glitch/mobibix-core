@@ -5,7 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "../../src/context/ThemeContext";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown, Users, LogIn } from "lucide-react";
 
 export function Header() {
   const { theme, toggleTheme } = useTheme();
@@ -13,6 +14,7 @@ export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const pathname = usePathname();
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+  const [partnersOpen, setPartnersOpen] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -32,15 +34,14 @@ export function Header() {
     { name: "Home", href: "/" },
     { name: "Features", href: "/features" },
     { name: "Pricing", href: "/pricing" },
-    { name: "Partners", href: "/partner" },
     { name: "Support", href: "/support" },
   ];
 
   return (
-    <header 
+    <header
       className={`fixed top-0 z-50 w-full transition-all duration-500 ${
-        isScrolled 
-          ? "backdrop-blur-2xl border-b border-border bg-background/60 py-3 shadow-[0_10px_40px_rgba(0,0,0,0.1)]" 
+        isScrolled
+          ? "backdrop-blur-2xl border-b border-border bg-background/60 py-3 shadow-[0_10px_40px_rgba(0,0,0,0.1)]"
           : "bg-transparent py-6"
       }`}
     >
@@ -49,34 +50,40 @@ export function Header() {
         <Link href="/" className="flex items-center gap-3 group">
           <div className="p-1.5 rounded-xl bg-primary/10 border border-primary/20 group-hover:border-primary/50 transition-all duration-300 transform group-hover:scale-110">
             <Image
-              src="/assets/mobibix-main-logo.png" 
-              alt="MobiBix" 
+              src="/assets/mobibix-main-logo.png"
+              alt="MobiBix"
               width={100}
               height={32}
-              className={`h-8 w-auto ${isDark ? "invert brightness-200" : ""}`} 
+              className={`h-8 w-auto ${isDark ? "invert brightness-200" : ""}`}
             />
           </div>
           <div className="flex flex-col">
-            <span className="text-xl font-black tracking-tight leading-none uppercase bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">MobiBix</span>
-            <span className="text-[10px] text-primary font-bold uppercase tracking-[0.2em] mt-1">Retail OS</span>
+            <span className="text-xl font-black tracking-tight leading-none uppercase bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+              MobiBix
+            </span>
+            <span className="text-[10px] text-primary font-bold uppercase tracking-[0.2em] mt-1">
+              Retail OS
+            </span>
           </div>
         </Link>
 
         {/* Desktop Nav */}
-        <nav 
+        <nav
           className="hidden md:flex items-center gap-2 p-1.5 rounded-full bg-muted/20 border border-border/50 backdrop-blur-md"
-          onMouseLeave={() => setHoveredLink(null)}
+          onMouseLeave={() => { setHoveredLink(null); setPartnersOpen(false); }}
         >
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
-              <Link 
-                key={link.name} 
+              <Link
+                key={link.name}
                 href={link.href}
                 className={`relative px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors duration-300 z-10 ${
-                  isActive || hoveredLink === link.name ? "text-foreground" : "text-muted-foreground"
+                  isActive || hoveredLink === link.name
+                    ? "text-foreground"
+                    : "text-muted-foreground"
                 }`}
-                onMouseEnter={() => setHoveredLink(link.name)}
+                onMouseEnter={() => { setHoveredLink(link.name); setPartnersOpen(false); }}
               >
                 {link.name}
                 {(hoveredLink === link.name || isActive) && (
@@ -89,6 +96,71 @@ export function Header() {
               </Link>
             );
           })}
+
+          {/* Partners dropdown */}
+          <div
+            className="relative"
+            onMouseEnter={() => { setPartnersOpen(true); setHoveredLink("Partners"); }}
+            onMouseLeave={() => { setPartnersOpen(false); setHoveredLink(null); }}
+          >
+            <button
+              className={`relative flex items-center gap-1 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors duration-300 z-10 ${
+                partnersOpen || pathname.startsWith("/partner")
+                  ? "text-foreground"
+                  : "text-muted-foreground"
+              }`}
+            >
+              Partners
+              <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${partnersOpen ? "rotate-180" : ""}`} />
+              {(partnersOpen || pathname.startsWith("/partner")) && (
+                <motion.div
+                  layoutId="nav-pill"
+                  className="absolute inset-0 bg-primary/10 dark:bg-primary/20 rounded-full -z-10 border border-primary/20"
+                  transition={{ type: "spring", bounce: 0.25, duration: 0.5 }}
+                />
+              )}
+            </button>
+
+            <AnimatePresence>
+              {partnersOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-52 bg-background/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-1.5 z-50"
+                >
+                  <Link
+                    href="/partner"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted transition-colors group"
+                    onClick={() => setPartnersOpen(false)}
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Users className="w-3.5 h-3.5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Partner Program</p>
+                      <p className="text-[10px] text-muted-foreground">Earn 30% commission</p>
+                    </div>
+                  </Link>
+                  <div className="h-px bg-border mx-3 my-1" />
+                  <Link
+                    href="/partner/login"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted transition-colors group"
+                    onClick={() => setPartnersOpen(false)}
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                      <LogIn className="w-3.5 h-3.5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Partner Portal</p>
+                      <p className="text-[10px] text-muted-foreground">View commissions</p>
+                    </div>
+                  </Link>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </nav>
 
         {/* Actions */}
@@ -108,7 +180,7 @@ export function Header() {
               </svg>
             )}
           </button>
-          
+
           <div className="hidden sm:flex items-center gap-4">
             <Link
               href="/auth"
@@ -123,7 +195,7 @@ export function Header() {
               Free Trial
             </Link>
           </div>
-          
+
           <div className="sm:hidden flex items-center gap-3">
             <Link
               href="/auth"

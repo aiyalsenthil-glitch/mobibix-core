@@ -1,14 +1,13 @@
 "use client";
 
-"use client";
-
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import NextImage from "next/image";
 import { useTheme } from "@/context/ThemeContext";
 import { Header } from "../layout/Header";
 import { Footer } from "../layout/Footer";
 import { motion, AnimatePresence } from "framer-motion";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { BlogSection } from "./BlogSection";
 import { TestimonialsSection } from "./TestimonialsSection";
 
@@ -39,8 +38,10 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
 
   // Reset internal scroll positions when currentSlide changes
   useEffect(() => {
-    Object.values(slideRefs.current).forEach(ref => {
-      if (ref) ref.scrollTop = 0;
+    Object.values(slideRefs.current).forEach((ref) => {
+      if (ref instanceof HTMLDivElement) {
+        ref.scrollTop = 0;
+      }
     });
   }, [currentSlide]);
 
@@ -173,7 +174,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                       
                       <div className="relative z-10">
                         <div className="w-20 h-20 rounded-2xl bg-white/40 dark:bg-muted/30 backdrop-blur-md flex items-center justify-center mb-8 border border-border/50 group-hover:border-primary/30 group-hover:shadow-lg group-hover:shadow-primary/5 transition-all duration-500 overflow-hidden p-4 shadow-sm relative">
-                            <Image src={feat.icon} alt={feat.title} fill className="object-contain filter drop-shadow-xl group-hover:scale-110 transition-transform duration-500 p-4" />
+                            <NextImage src={feat.icon} alt={feat.title} fill className="object-contain filter drop-shadow-xl group-hover:scale-110 transition-transform duration-500 p-4" />
                         </div>
                         <h3 className="text-xl font-black mb-4 uppercase tracking-tight">{feat.title}</h3>
                         <p className="text-muted-foreground font-bold text-sm leading-relaxed">{feat.desc}</p>
@@ -281,16 +282,56 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
         </motion.div>
       </div>
 
-      {/* Slide Navigation Dots */}
-      <div className={`fixed left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-6 transition-all duration-700 ${currentSlide === 5 ? "bottom-[-100px] opacity-0 pointer-events-none" : "bottom-12 opacity-100"}`}>
-        <div className="flex gap-3 bg-muted/20 backdrop-blur-3xl p-2.5 rounded-full border border-border/50 shadow-2xl">
+      {/* Refined Side Navigation */}
+      <div 
+        className={`fixed right-8 top-1/2 -translate-y-1/2 z-[60] flex flex-col items-center gap-8 transition-all duration-700 ${
+          currentSlide === 5 ? "opacity-0 pointer-events-none translate-x-12" : "opacity-100 translate-x-0"
+        }`}
+      >
+        {/* Scroll Up Arrow */}
+        <button
+          onClick={() => currentSlide > 0 && setCurrentSlide(currentSlide - 1)}
+          className={`p-3 rounded-full border border-border/50 bg-muted/20 backdrop-blur-3xl transition-all duration-500 hover:bg-primary/10 hover:border-primary/50 group ${
+            currentSlide === 0 ? "opacity-30 cursor-not-allowed" : "opacity-100 cursor-pointer"
+          }`}
+          disabled={currentSlide === 0}
+          aria-label="Scroll Up"
+        >
+          <ChevronUp className="w-5 h-5 text-foreground/60 group-hover:text-primary transition-colors" />
+        </button>
+
+        {/* Vertical Pagination Dots */}
+        <div className="flex flex-col gap-4 bg-muted/20 backdrop-blur-3xl p-3 rounded-full border border-border/50 shadow-2xl">
           {slides.map((slide) => (
-            <button key={slide} onClick={() => setCurrentSlide(slide)}
-              className={`h-2 rounded-full transition-all duration-700 ${currentSlide === slide ? "bg-primary w-14 shadow-[0_0_20px_rgba(20,184,166,0.6)]" : "bg-foreground/20 w-3 hover:bg-foreground/40"}`}
+            <button 
+              key={slide} 
+              onClick={() => setCurrentSlide(slide)}
+              className={`w-2 transition-all duration-700 relative group ${
+                currentSlide === slide 
+                  ? "bg-primary h-12 shadow-[0_0_20px_rgba(20,184,166,0.6)] rounded-full" 
+                  : "bg-foreground/20 h-2 hover:bg-foreground/40 rounded-full"
+              }`}
               aria-label={`Go to slide ${slide + 1}`}
-            />
+            >
+              {/* Tooltip on hover */}
+              <span className="absolute right-8 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-background/80 backdrop-blur-md border border-border text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all pointer-events-none whitespace-nowrap hidden md:block">
+                Slide {slide + 1}
+              </span>
+            </button>
           ))}
         </div>
+
+        {/* Scroll Down Arrow */}
+        <button
+          onClick={() => currentSlide < 5 && setCurrentSlide(currentSlide + 1)}
+          className={`p-3 rounded-full border border-border/50 bg-muted/20 backdrop-blur-3xl transition-all duration-500 hover:bg-primary/10 hover:border-primary/50 group ${
+            currentSlide === 5 ? "opacity-30 cursor-not-allowed" : "opacity-100 cursor-pointer"
+          }`}
+          disabled={currentSlide === 5}
+          aria-label="Scroll Down"
+        >
+          <ChevronDown className="w-5 h-5 text-foreground/60 group-hover:text-primary transition-colors" />
+        </button>
       </div>
     </div>
   );

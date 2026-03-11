@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   listInvoices,
   type SalesInvoice,
@@ -108,21 +108,56 @@ export default function SalesPage() {
   const userRole = authUser?.role;
   const isOwner = userRole === "owner";
 
-  // Filters State
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  // URL Syncing
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(0);
+  // Filters State initializing from URL
+  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get("status") || "ALL");
+  const [searchQuery, setSearchQuery] = useState<string>(searchParams.get("search") || "");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchParams.get("search") || "");
+
+  // Pagination state initializing from URL
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page") || "1") - 1);
+
+  // Helper to update URL params
+  const updateUrl = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === "ALL" || value === "") {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    });
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, pathname, router]);
+
+  // Sync state with URL if URL changes (back button support)
+  useEffect(() => {
+    const page = parseInt(searchParams.get("page") || "1") - 1;
+    const status = searchParams.get("status") || "ALL";
+    const search = searchParams.get("search") || "";
+    
+    if (page !== currentPage) setCurrentPage(page);
+    if (status !== statusFilter) setStatusFilter(status);
+    if (search !== searchQuery) {
+      setSearchQuery(search);
+      setDebouncedSearchQuery(search);
+    }
+  }, [searchParams]);
 
   // Simple debounce for search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
+      if (searchQuery !== (searchParams.get("search") || "")) {
+        updateUrl({ search: searchQuery, page: "1" }); // Reset to page 1 on search
+        setCurrentPage(0);
+      }
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, updateUrl, searchParams]);
 
   // Stable empty initial data to prevent re-render loops
   const initialData = { data: [] as SalesInvoice[], total: 0 };
@@ -168,18 +203,10 @@ export default function SalesPage() {
       }
     };
 
-    const handleFocus = () => {
-      if (selectedShopId && authUser?.tenantId) {
-        reload();
-      }
-    };
-
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleFocus);
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleFocus);
     };
   }, [selectedShopId, authUser?.tenantId, reload]);
 
@@ -293,7 +320,14 @@ export default function SalesPage() {
               </label>
               <select
                 value={selectedShopId}
-                onChange={(e) => selectShop(e.target.value)}
+                onChange={(e) => {
+                  const newShopId = e.target.value;
+                  selectShop(newShopId);
+                  setCurrentPage(0);
+                  setStatusFilter("ALL");
+                  setSearchQuery("");
+                  updateUrl({ page: "1", status: null, search: null });
+                }}
                 className={`w-full px-4 py-2 rounded-lg font-medium focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 border ${
                   theme === "dark"
                     ? "bg-stone-900 border-white/10 text-white"
@@ -317,7 +351,14 @@ export default function SalesPage() {
             >
               Status
             </label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select 
+              value={statusFilter} 
+              onValueChange={(val) => {
+                setStatusFilter(val);
+                updateUrl({ status: val, page: "1" }); // Reset to page 1 on filter change
+                setCurrentPage(0);
+              }}
+            >
               <SelectTrigger
                 className={`${theme === "dark" ? "bg-stone-900 border-white/10 text-white" : "bg-gray-50 border-gray-300 text-black"}`}
               >
@@ -366,6 +407,8 @@ export default function SalesPage() {
               onClick={() => {
                 setStatusFilter("ALL");
                 setSearchQuery("");
+                setCurrentPage(0);
+                updateUrl({ status: null, search: null, page: "1" });
               }}
               className="px-4 py-2 text-sm font-medium text-teal-500 hover:text-teal-400 transition-colors whitespace-nowrap mb-1"
             >
@@ -694,9 +737,13 @@ export default function SalesPage() {
                 {Math.min((currentPage + 1) * PAGE_SIZE, invoicesData?.total || 0)} of{" "}
                 {invoicesData?.total || 0} invoices
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                  onClick={() => {
+                    const next = Math.max(0, currentPage - 1);
+                    setCurrentPage(next);
+                    updateUrl({ page: (next + 1).toString() });
+                  }}
                   disabled={currentPage === 0}
                   className={`px-4 py-2 rounded-lg font-medium transition ${
                     currentPage === 0
@@ -710,14 +757,39 @@ export default function SalesPage() {
                 >
                   Previous
                 </button>
-                <span
-                  className={`px-4 py-2 ${theme === "dark" ? "text-stone-300" : "text-gray-700"}`}
-                >
-                  Page {currentPage + 1} of{" "}
-                  {Math.ceil((invoicesData?.total || 0) / PAGE_SIZE)}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm ${theme === "dark" ? "text-stone-300" : "text-gray-700"}`}>
+                    Page
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={Math.ceil((invoicesData?.total || 0) / PAGE_SIZE)}
+                    value={currentPage + 1}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      const maxPages = Math.ceil((invoicesData?.total || 0) / PAGE_SIZE);
+                      if (!isNaN(val) && val >= 1 && val <= maxPages) {
+                        setCurrentPage(val - 1);
+                        updateUrl({ page: val.toString() });
+                      }
+                    }}
+                    className={`w-16 px-2 py-1 text-center rounded border focus:outline-none focus:ring-2 focus:ring-teal-500/50 ${
+                      theme === "dark"
+                        ? "bg-stone-900 border-white/10 text-stone-200"
+                        : "bg-white border-gray-300 text-gray-900"
+                    }`}
+                  />
+                  <span className={`text-sm ${theme === "dark" ? "text-stone-300" : "text-gray-700"}`}>
+                    of {Math.ceil((invoicesData?.total || 0) / PAGE_SIZE)}
+                  </span>
+                </div>
                 <button
-                  onClick={() => setCurrentPage(currentPage + 1)}
+                  onClick={() => {
+                    const next = currentPage + 1;
+                    setCurrentPage(next);
+                    updateUrl({ page: (next + 1).toString() });
+                  }}
                   disabled={(currentPage + 1) * PAGE_SIZE >= (invoicesData?.total || 0)}
                   className={`px-4 py-2 rounded-lg font-medium transition ${
                     (currentPage + 1) * PAGE_SIZE >= (invoicesData?.total || 0)

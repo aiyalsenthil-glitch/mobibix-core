@@ -7,6 +7,8 @@ import { VouchersModule } from './vouchers/vouchers.module';
 import { CrmIntegrationModule } from './crm-integration.module';
 import { MobileShopReportsModule } from './reports/reports.module';
 import { B2BModule } from './b2b/b2b.module';
+import { QuotationsModule } from './quotations/quotations.module';
+import { CreditNotesModule } from './credit-notes/credit-notes.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { B2BModule } from './b2b/b2b.module';
     CrmIntegrationModule,
     MobileShopReportsModule,
     B2BModule,
+    QuotationsModule,
+    CreditNotesModule,
   ],
 })
 export class MobileShopModule {}

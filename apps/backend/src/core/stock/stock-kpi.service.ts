@@ -72,12 +72,21 @@ export class StockKpiService {
             .slice(0, 10);
         }),
 
-      // 3) LOW STOCK & NEGATIVE STOCK - Correct Calculation
+      // 3) LOW STOCK & NEGATIVE STOCK - Optimized Calculation
       (async () => {
+        // Fetch all active products FIRST to know what to track
+        const products = await this.prisma.shopProduct.findMany({
+          where: { tenantId, shopId, isActive: true },
+          select: { id: true, name: true, reorderLevel: true },
+        });
+
+        if (products.length === 0) return { negativeStock: [], lowStock: [] };
+
+        // Get balances from ledger
         const stockStatus = await this.prisma.$queryRaw<
           Array<{
             shopProductId: string;
-            balance: number;
+            balance: string; // BigInt from SQL comes as string in queryRaw
           }>
         >`
           SELECT "shopProductId", SUM(CASE WHEN "type" = 'IN' THEN "quantity" ELSE -"quantity" END) as "balance"
@@ -86,21 +95,15 @@ export class StockKpiService {
           GROUP BY "shopProductId"
         `;
 
-        // Get reorder levels for active products
-        const products = await this.prisma.shopProduct.findMany({
-          where: { tenantId, shopId, isActive: true },
-          select: { id: true, name: true, reorderLevel: true },
-        });
+        // Create a map for O(1) balance lookup
+        const balanceMap = new Map(stockStatus.map((s) => [s.shopProductId, Number(s.balance)]));
 
-        // Map balance to products and find low stock / negative stock
         const lowStockItems: any[] = [];
         const negativeStockItems: any[] = [];
 
         products.forEach((p) => {
-          const stockEntry = stockStatus.find((s) => s.shopProductId === p.id);
-          const currentStock = stockEntry ? Number(stockEntry.balance) : 0; // Default to 0 if no ledger entries
+          const currentStock = balanceMap.get(p.id) ?? 0;
 
-          // Check for Negative Stock
           if (currentStock < 0) {
             negativeStockItems.push({
               productId: p.id,
@@ -110,8 +113,6 @@ export class StockKpiService {
             });
           }
 
-          // Check for Low Stock (Stock <= Reorder Level)
-          // Default reorderLevel is 0 if not set. So if stock is 0 and reorder is 0, it's low stock.
           const reorderLevel = p.reorderLevel ?? 0;
           if (currentStock <= reorderLevel) {
             lowStockItems.push({

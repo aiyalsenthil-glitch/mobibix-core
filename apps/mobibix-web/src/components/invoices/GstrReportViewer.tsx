@@ -24,28 +24,28 @@ export function GstrReportViewer({ shopId }: GstrReportViewerProps) {
   );
 
   // Sales Register state
-  const [salesRegister, setSalesRegister] = useState<Gstr1Record[]>(
-    [],
-  );
+  const [salesRegister, setSalesRegister] = useState<Gstr1Record[]>([]);
+  const [salesSummary, setSalesSummary] = useState<any>(null);
+  const [meta, setMeta] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loadingSalesRegister, setLoadingSalesRegister] = useState(false);
-  const [salesRegisterError, setSalesRegisterError] = useState<string | null>(
-    null,
-  );
+  const [salesRegisterError, setSalesRegisterError] = useState<string | null>(null);
 
   // HSN Summary state
   const [hsnSummary, setHsnSummary] = useState<Gstr1SummaryItem[]>([]);
   const [loadingHsnSummary, setLoadingHsnSummary] = useState(false);
   const [hsnSummaryError, setHsnSummaryError] = useState<string | null>(null);
 
-  // Load sales register when dates change
+  // Load sales register when dates or page change
   useEffect(() => {
     const loadSalesRegister = async () => {
       try {
         setLoadingSalesRegister(true);
         setSalesRegisterError(null);
-        const data = await getGstr1SalesRegister(startDate, endDate);
-        // data is Gstr1Report, which has 'records' array
+        const data = await getGstr1SalesRegister(startDate, endDate, currentPage);
         setSalesRegister(data.records);
+        setSalesSummary(data.summary);
+        setMeta(data.meta);
       } catch (err: unknown) {
         console.error("Failed to load sales register:", err);
         setSalesRegisterError((err as any)?.message || "Failed to load sales register");
@@ -54,6 +54,11 @@ export function GstrReportViewer({ shopId }: GstrReportViewerProps) {
       }
     };
     loadSalesRegister();
+  }, [startDate, endDate, currentPage]);
+
+  // Reset page when dates change
+  useEffect(() => {
+    setCurrentPage(1);
   }, [startDate, endDate]);
 
   // Load HSN summary when dates change
@@ -74,22 +79,14 @@ export function GstrReportViewer({ shopId }: GstrReportViewerProps) {
     loadHsnSummary();
   }, [startDate, endDate]);
 
-  // Calculate totals
+  // Use backend provided totals for Sales Register (covers period not just page)
   const salesRegisterTotals = {
-    invoiceValue: salesRegister.reduce(
-      (sum, item) => sum + (item.invoiceAmount || 0),
-      0,
-    ),
-    taxableValue: salesRegister.reduce(
-      (sum, item) => sum + (item.taxableAmount || 0),
-      0,
-    ),
-    igst: salesRegister.reduce(
-      (sum, item) => sum + (item.igstAmount || 0),
-      0,
-    ),
-    cgst: salesRegister.reduce((sum, item) => sum + (item.cgstAmount || 0), 0),
-    sgst: salesRegister.reduce((sum, item) => sum + (item.sgstAmount || 0), 0),
+    invoiceValue: salesSummary?.totalTaxableAmount + salesSummary?.totalCgst + salesSummary?.totalSgst + salesSummary?.totalIgst || 0, // Approx if not returned directly
+    taxableValue: salesSummary?.totalTaxableAmount || 0,
+    igst: salesSummary?.totalIgst || 0,
+    cgst: salesSummary?.totalCgst || 0,
+    sgst: salesSummary?.totalSgst || 0,
+    totalInvoices: salesSummary?.totalInvoices || 0
   };
 
   const hsnSummaryTotals = {
@@ -352,17 +349,47 @@ export function GstrReportViewer({ shopId }: GstrReportViewerProps) {
                 </table>
               </div>
 
+              {/* Pagination */}
+              {meta && meta.totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+                  <div className="text-sm text-gray-500">
+                    Showing {(currentPage - 1) * meta.limit + 1} to{" "}
+                    {Math.min(currentPage * meta.limit, meta.totalRecords)} of{" "}
+                    {meta.totalRecords} bills
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      className="rounded border border-gray-300 px-3 py-1 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Previous
+                    </button>
+                    <span className="flex items-center text-sm font-medium px-2">
+                      Page {currentPage} of {meta.totalPages}
+                    </span>
+                    <button
+                      disabled={currentPage === meta.totalPages}
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      className="rounded border border-gray-300 px-3 py-1 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={() =>
                     exportToCsv(
                       salesRegister,
-                      `GSTR1-Sales-Register-${startDate}-to-${endDate}.csv`,
+                      `GSTR1-Sales-Register-${startDate}-to-${endDate}-Page-${currentPage}.csv`,
                     )
                   }
                   className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
                 >
-                  ↓ Export CSV
+                  ↓ Export Page CSV
                 </button>
               </div>
             </>
