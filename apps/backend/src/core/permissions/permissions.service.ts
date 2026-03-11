@@ -74,9 +74,15 @@ export class PermissionService {
       if (!staff || !staff.roleId) return false;
       roleId = staff.roleId;
     } else {
-      // Global tenant action.
-      // Currently, staff are assigned at shop level. If they are an owner, they got caught in step 1.
-      return false;
+      // Global tenant action or no specific shop context.
+      // Auto-pick the first active shop staff entry for this user in this tenant.
+      const firstStaff = await this.prisma.shopStaff.findFirst({
+        where: { userId, tenantId, isActive: true, deletedAt: null },
+        select: { roleId: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (!firstStaff || !firstStaff.roleId) return false;
+      roleId = firstStaff.roleId;
     }
 
     // 3. Check specific permission mapping
@@ -185,8 +191,8 @@ export class PermissionService {
     const roles = await this.prisma.role.findMany({
       where: {
         OR: [
-          { tenantId: null }, // System Roles
-          { tenantId, deletedAt: null }, // Custom Tenant Roles
+          { tenantId: null, deletedAt: null },
+          { tenantId, deletedAt: null },
         ],
       },
       include: {

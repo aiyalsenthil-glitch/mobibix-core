@@ -90,7 +90,11 @@ export default function OnboardingPage() {
     try {
       setLoading(true);
       const { acceptStaffInvite } = await import("@/services/staff.api");
-      await acceptStaffInvite(authUser.pendingInvite.id);
+      const { setAccessToken } = await import("@/services/auth.api");
+      const data = await acceptStaffInvite(authUser.pendingInvite.inviteToken);
+      if (data && data.accessToken) {
+        await setAccessToken(data.accessToken);
+      }
       window.location.href = "/dashboard";
     } catch (err: any) {
       setError(err.message || "Failed to join shop");
@@ -106,7 +110,7 @@ export default function OnboardingPage() {
     try {
       setLoading(true);
       const { rejectStaffInvite } = await import("@/services/staff.api");
-      await rejectStaffInvite(authUser.pendingInvite.id);
+      await rejectStaffInvite(authUser.pendingInvite.inviteToken);
       setDecidingInvite(false);
       setLoading(false);
     } catch (err: any) {

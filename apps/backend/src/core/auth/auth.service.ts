@@ -194,6 +194,7 @@ export class AuthService {
         pendingInvite: staffInvite
           ? {
               id: staffInvite.id,
+              inviteToken: staffInvite.inviteToken,
               tenantId: staffInvite.tenantId,
               role: staffInvite.role,
               shopIds: staffInvite.shopIds,

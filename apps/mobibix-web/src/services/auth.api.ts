@@ -145,6 +145,7 @@ export interface ExchangeTokenResponse {
   tenantCount?: number;
   pendingInvite?: {
     id: string;
+    inviteToken: string;
     tenantId: string;
     role: string;
     shopIds: string[];

@@ -44,7 +44,16 @@ export function InviteStaffModal({ isOpen, onClose, onSuccess }: InviteStaffModa
       setIsInitialLoading(true);
       Promise.all([
         listShops().then(setShops).catch(console.error),
-        listRoles().then(setRoles).catch(console.error)
+        listRoles().then(data => {
+          const filtered = (data ?? []).filter(role => {
+            if (!role.isSystem) return true;
+            const hasGym = role.permissions.some(p => p.startsWith('gym.'));
+            const hasMobileShop = role.permissions.some(p => p.startsWith('mobile_shop.'));
+            if (hasGym && !hasMobileShop) return false;
+            return true;
+          });
+          setRoles(filtered);
+        }).catch(console.error)
       ]).finally(() => setIsInitialLoading(false));
     }
   }, [isOpen]);

@@ -157,7 +157,6 @@ export async function listInvoices(
 
     const fetchStart = Date.now();
     const response = await authenticatedFetch(url);
-    console.log(`[Sales API] Fetch took ${Date.now() - fetchStart}ms`);
 
     if (!response.ok) {
       let errorMessage = "Failed to fetch invoices";
@@ -176,7 +175,6 @@ export async function listInvoices(
     }
 
     const data: any = await extractData(response);
-    console.log(`[Sales API] Total time: ${Date.now() - startTime}ms`);
 
     // Handle paginated response (with pagination object)
     if (data.data && data.pagination) {
@@ -195,7 +193,6 @@ export async function listInvoices(
 
     return data.invoices || data.data || [];
   } catch (error) {
-    console.error("Failed to list invoices:", error);
     return [];
   }
 }

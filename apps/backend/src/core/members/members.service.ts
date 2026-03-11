@@ -265,10 +265,6 @@ export class MembersService {
     // ─────────────────────────────
     try {
       if (member.isActive) {
-        console.log(
-          `[MembersService] Triggering MEMBER_CREATED automation for member ${member.id}`,
-        ); // Temp log
-
         await this.automationService.handleEvent({
           moduleType: 'GYM',
           eventType: 'MEMBER_CREATED',
@@ -277,8 +273,7 @@ export class MembersService {
         });
       }
     } catch (err) {
-      console.error('Failed to trigger WhatsApp automation:', err.message);
-      // Do not fail member creation
+      // Failed to trigger WhatsApp automation: silencly fail
     }
 
     return member;

@@ -102,9 +102,6 @@ export class WhatsAppWebhookController {
       const messages = changes.value?.messages || [];
       const statuses = changes.value?.statuses || [];
 
-      console.log(
-        `[Webhook] Processing ${messages.length} messages, ${statuses.length} statuses.`,
-      );
 
       // A. Process Statuses (Async)
       for (const status of statuses) {
@@ -116,7 +113,6 @@ export class WhatsAppWebhookController {
 
       // B. Process Messages (Async)
       if (messages.length > 0) {
-        console.log('[Webhook] Invoking handleIncomingMessages...');
         this.handleIncomingMessages(messages, metadata).catch((err) =>
           this.logger.error(`Message processing error: ${err.message}`),
         );
@@ -133,12 +129,10 @@ export class WhatsAppWebhookController {
    * Handle incoming messages (Text, Quick Reply, etc.)
    */
   private async handleIncomingMessages(messages: any[], metadata: any) {
-    console.log('[Webhook] handleIncomingMessages started');
 
     if (!messages || messages.length === 0) return;
 
     const phoneNumberId = metadata?.phone_number_id;
-    console.log(`[Webhook] PhoneNumberId from metadata: ${phoneNumberId}`);
 
     if (!phoneNumberId) {
       this.logger.warn('No phone_number_id in webhook metadata');
@@ -157,9 +151,6 @@ export class WhatsAppWebhookController {
         },
       });
 
-      console.log(
-        `[Webhook] Number lookup result: ${JSON.stringify(waNumber)}`,
-      );
 
       if (!waNumber) {
         this.logger.warn(`Unknown WhatsApp Number ID: ${phoneNumberId}`);
@@ -256,9 +247,6 @@ export class WhatsAppWebhookController {
           });
 
           // 5. Route to Automation
-          console.log(
-            `[Webhook] Routing to automation for Tenant ${tenantId}...`,
-          );
           await this.router.routeMessage(
             tenantId,
             waNumber.id,
@@ -266,7 +254,6 @@ export class WhatsAppWebhookController {
             text,
           );
         } else {
-          console.log('[Webhook] No text content found in message.');
         }
       }
     } catch (err) {

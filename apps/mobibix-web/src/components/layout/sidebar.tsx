@@ -39,27 +39,27 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, requiredPermission: "core.dashboard.dashboard.view", category: "Core" },
-  { label: "Sales", href: "/sales", icon: Banknote, requiredPermission: "mobile_shop.sales.sale.view", category: "Transactions" },
-  { label: "Job Cards", href: "/jobcards", icon: Wrench, requiredPermission: "mobile_shop.job_cards.job_card.view", category: "Transactions" },
-  { label: "Quotations", href: "/quotations", icon: ClipboardList, requiredPermission: "mobile_shop.quotations.quotation.view", category: "Transactions" },
-  { label: "Credit Notes", href: "/credit-notes", icon: FileMinus, requiredPermission: "mobile_shop.sales.sale.view", category: "Transactions" },
-  { label: "Sales Receipts", href: "/receipts", icon: CreditCard, requiredPermission: "mobile_shop.sales.sale.view", category: "Transactions" },
-  { label: "Customers", href: "/customers", icon: Users, requiredPermission: "mobile_shop.customers.customer.view", category: "CRM & Marketing" },
-  { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare, requiredPermission: "mobile_shop.customers.customer.view", category: "CRM & Marketing" },
-  { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift, requiredPermission: "core.admin.shop.manage", category: "CRM & Marketing" },
-  { label: "Products", href: "/products", icon: Tags, requiredPermission: "mobile_shop.inventory.inventory.view", category: "Inventory" },
-  { label: "Inventory", href: "/inventory", icon: PackageSearch, requiredPermission: "mobile_shop.inventory.inventory.view", category: "Inventory" },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, requiredPermission: "core.dashboard.view", category: "Core" },
+  { label: "Sales", href: "/sales", icon: Banknote, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
+  { label: "Job Cards", href: "/jobcards", icon: Wrench, requiredPermission: "mobile_shop.jobcard.view", category: "Transactions" },
+  { label: "Quotations", href: "/quotations", icon: ClipboardList, requiredPermission: "mobile_shop.quotation.view", category: "Transactions" },
+  { label: "Credit Notes", href: "/credit-notes", icon: FileMinus, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
+  { label: "Sales Receipts", href: "/receipts", icon: CreditCard, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
+  { label: "Customers", href: "/customers", icon: Users, requiredPermission: "mobile_shop.customer.view", category: "CRM & Marketing" },
+  { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare, requiredPermission: "mobile_shop.customer.view", category: "CRM & Marketing" },
+  { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift, requiredPermission: "core.settings.manage", category: "CRM & Marketing" },
+  { label: "Products", href: "/products", icon: Tags, requiredPermission: "mobile_shop.inventory.view", category: "Inventory" },
+  { label: "Inventory", href: "/inventory", icon: PackageSearch, requiredPermission: "mobile_shop.inventory.view", category: "Inventory" },
   ...(process.env.NEXT_PUBLIC_ENABLE_RESTOCK === 'true'
-    ? [{ label: "Restock", href: "/restock", icon: ShoppingBag, requiredPermission: "mobile_shop.inventory.inventory.view", category: "Inventory" }]
+    ? [{ label: "Restock", href: "/restock", icon: ShoppingBag, requiredPermission: "mobile_shop.inventory.view", category: "Inventory" }]
     : []),
-  { label: "Suppliers", href: "/suppliers", icon: Truck, requiredPermission: "mobile_shop.inventory.inventory.view", category: "Inventory" },
-  { label: "Purchase Orders", href: "/purchase-orders", icon: FileText, requiredPermission: "mobile_shop.inventory.inventory.view", category: "Inventory" },
-  { label: "Supplier Invoices", href: "/purchases", icon: Inbox, requiredPermission: "mobile_shop.inventory.inventory.view", category: "Inventory" },
-  { label: "Reports", href: "/reports", icon: LineChart, requiredPermission: "core.finance.report.view_financials", category: "Management" },
-  { label: "Shops", href: "/shops", icon: Store, requiredPermission: "core.admin.shop.manage", category: "Management" },
-  { label: "Staff Management", href: "/staff-management", icon: ShieldCheck, requiredPermission: "core.admin.staff.manage", category: "Management" },
-  { label: "Settings", href: "/settings", icon: Settings, requiredPermission: "core.admin.shop.manage", category: "Management" },
+  { label: "Suppliers", href: "/suppliers", icon: Truck, requiredPermission: "mobile_shop.supplier.view", category: "Inventory" },
+  { label: "Purchase Orders", href: "/purchase-orders", icon: FileText, requiredPermission: "mobile_shop.purchase.view", category: "Inventory" },
+  { label: "Supplier Invoices", href: "/purchases", icon: Inbox, requiredPermission: "mobile_shop.purchase.view", category: "Inventory" },
+  { label: "Reports", href: "/reports", icon: LineChart, requiredPermission: "core.report.view", category: "Management" },
+  { label: "Shops", href: "/shops", icon: Store, requiredPermission: "core.settings.manage", category: "Management" },
+  { label: "Staff Management", href: "/staff-management", icon: ShieldCheck, requiredPermission: "core.staff.manage", category: "Management" },
+  { label: "Settings", href: "/settings", icon: Settings, requiredPermission: "core.settings.manage", category: "Management" },
 ];
 
 interface SidebarProps {

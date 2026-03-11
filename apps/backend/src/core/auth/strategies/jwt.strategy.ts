@@ -37,6 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     return {
+      id: payload.sub, // Ensure req.user.id works throughout the codebase
       userId: payload.sub, // Added for backend compatibility
       sub: payload.sub,
       tenantId: payload.tenantId ?? null,

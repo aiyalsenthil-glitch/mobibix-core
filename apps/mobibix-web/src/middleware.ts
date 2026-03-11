@@ -51,7 +51,6 @@ export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get("mobi_session_token")?.value;
 
   if (isProtectedRoute && !accessToken) {
-    console.log(`[MIDDLEWARE] Redirecting ${path} to /signin: No session token`);
     // 5. Redirect to signin (server-side, prevents flash of authenticated content)
     const url = request.nextUrl.clone();
     url.pathname = "/signin";

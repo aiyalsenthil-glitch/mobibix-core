@@ -37,6 +37,7 @@ export interface AuthUser {
   planCode?: string;
   pendingInvite?: {
     id: string;
+    inviteToken: string;
     tenantId: string;
     role: string;
     shopIds: string[];

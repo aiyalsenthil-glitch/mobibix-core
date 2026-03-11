@@ -10,8 +10,13 @@ export interface RoleDto {
 
 export async function listRoles(): Promise<RoleDto[]> {
   const response = await authenticatedFetch("/permissions/roles");
-  if (!response.ok) throw new Error("Failed to fetch roles");
-  return extractData(response);
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`Failed to fetch roles (${response.status})`);
+  }
+  const data = await extractData<RoleDto[]>(response);
+  // Guard against non-array responses (e.g., {} from empty body)
+  return Array.isArray(data) ? data : [];
 }
 
 export async function getRole(id: string): Promise<RoleDto> {

@@ -251,7 +251,7 @@ async function bootstrap() {
 
   await app.listen(port);
 
-  console.log(`🚀 GymPilot API running on port ${port}`);
+  console.log(`🚀 MobiBix API running on port ${port}`);
 }
 
 bootstrap().catch((err) => {

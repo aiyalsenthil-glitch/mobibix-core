@@ -56,7 +56,6 @@ export class PrismaService
       'Payment',
       'SupplierPayment',
       'SubscriptionInvoice',
-      'Role',
       'UserTenant',
       'ShopStaff',
       'StaffInvite',

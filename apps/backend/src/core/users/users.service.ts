@@ -6,10 +6,14 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { User, UserRole, StaffInviteStatus } from '@prisma/client';
 import { normalizePhone } from '../../common/utils/phone.util';
+import { PermissionService } from '../permissions/permissions.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly permissionService: PermissionService,
+  ) {}
 
   // 🔹 Get user by ID
   async findById(userId: string) {
@@ -105,22 +109,10 @@ export class UsersService {
     if (isSystemOwner) {
       grantedPermissions = ['*'];
     } else if (userTenant) {
-      // Staff user: find their assigned shop role if any, or tenant role
-      const staff = await this.prisma.shopStaff.findFirst({
-        where: { userId, tenantId: userTenant.tenantId, isActive: true },
-        select: { roleId: true },
-      });
-
-      if (staff?.roleId) {
-        const mappings = await this.prisma.rolePermission.findMany({
-          where: { roleId: staff.roleId },
-          include: { permission: { include: { resource: true } } },
-        });
-        grantedPermissions = mappings.map(
-          (m) =>
-            `${m.permission.resource.moduleType.toLowerCase()}.${m.permission.resource.name}.${m.permission.action}`,
-        );
-      }
+      grantedPermissions = await this.permissionService.getConsolidatedPermissions(
+        userId,
+        userTenant.tenantId,
+      );
     }
 
     // Check for pending invite

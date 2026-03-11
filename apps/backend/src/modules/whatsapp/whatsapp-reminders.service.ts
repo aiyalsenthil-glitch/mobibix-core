@@ -325,9 +325,6 @@ export class WhatsAppRemindersService {
         orderBy: { updatedAt: 'desc' },
       });
 
-      console.log(
-        `[WhatsAppReminders] Processing reminder for ${customer.phone}, Template: ${templateKey}`,
-      );
 
       if (
         template?.variables &&
@@ -352,9 +349,6 @@ export class WhatsAppRemindersService {
           shopId = shop?.id;
         }
 
-        console.log(
-          `[DEBUG] Reminder ${reminderId}: tenantType=${reminder.tenant?.tenantType}, templateKey=${templateKey}`,
-        );
 
         // Robust module detection for Mobile Shop
         const templateModule = (template?.moduleType || '')
@@ -468,34 +462,12 @@ export class WhatsAppRemindersService {
           `[WhatsAppReminders] TRACE: REMINDER_ID=${reminderId} MOD=${context.module} EVT=${eventType} T_TYPE='${reminder.tenant?.tenantType}'`,
         );
 
-        console.log(
-          `[WhatsAppReminders] ========== VARIABLE RESOLUTION DEBUG ==========`,
-        );
-        console.log(`[WhatsAppReminders] Template Key: ${templateKey}`);
-        console.log(
-          `[WhatsAppReminders] Variable Keys: ${JSON.stringify(variableKeys)}`,
-        );
-        console.log(`[WhatsAppReminders] Context Module: ${context.module}`);
-        console.log(
-          `[WhatsAppReminders] Context: jobCardId=${context.jobCardId}, invoiceId=${context.invoiceId}, shopId=${context.shopId}`,
-        );
-        console.log(
-          `[WhatsAppReminders] Raw TriggerValue: ${reminder.triggerValue}`,
-        );
-        console.log(`[WhatsAppReminders] Determined EventType: ${eventType}`);
 
         const resolvedMap = await this.variableResolver.resolveVariables(
           variableKeys,
           { ...context, eventType },
         );
 
-        // Log each resolved variable
-        console.log(`[WhatsAppReminders] Resolution Results:`);
-        for (const [key, resolved] of resolvedMap.entries()) {
-          console.log(
-            `  - ${key}: value="${resolved.value}", formatted="${resolved.formatted}", error="${resolved.error || 'none'}"`,
-          );
-        }
 
         // Check for resolution errors
         const errors = variableKeys
@@ -505,9 +477,6 @@ export class WhatsAppRemindersService {
         if (errors.length > 0) {
           const errorMsg = `Variable resolution failed: ${errors.map((e) => (e ? `${e.key} (${e.error})` : 'unknown')).join(', ')}`;
           this.logger.error(errorMsg);
-          console.log(
-            `[WhatsAppReminders] ========== RESOLUTION FAILED ==========`,
-          );
           // Mark as FAILED and abort
           await this.updateReminderStatus(
             reminderId,
@@ -537,9 +506,6 @@ export class WhatsAppRemindersService {
         // Fallback for manually seeded templates or missing definitions
         // Use the old hardcoded logic as fail-safe
         parameters = this.buildTemplateParameters(reminder, customer);
-        console.log(
-          `[WhatsAppReminders] Fallback Parameters: ${JSON.stringify(parameters)}`,
-        );
       }
       // 5️⃣ Send message via WhatsAppSender
       const result = await this.whatsAppSender.sendTemplateMessage(

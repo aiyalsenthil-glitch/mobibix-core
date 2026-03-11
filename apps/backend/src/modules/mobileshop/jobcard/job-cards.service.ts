@@ -118,18 +118,10 @@ export class JobCardsService {
           );
         }
 
-        console.error(
-          `[JobCardsService] Shop Access Failed for OWNER. ShopId: ${shopId}, UserTenant: ${user.tenantId}`,
-        );
-        const actualShop = await this.prisma.shop.findUnique({
-          where: { id: shopId },
-        });
-        if (actualShop) {
-          console.error(
-            `[JobCardsService] Shop Found but tenant mismatch. ShopTenant: ${actualShop.tenantId}`,
+        if (shopCount === 0) {
+          throw new BadRequestException(
+            'NO_SHOPS_FOUND|Create a shop to start creating job cards.|/mobileshop/shops',
           );
-        } else {
-          console.error(`[JobCardsService] Shop NOT FOUND in DB.`);
         }
         throw new BadRequestException('Shop not accessible');
       }

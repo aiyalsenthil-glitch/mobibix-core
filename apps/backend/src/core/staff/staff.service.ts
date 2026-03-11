@@ -19,6 +19,7 @@ import { ModuleType } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuditService } from '../audit/audit.service';
+import { ROLE_PERMISSIONS } from '../auth/permissions.map';
 
 @Injectable()
 export class StaffService {
@@ -153,6 +154,11 @@ export class StaffService {
       throw new BadRequestException('Invalid or expired invite');
     }
 
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { tokenVersion: true },
+    });
+
     const ut = await this.prisma.$transaction(async (tx) => {
       const userTenant = await tx.userTenant.upsert({
         where: {
@@ -223,6 +229,9 @@ export class StaffService {
       tenantId: invite.tenantId,
       userTenantId: ut.id,
       role: UserRole.STAFF,
+      isSystemOwner: false,
+      tokenVersion: user?.tokenVersion ?? 1,
+      permissions: ROLE_PERMISSIONS[UserRole.STAFF] || [],
     };
 
     return {
@@ -232,14 +241,14 @@ export class StaffService {
   }
 
   // Reject invite
-  async rejectInvite(userId: string, inviteId: string) {
+  async rejectInvite(userId: string, targetToken: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { email: true },
     });
 
     const invite = await this.prisma.staffInvite.findUnique({
-      where: { id: inviteId },
+      where: { inviteToken: targetToken },
     });
 
     if (!invite || invite.email.toLowerCase() !== user?.email?.toLowerCase()) {
@@ -268,7 +277,7 @@ export class StaffService {
 
     // Mark as REJECTED (Do not delete for audit)
     await this.prisma.staffInvite.update({
-      where: { id: inviteId },
+      where: { id: invite.id },
       data: { status: StaffInviteStatus.REJECTED },
     });
 

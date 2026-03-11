@@ -344,22 +344,30 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       dbPerms.forEach(p => permissionIds.add(p.id));
     }
 
-    if (permissionIds.size > 0) {
+      const perms = Array.from(permissionIds).map(pid => ({
+        roleId: dbRole.id,
+        permissionId: pid
+      }));
+      
       await prisma.rolePermission.createMany({
-        data: Array.from(permissionIds).map(pid => ({
-          roleId: dbRole.id,
-          permissionId: pid
-        })),
+        data: perms,
         skipDuplicates: true
       });
-    }
   }
 
-  // Optional: Cleanup old legacy templates
+  // Cleanup old legacy templates or duplicates
+  const legacyNames = ['Manager', 'Staff', 'OWNER', 'SHOP_STAFF', 'GYM_TRAINER', 'SUPERVISOR', 'ACCOUNTANT'];
   await prisma.role.updateMany({
-    where: { name: { in: ['Manager', 'Staff'] }, tenantId: null, isSystem: true },
+    where: { 
+      name: { in: legacyNames }, 
+      tenantId: null, 
+      isSystem: true 
+    },
     data: { deletedAt: new Date() }
   });
+  
+  // Also ensure if we have 'TRAINER' and 'Trainer' it's cleaned up (if applicable)
+  // For now the seed uses 'TRAINER'.
 
   return { success: true };
 }

@@ -23,7 +23,18 @@ export default function RolesTab() {
       setLoading(true);
       setError(null);
       const data = await listRoles();
-      setRoles(data);
+      // Only keep custom roles OR system roles that don't exclusively rely on 'gym' permissions
+      const filtered = (data ?? []).filter(role => {
+        if (!role.isSystem) return true;
+        
+        // Exclude system templates where permissions contain 'gym.' but not 'mobile_shop'
+        const hasGym = role.permissions.some(p => p.startsWith('gym.'));
+        const hasMobileShop = role.permissions.some(p => p.startsWith('mobile_shop.'));
+        
+        if (hasGym && !hasMobileShop) return false;
+        return true;
+      });
+      setRoles(filtered);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load roles.");
     } finally {
@@ -81,6 +92,11 @@ export default function RolesTab() {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {roles.filter(r => r.isSystem).length === 0 && (
+              <div className="col-span-3 p-4 text-sm text-gray-500 bg-gray-50 dark:bg-stone-800/50 rounded-xl border border-gray-200 dark:border-stone-800 text-center">
+                No templates configured for this system.
+              </div>
+            )}
             {roles.filter(r => r.isSystem).map(role => (
               <div
                 key={role.id}

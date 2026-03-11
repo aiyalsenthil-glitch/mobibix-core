@@ -36,7 +36,16 @@ export default function StaffTab() {
         listShops(),
       ]);
       setStaffList(staffData);
-      setRoles(rolesData);
+      
+      const filteredRoles = (rolesData ?? []).filter(role => {
+        if (!role.isSystem) return true;
+        const hasGym = role.permissions.some(p => p.startsWith('gym.'));
+        const hasMobileShop = role.permissions.some(p => p.startsWith('mobile_shop.'));
+        if (hasGym && !hasMobileShop) return false;
+        return true;
+      });
+      setRoles(filteredRoles);
+      
       setShops(shopsData);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load staff management data");
