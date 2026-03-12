@@ -197,7 +197,7 @@ export function CompatibilityFinderClient() {
                       <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-600">
                         <Icon size={20} />
                       </div>
-                      <CardTitle className="text-lg">{categoryName}</CardTitle>
+                      <CardTitle className="text-xl">{categoryName}</CardTitle>
                     </div>
                     <Badge variant="outline" className="bg-slate-50 dark:bg-slate-950">
                       {parts.length} Items
@@ -207,25 +207,39 @@ export function CompatibilityFinderClient() {
                 <CardContent className="pt-4 space-y-4">
                   {parts.length > 0 ? (
                     parts.map((part: CompatiblePart, idx: number) => (
-                      <div key={idx} className="flex flex-col gap-1.5 p-3 rounded-lg bg-slate-50 dark:bg-slate-950/40 border border-transparent group-hover:border-indigo-100 dark:group-hover:border-indigo-900/30 transition-colors">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-semibold text-sm text-slate-900 dark:text-slate-200">
+                      <div key={idx} className="flex flex-col gap-3 p-5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 group-hover:border-indigo-500/30 transition-all duration-300">
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="font-bold text-lg md:text-xl text-slate-900 dark:text-slate-100 leading-tight">
                             {part.name}
                           </span>
                           {part.price && (
-                            <span className="text-xs font-bold text-teal-600 dark:text-teal-400">
-                              ₹{part.price}
-                            </span>
+                            <div className="text-right">
+                              <span className="text-base font-black text-teal-600 dark:text-teal-400">
+                                ₹{part.price}
+                              </span>
+                              {part.quantity !== undefined && (
+                                <div className="text-[10px] text-slate-400">Stock: {part.quantity}</div>
+                              )}
+                            </div>
                           )}
                         </div>
+                        
                         {part.otherModels && part.otherModels.length > 0 && (
-                          <div className="text-[10px] text-indigo-500 dark:text-indigo-400 font-medium">
-                            Compatible with: {part.otherModels.join(", ")}
+                          <div className="space-y-1.5">
+                            <span className="text-[10px] uppercase tracking-wider font-bold text-indigo-500 dark:text-indigo-400">Also Fits:</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {part.otherModels.map((model, midx) => (
+                                <Badge key={midx} variant="secondary" className="text-[11px] py-0 px-2 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-none">
+                                  {model}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
                         )}
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                          <Info className="w-3 h-3" />
-                          <span>Same model as linked phones</span>
+                        
+                        <div className="flex items-center gap-2 pt-2 border-t border-slate-200/50 dark:border-slate-800/50 text-xs text-slate-500 dark:text-slate-400">
+                          <Info className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>Verified compatibility group</span>
                         </div>
                       </div>
                     ))
