@@ -137,7 +137,8 @@ export class StaffController {
   @UseGuards(JwtAuthGuard)
   @Post('invite/accept')
   async acceptInvite(@Req() req: any, @Body('token') token: string) {
-    return this.staffService.acceptInvite(req.user.sub, token);
+    const result = await this.staffService.acceptInvite(req.user.sub, token);
+    return result;
   }
 
   @UseGuards(JwtAuthGuard)

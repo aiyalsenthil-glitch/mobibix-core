@@ -1691,6 +1691,7 @@ model Invoice {
   @@index([tenantId, shopId, deletedAt, status, createdAt, totalAmount]) // Covering PAID revenue
   @@index([tenantId, deletedAt, status, invoiceDate])     // Report optimization: GSTR1
   @@index([tenantId, deletedAt, invoiceDate])             // Report optimization: Date range
+  @@index([tenantId, shopId, status, invoiceDate])        // Report optimization: Profit summary
   @@map("mb_invoice")
 }
 

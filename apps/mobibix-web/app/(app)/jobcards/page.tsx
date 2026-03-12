@@ -20,7 +20,6 @@ import { generateRepairBill } from "@/services/jobcard.api";
 import { CustomerTimelineDrawer } from "@/components/crm/CustomerTimelineDrawer";
 import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
 import { type FollowUpType } from "@/services/crm.api";
-import { JobCardsTabs } from "@/components/jobcards/JobCardsTabs";
 import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
 import {
   DropdownMenu,
@@ -387,7 +386,6 @@ export default function JobCardsPage() {
         </button>
       </div>
 
-      <JobCardsTabs />
 
       {/* Filters Section */}
       <div
@@ -853,12 +851,24 @@ export default function JobCardsPage() {
                     type="number"
                     min={1}
                     max={totalPages}
-                    value={currentPage + 1}
-                    onChange={(e) => {
+                    defaultValue={currentPage + 1}
+                    key={currentPage} // Reset input when page changes from outside
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const val = parseInt((e.target as HTMLInputElement).value);
+                        if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                          setCurrentPage(val - 1);
+                          updateUrl({ page: val.toString() });
+                        }
+                      }
+                    }}
+                    onBlur={(e) => {
                       const val = parseInt(e.target.value);
                       if (!isNaN(val) && val >= 1 && val <= totalPages) {
                         setCurrentPage(val - 1);
                         updateUrl({ page: val.toString() });
+                      } else {
+                        e.target.value = (currentPage + 1).toString();
                       }
                     }}
                     className={`w-16 px-2 py-1 text-center rounded border focus:outline-none focus:ring-2 focus:ring-teal-500/50 ${

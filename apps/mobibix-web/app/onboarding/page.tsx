@@ -31,7 +31,7 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [decidingInvite, setDecidingInvite] = useState(false);
+  const [decidingInvite, setDecidingInvite] = useState<boolean | null>(null);
 
   // Dynamic country list (loaded from backend, falls back to static)
   const [countries, setCountries] = useState<CountryOption[]>(COUNTRY_FALLBACK);
@@ -74,6 +74,8 @@ export default function OnboardingPage() {
       // 🔥 SAAS FLOW: Check if user has a pending invite
       if (authUser?.pendingInvite) {
         setDecidingInvite(true);
+      } else {
+        setDecidingInvite(false);
       }
 
       const savedRef = sessionStorage.getItem("mb_ref");
@@ -330,7 +332,9 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {decidingInvite ? (
+        {decidingInvite === null ? (
+          <div className="py-12 text-center text-stone-500">Checking for invitations...</div>
+        ) : decidingInvite ? (
           <div className="space-y-8 animate-in fade-in zoom-in duration-500">
             <div className="text-center space-y-4">
                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-500/20 text-teal-400 mb-2">

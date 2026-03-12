@@ -765,13 +765,26 @@ export default function SalesPage() {
                     type="number"
                     min={1}
                     max={Math.ceil((invoicesData?.total || 0) / PAGE_SIZE)}
-                    value={currentPage + 1}
-                    onChange={(e) => {
+                    defaultValue={currentPage + 1}
+                    key={currentPage}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const val = parseInt((e.target as HTMLInputElement).value);
+                        const maxPages = Math.ceil((invoicesData?.total || 0) / PAGE_SIZE);
+                        if (!isNaN(val) && val >= 1 && val <= maxPages) {
+                          setCurrentPage(val - 1);
+                          updateUrl({ page: val.toString() });
+                        }
+                      }
+                    }}
+                    onBlur={(e) => {
                       const val = parseInt(e.target.value);
                       const maxPages = Math.ceil((invoicesData?.total || 0) / PAGE_SIZE);
                       if (!isNaN(val) && val >= 1 && val <= maxPages) {
                         setCurrentPage(val - 1);
                         updateUrl({ page: val.toString() });
+                      } else {
+                        e.target.value = (currentPage + 1).toString();
                       }
                     }}
                     className={`w-16 px-2 py-1 text-center rounded border focus:outline-none focus:ring-2 focus:ring-teal-500/50 ${

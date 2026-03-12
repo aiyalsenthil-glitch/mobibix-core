@@ -32,6 +32,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
               <Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link>
               <Link href="/blog" className="hover:text-primary transition-colors">Blog</Link>
               <Link href="/partner" className="hover:text-primary transition-colors">Partner Program</Link>
+              <Link href="/partner/tiers" className="hover:text-primary transition-colors">Partner Tiers</Link>
               <Link href="/support" className="hover:text-primary transition-colors">Support</Link>
             </div>
           </div>
@@ -57,6 +58,20 @@ export function Footer({ compact = false }: { compact?: boolean }) {
               <Link href="/regions/saudi-arabia" className="hover:text-primary transition-colors">Saudi Arabia</Link>
               <Link href="/regions/malaysia" className="hover:text-primary transition-colors">Malaysia</Link>
               <Link href="/regions/indonesia" className="hover:text-primary transition-colors">Indonesia</Link>
+            </div>
+          </div>
+
+          <div className="col-span-1 mt-8 md:mt-0">
+            <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-foreground/50 mb-6 font-mono">Cities</h4>
+            <div className={`flex flex-col gap-3 ${compact ? "text-xs" : "text-sm"} font-bold text-muted-foreground`}>
+              <Link href="/locations/mumbai" className="hover:text-primary transition-colors">Mumbai</Link>
+              <Link href="/locations/delhi" className="hover:text-primary transition-colors">Delhi</Link>
+              <Link href="/locations/bangalore" className="hover:text-primary transition-colors">Bangalore</Link>
+              <Link href="/locations/hyderabad" className="hover:text-primary transition-colors">Hyderabad</Link>
+              <Link href="/locations/chennai" className="hover:text-primary transition-colors">Chennai</Link>
+              <Link href="/locations/pune" className="hover:text-primary transition-colors">Pune</Link>
+              <Link href="/locations/ahmedabad" className="hover:text-primary transition-colors">Ahmedabad</Link>
+              <Link href="/locations/jaipur" className="hover:text-primary transition-colors">Jaipur</Link>
             </div>
           </div>
 

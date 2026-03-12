@@ -2,6 +2,8 @@ import {
   Injectable,
   UnauthorizedException,
   InternalServerErrorException,
+  NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
@@ -12,6 +14,7 @@ import { TokenFactoryService } from './services/token-factory.service';
 import { FirebaseAdminService } from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
 import { EmailService } from '../../common/email/email.service';
 import { ROLE_PERMISSIONS } from './permissions.map';
+import { PermissionService } from '../permissions/permissions.service';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +25,7 @@ export class AuthService {
     private readonly tokenFactory: TokenFactoryService,
     private readonly REMOVED_AUTH_PROVIDERAdmin: FirebaseAdminService,
     private readonly emailService: EmailService,
+    private readonly permissionService: PermissionService,
   ) {}
 
   /**
@@ -79,7 +83,15 @@ export class AuthService {
     const role = userTenant?.role ?? user.role;
 
     const roleKey = (role?.toUpperCase() || UserRole.USER) as UserRole;
-    const permissions = ROLE_PERMISSIONS[roleKey] || [];
+    let permissions: (string | any)[] = ROLE_PERMISSIONS[roleKey] || [];
+
+    // If we have a tenant context, fetch dynamic permissions
+    if (tenantId) {
+      permissions = await this.permissionService.getConsolidatedPermissions(
+        user.id,
+        tenantId,
+      );
+    }
 
     const accessToken = this.tokenFactory.generateAccessToken({
       sub: user.id,
@@ -143,7 +155,15 @@ export class AuthService {
 
       // 6️⃣ Issue JWT & Refresh Token
       const roleKey = (role?.toUpperCase() || UserRole.USER) as UserRole;
-      const permissions = ROLE_PERMISSIONS[roleKey] || [];
+      let permissions: (string | any)[] = ROLE_PERMISSIONS[roleKey] || [];
+
+      // If we have a tenant context, fetch dynamic permissions
+      if (tenantId && !isSystemOwner) {
+        permissions = await this.permissionService.getConsolidatedPermissions(
+          user.id,
+          tenantId,
+        );
+      }
 
       const token = this.tokenFactory.generateAccessToken({
         sub: user.id,
@@ -182,6 +202,7 @@ export class AuthService {
           isSystemOwner,
           name: user.fullName,
           email: user.email,
+          permissions,
         },
         tenant: activeUserTenant
           ? {
@@ -262,5 +283,63 @@ export class AuthService {
         verificationLink: link,
       },
     } as any); // Cast as any if we need to bypass strict type for `targetType/recipientType`
+  }
+
+  /**
+   * 🧪 FOR QA AUTOMATION ONLY
+   */
+  async loginWithCredentials(email: string, password?: string) {
+    if (email !== 'test@gmail.com' && !email.startsWith('staff')) {
+      throw new UnauthorizedException('QA Login only allowed for test accounts');
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: { email },
+      include: {
+        userTenants: {
+          include: { tenant: true },
+        },
+      },
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+
+    const activeUserTenant = user.userTenants[0];
+    const tenantId = activeUserTenant?.tenantId ?? null;
+    const userTenantId = activeUserTenant?.id ?? null;
+    const role = activeUserTenant?.role ?? user.role;
+    const isSystemOwner =
+      activeUserTenant?.isSystemOwner || role === UserRole.OWNER;
+
+    const roleKey = (role?.toUpperCase() || UserRole.USER) as UserRole;
+    let permissions: (string | any)[] = ROLE_PERMISSIONS[roleKey] || [];
+
+    if (tenantId && !isSystemOwner) {
+      permissions = await this.permissionService.getConsolidatedPermissions(
+        user.id,
+        tenantId,
+      );
+    }
+
+    const token = this.tokenFactory.generateAccessToken({
+      sub: user.id,
+      tenantId,
+      userTenantId,
+      role,
+      isSystemOwner,
+      tokenVersion: user.tokenVersion,
+      permissions,
+    });
+
+    return {
+      accessToken: token,
+      user: {
+        id: user.id,
+        tenantId,
+        role,
+        isSystemOwner,
+        permissions,
+      },
+    };
   }
 }

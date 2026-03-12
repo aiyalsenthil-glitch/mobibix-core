@@ -504,19 +504,23 @@ export class MobileShopReportsService {
         repair_cost: bigint;
       }[]
     >`
-      SELECT 
+      WITH filtered_invoices AS (
+        SELECT id, "jobCardId"
+        FROM "mb_invoice"
+        WHERE "tenantId" = ${tenantId}
+          AND "status" != 'VOIDED'
+          ${shopFilter}
+          ${dateStartFilter}
+          ${dateEndFilter}
+          ${cbPartyFilter}
+      )
+      SELECT
         SUM(CASE WHEN i."jobCardId" IS NULL THEN ii."lineTotal" - ii."gstAmount" ELSE 0 END) as sales_revenue,
         SUM(CASE WHEN i."jobCardId" IS NULL THEN COALESCE(ii."costAtSale", 0) * ii."quantity" ELSE 0 END) as sales_cost,
         SUM(CASE WHEN i."jobCardId" IS NOT NULL THEN ii."lineTotal" - ii."gstAmount" ELSE 0 END) as repair_revenue,
         SUM(CASE WHEN i."jobCardId" IS NOT NULL THEN COALESCE(ii."costAtSale", 0) * ii."quantity" ELSE 0 END) as repair_cost
       FROM "mb_invoice_item" ii
-      JOIN "mb_invoice" i ON ii."invoiceId" = i."id"
-      WHERE i."tenantId" = ${tenantId}
-        AND i."status" != 'VOIDED'
-        ${shopFilter}
-        ${dateStartFilter}
-        ${dateEndFilter}
-        ${cbPartyFilter}
+      JOIN filtered_invoices i ON ii."invoiceId" = i."id"
     `;
 
     const r = profitResult[0] || ({} as any);

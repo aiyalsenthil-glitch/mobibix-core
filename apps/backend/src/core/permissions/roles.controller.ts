@@ -22,6 +22,16 @@ import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 @Roles(UserRole.OWNER)
 export class RolesController {
   constructor(private readonly permissionService: PermissionService) {}
+  
+  @Get('templates')
+  async listTemplates() {
+    return this.permissionService.listRoleTemplates();
+  }
+
+  @Get('modules')
+  async listModules() {
+    return this.permissionService.listModules();
+  }
 
   @Get()
   async list(@Req() req: any) {

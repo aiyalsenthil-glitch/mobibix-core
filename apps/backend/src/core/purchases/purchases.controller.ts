@@ -12,6 +12,10 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -20,11 +24,12 @@ import { CreatePurchaseDto } from './dto/create-purchase.dto';
 import { UpdatePurchaseDto, PurchaseStatus } from './dto/update-purchase.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { PurchaseResponseDto } from './dto/purchase.response.dto';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { PurchasePaymentService } from '../../modules/mobileshop/services/purchase-payment.service';
 
 @Controller('purchases')
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.MOBILE_SHOP)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, RolesGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class PurchasesController {
   constructor(
@@ -38,6 +43,7 @@ export class PurchasesController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @RequirePermission(ModuleType.MOBILE_SHOP, 'purchase', 'create')
   async create(
     @Req() req: any,
     @Body() dto: CreatePurchaseDto,
@@ -56,6 +62,7 @@ export class PurchasesController {
    * - supplierId?: string
    */
   @Get()
+  @RequirePermission(ModuleType.MOBILE_SHOP, 'purchase', 'view')
   async findAll(
     @Req() req: any,
     @Query('shopId') shopId?: string,
@@ -150,6 +157,7 @@ export class PurchasesController {
    * Get all purchases for a supplier
    */
   @Get('supplier/:supplierId')
+  @RequirePermission(ModuleType.MOBILE_SHOP, 'purchase', 'view')
   async getBySupplier(
     @Req() req: any,
     @Param('supplierId') supplierId: string,

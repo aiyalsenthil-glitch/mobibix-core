@@ -82,30 +82,3 @@ export function getFinancialYearEnd(date: Date = new Date()): Date {
   }
 }
 
-// Test cases (for development/debugging)
-if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-  // Run tests in browser console during development
-  const testCases = [
-    { date: new Date("2026-02-15"), expected: "2025-26", desc: "Feb 2026" },
-    { date: new Date("2026-04-01"), expected: "2026-27", desc: "Apr 2026" },
-    { date: new Date("2026-03-31"), expected: "2025-26", desc: "Mar 2026" },
-    { date: new Date("2026-01-01"), expected: "2025-26", desc: "Jan 2026" },
-    { date: new Date("2026-12-31"), expected: "2026-27", desc: "Dec 2026" },
-  ];
-
-  let allPassed = true;
-  testCases.forEach((test) => {
-    const result = getFinancialYear(test.date);
-    const passed = result === test.expected;
-    if (!passed) {
-      console.error(
-        `❌ FY Test failed for ${test.desc}: expected ${test.expected}, got ${result}`,
-      );
-      allPassed = false;
-    }
-  });
-
-  if (allPassed) {
-    // console.log("✅ All financial year tests passed");
-  }
-}

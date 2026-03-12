@@ -61,12 +61,13 @@ export class GranularPermissionGuard implements CanActivate {
 
       if (!hasPermission) {
         this.logger.warn(
-          `[SHADOW MODE] User ${user.id} denied permission: ${requiredPermission.module}.${requiredPermission.resource}.${requiredPermission.action} at shop ${shopId || 'global'}`,
+          `[ACCESS DENIED] User ${user.id} denied: ${requiredPermission.module}.${requiredPermission.resource}.${requiredPermission.action} at shop ${shopId || 'global'}`,
         );
-        // In Shadow Mode, we return true to NOT block the request.
+        return false;
       }
     } catch (error) {
       this.logger.error(`Error in GranularPermissionGuard: ${error.message}`);
+      return false;
     }
 
     return true;

@@ -15,7 +15,6 @@ import { useShop } from "@/context/ShopContext";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
 import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
 import { CancelInvoiceModal } from "@/components/sales/CancelInvoiceModal";
-import { JobCardsTabs } from "@/components/jobcards/JobCardsTabs";
 import { Eye, Search, X, MoreVertical, IndianRupee, Printer, Share2, Ban, Edit, History, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -165,7 +164,6 @@ export default function JobCardBillsPage() {
         </h1>
       </div>
 
-      <JobCardsTabs />
 
       {/* Filters Section */}
       <div

@@ -1,4 +1,6 @@
 import { Controller, Get, Query, UseGuards, Request, ForbiddenException } from '@nestjs/common';
+import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission } from '../../../core/permissions/decorators/require-permission.decorator';
 import { MobileShopReportsService } from './reports.service';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
@@ -18,7 +20,7 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 
 @Controller('mobileshop/reports')
 @ModuleScope(ModuleType.MOBILE_SHOP)
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, RolesGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class MobileShopReportsController extends TenantScopedController {
   constructor(
@@ -81,6 +83,7 @@ export class MobileShopReportsController extends TenantScopedController {
   // --- SALES ---
 
   @Get('sales/summary')
+  @RequirePermission(ModuleType.CORE, 'report', 'view')
   async getSalesSummary(
     @CurrentUser() user: any,
     @Query('startDate') startDate?: string,

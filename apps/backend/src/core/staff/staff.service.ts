@@ -20,6 +20,7 @@ import { JwtService } from '@nestjs/jwt';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuditService } from '../audit/audit.service';
 import { ROLE_PERMISSIONS } from '../auth/permissions.map';
+import { PermissionService } from '../permissions/permissions.service';
 
 @Injectable()
 export class StaffService {
@@ -29,6 +30,7 @@ export class StaffService {
     private readonly planRulesService: PlanRulesService,
     private readonly eventEmitter: EventEmitter2,
     private readonly auditService: AuditService,
+    private readonly permissionService: PermissionService,
   ) {}
 
   // Ensure plan allows staff management (PLUS / PRO)
@@ -223,6 +225,12 @@ export class StaffService {
       meta: { email: invite.email },
     });
 
+    // Fetch dynamic permissions for the new JWT
+    const permissions = await this.permissionService.getConsolidatedPermissions(
+      userId,
+      invite.tenantId,
+    );
+
     // Issue new JWT with branch access
     const jwtPayload = {
       sub: userId,
@@ -231,7 +239,7 @@ export class StaffService {
       role: UserRole.STAFF,
       isSystemOwner: false,
       tokenVersion: user?.tokenVersion ?? 1,
-      permissions: ROLE_PERMISSIONS[UserRole.STAFF] || [],
+      permissions: permissions,
     };
 
     return {

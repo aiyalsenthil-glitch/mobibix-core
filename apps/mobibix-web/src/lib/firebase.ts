@@ -50,12 +50,10 @@ if (isFirebaseConfigured) {
 
     // console.log("Firebase initialized successfully");
   } catch (error) {
-    console.warn("Failed to initialize Firebase:", error);
+    // Fail silently in prod
   }
 } else {
-  console.warn(
-    "Firebase is not configured. Please set NEXT_PUBLIC_FIREBASE_* environment variables.",
-  );
+  // Config missing
 }
 
 export { auth, googleProvider, storage };

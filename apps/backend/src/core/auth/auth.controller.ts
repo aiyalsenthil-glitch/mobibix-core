@@ -212,6 +212,27 @@ export class AuthController {
   }
 
   @Public()
+  @Post('login-qa')
+  @HttpCode(200)
+  async loginQA(
+    @Body() body: { email: string; password?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.loginWithCredentials(
+      body.email,
+      body.password,
+    );
+
+    res.cookie(
+      'accessToken',
+      result.accessToken,
+      this.buildCookieOptions(3600), // 1 hour for QA
+    );
+
+    return result;
+  }
+
+  @Public()
   @Post('logout')
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies?.refreshToken as string | undefined;

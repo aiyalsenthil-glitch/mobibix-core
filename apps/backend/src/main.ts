@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import express from 'express';
 import cors from 'cors';
 import * as bodyParser from 'body-parser';
@@ -12,7 +12,7 @@ import cookieParser from 'cookie-parser';
 import { join } from 'path';
 import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
-import { Logger } from 'nestjs-pino';
+import { Logger as PinoLogger } from 'nestjs-pino';
 
 import { WhatsAppConfigValidator } from './modules/whatsapp/whatsapp.config-validator';
 import { PrismaService } from './core/prisma/prisma.service';
@@ -56,15 +56,13 @@ async function loadCorsOrigins(prisma: PrismaService): Promise<string[]> {
       })),
       skipDuplicates: true,
     });
-    console.log(
-      `🌐 Seeded ${FALLBACK_ORIGINS.length} default CORS origins into DB`,
-    );
+    
+    const logger = new Logger('CORS');
+    logger.log(`🌐 Seeded ${FALLBACK_ORIGINS.length} default CORS origins into DB`);
     return FALLBACK_ORIGINS;
   } catch (err) {
-    console.warn(
-      '⚠️  Could not load CORS origins from DB, using fallback:',
-      err,
-    );
+    const logger = new Logger('CORS');
+    logger.warn('⚠️ Could not load CORS origins from DB, using fallback: ' + (err as Error).message);
     return FALLBACK_ORIGINS;
   }
 }
@@ -198,7 +196,7 @@ async function bootstrap() {
   });
 
   // Replace default Nest logger with Pino
-  app.useLogger(app.get(Logger));
+  app.useLogger(app.get(PinoLogger));
 
   /**
    * 📊 9️⃣ Add global performance monitoring (Tier 4)
@@ -251,10 +249,12 @@ async function bootstrap() {
 
   await app.listen(port);
 
-  console.log(`🚀 MobiBix API running on port ${port}`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`🚀 MobiBix API running on port ${port}`);
 }
 
 bootstrap().catch((err) => {
-  console.error('Failed to boot application:', err);
+  const logger = new Logger('Bootstrap');
+  logger.error('Failed to boot application: ' + (err as Error).message);
   process.exit(1);
 });

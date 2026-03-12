@@ -446,4 +446,47 @@ export class PermissionService {
 
     return deletedRole;
   }
+
+  async listRoleTemplates() {
+    return this.prisma.role.findMany({
+      where: {
+        isSystem: true,
+        tenantId: null,
+        deletedAt: null,
+      },
+      include: {
+        rolePermissions: {
+          include: {
+            permission: {
+              include: { resource: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async listModules() {
+    const resources = await this.prisma.resource.findMany({
+      include: { permissions: true },
+    });
+
+    // Group by moduleType
+    const modules: Record<string, any> = {};
+    resources.forEach((r) => {
+      const mod = r.moduleType;
+      if (!modules[mod]) {
+        modules[mod] = {
+          moduleType: mod,
+          resources: [],
+        };
+      }
+      modules[mod].resources.push({
+        resourceName: r.name,
+        actions: r.permissions.map((p) => p.action),
+      });
+    });
+
+    return Object.values(modules);
+  }
 }

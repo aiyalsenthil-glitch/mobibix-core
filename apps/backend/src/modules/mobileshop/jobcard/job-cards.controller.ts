@@ -10,6 +10,8 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission } from '../../../core/permissions/decorators/require-permission.decorator';
 import { PaymentMode, UserRole, ModuleType, JobStatus } from '@prisma/client';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
 
@@ -26,7 +28,7 @@ import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorato
 
 @Controller('mobileshop/shops/:shopId/job-cards')
 @ModuleScope(ModuleType.MOBILE_SHOP)
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, TenantStatusGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, RolesGuard, GranularPermissionGuard, TenantStatusGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class JobCardsController extends TenantScopedController {
   constructor(private readonly service: JobCardsService) {
@@ -34,6 +36,7 @@ export class JobCardsController extends TenantScopedController {
   }
 
   @Post()
+  @RequirePermission(ModuleType.MOBILE_SHOP, 'jobcard', 'create')
   create(
     @Param('shopId') shopId: string,
     @Req() req: any,
@@ -43,6 +46,7 @@ export class JobCardsController extends TenantScopedController {
   }
 
   @Get()
+  @RequirePermission(ModuleType.MOBILE_SHOP, 'jobcard', 'view')
   list(
     @Param('shopId') shopId: string,
     @Req() req: any,

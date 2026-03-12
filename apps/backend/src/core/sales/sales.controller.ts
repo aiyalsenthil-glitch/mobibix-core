@@ -4,6 +4,7 @@ import {
   Post,
   Req,
   BadRequestException,
+  ForbiddenException,
   Get,
   Query,
   Param,
@@ -24,14 +25,17 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../auth/permissions.enum';
 import { TenantStatusGuard } from '../tenant/guards/tenant-status.guard';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PermissionService } from '../permissions/permissions.service';
+import { RequirePermission } from '../permissions/decorators/require-permission.decorator';
 
 @Controller('mobileshop/sales')
 @ModuleScope(ModuleType.MOBILE_SHOP)
 @UseGuards(
   JwtAuthGuard,
-  RolesGuard,
-  PermissionsGuard,
   TenantRequiredGuard,
+  RolesGuard,
+  GranularPermissionGuard,
   TenantStatusGuard,
 )
 @Roles(UserRole.OWNER, UserRole.STAFF)
@@ -39,17 +43,18 @@ export class SalesController {
   constructor(
     private readonly service: SalesService,
     private readonly paymentService: PaymentService,
+    private readonly permissionService: PermissionService,
   ) {}
 
   @Post('invoice')
-  @Permissions(Permission.SALES_CREATE)
+  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'create')
   async create(@Req() req: any, @Body() dto: SalesInvoiceDto) {
     const tenantId = req.user.tenantId;
     return this.service.createInvoice(tenantId, dto);
   }
 
   @Patch('invoice/:invoiceId')
-  @Permissions(Permission.SALES_CREATE)
+  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'create')
   async update(
     @Req() req: any,
     @Param('invoiceId') invoiceId: string,
@@ -60,14 +65,13 @@ export class SalesController {
   }
 
   @Post('invoice/:invoiceId/cancel')
-  @Permissions(Permission.SALES_CREATE)
+  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'create')
   async cancel(@Req() req: any, @Param('invoiceId') invoiceId: string) {
     const tenantId = req.user.tenantId;
     return this.service.cancelInvoice(tenantId, invoiceId);
   }
 
   @Get('invoices')
-  @Permissions(Permission.SALES_VIEW)
   async list(
     @Req() req: any,
     @Query('shopId') shopId: string,
@@ -78,6 +82,33 @@ export class SalesController {
     const tenantId = req.user.tenantId;
     if (!shopId) {
       throw new BadRequestException('shopId is required');
+    }
+
+    // RBAC: Staff with jobcard.view can see invoices IF fromJobCard=true
+    const hasSaleView = await this.permissionService.hasPermission(
+      req.user.id,
+      tenantId,
+      shopId,
+      ModuleType.MOBILE_SHOP,
+      'sale',
+      'view',
+    );
+
+    if (!hasSaleView) {
+      const hasJobView = await this.permissionService.hasPermission(
+        req.user.id,
+        tenantId,
+        shopId,
+        ModuleType.MOBILE_SHOP,
+        'jobcard',
+        'view',
+      );
+
+      if (!hasJobView || fromJobCard !== 'true') {
+        throw new ForbiddenException(
+          'You do not have permission to view these invoices',
+        );
+      }
     }
 
     // Parse pagination with defaults
@@ -96,7 +127,7 @@ export class SalesController {
   }
 
   @Get('invoice/:invoiceId')
-  @Permissions(Permission.SALES_VIEW)
+  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'view')
   async getInvoice(@Req() req: any, @Param('invoiceId') invoiceId: string) {
     const tenantId = req.user.tenantId;
     if (!tenantId) {
@@ -135,7 +166,7 @@ export class SalesController {
   }
 
   @Post('invoice/:invoiceId/collect-payment')
-  @Permissions(Permission.SALES_CREATE)
+  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'create')
   async collectPayment(
     @Req() req: any,
     @Param('invoiceId') invoiceId: string,
@@ -158,14 +189,14 @@ export class SalesController {
   }
 
   @Get('invoice/:invoiceId/payments')
-  @Permissions(Permission.SALES_VIEW)
+  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'view')
   async listPayments(@Req() req: any, @Param('invoiceId') invoiceId: string) {
     const tenantId = req.user.tenantId;
     return this.paymentService.listPayments(tenantId, invoiceId);
   }
 
   @Get('summary')
-  @Permissions(Permission.SALES_VIEW)
+  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'view')
   async getSalesSummary(
     @Req() req: any,
     @Query('shopId') shopId: string,

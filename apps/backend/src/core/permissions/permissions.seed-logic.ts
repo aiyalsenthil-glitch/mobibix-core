@@ -220,10 +220,14 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'SHOP_MANAGER',
       jobDescription: 'Manage daily shop operations, supervise sales and inventory. Cannot change system plans.',
       defaultPermissions: [
-        'sale.create', 'sale.edit', 'sale.refund', 'sale.view_all',
+        'dashboard.view',
+        'sale.view', 'sale.view_all', 'sale.create', 'sale.edit', 'sale.refund',
         'inventory.view', 'inventory.adjust',
-        'jobcard.view_all', 'jobcard.assign', 'jobcard.update_status',
-        'report.view', 'customer.view', 'supplier.view'
+        'jobcard.view', 'jobcard.view_all', 'jobcard.assign', 'jobcard.update_status',
+        'quotation.view', 'quotation.create',
+        'report.view', 'customer.view', 'customer.create', 'supplier.view', 'supplier.create',
+        'expense.view', 'expense.create',
+        'purchase.view', 'purchase.create', 'purchase.edit'
       ]
     },
     {
@@ -231,7 +235,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'SALES_EXECUTIVE',
       jobDescription: 'Handle billing and customer sales, create invoices.',
       defaultPermissions: [
-        'sale.create', 'sale.view', 'customer.create', 'customer.view', 'inventory.view'
+        'dashboard.view', 'sale.view', 'sale.create', 'customer.view', 'customer.create', 'inventory.view', 'quotation.view', 'quotation.create'
       ]
     },
     {
@@ -239,7 +243,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'TECHNICIAN',
       jobDescription: 'Handle repair workflow and update repair status.',
       defaultPermissions: [
-        'jobcard.create', 'jobcard.update_status', 'jobcard.view_assigned', 'inventory.view'
+        'dashboard.view', 'jobcard.view', 'jobcard.create', 'jobcard.update_status', 'jobcard.view_assigned', 'inventory.view'
       ]
     },
     {
@@ -247,7 +251,8 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'SHOP_ACCOUNTANT',
       jobDescription: 'Manage shop finances, track payments/expenses, and export tax reports.',
       defaultPermissions: [
-        'report.view', 'report.export', 'sale.view_financial', 'expense.create', 'expense.view', 'ledger.view'
+        'dashboard.view', 'report.view', 'report.export', 'sale.view', 'sale.view_financial', 'expense.create', 'expense.view', 'ledger.view',
+        'purchase.view'
       ]
     },
 
@@ -266,7 +271,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'GYM_MANAGER',
       jobDescription: 'Manage gym members, trainers, attendance and renewals.',
       defaultPermissions: [
-        'member.create', 'member.edit', 'member.view',
+        'dashboard.view', 'member.create', 'member.edit', 'member.view',
         'attendance.view', 'attendance.mark',
         'membership.create', 'membership.renew',
         'report.view'
@@ -277,7 +282,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'RECEPTIONIST',
       jobDescription: 'Register new members, collect payments and renew memberships.',
       defaultPermissions: [
-        'member.create', 'member.view', 'membership.create', 'membership.renew', 'payment.collect', 'attendance.view'
+        'dashboard.view', 'member.create', 'member.view', 'membership.create', 'membership.renew', 'payment.collect', 'attendance.view'
       ]
     },
     {
@@ -285,7 +290,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'TRAINER',
       jobDescription: 'Manage assigned members, track workouts and attendance.',
       defaultPermissions: [
-        'member.view_assigned', 'attendance.mark', 'workout.update'
+        'dashboard.view', 'member.view', 'member.view_assigned', 'attendance.mark', 'workout.update'
       ]
     },
     {
@@ -293,7 +298,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'GYM_ACCOUNTANT',
       jobDescription: 'Handle gym finances, generate reports and track payments.',
       defaultPermissions: [
-        'payment.view', 'report.view', 'report.export', 'expense.create'
+        'dashboard.view', 'payment.view', 'report.view', 'report.export', 'expense.create', 'expense.view'
       ]
     }
   ];

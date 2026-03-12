@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "../../src/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Users, LogIn } from "lucide-react";
+import { ChevronDown, Users, LogIn, BarChart3, FileText } from "lucide-react";
 
 export function Header() {
   const { theme, toggleTheme } = useTheme();
@@ -141,6 +141,33 @@ export function Header() {
                     <div>
                       <p className="text-xs font-bold text-foreground">Partner Program</p>
                       <p className="text-[10px] text-muted-foreground">Earn 30% commission</p>
+                    </div>
+                  </Link>
+                  <div className="h-px bg-border mx-3 my-1" />
+                  <Link
+                    href="/partner/tiers"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted transition-colors group"
+                    onClick={() => setPartnersOpen(false)}
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <BarChart3 className="w-3.5 h-3.5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Tier Structure</p>
+                      <p className="text-[10px] text-muted-foreground">5% → 20% calculator</p>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/partner/apply"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted transition-colors group"
+                    onClick={() => setPartnersOpen(false)}
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Apply Now</p>
+                      <p className="text-[10px] text-muted-foreground">Join partner network</p>
                     </div>
                   </Link>
                   <div className="h-px bg-border mx-3 my-1" />

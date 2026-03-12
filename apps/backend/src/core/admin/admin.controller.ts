@@ -49,29 +49,31 @@ export class AdminController {
       throw new BadRequestException('Bootstrap disabled in production');
     }
 
-    const existingAdmin = await this.prisma.user.findFirst({
+    let admin = await this.prisma.user.findFirst({
       where: { role: UserRole.ADMIN },
     });
 
-    if (existingAdmin) {
-      return {
-        message: 'Admin already exists',
-        adminId: existingAdmin.id,
-      };
+    if (!admin) {
+      admin = await this.prisma.user.create({
+        data: {
+          email: body.email,
+          REMOVED_AUTH_PROVIDERUid: body.REMOVED_AUTH_PROVIDERUid,
+          role: UserRole.ADMIN,
+          tenantId: null,
+        },
+      });
     }
 
-    const admin = await this.prisma.user.create({
-      data: {
-        email: body.email,
-        REMOVED_AUTH_PROVIDERUid: body.REMOVED_AUTH_PROVIDERUid,
-        role: UserRole.ADMIN,
-        tenantId: null,
-      },
+    // Ensure AdminUser record exists (needed for AdminRolesGuard)
+    await this.prisma.adminUser.upsert({
+      where: { userId: admin.id },
+      update: {},
+      create: { userId: admin.id, role: 'SUPER_ADMIN' as any },
     });
 
     return {
-      message: 'Platform admin created',
-      admin,
+      message: 'Platform admin bootstrapped',
+      adminId: admin.id,
     };
   }
   // ─────────────────────────────────────────────
