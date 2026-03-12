@@ -62,6 +62,7 @@ const navItems: NavItem[] = [
   { label: "Shops", href: "/shops", icon: Store, requiredPermission: "core.settings.manage", category: "Management" },
   { label: "Staff Management", href: "/staff-management", icon: ShieldCheck, requiredPermission: "core.staff.manage", category: "Management" },
   { label: "Settings", href: "/settings", icon: Settings, requiredPermission: "core.settings.manage", category: "Management" },
+  { label: "Compatibility Finder", href: "/tools/compatibility-finder", icon: Sparkles, requiredPermission: "mobile_shop.compatibility.view", category: "Tools" },
 ];
 
 interface SidebarProps {
@@ -82,6 +83,15 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     if (authUser.isSystemOwner) return navItems;
 
     return navItems.filter((item) => {
+      // Role-based exclusion for Compatibility Finder
+      // Only for Mobibix users (plan starts with MOBIBIX), excluding accountants
+      if (item.label === "Compatibility Finder") {
+        const isMobibix = authUser.planCode?.startsWith("MOBIBIX") || authUser.permissions?.includes("mobile_shop.compatibility.view");
+        if (!isMobibix || authUser.role === 'accountant') {
+          return false;
+        }
+      }
+
       if (!item.requiredPermission) return true;
       return (
         authUser.permissions?.includes("*") ||

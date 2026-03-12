@@ -2514,6 +2514,9 @@ enum PartType {
   CHARGING_BOARD
   CAMERA
   IC
+  TOUCH_GLASS
+  FLEX_CABLE
+  FRAME
 }
 
 model Brand {

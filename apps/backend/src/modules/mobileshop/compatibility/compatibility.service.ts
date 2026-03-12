@@ -38,6 +38,11 @@ export class CompatibilityService {
             },
             shopProducts: {
                where: { isActive: true }
+            },
+            phones: {
+              include: {
+                phoneModel: true
+              }
             }
           },
         },
@@ -57,27 +62,30 @@ export class CompatibilityService {
       }
 
       // Add actual parts linked to the group
+      const otherModels = group.phones
+        .filter(p => p.phoneModelId !== phoneModel.id)
+        .map(p => p.phoneModel.modelName);
+
       group.parts.forEach(cp => {
         compatibleParts[typeKey].push({
           id: cp.part.id,
           name: cp.part.partName,
-          source: 'PART_CATALOG'
+          source: 'PART_CATALOG',
+          otherModels
         });
       });
 
-      // Add Shop Products linked to the group (Integration requirement)
+      // Add Shop Products linked to the group
       group.shopProducts.forEach(product => {
         compatibleParts[typeKey].push({
           id: product.id,
           name: product.name,
           price: product.salePrice,
           quantity: product.quantity,
-          source: 'INVENTORY'
+          source: 'INVENTORY',
+          otherModels
         });
       });
-      
-      // Also find other phone models in the same group (for reference)
-      // This helps with the "Compatible with: A50, A50S, M31" feature
     });
 
     return {
@@ -191,5 +199,32 @@ export class CompatibilityService {
       },
       take: 5,
     });
+  }
+
+  async autocompletePhoneModels(query: string) {
+    if (!query || query.length < 2) return [];
+
+    const models = await this.prisma.phoneModel.findMany({
+      where: {
+        OR: [
+          { modelName: { contains: query, mode: 'insensitive' } },
+          { brand: { name: { contains: query, mode: 'insensitive' } } }
+        ]
+      },
+      include: {
+        brand: true
+      },
+      take: 15,
+      orderBy: {
+        modelName: 'asc'
+      }
+    });
+
+    return models.map(m => ({
+      id: m.id,
+      modelName: m.modelName,
+      brandName: m.brand.name,
+      fullName: `${m.brand.name} ${m.modelName}`
+    }));
   }
 }

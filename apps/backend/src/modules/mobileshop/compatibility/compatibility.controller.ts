@@ -41,4 +41,11 @@ export class CompatibilityController {
       suggestions: await this.compatibilityService.suggestCompatibleModels(model)
     };
   }
+
+  @Get('autocomplete')
+  @ApiOperation({ summary: 'Autocomplete phone model names' })
+  @ApiQuery({ name: 'query', description: 'Search query for phone models' })
+  async autocomplete(@Query('query') query: string) {
+    return this.compatibilityService.autocompletePhoneModels(query);
+  }
 }
