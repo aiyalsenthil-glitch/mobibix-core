@@ -306,7 +306,7 @@ export class CompatibilityService {
 
   async smartLinkModels(dto: { modelAId: string; modelBId: string; categories: PartType[] }) {
     const { modelAId, modelBId, categories } = dto;
-    const results = [];
+    const results: { category: PartType; status: string }[] = [];
 
     for (const category of categories) {
       // 1. Get current IDs of groups for both models in this category
