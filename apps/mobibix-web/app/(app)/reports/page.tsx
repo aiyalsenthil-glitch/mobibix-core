@@ -98,18 +98,26 @@ export default function ReportsPage() {
 
     try {
       setLoading(true);
-      
-      // console.log('[Reports] Fetching data for shopId:', selectedShopId);
-      
-      const endDate = new Date();
-      endDate.setHours(23, 59, 59, 999); // End of day to include all transactions
-      
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - dateRange);
-      startDate.setHours(0, 0, 0, 0); // Start of day
 
-      const startStr = startDate.toISOString();
-      const endStr = endDate.toISOString();
+      let startStr: string;
+      let endStr: string;
+
+      if (dateRange === "custom" && customStart && customEnd) {
+        const s = new Date(customStart);
+        s.setHours(0, 0, 0, 0);
+        const e = new Date(customEnd);
+        e.setHours(23, 59, 59, 999);
+        startStr = s.toISOString();
+        endStr = e.toISOString();
+      } else {
+        const endDate = new Date();
+        endDate.setHours(23, 59, 59, 999);
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - (dateRange as number));
+        startDate.setHours(0, 0, 0, 0);
+        startStr = startDate.toISOString();
+        endStr = endDate.toISOString();
+      }
 
       // console.log('[Reports] Date range:', startStr, 'to', endStr);
 
@@ -142,8 +150,9 @@ export default function ReportsPage() {
   };
 
   useEffect(() => {
+    if (dateRange === "custom" && (!customStart || !customEnd)) return;
     fetchData();
-  }, [selectedShopId, dateRange]);
+  }, [selectedShopId, dateRange, customStart, customEnd]);
 
   // Aggregation for Charts
   // 1. Daily Sales Trend
@@ -258,32 +267,89 @@ export default function ReportsPage() {
             </p>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
-              {[7, 30, 90, 365].map((days) => {
-                const isLocked = days > maxHistoryDays;
-                return (
-                  <button
-                    key={days}
-                    disabled={isLocked}
-                    onClick={() => !isLocked && setDateRange(days)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${
-                      dateRange === days
-                        ? theme === "dark"
-                          ? "bg-gray-700 text-white shadow-sm"
-                          : "bg-gray-100 text-gray-900 shadow-sm"
-                        : theme === "dark"
-                        ? "text-gray-400 hover:text-white"
-                        : "text-gray-500 hover:text-gray-900"
-                    } ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
-                    title={isLocked ? `Available in Pro plan` : `Last ${days} days`}
-                  >
-                    {isLocked && <Lock className="w-3 h-3" />}
-                    Last {days} Days
-                  </button>
-                );
-              })}
+            <div className="flex flex-wrap items-center gap-1">
+              <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
+                {[7, 30, 90, 365].map((days) => {
+                  const isLocked = days > maxHistoryDays;
+                  return (
+                    <button
+                      key={days}
+                      disabled={isLocked}
+                      onClick={() => { if (!isLocked) { setDateRange(days); setShowCustomPicker(false); } }}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${
+                        dateRange === days
+                          ? theme === "dark"
+                            ? "bg-gray-700 text-white shadow-sm"
+                            : "bg-gray-100 text-gray-900 shadow-sm"
+                          : theme === "dark"
+                          ? "text-gray-400 hover:text-white"
+                          : "text-gray-500 hover:text-gray-900"
+                      } ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
+                      title={isLocked ? `Upgrade your plan to unlock` : `Last ${days} days`}
+                    >
+                      {isLocked && <Lock className="w-3 h-3" />}
+                      Last {days} Days
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Custom date range */}
+              <div className="relative" ref={customPickerRef}>
+                <button
+                  onClick={() => { setDateRange("custom"); setShowCustomPicker((v) => !v); }}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all flex items-center gap-1 ${
+                    dateRange === "custom"
+                      ? theme === "dark"
+                        ? "bg-teal-700 text-white border-teal-600"
+                        : "bg-teal-50 text-teal-700 border-teal-300"
+                      : theme === "dark"
+                      ? "bg-gray-800 text-gray-400 border-gray-700 hover:text-white"
+                      : "bg-white text-gray-500 border-gray-200 hover:text-gray-900"
+                  }`}
+                >
+                  <Calendar className="w-3 h-3" />
+                  {dateRange === "custom" && customStart && customEnd
+                    ? `${customStart} → ${customEnd}`
+                    : "Custom"}
+                </button>
+                {showCustomPicker && (
+                  <div className={`absolute right-0 top-full mt-2 z-50 p-4 rounded-xl border shadow-xl flex flex-col gap-3 w-64 ${
+                    theme === "dark" ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
+                  }`}>
+                    <div className="flex flex-col gap-1">
+                      <label className={`text-xs font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>From</label>
+                      <input
+                        type="date"
+                        value={customStart}
+                        onChange={(e) => setCustomStart(e.target.value)}
+                        className={`text-xs px-2 py-1.5 rounded-lg border ${
+                          theme === "dark" ? "bg-gray-800 border-gray-600 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
+                        }`}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className={`text-xs font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>To</label>
+                      <input
+                        type="date"
+                        value={customEnd}
+                        onChange={(e) => setCustomEnd(e.target.value)}
+                        className={`text-xs px-2 py-1.5 rounded-lg border ${
+                          theme === "dark" ? "bg-gray-800 border-gray-600 text-white" : "bg-gray-50 border-gray-200 text-gray-900"
+                        }`}
+                      />
+                    </div>
+                    <button
+                      disabled={!customStart || !customEnd}
+                      onClick={() => setShowCustomPicker(false)}
+                      className="w-full py-1.5 text-xs font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-            {maxHistoryDays < 365 && (
+            {maxHistoryDays < 365 && dateRange !== "custom" && (
               <p className="text-[10px] text-muted-foreground">
                 History limited to {maxHistoryDays} days on your current plan.
               </p>
