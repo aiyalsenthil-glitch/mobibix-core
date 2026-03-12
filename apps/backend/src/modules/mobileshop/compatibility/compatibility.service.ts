@@ -13,31 +13,31 @@ export class CompatibilityService {
     const otherTerms = terms.slice(1).join(' ');
 
     // 1. Find the phone model
-    const phoneModel = await this.prisma.phoneModel.findFirst({
+    let phoneModel = await this.prisma.phoneModel.findFirst({
       where: {
-        OR: [
-           // Case 1: Brand + Model matches (e.g. "Samsung A20")
-           terms.length > 1 ? {
-             AND: [
-               { brand: { name: { contains: firstTerm, mode: 'insensitive' } } },
-               { modelName: { contains: otherTerms, mode: 'insensitive' } }
-             ]
-           } : {},
-           // Case 2: Just model name contains the string
-           { modelName: { contains: modelName, mode: 'insensitive' } },
+        AND: [
+          { brand: { name: { contains: firstTerm, mode: 'insensitive' } } },
+          { modelName: { contains: otherTerms, mode: 'insensitive' } }
         ]
       },
-      include: {
-        brand: true,
-      },
-      orderBy: {
-        modelName: 'asc'
-      }
+      include: { brand: true },
     });
 
+    // Fallback to simpler search if no brand/model match
     if (!phoneModel) {
+      phoneModel = await this.prisma.phoneModel.findFirst({
+        where: { modelName: { contains: modelName, mode: 'insensitive' } },
+        include: { brand: true },
+      });
+    }
+
+    if (!phoneModel) {
+      console.log(`[CompatibilityService] No model found for: ${modelName}`);
       throw new NotFoundException(`Phone model "${modelName}" not found`);
     }
+
+    console.log(`[CompatibilityService] Found model: ${phoneModel.brand.name} ${phoneModel.modelName} (ID: ${phoneModel.id})`);
+
 
     // 2. Find all compatibility groups this phone belongs to
     const groupLinks = await this.prisma.compatibilityGroupPhone.findMany({
@@ -55,7 +55,9 @@ export class CompatibilityService {
             },
             phones: {
               include: {
-                phoneModel: true
+                phoneModel: {
+                  include: { brand: true }
+                }
               }
             }
           },
@@ -63,7 +65,7 @@ export class CompatibilityService {
       },
     });
 
-    // 3. Structure the response
+      // 3. Structure the response
     const compatibleParts: Record<string, any[]> = {};
     
     // Group parts by their type
@@ -75,10 +77,27 @@ export class CompatibilityService {
         compatibleParts[typeKey] = [];
       }
 
-      // Add actual parts linked to the group
       const otherModels = group.phones
-        .filter(p => p.phoneModelId !== phoneModel.id)
-        .map(p => p.phoneModel.modelName);
+        .filter(p => p.phoneModelId !== phoneModel.id && p.phoneModel) // Safety check
+        .map(p => `${p.phoneModel.brand?.name || ''} ${p.phoneModel.modelName}`.trim());
+
+      // If no catalog parts and no inventory products exist yet,
+      // create a "Virtual" entry to show the technician that this item is common
+      if (group.parts.length === 0 && group.shopProducts.length === 0) {
+        // Clean up group name (e.g., "TEMPERED_GLASS_123" -> "Universal Tempered Glass")
+        const cleanName = group.name
+          .replace(/_\d+$/, '')
+          .split('_')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+
+        compatibleParts[typeKey].push({
+          id: `virtual-${group.id}`,
+          name: `Universal ${cleanName}`,
+          source: 'DATABASE',
+          otherModels
+        });
+      }
 
       group.parts.forEach(cp => {
         compatibleParts[typeKey].push({
