@@ -1547,6 +1547,10 @@ model ShopProduct {
   stockCorrections StockCorrection[]
   stockEntries     StockLedger[]
 
+  // Compatibility Integration
+  compatibilityGroupId String?
+  compatibilityGroup   CompatibilityGroup? @relation("ProductCompatibilityGroup", fields: [compatibilityGroupId], references: [id])
+
   @@unique([shopId, name])
   @@unique([tenantId, shopId, sku])
   @@index([tenantId])
@@ -2500,6 +2504,86 @@ enum FeatureFlagScope {
   GLOBAL
   TENANT
   SHOP
+}
+
+enum PartType {
+  TEMPERED_GLASS
+  DISPLAY
+  BATTERY
+  BACK_COVER
+  CHARGING_BOARD
+  CAMERA
+  IC
+}
+
+model Brand {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  phoneModels PhoneModel[]
+
+  @@map("mb_compatibility_brand")
+}
+
+model PhoneModel {
+  id          String                    @id @default(cuid())
+  brandId     String
+  modelName   String
+  displaySize String?
+  releaseYear Int?
+  brand       Brand                     @relation(fields: [brandId], references: [id])
+  groups      CompatibilityGroupPhone[]
+
+  @@unique([brandId, modelName])
+  @@index([modelName])
+  @@map("mb_compatibility_phone_model")
+}
+
+model Part {
+  id              String              @id @default(cuid())
+  partName        String
+  partType        PartType
+  compatibilities PartCompatibility[]
+
+  @@index([partType])
+  @@map("mb_compatibility_part")
+}
+
+model CompatibilityGroup {
+  id        String                    @id @default(cuid())
+  name      String                    @unique
+  partType  PartType
+  phones    CompatibilityGroupPhone[]
+  parts     PartCompatibility[]
+  shopProducts ShopProduct[]          @relation("ProductCompatibilityGroup")
+
+  @@index([partType])
+  @@map("mb_compatibility_group")
+}
+
+model CompatibilityGroupPhone {
+  id           String             @id @default(cuid())
+  groupId      String
+  phoneModelId String
+  group        CompatibilityGroup @relation(fields: [groupId], references: [id])
+  phoneModel   PhoneModel         @relation(fields: [phoneModelId], references: [id])
+
+  @@unique([groupId, phoneModelId])
+  @@index([phoneModelId])
+  @@index([groupId])
+  @@map("mb_compatibility_group_phone")
+}
+
+model PartCompatibility {
+  id      String             @id @default(cuid())
+  partId  String
+  groupId String
+  part    Part               @relation(fields: [partId], references: [id])
+  group   CompatibilityGroup @relation(fields: [groupId], references: [id])
+
+  @@unique([partId, groupId])
+  @@index([groupId])
+  @@index([partId])
+  @@map("mb_part_compatibility")
 }
 
 model FeatureFlag {
