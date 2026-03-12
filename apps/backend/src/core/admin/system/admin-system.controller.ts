@@ -12,15 +12,22 @@ import {
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AdminRolesGuard } from '../guards/admin-roles.guard';
 import { AdminRoles } from '../decorators/admin.decorator';
-import { AdminRole, FeatureFlagScope } from '@prisma/client';
+import { AdminRole, FeatureFlagScope, ModuleType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { RequirePermission, ModulePermission } from '../../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
 
 @Controller('admin/system')
-@UseGuards(JwtAuthGuard, AdminRolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, AdminRolesGuard, GranularPermissionGuard)
 @AdminRoles(AdminRole.SUPER_ADMIN, AdminRole.SUPPORT_ADMIN)
 export class AdminSystemController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('webhook-logs')
   async getWebhookLogs(
     @Query('page') page = '1',
@@ -62,6 +69,7 @@ export class AdminSystemController {
 
   // --- Feature Flags ---
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('feature-flags')
   async getFeatureFlags() {
     return this.prisma.featureFlag.findMany({
@@ -69,11 +77,13 @@ export class AdminSystemController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('feature-flags')
   async createFeatureFlag(@Body() data: any) {
     return this.prisma.featureFlag.create({ data });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Patch('feature-flags/:id')
   async updateFeatureFlag(@Param('id') id: string, @Body() data: any) {
     return this.prisma.featureFlag.update({
@@ -84,6 +94,7 @@ export class AdminSystemController {
 
   // --- CORS Management ---
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('cors-origins')
   async getCorsOrigins() {
     return this.prisma.corsAllowedOrigin.findMany({
@@ -91,6 +102,7 @@ export class AdminSystemController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('cors-origins')
   async addCorsOrigin(@Body() data: { origin: string; label?: string }) {
     return this.prisma.corsAllowedOrigin.create({
@@ -102,6 +114,7 @@ export class AdminSystemController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Delete('cors-origins/:id')
   async deleteCorsOrigin(@Param('id') id: string) {
     return this.prisma.corsAllowedOrigin.delete({
@@ -109,6 +122,7 @@ export class AdminSystemController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Patch('cors-origins/:id')
   async toggleCorsOrigin(
     @Param('id') id: string,
@@ -120,6 +134,7 @@ export class AdminSystemController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('health')
   async getSystemHealth() {
     // Placeholder for system health metrics

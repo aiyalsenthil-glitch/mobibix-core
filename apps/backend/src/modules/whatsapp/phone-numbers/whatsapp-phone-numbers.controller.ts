@@ -15,12 +15,19 @@ import {
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { WhatsAppPhoneNumbersService } from './whatsapp-phone-numbers.service';
 import { UserRole, WhatsAppPhoneNumberPurpose } from '@prisma/client';
-import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
+import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { VirtualTenantGuard } from '../guards/virtual-tenant.guard';
+import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
+import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
+import { ModuleType } from '@prisma/client';
 
 @Controller('whatsapp/phone-numbers')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('whatsapp')
+@UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppPhoneNumbersController {
   private readonly logger = new Logger(WhatsAppPhoneNumbersController.name);
@@ -33,6 +40,7 @@ export class WhatsAppPhoneNumbersController {
    * GET /whatsapp/phone-numbers/:moduleType
    * List all phone numbers for a module (module-level defaults)
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.VIEW_NUMBERS)
   @Get(':moduleType')
   @UseGuards(VirtualTenantGuard)
   async listPhoneNumbers(
@@ -55,6 +63,7 @@ export class WhatsAppPhoneNumbersController {
    * ⚠️ ADMIN-ONLY ENFORCEMENT: Only ADMIN and SUPER_ADMIN roles can create
    * shared/platform-level phone numbers. Prevents unauthorized phone number provisioning.
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.MANAGE_NUMBERS)
   @Post(':moduleType')
   @UseGuards(VirtualTenantGuard)
   async createPhoneNumber(
@@ -95,6 +104,7 @@ export class WhatsAppPhoneNumbersController {
    * PATCH /whatsapp/phone-numbers/:id
    * Update phone number settings (OWNER can only set default/active)
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.MANAGE_NUMBERS)
   @Patch(':id')
   async updatePhoneNumber(
     @Param('id') id: string,
@@ -128,6 +138,7 @@ export class WhatsAppPhoneNumbersController {
    * ⚠️ ADMIN-ONLY ENFORCEMENT: Only ADMIN and SUPER_ADMIN roles can delete
    * phone numbers. Prevents unauthorized removal of communication channels.
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.MANAGE_NUMBERS)
   @Delete(':id')
   async deletePhoneNumber(@Param('id') id: string, @Req() req: any) {
     // ✅ ENFORCE ADMIN-ONLY ACCESS

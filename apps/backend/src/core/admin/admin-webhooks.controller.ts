@@ -1,16 +1,23 @@
-import { Controller, Get, UseGuards, NotFoundException } from '@nestjs/common';
+import { Controller, Get, UseGuards, NotFoundException, Param } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { RequirePermission, ModulePermission } from '../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
 
 @Controller('admin/webhooks')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
 @Roles(UserRole.ADMIN)
 export class AdminWebhooksController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get()
   async listWebhookEvents() {
     return this.prisma.webhookEvent.findMany({
@@ -19,8 +26,9 @@ export class AdminWebhooksController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get(':id')
-  async getWebhookEvent(id: string) {
+  async getWebhookEvent(@Param('id') id: string) {
     const event = await this.prisma.webhookEvent.findUnique({
       where: { id },
     });

@@ -18,8 +18,14 @@ import { TenantRequiredGuard } from '../../auth/guards/tenant.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ModuleType, UserRole } from '@prisma/client';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../../security/permission-registry';
 
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('core')
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('payments')
 export class PaymentsController {
@@ -33,6 +39,7 @@ export class PaymentsController {
   // 🔒 CREATE RAZORPAY ORDER (JWT REQUIRED)
   // Rate limited to 5 requests per 60 seconds to prevent abuse
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.BILLING.MANAGE)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('create-order')
   async createOrder(
@@ -205,6 +212,7 @@ export class PaymentsController {
   // ─────────────────────────────────────────────
   // 🔒 PAYMENT HISTORY (JWT + TENANT)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @Get('history')
   async getHistory(@Req() req: any) {
     const payments = await this.prisma.payment.findMany({

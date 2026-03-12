@@ -18,14 +18,19 @@ import { CreateCreditNoteDto } from './dto/create-credit-note.dto';
 import { ApplyCreditNoteDto } from './dto/apply-credit-note.dto';
 import { VoidCreditNoteDto } from './dto/void-credit-note.dto';
 import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
+import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
 
 @Controller('mobileshop/shops/:shopId/credit-notes')
 @ModuleScope(ModuleType.MOBILE_SHOP)
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@ModulePermission('credit_note')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class CreditNotesController {
   constructor(private readonly creditNotesService: CreditNotesService) {}
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CREDIT_NOTE.VIEW)
   @Get()
   async list(
     @Req() req: any,
@@ -36,6 +41,7 @@ export class CreditNotesController {
     return this.creditNotesService.listCreditNotes(tenantId, shopId, query);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CREDIT_NOTE.VIEW)
   @Get(':id')
   async getOne(
     @Req() req: any,
@@ -46,6 +52,7 @@ export class CreditNotesController {
     return this.creditNotesService.getCreditNote(tenantId, shopId, id);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CREDIT_NOTE.CREATE)
   @Post()
   async create(
     @Req() req: any,
@@ -56,6 +63,7 @@ export class CreditNotesController {
     return this.creditNotesService.createCreditNote(tenantId, shopId, dto);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CREDIT_NOTE.ISSUE)
   @Post(':id/issue')
   async issue(
     @Req() req: any,
@@ -66,6 +74,7 @@ export class CreditNotesController {
     return this.creditNotesService.issueCreditNote(tenantId, shopId, id);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CREDIT_NOTE.APPLY)
   @Post(':id/apply')
   async apply(
     @Req() req: any,
@@ -78,6 +87,7 @@ export class CreditNotesController {
     return this.creditNotesService.applyCreditNote(tenantId, shopId, id, dto, userId);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CREDIT_NOTE.REFUND)
   @Post(':id/refund')
   async refund(
     @Req() req: any,
@@ -90,6 +100,7 @@ export class CreditNotesController {
     return this.creditNotesService.refundCreditNote(tenantId, shopId, id, amount, userId);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CREDIT_NOTE.VOID)
   @Post(':id/void')
   async void(
     @Req() req: any,

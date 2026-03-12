@@ -3,13 +3,16 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { UsersService } from './users.service';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Permissions } from '../auth/decorators/permissions.decorator';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { Permission } from '../auth/permissions.enum';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('users')
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('core')
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -17,8 +20,7 @@ export class UsersController {
   // 🔒 SECURITY FIX: Restricted to OWNER only via STAFF_MANAGE permission.
   // STAFF do NOT have STAFF_MANAGE in permissions.map.ts, so they are blocked.
   // Prevents a STAFF member from enumerating OWNER contact details.
-  @UseGuards(PermissionsGuard)
-  @Permissions(Permission.STAFF_MANAGE)
+  @RequirePermission(PERMISSIONS.CORE.STAFF.VIEW)
   @Get()
   async list(@Req() req: any) {
     return this.usersService.findByTenant(req.user.tenantId);

@@ -9,26 +9,29 @@ import {
   Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
-import { Permissions } from '../../../core/auth/decorators/permissions.decorator';
-import { Permission } from '../../../core/auth/permissions.enum';
 import { GymAttendanceService } from './gym-attendance.service';
-import { PermissionsGuard } from '../../../core/auth/guards/permissions.guard';
 import { TenantStatusGuard } from '../../../core/tenant/guards/tenant-status.guard';
 import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { UserRole, ModuleType } from '@prisma/client';
 import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
+import { RolesGuard } from '../../../core/auth/guards/roles.guard';
+import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
 import { Public } from '../../../core/auth/decorators/public.decorator';
 import { KioskAuthGuard } from '../../../core/auth/guards/kiosk-auth.guard';
 
 @UseGuards(
   JwtAuthGuard,
   TenantRequiredGuard,
-  PermissionsGuard,
+  RolesGuard,
+  GranularPermissionGuard,
   TenantStatusGuard,
 )
 @Controller('gym/attendance')
 @ModuleScope(ModuleType.GYM)
+@ModulePermission('attendance')
 export class GymAttendanceController {
   constructor(private readonly attendanceService: GymAttendanceService) {}
 
@@ -37,21 +40,21 @@ export class GymAttendanceController {
   // ========================
 
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  @Permissions(Permission.ATTENDANCE_MARK)
+  @RequirePermission(PERMISSIONS.GYM.ATTENDANCE.MARK)
   @Post('check-in')
   checkIn(@Req() req: any, @Body('memberId') memberId: string) {
     return this.attendanceService.checkIn(req.user.tenantId, memberId);
   }
 
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  @Permissions(Permission.ATTENDANCE_MARK)
+  @RequirePermission(PERMISSIONS.GYM.ATTENDANCE.MARK)
   @Post('check-out')
   checkOut(@Req() req: any, @Body('memberId') memberId: string) {
     return this.attendanceService.checkOut(req.user.tenantId, memberId);
   }
 
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  @Permissions(Permission.ATTENDANCE_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.ATTENDANCE.VIEW)
   @Get('today')
   today(
     @Req() req: any,
@@ -67,7 +70,7 @@ export class GymAttendanceController {
   // STATUS BY PHONE
   // ========================
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  @Permissions(Permission.ATTENDANCE_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.ATTENDANCE.VIEW)
   @Get('status-by-phone/:phone')
   getStatusByPhone(@Req() req: any, @Param('phone') phone: string) {
     return this.attendanceService.getAttendanceStatusByPhone(
@@ -115,7 +118,7 @@ export class GymAttendanceController {
   // CHECKIN CHEKOUT BY STAFF
   // ========================
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  @Permissions(Permission.ATTENDANCE_MARK)
+  @RequirePermission(PERMISSIONS.GYM.ATTENDANCE.MARK)
   @Post('staff/check')
   checkByPhoneStaff(@Req() req: any, @Body('phone') phone: string) {
     return this.attendanceService.checkInOrOutByPhone(req.user.tenantId, phone);
@@ -123,14 +126,14 @@ export class GymAttendanceController {
 
   //Today attendance count
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  @Permissions(Permission.ATTENDANCE_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.ATTENDANCE.VIEW)
   @Get('today-count')
   countToday(@Req() req: any) {
     return this.attendanceService.countTodayAttendance(req.user.tenantId);
   }
   //Currently inside count
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  @Permissions(Permission.ATTENDANCE_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.ATTENDANCE.VIEW)
   @Get('inside-count')
   countInside(@Req() req: any) {
     return this.attendanceService.countCurrentlyCheckedInMembers(
@@ -138,7 +141,7 @@ export class GymAttendanceController {
     );
   }
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  @Permissions(Permission.ATTENDANCE_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.ATTENDANCE.VIEW)
   @Get('member/:memberId/recent')
   getRecentForMember(@Req() req: any, @Param('memberId') memberId: string) {
     return this.attendanceService.getRecentAttendanceForMember(
@@ -149,7 +152,7 @@ export class GymAttendanceController {
   }
 
   @Roles(UserRole.OWNER, UserRole.STAFF)
-  @Permissions(Permission.ATTENDANCE_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.ATTENDANCE.VIEW)
   @Get('inside-members')
   getInsideMembers(
     @Req() req: any,

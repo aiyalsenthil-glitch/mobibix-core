@@ -24,6 +24,9 @@ import type { Response } from 'express';
 import { ProductsService } from './products.service';
 import { ImportProductDto } from './dto/import-product.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 // Local interface for Multer file since global Express.Multer.File
 // might not be available in all environments depending on TS configuration
@@ -36,13 +39,15 @@ interface MulterFile {
   buffer: Buffer;
 }
 
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('inventory')
 @Controller('mobileshop/products')
 export class ProductsController {
   constructor(private readonly service: ProductsService) {}
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.VIEW)
   @Get()
   async list(
     @Req() req,
@@ -63,6 +68,7 @@ export class ProductsController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.VIEW)
   @Get(':id')
   async getOne(
     @Req() req,
@@ -89,6 +95,7 @@ export class ProductsController {
    * - Max file size: 5MB
    * - Allowed types: CSV and Excel files only
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.CREATE)
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))
   async importProducts(
@@ -160,6 +167,7 @@ export class ProductsController {
    * - shopId: Shop ID (required)
    * - includeStock: "true" or "false" (whether to include current stock levels)
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.VIEW)
   @Get('export')
   async exportProducts(
     @Req() req,

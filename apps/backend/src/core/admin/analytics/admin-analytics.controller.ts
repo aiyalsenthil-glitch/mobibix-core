@@ -2,16 +2,23 @@ import { Controller, Get, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { RequirePermission, ModulePermission } from '../../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
 import { startOfMonth, subMonths, format } from 'date-fns';
 
 @Controller('admin/analytics')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
 @Roles(UserRole.ADMIN)
 export class AdminAnalyticsController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('global')
   async getGlobalStats() {
     // 1. Total Tenants
@@ -74,6 +81,7 @@ export class AdminAnalyticsController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('growth')
   async getGrowthStats() {
     // Get new tenants per month for last 6 months

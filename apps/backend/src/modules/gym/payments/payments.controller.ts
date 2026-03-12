@@ -15,14 +15,25 @@ import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { UserRole, ModuleType } from '@prisma/client';
 import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
+import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
 
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, TenantStatusGuard)
+@UseGuards(
+  JwtAuthGuard,
+  RolesGuard,
+  GranularPermissionGuard,
+  TenantRequiredGuard,
+  TenantStatusGuard,
+)
 @ModuleScope(ModuleType.GYM)
+@ModulePermission('payment')
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('gym/payments')
 export class PaymentsController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @RequirePermission(PERMISSIONS.GYM.PAYMENT.COLLECT)
   @Post('receive')
   async receivePayment(
     @Req() req,
@@ -81,6 +92,7 @@ export class PaymentsController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.GYM.PAYMENT.VIEW)
   @Get()
   @Get('history')
   async getPaymentHistory(@Req() req) {

@@ -74,11 +74,17 @@ export class RazorpayService {
     description: string,
     customer: { name: string; email: string; contact: string },
     referenceId: string,
+    module: string = 'MOBILE_SHOP',
   ) {
     try {
       this.logger.log(
         `Creating Payment Link: ₹${amount / 100} for ${referenceId}`,
       );
+
+      const frontendUrl =
+        module === 'GYM'
+          ? (process.env.GYM_FRONTEND_URL || 'https://mobibix.in')
+          : (process.env.MOBIBIX_FRONTEND_URL || 'https://REMOVED_DOMAIN');
 
       const options = {
         amount: amount, // Keeping strict to PAISE
@@ -92,7 +98,7 @@ export class RazorpayService {
         },
         reminder_enable: true,
         reference_id: referenceId,
-        callback_url: `${process.env.BACKEND_URL || 'https://REMOVED_DOMAIN'}/billing/success`, // specific callback
+        callback_url: `${frontendUrl}/settings?payment=success`,
         callback_method: 'get',
       };
 

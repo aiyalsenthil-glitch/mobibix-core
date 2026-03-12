@@ -12,7 +12,11 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { RequirePermission, ModulePermission } from '../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
 import { PlansService } from '../billing/plans/plans.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlatformAuditService } from '../audit/platform-audit.service';
@@ -26,7 +30,9 @@ import { PlanRulesService } from '../billing/plan-rules.service';
  * Manages plan rules, features, and other platform-level settings
  */
 @Controller('platform')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
 @Roles(UserRole.ADMIN) // Use ADMIN until SUPER_ADMIN role is fully migrated
 export class PlatformController {
   constructor(
@@ -40,6 +46,7 @@ export class PlatformController {
    * GET /platform/plans
    * List all plans with their features
    */
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('plans')
   async listPlansWithFeatures() {
     const plans = await this.prisma.plan.findMany({
@@ -67,6 +74,7 @@ export class PlatformController {
    * PATCH /platform/plans/:planId
    * Update plan settings
    */
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Patch('plans/:planId')
   async updatePlan(
     @Param('planId') planId: string,
@@ -111,6 +119,7 @@ export class PlatformController {
    * POST /platform/plans/:planId/features
    * Update/toggle a specific feature for a plan
    */
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('plans/:planId/features')
   async updatePlanFeature(
     @Param('planId') planId: string,
@@ -160,6 +169,7 @@ export class PlatformController {
    * GET /platform/features
    * Get available WhatsApp features
    */
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('features')
   async getAvailableFeatures() {
     return Object.values(WhatsAppFeature).map((feature) => ({

@@ -16,6 +16,10 @@ import {
   UserRole,
 } from '@prisma/client';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
+import { GranularPermissionGuard } from '../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
+import { ModuleScope } from '../../core/auth/decorators/module-scope.decorator';
 
 interface CheckItem {
   name: string;
@@ -24,7 +28,9 @@ interface CheckItem {
 }
 
 @Controller('whatsapp/debug')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
 @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
 export class WhatsAppDebugController {
   constructor(
@@ -33,6 +39,7 @@ export class WhatsAppDebugController {
     private readonly phoneNumbersService: WhatsAppPhoneNumbersService,
   ) {}
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.VIEW_LOGS)
   @Get('status/:tenantId')
   async getStatus(@Param('tenantId') tenantId: string) {
     // 1. Fetch Tenant
@@ -185,6 +192,7 @@ export class WhatsAppDebugController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.VIEW_LOGS)
   @Get('templates/:tenantId')
   async getDebugTemplates(@Param('tenantId') tenantId: string) {
     // 1. Fetch Tenant to find Module Type

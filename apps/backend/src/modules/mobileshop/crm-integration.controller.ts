@@ -9,6 +9,10 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { GranularPermissionGuard } from '../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
+import { Public } from '../../core/auth/decorators/public.decorator';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { CrmIntegrationService } from './services/crm-integration.service';
 import { FollowUpsService } from '../../core/follow-ups/follow-ups.service';
@@ -28,7 +32,8 @@ import { CreateFollowUpDto } from '../../core/follow-ups/dto/create-follow-up.dt
  */
 @Controller('mobileshop/crm')
 @ModuleScope(ModuleType.MOBILE_SHOP)
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@ModulePermission('crm')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class MobileShopCrmController extends TenantScopedController {
   constructor(
@@ -53,6 +58,7 @@ export class MobileShopCrmController extends TenantScopedController {
   /**
    * GET /mobileshop/crm/follow-ups
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.MANAGE_FOLLOWUP)
   @Get('follow-ups')
   async getMyFollowUps(
     @Request() req,
@@ -77,6 +83,7 @@ export class MobileShopCrmController extends TenantScopedController {
   /**
    * GET /mobileshop/crm/follow-ups/counts
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.MANAGE_FOLLOWUP)
   @Get('follow-ups/counts')
   async getFollowUpCounts(@Request() req) {
     const tenantId = req.user.tenantId;
@@ -88,6 +95,7 @@ export class MobileShopCrmController extends TenantScopedController {
   /**
    * POST /mobileshop/crm/follow-ups
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.MANAGE_FOLLOWUP)
   @Post('follow-ups')
   async createFollowUp(@Request() req, @Body() dto: CreateFollowUpDto) {
     const tenantId = req.user.tenantId;
@@ -100,6 +108,7 @@ export class MobileShopCrmController extends TenantScopedController {
   /**
    * PATCH /mobileshop/crm/follow-ups/:followUpId/status
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.MANAGE_FOLLOWUP)
   @Patch('follow-ups/:followUpId/status')
   async updateFollowUpStatus(
     @Request() req,
@@ -126,6 +135,7 @@ export class MobileShopCrmController extends TenantScopedController {
   /**
    * GET /mobileshop/crm/dashboard
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW)
   @Get('dashboard')
   async getDashboard(
     @Request() req,
@@ -145,6 +155,7 @@ export class MobileShopCrmController extends TenantScopedController {
   /**
    * GET /mobileshop/crm/customer-timeline/:customerId
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW_TIMELINE)
   @Get('customer-timeline/:customerId')
   async getCustomerTimeline(
     @Request() req,
@@ -164,6 +175,7 @@ export class MobileShopCrmController extends TenantScopedController {
   /**
    * POST /mobileshop/crm/whatsapp/send
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.SEND_WHATSAPP)
   @Post('whatsapp/send')
   async sendWhatsApp(
     @Request() req,
@@ -185,6 +197,7 @@ export class MobileShopCrmController extends TenantScopedController {
   /**
    * GET /mobileshop/crm/health
    */
+  @Public()
   @Get('health')
   async health(@Request() req) {
     const headers = this.crmIntegration.buildAuthHeaders(

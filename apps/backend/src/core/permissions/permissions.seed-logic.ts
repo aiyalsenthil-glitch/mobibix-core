@@ -47,12 +47,52 @@ export async function runPermissionSeed(prisma: PrismaClient) {
              { id: 'create', ui: 'Log Expenses' },
              { id: 'view', ui: 'View Expenses' },
            ]
+        },
+        {
+          name: 'system',
+          actions: [
+            { id: 'manage', ui: 'System Manage' },
+            { id: 'view', ui: 'System View' },
+          ]
+        },
+        {
+          name: 'ai',
+          actions: [
+            { id: 'use', ui: 'Use AI Features' },
+          ]
+        },
+        {
+          name: 'audit',
+          actions: [
+            { id: 'view', ui: 'View Audit Logs' },
+          ]
         }
       ],
     },
     {
       module: 'MOBILE_SHOP',
       resources: [
+        {
+          name: 'sales', // Base permission resource
+          actions: [
+            { id: 'manage', ui: 'Manage Sales (Base)' },
+            { id: 'view', ui: 'View Sales (Base)' },
+          ],
+        },
+        {
+          name: 'inventory_base', // Prevent name clash if inventory already exists
+          actions: [
+            { id: 'manage', ui: 'Manage Inventory (Base)' },
+            { id: 'view', ui: 'View Inventory (Base)' },
+          ],
+        },
+        {
+          name: 'jobcard_base',
+          actions: [
+            { id: 'manage', ui: 'Manage Job Cards (Base)' },
+            { id: 'view', ui: 'View Job Cards (Base)' },
+          ],
+        },
         {
           name: 'sale',
           actions: [
@@ -122,6 +162,13 @@ export async function runPermissionSeed(prisma: PrismaClient) {
     {
       module: 'GYM',
       resources: [
+        {
+          name: 'membership_base',
+          actions: [
+            { id: 'manage', ui: 'Manage Membership (Base)' },
+            { id: 'view', ui: 'View Membership (Base)' },
+          ],
+        },
         {
           name: 'member',
           actions: [
@@ -211,8 +258,9 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'SHOP_OWNER',
       jobDescription: 'Full system access. Manage business settings, view reports, and approve sensitive operations.',
       defaultPermissions: [
-        'sale.*', 'inventory.*', 'jobcard.*', 'purchase.*', 'supplier.*', 'customer.*',
-        'report.*', 'staff.*', 'approval.override', 'settings.manage'
+        'sales.manage', 'inventory_base.manage', 'jobcard_base.manage', 'purchase.create', 'purchase.view',
+        'supplier.create', 'supplier.view', 'customer.create', 'customer.view',
+        'report.view', 'staff.manage', 'approval.override', 'settings.manage'
       ]
     },
     {
@@ -221,13 +269,12 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       jobDescription: 'Manage daily shop operations, supervise sales and inventory. Cannot change system plans.',
       defaultPermissions: [
         'dashboard.view',
-        'sale.view', 'sale.view_all', 'sale.create', 'sale.edit', 'sale.refund',
-        'inventory.view', 'inventory.adjust',
-        'jobcard.view', 'jobcard.view_all', 'jobcard.assign', 'jobcard.update_status',
-        'quotation.view', 'quotation.create',
+        'sales.manage',
+        'inventory_base.manage',
+        'jobcard_base.manage',
         'report.view', 'customer.view', 'customer.create', 'supplier.view', 'supplier.create',
         'expense.view', 'expense.create',
-        'purchase.view', 'purchase.create', 'purchase.edit'
+        'purchase.view', 'purchase.create'
       ]
     },
     {
@@ -235,7 +282,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'SALES_EXECUTIVE',
       jobDescription: 'Handle billing and customer sales, create invoices.',
       defaultPermissions: [
-        'dashboard.view', 'sale.view', 'sale.create', 'customer.view', 'customer.create', 'inventory.view', 'quotation.view', 'quotation.create'
+        'dashboard.view', 'sales.manage', 'customer.view', 'customer.create', 'inventory_base.view'
       ]
     },
     {
@@ -243,7 +290,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'TECHNICIAN',
       jobDescription: 'Handle repair workflow and update repair status.',
       defaultPermissions: [
-        'dashboard.view', 'jobcard.view', 'jobcard.create', 'jobcard.update_status', 'jobcard.view_assigned', 'inventory.view'
+        'dashboard.view', 'jobcard_base.manage', 'inventory_base.view'
       ]
     },
     {
@@ -251,7 +298,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'SHOP_ACCOUNTANT',
       jobDescription: 'Manage shop finances, track payments/expenses, and export tax reports.',
       defaultPermissions: [
-        'dashboard.view', 'report.view', 'report.export', 'sale.view', 'sale.view_financial', 'expense.create', 'expense.view', 'ledger.view',
+        'dashboard.view', 'report.view', 'report.export', 'sales.view', 'expense.create', 'expense.view', 'ledger.view',
         'purchase.view'
       ]
     },
@@ -262,8 +309,8 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'GYM_OWNER',
       jobDescription: 'Full control of gym operations, revenue analytics, membership plans, and staff.',
       defaultPermissions: [
-        'member.*', 'attendance.*', 'membership.*', 'payment.*',
-        'report.*', 'staff.*', 'approval.override', 'settings.manage'
+        'membership_base.manage', 'attendance.mark', 'attendance.view', 'payment.collect', 'payment.view',
+        'report.view', 'staff.manage', 'approval.override', 'settings.manage'
       ]
     },
     {
@@ -271,9 +318,8 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'GYM_MANAGER',
       jobDescription: 'Manage gym members, trainers, attendance and renewals.',
       defaultPermissions: [
-        'dashboard.view', 'member.create', 'member.edit', 'member.view',
+        'dashboard.view', 'membership_base.manage',
         'attendance.view', 'attendance.mark',
-        'membership.create', 'membership.renew',
         'report.view'
       ]
     },
@@ -282,7 +328,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'RECEPTIONIST',
       jobDescription: 'Register new members, collect payments and renew memberships.',
       defaultPermissions: [
-        'dashboard.view', 'member.create', 'member.view', 'membership.create', 'membership.renew', 'payment.collect', 'attendance.view'
+        'dashboard.view', 'membership_base.manage', 'payment.collect', 'attendance.view'
       ]
     },
     {
@@ -290,7 +336,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
       roleName: 'TRAINER',
       jobDescription: 'Manage assigned members, track workouts and attendance.',
       defaultPermissions: [
-        'dashboard.view', 'member.view', 'member.view_assigned', 'attendance.mark', 'workout.update'
+        'dashboard.view', 'membership_base.view', 'attendance.mark', 'workout.update'
       ]
     },
     {

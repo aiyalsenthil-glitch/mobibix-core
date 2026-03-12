@@ -4,9 +4,15 @@ import { AdminRolesGuard } from '../../guards/admin-roles.guard';
 import { AdminRoles, AdminProduct } from '../../decorators/admin.decorator';
 import { AdminRole, ModuleType } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { ModuleScope } from '../../../auth/decorators/module-scope.decorator';
+import { RequirePermission, ModulePermission } from '../../../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../../security/permission-registry';
+import { GranularPermissionGuard } from '../../../permissions/guards/granular-permission.guard';
 
 @Controller('admin/mobibix')
-@UseGuards(JwtAuthGuard, AdminRolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, AdminRolesGuard, GranularPermissionGuard)
 @AdminRoles(
   AdminRole.SUPER_ADMIN,
   AdminRole.PRODUCT_ADMIN,
@@ -16,6 +22,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 export class GympilotAdminController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('stats')
   async getStats() {
     const [tenants, subscriptions] = await Promise.all([
@@ -58,6 +65,7 @@ export class GympilotAdminController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('tenants')
   async getTenants() {
     return this.prisma.tenant.findMany({

@@ -2,15 +2,22 @@ import { Controller, Get, Query, UseGuards, Req, Body, Patch } from '@nestjs/com
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AdminRolesGuard } from '../guards/admin-roles.guard';
 import { AdminRoles } from '../decorators/admin.decorator';
-import { AdminRole } from '@prisma/client';
+import { AdminRole, ModuleType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { RequirePermission, ModulePermission } from '../../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
 
 @Controller('admin/ai')
-@UseGuards(JwtAuthGuard, AdminRolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, AdminRolesGuard, GranularPermissionGuard)
 @AdminRoles(AdminRole.SUPER_ADMIN, AdminRole.PRODUCT_ADMIN)
 export class AdminAiController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('stats')
   async getAiStats() {
     const logs = await this.prisma.aiUsageLog.findMany({
@@ -51,6 +58,7 @@ export class AdminAiController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('config')
   async getConfig() {
     let config = await this.prisma.systemAiConfig.findFirst();
@@ -62,6 +70,7 @@ export class AdminAiController {
     return config;
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Patch('config')
   async updateConfig(@Body() body: any) {
     let config = await this.prisma.systemAiConfig.findFirst();
@@ -86,6 +95,7 @@ export class AdminAiController {
     return updated;
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('logs')
   async getAiLogs(
     @Query('page') page = '1',

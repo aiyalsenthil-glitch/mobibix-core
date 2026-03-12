@@ -16,14 +16,21 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('grns')
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('inventory')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class GRNController {
   constructor(private readonly grnService: GRNService) {}
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.PURCHASE.CREATE)
   @Post()
   @HttpCode(201)
   async create(
@@ -33,11 +40,13 @@ export class GRNController {
     return this.grnService.create(req.user.tenantId, dto);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.PURCHASE.VIEW)
   @Get()
   async findAll(@Req() req: any, @Query('shopId') shopId?: string) {
     return this.grnService.findAll(req.user.tenantId, shopId);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.PURCHASE.VIEW)
   @Get(':id')
   async findOne(
     @Req() req: any,
@@ -46,6 +55,7 @@ export class GRNController {
     return this.grnService.findOne(req.user.tenantId, id);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.PURCHASE.CREATE)
   @Post(':id/confirm')
   @HttpCode(200)
   async confirm(

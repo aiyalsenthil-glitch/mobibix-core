@@ -16,6 +16,10 @@ import { LedgerService } from './ledger.service';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { UserRole, ModuleType } from '@prisma/client';
 import { ModuleScope } from '../../core/auth/decorators/module-scope.decorator';
+import { GranularPermissionGuard } from '../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
+import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import {
   CreateLedgerCustomerDto,
   CreateLedgerAccountDto,
@@ -24,11 +28,19 @@ import {
 
 @Controller('ledger')
 @ModuleScope(ModuleType.MOBILE_SHOP)
-@UseGuards(JwtAuthGuard, TenantStatusGuard, TenantRequiredGuard)
+@ModulePermission('ledger')
+@UseGuards(
+  JwtAuthGuard,
+  TenantRequiredGuard,
+  RolesGuard,
+  GranularPermissionGuard,
+  TenantStatusGuard,
+)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class LedgerController {
   constructor(private readonly ledgerService: LedgerService) {}
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.CREATE)
   @Post('customers')
   createCustomer(
     @Req() req: any,
@@ -37,6 +49,7 @@ export class LedgerController {
     return this.ledgerService.createCustomer(req.user.tenantId, body);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
   @Post('accounts')
   createAccount(
     @Req() req: any,
@@ -44,14 +57,17 @@ export class LedgerController {
   ) {
     return this.ledgerService.createAccount(req.user.tenantId, body);
   }
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.VIEW)
   @Get('customers/search')
   searchCustomers(@Req() req: any, @Query('q') q: string) {
     return this.ledgerService.searchCustomers(req.user.tenantId, q);
   }
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.COLLECT)
   @Get('accounts/:ledgerId/collect')
   getCollectScreen(@Req() req: any, @Param('ledgerId') ledgerId: string) {
     return this.ledgerService.getCollectScreen(req.user.tenantId, ledgerId);
   }
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.COLLECT)
   @Post('collections/collect')
   collectAmount(
     @Req() req: any,
@@ -62,6 +78,7 @@ export class LedgerController {
       collectedBy: req.user.id,
     });
   }
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.VIEW)
   @Get('customers/:customerId/profile')
   getCustomerProfile(@Req() req: any, @Param('customerId') customerId: string) {
     return this.ledgerService.getCustomerProfile(req.user.tenantId, customerId);

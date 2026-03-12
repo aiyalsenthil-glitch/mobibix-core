@@ -8,6 +8,10 @@ import { ModuleType, BillingCycle, UserRole } from '@prisma/client';
 import { SkipSubscriptionCheck } from '../auth/decorators/skip-subscription-check.decorator';
 import { subMonths, subYears, startOfMonth } from 'date-fns';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 interface UsageSummary {
   members: { used: number; limit: number | null };
@@ -38,7 +42,9 @@ interface UsageSummary {
 }
 
 @Controller('tenant')
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class TenantUsageController {
   constructor(
@@ -47,6 +53,7 @@ export class TenantUsageController {
     private readonly planRulesService: PlanRulesService,
   ) {}
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('usage-summary')
   @SkipSubscriptionCheck() // Allow even if expired (for upgrade flow)
   async getUsageSummary(@Req() req: any): Promise<UsageSummary> {
@@ -191,6 +198,7 @@ export class TenantUsageController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('usage-history')
   @SkipSubscriptionCheck()
   async getUsageHistory(@Req() req: any, @Query('days') days?: string) {
@@ -234,6 +242,7 @@ export class TenantUsageController {
    * Returns the AI token quota for the current tenant's active subscription.
    * Used by frontend AI quota badge. Safe to call even in grace period.
    */
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('ai-quota')
   @SkipSubscriptionCheck()
   async getAiQuota(@Req() req: any): Promise<{

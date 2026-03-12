@@ -15,13 +15,19 @@ import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AdminRolesGuard } from '../guards/admin-roles.guard';
 import { AdminRoles } from '../decorators/admin.decorator';
-import { AdminRole, UserRole } from '@prisma/client';
+import { AdminRole, UserRole, ModuleType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TenantService } from '../../tenant/tenant.service';
 import { UpdateTenantSettingsDto } from '../../tenant/dto/tenant.dto';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { RequirePermission, ModulePermission } from '../../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
 
 @Controller('admin/tenants')
-@UseGuards(JwtAuthGuard, AdminRolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, AdminRolesGuard, GranularPermissionGuard)
 @AdminRoles(AdminRole.SUPER_ADMIN, AdminRole.SUPPORT_ADMIN)
 export class AdminTenantController {
   constructor(
@@ -30,6 +36,7 @@ export class AdminTenantController {
     private readonly configService: ConfigService,
   ) {}
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get()
   async listTenants(
     @Query('search') search?: string,
@@ -104,6 +111,7 @@ export class AdminTenantController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post(':id/impersonate')
   async impersonateTenant(@Param('id') tenantId: string, @Req() req: any) {
     const adminUserId = req.user.sub;
@@ -165,6 +173,7 @@ export class AdminTenantController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post(':id/suspend')
   async suspendTenant(
     @Param('id') tenantId: string,
@@ -191,6 +200,7 @@ export class AdminTenantController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get(':id/settings')
   async getTenantSettings(@Param('id') tenantId: string) {
     const tenant = await this.prisma.tenant.findUnique({
@@ -226,6 +236,7 @@ export class AdminTenantController {
     return tenant;
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Patch(':id/settings')
   async updateTenantSettings(
     @Param('id') tenantId: string,

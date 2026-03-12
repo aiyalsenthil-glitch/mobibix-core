@@ -13,16 +13,24 @@ import { WhatsAppOnboardingService } from './whatsapp-onboarding.service';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { WhatsAppCrmSubscriptionGuard } from '../guards/whatsapp-crm-subscription.guard';
+import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
+import { Public } from '../../../core/auth/decorators/public.decorator';
+import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
 import type { Response } from 'express';
 
 @Controller('integrations/whatsapp')
+@ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('whatsapp')
 export class WhatsAppOnboardingController {
   constructor(private readonly onboardingService: WhatsAppOnboardingService) {}
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.ONBOARD_SYNC)
   @Post('manual-sync')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER)
   async manualSync(
     @Req() req,
@@ -45,16 +53,18 @@ export class WhatsAppOnboardingController {
     return { success: true, message: 'WhatsApp configuration synced manually' };
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.VIEW_DASHBOARD)
   @Get('status')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER)
   async getStatus(@Req() req) {
     const tenantId = req.user.tenantId;
     return this.onboardingService.getStatus(tenantId);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.ONBOARD_CONNECT)
   @Get('connect')
-  @UseGuards(JwtAuthGuard, RolesGuard, WhatsAppCrmSubscriptionGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard, WhatsAppCrmSubscriptionGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER)
   async connect(
     @Req() req,
@@ -69,6 +79,7 @@ export class WhatsAppOnboardingController {
     return res.json({ url });
   }
 
+  @Public()
   @Get('callback')
   async callback(
     @Query('code') code: string,
@@ -109,8 +120,9 @@ export class WhatsAppOnboardingController {
     }
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.DISCONNECT)
   @Post('disconnect')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER)
   async disconnect(@Req() req) {
     const tenantId = req.user.tenantId;

@@ -20,9 +20,15 @@ import {
   ApplyPromoDto,
   GeneratePromoDto,
 } from './dto/create-partner.dto';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../../core/auth/decorators/module-scope.decorator';
+import { GranularPermissionGuard } from '../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('partners')
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('partner')
 export class PartnersController {
   constructor(private readonly partnersService: PartnersService) {}
 
@@ -51,15 +57,17 @@ export class PartnersController {
   // MODULE 4: Admin Panel — Approval & Promo Management
   // Protected by normal tenant Admin JWT
   // ─────────────────────────────────────────────
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN)
+  @RequirePermission(PERMISSIONS.CORE.PARTNER.VIEW)
   @Get()
   async listPartners() {
     return this.partnersService.listPartners();
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN)
+  @RequirePermission(PERMISSIONS.CORE.PARTNER.MANAGE)
   @Patch(':id/approve')
   async approve(
     @Param('id') id: string,
@@ -76,15 +84,17 @@ export class PartnersController {
     return { partner };
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN)
+  @RequirePermission(PERMISSIONS.CORE.PARTNER.MANAGE)
   @Patch(':id/suspend')
   async suspend(@Param('id') id: string, @Request() req: any) {
     return this.partnersService.suspendPartner(id, req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN)
+  @RequirePermission(PERMISSIONS.CORE.PARTNER.MANAGE)
   @Post('promo/generate')
   async generatePromo(@Body() dto: GeneratePromoDto, @Request() req: any) {
     return this.partnersService.createPromoCode({
@@ -93,8 +103,9 @@ export class PartnersController {
     });
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN)
+  @RequirePermission(PERMISSIONS.CORE.PARTNER.VIEW)
   @Get('promo')
   async listPromos() {
     return this.partnersService.listPromoCodes();
@@ -103,7 +114,8 @@ export class PartnersController {
   // ─────────────────────────────────────────────
   // MODULE 1: Apply Promo to Tenant (🔒 AUTHENTICATED — tenantId from JWT)
   // ─────────────────────────────────────────────
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, GranularPermissionGuard)
+  @RequirePermission(PERMISSIONS.CORE.PARTNER.APPLY)
   @SkipSubscriptionCheck()
   @Post('promo/apply')
   async applyPromo(@Body() dto: ApplyPromoDto, @Request() req: any) {
@@ -114,8 +126,9 @@ export class PartnersController {
   // ─────────────────────────────────────────────
   // MODULE 8: Admin Payout — mark all CONFIRMED referrals as PAID
   // ─────────────────────────────────────────────
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN)
+  @RequirePermission(PERMISSIONS.CORE.PARTNER.MANAGE)
   @Patch(':id/payout')
   async markPayout(@Param('id') id: string) {
     return this.partnersService.markPartnerPayout(id);

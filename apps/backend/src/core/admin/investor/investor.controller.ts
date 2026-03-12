@@ -2,12 +2,18 @@ import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AdminRolesGuard } from '../guards/admin-roles.guard';
 import { AdminRoles } from '../decorators/admin.decorator';
-import { AdminRole } from '@prisma/client';
+import { AdminRole, ModuleType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { RequirePermission, ModulePermission } from '../../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
 import { AdminCacheService } from '../cache/admin-cache.service';
 
 @Controller('admin/investor')
-@UseGuards(JwtAuthGuard, AdminRolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, AdminRolesGuard, GranularPermissionGuard)
 @AdminRoles(AdminRole.SUPER_ADMIN)
 export class InvestorController {
   constructor(
@@ -15,6 +21,7 @@ export class InvestorController {
     private readonly cache: AdminCacheService,
   ) {}
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('summary')
   async getSummary() {
     return this.cache.getOrSet(
@@ -74,6 +81,7 @@ export class InvestorController {
     );
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('growth')
   async getGrowth() {
     return this.cache.getOrSet(
@@ -106,6 +114,7 @@ export class InvestorController {
     );
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('retention')
   getRetention() {
     return {
@@ -124,6 +133,7 @@ export class InvestorController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('ai-economics')
   async getAiEconomics() {
     const stats = await this.prisma.aiUsageLog.aggregate({
@@ -140,6 +150,7 @@ export class InvestorController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('unit-economics')
   getUnitEconomics() {
     return {
@@ -150,6 +161,7 @@ export class InvestorController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('projection')
   getProjectionSeed() {
     return {
@@ -162,6 +174,7 @@ export class InvestorController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('projection/simulate')
   simulate(@Body() inputs: any) {
     const months: any[] = [];

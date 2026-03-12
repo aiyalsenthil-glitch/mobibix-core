@@ -23,10 +23,14 @@ import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
 import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
+import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
 
 @Controller('receipts')
 @ModuleScope(ModuleType.MOBILE_SHOP)
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@ModulePermission('receipt')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.STAFF)
 export class ReceiptsController extends TenantScopedController {
   constructor(private readonly receiptsService: ReceiptsService) {
@@ -38,6 +42,7 @@ export class ReceiptsController extends TenantScopedController {
    * POST /receipts
    * Body: CreateReceiptDto
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.RECEIPT.CREATE)
   @Post()
   async create(
     @Body() createReceiptDto: CreateReceiptDto,
@@ -55,6 +60,7 @@ export class ReceiptsController extends TenantScopedController {
    * Get all receipts for authenticated shop
    * GET /receipts?startDate=...&endDate=...&paymentMethod=...&skip=...&take=...
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.RECEIPT.VIEW)
   @Get()
   async findAll(
     @CurrentUser() user: any,
@@ -84,6 +90,7 @@ export class ReceiptsController extends TenantScopedController {
    * Get single receipt by ID
    * GET /receipts/:id
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.RECEIPT.VIEW)
   @Get(':id')
   async findOne(
     @Param('id') id: string,
@@ -97,6 +104,7 @@ export class ReceiptsController extends TenantScopedController {
    * POST /receipts/:id/cancel
    * Body: { reason: string }
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.RECEIPT.CANCEL)
   @Post(':id/cancel')
   async cancel(
     @Param('id') id: string,
@@ -115,6 +123,7 @@ export class ReceiptsController extends TenantScopedController {
    * Get receipt summary by date range
    * GET /receipts/summary?startDate=...&endDate=...
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.RECEIPT.VIEW)
   @Get('summary')
   async getSummary(
     @CurrentUser() user: any,

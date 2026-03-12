@@ -10,9 +10,16 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { PrismaService } from '../prisma/prisma.service';
+import { ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('notifications')
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('core')
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
 export class NotificationsController {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -21,6 +28,7 @@ export class NotificationsController {
    * Returns the latest 30 IN_APP notifications for the current user.
    * Includes isRead flag based on readAt field.
    */
+  @RequirePermission(PERMISSIONS.CORE.NOTIFICATIONS.VIEW)
   @Get()
   async getNotifications(@Req() req: any) {
     const userId = req.user.id;
@@ -59,6 +67,7 @@ export class NotificationsController {
    * GET /notifications/unread-count
    * Returns how many unread notifications the user has (for bell badge).
    */
+  @RequirePermission(PERMISSIONS.CORE.NOTIFICATIONS.VIEW)
   @Get('unread-count')
   async getUnreadCount(@Req() req: any) {
     const userId = req.user.id;
@@ -80,6 +89,7 @@ export class NotificationsController {
    * PATCH /notifications/:id/read
    * Marks a single notification as read.
    */
+  @RequirePermission(PERMISSIONS.CORE.NOTIFICATIONS.VIEW)
   @Patch(':id/read')
   async markAsRead(@Req() req: any, @Param('id') id: string) {
     const tenantId = req.user.tenantId;
@@ -104,6 +114,7 @@ export class NotificationsController {
    * PATCH /notifications/read-all
    * Marks all unread notifications as read (bell dismiss all).
    */
+  @RequirePermission(PERMISSIONS.CORE.NOTIFICATIONS.VIEW)
   @Patch('read-all')
   async markAllAsRead(@Req() req: any) {
     const userId = req.user.id;

@@ -18,21 +18,29 @@ import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { MergeCustomersDto } from './dto/merge-customers.dto';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('core')
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('core/customers')
 export class CustomersController {
   constructor(private readonly service: CustomersService) {}
 
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.CREATE)
   @Post()
   async create(@Req() req, @Body() dto: CreateCustomerDto) {
     const tenantId = req.user.tenantId;
 
     return this.service.createCustomer(tenantId, dto);
   }
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.UPDATE)
   @Put(':customerId')
   async update(
     @Req() req,
@@ -43,6 +51,7 @@ export class CustomersController {
 
     return this.service.updateCustomer(tenantId, customerId, dto);
   }
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.DELETE)
   @Delete(':customerId')
   async delete(@Req() req, @Param('customerId') customerId: string) {
     const tenantId = req.user.tenantId;
@@ -50,13 +59,15 @@ export class CustomersController {
     return this.service.deleteCustomer(tenantId, customerId);
   }
 
-  @Post('merge')
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.UPDATE)
   @Roles(UserRole.OWNER)
+  @Post('merge')
   async merge(@Req() req, @Body() dto: MergeCustomersDto) {
     const tenantId = req.user.tenantId;
     return this.service.mergeCustomers(tenantId, dto.sourceId, dto.targetId);
   }
 
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.VIEW)
   @Get('by-phone')
   async getByPhone(@Req() req, @Query('phone') phone: string) {
     const tenantId = req.user.tenantId;
@@ -67,6 +78,7 @@ export class CustomersController {
     return this.service.findByPhone(tenantId, phone);
   }
 
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.VIEW)
   @Get('search')
   async search(
     @Req() req,
@@ -82,6 +94,7 @@ export class CustomersController {
     return this.service.searchCustomers(tenantId, query, limitNum);
   }
 
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.VIEW)
   @Get()
   async getAll(
     @Req() req,
@@ -102,12 +115,14 @@ export class CustomersController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.VIEW)
   @Get(':customerId/stats')
   async getStats(@Req() req, @Param('customerId') customerId: string) {
     const tenantId = req.user.tenantId;
     return this.service.getCustomerStats(tenantId, customerId);
   }
 
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.UPDATE)
   @Patch(':customerId/lifecycle')
   async updateLifecycle(
     @Req() req,
@@ -122,6 +137,7 @@ export class CustomersController {
     );
   }
 
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.UPDATE)
   @Patch(':customerId/tags')
   async updateTags(
     @Req() req,
@@ -132,6 +148,7 @@ export class CustomersController {
     return this.service.updateCustomerTags(tenantId, customerId, tags);
   }
 
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.VIEW)
   @Get(':customerId')
   async getOne(@Req() req, @Param('customerId') customerId: string) {
     const tenantId = req.user.tenantId;

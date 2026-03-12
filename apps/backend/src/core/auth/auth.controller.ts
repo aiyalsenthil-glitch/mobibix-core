@@ -13,6 +13,12 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { ModuleScope } from './decorators/module-scope.decorator';
+import { ModuleType } from '@prisma/client';
+import { PERMISSIONS } from '../../security/permission-registry';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { RolesGuard } from './guards/roles.guard';
 import { SkipSubscriptionCheck } from './decorators/skip-subscription-check.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { GoogleExchangeDto } from './dto/google-exchange.dto';
@@ -27,6 +33,8 @@ import { randomBytes } from 'crypto';
 
 @Controller('auth')
 @SkipSubscriptionCheck() // Auth endpoints should not check subscription
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -246,7 +254,7 @@ export class AuthController {
     return { success: true };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Public()
   @Post('logout-all')
   async logoutAll(@Req() req: any, @Res({ passthrough: true }) res: Response) {
     const userId = req.user.userId || req.user.sub;
@@ -269,7 +277,7 @@ export class AuthController {
     return { success: true };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Public()
   @Post('send-verification-email')
   async sendVerificationEmail(@Req() req: any) {
     const userId = req.user.userId;
@@ -278,8 +286,7 @@ export class AuthController {
     return { success: true, message: 'Verification email sent' };
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
+  @Public()
   @Get('my-tenants')
   async getMyTenants(@Req() req: any) {
     const userId = req.user.userId;

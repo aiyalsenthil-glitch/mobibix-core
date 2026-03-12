@@ -11,7 +11,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
-import { RequirePermission } from '../../../core/permissions/decorators/require-permission.decorator';
+import { RequirePermission, ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
 import { PaymentMode, UserRole, ModuleType, JobStatus } from '@prisma/client';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
 
@@ -28,6 +29,7 @@ import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorato
 
 @Controller('mobileshop/shops/:shopId/job-cards')
 @ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('jobcard')
 @UseGuards(JwtAuthGuard, TenantRequiredGuard, RolesGuard, GranularPermissionGuard, TenantStatusGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class JobCardsController extends TenantScopedController {
@@ -36,7 +38,7 @@ export class JobCardsController extends TenantScopedController {
   }
 
   @Post()
-  @RequirePermission(ModuleType.MOBILE_SHOP, 'jobcard', 'create')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.CREATE)
   create(
     @Param('shopId') shopId: string,
     @Req() req: any,
@@ -46,7 +48,7 @@ export class JobCardsController extends TenantScopedController {
   }
 
   @Get()
-  @RequirePermission(ModuleType.MOBILE_SHOP, 'jobcard', 'view')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.VIEW)
   list(
     @Param('shopId') shopId: string,
     @Req() req: any,
@@ -63,6 +65,7 @@ export class JobCardsController extends TenantScopedController {
     });
   }
   @Get(':id')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.VIEW)
   getOne(
     @Param('shopId') shopId: string,
     @Param('id') id: string,
@@ -71,6 +74,7 @@ export class JobCardsController extends TenantScopedController {
     return this.service.getOne(req.user, shopId, id);
   }
   @Patch(':id')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.UPDATE)
   update(
     @Param('shopId') shopId: string,
     @Param('id') id: string,
@@ -81,6 +85,7 @@ export class JobCardsController extends TenantScopedController {
   }
 
   @Patch(':id/status')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.UPDATE_STATUS)
   updateStatus(
     @Param('shopId') shopId: string,
     @Param('id') id: string,
@@ -97,6 +102,7 @@ export class JobCardsController extends TenantScopedController {
   }
 
   @Delete(':id')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.DELETE)
   delete(
     @Param('shopId') shopId: string,
     @Param('id') id: string,
@@ -108,6 +114,7 @@ export class JobCardsController extends TenantScopedController {
   // ===== PARTS MANAGEMENT =====
 
   @Post(':id/parts')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.ADD_PART)
   addPart(
     @Param('shopId') shopId: string,
     @Param('id') jobId: string,
@@ -118,6 +125,7 @@ export class JobCardsController extends TenantScopedController {
   }
 
   @Delete(':id/parts/:partId')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.REMOVE_PART)
   removePart(
     @Param('shopId') shopId: string,
     @Param('id') jobId: string,
@@ -128,6 +136,7 @@ export class JobCardsController extends TenantScopedController {
   }
 
   @Post(':id/cancel')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.CANCEL)
   cancelJob(
     @Param('shopId') shopId: string,
     @Param('id') jobId: string,
@@ -140,6 +149,7 @@ export class JobCardsController extends TenantScopedController {
   // ===== SERVICE CHARGE MANAGEMENT =====
 
   @Patch(':id/service-charge')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.UPDATE_CHARGE)
   updateServiceCharge(
     @Param('shopId') shopId: string,
     @Param('id') jobId: string,
@@ -157,6 +167,7 @@ export class JobCardsController extends TenantScopedController {
   // ===== ADVANCE MANAGEMENT =====
 
   @Post(':id/advance')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.MANAGE_ADVANCE)
   addAdvance(
     @Param('shopId') shopId: string,
     @Param('id') jobId: string,
@@ -173,6 +184,7 @@ export class JobCardsController extends TenantScopedController {
   }
 
   @Post(':id/advance/refund')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.MANAGE_ADVANCE)
   refundAdvance(
     @Param('shopId') shopId: string,
     @Param('id') jobId: string,
@@ -191,6 +203,7 @@ export class JobCardsController extends TenantScopedController {
   // ===== REOPEN CANCELLED JOB =====
 
   @Patch(':id/reopen')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.REOPEN)
   reopen(
     @Param('shopId') shopId: string,
     @Param('id') jobId: string,
@@ -199,6 +212,7 @@ export class JobCardsController extends TenantScopedController {
     return this.service.reopen(req.user, shopId, jobId);
   }
   @Post(':id/warranty')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.CREATE_WARRANTY)
   createWarranty(
     @Param('shopId') shopId: string,
     @Param('id') originalJobId: string,
@@ -210,6 +224,7 @@ export class JobCardsController extends TenantScopedController {
   // ===== CONSENT MANAGEMENT =====
 
   @Post(':id/consent')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.JOBCARD.RECORD_CONSENT)
   recordConsent(
     @Param('shopId') shopId: string,
     @Param('id') jobId: string,

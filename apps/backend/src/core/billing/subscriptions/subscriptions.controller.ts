@@ -33,8 +33,14 @@ import {
   DowngradeSubscriptionDto,
 } from './dto/downgrade.dto';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../../security/permission-registry';
 
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('core')
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 @Controller('billing/subscription')
 export class SubscriptionsController {
@@ -44,6 +50,7 @@ export class SubscriptionsController {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly prisma: PrismaService,
   ) {}
+  @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @Get('current')
   async getCurrent(@Req() req: any, @Query('module') module?: ModuleType) {
     const tenantId = req.user.tenantId;
@@ -188,6 +195,7 @@ export class SubscriptionsController {
         subscriptionStatus,
         autoRenew: sub.autoRenew,
         billingType: sub.billingType,
+        autopayStatus: sub.autopayStatus ?? null,
         subscriptionId: sub.id,
       },
       upcoming: upcoming
@@ -200,6 +208,7 @@ export class SubscriptionsController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.BILLING.MANAGE)
   @Patch('auto-renew')
   async toggleAutoRenew(
     @Req() req: any,
@@ -245,6 +254,7 @@ export class SubscriptionsController {
   // ═══════════════════════════════════════════════════════════════════════════
   // 🔄 UPGRADE SUBSCRIPTION (Immediate Plan Change)
   // ═══════════════════════════════════════════════════════════════════════════
+  @RequirePermission(PERMISSIONS.CORE.BILLING.MANAGE)
   @Patch('upgrade')
   async upgradeSubscription(
     @Req() req: any,
@@ -342,6 +352,7 @@ export class SubscriptionsController {
   // ═══════════════════════════════════════════════════════════════════════════
   // 📉 DOWNGRADE SUBSCRIPTION (Scheduled)
   // ═══════════════════════════════════════════════════════════════════════════
+  @RequirePermission(PERMISSIONS.CORE.BILLING.MANAGE)
   @Patch('downgrade')
   async downgradeSubscription(
     @Req() req: any,
@@ -409,6 +420,7 @@ export class SubscriptionsController {
   // ═══════════════════════════════════════════════════════════════════════════
   // 💎 SUBSCRIPTION ADD-ONS (Generic)
   // ═══════════════════════════════════════════════════════════════════════════
+  @RequirePermission(PERMISSIONS.CORE.BILLING.MANAGE)
   @Post('addons')
   async addAddon(
     @Req() req: any,
@@ -454,6 +466,7 @@ export class SubscriptionsController {
    * Pre-check if downgrade is allowed
    * TODO: Implement after downgradeSubscription method is added
    */
+  @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @Get('downgrade-check')
   async checkDowngrade(
     @Req() req: any,

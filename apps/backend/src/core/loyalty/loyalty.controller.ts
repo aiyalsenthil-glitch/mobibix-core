@@ -15,7 +15,11 @@ import { LoyaltyService } from './loyalty.service';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 interface ValidateRedemptionDto {
   customerId: string;
@@ -45,7 +49,9 @@ interface UpdateLoyaltyConfigDto {
 }
 
 @Controller('loyalty')
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('loyalty')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class LoyaltyController {
   constructor(private loyaltyService: LoyaltyService) {}
@@ -53,6 +59,7 @@ export class LoyaltyController {
   /**
    * Get all loyalty transactions for the tenant (Dashboard view)
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LOYALTY.VIEW)
   @Get('transactions')
   async getAllTransactions(@Req() req: any, @Query('shopId') shopId?: string) {
     const tenantId = req.user.tenantId;
@@ -68,6 +75,7 @@ export class LoyaltyController {
   /**
    * Get global loyalty statistics for the tenant
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LOYALTY.VIEW)
   @Get('summary')
   async getSummary(
     @Req() req: any,
@@ -95,6 +103,7 @@ export class LoyaltyController {
   /**
    * Get customer's current loyalty balance
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LOYALTY.VIEW)
   @Get('balance/:customerId')
   async getBalance(
     @Req() req: any,
@@ -119,6 +128,7 @@ export class LoyaltyController {
   /**
    * Get customer's loyalty transaction history
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LOYALTY.VIEW)
   @Get('history/:customerId')
   async getHistory(
     @Req() req: any,
@@ -145,6 +155,7 @@ export class LoyaltyController {
    * Validate if customer can redeem points
    * Returns: success status, max points allowed, discount amount in paisa
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LOYALTY.VIEW)
   @Post('validate-redemption')
   async validateRedemption(
     @Req() req: any,
@@ -171,6 +182,7 @@ export class LoyaltyController {
    * Create manual loyalty adjustment (admin only)
    * Used for corrections, refunds, or special promotions
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LOYALTY.MANAGE)
   @Post('manual-adjustment')
   async createManualAdjustment(
     @Req() req: any,
@@ -203,6 +215,7 @@ export class LoyaltyController {
   /**
    * Get current tenant's loyalty configuration
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LOYALTY.VIEW)
   @Get('config')
   async getConfig(@Req() req: any, @Query('shopId') shopId?: string) {
     const tenantId = req.user.tenantId;
@@ -213,6 +226,7 @@ export class LoyaltyController {
   /**
    * Update tenant's loyalty configuration
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LOYALTY.MANAGE)
   @Put('config')
   async updateConfig(@Req() req: any, @Body() dto: UpdateLoyaltyConfigDto) {
     const tenantId = req.user.tenantId;

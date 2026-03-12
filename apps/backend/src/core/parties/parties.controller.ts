@@ -12,15 +12,22 @@ import {
 import { PartiesService } from './parties.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
-import { PartyType, UserRole } from '@prisma/client';
+import { PartyType, UserRole, ModuleType } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('core/parties')
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('core')
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class PartiesController {
   constructor(private readonly service: PartiesService) {}
 
+  @RequirePermission(PERMISSIONS.CORE.PARTY.VIEW)
   @Get('search')
   async search(
     @Req() req,
@@ -37,12 +44,14 @@ export class PartiesController {
     return this.service.searchParties(tenantId, query, type, limitNum);
   }
 
+  @RequirePermission(PERMISSIONS.CORE.PARTY.VIEW)
   @Get(':id')
   async getOne(@Req() req, @Param('id') id: string) {
     const tenantId = req.user?.tenantId;
     return this.service.findById(tenantId, id);
   }
 
+  @RequirePermission(PERMISSIONS.CORE.PARTY.MANAGE)
   @Patch(':id/upgrade')
   async upgrade(
     @Req() req,
@@ -63,6 +72,7 @@ export class PartiesController {
     return party;
   }
 
+  @RequirePermission(PERMISSIONS.CORE.PARTY.VIEW)
   @Get(':id/balance')
   async getBalance(@Req() req, @Param('id') id: string) {
     const tenantId = req.user?.tenantId;

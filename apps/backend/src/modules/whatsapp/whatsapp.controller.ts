@@ -21,6 +21,9 @@ import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { WhatsAppSender } from './whatsapp.sender';
 import { WhatsAppUserService } from './whatsapp-user.service';
 import { VirtualTenantGuard } from './guards/virtual-tenant.guard';
+import { GranularPermissionGuard } from '../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 import {
   WhatsAppModule,
@@ -29,8 +32,9 @@ import {
 } from './variable-registry';
 
 @Controller('whatsapp')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+@ModulePermission('whatsapp')
+@UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
+@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppController {
   constructor(
     private readonly prisma: PrismaService,
@@ -42,6 +46,7 @@ export class WhatsAppController {
    * GET /whatsapp/variables/:module/:templateKey
    * Get variables allowed for a specific template context
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.TEMPLATE_MANAGE)
   @Get('variables/:module/:templateKey')
   @UseGuards(VirtualTenantGuard)
   async getTemplateVariables(
@@ -72,6 +77,7 @@ export class WhatsAppController {
    * GET /whatsapp/logs/:tenantId
    * Get WhatsApp logs for a tenant
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
   @Get('logs/:tenantId')
   @UseGuards(VirtualTenantGuard)
   async getLogs(
@@ -209,6 +215,7 @@ export class WhatsAppController {
    * POST /whatsapp/logs/:logId/retry
    * Retry sending a WhatsApp message
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
   @Post('logs/:logId/retry')
   async retryLog(@Param('logId') logId: string, @Req() req: any) {
     const log = await this.prisma.whatsAppLog.findUnique({
@@ -232,6 +239,7 @@ export class WhatsAppController {
    * GET /whatsapp/templates/:moduleType
    * Get WhatsApp templates for a module (GYM, MOBILE_SHOP)
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.TEMPLATE_MANAGE)
   @Get('templates/:moduleType')
   @UseGuards(VirtualTenantGuard)
   async getTemplates(@Param('moduleType') moduleType: string) {
@@ -247,6 +255,7 @@ export class WhatsAppController {
    * POST /whatsapp/templates
    * Create a WhatsApp template
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.TEMPLATE_MANAGE)
   @Post('templates')
   async createTemplate(
     @Req() req: any,
@@ -281,6 +290,7 @@ export class WhatsAppController {
    * PATCH /whatsapp/templates/:templateId
    * Update a WhatsApp template
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.TEMPLATE_MANAGE)
   @Patch('templates/:templateId')
   async updateTemplate(
     @Param('templateId') templateId: string,
@@ -324,6 +334,7 @@ export class WhatsAppController {
    * DELETE /whatsapp/templates/:templateId
    * Delete a WhatsApp template
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.TEMPLATE_MANAGE)
   @Delete('templates/:templateId')
   async deleteTemplate(
     @Param('templateId') templateId: string,
@@ -347,6 +358,7 @@ export class WhatsAppController {
    * GET /whatsapp/automations/:moduleType
    * Get WhatsApp automations for a module (GYM, MOBILE_SHOP)
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.AUTOMATION_MANAGE)
   @Get('automations/:moduleType')
   @UseGuards(VirtualTenantGuard)
   async getAutomations(@Param('moduleType') moduleType: string) {
@@ -366,6 +378,7 @@ export class WhatsAppController {
    * POST /whatsapp/automations
    * Create a WhatsApp automation
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.AUTOMATION_MANAGE)
   @Post('automations')
   async createAutomation(
     @Req() req: any,
@@ -477,6 +490,7 @@ export class WhatsAppController {
    * PATCH /whatsapp/automations/:automationId
    * Update a WhatsApp automation
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.AUTOMATION_MANAGE)
   @Patch('automations/:automationId')
   async updateAutomation(
     @Param('automationId') automationId: string,
@@ -507,6 +521,7 @@ export class WhatsAppController {
    * POST /whatsapp/send
    * Send a WhatsApp message (Template OR Text)
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
   @Post('send')
   async sendMessage(
     @Body()
@@ -691,6 +706,7 @@ export class WhatsAppController {
    * GET /whatsapp/summary
    * Get WhatsApp usage summary for the current tenant
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
   @Get('summary')
   async getUsageSummary(@Req() req: any) {
     const tenantId = req.user?.tenantId;

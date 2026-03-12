@@ -11,10 +11,18 @@ import type { Response } from 'express';
 import { InvoiceService } from './invoice.service';
 // import { FirebaseAuthGuard } from '../../auth/guards/REMOVED_AUTH_PROVIDER-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { ModuleType } from '@prisma/client';
 import type { User } from '@prisma/client';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../../security/permission-registry';
+import { ModulePermission, RequirePermission } from '../../permissions/decorators/require-permission.decorator';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
 
 @Controller('billing/invoices')
-// @UseGuards(FirebaseAuthGuard) // TODO: Add auth guard when path is fixed
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('core')
+@UseGuards(JwtAuthGuard, GranularPermissionGuard)
 export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
@@ -22,6 +30,7 @@ export class InvoiceController {
    * Download invoice PDF
    * GET /billing/invoices/:invoiceId/pdf
    */
+  @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @Get(':invoiceId/pdf')
   async downloadInvoicePdf(
     @Param('invoiceId') invoiceId: string,
@@ -54,6 +63,7 @@ export class InvoiceController {
    * Get invoice details
    * GET /billing/invoices/:invoiceId
    */
+  @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @Get(':invoiceId')
   async getInvoice(
     @Param('invoiceId') invoiceId: string,
@@ -77,6 +87,7 @@ export class InvoiceController {
    * List invoices for tenant
    * GET /billing/invoices
    */
+  @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @Get()
   async listInvoices(
     @CurrentUser() user: User,

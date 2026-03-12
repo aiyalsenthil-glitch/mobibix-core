@@ -18,14 +18,21 @@ import { FollowUpsService } from './follow-ups.service';
 import { CreateFollowUpDto } from './dto/create-follow-up.dto';
 import { UpdateFollowUpDto } from './dto/update-follow-up.dto';
 import { FollowUpQueryDto } from './dto/follow-up-query.dto';
-import { FollowUpStatus, UserRole } from '@prisma/client';
+import { FollowUpStatus, UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('core/follow-ups')
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('crm')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class FollowUpsController {
   constructor(private readonly service: FollowUpsService) {}
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.MANAGE_FOLLOWUP)
   @Post()
   async create(@Req() req: any, @Body() dto: CreateFollowUpDto) {
     const tenantId = req.user.tenantId;
@@ -35,6 +42,7 @@ export class FollowUpsController {
     return this.service.createFollowUp(tenantId, userId, role, dto);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.MANAGE_FOLLOWUP)
   @Patch(':followUpId')
   async update(
     @Req() req: any,
@@ -48,6 +56,7 @@ export class FollowUpsController {
     return this.service.updateFollowUp(tenantId, userId, role, followUpId, dto);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.MANAGE_FOLLOWUP)
   @Patch(':followUpId/status')
   async updateStatus(
     @Req() req: any,
@@ -71,6 +80,7 @@ export class FollowUpsController {
     );
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW)
   @Get('my')
   async listMy(
     @Req() req: any,
@@ -89,6 +99,7 @@ export class FollowUpsController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW)
   @Get('counts')
   async getCounts(@Req() req: any) {
     const tenantId = req.user.tenantId;
@@ -97,6 +108,7 @@ export class FollowUpsController {
     return this.service.getMyFollowUpCounts(tenantId, userId);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW)
   @Get('all')
   async listAll(
     @Req() req: any,

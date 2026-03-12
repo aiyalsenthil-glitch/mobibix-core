@@ -18,6 +18,7 @@ import {
   UserRole,
   BillingType,
   PaymentStatus,
+  AutopayStatus,
 } from '@prisma/client';
 import { RazorpayService } from '../REMOVED_PAYMENT_INFRA.service';
 import { PlanPriceService } from '../plan-price.service';
@@ -223,6 +224,33 @@ export class SubscriptionsService {
         throw new BadRequestException(
           `AutoPay not configured for this plan (${plan.name} - ${billingCycle})`,
         );
+      }
+
+      // Cancel any previous Razorpay subscription to prevent ghost mandates
+      const previousAutopay = await this.prisma.tenantSubscription.findFirst({
+        where: {
+          tenantId,
+          module,
+          providerSubscriptionId: { not: null },
+          status: { in: [SubscriptionStatus.EXPIRED, SubscriptionStatus.CANCELLED] },
+          autopayStatus: { not: AutopayStatus.CANCELLED },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { providerSubscriptionId: true },
+      });
+      if (previousAutopay?.providerSubscriptionId) {
+        try {
+          await this.REMOVED_PAYMENT_INFRAService.cancelSubscription(
+            previousAutopay.providerSubscriptionId,
+          );
+          this.logger.log(
+            `Cancelled previous Razorpay sub ${previousAutopay.providerSubscriptionId} before re-subscribe`,
+          );
+        } catch (cancelErr: any) {
+          this.logger.warn(
+            `Non-fatal: could not cancel old Razorpay sub ${previousAutopay.providerSubscriptionId}: ${cancelErr.message}`,
+          );
+        }
       }
 
       const sub = await this.REMOVED_PAYMENT_INFRAService.createSubscription(

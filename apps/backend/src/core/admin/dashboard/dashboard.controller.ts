@@ -8,11 +8,17 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AdminRolesGuard } from '../guards/admin-roles.guard';
 import { AdminRoles } from '../decorators/admin.decorator';
 import { AdminRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { RequirePermission, ModulePermission } from '../../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
 import { AdminCacheService } from '../cache/admin-cache.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Controller('admin/dashboard')
-@UseGuards(JwtAuthGuard, AdminRolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, AdminRolesGuard, GranularPermissionGuard)
 @AdminRoles(
   AdminRole.SUPER_ADMIN,
   AdminRole.PRODUCT_ADMIN,
@@ -24,6 +30,7 @@ export class DashboardController {
     private readonly prisma: PrismaService,
   ) {}
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('analytics/global')
   async getGlobalAnalytics() {
     let kpis = await this.cache.get('admin:global:kpis');

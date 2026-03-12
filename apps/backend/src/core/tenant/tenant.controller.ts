@@ -30,15 +30,25 @@ import { TenantStatusGuard } from './guards/tenant-status.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { SkipSubscriptionCheck } from '../auth/decorators/skip-subscription-check.decorator';
+import { ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
+import { Public } from '../auth/decorators/public.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Controller('tenant')
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('tenant')
 export class TenantController {
   constructor(
     private readonly tenantService: TenantService,
     private readonly usageSnapshotService: UsageSnapshotService,
   ) {}
 
-  @UseGuards(JwtAuthGuard, TenantRequiredGuard)
+  @RequirePermission(PERMISSIONS.CORE.TENANT.VIEW)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard, TenantRequiredGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
   @Get('usage-history')
   async getUsageHistory(
@@ -48,7 +58,8 @@ export class TenantController {
     return this.usageSnapshotService.getHistory(req.user.tenantId, days);
   }
 
-  @UseGuards(JwtAuthGuard, TenantRequiredGuard)
+  @RequirePermission(PERMISSIONS.CORE.TENANT.VIEW)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard, TenantRequiredGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
   @Get('current')
   async getCurrentTenant(@Req() req: any) {
@@ -64,6 +75,7 @@ export class TenantController {
   /**
    * PUBLIC TENANT LOOKUP (QR CHECK-IN)
    */
+  @Public()
   @Get('public/:code')
   async getPublicTenant(@Param('code') code: string) {
     return this.tenantService.getPublicTenantByCode(code);
@@ -78,7 +90,8 @@ export class TenantController {
    * - NO SubscriptionGuard here
    * - Requires full tenant details
    */
-  @UseGuards(JwtAuthGuard, TenantStatusGuard)
+  @RequirePermission(PERMISSIONS.CORE.TENANT.MANAGE)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard, TenantStatusGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.USER) // Allow USER role for first-time tenant creation
   @SkipSubscriptionCheck()
   @Post()
@@ -124,7 +137,8 @@ export class TenantController {
     };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission(PERMISSIONS.CORE.TENANT.MANAGE)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN)
   @Get('admin/search')
   async searchTenants(@Req() req: any, @Query('q') q: string) {
@@ -145,9 +159,9 @@ export class TenantController {
     return this.tenantService.searchTenants(q);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission(PERMISSIONS.CORE.TENANT.MANAGE)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
-  @Permissions(Permission.TENANT_MANAGE)
   @Put('logo')
   updateLogo(@Req() req: any, @Body() body: { logoUrl: string }) {
     const tenantId = req.user.tenantId;
@@ -167,30 +181,32 @@ export class TenantController {
    * - Requires active subscription
    * - Used after onboarding
    */
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission(PERMISSIONS.CORE.TENANT.VIEW)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
   @Get('usage')
   getUsage(@Req() req: any) {
     return this.tenantService.getUsage(req.user.tenantId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @RequirePermission(PERMISSIONS.CORE.TENANT.MANAGE)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
-  @Permissions(Permission.TENANT_MANAGE)
   @Post('kiosk-token')
   generateKioskToken(@Req() req: any) {
     return this.tenantService.generateKioskToken(req.user.tenantId);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission(PERMISSIONS.CORE.TENANT.MANAGE)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
-  @Permissions(Permission.TENANT_MANAGE)
   @Patch('me')
   updateMyGym(@Req() req: any, @Body() body: UpdateTenantSettingsDto) {
     return this.tenantService.updateTenant(req.user.tenantId, body);
   }
 
-  @UseGuards(JwtAuthGuard, TenantRequiredGuard)
+  @RequirePermission(PERMISSIONS.CORE.TENANT.MANAGE)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard, TenantRequiredGuard)
   @Roles(UserRole.OWNER)
   @Post('request-deletion')
   requestDeletion(@Req() req: any, @Body() body: RequestDeletionDto) {

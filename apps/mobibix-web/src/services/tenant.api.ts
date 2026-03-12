@@ -43,6 +43,7 @@ export interface SubscriptionDetails {
 
   autoRenew: boolean;
   billingType: "MANUAL" | "AUTOPAY";
+  autopayStatus?: "ACTIVE" | "HALTED" | "CANCELLED" | "PAST_DUE" | null;
   subscriptionId: string;
   price?: number;
   analyticsHistoryDays?: number;

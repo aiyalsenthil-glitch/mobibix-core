@@ -52,6 +52,7 @@ import { ReconciliationCron } from './reconciliation.cron';
     PlanRulesService,
     PlanMappingService,
     AiGovernanceService,
+    RazorpayWebhookProcessor,
   ],
 })
 export class BillingModule {}

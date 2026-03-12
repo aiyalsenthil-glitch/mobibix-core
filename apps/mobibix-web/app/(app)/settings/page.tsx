@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Script from "next/script";
 import { getSubscription, getAvailablePlans, upgradeSubscription, downgradeSubscription, checkDowngradeEligibility, toggleAutoRenew, type SubscriptionDetails, type Plan } from "@/services/tenant.api";
 import { getLoyaltyConfig, LoyaltyConfig } from "@/services/loyalty.api";
@@ -55,6 +55,7 @@ const PLAN_MARKETING_FEATURES: Record<string, string[]> = {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { selectedShopId } = useShop();
   const [activeTab, setActiveTab] = useState<"SUBSCRIPTION" | "BILLING" | "LOYALTY" | "LEGAL">("SUBSCRIPTION");
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null);
@@ -66,6 +67,7 @@ export default function SettingsPage() {
   const [autoRenewLoading, setAutoRenewLoading] = useState(false);
   const [selectedCycle, setSelectedCycle] = useState<"MONTHLY" | "QUARTERLY" | "YEARLY">("MONTHLY");
   const [billingType, setBillingType] = useState<"AUTOPAY" | "MANUAL">("AUTOPAY");
+  const [paymentSuccessToast, setPaymentSuccessToast] = useState(false);
 
   // Downgrade Modal State
   const [downgradeModalOpen, setDowngradeModalOpen] = useState(false);
@@ -102,7 +104,13 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadData();
-    
+
+    // Show success banner if redirected back from manual payment link
+    if (searchParams.get("payment") === "success") {
+      setPaymentSuccessToast(true);
+      router.replace("/settings", { scroll: false });
+    }
+
     // Check for tab in URL
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab");
@@ -211,8 +219,14 @@ export default function SettingsPage() {
              return; // Redirecting
         } else if (response.REMOVED_PAYMENT_INFRASubscriptionId) {
             // AutoPay Flow
+            const REMOVED_PAYMENT_INFRAKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+            if (!REMOVED_PAYMENT_INFRAKey) {
+              console.error("NEXT_PUBLIC_RAZORPAY_KEY_ID is not configured");
+              alert("Payment configuration error. Please contact support.");
+              return;
+            }
             const options = {
-                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Ensure env var is set
+                key: REMOVED_PAYMENT_INFRAKey,
                 subscription_id: response.REMOVED_PAYMENT_INFRASubscriptionId,
                 name: "MobiBix SaaS",
                 description: `${plan.displayName} Subscription`,
@@ -403,6 +417,15 @@ export default function SettingsPage() {
       ) : (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
 
+      {/* Payment success banner (returned from manual payment link) */}
+      {paymentSuccessToast && (
+        <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-sm text-green-700 dark:text-green-400">
+          <Check className="w-4 h-4 shrink-0" />
+          <span>Payment successful! Your subscription has been activated.</span>
+          <button onClick={() => setPaymentSuccessToast(false)} className="ml-auto text-green-500 hover:text-green-700">✕</button>
+        </div>
+      )}
+
       {/* Current Subscription Card */}
       {subscription && (
         <div className="bg-white dark:bg-stone-900 border border-gray-200 dark:border-stone-800 rounded-2xl p-6 mb-10 shadow-sm relative overflow-hidden">
@@ -434,10 +457,24 @@ export default function SettingsPage() {
                 {subscription.plan}
               </h2>
               <p className="text-gray-500 text-sm mt-1">
-                {subscription.autoRenew 
-                  ? `Renews in ${subscription.daysLeft} days` 
+                {subscription.autoRenew
+                  ? `Renews in ${subscription.daysLeft} days`
                   : `Expires in ${subscription.daysLeft} days`}
               </p>
+              {subscription.billingType === "AUTOPAY" && subscription.autopayStatus === "HALTED" && (
+                <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>
+                    Auto-debit failed — your bank declined the charge.{" "}
+                    <button
+                      onClick={() => router.push("/settings?tab=billing")}
+                      className="underline font-medium"
+                    >
+                      Update payment method
+                    </button>
+                  </span>
+                </div>
+              )}
             </div>
             
              {/* Auto Renew Toggle */}

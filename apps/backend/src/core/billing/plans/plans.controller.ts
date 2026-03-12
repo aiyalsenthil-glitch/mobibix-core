@@ -14,8 +14,15 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../../auth/guards/tenant.guard';
 import { Public } from '../../auth/decorators/public.decorator';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../../security/permission-registry';
 
 @Controller('plans')
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('core')
+@UseGuards(GranularPermissionGuard)
 export class PlansController {
   constructor(
     private readonly plansService: PlansService,
@@ -32,16 +39,18 @@ export class PlansController {
     return this.plansService.getPublicPricing(module as ModuleType);
   }
 
-  @Get()
+  @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Get()
   async listPlans() {
     return this.plansService.getActivePlans();
   }
 
-  @Get('available')
+  @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Get('available')
   async getAvailablePlans(
     @Req() req: any,
     @Query('module') module?: ModuleType,

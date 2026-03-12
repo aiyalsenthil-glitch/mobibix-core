@@ -22,17 +22,21 @@ import {
 } from './dto/update-document-setting.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
-import { UserRole } from '@prisma/client';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { Permissions } from '../auth/decorators/permissions.decorator';
-import { Permission } from '../auth/permissions.enum';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('mobileshop/shops')
-@UseGuards(JwtAuthGuard, TenantRequiredGuard, PermissionsGuard)
+@ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class ShopController {
   constructor(private readonly shopService: ShopService) {}
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SHOP.VIEW)
   @Get()
   list(
     @Req() req: any,
@@ -49,11 +53,12 @@ export class ShopController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SHOP.MANAGE)
   @Post()
-  @Permissions(Permission.SHOP_MANAGE)
   create(@Req() req: any, @Body() dto: CreateShopDto) {
     return this.shopService.createShop(req.user.tenantId, req.user.role, dto);
   }
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SHOP.VIEW)
   @Get(':shopId')
   getOne(@Req() req: any, @Param('shopId') shopId: string) {
     if (!req.user.tenantId) {
@@ -62,8 +67,8 @@ export class ShopController {
 
     return this.shopService.getShopById(req.user.tenantId, shopId);
   }
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SHOP.MANAGE)
   @Patch(':shopId')
-  @Permissions(Permission.SHOP_MANAGE)
   update(
     @Req() req: any,
     @Param('shopId') shopId: string,
@@ -76,6 +81,7 @@ export class ShopController {
       dto,
     );
   }
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SHOP.VIEW)
   @Get(':shopId/settings')
   getSettings(@Req() req: any, @Param('shopId') shopId: string) {
     if (!req.user.tenantId) {
@@ -85,8 +91,8 @@ export class ShopController {
     return this.shopService.getShopSettings(req.user.tenantId, shopId);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SHOP.MANAGE)
   @Patch(':shopId/settings')
-  @Permissions(Permission.SHOP_MANAGE)
   updateSettings(
     @Req() req: any,
     @Param('shopId') shopId: string,
@@ -104,6 +110,7 @@ export class ShopController {
    * GET /mobileshop/shops/:shopId/document-settings
    * Returns all document numbering settings for a shop
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SHOP.VIEW)
   @Get(':shopId/document-settings')
   getDocumentSettings(@Req() req: any, @Param('shopId') shopId: string) {
     if (!req.user.tenantId) {
@@ -117,8 +124,8 @@ export class ShopController {
    * PUT /mobileshop/shops/:shopId/document-settings/:documentType
    * Updates document numbering configuration for a specific document type
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SHOP.MANAGE)
   @Put(':shopId/document-settings/:documentType')
-  @Permissions(Permission.SHOP_MANAGE)
   updateDocumentSetting(
     @Req() req: any,
     @Param('shopId') shopId: string,

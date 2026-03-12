@@ -18,6 +18,8 @@ import { JwtAuthGuard } from './core/auth/guards/jwt-auth.guard';
 import { SubscriptionGuard } from './core/auth/guards/subscription.guard';
 import { CsrfGuard } from './core/auth/guards/csrf.guard';
 import { RolesGuard } from './core/auth/guards/roles.guard';
+import { TenantRequiredGuard } from './core/auth/guards/tenant.guard';
+import { GranularPermissionGuard } from './core/permissions/guards/granular-permission.guard';
 import { TenantContextInterceptor } from './core/tenant/tenant-context.interceptor';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -74,6 +76,10 @@ type LoggerRequest = {
             : 6379,
           password: process.env.REDIS_PASSWORD || undefined,
           tls: process.env.REDIS_TLS === 'true' ? {} : undefined,
+          // Fast-fail settings: detect Redis unavailability quickly for sync fallback
+          enableOfflineQueue: false,
+          maxRetriesPerRequest: 0,
+          connectTimeout: 5000,
         }) as any,
       }),
     }),
@@ -197,6 +203,10 @@ type LoggerRequest = {
     },
     {
       provide: APP_GUARD,
+      useClass: TenantRequiredGuard, // ← Ensures tenantId exists
+    },
+    {
+      provide: APP_GUARD,
       useClass: SubscriptionGuard, // ← Enforces subscription limits
     },
     {
@@ -206,6 +216,10 @@ type LoggerRequest = {
     {
       provide: APP_GUARD,
       useClass: RolesGuard, // ← Role-based access control
+    },
+    {
+      provide: APP_GUARD,
+      useClass: GranularPermissionGuard, // ← Strict granular RBAC
     },
     {
       provide: APP_GUARD,

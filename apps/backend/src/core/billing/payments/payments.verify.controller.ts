@@ -17,8 +17,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { PaymentStatus, UserRole, ModuleType } from '@prisma/client';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { PaymentActivationService } from './payment-activation.service';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../../security/permission-registry';
 
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('core')
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('payments')
 export class PaymentsVerifyController {
@@ -31,6 +37,7 @@ export class PaymentsVerifyController {
   ) {}
 
   // Rate limited to 10 requests per 60 seconds (higher than createOrder to allow retries)
+  @RequirePermission(PERMISSIONS.CORE.BILLING.MANAGE)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('verify')
   async verifyPayment(
@@ -113,6 +120,7 @@ export class PaymentsVerifyController {
    *
    * Uses unified PaymentActivationService (idempotent)
    */
+  @RequirePermission(PERMISSIONS.CORE.BILLING.MANAGE)
   @Post('retry-subscription')
   async retrySubscriptionCreation(
     @Req() req: any,

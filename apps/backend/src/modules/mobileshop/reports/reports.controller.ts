@@ -17,9 +17,12 @@ import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
 import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
 import { PrismaService } from '../../../core/prisma/prisma.service';
+import { ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
 
 @Controller('mobileshop/reports')
 @ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('report')
 @UseGuards(JwtAuthGuard, TenantRequiredGuard, RolesGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class MobileShopReportsController extends TenantScopedController {
@@ -75,6 +78,7 @@ export class MobileShopReportsController extends TenantScopedController {
   }
 
   @Get('dashboard')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.VIEW)
   async getDashboard(@CurrentUser() user: any, @Query('shopId') shopId?: string) {
     const resolvedShopId = await this.validateShopAccess(user, shopId);
     return this.reportsService.getOwnerDashboard(user.tenantId, resolvedShopId);
@@ -83,7 +87,7 @@ export class MobileShopReportsController extends TenantScopedController {
   // --- SALES ---
 
   @Get('sales/summary')
-  @RequirePermission(ModuleType.CORE, 'report', 'view')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.SALES_VIEW)
   async getSalesSummary(
     @CurrentUser() user: any,
     @Query('startDate') startDate?: string,
@@ -100,6 +104,7 @@ export class MobileShopReportsController extends TenantScopedController {
   }
 
   @Get('sales')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.SALES_VIEW)
   async getPaginatedSales(
     @CurrentUser() user: any,
     @Query('startDate') startDate?: string,
@@ -124,6 +129,7 @@ export class MobileShopReportsController extends TenantScopedController {
   // --- PURCHASES ---
 
   @Get('purchases/summary')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.VIEW)
   async getPurchaseSummary(
     @CurrentUser() user: any,
     @Query('startDate') startDate?: string,
@@ -140,6 +146,7 @@ export class MobileShopReportsController extends TenantScopedController {
   }
 
   @Get('purchases')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.VIEW)
   async getPaginatedPurchases(
     @CurrentUser() user: any,
     @Query('startDate') startDate?: string,
@@ -164,12 +171,14 @@ export class MobileShopReportsController extends TenantScopedController {
   // --- INVENTORY ---
 
   @Get('inventory/summary')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.INVENTORY_VIEW)
   async getInventorySummary(@CurrentUser() user: any, @Query('shopId') shopId?: string) {
     const resolvedShopId = await this.validateShopAccess(user, shopId);
     return this.reportsService.getInventorySummary(user.tenantId, resolvedShopId);
   }
 
   @Get('inventory')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.INVENTORY_VIEW)
   async getInventoryReport(
     @CurrentUser() user: any, 
     @Query('shopId') shopId?: string,
@@ -188,6 +197,7 @@ export class MobileShopReportsController extends TenantScopedController {
   // --- PROFIT ---
 
   @Get('profit/summary')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.PROFIT_VIEW)
   async getProfitSummary(
     @CurrentUser() user: any,
     @Query('startDate') startDate?: string,
@@ -206,6 +216,7 @@ export class MobileShopReportsController extends TenantScopedController {
   }
 
   @Get('profit')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.PROFIT_VIEW)
   async getProfitSummaryAlias(
     @CurrentUser() user: any,
     @Query('startDate') startDate?: string,
@@ -217,6 +228,7 @@ export class MobileShopReportsController extends TenantScopedController {
   }
 
   @Get('top-products')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.SALES_VIEW)
   async getTopSellingProducts(
     @CurrentUser() user: any,
     @Query('startDate') startDate?: string,
@@ -233,6 +245,7 @@ export class MobileShopReportsController extends TenantScopedController {
   }
 
   @Get('repairs')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.VIEW)
   async getRepairReport(
     @CurrentUser() user: any,
     @Query('startDate') startDate?: string,
@@ -315,6 +328,7 @@ export class MobileShopReportsController extends TenantScopedController {
   }
 
   @Get('gstr-1/export')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.EXPORT)
   async exportGSTR1CSV(
     @CurrentUser() user: any,
     @Query('from') fromDate: string,
@@ -337,6 +351,7 @@ export class MobileShopReportsController extends TenantScopedController {
   }
 
   @Get('gstr-2/export')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.EXPORT)
   async exportGSTR2CSV(
     @CurrentUser() user: any,
     @Query('from') fromDate: string,
@@ -373,6 +388,7 @@ export class MobileShopReportsController extends TenantScopedController {
   }
 
   @Get('receivables-aging/export')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.EXPORT)
   async exportReceivablesCSV(@CurrentUser() user: any, @Query('shopId') shopId?: string) {
     const resolvedShopId = await this.validateShopAccess(user, shopId);
     const csv = await this.receivablesAging.exportAsCSV(
@@ -474,6 +490,7 @@ export class MobileShopReportsController extends TenantScopedController {
   }
 
   @Get('daily-sales/export')
+  @RequirePermission(PERMISSIONS.CORE.REPORTS.EXPORT)
   async exportDailySalesCSV(
     @CurrentUser() user: any,
     @Query('shopId') shopId: string,

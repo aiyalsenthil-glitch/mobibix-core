@@ -6,6 +6,10 @@ import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { ModuleType } from '@prisma/client';
 import { SkipSubscriptionCheck } from '../auth/decorators/skip-subscription-check.decorator';
 import { PrismaService } from '../prisma/prisma.service';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 export class AiChatDto {
   message: string;
@@ -15,7 +19,9 @@ export class AiChatDto {
 }
 
 @Controller('ai')
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('ai')
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
 // AI feature relies on its own separate token system, so we bypass strict plan guard here 
 // and do custom quota assertions inside the endpoint.
 @SkipSubscriptionCheck()
@@ -26,6 +32,7 @@ export class AiChatController {
     private readonly prisma: PrismaService,
   ) {}
 
+  @RequirePermission(PERMISSIONS.CORE.AI.USE)
   @Post('chat')
   async handleChat(
     @Req() req: any,

@@ -13,15 +13,22 @@ import {
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AdminRolesGuard } from '../guards/admin-roles.guard';
 import { AdminRoles } from '../decorators/admin.decorator';
-import { AdminRole } from '@prisma/client';
+import { AdminRole, ModuleType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { RequirePermission, ModulePermission } from '../../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
 
 @Controller('admin/system/users')
-@UseGuards(JwtAuthGuard, AdminRolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, AdminRolesGuard, GranularPermissionGuard)
 @AdminRoles(AdminRole.SUPER_ADMIN)
 export class AdminUserController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get()
   async listAdminUsers() {
     const admins = await this.prisma.adminUser.findMany({
@@ -49,6 +56,7 @@ export class AdminUserController {
     }));
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post()
   async addAdminUser(@Body() body: { email: string; role: AdminRole }) {
     if (!body.email || !body.role) {
@@ -77,6 +85,7 @@ export class AdminUserController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Patch(':id')
   async updateAdminUser(
     @Param('id') id: string,
@@ -91,6 +100,7 @@ export class AdminUserController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Delete(':id')
   async removeAdminUser(@Param('id') id: string) {
     const admin = await this.prisma.adminUser.findUnique({ where: { id } });
@@ -111,6 +121,7 @@ export class AdminUserController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('roles-list')
   async getAvailableRoles() {
     return Object.values(AdminRole);

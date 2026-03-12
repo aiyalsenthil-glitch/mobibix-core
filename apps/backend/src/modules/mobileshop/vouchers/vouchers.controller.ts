@@ -18,10 +18,14 @@ import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
+import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
 
 @Controller('vouchers')
 @ModuleScope(ModuleType.MOBILE_SHOP)
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@ModulePermission('voucher')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.STAFF)
 export class VouchersController extends TenantScopedController {
   constructor(private readonly vouchersService: VouchersService) {
@@ -33,6 +37,7 @@ export class VouchersController extends TenantScopedController {
    * POST /vouchers
    * Body: CreateVoucherDto
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.VOUCHER.CREATE)
   @Post()
   async create(
     @Body() createVoucherDto: CreateVoucherDto,
@@ -50,6 +55,7 @@ export class VouchersController extends TenantScopedController {
    * Get all vouchers for authenticated shop
    * GET /vouchers?startDate=...&endDate=...&paymentMethod=...&voucherType=...&skip=...&take=...
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.VOUCHER.VIEW)
   @Get()
   async findAll(
     @CurrentUser() user: any,
@@ -81,6 +87,7 @@ export class VouchersController extends TenantScopedController {
    * Get single voucher by ID
    * GET /vouchers/:id
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.VOUCHER.VIEW)
   @Get(':id')
   async findOne(
     @Param('id') id: string,
@@ -94,6 +101,7 @@ export class VouchersController extends TenantScopedController {
    * POST /vouchers/:id/cancel
    * Body: { reason: string }
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.VOUCHER.CANCEL)
   @Post(':id/cancel')
   async cancel(
     @Param('id') id: string,
@@ -112,6 +120,7 @@ export class VouchersController extends TenantScopedController {
    * Get voucher summary by date range
    * GET /vouchers/summary?startDate=...&endDate=...
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.VOUCHER.VIEW)
   @Get('summary')
   async getSummary(
     @CurrentUser() user: any,

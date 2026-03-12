@@ -2,20 +2,29 @@ import { Controller, Get, Patch, Req, UseGuards, Body } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Controller('users')
-@UseGuards(JwtAuthGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('profile')
+@UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
 export class UsersMeController {
   constructor(private readonly usersService: UsersService) {}
 
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF, UserRole.USER)
+  @RequirePermission(PERMISSIONS.CORE.PROFILE.VIEW)
   @Get('me')
   async getMe(@Req() req: any) {
     return this.usersService.getMeWithTenant(req.user.sub);
   }
 
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF, UserRole.USER)
+  @RequirePermission(PERMISSIONS.CORE.PROFILE.UPDATE)
   @Patch('me')
   updateMe(
     @Req() req: any,

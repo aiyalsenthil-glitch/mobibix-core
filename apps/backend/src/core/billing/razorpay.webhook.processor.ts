@@ -1,5 +1,6 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
+import * as Sentry from '@sentry/node';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { Counter } from 'prom-client';
 import { Logger } from '@nestjs/common';
@@ -35,6 +36,10 @@ export class RazorpayWebhookProcessor extends WorkerHost {
 
   async process(job: Job<any>): Promise<any> {
     const { event, eventId, payload } = job.data;
+    return this.processEvent(event, eventId, payload);
+  }
+
+  async processEvent(event: string, eventId: string | undefined, payload: any): Promise<void> {
     const startTime = performance.now();
 
     // Structured log entry
@@ -80,6 +85,18 @@ export class RazorpayWebhookProcessor extends WorkerHost {
 
         case 'subscription.cancelled':
           await this.handleSubscriptionCancelled(payload.subscription.entity);
+          break;
+
+        case 'subscription.completed':
+          await this.handleSubscriptionCompleted(payload.subscription.entity);
+          break;
+
+        case 'subscription.paused':
+          await this.handleSubscriptionPaused(payload.subscription.entity);
+          break;
+
+        case 'subscription.resumed':
+          await this.handleSubscriptionResumed(payload.subscription.entity);
           break;
 
         case 'payment.refunded':
@@ -157,6 +174,31 @@ export class RazorpayWebhookProcessor extends WorkerHost {
       }
 
       throw err; // allow BullMQ to retry if configured
+    }
+  }
+
+  @OnWorkerEvent('failed')
+  onJobFailed(job: Job, error: Error) {
+    const maxAttempts = job.opts?.attempts ?? 1;
+    if (job.attemptsMade >= maxAttempts) {
+      this.logger.error(
+        JSON.stringify({
+          status: 'DEAD_LETTER',
+          jobId: job.id,
+          event: job.data?.event,
+          eventId: job.data?.eventId,
+          attempts: job.attemptsMade,
+          error: error.message,
+        }),
+        error.stack,
+      );
+      Sentry.captureException(error, {
+        tags: {
+          component: 'REMOVED_PAYMENT_INFRA-webhook',
+          event: job.data?.event,
+          eventId: job.data?.eventId,
+        },
+      });
     }
   }
 
@@ -523,6 +565,71 @@ export class RazorpayWebhookProcessor extends WorkerHost {
           ),
         );
     }
+  }
+
+  private async handleSubscriptionCompleted(subEntity: any) {
+    const subId = subEntity.id;
+    this.logger.warn(`Subscription Completed (total_count exhausted): ${subId}`);
+
+    const subscription = await this.prisma.tenantSubscription.findFirst({
+      where: {
+        providerSubscriptionId: subId,
+        status: { not: SubscriptionStatus.EXPIRED },
+      },
+    });
+
+    if (!subscription) return;
+
+    await this.prisma.tenantSubscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: SubscriptionStatus.EXPIRED,
+        autoRenew: false,
+        autopayStatus: AutopayStatus.CANCELLED,
+        updatedAt: new Date(),
+      },
+    });
+
+    this.eventEmitter.emit('subscription.expired', {
+      tenantId: subscription.tenantId,
+      module: subscription.module,
+    });
+
+    this.logger.log(`Subscription ${subscription.id} marked EXPIRED (completed).`);
+  }
+
+  private async handleSubscriptionPaused(subEntity: any) {
+    this.logger.warn(`Subscription Paused by Razorpay: ${subEntity.id}`);
+    await this.prisma.tenantSubscription.updateMany({
+      where: {
+        providerSubscriptionId: subEntity.id,
+        status: { not: SubscriptionStatus.EXPIRED },
+      },
+      data: {
+        autopayStatus: AutopayStatus.HALTED,
+        status: SubscriptionStatus.PAST_DUE,
+        updatedAt: new Date(),
+      },
+    });
+    this.eventEmitter.emit('subscription.suspended', {
+      tenantId: subEntity.tenantId,
+      reason: 'RAZORPAY_PAUSED',
+    });
+  }
+
+  private async handleSubscriptionResumed(subEntity: any) {
+    this.logger.log(`Subscription Resumed: ${subEntity.id}`);
+    await this.prisma.tenantSubscription.updateMany({
+      where: {
+        providerSubscriptionId: subEntity.id,
+        status: { not: SubscriptionStatus.EXPIRED },
+      },
+      data: {
+        autopayStatus: AutopayStatus.ACTIVE,
+        status: SubscriptionStatus.ACTIVE,
+        updatedAt: new Date(),
+      },
+    });
   }
 
   private async handlePaymentFailed(payment: any) {

@@ -11,9 +11,13 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { CustomerNotesService } from './customer-notes.service';
 import { IsNotEmpty, IsString } from 'class-validator';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 class CreateNoteDto {
   @IsString()
@@ -21,17 +25,21 @@ class CreateNoteDto {
   content: string;
 }
 
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('core')
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('core/customers/:customerId/notes')
 export class CustomerNotesController {
   constructor(private readonly service: CustomerNotesService) {}
 
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.VIEW)
   @Get()
   list(@Req() req, @Param('customerId') customerId: string) {
     return this.service.listNotes(req.user.tenantId, customerId);
   }
 
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.UPDATE)
   @Post()
   create(
     @Req() req,
@@ -47,6 +55,7 @@ export class CustomerNotesController {
     );
   }
 
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.UPDATE)
   @Delete(':noteId')
   remove(
     @Req() req,

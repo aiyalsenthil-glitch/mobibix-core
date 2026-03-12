@@ -18,4 +18,9 @@ export const billingMetricsProviders = [
     name: 'invoices_generated_total',
     help: 'Total invoices generated',
   }),
+  makeCounterProvider({
+    name: 'webhook_queue_fallback_total',
+    help: 'Razorpay webhooks processed synchronously due to Redis/BullMQ unavailability',
+    labelNames: ['event'],
+  }),
 ];

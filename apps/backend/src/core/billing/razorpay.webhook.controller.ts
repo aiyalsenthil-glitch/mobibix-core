@@ -4,15 +4,19 @@ import {
   Headers,
   Body,
   BadRequestException,
+  InternalServerErrorException,
   Logger,
   Req,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { RazorpayService } from './REMOVED_PAYMENT_INFRA.service';
+import { RazorpayWebhookProcessor } from './REMOVED_PAYMENT_INFRA.webhook.processor';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
+import { Counter } from 'prom-client';
 import { Public } from '../auth/decorators/public.decorator';
 
 @Controller(['billing/webhook/REMOVED_PAYMENT_INFRA', 'payments/webhook'])
@@ -24,6 +28,9 @@ export class RazorpayWebhookController {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     @InjectQueue('REMOVED_PAYMENT_INFRA-webhooks') private readonly webhookQueue: Queue,
+    private readonly processor: RazorpayWebhookProcessor,
+    @InjectMetric('webhook_queue_fallback_total')
+    private readonly fallbackCounter: Counter<string>,
   ) {}
 
   @Public()
@@ -67,7 +74,7 @@ export class RazorpayWebhookController {
     }
 
     const event = body.event;
-    const eventId = body.headers?.['x-REMOVED_PAYMENT_INFRA-event-id'] || body.id;
+    const eventId = (req.headers['x-REMOVED_PAYMENT_INFRA-event-id'] as string) || body.id;
     const startTime = performance.now();
 
     const logData = {
@@ -160,29 +167,43 @@ export class RazorpayWebhookController {
           message: `Enqueued webhook event ${eventId} to BullMQ.`,
         }),
       );
-    } catch (err: any) {
-      const durationMs = Math.round(performance.now() - startTime);
-      this.logger.error(
+    } catch (queueErr: any) {
+      // Redis/BullMQ unavailable — fall back to synchronous processing
+      // so Razorpay receives 200 and does not retry unnecessarily.
+      this.logger.warn(
         JSON.stringify({
           ...logData,
-          status: 'QUEUE_FAILED',
-          durationMs,
-          error: err.message,
+          status: 'QUEUE_UNAVAILABLE',
+          error: queueErr.message,
+          message: 'BullMQ enqueue failed — processing synchronously.',
         }),
       );
+      this.fallbackCounter.inc({ event });
 
-      if (eventId) {
-        await this.prisma.webhookEvent
-          .updateMany({
-            where: { provider: 'RAZORPAY', referenceId: eventId },
-            data: { status: 'FAILED', error: err.message },
-          })
-          .catch((updateErr) =>
-            this.logger.error('Failed to log error status', updateErr),
-          );
+      try {
+        await this.processor.processEvent(event, eventId, body.payload);
+        const durationMs = Math.round(performance.now() - startTime);
+        this.logger.log(
+          JSON.stringify({
+            ...logData,
+            status: 'SYNC_COMPLETED',
+            durationMs,
+          }),
+        );
+      } catch (syncErr: any) {
+        const durationMs = Math.round(performance.now() - startTime);
+        this.logger.error(
+          JSON.stringify({
+            ...logData,
+            status: 'SYNC_FAILED',
+            durationMs,
+            error: syncErr.message,
+          }),
+          syncErr?.stack,
+        );
+        // Return 500 — Razorpay will retry. Better than silently losing the event.
+        throw new InternalServerErrorException('Webhook processing failed');
       }
-
-      return { status: 'error', message: err.message };
     }
 
     return { status: 'ok' };

@@ -9,6 +9,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { GranularPermissionGuard } from '../../core/permissions/guards/granular-permission.guard';
+import { RolesGuard } from '../../core/auth/guards/roles.guard';
+import { RequirePermission, ModulePermission } from '../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
 import {
@@ -28,34 +32,40 @@ import { ModuleType, UserRole } from '@prisma/client';
 
 @Controller('user/whatsapp')
 @ModuleScope(ModuleType.WHATSAPP_CRM)
-@UseGuards(JwtAuthGuard, TenantRequiredGuard, PlanFeatureGuard)
+@ModulePermission('whatsapp')
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, RolesGuard, GranularPermissionGuard, PlanFeatureGuard)
 @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
 export class WhatsAppUserController {
   constructor(private readonly whatsappUserService: WhatsAppUserService) {}
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.VIEW_DASHBOARD)
   @Get('dashboard')
   async getDashboard(@Req() req: any) {
     return this.whatsappUserService.getDashboard(req.user.tenantId);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.VIEW_NUMBERS)
   @Get('numbers')
   async getNumbers(@Req() req: any) {
     return this.whatsappUserService.getNumbers(req.user.tenantId);
   }
 
-  @Post('send')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
   @RequirePlanFeature('WHATSAPP_UTILITY')
+  @Post('send')
   async sendMessage(@Req() req: any, @Body() dto: SendWhatsAppMessageDto) {
     return this.whatsappUserService.sendMessage(req.user.tenantId, dto);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.VIEW_LOGS)
   @Get('logs')
   async getLogs(@Req() req: any, @Query() query: WhatsAppLogsQueryDto) {
     return this.whatsappUserService.getLogs(req.user.tenantId, query);
   }
 
-  @Post('campaigns')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.MANAGE_CAMPAIGNS)
   @RequirePlanFeature('WHATSAPP_MARKETING')
+  @Post('campaigns')
   async createCampaign(
     @Req() req: any,
     @Body() dto: CreateWhatsAppCampaignDto,
@@ -63,8 +73,9 @@ export class WhatsAppUserController {
     return this.whatsappUserService.createCampaign(req.user.tenantId, dto);
   }
 
-  @Patch('campaigns/:id/schedule')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.MANAGE_CAMPAIGNS)
   @RequirePlanFeature('WHATSAPP_MARKETING')
+  @Patch('campaigns/:id/schedule')
   async scheduleCampaign(
     @Req() req: any,
     @Param('id') campaignId: string,

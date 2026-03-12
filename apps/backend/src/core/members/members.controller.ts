@@ -20,25 +20,28 @@ import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { MembersService } from './members.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { TenantStatusGuard } from '../tenant/guards/tenant-status.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole, ModuleType } from '@prisma/client';
 import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('members')
 @ModuleScope(ModuleType.GYM)
+@ModulePermission('membership')
 @UseGuards(
   JwtAuthGuard,
   TenantRequiredGuard,
-  PermissionsGuard,
+  GranularPermissionGuard,
   TenantStatusGuard,
 )
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
-  @Permissions(Permission.MEMBER_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
   @Get()
   list(
     @Req() req: any,
@@ -53,7 +56,7 @@ export class MembersController {
     });
   }
 
-  @Permissions(Permission.MEMBER_CREATE)
+  @RequirePermission(PERMISSIONS.GYM.MEMBERS.CREATE)
   @Post()
   create(@Req() req: any, @Body() dto: CreateMemberDto) {
     // tenantId guaranteed by TenantRequiredGuard
@@ -65,7 +68,7 @@ export class MembersController {
     );
   }
 
-  @Permissions(Permission.MEMBER_EDIT)
+  @RequirePermission(PERMISSIONS.GYM.MEMBERS.EDIT)
   @Patch(':id')
   update(
     @Req() req: any,
@@ -80,31 +83,29 @@ export class MembersController {
     );
   }
 
-  @Permissions(Permission.MEMBER_EDIT)
+  @RequirePermission(PERMISSIONS.GYM.MEMBERS.EDIT)
   @Delete(':id')
   delete(@Req() req: any, @Param('id') id: string) {
     return this.membersService.deleteMember(req.user, id);
   }
-  @Permissions(Permission.MEMBER_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
   @Get('stats/expiring-soon')
   countExpiring(@Req() req: any) {
     return this.membersService.countExpiringSoon(req.user.tenantId, 5);
   }
 
-  @Permissions(Permission.MEMBER_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
   @Get(':id/payments')
   getPayments(@Req() req: any, @Param('id') id: string) {
     return this.membersService.getMemberPayments(req.user.tenantId, id);
   }
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @Permissions(Permission.MEMBER_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
   @Get('expired-today-count')
   countExpiredToday(@Req() req: any) {
     return this.membersService.countExpiredToday(req.user.tenantId);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @Permissions(Permission.MEMBER_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
   @Get('search')
   async searchByPhone(@Req() req: any, @Query('phone') phone: string) {
     if (!phone) {
@@ -123,7 +124,7 @@ export class MembersController {
     return member;
   }
 
-  @Permissions(Permission.MEMBER_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
   @Get(':id')
   getById(@Req() req: any, @Param('id') id: string) {
     return this.membersService.getMemberById(req.user.tenantId, id);

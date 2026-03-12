@@ -24,11 +24,17 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationOrchestrator } from '../notifications/notification.orchestrator';
 import { UserRole, ModuleType, SubscriptionStatus } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
 
 import { subDays } from 'date-fns';
 
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class AdminController {
   constructor(
@@ -79,6 +85,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // INJECT SUBSCRIPTION (ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('inject-sub')
   async injectSubscription(@Body() body: { tenantId: string; planId: string }) {
     const { tenantId, planId } = body;
@@ -157,6 +164,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // LIST ALL PLANS (ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('plans')
   async listAllPlans() {
     return this.plansService.getPlans(); // all plans (active + inactive)
@@ -165,6 +173,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // LIST ALL TENANTS
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('tenants')
   async listTenants() {
     return this.tenantService.listTenantsWithSubscription();
@@ -173,6 +182,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // PRIVACY & ACCOUNT DELETION REQS
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('privacy/deletions')
   async getDeletionRequests() {
     return this.prisma.deletionRequest.findMany({
@@ -185,12 +195,14 @@ export class AdminController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('privacy/deletions/:id/approve')
   async approveDeletionRequest(@Param('id') id: string, @Req() req: any) {
     const adminUserId = req.user.sub || req.user.id;
     return this.tenantService.processDeletionRequest(id, true, adminUserId);
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('privacy/deletions/:id/reject')
   async rejectDeletionRequest(@Param('id') id: string, @Req() req: any) {
     const adminUserId = req.user.sub || req.user.id;
@@ -200,8 +212,8 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // TENANT SUBSCRIPTION
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('tenants/:tenantId/subscription')
-  @UseGuards(JwtAuthGuard)
   async getTenantSubscription(
     @Param('tenantId') tenantId: string,
     @Query('module') module?: ModuleType,
@@ -232,6 +244,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // TENANT USAGE (ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('tenants/:tenantId/usage')
   async getTenantUsage(@Param('tenantId') tenantId: string) {
     return this.tenantService.getUsage(tenantId);
@@ -240,6 +253,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // EXTEND TRIAL
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Patch('tenants/:tenantId/extend-trial')
   async extendTrial(
     @Param('tenantId') tenantId: string,
@@ -263,6 +277,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // Create PLAN (PLATFORM ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('plans')
   createPlan(@Body() body) {
     return this.plansService.createPlan(body);
@@ -271,6 +286,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // UPDATE PLAN (PLATFORM ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Patch('plans/:planId')
   async updatePlan(
     @Param('planId') planId: string,
@@ -292,6 +308,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // CHANGE TENANT PLAN (ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Patch('tenants/:tenantId/plan')
   async changeTenantPlan(
     @Param('tenantId') tenantId: string,
@@ -321,6 +338,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // CHANGE STATUS (ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Patch('tenants/:tenantId/status')
   async changeStatus(
     @Param('tenantId') tenantId: string,
@@ -350,6 +368,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // PAYMENT HISTORY
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('tenants/:tenantId/payments')
   async getTenantPayments(@Param('tenantId') tenantId: string) {
     return this.prisma.payment.findMany({
@@ -361,6 +380,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // GLOBAL ANALYTICS (EXECUTIVE)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('analytics/global')
   async getGlobalAnalytics() {
     const today = new Date();
@@ -447,6 +467,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // CAPITAL OVERVIEW (INVESTOR)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('capital-overview')
   async getCapitalOverview() {
     const stats = await this.getGlobalAnalytics();
@@ -467,6 +488,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // MASTER DATA MANAGEMENT (HSN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('mdm/hsn')
   async getHsnCodes(@Query('search') search?: string) {
     return this.prisma.hSNCode.findMany({
@@ -482,6 +504,7 @@ export class AdminController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('mdm/hsn')
   async upsertHsnCode(@Body() body: any) {
     const { code, description, gstRate } = body;
@@ -497,6 +520,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // MASTER DATA MANAGEMENT (GLOBAL PRODUCTS)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('mdm/products')
   async getGlobalProducts(
     @Query('search') search?: string,
@@ -537,6 +561,7 @@ export class AdminController {
     return { data: items, total, page: parseInt(page), limit: parseInt(limit) };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('mdm/products')
   async createGlobalProduct(@Body() body: any) {
     const { name, category: catName, hsnCode, taxRate } = body;
@@ -572,6 +597,7 @@ export class AdminController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Put('mdm/products/:id')
   async updateGlobalProduct(@Param('id') id: string, @Body() body: any) {
     const { name, category: catName, hsnCode, taxRate } = body;
@@ -616,6 +642,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // USER LOOKUP (ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('users/lookup')
   async lookupUser(@Query('email') email: string) {
     if (!email) {
@@ -685,6 +712,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // SYSTEM HEALTH: WEBHOOK LOGS (ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('system/webhook-logs')
   async getWebhookLogs(
     @Query('search') search?: string,
@@ -728,6 +756,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // TENANT IMPERSONATION (ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('tenants/:id/impersonate')
   async impersonateTenant(@Param('id') tenantId: string, @Req() req: any) {
     const adminUserId = req.user.sub || req.user.id;
@@ -797,6 +826,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // PLATFORM AUDIT LOGS (ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('system/audit-logs')
   async getPlatformAuditLogs(
     @Query('page') page: string = '1',
@@ -829,6 +859,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // UPGRADE PLAN (ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('subscription/upgrade')
   async upgradePlan(
     @Body() body: { tenantId: string; planName: string; module: ModuleType },
@@ -846,6 +877,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // UPGRADE PLAN BY EMAIL (ADMIN CONVENIENCE)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('subscription/upgrade-by-email')
   async upgradePlanByEmail(
     @Body() body: { email: string; planName: string; module: ModuleType },
@@ -889,6 +921,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // MANAGE ADDON (ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('subscription/addon')
   async manageAddon(
     @Body()
@@ -915,6 +948,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // DOWNGRADE CHECK (ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('subscription/downgrade-check')
   async checkDowngrade(
     @Query('tenantId') tenantId: string,
@@ -945,6 +979,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // NOTIFICATION LOGS (PLATFORM ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('notifications/logs')
   async getNotificationLogs(
     @Query('tenantId') tenantId?: string,
@@ -970,6 +1005,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // REVENUE PROTECTION ANALYTICS (PLATFORM ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('analytics/revenue-protection')
   async getRevenueProtectionStats() {
     const [overdueCount, expiredCount, pendingDeletionCount] =
@@ -995,6 +1031,7 @@ export class AdminController {
   // ─────────────────────────────────────────────
   // SEND NOTIFICATION (ADMIN)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('notifications/send')
   async sendNotification(
     @Body()

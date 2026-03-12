@@ -12,10 +12,16 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { AdvanceApplicationService } from './advance-application.service';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('vouchers')
-@UseGuards(JwtAuthGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('inventory')
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class VouchersHardeningController {
   constructor(
@@ -25,6 +31,7 @@ export class VouchersHardeningController {
   /**
    * POST /advance/:id/apply-to-purchase - Apply supplier advance to purchase
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.VOUCHER.CREATE)
   @Post('advance/:voucherId/apply-to-purchase')
   @HttpCode(200)
   async applyAdvanceToPurchase(
@@ -54,6 +61,7 @@ export class VouchersHardeningController {
   /**
    * GET /advance/:id/balance - Get advance balance (total - applied)
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.VOUCHER.VIEW)
   @Get('advance/:voucherId/balance')
   async getAdvanceBalance(
     @Param('voucherId') advanceVoucherId: string,
@@ -69,6 +77,7 @@ export class VouchersHardeningController {
   /**
    * GET /advance/:id/applications - Get purchases this advance is applied to
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.VOUCHER.VIEW)
   @Get('advance/:voucherId/applications')
   async getAdvanceApplications(
     @Param('voucherId') advanceVoucherId: string,

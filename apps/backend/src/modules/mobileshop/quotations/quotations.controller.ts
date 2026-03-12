@@ -20,14 +20,19 @@ import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
 import { ConvertQuotationDto } from './dto/convert-quotation.dto';
 import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
+import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
 
 @Controller('mobileshop/shops/:shopId/quotations')
 @ModuleScope(ModuleType.MOBILE_SHOP)
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@ModulePermission('quotation')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class QuotationsController {
   constructor(private readonly quotationsService: QuotationsService) {}
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.QUOTATION.VIEW)
   @Get()
   async list(
     @Req() req: any,
@@ -38,6 +43,7 @@ export class QuotationsController {
     return this.quotationsService.listQuotations(tenantId, shopId, query);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.QUOTATION.VIEW)
   @Get(':id')
   async getOne(
     @Req() req: any,
@@ -48,6 +54,7 @@ export class QuotationsController {
     return this.quotationsService.getQuotation(tenantId, shopId, id);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.QUOTATION.CREATE)
   @Post()
   async create(
     @Req() req: any,
@@ -59,6 +66,7 @@ export class QuotationsController {
     return this.quotationsService.createQuotation(tenantId, shopId, dto, userId);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.QUOTATION.UPDATE)
   @Patch(':id')
   async update(
     @Req() req: any,
@@ -70,6 +78,7 @@ export class QuotationsController {
     return this.quotationsService.updateQuotation(tenantId, shopId, id, dto);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.QUOTATION.UPDATE)
   @Post(':id/status')
   async updateStatus(
     @Req() req: any,
@@ -81,6 +90,7 @@ export class QuotationsController {
     return this.quotationsService.updateStatus(tenantId, shopId, id, status);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.QUOTATION.CONVERT)
   @Post(':id/convert')
   async convert(
     @Req() req: any,
@@ -92,6 +102,7 @@ export class QuotationsController {
     return this.quotationsService.convertQuotation(tenantId, shopId, id, dto, req.user);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.QUOTATION.DELETE)
   @Delete(':id')
   async delete(
     @Req() req: any,

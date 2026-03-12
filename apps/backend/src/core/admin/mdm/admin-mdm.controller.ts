@@ -14,11 +14,17 @@ import {
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { RequirePermission, ModulePermission } from '../../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
 
 @Controller('admin/mdm')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
 @Roles(UserRole.ADMIN)
 export class AdminMdmController {
   constructor(private readonly prisma: PrismaService) {}
@@ -27,6 +33,7 @@ export class AdminMdmController {
   // GLOBAL PRODUCTS
   // ===============================
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('products')
   async listProducts(
     @Query('search') search?: string,
@@ -78,6 +85,7 @@ export class AdminMdmController {
     };
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('products')
   async createProduct(@Body() dto: any) {
     if (!dto.name) throw new BadRequestException('Name is required');
@@ -125,6 +133,7 @@ export class AdminMdmController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Put('products/:id')
   async updateProduct(@Param('id') id: string, @Body() dto: any) {
     const data: any = {
@@ -164,6 +173,7 @@ export class AdminMdmController {
   // HSN CODES
   // ===============================
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('hsn')
   async listHSN(@Query('search') search?: string) {
     const where: any = {};
@@ -182,6 +192,7 @@ export class AdminMdmController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('hsn')
   async upsertHSN(@Body() dto: any) {
     if (!dto.code || dto.taxRate === undefined)

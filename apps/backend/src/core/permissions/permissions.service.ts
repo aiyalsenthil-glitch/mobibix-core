@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ModuleType, Prisma } from '@prisma/client';
 import { CacheService } from '../cache/cache.service';
 import { runPermissionSeed } from './permissions.seed-logic';
+import { PERMISSION_INHERITANCE, BASE_PERMISSIONS } from '../../security/permission-inheritance';
 
 @Injectable()
 export class PermissionService {
@@ -17,6 +18,22 @@ export class PermissionService {
     private readonly prisma: PrismaService,
     private readonly cacheService: CacheService,
   ) {}
+
+  /**
+   * Expands a set of base permissions into their granular counterparts
+   */
+  expandPermissions(basePermissions: string[]): string[] {
+    const expanded = new Set<string>();
+    
+    basePermissions.forEach(perm => {
+      expanded.add(perm);
+      if (PERMISSION_INHERITANCE[perm]) {
+        PERMISSION_INHERITANCE[perm].forEach(p => expanded.add(p));
+      }
+    });
+
+    return Array.from(expanded);
+  }
 
   async seedPermissions() {
     return runPermissionSeed(this.prisma as any);
@@ -58,11 +75,13 @@ export class PermissionService {
     resourceSearch: string,
     actionSearch: string,
   ): Promise<boolean> {
-    // 1. Is Root Owner? (Bypasses all checks)
-    const isOwner = await this.prisma.userTenant.findFirst({
-      where: { userId, tenantId, isSystemOwner: true, deletedAt: null },
+    // 1. Is Root Owner or Tenant Owner? (Bypasses all checks)
+    const userRole = await this.prisma.userTenant.findFirst({
+      where: { userId, tenantId, deletedAt: null },
+      select: { isSystemOwner: true, role: true },
     });
-    if (isOwner) return true;
+    
+    if (userRole?.isSystemOwner || userRole?.role === 'OWNER') return true;
 
     // 2. Resolve Role assigned to user
     let roleId: string | null = null;
@@ -85,21 +104,31 @@ export class PermissionService {
       roleId = firstStaff.roleId;
     }
 
-    // 3. Check specific permission mapping
-    const hasPerm = await this.prisma.rolePermission.findFirst({
-      where: {
-        roleId,
+    // 3. Fetch all permissions for this role
+    const mappings = await this.prisma.rolePermission.findMany({
+      where: { roleId },
+      include: {
         permission: {
-          action: actionSearch,
-          resource: {
-            name: resourceSearch,
-            moduleType: moduleType,
-          },
+          include: { resource: true },
         },
       },
     });
 
-    return !!hasPerm;
+    const flatPermissions = mappings.map(
+      (m) => `${m.permission.resource.name}.${m.permission.action}`,
+    );
+
+    // 4. Expand permissions
+    const expanded = new Set<string>();
+    flatPermissions.forEach((p) => {
+      expanded.add(p);
+      if (PERMISSION_INHERITANCE[p]) {
+        PERMISSION_INHERITANCE[p].forEach((inherited) => expanded.add(inherited));
+      }
+    });
+
+    // 5. Check if required permission is in expanded set
+    return expanded.has(`${resourceSearch}.${actionSearch}`);
   }
 
   // Cache Invalidation (Phase 5: Broadcast via Redis Pub/Sub)
@@ -124,6 +153,22 @@ export class PermissionService {
    * Format: "resource.action" (matches frontend sidebar requiredPermissions)
    */
   async getConsolidatedPermissions(
+    userId: string,
+    tenantId: string,
+    shopId?: string | null,
+  ): Promise<string[]> {
+    const cacheKey = `user_permissions:${tenantId}:${userId}:${shopId || 'global'}`;
+    const cached = await this.cacheService.get<string[]>(cacheKey);
+    if (cached) return cached;
+
+    const permissions = await this.getConsolidatedPermissionsFromDB(userId, tenantId, shopId);
+    
+    // Cache for 1 hour as it's a "heavy" consolidated set
+    await this.cacheService.set(cacheKey, permissions, 1000 * 60 * 60);
+    return permissions;
+  }
+
+  private async getConsolidatedPermissionsFromDB(
     userId: string,
     tenantId: string,
     shopId?: string | null,
@@ -171,9 +216,21 @@ export class PermissionService {
     // Note: We use Set to dedup permissions across multiple roles/shops
     const perms = new Set<string>();
     mappings.forEach((m) => {
-      perms.add(
-        `${m.permission.resource.moduleType.toLowerCase()}.${m.permission.resource.name}.${m.permission.action}`,
-      );
+      const module = m.permission.resource.moduleType.toLowerCase();
+      const resource = m.permission.resource.name;
+      const action = m.permission.action;
+      const basePerm = `${resource}.${action}`;
+      
+      perms.add(`${module}.${basePerm}`);
+
+      // Expand inheritance
+      if (PERMISSION_INHERITANCE[basePerm]) {
+        PERMISSION_INHERITANCE[basePerm].forEach(inherited => {
+          // We assume inherited permissions belong to the same module or a generic one.
+          // For simplicity, we'll prefix with module if not present.
+          perms.add(`${module}.${inherited}`);
+        });
+      }
     });
 
     return Array.from(perms);
@@ -488,5 +545,34 @@ export class PermissionService {
     });
 
     return Object.values(modules);
+  }
+
+  async getPermissionMatrix() {
+    const roles = await this.prisma.role.findMany({
+      where: { isSystem: true, tenantId: null, deletedAt: null },
+      include: {
+        rolePermissions: {
+          include: {
+            permission: {
+              include: { resource: true },
+            },
+          },
+        },
+      },
+    });
+
+    return roles.map((role) => {
+      const basePermissions = role.rolePermissions.map(
+        (rp) => `${rp.permission.resource.name}.${rp.permission.action}`,
+      );
+
+      const expandedPermissions = this.expandPermissions(basePermissions);
+
+      return {
+        role: role.name,
+        base: basePermissions,
+        expanded: expandedPermissions,
+      };
+    });
   }
 }

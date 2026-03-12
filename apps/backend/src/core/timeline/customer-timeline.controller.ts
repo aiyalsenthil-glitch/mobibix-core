@@ -19,10 +19,16 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('core/customer-timeline')
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('crm')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)
 export class CustomerTimelineController {
   constructor(private readonly timelineService: CustomerTimelineService) {}
@@ -31,6 +37,7 @@ export class CustomerTimelineController {
    * Get customer timeline
    * GET /api/core/customer-timeline/:customerId
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW_TIMELINE)
   @Get(':customerId')
   @HttpCode(HttpStatus.OK)
   async getCustomerTimeline(
@@ -68,6 +75,7 @@ export class CustomerTimelineController {
    * Get timeline statistics
    * GET /api/core/customer-timeline/:customerId/stats
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW_TIMELINE)
   @Get(':customerId/stats')
   @HttpCode(HttpStatus.OK)
   async getTimelineStats(

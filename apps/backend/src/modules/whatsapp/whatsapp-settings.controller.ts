@@ -17,6 +17,9 @@ import { UserRole, ModuleType } from '@prisma/client';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { VirtualTenantGuard } from './guards/virtual-tenant.guard';
 import { ModuleScope } from '../../core/auth/decorators/module-scope.decorator';
+import { GranularPermissionGuard } from '../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 interface CreateWhatsAppSettingDto {
   enabled: boolean;
@@ -28,7 +31,8 @@ interface CreateWhatsAppSettingDto {
 
 @Controller('whatsapp/settings')
 @ModuleScope(ModuleType.WHATSAPP_CRM)
-@UseGuards(JwtAuthGuard, RolesGuard)
+@ModulePermission('whatsapp')
+@UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
 export class WhatsAppSettingsController {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -38,6 +42,7 @@ export class WhatsAppSettingsController {
    * Returns: ["GYM", "MOBILE_SHOP"]
    * Accessible by: ADMIN only
    */
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('admin/modules')
   @Roles(UserRole.ADMIN)
   async getAvailableModules(@Req() req: any) {
@@ -60,6 +65,7 @@ export class WhatsAppSettingsController {
    * moduleType: "GYM" or "MOBILE_SHOP"
    * Accessible by: ADMIN, OWNER, STAFF (read-only for STAFF)
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SETTINGS_VIEW)
   @Get(':moduleType')
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
   @UseGuards(VirtualTenantGuard)
@@ -95,6 +101,7 @@ export class WhatsAppSettingsController {
    * Create module-level WhatsApp settings
    * Accessible by: ADMIN, OWNER only (STAFF cannot create)
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SETTINGS_MANAGE)
   @Post(':moduleType')
   @Roles(UserRole.ADMIN, UserRole.OWNER)
   @UseGuards(VirtualTenantGuard)
@@ -126,6 +133,7 @@ export class WhatsAppSettingsController {
    * Update module-level WhatsApp settings
    * Accessible by: ADMIN, OWNER only (STAFF cannot update)
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SETTINGS_MANAGE)
   @Patch(':moduleType')
   @Roles(UserRole.ADMIN, UserRole.OWNER)
   @UseGuards(VirtualTenantGuard)
@@ -177,6 +185,7 @@ export class WhatsAppSettingsController {
    * Delete module-level WhatsApp settings
    * Accessible by: ADMIN only (OWNER and STAFF cannot delete)
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SETTINGS_MANAGE)
   @Delete(':moduleType')
   @Roles(UserRole.ADMIN)
   async deleteSettings(

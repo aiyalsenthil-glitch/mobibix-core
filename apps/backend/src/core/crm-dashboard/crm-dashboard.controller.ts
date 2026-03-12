@@ -10,17 +10,20 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CrmDashboardService } from './crm-dashboard.service';
 import { DashboardQueryDto } from './dto/dashboard-query.dto';
 import { CrmDashboardResponse } from './dto/dashboard-response.dto';
-import { UserRole } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { TenantStatusGuard } from '../tenant/guards/tenant-status.guard';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 import { ModuleScope } from '../auth/decorators/module-scope.decorator';
-import { ModuleType } from '@prisma/client';
+import { ModuleType, UserRole } from '@prisma/client';
 
 @Controller('core/crm-dashboard')
 @ModuleScope(ModuleType.MOBILE_SHOP)
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, TenantStatusGuard)
+@ModulePermission('crm')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, TenantStatusGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.STAFF)
 export class CrmDashboardController {
   constructor(private readonly dashboardService: CrmDashboardService) {}
@@ -32,6 +35,7 @@ export class CrmDashboardController {
    * @access OWNER, ADMIN, STAFF
    * @returns Comprehensive dashboard with customer, follow-up, financial, loyalty, WhatsApp KPIs
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW)
   @Get()
   async getDashboard(
     @Request() req,

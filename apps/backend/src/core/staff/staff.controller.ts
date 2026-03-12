@@ -24,11 +24,16 @@ import {
   RequirePlanFeature,
 } from '../billing/guards/plan-feature.guard';
 import { ModuleType } from '@prisma/client';
-import { RequirePermission } from '../permissions/decorators/require-permission.decorator';
 import { BranchAccessGuard } from '../permissions/guards/branch-access.guard';
 import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { RequirePermission, ModulePermission } from '../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('staff')
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('staff')
 export class StaffController {
   constructor(
     private readonly staffService: StaffService, // inject
@@ -42,8 +47,7 @@ export class StaffController {
     BranchAccessGuard,
     GranularPermissionGuard,
   )
-  @Permissions(Permission.STAFF_MANAGE)
-  @RequirePermission(ModuleType.CORE, 'staff', 'view_all')
+  @RequirePermission(PERMISSIONS.CORE.STAFF.VIEW)
   @Get()
   listStaff(
     @Req() req: any,
@@ -68,7 +72,7 @@ export class StaffController {
     GranularPermissionGuard,
     PlanFeatureGuard,
   )
-  @RequirePlanFeature('staff')
+  @RequirePermission(PERMISSIONS.CORE.STAFF.MANAGE)
   @Roles(UserRole.OWNER)
   @Post()
   async create(
@@ -97,6 +101,7 @@ export class StaffController {
     BranchAccessGuard,
     GranularPermissionGuard,
   )
+  @RequirePermission(PERMISSIONS.CORE.STAFF.INVITE)
   @Roles(UserRole.OWNER)
   @Post('invite')
   async invite(
@@ -127,6 +132,7 @@ export class StaffController {
     BranchAccessGuard,
     GranularPermissionGuard,
   )
+  @RequirePermission(PERMISSIONS.CORE.STAFF.VIEW)
   @Roles(UserRole.OWNER)
   @Get('invites')
   async listInvites(@Req() req: any) {
@@ -134,14 +140,14 @@ export class StaffController {
   }
 
   // USER: Accept an invite (Bypasses TenantRequired & Roles constraints)
-  @UseGuards(JwtAuthGuard)
+  @Public()
   @Post('invite/accept')
   async acceptInvite(@Req() req: any, @Body('token') token: string) {
     const result = await this.staffService.acceptInvite(req.user.sub, token);
     return result;
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Public()
   @Post('invite/reject')
   async rejectInvite(@Req() req: any, @Body('token') token: string) {
     return this.staffService.rejectInvite(req.user.sub, token);
@@ -154,6 +160,7 @@ export class StaffController {
     BranchAccessGuard,
     GranularPermissionGuard,
   )
+  @RequirePermission(PERMISSIONS.CORE.STAFF.MANAGE)
   @Roles(UserRole.OWNER)
   @Delete('invite/:id')
   async revokeInvite(@Req() req: any, @Param('id') inviteId: string) {
@@ -167,7 +174,7 @@ export class StaffController {
     BranchAccessGuard,
     GranularPermissionGuard,
   )
-  @Permissions(Permission.STAFF_MANAGE)
+  @RequirePermission(PERMISSIONS.CORE.STAFF.MANAGE)
   @Delete(':staffUserId')
   async removeStaff(
     @Req() req: any,

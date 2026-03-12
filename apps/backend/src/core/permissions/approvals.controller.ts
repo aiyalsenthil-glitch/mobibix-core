@@ -16,17 +16,25 @@ import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActionDispatcherService } from './action-dispatcher.service';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
+import { ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('permissions/approvals')
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('core')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
 export class ApprovalsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly actionDispatcher: ActionDispatcherService,
   ) {}
 
-  @Get('pending')
+  @RequirePermission(PERMISSIONS.CORE.APPROVAL.VIEW)
   @Roles(UserRole.OWNER)
+  @Get('pending')
   async listPending(@Req() req: any, @Query('shopId') shopId?: string) {
     return this.prisma.approvalRequest.findMany({
       where: {
@@ -46,8 +54,9 @@ export class ApprovalsController {
     });
   }
 
-  @Post(':id/resolve')
+  @RequirePermission(PERMISSIONS.CORE.APPROVAL.MANAGE)
   @Roles(UserRole.OWNER)
+  @Post(':id/resolve')
   async resolve(
     @Req() req: any,
     @Param('id') id: string,
