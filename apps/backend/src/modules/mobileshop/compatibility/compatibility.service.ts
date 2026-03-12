@@ -8,17 +8,31 @@ export class CompatibilityService {
   constructor(private prisma: PrismaService) {}
 
   async searchCompatibleParts(modelName: string) {
+    const terms = modelName.trim().split(' ').filter(t => t.length > 0);
+    const firstTerm = terms[0];
+    const otherTerms = terms.slice(1).join(' ');
+
     // 1. Find the phone model
     const phoneModel = await this.prisma.phoneModel.findFirst({
       where: {
-        modelName: {
-          contains: modelName,
-          mode: 'insensitive',
-        },
+        OR: [
+           // Case 1: Brand + Model matches (e.g. "Samsung A20")
+           terms.length > 1 ? {
+             AND: [
+               { brand: { name: { contains: firstTerm, mode: 'insensitive' } } },
+               { modelName: { contains: otherTerms, mode: 'insensitive' } }
+             ]
+           } : {},
+           // Case 2: Just model name contains the string
+           { modelName: { contains: modelName, mode: 'insensitive' } },
+        ]
       },
       include: {
         brand: true,
       },
+      orderBy: {
+        modelName: 'asc'
+      }
     });
 
     if (!phoneModel) {
@@ -204,17 +218,30 @@ export class CompatibilityService {
   async autocompletePhoneModels(query: string) {
     if (!query || query.length < 2) return [];
 
+    const terms = query.split(' ').filter(t => t.length > 0);
+    const firstTerm = terms[0];
+    const otherTerms = terms.slice(1).join(' ');
+
     const models = await this.prisma.phoneModel.findMany({
       where: {
         OR: [
+          // Case 1: Multiple terms (e.g. "Samsung A20")
+          terms.length > 1 ? {
+            AND: [
+              { brand: { name: { contains: firstTerm, mode: 'insensitive' } } },
+              { modelName: { contains: otherTerms, mode: 'insensitive' } }
+            ]
+          } : {},
+          // Case 2: Model name contains the query
           { modelName: { contains: query, mode: 'insensitive' } },
+          // Case 3: Brand name contains the query
           { brand: { name: { contains: query, mode: 'insensitive' } } }
         ]
       },
       include: {
         brand: true
       },
-      take: 15,
+      take: 6,
       orderBy: {
         modelName: 'asc'
       }
