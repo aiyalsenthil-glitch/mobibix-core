@@ -27,6 +27,7 @@ import {
   ClipboardList,
   FileMinus,
   Sparkles,
+  Receipt,
 } from "lucide-react";
 import { AiQuotaBadge } from "@/components/common/AiQuotaBadge";
 
@@ -45,6 +46,7 @@ const navItems: NavItem[] = [
   { label: "Quotations", href: "/quotations", icon: ClipboardList, requiredPermission: "mobile_shop.quotation.view", category: "Transactions" },
   { label: "Credit Notes", href: "/credit-notes", icon: FileMinus, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
   { label: "Sales Receipts", href: "/receipts", icon: CreditCard, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
+  { label: "Payment Vouchers", href: "/vouchers", icon: Receipt, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
   { label: "Customers", href: "/customers", icon: Users, requiredPermission: "mobile_shop.customer.view", category: "CRM & Marketing" },
   { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare, requiredPermission: "mobile_shop.customer.view", category: "CRM & Marketing" },
   { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift, requiredPermission: "core.settings.manage", category: "CRM & Marketing" },

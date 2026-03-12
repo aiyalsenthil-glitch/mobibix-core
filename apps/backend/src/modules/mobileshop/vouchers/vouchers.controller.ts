@@ -12,15 +12,17 @@ import { CurrentUser } from '../../../core/auth/decorators/current-user.decorato
 import { VouchersService } from './vouchers.service';
 import { CreateVoucherDto } from './dto/create-voucher.dto';
 import { VoucherEntity } from './entities/voucher.entity';
-import { PaymentMode, VoucherStatus, UserRole } from '@prisma/client';
+import { PaymentMode, VoucherStatus, UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
 
 @Controller('vouchers')
+@ModuleScope(ModuleType.MOBILE_SHOP)
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
-@Roles(UserRole.OWNER, UserRole.STAFF)
+@Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.STAFF)
 export class VouchersController extends TenantScopedController {
   constructor(private readonly vouchersService: VouchersService) {
     super();

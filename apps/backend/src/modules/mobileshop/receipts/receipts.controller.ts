@@ -27,7 +27,7 @@ import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorato
 @Controller('receipts')
 @ModuleScope(ModuleType.MOBILE_SHOP)
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
-@Roles(UserRole.OWNER, UserRole.STAFF)
+@Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.STAFF)
 export class ReceiptsController extends TenantScopedController {
   constructor(private readonly receiptsService: ReceiptsService) {
     super();

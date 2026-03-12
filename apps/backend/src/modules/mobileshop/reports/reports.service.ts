@@ -484,16 +484,16 @@ export class MobileShopReportsService {
     partyId?: string,
   ) {
     const shopFilter = shopId
-      ? Prisma.sql`AND i."shopId" = ${shopId}`
+      ? Prisma.sql`AND "shopId" = ${shopId}`
       : Prisma.empty;
     const dateStartFilter = startDate
-      ? Prisma.sql`AND i."invoiceDate" >= ${startDate}`
+      ? Prisma.sql`AND "invoiceDate" >= ${startDate}`
       : Prisma.empty;
     const dateEndFilter = endDate
-      ? Prisma.sql`AND i."invoiceDate" <= ${endDate}`
+      ? Prisma.sql`AND "invoiceDate" <= ${endDate}`
       : Prisma.empty;
     const cbPartyFilter = partyId
-      ? Prisma.sql`AND i."customerId" = ${partyId}`
+      ? Prisma.sql`AND "customerId" = ${partyId}`
       : Prisma.empty;
 
     const profitResult = await this.prisma.$queryRaw<

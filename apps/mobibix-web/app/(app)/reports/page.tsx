@@ -2,7 +2,7 @@
 
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   FileText,
   ShoppingBag,
@@ -14,6 +14,7 @@ import {
   PieChart as PieChartIcon,
   Lock,
   Settings,
+  Calendar,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useShop } from "@/context/ShopContext";
@@ -25,6 +26,7 @@ import {
   type TopProductItem,
   type ProfitSummaryMetrics,
 } from "@/services/reports.api";
+import { getSubscription } from "@/services/tenant.api";
 import {
   LineChart,
   Line,
@@ -52,29 +54,37 @@ export default function ReportsPage() {
   const [salesData, setSalesData] = useState<SalesReportItem[]>([]);
   const [topProducts, setTopProducts] = useState<TopProductItem[]>([]);
   const [profitMetrics, setProfitMetrics] = useState<ProfitSummaryMetrics | null>(null);
-  const [dateRange, setDateRange] = useState(30); // Default 30 days
+  const [dateRange, setDateRange] = useState<number | "custom">(30);
   const [maxHistoryDays, setMaxHistoryDays] = useState(30);
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const customPickerRef = useRef<HTMLDivElement>(null);
 
-  // Load backend limit
+  // Load plan limit from subscription API
   useEffect(() => {
-    const loadLimit = async () => {
-        try {
-            // We can re-use the tenant API or infer from planCode if we trust the token
-            // Ideally, we fetch the limit dynamically
-            const { getCurrentTenant } = await import("@/services/tenant.api");
-            const tenant = await getCurrentTenant();
-            const limit = tenant.subscription?.plan?.analyticsHistoryDays ?? 30;
-            setMaxHistoryDays(limit);
-        } catch (e) {
-            console.warn("Failed to load plan limits", e);
-        }
-    };
-    loadLimit();
+    getSubscription()
+      .then((sub) => {
+        const limit = sub.current?.analyticsHistoryDays ?? 30;
+        setMaxHistoryDays(limit);
+      })
+      .catch(() => {/* keep default 30 */});
   }, []);
 
-  // Auto-downgrade date range if current seleciton exceeds limit
+  // Close custom picker on outside click
   useEffect(() => {
-    if (dateRange > maxHistoryDays) {
+    const handler = (e: MouseEvent) => {
+      if (customPickerRef.current && !customPickerRef.current.contains(e.target as Node)) {
+        setShowCustomPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Auto-downgrade if current preset exceeds limit
+  useEffect(() => {
+    if (typeof dateRange === "number" && dateRange > maxHistoryDays) {
       setDateRange(maxHistoryDays);
     }
   }, [maxHistoryDays, dateRange]);

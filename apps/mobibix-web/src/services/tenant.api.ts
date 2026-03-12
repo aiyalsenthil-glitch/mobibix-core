@@ -45,6 +45,7 @@ export interface SubscriptionDetails {
   billingType: "MANUAL" | "AUTOPAY";
   subscriptionId: string;
   price?: number;
+  analyticsHistoryDays?: number;
 }
 
 export interface Plan {
