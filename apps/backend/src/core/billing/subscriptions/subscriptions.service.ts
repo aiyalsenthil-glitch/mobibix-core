@@ -164,9 +164,16 @@ export class SubscriptionsService {
       currency: tenant.currency || 'INR',
     });
 
-    // Check for existing subscription
+    // C-2: Check for any live subscription (including PAST_DUE and PENDING).
+    // Previously only checked ACTIVE/TRIAL — a PAST_DUE sub was invisible here,
+    // so buyPlanPhase1 created a new row. When the concurrent autopay charge then
+    // processed the original PAST_DUE row, both rows became ACTIVE simultaneously.
     const existingSub = await this.prisma.tenantSubscription.findFirst({
-      where: { tenantId, module, status: { in: ['ACTIVE', 'TRIAL'] } },
+      where: {
+        tenantId,
+        module,
+        status: { in: ['ACTIVE', 'TRIAL', 'PAST_DUE', 'PENDING'] },
+      },
       select: {
         id: true,
         status: true,
@@ -175,18 +182,15 @@ export class SubscriptionsService {
     });
 
     if (existingSub) {
-      // Logic for UPGRADE/RENEW exists here, but usually BuyPlan is for new or re-activation.
-      // Current implementation handles Upgrade via specific endpoint, so buyPlan assumes "New" or "Re-activate Expired".
-
       if (
         existingSub.status === SubscriptionStatus.ACTIVE &&
         existingSub.endDate > new Date()
       ) {
-        // Should use upgrade endpoint
         throw new BadRequestException(
           `Active subscription already exists. Use upgrade endpoint.`,
         );
       }
+      // PAST_DUE, PENDING, or expired ACTIVE — fall through to update the existing row
     }
 
     // ───────────────────────────────────────────────
@@ -211,7 +215,9 @@ export class SubscriptionsService {
             email: tenant.contactEmail || 'admin@mobibix.com',
             contact: tenant.contactPhone || '9999999999',
           },
-          `sub_config_${Date.now()}`, // Temporary reference, will update implementation
+          `sub_${tenantId}_${module}_${billingCycle}`, // L-3: deterministic ref prevents duplicate links on retry
+          module,                                       // M-1: correct callback URL per vertical
+          { tenantId, planId, module, billingCycle },   // C-3: notes for orphan payment recovery
         );
         providerPaymentLinkId = link.id;
         paymentLinkUrl = link.short_url;
@@ -452,6 +458,7 @@ export class SubscriptionsService {
           contact: subscription.tenant.contactPhone || '9999999999',
         },
         `upgrade_${subscription.id}_${Date.now()}`,
+        subscription.module, // M-1: correct callback URL per vertical
       );
       paymentLink = link.short_url;
     }

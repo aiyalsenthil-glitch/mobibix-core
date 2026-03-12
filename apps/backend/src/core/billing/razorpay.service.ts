@@ -75,6 +75,7 @@ export class RazorpayService {
     customer: { name: string; email: string; contact: string },
     referenceId: string,
     module: string = 'MOBILE_SHOP',
+    notes?: Record<string, string>, // C-3: stored on Razorpay payment for orphan recovery
   ) {
     try {
       this.logger.log(
@@ -100,6 +101,7 @@ export class RazorpayService {
         reference_id: referenceId,
         callback_url: `${frontendUrl}/settings?payment=success`,
         callback_method: 'get',
+        notes: notes || {},
       };
 
       const paymentLink = await this.REMOVED_PAYMENT_INFRA.paymentLink.create(options);

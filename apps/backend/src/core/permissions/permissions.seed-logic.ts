@@ -126,6 +126,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
         {
           name: 'purchase',
           actions: [
+            { id: 'manage', ui: 'Manage Purchases (Base)' },
             { id: 'create', ui: 'Create Purchase Order' },
             { id: 'view', ui: 'View Purchases' },
           ],
@@ -133,6 +134,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
         {
           name: 'supplier',
           actions: [
+            { id: 'manage', ui: 'Manage Suppliers (Base)' },
             { id: 'create', ui: 'Add Supplier' },
             { id: 'view', ui: 'View Suppliers' },
           ],
@@ -140,6 +142,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
         {
           name: 'customer',
           actions: [
+            { id: 'manage', ui: 'Manage Customers (Base)' },
             { id: 'create', ui: 'Add Customer' },
             { id: 'view', ui: 'View Customers' },
           ],
@@ -172,6 +175,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
         {
           name: 'member',
           actions: [
+            { id: 'manage', ui: 'Manage Members (Base)' },
             { id: 'create', ui: 'Register Member' },
             { id: 'view', ui: 'View Members' },
             { id: 'view_assigned', ui: 'View Assigned Members' },
@@ -181,6 +185,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
         {
           name: 'attendance',
           actions: [
+            { id: 'manage', ui: 'Manage Attendance (Base)' },
             { id: 'mark', ui: 'Mark Attendance' },
             { id: 'view', ui: 'View Attendance Logs' },
           ],
@@ -188,6 +193,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
         {
           name: 'membership',
           actions: [
+            { id: 'manage', ui: 'Manage Membership (Base)' },
             { id: 'create', ui: 'Assign Plan' },
             { id: 'renew', ui: 'Renew Membership' },
             { id: 'view', ui: 'View Membership Status' },
@@ -196,6 +202,7 @@ export async function runPermissionSeed(prisma: PrismaClient) {
         {
           name: 'payment',
           actions: [
+            { id: 'manage', ui: 'Manage Payments (Base)' },
             { id: 'collect', ui: 'Collect Payment' },
             { id: 'view', ui: 'View Payments' },
           ],

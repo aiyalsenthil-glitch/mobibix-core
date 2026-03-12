@@ -22,7 +22,13 @@ export class TenantRequiredGuard implements CanActivate {
     }
 
     const req = context.switchToHttp().getRequest();
-    const tenantId = req.user?.tenantId;
+    const user = req.user;
+    const tenantId = user?.tenantId;
+
+    // Platform Admins (ADMIN/SUPER_ADMIN) don't need a tenantId for platform-level management
+    if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
+      return true;
+    }
 
     if (!tenantId) {
       throw new ForbiddenException('TENANT_REQUIRED');

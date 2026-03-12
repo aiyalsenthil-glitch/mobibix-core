@@ -83,7 +83,25 @@ export class PaymentActivationService {
           billingCycle: payment.billingCycle,
           initialStatus: 'ACTIVE' as any,
           skipExternalPayment: true,
+        }).catch(async (err: any) => {
+          // H-2: If subscription was already activated (race between webhook + verify),
+          // treat as idempotent success — mark payment SUCCESS and return.
+          if (err?.message?.includes('Active subscription already exists')) {
+            this.logger.log(
+              `[PAYMENT] Subscription already active for tenant ${payment.tenantId}. Marking payment SUCCESS.`,
+            );
+            await tx.payment.update({
+              where: { id: payment.id },
+              data: { status: PaymentStatus.SUCCESS },
+            });
+            return null; // signal already_processed
+          }
+          throw err;
         });
+
+        if (subscription === null) {
+          return { status: 'already_processed', paymentId };
+        }
 
         // Mark payment as SUCCESS
         await tx.payment.update({

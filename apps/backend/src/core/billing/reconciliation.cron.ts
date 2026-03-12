@@ -20,6 +20,18 @@ export class ReconciliationCron {
    */
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async reconcilePayments() {
+    // M-4: Advisory lock — prevents two instances (K8s rolling deploy) from
+    // running reconciliation concurrently. Key 12346 is distinct from
+    // auto-renew cron (12345) to allow both to run in parallel if needed.
+    const [{ pg_try_advisory_lock: gotLock }] = await this.prisma.$queryRaw<
+      { pg_try_advisory_lock: boolean }[]
+    >`SELECT pg_try_advisory_lock(12346)`;
+
+    if (!gotLock) {
+      this.logger.warn('Another reconciliation instance is already running. Skipping.');
+      return;
+    }
+
     this.logger.log('Starting daily Razorpay reconciliation job...');
     const startTime = Date.now();
 
@@ -30,6 +42,7 @@ export class ReconciliationCron {
     } catch (err: any) {
       this.logger.error('CRITICAL: Reconciliation job FAILED', err.stack);
     } finally {
+      await this.prisma.$queryRaw`SELECT pg_advisory_unlock(12346)`;
       const duration = Math.round((Date.now() - startTime) / 1000);
       this.logger.log(`Reconciliation job finished in ${duration}s.`);
     }

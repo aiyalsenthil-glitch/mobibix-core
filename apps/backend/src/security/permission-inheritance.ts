@@ -11,10 +11,10 @@ export interface BasePermission {
 export const BASE_PERMISSIONS: Record<string, string[]> = {
   'sales.manage': ['MOBILE_SHOP'],
   'sales.view': ['MOBILE_SHOP', 'CORE'],
-  'inventory.manage': ['MOBILE_SHOP'],
-  'inventory.view': ['MOBILE_SHOP'],
-  'jobcard.manage': ['MOBILE_SHOP'],
-  'jobcard.view': ['MOBILE_SHOP'],
+  'inventory_base.manage': ['MOBILE_SHOP'],
+  'inventory_base.view': ['MOBILE_SHOP'],
+  'jobcard_base.manage': ['MOBILE_SHOP'],
+  'jobcard_base.view': ['MOBILE_SHOP'],
   'purchase.manage': ['MOBILE_SHOP'],
   'purchase.view': ['MOBILE_SHOP'],
   'supplier.manage': ['MOBILE_SHOP'],
@@ -25,8 +25,12 @@ export const BASE_PERMISSIONS: Record<string, string[]> = {
   'staff.manage': ['MOBILE_SHOP', 'CORE', 'GYM'],
   'staff.view': ['MOBILE_SHOP', 'CORE', 'GYM'],
   'settings.manage': ['MOBILE_SHOP', 'CORE', 'GYM'],
+  'membership_base.manage': ['GYM'],
+  'membership_base.view': ['GYM'],
   'membership.manage': ['GYM'],
   'membership.view': ['GYM'],
+  'member.manage': ['GYM'],
+  'member.view': ['GYM'],
   'attendance.manage': ['GYM'],
   'attendance.view': ['GYM'],
   'payment.manage': ['GYM'],
@@ -59,17 +63,17 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
     'sale.view',
     'quotation.view',
   ],
-  'inventory.manage': [
+  'inventory_base.manage': [
     'inventory.create',
     'inventory.update',
     'inventory.delete',
     'inventory.adjust',
     'inventory.view',
   ],
-  'inventory.view': [
+  'inventory_base.view': [
     'inventory.view',
   ],
-  'jobcard.manage': [
+  'jobcard_base.manage': [
     'jobcard.create',
     'jobcard.update',
     'jobcard.delete',
@@ -80,7 +84,7 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
     'jobcard.add_part',
     'jobcard.remove_part',
   ],
-  'jobcard.view': [
+  'jobcard_base.view': [
     'jobcard.view',
     'jobcard.view_assigned',
   ],
@@ -129,7 +133,7 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
     'settings.manage',
     'settings.view',
   ],
-  'membership.manage': [
+  'membership_base.manage': [
     'membership.create',
     'membership.renew',
     'membership.view',
@@ -137,10 +141,21 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
     'member.edit',
     'member.delete',
   ],
-  'membership.view': [
+  'membership_base.view': [
     'membership.view',
     'member.view',
     'member.view_assigned',
+  ],
+  'membership.manage': [
+    'membership.create',
+    'membership.renew',
+    'membership.view',
+  ],
+  'member.manage': [
+    'member.create',
+    'member.edit',
+    'member.delete',
+    'member.view',
   ],
   'attendance.manage': [
     'attendance.mark',

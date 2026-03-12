@@ -211,19 +211,63 @@ export class RazorpayWebhookProcessor extends WorkerHost {
       `Payment Captured: ${payment.id} for ₹${payment.amount / 100}`,
     );
 
-    const internalPayment = await this.prisma.payment.findFirst({
+    let internalPayment = await this.prisma.payment.findFirst({
       where: { providerPaymentId: payment.id },
     });
 
+    // C-3: Orphan recovery — backend crashed before local Payment record was created.
+    // Razorpay notes carry tenantId/planId/module set at payment link creation time.
+    if (!internalPayment) {
+      const notes = payment.notes || {};
+      if (notes.tenantId && notes.planId) {
+        this.logger.warn(
+          `[ORPHAN RECOVERY] No local Payment record for ${payment.id}. Reconstructing from Razorpay notes.`,
+        );
+        try {
+          internalPayment = await this.prisma.payment.create({
+            data: {
+              tenantId: notes.tenantId,
+              planId: notes.planId,
+              module: (notes.module || 'MOBILE_SHOP') as any,
+              billingCycle: (notes.billingCycle || 'MONTHLY') as any,
+              priceSnapshot: payment.amount,
+              amount: Math.max(payment.amount || 0, 1),
+              currency: payment.currency || 'INR',
+              status: 'PENDING',
+              provider: 'RAZORPAY',
+              providerOrderId: payment.order_id || `orphan_${payment.id}`,
+              providerPaymentId: payment.id,
+            },
+          });
+          this.logger.log(
+            `[ORPHAN RECOVERY] Created Payment ${internalPayment.id} from notes.`,
+          );
+        } catch (createErr: any) {
+          if (createErr.code === 'P2002') {
+            // Race: another worker just created it
+            internalPayment = await this.prisma.payment.findFirst({
+              where: { providerPaymentId: payment.id },
+            });
+          } else {
+            this.logger.error(
+              `[ORPHAN RECOVERY] Failed to reconstruct Payment: ${createErr.message}`,
+            );
+            return;
+          }
+        }
+      } else {
+        this.logger.warn(
+          `No local Payment record and no notes for orphan recovery: ${payment.id}`,
+        );
+        return;
+      }
+    }
+
     if (internalPayment) {
-      // ✅ Use Unified Activation Path
       await this.paymentActivationService.activateSubscriptionFromPayment(internalPayment.id);
-      
       this.logger.log(
         `✅ Payment ${internalPayment.id} activated via PaymentActivationService.`,
       );
-    } else {
-      this.logger.warn(`No internal payment record found for provider ID: ${payment.id}`);
     }
   }
 
@@ -294,28 +338,44 @@ export class RazorpayWebhookProcessor extends WorkerHost {
 
     if (subscription) {
       // ─────────────────────────────────────────────────────────────────────
-      // FIX 2A: EXPIRED Resurrection Guard
-      // A delayed webhook can arrive after the 1 AM cron has already expired
-      // the subscription. If autopay was still active on Razorpay and the
-      // charge is legitimate, we treat this as a resurrection and proceed.
-      // Any other non-ACTIVE status (e.g. CANCELLED) is non-retriable — skip.
+      // Resurrection / Out-of-order Guard
+      //
+      // EXPIRED + autopayStatus=ACTIVE: delayed webhook after cron expiry —
+      //   legitimate charge, resurrect.
+      //
+      // PAST_DUE + autopayStatus=ACTIVE: user updated card on Razorpay portal,
+      //   Razorpay retried and succeeded — legitimate charge, recover. (C-1 fix)
+      //
+      // PENDING + autopayStatus=null: subscription.charged arrived before
+      //   subscription.activated (out-of-order delivery). Treat as first-charge
+      //   activation. (H-4 fix)
+      //
+      // Any other non-ACTIVE status (CANCELLED, DISPUTED, etc.) — non-retriable.
       // ─────────────────────────────────────────────────────────────────────
       if (subscription.status !== 'ACTIVE') {
         if (
-          subscription.status === 'EXPIRED' &&
+          (subscription.status === 'EXPIRED' || subscription.status === 'PAST_DUE') &&
           subscription.autopayStatus === AutopayStatus.ACTIVE
         ) {
           this.logger.warn(
-            `[RESURRECTION] subscription.charged arrived after cron expiry for sub ` +
-              `${subscription.id} (tenant: ${subscription.tenantId}). ` +
-              `Autopay charge is legitimate — proceeding with renewal.`,
+            `[RESURRECTION] subscription.charged on ${subscription.status} sub ` +
+              `${subscription.id} — legitimate charge, proceeding with renewal.`,
           );
           // Fall through to the renewal transaction below.
+        } else if (
+          subscription.status === 'PENDING' &&
+          subscription.autopayStatus === null
+        ) {
+          this.logger.warn(
+            `[OUT-OF-ORDER] subscription.charged arrived before subscription.activated ` +
+              `for ${subscription.id}. Processing as first-charge activation.`,
+          );
+          // Fall through — the renewal transaction will handle first cycle creation.
         } else {
           // Deterministically non-renewable (CANCELLED, DISPUTED, etc). Do NOT retry.
           this.logger.warn(
             `[SKIP] subscription.charged for sub ${subscription.id} which is ` +
-              `${subscription.status}. Not eligible for renewal. Ignoring.`,
+              `${subscription.status}/${subscription.autopayStatus}. Not eligible for renewal. Ignoring.`,
           );
           return;
         }
@@ -600,6 +660,16 @@ export class RazorpayWebhookProcessor extends WorkerHost {
 
   private async handleSubscriptionPaused(subEntity: any) {
     this.logger.warn(`Subscription Paused by Razorpay: ${subEntity.id}`);
+
+    // H-6: Fetch tenantId from DB — subEntity is a Razorpay API object and has no tenantId field.
+    const sub = await this.prisma.tenantSubscription.findFirst({
+      where: {
+        providerSubscriptionId: subEntity.id,
+        status: { not: SubscriptionStatus.EXPIRED },
+      },
+      select: { tenantId: true, module: true },
+    });
+
     await this.prisma.tenantSubscription.updateMany({
       where: {
         providerSubscriptionId: subEntity.id,
@@ -611,10 +681,14 @@ export class RazorpayWebhookProcessor extends WorkerHost {
         updatedAt: new Date(),
       },
     });
-    this.eventEmitter.emit('subscription.suspended', {
-      tenantId: subEntity.tenantId,
-      reason: 'RAZORPAY_PAUSED',
-    });
+
+    if (sub) {
+      this.eventEmitter.emit('subscription.suspended', {
+        tenantId: sub.tenantId,
+        module: sub.module,
+        reason: 'RAZORPAY_PAUSED',
+      });
+    }
   }
 
   private async handleSubscriptionResumed(subEntity: any) {

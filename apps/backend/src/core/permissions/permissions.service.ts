@@ -75,36 +75,45 @@ export class PermissionService {
     resourceSearch: string,
     actionSearch: string,
   ): Promise<boolean> {
-    // 1. Is Root Owner or Tenant Owner? (Bypasses all checks)
-    const userRole = await this.prisma.userTenant.findFirst({
+    // 1. Platform-wide Bypass (SUPER_ADMIN or identified System Owner)
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') return true;
+
+    // 2. Tenant-specific Bypass (isSystemOwner or OWNER role)
+    const userTenancy = await this.prisma.userTenant.findFirst({
       where: { userId, tenantId, deletedAt: null },
       select: { isSystemOwner: true, role: true },
     });
-    
-    if (userRole?.isSystemOwner || userRole?.role === 'OWNER') return true;
 
-    // 2. Resolve Role assigned to user
+    if (userTenancy?.isSystemOwner || userTenancy?.role === 'OWNER') return true;
+
+    // 3. Resolve Role assigned to user
     let roleId: string | null = null;
-    if (shopId) {
-      const staff = await this.prisma.shopStaff.findFirst({
-        where: { userId, tenantId, shopId, isActive: true, deletedAt: null },
-        select: { roleId: true },
-      });
-      if (!staff || !staff.roleId) return false;
+    
+    const staff = await this.prisma.shopStaff.findFirst({
+      where: { 
+        userId, 
+        tenantId, 
+        ...(shopId ? { shopId } : {}),
+        isActive: true, 
+        deletedAt: null 
+      },
+      select: { roleId: true },
+      orderBy: { createdAt: 'asc' }, // Fallback to first role if multiple
+    });
+
+    if (staff) {
       roleId = staff.roleId;
-    } else {
-      // Global tenant action or no specific shop context.
-      // Auto-pick the first active shop staff entry for this user in this tenant.
-      const firstStaff = await this.prisma.shopStaff.findFirst({
-        where: { userId, tenantId, isActive: true, deletedAt: null },
-        select: { roleId: true },
-        orderBy: { createdAt: 'asc' },
-      });
-      if (!firstStaff || !firstStaff.roleId) return false;
-      roleId = firstStaff.roleId;
     }
 
-    // 3. Fetch all permissions for this role
+    // If no role is found, permission is denied
+    if (!roleId) return false;
+
+    // 4. Fetch all permissions for this role
     const mappings = await this.prisma.rolePermission.findMany({
       where: { roleId },
       include: {
@@ -118,7 +127,7 @@ export class PermissionService {
       (m) => `${m.permission.resource.name}.${m.permission.action}`,
     );
 
-    // 4. Expand permissions
+    // 5. Expand permissions
     const expanded = new Set<string>();
     flatPermissions.forEach((p) => {
       expanded.add(p);
@@ -127,13 +136,15 @@ export class PermissionService {
       }
     });
 
-    // 5. Check if required permission is in expanded set
+    // 6. Check if required permission is in expanded set
     return expanded.has(`${resourceSearch}.${actionSearch}`);
   }
 
   // Cache Invalidation (Phase 5: Broadcast via Redis Pub/Sub)
   async invalidateUserPermissions(userId: string, tenantId: string) {
-    await this.cacheService.invalidatePattern(`perm:${userId}:${tenantId}`);
+    // Clear both individual check cache and consolidated set cache
+    await this.cacheService.invalidatePattern(`perm:${userId}:${tenantId}:*`);
+    await this.cacheService.invalidatePattern(`user_permissions:${tenantId}:${userId}:*`);
   }
 
   async getApprovalPolicy(
@@ -173,12 +184,17 @@ export class PermissionService {
     tenantId: string,
     shopId?: string | null,
   ): Promise<string[]> {
-    // 1. System Owner / Owner Role = Super Admin
+    // 1. Platform-wide / Tenant Owner = Super Admin
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
     const userTenant = await this.prisma.userTenant.findFirst({
       where: { userId, tenantId, deletedAt: null },
     });
 
-    if (userTenant?.isSystemOwner || userTenant?.role === 'OWNER') {
+    if (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || userTenant?.isSystemOwner || userTenant?.role === 'OWNER') {
       return ["*"];
     }
 

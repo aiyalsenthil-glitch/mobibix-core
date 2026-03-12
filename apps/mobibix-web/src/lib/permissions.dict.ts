@@ -23,8 +23,32 @@ export const PERMISSION_DICTIONARY: WebModuleGroup[] = [
     uiLabel: "MobiBix (Mobile Shop ERP)",
     resources: [
       {
+        resourceId: "base",
+        uiLabel: "Quick Management Roles",
+        permissions: [
+          {
+            actionId: "mobile_shop.sales.manage",
+            uiLabel: "Manage Sales (Full)",
+            description: "Full access to invoicing, refunds, and quotations.",
+            isSensitive: true,
+          },
+          {
+            actionId: "mobile_shop.inventory_base.manage",
+            uiLabel: "Manage Inventory (Full)",
+            description: "Full access to stock levels and adjustments.",
+            isSensitive: true,
+          },
+          {
+            actionId: "mobile_shop.jobcard_base.manage",
+            uiLabel: "Manage Job Cards (Full)",
+            description: "Full access to repair workflows and assignments.",
+            isSensitive: true,
+          }
+        ]
+      },
+      {
         resourceId: "sale",
-        uiLabel: "Sales & Invoicing",
+        uiLabel: "Granular Sales",
         permissions: [
           {
             actionId: "mobile_shop.sale.create",
@@ -54,7 +78,7 @@ export const PERMISSION_DICTIONARY: WebModuleGroup[] = [
       },
       {
         resourceId: "inventory",
-        uiLabel: "Stock & Inventory",
+        uiLabel: "Granular Stock",
         permissions: [
           {
             actionId: "mobile_shop.inventory.view",
@@ -78,7 +102,7 @@ export const PERMISSION_DICTIONARY: WebModuleGroup[] = [
       },
       {
         resourceId: "jobcard",
-        uiLabel: "Repairs (Job Cards)",
+        uiLabel: "Granular Repairs",
         permissions: [
           {
             actionId: "mobile_shop.jobcard.create",
@@ -125,8 +149,20 @@ export const PERMISSION_DICTIONARY: WebModuleGroup[] = [
     uiLabel: "GymPilot (Gym Management)",
     resources: [
       {
+        resourceId: "base",
+        uiLabel: "Quick Management Roles",
+        permissions: [
+          {
+            actionId: "gym.membership_base.manage",
+            uiLabel: "Manage Gym (Full)",
+            description: "Full access to members, renewals, and payments.",
+            isSensitive: true,
+          }
+        ]
+      },
+      {
         resourceId: "member",
-        uiLabel: "Members",
+        uiLabel: "Granular Members",
         permissions: [
           {
             actionId: "gym.member.create",
@@ -143,16 +179,16 @@ export const PERMISSION_DICTIONARY: WebModuleGroup[] = [
         ]
       },
       {
-         resourceId: "attendance",
-         uiLabel: "Attendance",
-         permissions: [
-            {
-               actionId: "gym.attendance.mark",
-               uiLabel: "Mark Attendance",
-               description: "Log daily gym visits.",
-               isSensitive: false
-            }
-         ]
+        resourceId: "attendance",
+        uiLabel: "Granular Attendance",
+        permissions: [
+          {
+            actionId: "gym.attendance.mark",
+            uiLabel: "Mark Attendance",
+            description: "Log daily gym visits.",
+            isSensitive: false
+          }
+        ]
       }
     ]
   },
@@ -160,6 +196,18 @@ export const PERMISSION_DICTIONARY: WebModuleGroup[] = [
     moduleId: "CORE",
     uiLabel: "Core System",
     resources: [
+      {
+        resourceId: "base",
+        uiLabel: "Quick Management Roles",
+        permissions: [
+          {
+            actionId: "core.admin.manage",
+            uiLabel: "Manage Admin (Full)",
+            description: "Full access to settings, staff, and system logs.",
+            isSensitive: true,
+          }
+        ]
+      },
       {
         resourceId: "dashboard",
         uiLabel: "Dashboard",
@@ -210,6 +258,36 @@ export const PERMISSION_DICTIONARY: WebModuleGroup[] = [
             actionId: "core.staff.manage",
             uiLabel: "Manage Team",
             description: "Add members and assign roles.",
+            isSensitive: true,
+          }
+        ]
+      },
+      {
+        resourceId: "system",
+        uiLabel: "System Control",
+        permissions: [
+          {
+            actionId: "core.system.manage",
+            uiLabel: "System Manage",
+            description: "Advanced system-level configuration.",
+            isSensitive: true,
+          },
+          {
+            actionId: "core.system.view",
+            uiLabel: "System View",
+            description: "View system health and logs.",
+            isSensitive: true,
+          }
+        ]
+      },
+      {
+        resourceId: "audit",
+        uiLabel: "Audit Trail",
+        permissions: [
+          {
+            actionId: "core.audit.view",
+            uiLabel: "View Audit Logs",
+            description: "Monitor user actions.",
             isSensitive: true,
           }
         ]

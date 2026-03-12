@@ -1,6 +1,6 @@
+
 import { PrismaClient, Prisma } from '@prisma/client';
-// Use absolute path for backend src or fix the mapping
-import { PERMISSION_INHERITANCE } from '../apps/backend/src/security/permission-inheritance';
+import { PERMISSION_INHERITANCE } from '../../security/permission-inheritance';
 
 const prisma = new PrismaClient();
 
@@ -8,6 +8,7 @@ async function migrate() {
   console.log('🚀 Starting RBAC Migration...');
 
   const roles = await prisma.role.findMany({
+    where: { deletedAt: null },
     include: {
       rolePermissions: {
         include: {
@@ -31,11 +32,9 @@ async function migrate() {
 
     for (const [basePerm, children] of Object.entries(PERMISSION_INHERITANCE)) {
       // If role has any child of this base permission, consider upgrading it to the base permission
-      // OR if we want to be strict: if role has ALL children
       const hasSomeChildren = children.some(child => currentPerms.includes(child));
       
       if (hasSomeChildren) {
-        console.log(`  Adding base permission: ${basePerm} to role: ${role.name}`);
         toAdd.add(basePerm);
         
         // Mark children for removal to clean up
@@ -48,20 +47,17 @@ async function migrate() {
     }
 
     if (toAdd.size > 0) {
+      console.log(`  Updating role: ${role.name}...`);
       await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // 1. Add new base permissions
         for (const baseStr of toAdd) {
           const [resName, actName] = baseStr.split('.');
           
-          // Find or create the base permission in DB if it doesn't exist
-          // First find resource
           let resource = await tx.resource.findFirst({
             where: { name: resName }
           });
 
           if (!resource) {
-            // For base permissions we might need to create resource if it doesn't exist
-            // This is a bit risky, usually seed should have done this
             console.warn(`    Warning: Resource ${resName} not found for base permission ${baseStr}`);
             continue;
           }
@@ -75,15 +71,15 @@ async function migrate() {
             continue;
           }
 
-          // Check if already mapped
           const existing = await tx.rolePermission.findFirst({
             where: { roleId: role.id, permissionId: permission.id }
           });
 
           if (!existing) {
-            await tx.rolePermission.create({
+             await tx.rolePermission.create({
               data: { roleId: role.id, permissionId: permission.id }
             });
+            console.log(`    + Added base perm: ${baseStr}`);
           }
         }
 
@@ -98,13 +94,13 @@ async function migrate() {
              }
            });
            
-           await tx.rolePermission.deleteMany({
+           const deletedCount = await tx.rolePermission.deleteMany({
              where: {
                roleId: role.id,
                permissionId: { in: permsToRemove.map((p: any) => p.id) }
              }
            });
-           console.log(`    Cleaned up ${permsToRemove.length} redundant granular permissions`);
+           console.log(`    - Cleaned up ${deletedCount.count} redundant granular permissions`);
         }
       });
     }
