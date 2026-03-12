@@ -2535,6 +2535,8 @@ model PhoneModel {
   releaseYear Int?
   brand       Brand                     @relation(fields: [brandId], references: [id])
   groups      CompatibilityGroupPhone[]
+  reportedFeedback  CompatibilityFeedback[] @relation("SourcePhone")
+  suggestedLinks    CompatibilityFeedback[] @relation("TargetPhone")
 
   @@unique([brandId, modelName])
   @@index([modelName])
@@ -2587,6 +2589,34 @@ model PartCompatibility {
   @@index([groupId])
   @@index([partId])
   @@map("mb_part_compatibility")
+}
+
+model CompatibilityFeedback {
+  id              String           @id @default(cuid())
+  type            FeedbackType
+  phoneModelId    String
+  targetModelId   String?          // Used for SUGGEST_LINK
+  partType        PartType
+  details         String?          @db.Text
+  status          FeedbackStatus   @default(PENDING)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  phoneModel      PhoneModel       @relation("SourcePhone", fields: [phoneModelId], references: [id])
+  targetModel     PhoneModel?      @relation("TargetPhone", fields: [targetModelId], references: [id])
+
+  @@map("mb_compatibility_feedback")
+}
+
+enum FeedbackType {
+  REPORT_ERROR
+  SUGGEST_LINK
+}
+
+enum FeedbackStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model FeatureFlag {

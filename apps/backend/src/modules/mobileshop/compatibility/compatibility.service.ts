@@ -1,7 +1,13 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
-import { CreateCompatibilityGroupDto, AddPhoneToGroupDto, LinkPartToGroupDto } from './dto/compatibility.dto';
-import { PartType } from '@prisma/client';
+import { 
+  CreateCompatibilityGroupDto, 
+  AddPhoneToGroupDto, 
+  LinkPartToGroupDto,
+  CreateFeedbackDto,
+  UnlinkModelDto
+} from './dto/compatibility.dto';
+import { PartType, FeedbackStatus } from '@prisma/client';
 
 @Injectable()
 export class CompatibilityService {
@@ -392,5 +398,54 @@ export class CompatibilityService {
     ]);
 
     return { models, brands, groups, junctions };
+  }
+  async unlinkModel(dto: UnlinkModelDto) {
+    const { phoneModelId, partType } = dto;
+
+    // Find the junction for this model and category
+    const junction = await this.prisma.compatibilityGroupPhone.findFirst({
+      where: {
+        phoneModelId,
+        group: { partType },
+      },
+    });
+
+    if (!junction) return { success: false, message: 'Association not found' };
+
+    await this.prisma.compatibilityGroupPhone.delete({
+      where: { id: junction.id },
+    });
+
+    return { success: true };
+  }
+
+  async submitFeedback(dto: CreateFeedbackDto) {
+    return this.prisma.compatibilityFeedback.create({
+      data: {
+        type: dto.type,
+        phoneModelId: dto.phoneModelId,
+        targetModelId: dto.targetModelId,
+        partType: dto.partType,
+        details: dto.details,
+      },
+    });
+  }
+
+  async getPendingFeedback() {
+    return this.prisma.compatibilityFeedback.findMany({
+      where: { status: 'PENDING' },
+      include: {
+        phoneModel: { include: { brand: true } },
+        targetModel: { include: { brand: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async processFeedback(id: string, status: FeedbackStatus) {
+    return this.prisma.compatibilityFeedback.update({
+      where: { id },
+      data: { status },
+    });
   }
 }

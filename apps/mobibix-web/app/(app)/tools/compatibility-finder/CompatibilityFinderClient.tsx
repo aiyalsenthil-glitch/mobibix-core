@@ -12,7 +12,11 @@ import {
   ChevronRight, 
   Info,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  MessageSquareWarning,
+  Send,
+  X,
+  CheckCircle2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,9 +25,11 @@ import { Badge } from "@/components/ui/badge";
 import { 
   autocompletePhoneModels, 
   searchCompatibility, 
+  submitCompatibilityFeedback,
   type PhoneModelSuggestion, 
   type SearchCompatibilityResponse,
-  type CompatiblePart
+  type CompatiblePart,
+  type CompatibilityFeedbackInput
 } from "@/services/compatibility.api";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -49,104 +55,127 @@ const CATEGORY_NAMES: Record<string, string> = {
   BACK_COVER: "Back Cover / Panel",
   FRAME: "Frame / Middle Frame",
   CHARGING_BOARD: "Charging Board",
-  FLEX_CABLE: "Flex / CC Board",
-  SPEAKER: "Speaker / Ringer",
-  CAMERA: "Camera Glass",
+  FLEX_CABLE: "CC Board / Flex Cable",
+  SPEAKER: "Ear / Loud Speaker",
+  CAMERA: "Front / Main Camera",
 };
 
-export function CompatibilityFinderClient() {
-  const { authUser } = useAuth();
+export default function CompatibilityFinderClient() {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<PhoneModelSuggestion[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string | null>(null);
-  const [results, setResults] = useState<SearchCompatibilityResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
+  const [selectedModel, setSelectedModel] = useState<PhoneModelSuggestion | null>(null);
+  const [results, setResults] = useState<SearchCompatibilityResponse | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   const suggestionRef = useRef<HTMLDivElement>(null);
 
-  // Close suggestions when clicking outside
+  // Feedback State
+  const [feedbackTarget, setFeedbackTarget] = useState<{ category: string; type: 'REPORT_ERROR' | 'SUGGEST_LINK' } | null>(null);
+  const [feedbackDetails, setFeedbackDetails] = useState("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleClickOutside = (event: MouseEvent) => {
       if (suggestionRef.current && !suggestionRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
       }
-    }
+    };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Handle autocomplete
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (query.length >= 2) {
-        try {
-          const data = await autocompletePhoneModels(query);
-          setSuggestions(data);
-          setShowSuggestions(true);
-        } catch (err) {
-          console.error("Autocomplete error", err);
-        }
-      } else {
-        setSuggestions([]);
-        setShowSuggestions(false);
+  const handleQueryChange = async (val: string) => {
+    setQuery(val);
+    if (val.trim().length >= 2) {
+      try {
+        const data = await autocompletePhoneModels(val);
+        setSuggestions(data);
+        setShowSuggestions(true);
+      } catch (err) {
+        console.error("Autocomplete failed", err);
       }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [query]);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
 
   const handleSelectModel = async (model: PhoneModelSuggestion) => {
     setQuery(model.fullName);
-    setSelectedModel(model.fullName);
+    setSelectedModel(model);
     setShowSuggestions(false);
-    await performSearch(model.fullName);
-  };
-
-  const performSearch = async (modelName: string) => {
     setIsSearching(true);
-    setError(null);
+    setResults(null);
+    setFeedbackSuccess(false);
+
     try {
-      const data = await searchCompatibility(modelName);
+      const data = await searchCompatibility(model.fullName);
       setResults(data);
-    } catch (err: any) {
-      console.error("Search error", err);
-      setError(err.message || "Failed to find compatibility data");
-      setResults(null);
+    } catch (err) {
+      console.error("Search failed", err);
     } finally {
       setIsSearching(false);
     }
   };
 
-  return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-20">
-      {/* Header Section */}
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
-          <SearchCheck className="w-8 h-8 text-indigo-600" />
-          Compatibility Finder
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400">
-          Instantly find compatible tempered glass, combos, and parts for any mobile device.
-        </p>
-      </div>
+  const handleSubmitFeedback = async () => {
+    if (!selectedModel || !feedbackTarget) return;
+    setIsSubmittingFeedback(true);
 
-      {/* Search Bar Section */}
-      <Card className="border-indigo-100 dark:border-indigo-900/30 shadow-md bg-white dark:bg-slate-900 overflow-visible">
-        <CardContent className="pt-6 relative">
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+    try {
+      await submitCompatibilityFeedback({
+        type: feedbackTarget.type,
+        phoneModelId: selectedModel.id,
+        partType: feedbackTarget.category as any,
+        details: feedbackDetails,
+      });
+      setFeedbackSuccess(true);
+      setTimeout(() => {
+        setFeedbackTarget(null);
+        setFeedbackDetails("");
+        setFeedbackSuccess(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Feedback submission failed", err);
+      alert("Failed to submit report. Please try again.");
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
+  return (
+    <div className="space-y-8 pb-20">
+      {/* Search Header */}
+      <Card className="border-none shadow-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
+        <CardHeader className="relative z-10 pt-10 pb-6">
+          <div className="flex items-center gap-3 mb-4">
+             <div className="p-2 bg-white/10 rounded-xl backdrop-blur-md">
+                <Cpu className="text-white h-6 w-6" />
+             </div>
+             <Badge className="bg-amber-400 text-slate-900 border-none font-black px-3 py-1">AI POWERED</Badge>
+          </div>
+          <CardTitle className="text-3xl md:text-5xl font-black text-white tracking-tight">
+            Universal Compatibility <span className="text-indigo-200">Finder</span>
+          </CardTitle>
+          <CardDescription className="text-indigo-100 text-lg max-w-2xl font-medium opacity-90">
+            Identify shared parts across 30,000+ models instantly. Find which tempered glass, display, or battery fits multiple devices.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="relative z-10 pb-12">
+          <div className="relative group max-w-3xl">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-500">
+              <Search className="h-6 w-6" />
             </div>
-            <Input
+            <Input 
+              placeholder="e.g. Samsung M01 Core, iPhone 15, Vivo V20..."
+              className="h-16 pl-16 pr-24 text-lg md:text-xl rounded-2xl border-none shadow-2xl focus-visible:ring-4 focus-visible:ring-indigo-500/30 font-bold placeholder:text-slate-400 transition-all"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Start typing phone model (e.g. Samsung A50)..."
-              className="pl-12 h-14 text-lg rounded-xl border-slate-200 dark:border-slate-800 focus-visible:ring-indigo-500 shadow-sm"
-              autoComplete="off"
+              onChange={(e) => handleQueryChange(e.target.value)}
+              onFocus={() => query.trim().length >= 2 && setShowSuggestions(true)}
             />
+            
             {isSearching && (
               <div className="absolute inset-y-0 right-4 flex items-center">
                 <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
@@ -166,7 +195,7 @@ export function CompatibilityFinderClient() {
                     className="w-full flex items-center gap-3 p-4 text-left hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors border-b last:border-0 border-slate-100 dark:border-slate-800"
                   >
                     <Smartphone className="h-4 w-4 text-slate-400" />
-                    <span className="font-medium text-slate-900 dark:text-slate-100">
+                    <span className="font-bold text-slate-900 dark:text-slate-100">
                       {suggestion.fullName}
                     </span>
                   </button>
@@ -190,7 +219,7 @@ export function CompatibilityFinderClient() {
             const categoryName = CATEGORY_NAMES[category.toUpperCase()] || category;
 
             return (
-              <Card key={category} className="group hover:border-indigo-400 transition-all duration-300 shadow-sm">
+              <Card key={category} className="group hover:border-indigo-400 transition-all duration-300 shadow-sm relative overflow-hidden">
                 <CardHeader className="pb-3 border-b border-slate-50 dark:border-slate-900">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -209,27 +238,17 @@ export function CompatibilityFinderClient() {
                     parts.map((part: CompatiblePart, idx: number) => (
                       <div key={idx} className="flex flex-col gap-3 p-5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 group-hover:border-indigo-500/30 transition-all duration-300">
                         <div className="flex items-start justify-between gap-3">
-                          <span className="font-bold text-lg md:text-xl text-slate-900 dark:text-slate-100 leading-tight">
+                          <span className="font-black text-lg md:text-xl text-slate-900 dark:text-slate-100 leading-tight">
                             {part.name}
                           </span>
-                          {part.price && (
-                            <div className="text-right">
-                              <span className="text-base font-black text-teal-600 dark:text-teal-400">
-                                ₹{part.price}
-                              </span>
-                              {part.quantity !== undefined && (
-                                <div className="text-[10px] text-slate-400">Stock: {part.quantity}</div>
-                              )}
-                            </div>
-                          )}
                         </div>
                         
                         {part.otherModels && part.otherModels.length > 0 && (
                           <div className="space-y-1.5">
-                            <span className="text-[10px] uppercase tracking-wider font-bold text-indigo-500 dark:text-indigo-400">Also Fits:</span>
+                            <span className="text-[10px] uppercase tracking-wider font-extrabold text-indigo-500 dark:text-indigo-400">Also Fits:</span>
                             <div className="flex flex-wrap gap-1.5">
                               {part.otherModels.map((model, midx) => (
-                                <Badge key={midx} variant="secondary" className="text-[11px] py-0 px-2 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-none">
+                                <Badge key={midx} variant="secondary" className="text-[11px] py-0 px-2 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-none font-bold">
                                   {model}
                                 </Badge>
                               ))}
@@ -237,15 +256,31 @@ export function CompatibilityFinderClient() {
                           </div>
                         )}
                         
-                        <div className="flex items-center gap-2 pt-2 border-t border-slate-200/50 dark:border-slate-800/50 text-xs text-slate-500 dark:text-slate-400">
-                          <Info className="w-3.5 h-3.5 text-indigo-500" />
-                          <span>Verified compatibility group</span>
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-200/50 dark:border-slate-800/50">
+                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                            <Info className="w-3.5 h-3.5 text-indigo-500" />
+                            <span>Verified compatibility group</span>
+                          </div>
+                          <button 
+                            onClick={() => setFeedbackTarget({ category, type: 'REPORT_ERROR' })}
+                            className="text-[10px] uppercase font-black text-rose-500 hover:text-rose-600 transition-colors"
+                          >
+                            Report Error
+                          </button>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-6">
+                    <div className="text-center py-6 space-y-3">
                       <p className="text-sm text-slate-400">No compatibility groups found</p>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-xs text-indigo-600 hover:text-indigo-700 font-bold"
+                        onClick={() => setFeedbackTarget({ category, type: 'SUGGEST_LINK' })}
+                      >
+                        Suggest a link
+                      </Button>
                     </div>
                   )}
                 </CardContent>
@@ -258,10 +293,10 @@ export function CompatibilityFinderClient() {
            <AlertCircle className="w-12 h-12 text-slate-400 mb-4" />
            <h3 className="text-xl font-bold text-slate-900 dark:text-white">No exact match found</h3>
            <p className="text-slate-500 max-w-md text-center mt-2 px-6">
-             We are updating our database continuously. Our experts are gathering data for this model as we speak! Stay tuned.
+             Our AI is gathering data for this model. If you know what fits this phone, please help us!
            </p>
-           <Button variant="outline" className="mt-8 border-indigo-200 text-indigo-600 hover:bg-indigo-50" onClick={() => setQuery("")}>
-              Try another model
+           <Button variant="outline" className="mt-8 border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold" onClick={() => setFeedbackTarget({ category: 'GENERAL', type: 'SUGGEST_LINK' })}>
+              Help us improve
            </Button>
         </div>
       ) : (
@@ -271,6 +306,71 @@ export function CompatibilityFinderClient() {
              <SearchCheck className="w-20 h-20 text-indigo-600/30 relative" />
            </div>
            <p className="text-slate-400 text-lg font-medium">Enter a model name above to begin</p>
+        </div>
+      )}
+
+      {/* Feedback Modal Overlay */}
+      {feedbackTarget && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-200">
+            {feedbackSuccess ? (
+              <div className="p-10 text-center space-y-4">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
+                  <CheckCircle2 size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Thank You!</h3>
+                <p className="text-slate-500 text-sm">Your report has been sent to our technical team for verification.</p>
+              </div>
+            ) : (
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn("p-2 rounded-lg", feedbackTarget.type === 'REPORT_ERROR' ? "bg-rose-100 text-rose-600" : "bg-indigo-100 text-indigo-600")}>
+                      <MessageSquareWarning size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 dark:text-white">
+                        {feedbackTarget.type === 'REPORT_ERROR' ? 'Report Incorrect Data' : 'Suggest a Link'}
+                      </h3>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        Category: {feedbackTarget.category}
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => setFeedbackTarget(null)} className="text-slate-400 hover:text-slate-600">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Details</label>
+                  <textarea 
+                    autoFocus
+                    placeholder={feedbackTarget.type === 'REPORT_ERROR' 
+                      ? "What exactly is wrong? (e.g. 'A20 uses AMOLED, A20s uses IPS, these are NOT compatible')"
+                      : "Which model fits this device for this category? (e.g. 'M01s also fits the same A10 display')"
+                    }
+                    className="w-full h-32 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium resize-none shadow-inner"
+                    value={feedbackDetails}
+                    onChange={(e) => setFeedbackDetails(e.target.value)}
+                  />
+                  <p className="text-[10px] text-slate-400 italic">This will be reviewed by an administrator.</p>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1 rounded-xl h-12 font-bold" onClick={() => setFeedbackTarget(null)}>Cancel</Button>
+                  <Button 
+                    className="flex-1 rounded-xl h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-2 shadow-lg shadow-indigo-200"
+                    disabled={isSubmittingFeedback || !feedbackDetails.trim()}
+                    onClick={handleSubmitFeedback}
+                  >
+                    {isSubmittingFeedback ? <Loader2 className="animate-spin h-4 w-4" /> : <Send size={16} />}
+                    Submit Report
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Query, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { CompatibilityService } from './compatibility.service';
-import { CreateCompatibilityGroupDto, AddPhoneToGroupDto, LinkPartToGroupDto } from './dto/compatibility.dto';
+import { CreateCompatibilityGroupDto, AddPhoneToGroupDto, LinkPartToGroupDto, CreateFeedbackDto } from './dto/compatibility.dto';
 import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
 import { RequirePermission, ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
 import { PERMISSIONS } from '../../../security/permission-registry';
@@ -65,5 +65,11 @@ export class CompatibilityController {
   @ApiQuery({ name: 'query', description: 'Search query for phone models' })
   async autocomplete(@Query('query') query: string) {
     return this.compatibilityService.autocompletePhoneModels(query);
+  }
+
+  @Post('feedback')
+  @ApiOperation({ summary: 'Submit feedback for compatibility (report error or suggest link)' })
+  async submitFeedback(@Body() dto: CreateFeedbackDto) {
+    return this.compatibilityService.submitFeedback(dto);
   }
 }

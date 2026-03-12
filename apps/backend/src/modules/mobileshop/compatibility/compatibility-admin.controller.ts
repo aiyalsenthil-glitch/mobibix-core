@@ -1,7 +1,8 @@
 import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CompatibilityService } from './compatibility.service';
-import { CreatePhoneModelDto, SmartLinkModelsDto } from './dto/compatibility.dto';
+import { CreatePhoneModelDto, SmartLinkModelsDto, UnlinkModelDto } from './dto/compatibility.dto';
+import { FeedbackStatus } from '@prisma/client';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 // Note: We use the business level guards if available, but for now we follow the user's request for Admin Master tool.
 // In actual prod, we would use AdminRolesGuard.
@@ -41,5 +42,26 @@ export class CompatibilityAdminController {
   @ApiOperation({ summary: 'Link two models across multiple part categories (Smart Linker)' })
   async smartLink(@Body() dto: SmartLinkModelsDto) {
     return this.compatibilityService.smartLinkModels(dto);
+  }
+
+  @Post('unlink')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.COMPATIBILITY.MANAGE)
+  @ApiOperation({ summary: 'Unlink a model from a compatibility group' })
+  async unlink(@Body() dto: UnlinkModelDto) {
+    return this.compatibilityService.unlinkModel(dto);
+  }
+
+  @Get('feedback')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.COMPATIBILITY.VIEW)
+  @ApiOperation({ summary: 'Get pending feedback' })
+  async getFeedback() {
+    return this.compatibilityService.getPendingFeedback();
+  }
+
+  @Post('feedback/:id/process')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.COMPATIBILITY.MANAGE)
+  @ApiOperation({ summary: 'Process feedback (approve/reject)' })
+  async processFeedback(@Param('id') id: string, @Body('status') status: FeedbackStatus) {
+    return this.compatibilityService.processFeedback(id, status);
   }
 }
