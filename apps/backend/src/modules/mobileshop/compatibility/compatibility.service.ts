@@ -273,4 +273,124 @@ export class CompatibilityService {
       fullName: `${m.brand.name} ${m.modelName}`
     }));
   }
+
+  // --- ADMIN METHODS ---
+
+  async createPhoneModel(dto: { brandName: string; modelName: string }) {
+    const brand = await this.prisma.brand.upsert({
+      where: { name: dto.brandName },
+      update: {},
+      create: { name: dto.brandName },
+    });
+
+    const existing = await this.prisma.phoneModel.findUnique({
+      where: {
+        brandId_modelName: {
+          brandId: brand.id,
+          modelName: dto.modelName,
+        },
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException(`Model "${dto.modelName}" already exists for brand "${dto.brandName}"`);
+    }
+
+    return this.prisma.phoneModel.create({
+      data: {
+        brandId: brand.id,
+        modelName: dto.modelName,
+      },
+    });
+  }
+
+  async smartLinkModels(dto: { modelAId: string; modelBId: string; categories: PartType[] }) {
+    const { modelAId, modelBId, categories } = dto;
+    const results = [];
+
+    for (const category of categories) {
+      // 1. Get current IDs of groups for both models in this category
+      const groupA = await this.prisma.compatibilityGroupPhone.findFirst({
+        where: { phoneModelId: modelAId, group: { partType: category } },
+        include: { group: true }
+      });
+
+      const groupB = await this.prisma.compatibilityGroupPhone.findFirst({
+        where: { phoneModelId: modelBId, group: { partType: category } },
+        include: { group: true }
+      });
+
+      const groupIdA = groupA?.groupId;
+      const groupIdB = groupB?.groupId;
+
+      if (groupIdA && groupIdB) {
+        if (groupIdA === groupIdB) {
+          results.push({ category, status: 'ALREADY_LINKED' });
+          continue;
+        }
+
+        // Merge group B into group A
+        await this.prisma.$transaction([
+          // Move all phones from B to A
+          this.prisma.compatibilityGroupPhone.updateMany({
+            where: { groupId: groupIdB },
+            data: { groupId: groupIdA }
+          }),
+          // Move all parts links from B to A (handle duplicates)
+          // We do this by deleting and moving
+          // Simplified: delete group B and let relations cascade or handle manually
+          this.prisma.partCompatibility.deleteMany({
+            where: { groupId: groupIdA } // Remove current links to avoid unique constraint on merge
+          }),
+          this.prisma.partCompatibility.updateMany({
+            where: { groupId: groupIdB },
+            data: { groupId: groupIdA }
+          }),
+          // Delete Group B
+          this.prisma.compatibilityGroup.delete({ where: { id: groupIdB } })
+        ]);
+        results.push({ category, status: 'MERGED' });
+      } else if (groupIdA) {
+        // Add B to A
+        await this.prisma.compatibilityGroupPhone.create({
+          data: { groupId: groupIdA, phoneModelId: modelBId }
+        });
+        results.push({ category, status: 'ADDED_TO_A' });
+      } else if (groupIdB) {
+        // Add A to B
+        await this.prisma.compatibilityGroupPhone.create({
+          data: { groupId: groupIdB, phoneModelId: modelAId }
+        });
+        results.push({ category, status: 'ADDED_TO_B' });
+      } else {
+        // Create new group for both
+        const newGroup = await this.prisma.compatibilityGroup.create({
+          data: {
+            name: `${category}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            partType: category
+          }
+        });
+        await this.prisma.compatibilityGroupPhone.createMany({
+          data: [
+            { groupId: newGroup.id, phoneModelId: modelAId },
+            { groupId: newGroup.id, phoneModelId: modelBId }
+          ]
+        });
+        results.push({ category, status: 'CREATED_NEW' });
+      }
+    }
+
+    return results;
+  }
+
+  async getAdminStats() {
+    const [models, brands, groups, junctions] = await Promise.all([
+      this.prisma.phoneModel.count(),
+      this.prisma.brand.count(),
+      this.prisma.compatibilityGroup.count(),
+      this.prisma.compatibilityGroupPhone.count(),
+    ]);
+
+    return { models, brands, groups, junctions };
+  }
 }

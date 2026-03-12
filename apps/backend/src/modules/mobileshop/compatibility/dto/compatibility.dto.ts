@@ -26,3 +26,30 @@ export class LinkPartToGroupDto {
   @IsNotEmpty()
   partId: string;
 }
+export class CreatePhoneModelDto {
+  @ApiProperty({ description: 'Name of the brand', example: 'Samsung' })
+  @IsString()
+  @IsNotEmpty()
+  brandName: string;
+
+  @ApiProperty({ description: 'Name of the model', example: 'Galaxy A54' })
+  @IsString()
+  @IsNotEmpty()
+  modelName: string;
+}
+
+export class SmartLinkModelsDto {
+  @ApiProperty({ description: 'First phone model ID' })
+  @IsString()
+  @IsNotEmpty()
+  modelAId: string;
+
+  @ApiProperty({ description: 'Second phone model ID' })
+  @IsString()
+  @IsNotEmpty()
+  modelBId: string;
+
+  @ApiProperty({ description: 'List of categories to link', enum: PartType, isArray: true })
+  @IsEnum(PartType, { each: true })
+  categories: PartType[];
+}
