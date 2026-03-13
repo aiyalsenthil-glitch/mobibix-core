@@ -32,6 +32,7 @@ import {
   WalletCards,
   ClipboardCheck,
   CalendarDays,
+  Activity,
 } from "lucide-react";
 import { AiQuotaBadge } from "@/components/common/AiQuotaBadge";
 
@@ -71,6 +72,7 @@ const navItems: NavItem[] = [
   { label: "Expense Manager",      href: "/tools/expenses",             icon: WalletCards,     requiredPermission: "core.expense.view",               category: "Tools" },
   { label: "Stock Verification",   href: "/tools/stock-verification",   icon: ClipboardCheck,  requiredPermission: "core.stock_verification.view",     category: "Tools" },
   { label: "Monthly Report",       href: "/tools/monthly-report",       icon: CalendarDays,    requiredPermission: "core.report.view",                 category: "Tools" },
+  { label: "Shrinkage Intelligence", href: "/tools/shrinkage",          icon: Activity,        requiredPermission: "core.shrinkage.view",              category: "Tools" },
 ];
 
 interface SidebarProps {

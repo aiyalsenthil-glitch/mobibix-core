@@ -121,8 +121,8 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       .forEach((k) => this.l1Cache.delete(k));
 
     // 2. Broadcast to other nodes (PubSub)
-    if (this.pubsub) {
-      await this.pubsub.publish(
+    if (this.redis) {
+      await this.redis.publish(
         'cache-invalidation',
         JSON.stringify({ pattern }),
       );

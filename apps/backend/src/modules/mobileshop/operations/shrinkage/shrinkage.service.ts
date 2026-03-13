@@ -259,7 +259,117 @@ export class ShrinkageService {
       .sort((a, b) => b.lostValue - a.lostValue);
   }
 
-  // ─── 5. FULL INTELLIGENCE SUMMARY ────────────────────────────────────────
+  // ─── 5. TOP LOSS PRODUCTS ─────────────────────────────────────────────────
+
+  async topLossProducts(
+    tenantId: string,
+    shopId: string,
+    startDate: string,
+    endDate: string,
+    limit = 10,
+  ) {
+    const items = await this.prisma.stockVerificationItem.findMany({
+      where: {
+        tenantId,
+        shopId,
+        difference:   { lt: 0 },
+        verification: {
+          status:      'CONFIRMED',
+          sessionDate: { gte: new Date(startDate), lte: new Date(endDate) },
+        },
+      },
+      select: {
+        shopProductId: true,
+        difference:    true,
+        shopProduct:   { select: { name: true, avgCost: true, category: true } },
+      },
+    });
+
+    const productMap: Record<
+      string,
+      { name: string; category: string; lossQty: number; lossValue: number }
+    > = {};
+
+    for (const item of items) {
+      const pid = item.shopProductId;
+      const qty = Math.abs(item.difference);
+      const val = qty * (item.shopProduct?.avgCost ?? 0);
+
+      if (!productMap[pid]) {
+        productMap[pid] = {
+          name:      item.shopProduct?.name     ?? 'Unknown',
+          category:  item.shopProduct?.category ?? 'Uncategorized',
+          lossQty:   0,
+          lossValue: 0,
+        };
+      }
+      productMap[pid].lossQty   += qty;
+      productMap[pid].lossValue += val;
+    }
+
+    return Object.entries(productMap)
+      .map(([productId, data]) => ({
+        productId,
+        productName: data.name,
+        category:    data.category,
+        lossQty:     data.lossQty,
+        lossValue:   data.lossValue / 100,
+      }))
+      .sort((a, b) => b.lossValue - a.lossValue)
+      .slice(0, limit);
+  }
+
+  // ─── 6. MONTHLY TREND ─────────────────────────────────────────────────────
+
+  async monthlyTrend(
+    tenantId: string,
+    shopId: string,
+    months = 12,
+  ) {
+    const endDate   = new Date();
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - months);
+
+    const items = await this.prisma.stockVerificationItem.findMany({
+      where: {
+        tenantId,
+        shopId,
+        difference:   { lt: 0 },
+        verification: {
+          status:      'CONFIRMED',
+          sessionDate: { gte: startDate, lte: endDate },
+        },
+      },
+      select: {
+        difference:   true,
+        shopProduct:  { select: { avgCost: true } },
+        verification: { select: { sessionDate: true } },
+      },
+    });
+
+    const monthMap: Record<string, { lossValue: number; lossQty: number }> = {};
+
+    for (const item of items) {
+      const d     = item.verification.sessionDate;
+      const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const qty   = Math.abs(item.difference);
+      const val   = qty * (item.shopProduct?.avgCost ?? 0);
+
+      if (!monthMap[month]) monthMap[month] = { lossValue: 0, lossQty: 0 };
+      monthMap[month].lossValue += val;
+      monthMap[month].lossQty  += qty;
+    }
+
+    return Object.entries(monthMap)
+      .map(([month, data]) => ({
+        month,
+        lossValue: data.lossValue / 100,
+        lossQty:   data.lossQty,
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+  }
+
+  // ─── 7. FULL INTELLIGENCE SUMMARY ────────────────────────────────────────
 
   async getIntelligenceSummary(
     tenantId: string,
@@ -267,11 +377,12 @@ export class ShrinkageService {
     startDate: string,
     endDate: string,
   ) {
-    const [byCategory, byStaff, bySupplier, byReason] = await Promise.all([
+    const [byCategory, byStaff, bySupplier, byReason, topProducts] = await Promise.all([
       this.lossByCategory(tenantId, shopId, startDate, endDate),
       this.lossByStaff(tenantId, shopId, startDate, endDate),
       this.lossBySupplier(tenantId, shopId, startDate, endDate),
       this.lossReasonBreakdown(tenantId, shopId, startDate, endDate),
+      this.topLossProducts(tenantId, shopId, startDate, endDate),
     ]);
 
     const totalLostValue = byCategory.reduce((sum, c) => sum + c.lostValue, 0);
@@ -281,13 +392,14 @@ export class ShrinkageService {
       period:          { startDate, endDate },
       totalLostValue,
       totalLostUnits,
-      topLossCategory: byCategory[0]?.category ?? null,
-      topLossStaff:    byStaff[0]?.staffName   ?? null,
-      topLossSupplier: bySupplier[0]?.supplierName ?? null,
+      topLossCategory: byCategory[0]?.category        ?? null,
+      topLossStaff:    byStaff[0]?.staffName          ?? null,
+      topLossSupplier: bySupplier[0]?.supplierName    ?? null,
       byCategory,
       byStaff,
       bySupplier,
       byReason,
+      topProducts,
     };
   }
 }

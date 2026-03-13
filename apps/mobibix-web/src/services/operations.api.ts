@@ -391,3 +391,97 @@ export async function getMonthlyTrend(
   if (!res.ok) throw new Error("Failed to fetch trend");
   return extractData(res);
 }
+
+// ─── SHRINKAGE INTELLIGENCE ───────────────────────────────────────────────────
+
+export interface ShrinkageByCategory {
+  category: string;
+  lostUnits: number;
+  lostValue: number;
+  affectedProducts: number;
+}
+
+export interface ShrinkageByStaff {
+  staffId: string;
+  staffName: string;
+  staffEmail: string;
+  sessions: number;
+  lostUnits: number;
+  lostValue: number;
+}
+
+export interface ShrinkageBySupplier {
+  supplierId: string;
+  supplierName: string;
+  lostUnits: number;
+  lostValue: number;
+  affectedProducts: number;
+}
+
+export interface ShrinkageByReason {
+  reason: string;
+  count: number;
+  lostUnits: number;
+  lostValue: number;
+}
+
+export interface ShrinkageTopProduct {
+  productId: string;
+  productName: string;
+  category: string;
+  lossQty: number;
+  lossValue: number;
+}
+
+export interface ShrinkageMonthlyTrend {
+  month: string;
+  lossValue: number;
+  lossQty: number;
+}
+
+export interface ShrinkageIntelligence {
+  period: { startDate: string; endDate: string };
+  totalLostValue: number;
+  totalLostUnits: number;
+  topLossCategory: string | null;
+  topLossStaff: string | null;
+  topLossSupplier: string | null;
+  byCategory: ShrinkageByCategory[];
+  byStaff: ShrinkageByStaff[];
+  bySupplier: ShrinkageBySupplier[];
+  byReason: ShrinkageByReason[];
+  topProducts: ShrinkageTopProduct[];
+}
+
+export async function getShrinkageIntelligence(
+  shopId: string,
+  startDate: string,
+  endDate: string
+): Promise<ShrinkageIntelligence> {
+  const p = new URLSearchParams({ shopId, startDate, endDate });
+  const res = await authenticatedFetch(`/operations/shrinkage/intelligence?${p}`);
+  if (!res.ok) throw new Error("Failed to fetch shrinkage intelligence");
+  return extractData(res);
+}
+
+export async function getShrinkageTopProducts(
+  shopId: string,
+  startDate: string,
+  endDate: string,
+  limit = 10
+): Promise<ShrinkageTopProduct[]> {
+  const p = new URLSearchParams({ shopId, startDate, endDate, limit: String(limit) });
+  const res = await authenticatedFetch(`/operations/shrinkage/top-loss-products?${p}`);
+  if (!res.ok) throw new Error("Failed to fetch top loss products");
+  return extractData(res);
+}
+
+export async function getShrinkageMonthlyTrend(
+  shopId: string,
+  months = 12
+): Promise<ShrinkageMonthlyTrend[]> {
+  const p = new URLSearchParams({ shopId, months: String(months) });
+  const res = await authenticatedFetch(`/operations/shrinkage/monthly-trend?${p}`);
+  if (!res.ok) throw new Error("Failed to fetch shrinkage trend");
+  return extractData(res);
+}

@@ -81,4 +81,34 @@ export class ShrinkageController {
   ) {
     return this.svc.lossReasonBreakdown(user.tenantId, shopId, startDate, endDate);
   }
+
+  /** GET /operations/shrinkage/top-loss-products */
+  @Get('top-loss-products')
+  @RequirePermission(PERMISSIONS.CORE.SHRINKAGE.VIEW)
+  topLossProducts(
+    @CurrentUser() user: any,
+    @Query('shopId') shopId: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.svc.topLossProducts(
+      user.tenantId, shopId, startDate, endDate,
+      limit ? parseInt(limit, 10) : 10,
+    );
+  }
+
+  /** GET /operations/shrinkage/monthly-trend */
+  @Get('monthly-trend')
+  @RequirePermission(PERMISSIONS.CORE.SHRINKAGE.VIEW)
+  monthlyTrend(
+    @CurrentUser() user: any,
+    @Query('shopId') shopId: string,
+    @Query('months') months?: string,
+  ) {
+    return this.svc.monthlyTrend(
+      user.tenantId, shopId,
+      months ? parseInt(months, 10) : 12,
+    );
+  }
 }
