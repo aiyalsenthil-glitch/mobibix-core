@@ -28,6 +28,20 @@ export class ExpensesService {
     );
   }
 
+  async updateExpense(tenantId: string, shopId: string, id: string, dto: any, userId: string) {
+    return this.vouchersService.updateVoucher(tenantId, shopId, id, {
+      amount: dto.amount,
+      paymentMethod: dto.paymentMethod,
+      expenseCategoryId: dto.categoryId,
+      narration: dto.note,
+    }, userId);
+  }
+
+  async deleteExpense(tenantId: string, shopId: string, id: string, userId: string) {
+    return this.vouchersService.softDeleteVoucher(tenantId, shopId, id, userId);
+  }
+
+
   async getExpenses(
     tenantId: string,
     shopId: string,
@@ -75,18 +89,24 @@ export class ExpensesService {
         shopId,
         voucherType: VoucherType.EXPENSE,
         status: 'ACTIVE',
+        isDeleted: false,
         date: {
           gte: new Date(startDate),
           lte: new Date(endDate),
         },
       },
-      select: { expenseCategory: true, amount: true },
-    });
+      select: { 
+        expenseCategoryId: true, 
+        expenseCategory: true,
+        categoryRel: { select: { name: true } },
+        amount: true 
+      },
+    } as any);
 
     const breakdown: Record<string, number> = {};
     for (const v of vouchers) {
-      const cat = v.expenseCategory ?? 'Uncategorized';
-      breakdown[cat] = (breakdown[cat] ?? 0) + v.amount;
+      const catName = (v as any).categoryRel?.name || (v as any).expenseCategory || 'Uncategorized';
+      breakdown[catName] = (breakdown[catName] ?? 0) + v.amount;
     }
 
     return Object.entries(breakdown)
@@ -95,5 +115,40 @@ export class ExpensesService {
         total: totalPaisa / 100,
       }))
       .sort((a, b) => b.total - a.total);
+  }
+
+  // ─── CATEGORY MANAGEMENT ───────────────────────────────────────────────
+
+  async createCategory(tenantId: string, name: string, shopId?: string) {
+    return (this.prisma as any).expenseCategory.create({
+      data: { tenantId, name, shopId, isDefault: false },
+    });
+  }
+
+  async getCategories(tenantId: string, shopId?: string) {
+    return (this.prisma as any).expenseCategory.findMany({
+      where: {
+        tenantId,
+        OR: [{ shopId: null }, { shopId }],
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async seedDefaultCategories(tenantId: string) {
+    const defaults = ['Tea', 'Courier', 'Transport', 'Electricity', 'Internet', 'Salary Advance', 'Shop Maintenance', 'Misc'];
+    const existing = await (this.prisma as any).expenseCategory.findMany({
+      where: { tenantId, isDefault: true },
+    });
+
+    if (existing.length === 0) {
+      await (this.prisma as any).expenseCategory.createMany({
+        data: defaults.map(name => ({
+          tenantId,
+          name,
+          isDefault: true,
+        })),
+      });
+    }
   }
 }

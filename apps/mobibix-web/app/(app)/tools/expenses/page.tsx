@@ -9,18 +9,16 @@ import {
 import { useShop } from "@/context/ShopContext";
 import {
   createExpense, getExpenses, getExpenseCategoryBreakdown,
-  type Expense, type ExpenseCategoryBreakdown,
+  getExpenseCategories, seedExpenseCategories,
+  type Expense, type ExpenseCategoryBreakdown, type ExpenseCategory,
 } from "@/services/operations.api";
 
-const CATEGORIES = [
-  { value: "tea",           label: "Tea / Snacks",     icon: Coffee },
-  { value: "courier",       label: "Courier",          icon: Truck },
-  { value: "petrol",        label: "Petrol / Travel",  icon: Fuel },
-  { value: "salary_advance",label: "Salary Advance",   icon: IndianRupee },
-  { value: "electricity",   label: "Electricity",      icon: Zap },
-  { value: "internet",      label: "Internet",         icon: Wifi },
-  { value: "misc",          label: "Miscellaneous",    icon: MoreHorizontal },
-];
+const CATEGORY_ICONS: Record<string, any> = {
+  "tea": Coffee, "snacks": Coffee,
+  "courier": Truck, "transport": Truck, "petrol": Fuel, "travel": Fuel,
+  "electricity": Zap, "internet": Wifi, "misc": MoreHorizontal, "maintenance": Zap,
+  "salary": IndianRupee, "advance": IndianRupee,
+};
 
 const PAYMENT_METHODS = ["CASH", "UPI", "CARD", "BANK"] as const;
 
@@ -48,6 +46,7 @@ export default function ExpensesPage() {
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [breakdown, setBreakdown] = useState<ExpenseCategoryBreakdown[]>([]);
+  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -56,7 +55,7 @@ export default function ExpensesPage() {
 
   // Form state
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("misc");
+  const [categoryId, setCategoryId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "UPI" | "CARD" | "BANK">("CASH");
   const [note, setNote] = useState("");
   const [date, setDate] = useState(todayStr());
@@ -69,12 +68,22 @@ export default function ExpensesPage() {
     if (!shopId) return;
     setLoading(true);
     try {
-      const [list, cats] = await Promise.all([
+      const [list, catsBreakdown, catsList] = await Promise.all([
         getExpenses(shopId, { startDate, endDate, take: 50 }),
         getExpenseCategoryBreakdown(shopId, startDate, endDate),
+        getExpenseCategories(shopId),
       ]);
+
+      if (catsList.length === 0) {
+        await seedExpenseCategories();
+        const refreshedCats = await getExpenseCategories(shopId);
+        setCategories(refreshedCats);
+      } else {
+        setCategories(catsList);
+      }
+
       setExpenses(list.data);
-      setBreakdown(cats);
+      setBreakdown(catsBreakdown);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -88,7 +97,15 @@ export default function ExpensesPage() {
     if (!amount || parseFloat(amount) <= 0) { setError("Enter a valid amount."); return; }
     setSaving(true); setError(""); setSuccess("");
     try {
-      await createExpense({ shopId, amount: parseFloat(amount), category, paymentMethod, note, date });
+      await createExpense({ 
+        shopId, 
+        amount: parseFloat(amount), 
+        categoryId, 
+        category: categories.find(c => c.id === categoryId)?.name,
+        paymentMethod, 
+        note, 
+        date 
+      });
       setSuccess("Expense recorded.");
       setAmount(""); setNote(""); setDate(todayStr()); setShowForm(false);
       await load();
@@ -142,20 +159,23 @@ export default function ExpensesPage() {
 
           {/* Category */}
           <div className="grid grid-cols-4 gap-2">
-            {CATEGORIES.map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => setCategory(value)}
-                className={`flex flex-col items-center gap-1 p-2 rounded-lg text-xs border transition-all ${
-                  category === value
-                    ? "bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-400 shadow-inner"
-                    : "border-gray-200 dark:border-slate-800 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800"
-                }`}
-              >
-                <Icon size={18} />
-                <span className="text-center leading-tight">{label}</span>
-              </button>
-            ))}
+            {categories.map((c) => {
+              const Icon = CATEGORY_ICONS[c.name.toLowerCase().split(' ')[0]] || MoreHorizontal;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => setCategoryId(c.id)}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-lg text-xs border transition-all ${
+                    categoryId === c.id
+                      ? "bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-400 shadow-inner"
+                      : "border-gray-200 dark:border-slate-800 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <Icon size={18} />
+                  <span className="text-center leading-tight">{c.name}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Amount */}
@@ -250,11 +270,11 @@ export default function ExpensesPage() {
               </div>
               {breakdown.map((b) => {
                 const pct = totalThisPeriod > 0 ? (b.total / totalThisPeriod) * 100 : 0;
-                const cat = CATEGORIES.find((c) => c.value === b.category);
+                const cat = categories.find((c) => c.name === b.category || c.id === b.category);
                 return (
                   <div key={b.category} className="space-y-1">
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600 dark:text-slate-400">{cat?.label ?? b.category}</span>
+                      <span className="text-gray-600 dark:text-slate-400">{cat?.name ?? b.category}</span>
                       <span className="font-medium dark:text-slate-200">{fmt(b.total)}</span>
                     </div>
                     <div className="h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -274,15 +294,15 @@ export default function ExpensesPage() {
             {expenses.length === 0 ? (
               <div className="text-center py-12 text-gray-400 dark:text-slate-500 text-sm">No expenses in this period.</div>
             ) : expenses.map((e) => {
-              const cat = CATEGORIES.find((c) => c.value === e.expenseCategory);
-              const Icon = cat?.icon ?? MoreHorizontal;
+              const cat = categories.find((c) => c.id === e.expenseCategoryId || c.name === e.expenseCategory);
+              const Icon = CATEGORY_ICONS[cat?.name.toLowerCase().split(' ')[0] ?? ''] || MoreHorizontal;
               return (
                 <div key={e.id} className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800/50 rounded-xl px-4 py-3 flex items-center gap-4 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/30">
                   <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-gray-500 dark:text-slate-400">
                     <Icon size={16} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate text-gray-900 dark:text-slate-200">{cat?.label ?? e.expenseCategory ?? "Expense"}</p>
+                    <p className="text-sm font-medium truncate text-gray-900 dark:text-slate-200">{cat?.name ?? e.expenseCategory ?? "Expense"}</p>
                     <p className="text-xs text-gray-400 dark:text-slate-500">
                       {new Date(e.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                       {e.narration ? ` · ${e.narration}` : ""}

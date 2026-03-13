@@ -5,7 +5,7 @@ import {
   NotFoundException,
   Logger,
 } from '@nestjs/common';
-import { DailyClosingStatus } from '@prisma/client';
+import { DailyClosingStatus, DailyClosingMode } from '@prisma/client';
 import { PrismaService } from '../../../../core/prisma/prisma.service';
 import { CloseDayDto, ReopenDayDto, ApproveCashVarianceDto } from './dto/close-day.dto';
 
@@ -27,7 +27,7 @@ export class DailyClosingService {
     const [previousClosing, financialEntries, creditNoteRefunds] =
       await Promise.all([
         // Opening balance = last confirmed closing
-        this.prisma.dailyClosing.findFirst({
+        (this.prisma as any).dailyClosing.findFirst({
           where: {
             tenantId,
             shopId,
@@ -86,7 +86,7 @@ export class DailyClosingService {
     const expectedClosingCash = openingCash + totalIn - totalOut;
 
     // Check if already closed today
-    const existingClosing = await this.prisma.dailyClosing.findFirst({
+    const existingClosing = await (this.prisma as any).dailyClosing.findFirst({
       where: { tenantId, shopId, date: new Date(date) },
     });
 
@@ -117,7 +117,7 @@ export class DailyClosingService {
     const businessDate = new Date(dto.date);
 
     // Block if already SUBMITTED (not DRAFT / REOPENED)
-    const existing = await this.prisma.dailyClosing.findFirst({
+    const existing = await (this.prisma as any).dailyClosing.findFirst({
       where: { tenantId, shopId: dto.shopId, date: businessDate },
     });
 
@@ -130,63 +130,90 @@ export class DailyClosingService {
     // Build the summary figures
     const summary = await this.getDailySummary(tenantId, dto.shopId, dto.date);
 
-    const expectedClosingCash = this.toPaisa(summary.expectedClosingCash);
-    const reportedClosingCash    = this.toPaisa(dto.physicalCashCounted);
-    const cashDifference         = reportedClosingCash - expectedClosingCash;
+    let expectedClosingCash: number;
+    let closingData: any = {
+      openingCash: this.toPaisa(summary.openingCash),
+      mode: dto.mode || DailyClosingMode.SYSTEM,
+      denominations: dto.denominations,
+      varianceReason: dto.varianceReason,
+      varianceNote: dto.notes,
+    };
+
+    if (dto.mode === DailyClosingMode.MANUAL && dto.manualEntries) {
+      const m = dto.manualEntries;
+      closingData = {
+        ...closingData,
+        salesCash: m.salesCash ?? this.toPaisa(summary.salesCash),
+        salesUpi: m.salesUpi ?? this.toPaisa(summary.salesUpi),
+        salesCard: m.salesCard ?? this.toPaisa(summary.salesCard),
+        salesBank: m.salesBank ?? this.toPaisa(summary.salesBank),
+        otherCashIn: m.otherCashIn ?? this.toPaisa(summary.otherIncome),
+        cashWithdrawFromBank: m.cashWithdrawFromBank ?? 0,
+        expenseCash: m.expenseCash ?? this.toPaisa(summary.expensesCash),
+        supplierPaymentsCash: m.supplierPaymentsCash ?? this.toPaisa(summary.purchasePayments),
+        otherCashOut: m.otherCashOut ?? this.toPaisa(summary.otherDeductions + summary.salaryPayments + summary.refunds),
+        cashDepositToBank: m.cashDepositToBank ?? 0,
+      };
+
+      expectedClosingCash =
+        closingData.openingCash +
+        closingData.salesCash +
+        closingData.cashWithdrawFromBank +
+        closingData.otherCashIn -
+        closingData.expenseCash -
+        closingData.supplierPaymentsCash -
+        closingData.otherCashOut -
+        closingData.cashDepositToBank;
+    } else {
+      closingData = {
+        ...closingData,
+        salesCash: this.toPaisa(summary.salesCash),
+        salesUpi: this.toPaisa(summary.salesUpi),
+        salesCard: this.toPaisa(summary.salesCard),
+        salesBank: this.toPaisa(summary.salesBank),
+        otherCashIn: this.toPaisa(summary.otherIncome),
+        expenseCash: this.toPaisa(summary.expensesCash),
+        supplierPaymentsCash: this.toPaisa(summary.purchasePayments),
+        otherCashOut: this.toPaisa(summary.otherDeductions + summary.salaryPayments + summary.refunds),
+      };
+      expectedClosingCash = this.toPaisa(summary.expectedClosingCash);
+    }
+
+    const reportedClosingCash = this.toPaisa(dto.physicalCashCounted);
+    const cashDifference = reportedClosingCash - expectedClosingCash;
+
+    closingData = {
+      ...closingData,
+      expectedClosingCash,
+      reportedClosingCash,
+      cashDifference,
+      status: DailyClosingStatus.SUBMITTED,
+      closedBy: userId,
+      closedAt: new Date(),
+    };
 
     return this.prisma.$transaction(async (tx) => {
       let closing;
 
       if (existing) {
-        // Update existing DRAFT or REOPENED record
-        closing = await tx.dailyClosing.update({
+        closing = await (tx as any).dailyClosing.update({
           where: { id: existing.id },
-          data: {
-            openingCash:         this.toPaisa(summary.openingCash),
-            salesCash:              this.toPaisa(summary.salesCash),
-            salesUpi:               this.toPaisa(summary.salesUpi),
-            salesCard:              this.toPaisa(summary.salesCard),
-            salesBank:              this.toPaisa(summary.salesBank),
-            otherCashIn:            this.toPaisa(summary.otherIncome),
-            expenseCash:           this.toPaisa(summary.expensesCash),
-            supplierPaymentsCash:       this.toPaisa(summary.purchasePayments),
-            otherCashOut:        this.toPaisa(summary.otherDeductions + summary.salaryPayments + summary.refunds),
-            expectedClosingCash,
-            reportedClosingCash,
-            cashDifference,
-            status:                 DailyClosingStatus.SUBMITTED,
-            closedBy:               userId,
-            closedAt:               new Date(),
-          },
+          data: closingData,
         });
       } else {
-        closing = await tx.dailyClosing.create({
+        closing = await (tx as any).dailyClosing.create({
           data: {
+            ...closingData,
             tenantId,
-            shopId:                 dto.shopId,
-            date:                   businessDate,
-            openingCash:         this.toPaisa(summary.openingCash),
-            salesCash:              this.toPaisa(summary.salesCash),
-            salesUpi:               this.toPaisa(summary.salesUpi),
-            salesCard:              this.toPaisa(summary.salesCard),
-            salesBank:              this.toPaisa(summary.salesBank),
-            otherCashIn:            this.toPaisa(summary.otherIncome),
-            expenseCash:           this.toPaisa(summary.expensesCash),
-            supplierPaymentsCash:       this.toPaisa(summary.purchasePayments),
-            otherCashOut:        this.toPaisa(summary.otherDeductions + summary.salaryPayments + summary.refunds),
-            expectedClosingCash,
-            reportedClosingCash,
-            cashDifference,
-            status:                 DailyClosingStatus.SUBMITTED,
-            closedBy:               userId,
-            closedAt:               new Date(),
+            shopId: dto.shopId,
+            date: businessDate,
           },
         });
       }
 
       // Auto-create CashVariance if there is a discrepancy > 0
       if (cashDifference !== 0) {
-        await tx.cashVariance.create({
+        await (tx as any).cashVariance.create({
           data: {
             tenantId,
             shopId:        dto.shopId,
@@ -254,7 +281,7 @@ export class DailyClosingService {
       if (filters.endDate)   where.createdAt.lte = new Date(filters.endDate);
     }
 
-    const variances = await this.prisma.cashVariance.findMany({
+    const variances = await (this.prisma as any).cashVariance.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       include: { dailyClosing: { select: { date: true } } },
@@ -273,7 +300,7 @@ export class DailyClosingService {
     userId: string,
     dto: ApproveCashVarianceDto,
   ) {
-    const variance = await this.prisma.cashVariance.findFirst({
+    const variance = await (this.prisma as any).cashVariance.findFirst({
       where: { id: dto.varianceId, tenantId, shopId: dto.shopId },
     });
 
@@ -282,7 +309,7 @@ export class DailyClosingService {
       throw new BadRequestException('Only PENDING variances can be approved.');
     }
 
-    return this.prisma.cashVariance.update({
+    return (this.prisma as any).cashVariance.update({
       where: { id: variance.id },
       data: {
         status:     'APPROVED',
@@ -307,7 +334,7 @@ export class DailyClosingService {
       if (filters.endDate)   where.date.lte = new Date(filters.endDate);
     }
 
-    const closings = await this.prisma.dailyClosing.findMany({
+    const closings = await (this.prisma as any).dailyClosing.findMany({
       where,
       orderBy: { date: 'desc' },
       take: 90, // max 3 months
@@ -336,10 +363,20 @@ export class DailyClosingService {
 
   private toRupees(closing: any) {
     const moneyFields = [
-      'openingBalance', 'salesCash', 'salesUpi', 'salesCard', 'salesBank',
-      'otherIncome', 'expensesCash', 'purchasePayments', 'salaryPayments',
-      'otherDeductions', 'refunds', 'expectedClosingBalance',
-      'physicalCashCounted', 'cashDifference',
+      'openingCash',
+      'salesCash',
+      'salesUpi',
+      'salesCard',
+      'salesBank',
+      'cashWithdrawFromBank',
+      'cashDepositToBank',
+      'supplierPaymentsCash',
+      'expenseCash',
+      'otherCashIn',
+      'otherCashOut',
+      'expectedClosingCash',
+      'reportedClosingCash',
+      'cashDifference',
     ];
     const result = { ...closing };
     for (const field of moneyFields) {

@@ -93,7 +93,7 @@ export class VouchersService {
             linkedPurchaseId: createVoucherDto.linkedPurchaseId || null,
             status: VoucherStatus.ACTIVE,
             createdBy: userId,
-          },
+          } as any,
         });
 
         // Add Financial Entry (Ledger Record)
@@ -114,7 +114,7 @@ export class VouchersService {
       });
 
       // Convert back to Rupees for response
-      const response = {
+      const response: any = {
         ...voucher,
         amount: this.fromPaisa(voucher.amount),
       };
@@ -156,6 +156,7 @@ export class VouchersService {
 
     const where: any = {
       tenantId,
+      isDeleted: false,
     };
 
     if (shopId) {
@@ -197,7 +198,7 @@ export class VouchersService {
     // Return standardized paginated format
     const page = Math.floor(skip / take) + 1;
     return {
-      data: vouchers.map((v) => ({ ...v, amount: this.fromPaisa(v.amount) })),
+      data: (vouchers as any[]).map((v) => ({ ...v, amount: this.fromPaisa(v.amount) })),
       total,
       pagination: {
         total,
@@ -231,7 +232,7 @@ export class VouchersService {
       throw new BadRequestException('Voucher not found');
     }
 
-    return { ...voucher, amount: this.fromPaisa(voucher.amount) };
+    return { ...voucher, amount: this.fromPaisa(voucher.amount) } as any;
   }
 
   /**
@@ -286,7 +287,7 @@ export class VouchersService {
       this.logger.log(
         `Voucher cancelled: ${voucher.voucherId} - Reason: ${reason}`,
       );
-      return { ...cancelled, amount: this.fromPaisa(cancelled.amount) };
+      return { ...cancelled, amount: this.fromPaisa(cancelled.amount) } as any;
     } catch (error) {
       this.logger.error(
         `Failed to cancel voucher ${voucherId}`,
@@ -295,6 +296,85 @@ export class VouchersService {
       throw new BadRequestException('Failed to cancel voucher');
     }
   }
+
+  async updateVoucher(
+    tenantId: string,
+    shopId: string,
+    id: string,
+    data: {
+      amount?: number;
+      paymentMethod?: PaymentMode;
+      expenseCategoryId?: string;
+      narration?: string;
+    },
+    userId: string,
+  ) {
+    const voucher = await this.prisma.paymentVoucher.findFirst({
+      where: { id, tenantId, shopId, isDeleted: false } as any,
+    });
+
+    if (!voucher) throw new BadRequestException('Voucher not found');
+
+    return this.prisma.$transaction(async (tx) => {
+      const updatedAmount = data.amount !== undefined ? this.toPaisa(data.amount) : voucher.amount;
+
+      const updated = await tx.paymentVoucher.update({
+        where: { id },
+        data: {
+          amount: updatedAmount,
+          paymentMethod: data.paymentMethod ?? (voucher as any).paymentMethod,
+          expenseCategory: (data as any).expenseCategory ?? (voucher as any).expenseCategory,
+          expenseCategoryId: data.expenseCategoryId ?? (voucher as any).expenseCategoryId,
+          narration: data.narration ?? (voucher as any).narration,
+          updatedBy: userId,
+        } as any,
+      });
+
+      // Update associated Financial Entry
+      await tx.financialEntry.updateMany({
+        where: {
+          tenantId,
+          shopId,
+          referenceId: id,
+          referenceType: { in: [FinanceRefType.EXPENSE, FinanceRefType.PURCHASE] }
+        },
+        data: {
+          amount: updatedAmount,
+          mode: data.paymentMethod ?? voucher.paymentMethod,
+          note: data.narration ?? voucher.narration,
+        }
+      });
+
+      return { ...updated, amount: this.fromPaisa(updated.amount) };
+    });
+  }
+
+  async softDeleteVoucher(tenantId: string, shopId: string, id: string, userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.paymentVoucher.update({
+        where: { id, tenantId, shopId },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          status: VoucherStatus.CANCELLED,
+          updatedBy: userId,
+        } as any,
+      });
+
+      // Remove from Financial Ledger
+      await tx.financialEntry.deleteMany({
+        where: {
+          tenantId,
+          shopId,
+          referenceId: id,
+          referenceType: { in: [FinanceRefType.EXPENSE, FinanceRefType.PURCHASE] }
+        }
+      });
+
+      return updated;
+    });
+  }
+
 
   /**
    * Get voucher summary for audit/reporting

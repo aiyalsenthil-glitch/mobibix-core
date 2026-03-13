@@ -1935,12 +1935,16 @@ model PaymentVoucher {
   transactionRef      String?
   narration           String?
   globalSupplierId    String?
+  expenseCategory     String?
   expenseCategoryId   String?
-  expenseCategory     ExpenseCategory?     @relation(fields: [expenseCategoryId], references: [id])
+  categoryRel         ExpenseCategory?     @relation(fields: [expenseCategoryId], references: [id])
   linkedPurchaseId    String?
   status              VoucherStatus        @default(ACTIVE)
   createdAt           DateTime             @default(now())
   createdBy           String?
+  updatedBy           String?
+  isDeleted           Boolean              @default(false)
+  deletedAt           DateTime?
   party               Party?               @relation(fields: [globalSupplierId], references: [id])
   shop                Shop                 @relation(fields: [shopId], references: [id])
   tenant              Tenant               @relation("TenantPaymentVouchers", fields: [tenantId], references: [id])

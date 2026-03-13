@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Activity, AlertTriangle, TrendingDown, Package, Users,
   Truck, Loader2, RefreshCw, ChevronDown, ChevronUp,
-  BarChart2, Calendar,
+  BarChart2, Calendar, HelpCircle, ExternalLink,
 } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
 import {
@@ -46,6 +46,86 @@ const REASON_COLOR: Record<string, string> = {
   CORRECTION:   "bg-gray-400",
   SPARE_DAMAGE: "bg-yellow-500",
 };
+
+// ─── Help Panel ───────────────────────────────────────────────────────────────
+
+const SHRINKAGE_HELP = [
+  {
+    icon: TrendingDown,
+    title: "Total Loss Value",
+    desc: "Rupee value of all lost stock in the period. Calculated as: units lost × average cost per unit.",
+  },
+  {
+    icon: Package,
+    title: "Worst Category",
+    desc: "Product category with the highest total loss value. Focus audits here first.",
+  },
+  {
+    icon: Users,
+    title: "Top Loss Staff",
+    desc: "Staff member who initiated the most loss-recording sessions. High count = they run frequent verifications, not necessarily misconduct.",
+  },
+  {
+    icon: Truck,
+    title: "Top Supplier",
+    desc: "Supplier whose products appear most in DAMAGE / BREAKAGE / SPARE_DAMAGE losses. Use this for quality negotiations.",
+  },
+  {
+    icon: BarChart2,
+    title: "Monthly Trend",
+    desc: "12-month bar chart. Hover each bar for exact value. Rising trend = growing problem; use it to time periodic audits.",
+  },
+  {
+    icon: Activity,
+    title: "Where does this data come from?",
+    desc: "Every confirmed Stock Verification session feeds this report. Go to Tools → Stock Verification to record a physical count.",
+  },
+];
+
+function ShrinkageHelpPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="bg-blue-50 dark:bg-slate-800/70 border border-blue-200 dark:border-slate-700 rounded-xl p-5 space-y-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-bold text-blue-900 dark:text-blue-300">Understanding Shrinkage Intelligence</p>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+            Data comes from confirmed Stock Verification sessions.
+            <a href="/tools/stock-verification" className="ml-1 inline-flex items-center gap-0.5 underline hover:no-underline">
+              Go to Stock Verification <ExternalLink size={10} />
+            </a>
+          </p>
+        </div>
+        <button onClick={onClose} className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1">
+          <ChevronUp size={16} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {SHRINKAGE_HELP.map((h) => {
+          const Icon = h.icon;
+          return (
+            <div key={h.title} className="flex gap-3">
+              <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Icon size={13} className="text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">{h.title}</p>
+                <p className="text-[11px] text-blue-700 dark:text-blue-400 leading-relaxed">{h.desc}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="border-t border-blue-200 dark:border-slate-700 pt-3">
+        <p className="text-[11px] text-blue-600 dark:text-blue-400">
+          <span className="font-semibold">Tip:</span> Loss Value shows ₹0 when a product has no purchase history (average cost = ₹0).
+          Add a supplier invoice or purchase record to populate costs.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -166,6 +246,7 @@ export default function ShrinkagePage() {
   const [trend, setTrend] = useState<ShrinkageMonthlyTrend[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showHelp, setShowHelp] = useState(false);
 
   const load = useCallback(async () => {
     if (!shopId) return;
@@ -207,10 +288,21 @@ export default function ShrinkagePage() {
             Stock loss analysis for {selectedShop?.name}
           </p>
         </div>
-        <button onClick={load} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 transition-colors">
-          <RefreshCw size={16} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowHelp((v) => !v)}
+            title="How to read this report"
+            className={`p-2 rounded-lg transition-colors ${showHelp ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 dark:text-slate-500"}`}
+          >
+            <HelpCircle size={16} />
+          </button>
+          <button onClick={load} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 transition-colors">
+            <RefreshCw size={16} />
+          </button>
+        </div>
       </div>
+
+      {showHelp && <ShrinkageHelpPanel onClose={() => setShowHelp(false)} />}
 
       {/* Date Range */}
       <div className="flex items-center gap-3 flex-wrap">

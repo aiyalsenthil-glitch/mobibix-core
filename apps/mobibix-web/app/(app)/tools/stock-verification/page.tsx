@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  ClipboardCheck, Plus, ChevronRight, Loader2, AlertTriangle,
-  CheckCircle2, RefreshCw, PackageSearch, X, Check, History,
-  ChevronDown, ChevronUp,
+  ClipboardCheck, Plus, Loader2, AlertTriangle,
+  CheckCircle2, RefreshCw, PackageSearch, Check, History,
+  ChevronDown, ChevronUp, HelpCircle,
 } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
 import {
@@ -13,6 +13,65 @@ import {
   type StockVerificationSession, type StockVerificationItem, type AdjustmentReason,
 } from "@/services/operations.api";
 import { listProducts } from "@/services/products.api";
+
+const HELP_STEPS = [
+  { step: "1", title: "Start a session", desc: 'Click "Start Verification" and pick today\'s date. One active session per shop at a time.' },
+  { step: "2", title: "Count each product", desc: "Enter the physical quantity you see on the shelf. Leave blank for items you haven't counted." },
+  { step: "3", title: "Pick a reason", desc: "When physical < system the Reason dropdown unlocks. Choose what caused the loss." },
+  { step: "4", title: "Confirm & Apply", desc: "Save Draft to pause and resume later. Confirm & Apply to finalise — stock quantities are adjusted and the data feeds into Shrinkage Intelligence." },
+];
+
+const REASON_HELP = [
+  { label: "Breakage",        color: "bg-red-500",    desc: "Item physically broke during storage or handling." },
+  { label: "Damage",          color: "bg-orange-500", desc: "Damaged in demo, display, or transit." },
+  { label: "Lost / Missing",  color: "bg-purple-500", desc: "Cannot be located — possible theft or misplacement." },
+  { label: "Internal Use",    color: "bg-blue-500",   desc: "Consumed in-house (demo, staff use, gifted)." },
+  { label: "Spare Part Damage", color: "bg-yellow-500", desc: "Part broke during a repair job." },
+  { label: "Data Correction", color: "bg-gray-400",   desc: "Fixing a previous incorrect stock count." },
+];
+
+function HelpPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="bg-blue-50 dark:bg-slate-800/70 border border-blue-200 dark:border-slate-700 rounded-xl p-5 space-y-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-bold text-blue-900 dark:text-blue-300">How Stock Verification Works</p>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">Physical count → loss reason → manager confirms → Shrinkage Intelligence updates</p>
+        </div>
+        <button onClick={onClose} className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1">
+          <ChevronUp size={16} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {HELP_STEPS.map((s) => (
+          <div key={s.step} className="flex gap-3">
+            <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{s.step}</span>
+            <div>
+              <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">{s.title}</p>
+              <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">{s.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <p className="text-xs font-bold text-blue-900 dark:text-blue-300 mb-2">Loss Reasons</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {REASON_HELP.map((r) => (
+            <div key={r.label} className="flex items-start gap-2">
+              <span className={`w-2 h-2 rounded-full ${r.color} flex-shrink-0 mt-1.5`} />
+              <div>
+                <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">{r.label}</p>
+                <p className="text-[11px] text-blue-600 dark:text-blue-400 leading-tight">{r.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const REASONS: { value: AdjustmentReason; label: string }[] = [
   { value: "BREAKAGE",     label: "Breakage" },
@@ -50,6 +109,7 @@ export default function StockVerificationPage() {
   const [success, setSuccess] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   // New session form
   const [showNewForm, setShowNewForm] = useState(false);
@@ -175,10 +235,21 @@ export default function StockVerificationPage() {
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Stock Verification</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400">Physical count vs system quantity</p>
         </div>
-        <button onClick={load} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 transition-colors">
-          <RefreshCw size={16} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowHelp((v) => !v)}
+            title="How it works"
+            className={`p-2 rounded-lg transition-colors ${showHelp ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 dark:text-slate-500"}`}
+          >
+            <HelpCircle size={16} />
+          </button>
+          <button onClick={load} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 transition-colors">
+            <RefreshCw size={16} />
+          </button>
+        </div>
       </div>
+
+      {showHelp && <HelpPanel onClose={() => setShowHelp(false)} />}
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-lg p-3 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">

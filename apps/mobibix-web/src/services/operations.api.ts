@@ -13,6 +13,13 @@ export type AdjustmentReason =
   | "CORRECTION"
   | "SPARE_DAMAGE";
 
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  shopId?: string;
+}
+
 export interface CashLeakageAnalysis {
   difference: number;
   severity: "NONE" | "LOW" | "MEDIUM" | "HIGH";
@@ -258,6 +265,7 @@ export interface Expense {
   shopId: string;
   amount: number;
   expenseCategory?: string;
+  expenseCategoryId?: string;
   paymentMethod: string;
   narration?: string;
   date: string;
@@ -273,7 +281,8 @@ export interface ExpenseCategoryBreakdown {
 export async function createExpense(payload: {
   shopId: string;
   amount: number;
-  category: string;
+  category?: string;
+  categoryId?: string;
   paymentMethod: string;
   note?: string;
   date?: string;
@@ -288,6 +297,16 @@ export async function createExpense(payload: {
     throw new Error((err as any).message || "Failed to create expense");
   }
   return extractData(res);
+}
+
+export async function getExpenseCategories(shopId: string): Promise<ExpenseCategory[]> {
+  const res = await authenticatedFetch(`/operations/expenses/categories/list?shopId=${shopId}`);
+  if (!res.ok) throw new Error("Failed to fetch expense categories");
+  return extractData(res);
+}
+
+export async function seedExpenseCategories(): Promise<void> {
+  await authenticatedFetch(`/operations/expenses/categories/seed`, { method: "POST" });
 }
 
 export async function getExpenses(

@@ -20,7 +20,32 @@ export class CloseDayDto {
 
   @IsOptional()
   @IsString()
+  mode?: 'SYSTEM' | 'MANUAL';
+
+  @IsOptional()
+  manualEntries?: {
+    salesCash?: number;
+    salesUpi?: number;
+    salesCard?: number;
+    salesBank?: number;
+    otherCashIn?: number;
+    cashWithdrawFromBank?: number;
+    expenseCash?: number;
+    supplierPaymentsCash?: number;
+    otherCashOut?: number;
+    cashDepositToBank?: number;
+  };
+
+  @IsOptional()
+  denominations?: Record<string, number>;
+
+  @IsOptional()
+  @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  varianceReason?: string;
 }
 
 export class ReopenDayDto {
