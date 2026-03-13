@@ -100,23 +100,23 @@ export default function ExpensesPage() {
 
   const totalThisPeriod = breakdown.reduce((s, b) => s + b.total, 0);
 
-  if (!shopId) return <div className="p-8 text-center text-gray-500">Select a shop first.</div>;
+  if (!shopId) return <div className="p-8 text-center text-gray-500 dark:text-slate-400">Select a shop first.</div>;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Expense Manager</h1>
-          <p className="text-sm text-gray-500">Track daily operational costs</p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Expense Manager</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Track daily operational costs</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={load} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500">
+          <button onClick={load} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-100 transition-colors">
             <RefreshCw size={16} />
           </button>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+            className="flex items-center gap-2 bg-blue-600 dark:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-all shadow-md active:scale-95"
           >
             <Plus size={16} /> Add Expense
           </button>
@@ -124,20 +124,20 @@ export default function ExpensesPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 flex items-center gap-2">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-lg p-3 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
           <AlertTriangle size={16} /> {error}
         </div>
       )}
       {success && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700 flex items-center gap-2">
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-lg p-3 text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
           <CheckCircle2 size={16} /> {success}
         </div>
       )}
 
       {/* Add Expense Form */}
       {showForm && (
-        <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
-          <p className="text-sm font-semibold text-gray-700">New Expense</p>
+        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
+          <p className="text-sm font-semibold text-gray-700 dark:text-slate-200">New Expense</p>
 
           {/* Category */}
           <div className="grid grid-cols-4 gap-2">
@@ -158,14 +158,14 @@ export default function ExpensesPage() {
           </div>
 
           {/* Amount */}
-          <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500">
-            <IndianRupee size={16} className="text-gray-400" />
+          <div className="flex items-center gap-2 border border-gray-200 dark:border-slate-800 rounded-lg px-3 py-2 bg-white dark:bg-slate-950 focus-within:ring-2 focus-within:ring-blue-500">
+            <IndianRupee size={16} className="text-gray-400 dark:text-slate-500" />
             <input
               type="number"
               placeholder="Amount"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="flex-1 text-sm outline-none"
+              className="flex-1 text-sm outline-none bg-transparent dark:text-slate-200"
             />
           </div>
 
@@ -175,10 +175,10 @@ export default function ExpensesPage() {
               <button
                 key={m}
                 onClick={() => setPaymentMethod(m)}
-                className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${
+                className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${
                   paymentMethod === m
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                    ? "bg-gray-900 dark:bg-slate-100 text-white dark:text-slate-900 border-gray-900 dark:border-slate-100"
+                    : "border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800"
                 }`}
               >
                 {m}
@@ -188,13 +188,13 @@ export default function ExpensesPage() {
 
           {/* Date */}
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-500 w-16">Date</label>
+            <label className="text-xs text-gray-500 dark:text-slate-500 w-16">Date</label>
             <input
               type="date"
               value={date}
               max={todayStr()}
               onChange={(e) => setDate(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+              className="border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg px-3 py-2 text-sm focus:outline-none dark:text-slate-200"
             />
           </div>
 
@@ -204,7 +204,7 @@ export default function ExpensesPage() {
             placeholder="Note (optional)"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+            className="w-full border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg px-3 py-2 text-sm focus:outline-none dark:text-slate-200"
           />
 
           <div className="flex gap-2">
@@ -215,7 +215,7 @@ export default function ExpensesPage() {
             >
               {saving ? <Loader2 size={16} className="animate-spin" /> : null} Save
             </button>
-            <button onClick={() => setShowForm(false)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-lg text-sm">
+            <button onClick={() => setShowForm(false)} className="flex-1 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 py-2.5 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
               Cancel
             </button>
           </div>
@@ -224,12 +224,12 @@ export default function ExpensesPage() {
 
       {/* Date Range Filter */}
       <div className="flex items-center gap-3 text-sm">
-        <span className="text-gray-500">From</span>
+        <span className="text-gray-500 dark:text-slate-400">From</span>
         <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-          className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
-        <span className="text-gray-500">to</span>
+          className="border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg px-2 py-1.5 text-sm dark:text-slate-200" />
+        <span className="text-gray-500 dark:text-slate-400">to</span>
         <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-          className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
+          className="border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg px-2 py-1.5 text-sm dark:text-slate-200" />
       </div>
 
       {loading ? (
@@ -240,12 +240,12 @@ export default function ExpensesPage() {
         <>
           {/* Category Breakdown */}
           {breakdown.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+            <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 space-y-3 shadow-sm">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                  <BarChart2 size={16} className="text-blue-500" /> Breakdown
+                <p className="text-sm font-semibold text-gray-700 dark:text-slate-200 flex items-center gap-2">
+                   <BarChart2 size={16} className="text-blue-500" /> Breakdown
                 </p>
-                <span className="text-sm font-bold text-red-600">{fmt(totalThisPeriod)}</span>
+                <span className="text-sm font-bold text-red-600 dark:text-red-400">{fmt(totalThisPeriod)}</span>
               </div>
               {breakdown.map((b) => {
                 const pct = totalThisPeriod > 0 ? (b.total / totalThisPeriod) * 100 : 0;
@@ -253,10 +253,10 @@ export default function ExpensesPage() {
                 return (
                   <div key={b.category} className="space-y-1">
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">{cat?.label ?? b.category}</span>
-                      <span className="font-medium">{fmt(b.total)}</span>
+                      <span className="text-gray-600 dark:text-slate-400">{cat?.label ?? b.category}</span>
+                      <span className="font-medium dark:text-slate-200">{fmt(b.total)}</span>
                     </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-blue-400 rounded-full"
                         style={{ width: `${pct}%` }}
@@ -271,25 +271,25 @@ export default function ExpensesPage() {
           {/* Expense List */}
           <div className="space-y-2">
             {expenses.length === 0 ? (
-              <div className="text-center py-12 text-gray-400 text-sm">No expenses in this period.</div>
+              <div className="text-center py-12 text-gray-400 dark:text-slate-500 text-sm">No expenses in this period.</div>
             ) : expenses.map((e) => {
               const cat = CATEGORIES.find((c) => c.value === e.expenseCategory);
               const Icon = cat?.icon ?? MoreHorizontal;
               return (
-                <div key={e.id} className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4">
-                  <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                <div key={e.id} className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800/50 rounded-xl px-4 py-3 flex items-center gap-4 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/30">
+                  <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-gray-500 dark:text-slate-400">
                     <Icon size={16} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{cat?.label ?? e.expenseCategory ?? "Expense"}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-sm font-medium truncate text-gray-900 dark:text-slate-200">{cat?.label ?? e.expenseCategory ?? "Expense"}</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-500">
                       {new Date(e.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                       {e.narration ? ` · ${e.narration}` : ""}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-red-600">{fmt(e.amount)}</p>
-                    <p className="text-xs text-gray-400">{e.paymentMethod}</p>
+                    <p className="text-sm font-semibold text-red-600 dark:text-red-400">{fmt(e.amount)}</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-500 uppercase tracking-tighter font-bold">{e.paymentMethod}</p>
                   </div>
                 </div>
               );

@@ -21,16 +21,16 @@ function fmt(v: number) {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    OPEN: "bg-gray-100 text-gray-600",
-    DRAFT: "bg-yellow-100 text-yellow-700",
-    CONFIRMED: "bg-green-100 text-green-700",
-    REOPENED: "bg-orange-100 text-orange-700",
-    PENDING: "bg-yellow-100 text-yellow-700",
-    APPROVED: "bg-green-100 text-green-700",
-    REJECTED: "bg-red-100 text-red-700",
+    OPEN: "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400",
+    DRAFT: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+    CONFIRMED: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    REOPENED: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+    PENDING: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+    APPROVED: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    REJECTED: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   };
   return (
-    <span className={`px-2 py-0.5 rounded text-xs font-medium ${map[status] ?? "bg-gray-100 text-gray-600"}`}>
+    <span className={`px-2 py-0.5 rounded text-xs font-medium ${map[status] ?? "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400"}`}>
       {status}
     </span>
   );
@@ -125,7 +125,7 @@ export default function DailyClosingPage() {
 
   if (!shopId) {
     return (
-      <div className="p-8 text-center text-gray-500">
+      <div className="p-8 text-center text-gray-500 dark:text-slate-400">
         Select a shop to use Daily Closing.
       </div>
     );
@@ -136,40 +136,40 @@ export default function DailyClosingPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Daily Account Closing</h1>
-          <p className="text-sm text-gray-500">Seal the day's cash position for {selectedShop?.name}</p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Daily Account Closing</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Seal the day's cash position for {selectedShop?.name}</p>
         </div>
-        <button onClick={load} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500">
+        <button onClick={load} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 transition-colors">
           <RefreshCw size={16} />
         </button>
       </div>
 
       {/* Date Picker */}
       <div className="flex items-center gap-3">
-        <Calendar size={18} className="text-gray-400" />
+        <Calendar size={18} className="text-gray-400 dark:text-slate-500" />
         <input
           type="date"
           value={date}
           max={today()}
           onChange={(e) => setDate(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-slate-200"
         />
         {summary && <StatusBadge status={summary.status} />}
       </div>
 
       {isFuture && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-700">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/30 rounded-lg p-3 text-sm text-yellow-700 dark:text-yellow-400">
           Cannot close a future date.
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 flex items-center gap-2">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-lg p-3 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
           <AlertTriangle size={16} /> {error}
         </div>
       )}
       {success && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700 flex items-center gap-2">
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-lg p-3 text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
           <CheckCircle2 size={16} /> {success}
         </div>
       )}
@@ -182,19 +182,19 @@ export default function DailyClosingPage() {
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-              <p className="text-xs text-blue-500 font-medium mb-1">Opening Balance</p>
-              <p className="text-2xl font-bold text-blue-700">{fmt(summary.openingBalance)}</p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4">
+              <p className="text-xs text-blue-500 dark:text-blue-400 font-medium mb-1">Opening Balance</p>
+              <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{fmt(summary.openingBalance)}</p>
             </div>
-            <div className="bg-green-50 border border-green-100 rounded-xl p-4">
-              <p className="text-xs text-green-500 font-medium mb-1">Expected Closing</p>
-              <p className="text-2xl font-bold text-green-700">{fmt(summary.expectedClosingBalance)}</p>
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/30 rounded-xl p-4">
+              <p className="text-xs text-green-500 dark:text-green-400 font-medium mb-1">Expected Closing</p>
+              <p className="text-2xl font-bold text-green-700 dark:text-green-300">{fmt(summary.expectedClosingBalance)}</p>
             </div>
           </div>
 
           {/* IN breakdown */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-            <div className="flex items-center gap-2 text-green-600 font-medium text-sm">
+          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 space-y-3 shadow-sm">
+            <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium text-sm">
               <TrendingUp size={16} /> Cash IN — {fmt(summary.totalIn)}
             </div>
             {[
@@ -205,15 +205,15 @@ export default function DailyClosingPage() {
               { label: "Other Income",  value: summary.otherIncome },
             ].map(({ label, value }) => (
               <div key={label} className="flex justify-between text-sm">
-                <span className="text-gray-500">{label}</span>
-                <span className="font-medium">{fmt(value)}</span>
+                <span className="text-gray-500 dark:text-slate-400">{label}</span>
+                <span className="font-medium text-gray-900 dark:text-slate-200">{fmt(value)}</span>
               </div>
             ))}
           </div>
 
           {/* OUT breakdown */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-            <div className="flex items-center gap-2 text-red-600 font-medium text-sm">
+          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 space-y-3 shadow-sm">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-medium text-sm">
               <TrendingDown size={16} /> Cash OUT — {fmt(summary.totalOut)}
             </div>
             {[
@@ -224,30 +224,30 @@ export default function DailyClosingPage() {
               { label: "Other Deductions",   value: summary.otherDeductions },
             ].map(({ label, value }) => (
               <div key={label} className="flex justify-between text-sm">
-                <span className="text-gray-500">{label}</span>
-                <span className="font-medium">{fmt(value)}</span>
+                <span className="text-gray-500 dark:text-slate-400">{label}</span>
+                <span className="font-medium text-gray-900 dark:text-slate-200">{fmt(value)}</span>
               </div>
             ))}
           </div>
 
           {/* Close / Reopen */}
           {canClose && !isFuture && (
-            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
-              <p className="text-sm font-medium text-gray-700">Physical Cash Count</p>
+            <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 space-y-4 shadow-sm">
+              <p className="text-sm font-medium text-gray-700 dark:text-slate-300">Physical Cash Count</p>
               <div className="flex items-center gap-2">
-                <Banknote size={18} className="text-gray-400" />
+                <Banknote size={18} className="text-gray-400 dark:text-slate-500" />
                 <input
                   type="number"
                   placeholder="Enter actual cash in drawer (₹)"
                   value={physicalCash}
                   onChange={(e) => setPhysicalCash(e.target.value)}
-                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-200"
                 />
               </div>
               {physicalCash && (
                 <div className={`text-sm font-medium flex items-center gap-1 ${
                   parseFloat(physicalCash) < summary.expectedClosingBalance
-                    ? "text-red-600" : "text-green-600"
+                    ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
                 }`}>
                   <Wallet size={14} />
                   Variance: {fmt(parseFloat(physicalCash) - summary.expectedClosingBalance)}
@@ -258,7 +258,7 @@ export default function DailyClosingPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none dark:text-slate-200"
               />
               <button
                 onClick={handleClose}
@@ -273,16 +273,16 @@ export default function DailyClosingPage() {
 
           {isConfirmed && (
             <div className="space-y-3">
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-                <CheckCircle2 size={24} className="text-green-500 mx-auto mb-1" />
-                <p className="text-sm font-medium text-green-700">Day is closed.</p>
-                <p className="text-xs text-green-500 mt-1">
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-xl p-4 text-center">
+                <CheckCircle2 size={24} className="text-green-500 dark:text-green-400 mx-auto mb-1" />
+                <p className="text-sm font-medium text-green-700 dark:text-green-300">Day is closed.</p>
+                <p className="text-xs text-green-500 dark:text-green-400 mt-1">
                   Closing balance {fmt(summary.expectedClosingBalance)} carries to tomorrow.
                 </p>
               </div>
               <button
                 onClick={() => setShowReopen(true)}
-                className="w-full border border-orange-200 text-orange-600 py-2.5 rounded-lg text-sm font-medium hover:bg-orange-50 flex items-center justify-center gap-2"
+                className="w-full border border-orange-200 dark:border-orange-900/40 text-orange-600 dark:text-orange-400 py-2.5 rounded-lg text-sm font-medium hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-colors flex items-center justify-center gap-2"
               >
                 <Unlock size={16} /> Reopen Day
               </button>
@@ -290,12 +290,12 @@ export default function DailyClosingPage() {
           )}
 
           {showReopen && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
-              <p className="text-sm font-medium text-orange-700">Why are you reopening?</p>
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-900/30 rounded-xl p-4 space-y-3">
+              <p className="text-sm font-medium text-orange-700 dark:text-orange-400">Why are you reopening?</p>
               <select
                 value={reopenReason}
                 onChange={(e) => setReopenReason(e.target.value)}
-                className="w-full border border-orange-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"
+                className="w-full border border-orange-200 dark:border-orange-900/40 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 dark:text-slate-200 focus:outline-none"
               >
                 <option value="">Select reason</option>
                 <option value="missed expense">Missed expense entry</option>
@@ -310,7 +310,7 @@ export default function DailyClosingPage() {
                   placeholder="Describe reason…"
                   value={reopenReason}
                   onChange={(e) => setReopenReason(e.target.value)}
-                  className="w-full border border-orange-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"
+                  className="w-full border border-orange-200 dark:border-orange-900/40 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 dark:text-slate-200 focus:outline-none"
                 />
               )}
               <div className="flex gap-2">
@@ -321,7 +321,7 @@ export default function DailyClosingPage() {
                 >
                   {closing ? <Loader2 size={14} className="animate-spin mx-auto" /> : "Reopen"}
                 </button>
-                <button onClick={() => setShowReopen(false)} className="flex-1 border border-gray-200 text-gray-600 py-2 rounded-lg text-sm">
+                <button onClick={() => setShowReopen(false)} className="flex-1 border border-gray-200 dark:border-slate-800 text-gray-600 dark:text-slate-400 py-2 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
                   Cancel
                 </button>
               </div>
@@ -330,20 +330,20 @@ export default function DailyClosingPage() {
 
           {/* Pending Variances */}
           {variances.length > 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 space-y-3">
-              <p className="text-sm font-semibold text-yellow-800 flex items-center gap-2">
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/30 rounded-xl p-4 space-y-3 shadow-md">
+              <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-400 flex items-center gap-2">
                 <AlertTriangle size={16} /> {variances.length} Pending Cash Variance(s)
               </p>
               {variances.map((v) => (
-                <div key={v.id} className="bg-white border border-yellow-100 rounded-lg p-3 flex items-center justify-between">
+                <div key={v.id} className="bg-white dark:bg-slate-900 border border-yellow-100 dark:border-yellow-900/20 rounded-lg p-3 flex items-center justify-between shadow-sm">
                   <div>
-                    <p className="text-sm font-medium">
-                      Difference: <span className={v.difference < 0 ? "text-red-600" : "text-green-600"}>{fmt(v.difference)}</span>
+                    <p className="text-sm font-medium text-gray-900 dark:text-slate-200">
+                      Difference: <span className={v.difference < 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}>{fmt(v.difference)}</span>
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-slate-400">
                       Expected {fmt(v.expectedCash)} — Physical {fmt(v.physicalCash)}
                     </p>
-                    <p className="text-xs text-gray-400">Date: {v.dailyClosing?.date ? new Date(v.dailyClosing.date).toLocaleDateString("en-IN") : "—"}</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-500">Date: {v.dailyClosing?.date ? new Date(v.dailyClosing.date).toLocaleDateString("en-IN") : "—"}</p>
                   </div>
                   <button
                     onClick={() => handleApproveVariance(v)}
@@ -359,27 +359,27 @@ export default function DailyClosingPage() {
       ) : null}
 
       {/* Closing History */}
-      <div className="border border-gray-200 rounded-xl overflow-hidden">
+      <div className="border border-gray-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
         <button
           onClick={() => setShowHistory(!showHistory)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 text-sm font-medium text-gray-700"
+          className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-800/50 text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
         >
           <span className="flex items-center gap-2"><History size={16} /> Last 30 Days</span>
           {showHistory ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
         {showHistory && (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
             {history.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">No closings yet.</p>
+              <p className="text-sm text-gray-400 dark:text-slate-500 text-center py-6">No closings yet.</p>
             ) : history.map((c) => (
               <div
                 key={c.id}
-                className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 cursor-pointer"
+                className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
                 onClick={() => setDate(new Date(c.date).toISOString().split("T")[0])}
               >
                 <div>
-                  <p className="text-sm font-medium">{new Date(c.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}</p>
-                  <p className="text-xs text-gray-400">Closing: {fmt(c.expectedClosingBalance)}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-slate-200">{new Date(c.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500">Closing: {fmt(c.expectedClosingBalance)}</p>
                 </div>
                 <StatusBadge status={c.status} />
               </div>

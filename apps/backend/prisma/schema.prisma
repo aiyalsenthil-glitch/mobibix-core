@@ -116,6 +116,7 @@ model Tenant {
   creditNotes              CreditNote[]            @relation("TenantCreditNotes")
   receipts                 Receipt[]               @relation("TenantReceipts")
   dailyClosings            DailyClosing[]
+  shiftClosings            ShiftClosing[]
   cashVariances            CashVariance[]
   stockVerifications       StockVerification[]
   dailyMetrics             DailyMetrics[]
@@ -1323,6 +1324,7 @@ model Shop {
   updatedBy                  String?
   deletedAt                  DateTime?
   deletedBy                  String?
+  cashClosingMode            CashClosingMode            @default(DAILY_ONLY)
 
   receiptPrintCounter Int                   @default(0)
   followUps           CustomerFollowUp[]
@@ -1350,6 +1352,7 @@ model Shop {
   cashVariances       CashVariance[]
   stockVerifications  StockVerification[]
   dailyMetrics        DailyMetrics[]
+  shiftClosings       ShiftClosing[]
 
   @@unique([tenantId, invoicePrefix])
   @@index([tenantId])
@@ -3326,8 +3329,18 @@ enum CreditNoteStatus {
 
 enum DailyClosingStatus {
   DRAFT
-  CONFIRMED
+  SUBMITTED
   REOPENED
+}
+
+enum CashClosingMode {
+  DAILY_ONLY
+  SHIFT_AND_DAILY
+}
+
+enum ShiftClosingStatus {
+  OPEN
+  CLOSED
 }
 
 enum AdjustmentReason {
@@ -3358,48 +3371,76 @@ model DailyClosing {
 
   date DateTime @db.Date // The business date (one per shop per day)
 
-  // Opening
-  openingBalance Int // Paisa — carried from previous confirmed closing
+  openingCash Int @default(0) // Paisa — carried from previous confirmed closing
 
-  // Cash IN (from FinancialEntry aggregation at close time)
-  salesCash  Int @default(0)
-  salesUpi   Int @default(0)
-  salesCard  Int @default(0)
-  salesBank  Int @default(0)
-  otherIncome Int @default(0)
+  // Cash breakdown
+  salesCash Int @default(0)
+  salesUpi  Int @default(0)
+  salesCard Int @default(0)
+  salesBank Int @default(0)
 
-  // Cash OUT
-  expensesCash     Int @default(0) // PaymentVoucher EXPENSE type
-  purchasePayments Int @default(0) // SupplierPayment outflows
-  refunds          Int @default(0) // CreditNote refunded amounts
-  salaryPayments   Int @default(0) // PaymentVoucher SALARY type
-  otherDeductions  Int @default(0)
+  cashWithdrawFromBank Int @default(0)
+  cashDepositToBank    Int @default(0)
+
+  supplierPaymentsCash Int @default(0)
+  expenseCash          Int @default(0)
+  otherCashIn          Int @default(0)
+  otherCashOut         Int @default(0)
 
   // Computed closing
-  expectedClosingBalance Int // opening + in - out (computed by service, stored for audit)
-  physicalCashCounted    Int? // Staff-entered physical drawer count
-  cashDifference         Int? // physicalCashCounted - expectedClosingBalance
+  expectedClosingCash Int @default(0)
+  reportedClosingCash Int @default(0)
+  cashDifference      Int @default(0)
 
-  status    DailyClosingStatus @default(DRAFT)
-  notes     String?
-  closedBy  String // userId — required
-  closedAt  DateTime?
+  varianceReason String?
+  varianceNote   String?
 
-  // Reopen audit trail
-  reopenedAt     DateTime?
-  reopenedBy     String? // userId of person who reopened
-  reopenedReason String? // "missed expense", "wrong cash count", etc.
+  status   DailyClosingStatus @default(DRAFT)
+  closedBy String? // userId 
+  closedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id])
-  shop          Shop          @relation(fields: [shopId], references: [id])
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  shop          Shop           @relation(fields: [shopId], references: [id])
   cashVariances CashVariance[]
 
-  @@unique([tenantId, shopId, date]) // one closing per shop per day
+  @@unique([tenantId, shopId, date])
   @@index([tenantId, shopId, date])
   @@map("mb_daily_closing")
+}
+
+model ShiftClosing {
+  id        String   @id @default(cuid())
+  tenantId  String
+  shopId    String
+  date      DateTime @db.Date
+  shiftName String
+
+  openingCash Int @default(0)
+  salesCash   Int @default(0)
+  cashExpenses Int @default(0)
+  cashOutflows Int @default(0)
+
+  expectedClosingCash Int @default(0)
+  reportedClosingCash Int @default(0)
+  cashDifference      Int @default(0)
+
+  openedBy String // userId
+  closedBy String? // userId
+  closedAt DateTime?
+
+  status ShiftClosingStatus @default(OPEN)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  shop   Shop   @relation(fields: [shopId], references: [id])
+
+  @@index([tenantId, shopId, date])
+  @@map("mb_shift_closing")
 }
 
 // Tracks discrepancies between expected and physical cash

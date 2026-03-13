@@ -27,17 +27,17 @@ function KpiCard({
   icon: React.ElementType; positive?: boolean;
 }) {
   return (
-    <div className={`bg-white border rounded-xl p-4 space-y-2`}>
+    <div className={`bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-xl p-4 space-y-2 shadow-sm`}>
       <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>
+        <p className="text-xs text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wide">{label}</p>
         <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center`}>
           <Icon size={16} className="text-white" />
         </div>
       </div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      {sub && <p className="text-xs text-gray-400">{sub}</p>}
+      <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+      {sub && <p className="text-xs text-gray-400 dark:text-slate-500">{sub}</p>}
       {positive !== undefined && (
-        <div className={`flex items-center gap-1 text-xs font-medium ${positive ? "text-green-600" : "text-red-500"}`}>
+        <div className={`flex items-center gap-1 text-xs font-medium ${positive ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}>
           {positive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
           {positive ? "Profitable" : "Loss"}
         </div>
@@ -48,9 +48,9 @@ function KpiCard({
 
 function RowItem({ label, value, muted }: { label: string; value: number; muted?: boolean }) {
   return (
-    <div className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
-      <span className={`text-sm ${muted ? "text-gray-400" : "text-gray-600"}`}>{label}</span>
-      <span className={`text-sm font-medium ${muted ? "text-gray-400" : "text-gray-800"}`}>{fmt(value)}</span>
+    <div className="flex justify-between items-center py-2 border-b border-gray-50 dark:border-slate-800/50 last:border-0">
+      <span className={`text-sm ${muted ? "text-gray-400 dark:text-slate-500" : "text-gray-600 dark:text-slate-300"}`}>{label}</span>
+      <span className={`text-sm font-medium ${muted ? "text-gray-400 dark:text-slate-500" : "text-gray-800 dark:text-slate-200"}`}>{fmt(value)}</span>
     </div>
   );
 }
@@ -97,37 +97,37 @@ export default function MonthlyReportPage() {
     year > now.getFullYear() ||
     (year === now.getFullYear() && month > now.getMonth() + 1);
 
-  if (!shopId) return <div className="p-8 text-center text-gray-500">Select a shop first.</div>;
+  if (!shopId) return <div className="p-8 text-center text-gray-500 dark:text-slate-400">Select a shop first.</div>;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Monthly Report</h1>
-          <p className="text-sm text-gray-500">Profit &amp; Loss summary for {selectedShop?.name}</p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Monthly Report</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Profit &amp; Loss summary for {selectedShop?.name}</p>
         </div>
-        <button onClick={load} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500">
+        <button onClick={load} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 transition-colors">
           <RefreshCw size={16} />
         </button>
       </div>
 
       {/* Month Picker */}
       <div className="flex items-center gap-4 justify-center">
-        <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-gray-100">
-          <ChevronLeft size={18} className="text-gray-600" />
+        <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+          <ChevronLeft size={18} className="text-gray-600 dark:text-slate-300" />
         </button>
         <div className="text-center">
-          <p className="text-lg font-bold text-gray-900">{MONTHS[month - 1]}</p>
-          <p className="text-sm text-gray-400">{year}</p>
+          <p className="text-lg font-bold text-gray-900 dark:text-white">{MONTHS[month - 1]}</p>
+          <p className="text-sm text-gray-400 dark:text-slate-500">{year}</p>
         </div>
-        <button onClick={nextMonth} disabled={isFutureMonth} className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-30">
-          <ChevronRight size={18} className="text-gray-600" />
+        <button onClick={nextMonth} disabled={isFutureMonth} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 disabled:opacity-30 transition-colors">
+          <ChevronRight size={18} className="text-gray-600 dark:text-slate-300" />
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 flex items-center gap-2">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-lg p-3 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
           <AlertTriangle size={16} /> {error}
         </div>
       )}
@@ -181,15 +181,15 @@ export default function MonthlyReportPage() {
           </div>
 
           {/* P&L Table */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+            <p className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-3 flex items-center gap-2">
               <BarChart2 size={16} className="text-blue-500" /> Profit &amp; Loss
             </p>
 
-            <p className="text-xs font-semibold uppercase text-green-600 tracking-wide mb-1">Income</p>
+            <p className="text-xs font-semibold uppercase text-green-600 dark:text-green-400 tracking-wide mb-1">Income</p>
             <RowItem label="Total Sales"    value={report.sales.totalAmount} />
             <div className="mt-3 mb-1">
-              <p className="text-xs font-semibold uppercase text-red-500 tracking-wide">Costs</p>
+              <p className="text-xs font-semibold uppercase text-red-500 dark:text-red-400 tracking-wide">Costs</p>
             </div>
             <RowItem label="Purchases"      value={-report.purchases.totalAmount} />
             <RowItem label="Expenses"       value={-report.expenses.totalAmount} />
@@ -197,9 +197,9 @@ export default function MonthlyReportPage() {
             <RowItem label="Refunds"        value={-report.refunds.totalAmount} />
             <RowItem label="Inventory Loss" value={-report.inventoryLoss} muted />
 
-            <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between items-center">
-              <span className="text-sm font-bold text-gray-700">Net Profit</span>
-              <span className={`text-lg font-bold ${report.profitSummary.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-800 flex justify-between items-center">
+              <span className="text-sm font-bold text-gray-700 dark:text-slate-200">Net Profit</span>
+              <span className={`text-lg font-bold ${report.profitSummary.netProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                 {fmt(report.profitSummary.netProfit)}
               </span>
             </div>
@@ -209,8 +209,8 @@ export default function MonthlyReportPage() {
           </div>
 
           {/* Totals breakdown */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-1">
-            <p className="text-sm font-semibold text-gray-700 mb-2">Cost Breakdown</p>
+          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 space-y-1 shadow-sm">
+            <p className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-2">Cost Breakdown</p>
             {[
               { label: "Total Costs",        value: report.profitSummary.totalCosts },
               { label: "Purchase Cost",      value: report.purchases.totalAmount },
@@ -224,7 +224,7 @@ export default function MonthlyReportPage() {
           </div>
         </>
       ) : (
-        <div className="text-center py-12 text-gray-400 text-sm">No data for this period.</div>
+        <div className="text-center py-12 text-gray-400 dark:text-slate-500 text-sm">No data for this period.</div>
       )}
     </div>
   );
