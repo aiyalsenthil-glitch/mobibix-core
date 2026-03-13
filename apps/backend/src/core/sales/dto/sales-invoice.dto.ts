@@ -112,4 +112,8 @@ export class SalesInvoiceDto {
   @IsInt()
   @Min(0)
   loyaltyPointsRedeemed?: number;
+
+  @IsOptional()
+  @IsString()
+  quotationId?: string;
 }

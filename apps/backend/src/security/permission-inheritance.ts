@@ -85,6 +85,7 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
     'quotation.create',
     'quotation.update',
     'quotation.delete',
+    'quotation.convert',
     'receipt.create',
     'receipt.view',
     'receipt.cancel',

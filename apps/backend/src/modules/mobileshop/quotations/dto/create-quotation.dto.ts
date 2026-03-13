@@ -12,14 +12,17 @@ export class CreateQuotationItemDto {
 
   @IsNumber()
   @Min(0.01)
+  @Type(() => Number)
   quantity: number;
 
   @IsNumber()
   @Min(0)
+  @Type(() => Number)
   price: number;
 
   @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   gstRate?: number;
 }
 

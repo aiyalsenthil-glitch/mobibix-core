@@ -394,6 +394,19 @@ export class SalesService {
         if (invoice.status === InvoiceStatus.PAID && invoice.customerId) {
           await this.loyaltyService.awardLoyaltyPoints(tenantId, invoice, tx);
         }
+
+        // 📝 LINK QUOTATION (If provided)
+        if (dto.quotationId) {
+          await tx.quotation.update({
+            where: { id: dto.quotationId },
+            data: {
+              status: 'CONVERTED',
+              conversionType: 'INVOICE',
+              linkedInvoiceId: invoice.id,
+              convertedAt: new Date(),
+            },
+          });
+        }
         
         return invoice.id;
       },

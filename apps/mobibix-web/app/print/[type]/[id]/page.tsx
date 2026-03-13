@@ -8,10 +8,12 @@ import { getVoucher } from "@/services/vouchers.api"; // New
 import { getShop } from "@/services/shops.api";
 import { listProducts } from "@/services/products.api";
 import { getJobCard } from "@/services/jobcard.api";
+import { getQuotation } from "@/services/quotations.api";
 import { mapInvoiceToPrintData } from "@/lib/print/adapters/invoice.adapter";
 import { mapReceiptToPrintData } from "@/lib/print/adapters/receipt.adapter"; // New
 import { mapVoucherToPrintData } from "@/lib/print/adapters/voucher.adapter"; // New
 import { mapJobCardToPrintData } from "@/lib/print/adapters/jobcard.adapter";
+import { mapQuotationToPrintData } from "@/lib/print/adapters/quotation.adapter";
 import { resolveTemplate, registerTemplate } from "@/lib/print/registry";
 import { InvoiceClassic } from "@/components/print/templates/InvoiceClassic";
 import { InvoiceThermal } from "@/components/print/templates/InvoiceThermal";
@@ -36,6 +38,11 @@ registerTemplate("INVOICE", "CORPORATE", InvoiceCorporate); // New
 registerTemplate("INVOICE", "COMPACT", InvoiceCompact); // New
 registerTemplate("INVOICE", "SIMPLE", InvoiceSimple); // New
 registerTemplate("INVOICE", "THERMAL", InvoiceThermal);
+
+registerTemplate("QUOTATION", "CLASSIC", InvoiceClassic);
+registerTemplate("QUOTATION", "MODERN", InvoiceModern);
+registerTemplate("QUOTATION", "SIMPLE", InvoiceSimple);
+
 registerTemplate("JOBCARD", "THERMAL", JobCardThermal);
 registerTemplate("JOBCARD", "CLASSIC", JobCardClassic);
 registerTemplate("JOBCARD", "SIMPLE", JobCardSimple);
@@ -130,6 +137,20 @@ function GenericPrintContent() {
 
           const shop = await getShop(voucher.shopId);
           setData(mapVoucherToPrintData({ voucher, shop }));
+          defaultVariant = "CLASSIC";
+        } else if (docType === "QUOTATION") {
+          const shopId = searchParams.get("shopId");
+          if (!shopId) throw new Error("Shop ID is required for Quotation printing");
+
+          const [quotation, shop] = await Promise.all([
+            getQuotation(shopId, docId),
+            getShop(shopId),
+          ]);
+
+          if (!quotation) throw new Error("Quotation not found");
+
+          const printData = mapQuotationToPrintData({ quotation, shop });
+          setData(printData);
           defaultVariant = "CLASSIC";
         } else {
           throw new Error("Unknown document type");

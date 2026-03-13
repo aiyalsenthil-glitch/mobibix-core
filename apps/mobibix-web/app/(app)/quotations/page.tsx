@@ -17,6 +17,9 @@ import {
   listProducts,
   type ShopProduct,
 } from "@/services/products.api";
+import { PartySelector } from "@/components/common/PartySelector";
+import { type Party } from "@/services/parties.api";
+import { CustomerModal } from "../customers/CustomerModal";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { NoShopsAlert } from "../components/NoShopsAlert";
@@ -33,6 +36,7 @@ import {
   Clock,
   XCircle,
   RefreshCw,
+  Printer,
 } from "lucide-react";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -121,6 +125,8 @@ export default function QuotationsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [showConvert, setShowConvert] = useState<Quotation | null>(null);
   const [selectedQ, setSelectedQ] = useState<Quotation | null>(null);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Party | null>(null);
 
   // Create form
   const [form, setForm] = useState<CreateQuotationDto>({
@@ -218,9 +224,15 @@ export default function QuotationsPage() {
     if (!shopId) return;
     setSaving(true);
     try {
-      await createQuotation(shopId, form);
+      await createQuotation(shopId, {
+        ...form,
+        customerId: selectedCustomer?.id,
+        customerName: selectedCustomer?.name || form.customerName,
+        customerPhone: selectedCustomer?.phone || form.customerPhone,
+      });
       setShowCreate(false);
       setForm({ customerName: "", customerPhone: "", validityDays: 30, notes: "", items: [{ ...EMPTY_ITEM }] });
+      setSelectedCustomer(null);
       load();
     } catch (e: any) {
       alert(e.message);
@@ -241,6 +253,12 @@ export default function QuotationsPage() {
   async function handleConvert(e: React.FormEvent) {
     e.preventDefault();
     if (!showConvert) return;
+
+    if (convertType === "INVOICE") {
+      router.push(`/sales/create?quotationId=${showConvert.id}&shopId=${shopId}`);
+      return;
+    }
+
     setConverting(true);
     try {
       const result = await convertQuotation(shopId, showConvert.id, {
@@ -249,8 +267,7 @@ export default function QuotationsPage() {
       });
       setShowConvert(null);
       load();
-      if (result.invoiceId) router.push(`/sales`);
-      else if (result.jobCardId) router.push(`/jobcards`);
+      if (result.jobCardId) router.push(`/jobcards`);
     } catch (e: any) {
       alert(e.message);
     } finally {
@@ -394,10 +411,17 @@ export default function QuotationsPage() {
                       <td className={`px-4 py-3 text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>{q.validityDays} days</td>
                       <td className="px-4 py-3 text-right font-semibold">{fmt(q.totalAmount)}</td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[q.status]}`}>
-                          <Icon size={10} />
-                          {q.status}
-                        </span>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${STATUS_STYLES[q.status]}`}>
+                            <Icon size={10} />
+                            {q.status}
+                          </span>
+                          {q.status === 'CONVERTED' && (
+                            <span className="text-[10px] text-gray-500 italic">
+                              ({q.conversionType === 'INVOICE' ? 'as Invoice' : 'as Job Card'})
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
@@ -419,6 +443,13 @@ export default function QuotationsPage() {
                               <CheckCircle size={14} />
                             </button>
                           )}
+                          <button
+                            onClick={() => window.open(`/print/quotation/${q.id}?shopId=${shopId}`, '_blank')}
+                            title="Print"
+                            className={`p-1.5 rounded-lg transition-colors ${isDark ? "hover:bg-gray-700 text-gray-400" : "hover:bg-gray-100 text-gray-600"}`}
+                          >
+                            <Printer size={14} />
+                          </button>
                           {q.status === "ACCEPTED" && (
                             <button
                               onClick={() => setShowConvert(q)}
@@ -466,26 +497,69 @@ export default function QuotationsPage() {
             </div>
             <form onSubmit={handleCreate} className="p-5 space-y-4">
               {/* Customer */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Customer Name *</label>
-                  <input
-                    required
-                    value={form.customerName}
-                    onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))}
-                    placeholder="Customer name"
-                    className={input}
-                  />
+              <div className="space-y-3">
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
+                      Search or Add Customer *
+                    </label>
+                    {selectedCustomer ? (
+                      <div className={`flex items-center justify-between p-2 rounded-lg border ${isDark ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
+                        <div>
+                          <p className="text-sm font-medium">{selectedCustomer.name}</p>
+                          <p className="text-xs text-gray-500 font-mono">{selectedCustomer.phone}</p>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => setSelectedCustomer(null)}
+                          className="p-1 hover:text-red-500 transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <PartySelector
+                        type="CUSTOMER"
+                        onSelect={setSelectedCustomer}
+                        placeholder="Search by name or phone..."
+                        onCreateNew={() => setIsCustomerModalOpen(true)}
+                        className="w-full"
+                      />
+                    )}
+                  </div>
+                  {!selectedCustomer && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomerModalOpen(true)}
+                      className={`px-4 py-2 border rounded-xl text-sm font-medium transition-colors h-[42px] ${isDark ? "border-gray-700 hover:bg-gray-800 text-teal-400" : "border-gray-300 hover:bg-gray-50 text-teal-600"}`}
+                    >
+                      + New
+                    </button>
+                  )}
                 </div>
-                <div>
-                  <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Phone</label>
-                  <input
-                    value={form.customerPhone ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, customerPhone: e.target.value }))}
-                    placeholder="Phone number"
-                    className={input}
-                  />
-                </div>
+
+                {!selectedCustomer && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Manual Name</label>
+                      <input
+                        value={form.customerName}
+                        onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))}
+                        placeholder="Or type name..."
+                        className={input}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Manual Phone</label>
+                      <input
+                        value={form.customerPhone ?? ""}
+                        onChange={(e) => setForm((f) => ({ ...f, customerPhone: e.target.value }))}
+                        placeholder="Or type phone..."
+                        className={input}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -802,6 +876,16 @@ export default function QuotationsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {isCustomerModalOpen && (
+        <CustomerModal
+          onClose={() => setIsCustomerModalOpen(false)}
+          onSuccess={(customer) => {
+            setSelectedCustomer(customer);
+            setIsCustomerModalOpen(false);
+          }}
+        />
       )}
     </div>
   );

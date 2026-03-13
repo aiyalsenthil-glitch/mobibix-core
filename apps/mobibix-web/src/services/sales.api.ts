@@ -124,6 +124,7 @@ export interface CreateInvoiceDto {
     transactionRef?: string;
   }[];
   loyaltyPointsRedeemed?: number;
+  quotationId?: string;
 }
 
 /**

@@ -6,7 +6,9 @@ import { JobCardsService } from '../jobcard/job-cards.service';
 import { CreateQuotationDto, CreateQuotationItemDto } from './dto/create-quotation.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
 import { ConvertQuotationDto, QuotationConversionType } from './dto/convert-quotation.dto';
-import { DocumentType, QuotationStatus, ModuleType } from '@prisma/client';
+import { DocumentType, QuotationStatus, ModuleType, UserRole, FollowUpType } from '@prisma/client';
+import { normalizePhone } from '../../../common/utils/phone.util';
+import { FollowUpsService } from '../../../core/follow-ups/follow-ups.service';
 
 @Injectable()
 export class QuotationsService {
@@ -17,6 +19,7 @@ export class QuotationsService {
     private docNumberService: DocumentNumberService,
     private salesService: SalesService,
     private jobCardsService: JobCardsService,
+    private followUpsService: FollowUpsService,
   ) {}
   
   private toPaisa(amount: number): number {
@@ -99,8 +102,46 @@ export class QuotationsService {
     return this.mapQuotation(quotation);
   }
 
-  async createQuotation(tenantId: string, shopId: string, dto: CreateQuotationDto, userId: string) {
+  async createQuotation(tenantId: string, shopId: string, dto: CreateQuotationDto, user: any) {
     return this.prisma.$transaction(async (tx) => {
+      // 0. Find or create customer (Treat as Lead)
+      let customerId = dto.customerId;
+      let customerName = dto.customerName;
+      let customerPhone = dto.customerPhone;
+
+      if (!customerId && customerPhone) {
+        const normalized = normalizePhone(customerPhone);
+        const existing = await tx.party.findFirst({
+          where: { 
+            tenantId, 
+            OR: [
+              { phone: customerPhone },
+              { normalizedPhone: normalized }
+            ],
+            partyType: { in: ['CUSTOMER', 'BOTH'] }
+          }
+        });
+
+        if (existing) {
+          customerId = existing.id;
+          customerName = existing.name; // Use existing name if found
+        } else {
+          // Create Lead
+          const newPath = await tx.party.create({
+            data: {
+              tenantId,
+              name: customerName,
+              phone: customerPhone,
+              normalizedPhone: normalized,
+              partyType: 'CUSTOMER',
+              isActive: true,
+              tags: ['Lead'],
+            }
+          });
+          customerId = newPath.id;
+        }
+      }
+
       // 1. Generate quotation number
       const quotationNumber = await this.docNumberService.generateDocumentNumber(
         shopId,
@@ -141,9 +182,9 @@ export class QuotationsService {
           tenantId,
           shopId,
           quotationNumber,
-          customerId: dto.customerId,
-          customerName: dto.customerName,
-          customerPhone: dto.customerPhone,
+          customerId,
+          customerName,
+          customerPhone,
           quotationDate: dto.quotationDate ? new Date(dto.quotationDate) : new Date(),
           subTotal,
           gstAmount,
@@ -159,6 +200,26 @@ export class QuotationsService {
         include: { items: true },
       });
 
+      // 4. Create Follow-up Task (Lead Management)
+      if (customerId) {
+        try {
+          // Schedule follow up 3 days from now
+          const followUpAt = new Date();
+          followUpAt.setDate(followUpAt.getDate() + 3);
+
+          await this.followUpsService.createFollowUp(tenantId, user.sub, user.role, {
+            customerId,
+            shopId,
+            type: FollowUpType.PHONE_CALL,
+            purpose: `Quotation Follow-up: ${quotationNumber}`,
+            note: `Follow up on quotation for ${customerName}. Total: ${this.fromPaisa(totalAmount)}`,
+            followUpAt: followUpAt.toISOString(),
+          });
+        } catch (err) {
+          this.logger.error(`Failed to create quotation follow-up: ${err.message}`);
+        }
+      }
+
       return this.mapQuotation(quotation);
     });
   }
@@ -171,9 +232,47 @@ export class QuotationsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // Handle customer linking if phone/id changed
+      let customerId = dto.customerId || existing.customerId;
+      let customerName = dto.customerName || existing.customerName;
+      let customerPhone = dto.customerPhone || existing.customerPhone;
+
+      if (dto.customerPhone && !dto.customerId && dto.customerPhone !== existing.customerPhone) {
+        const normalized = normalizePhone(dto.customerPhone);
+        const existingParty = await tx.party.findFirst({
+          where: { 
+            tenantId, 
+            OR: [
+              { phone: dto.customerPhone },
+              { normalizedPhone: normalized }
+            ],
+            partyType: { in: ['CUSTOMER', 'BOTH'] }
+          }
+        });
+
+        if (existingParty) {
+          customerId = existingParty.id;
+          customerName = existingParty.name;
+        } else {
+          // Create Lead
+          const newPath = await tx.party.create({
+            data: {
+              tenantId,
+              name: customerName,
+              phone: dto.customerPhone,
+              normalizedPhone: normalized,
+              partyType: 'CUSTOMER',
+              isActive: true,
+              tags: ['Lead'],
+            }
+          });
+          customerId = newPath.id;
+        }
+      }
+
       // 1. Handle items update if provided
       if (dto.items) {
-        // Delete existing items
+        // ... (rest of logic remains same but using the resolved customerId)
         await tx.quotationItem.deleteMany({ where: { quotationId: id } });
 
         let subTotal = 0;
@@ -205,9 +304,9 @@ export class QuotationsService {
         const updated = await tx.quotation.update({
           where: { id },
           data: {
-            customerName: dto.customerName,
-            customerPhone: dto.customerPhone,
-            customerId: dto.customerId,
+            customerName,
+            customerPhone,
+            customerId,
             validityDays: dto.validityDays,
             expiryDate: dto.validityDays ? this.calculateExpiryDate(existing.quotationDate, dto.validityDays) : undefined,
             notes: dto.notes,
@@ -227,9 +326,9 @@ export class QuotationsService {
       const updated = await tx.quotation.update({
         where: { id },
         data: {
-          customerName: dto.customerName,
-          customerPhone: dto.customerPhone,
-          customerId: dto.customerId,
+          customerName,
+          customerPhone,
+          customerId,
           validityDays: dto.validityDays,
           expiryDate: dto.validityDays ? this.calculateExpiryDate(existing.quotationDate, dto.validityDays) : undefined,
           notes: dto.notes,

@@ -14,6 +14,8 @@ import { InvoiceProductTable } from "@/components/sales/InvoiceProductTable";
 import { Trash2 } from "lucide-react";
 import { LoyaltyRedemptionInput } from "@/components/loyalty/LoyaltyRedemptionInput";
 import { getCustomerLoyaltyBalance } from "@/services/loyalty.api";
+import { getQuotation } from "@/services/quotations.api";
+import { getParty } from "@/services/parties.api";
 
 export default function CreateInvoicePage() {
   const router = useRouter();
@@ -42,6 +44,7 @@ export default function CreateInvoicePage() {
     invoiceDate,
     setInvoiceDate,
     items,
+    setItems,
     params: { pricesIncludeTax },
     setPricesIncludeTax,
     paymentMode,
@@ -59,6 +62,55 @@ export default function CreateInvoicePage() {
     shopGstEnabled: selectedShop?.gstEnabled,
     shopState: selectedShop?.state 
   });
+
+  const quotationId = searchParams.get("quotationId");
+
+  // Load Quotation Data
+  useEffect(() => {
+    if (quotationId && selectedShopId) {
+      const loadQuotation = async () => {
+        try {
+          const q = await getQuotation(selectedShopId, quotationId);
+          
+          // Set Customer
+          if (q.customerId) {
+            const customer = await getParty(q.customerId);
+            setSelectedCustomer(customer);
+          } else {
+            // Manual customer info from quotation
+            setSelectedCustomer({
+              name: q.customerName,
+              phone: q.customerPhone || "",
+              partyType: "CUSTOMER",
+              // fill defaults to satisfy types
+            } as any);
+          }
+
+          // Set Items
+          const invoiceItems = (q.items || []).map(qi => ({
+            id: qi.id || Math.random().toString(),
+            shopProductId: qi.shopProductId || "",
+            productName: qi.description,
+            hsnSac: qi.product?.hsnCode || "",
+            quantity: qi.quantity,
+            rate: qi.price,
+            gstRate: qi.gstRate,
+            gstAmount: qi.gstAmount,
+            total: qi.totalAmount,
+            imeis: [],
+            serialNumbers: [],
+            costPrice: null, // will be fetched or handled by createInvoice
+          }));
+
+          setItems(invoiceItems);
+          setPricesIncludeTax(false); // Quotation usually shows exclusive rates in UI
+        } catch (err) {
+          console.error("Failed to load quotation for conversion:", err);
+        }
+      };
+      loadQuotation();
+    }
+  }, [quotationId, selectedShopId]);
 
   const [products, setProducts] = useState<ShopProduct[]>([]);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -243,6 +295,7 @@ export default function CreateInvoicePage() {
           hsnCode: item.hsnSac,
         })),
         loyaltyPointsRedeemed: loyalty.points > 0 ? loyalty.points : undefined,
+        quotationId: quotationId || undefined,
       };
 
       // Handle Payment Modes

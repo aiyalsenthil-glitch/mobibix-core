@@ -62,8 +62,7 @@ export class QuotationsController {
     @Body() dto: CreateQuotationDto,
   ) {
     const tenantId = req.user.tenantId;
-    const userId = req.user.sub;
-    return this.quotationsService.createQuotation(tenantId, shopId, dto, userId);
+    return this.quotationsService.createQuotation(tenantId, shopId, dto, req.user);
   }
 
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.QUOTATION.UPDATE)

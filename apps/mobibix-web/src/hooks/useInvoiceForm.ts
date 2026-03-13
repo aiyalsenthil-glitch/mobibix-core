@@ -289,6 +289,7 @@ export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoice
     invoiceDate,
     setInvoiceDate,
     items,
+    setItems,
     params: { pricesIncludeTax },
     setPricesIncludeTax: togglePricesIncludeTax,
     paymentMode,
