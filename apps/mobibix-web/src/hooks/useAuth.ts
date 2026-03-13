@@ -34,6 +34,7 @@ export interface AuthUser {
   isSystemOwner: boolean;
   permissions?: string[];
   tenantId?: string;
+  tenantType?: string;
   planCode?: string;
   pendingInvite?: {
     id: string;

@@ -24,11 +24,19 @@ export class PermissionService {
    */
   expandPermissions(basePermissions: string[]): string[] {
     const expanded = new Set<string>();
-    
-    basePermissions.forEach(perm => {
+
+    basePermissions.forEach((perm) => {
       expanded.add(perm);
-      if (PERMISSION_INHERITANCE[perm]) {
-        PERMISSION_INHERITANCE[perm].forEach(p => expanded.add(p));
+
+      // Look up expansion rule (e.g. "mobile_shop.sales.manage" -> ["sale.create", "sale.view", ...])
+      const children = PERMISSION_INHERITANCE[perm];
+      if (children) {
+        children.forEach((child) => {
+          expanded.add(child);
+          // Also add with module prefix for consistency in frontend if needed? 
+          // Actually, our guards check for both prefixed and non-prefixed as a fallback.
+          // But non-prefixed is the current standard for granular checks in checkPermissionDB.
+        });
       }
     });
 
@@ -81,7 +89,16 @@ export class PermissionService {
       select: { role: true },
     });
 
-    if (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') return true;
+    if (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') {
+      // 🔒 PRIVACY POLICY: Platform administrators are restricted from accessing tenant-specific 
+      // financial and sales data to ensure data confidentiality.
+      const sensitiveResources = ['sale', 'purchase', 'ledger', 'expense', 'quotation', 'receipt', 'voucher'];
+      if (sensitiveResources.includes(resourceSearch.toLowerCase())) {
+        this.logger.warn(`[PRIVACY BLOCKED] Platform Admin ${userId} attempted to access sensitive resource: ${resourceSearch}`);
+        return false;
+      }
+      return true;
+    }
 
     // 2. Tenant-specific Bypass (isSystemOwner or OWNER role)
     const userTenancy = await this.prisma.userTenant.findFirst({
@@ -124,20 +141,38 @@ export class PermissionService {
     });
 
     const flatPermissions = mappings.map(
-      (m) => `${m.permission.resource.name}.${m.permission.action}`,
+      (m) => ({
+        full: `${m.permission.resource.moduleType.toLowerCase()}.${m.permission.resource.name}.${m.permission.action}`,
+        base: `${m.permission.resource.name}.${m.permission.action}`
+      }),
     );
 
     // 5. Expand permissions
     const expanded = new Set<string>();
     flatPermissions.forEach((p) => {
-      expanded.add(p);
-      if (PERMISSION_INHERITANCE[p]) {
-        PERMISSION_INHERITANCE[p].forEach((inherited) => expanded.add(inherited));
+      expanded.add(p.full);
+      expanded.add(p.base);
+      
+      // Expand using full name first, then fallback to base name
+      const inherited = PERMISSION_INHERITANCE[p.full] || PERMISSION_INHERITANCE[p.base];
+      if (inherited) {
+        inherited.forEach((ih) => {
+          expanded.add(ih);
+          // Also prefix inherited if it's not already
+          if (!ih.includes('.')) {
+              expanded.add(`${p.full.split('.')[0]}.${ih}`);
+          } else if (ih.split('.').length === 2) {
+              expanded.add(`${p.full.split('.')[0]}.${ih}`);
+          }
+        });
       }
     });
 
     // 6. Check if required permission is in expanded set
-    return expanded.has(`${resourceSearch}.${actionSearch}`);
+    const searchFull = `${moduleType.toLowerCase()}.${resourceSearch}.${actionSearch}`;
+    const searchBase = `${resourceSearch}.${actionSearch}`;
+    
+    return expanded.has(searchFull) || expanded.has(searchBase);
   }
 
   // Cache Invalidation (Phase 5: Broadcast via Redis Pub/Sub)
@@ -161,22 +196,66 @@ export class PermissionService {
 
   /**
    * 🛡️ Get flattened permissions for a user in a tenant (and optionally a shop)
-   * Format: "resource.action" (matches frontend sidebar requiredPermissions)
+   * Optimization: Caches the final expanded set in Redis for 1 hour.
    */
   async getConsolidatedPermissions(
     userId: string,
     tenantId: string,
     shopId?: string | null,
   ): Promise<string[]> {
-    const cacheKey = `user_permissions:${tenantId}:${userId}:${shopId || 'global'}`;
+    const cacheKey = `user_perms:${tenantId}:${userId}:${shopId || 'global'}`;
     const cached = await this.cacheService.get<string[]>(cacheKey);
     if (cached) return cached;
 
     const permissions = await this.getConsolidatedPermissionsFromDB(userId, tenantId, shopId);
     
-    // Cache for 1 hour as it's a "heavy" consolidated set
+    // Cache for 1 hour (Distributable via Redis)
     await this.cacheService.set(cacheKey, permissions, 1000 * 60 * 60);
     return permissions;
+  }
+
+  /**
+   * Diagnostic method to explain why access was granted or denied
+   */
+  async evaluateAccess(
+    userId: string, 
+    tenantId: string, 
+    moduleType: ModuleType, 
+    resource: string, 
+    action: string,
+    shopId: string | null = null
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    const userTenant = await this.prisma.userTenant.findFirst({ where: { userId, tenantId } });
+    
+    const required = `${moduleType.toLowerCase()}.${resource}.${action}`;
+    const requiredBase = `${resource}.${action}`;
+
+    if (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') {
+        const sensitiveResources = ['sale', 'purchase', 'ledger', 'expense', 'quotation', 'receipt', 'voucher'];
+        const isSensitive = sensitiveResources.includes(resource.toLowerCase());
+        return {
+            allowed: !isSensitive,
+            reason: isSensitive ? 'Platform Admin Restricted (Privacy Policy)' : 'Platform Admin Bypass',
+            role: user.role,
+            required
+        };
+    }
+
+    if (userTenant?.isSystemOwner || userTenant?.role === 'OWNER') {
+        return { allowed: true, reason: 'Tenant Owner Bypass', role: 'OWNER', required };
+    }
+
+    const perms = await this.getConsolidatedPermissions(userId, tenantId, shopId);
+    const hasAccess = perms.includes(required) || perms.includes(requiredBase) || perms.includes('*');
+
+    return {
+        allowed: hasAccess,
+        reason: hasAccess ? 'Permission found in expanded set' : 'Required permission not found in user role',
+        required,
+        userPermissionsCount: perms.length,
+        permsPreview: perms.slice(0, 10)
+    };
   }
 
   private async getConsolidatedPermissionsFromDB(
@@ -235,15 +314,16 @@ export class PermissionService {
       const module = m.permission.resource.moduleType.toLowerCase();
       const resource = m.permission.resource.name;
       const action = m.permission.action;
-      const basePerm = `${resource}.${action}`;
       
-      perms.add(`${module}.${basePerm}`);
+      const fullPerm = `${module}.${resource}.${action}`;
+      perms.add(fullPerm);
 
-      // Expand inheritance
-      if (PERMISSION_INHERITANCE[basePerm]) {
-        PERMISSION_INHERITANCE[basePerm].forEach(inherited => {
-          // We assume inherited permissions belong to the same module or a generic one.
-          // For simplicity, we'll prefix with module if not present.
+      // Expand inheritance using the 3-segment format
+      if (PERMISSION_INHERITANCE[fullPerm]) {
+        PERMISSION_INHERITANCE[fullPerm].forEach((inherited) => {
+          // Add granular permission (resource.action)
+          perms.add(inherited);
+          // Also add with module prefix for frontend clarity
           perms.add(`${module}.${inherited}`);
         });
       }
@@ -350,10 +430,15 @@ export class PermissionService {
 
     if (permissions && permissions.length > 0) {
       for (const pStr of permissions) {
-        const module = pStr.split('.')[0].toUpperCase();
-        if (!allowedModules.includes(module)) {
+        const parts = pStr.split('.');
+        if (parts.length < 2) continue;
+        
+        const module = parts[0].toUpperCase();
+        const moduleType = (module === 'CORE' ? 'CORE' : (module === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : (module === 'GYM' ? 'GYM' : module))) as ModuleType;
+        
+        if (!allowedModules.includes(moduleType)) {
           throw new ForbiddenException(
-            `Cannot assign permissions for unentitled module: ${module}`,
+            `Cannot assign permissions for unentitled module: ${moduleType}`,
           );
         }
       }
@@ -366,18 +451,28 @@ export class PermissionService {
       const dbPerms = await this.prisma.permission.findMany({
         where: {
           OR: permissions.map((pStr) => {
-            const [module, resource, action] = pStr.split('.');
-            return {
-              action,
-              resource: {
-                name: resource,
-                moduleType: module.toUpperCase() as ModuleType,
-              },
-            };
+            const parts = pStr.split('.');
+            if (parts.length === 3) {
+              const [mod, res, act] = parts;
+              return {
+                action: act,
+                resource: {
+                  name: res,
+                  moduleType: mod.toUpperCase() as ModuleType,
+                },
+              };
+            } else if (parts.length === 2) {
+              const [res, act] = parts;
+              return {
+                action: act,
+                resource: { name: res },
+              };
+            }
+            return { id: 'invalid' };
           }),
         },
       });
-      validPermissionIds.push(...dbPerms.map((p) => p.id));
+      validPermissionIds.push(...Array.from(new Set(dbPerms.map((p) => p.id))));
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -426,10 +521,15 @@ export class PermissionService {
       const allowedModules = ['CORE', ...(tenant?.enabledModules || [])];
 
       for (const pStr of data.permissions) {
-        const module = pStr.split('.')[0].toUpperCase();
-        if (!allowedModules.includes(module)) {
+        const parts = pStr.split('.');
+        if (parts.length < 2) continue;
+        
+        const module = parts[0].toUpperCase();
+        const moduleType = (module === 'CORE' ? 'CORE' : (module === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : (module === 'GYM' ? 'GYM' : module))) as ModuleType;
+
+        if (!allowedModules.includes(moduleType)) {
           throw new ForbiddenException(
-            `Cannot assign permissions for unentitled module: ${module}`,
+            `Cannot assign permissions for unentitled module: ${moduleType}`,
           );
         }
       }
@@ -440,18 +540,28 @@ export class PermissionService {
       const dbPerms = await this.prisma.permission.findMany({
         where: {
           OR: data.permissions.map((pStr) => {
-            const [module, resource, action] = pStr.split('.');
-            return {
-              action,
-              resource: {
-                name: resource,
-                moduleType: module.toUpperCase() as ModuleType,
-              },
-            };
+            const parts = pStr.split('.');
+            if (parts.length === 3) {
+              const [mod, res, act] = parts;
+              return {
+                action: act,
+                resource: {
+                  name: res,
+                  moduleType: mod.toUpperCase() as ModuleType,
+                },
+              };
+            } else if (parts.length === 2) {
+              const [res, act] = parts;
+              return {
+                action: act,
+                resource: { name: res },
+              };
+            }
+            return { id: 'invalid' };
           }),
         },
       });
-      validPermissionIds.push(...dbPerms.map((p) => p.id));
+      validPermissionIds.push(...Array.from(new Set(dbPerms.map((p) => p.id))));
     }
 
     const result = await this.prisma.$transaction(async (tx) => {

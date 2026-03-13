@@ -28,6 +28,11 @@ import { ReconciliationCron } from './reconciliation.cron';
     MailModule,
     BullModule.registerQueue({
       name: 'REMOVED_PAYMENT_INFRA-webhooks',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: true,
+      },
     }),
   ],
   providers: [

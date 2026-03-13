@@ -67,6 +67,7 @@ export class CompatibilityController {
     return this.compatibilityService.autocompletePhoneModels(query);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.COMPATIBILITY.VIEW)
   @Post('feedback')
   @ApiOperation({ summary: 'Submit feedback for compatibility (report error or suggest link)' })
   async submitFeedback(@Body() dto: CreateFeedbackDto) {

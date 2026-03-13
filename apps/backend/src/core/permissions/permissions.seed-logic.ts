@@ -1,224 +1,488 @@
 import { PrismaClient, ModuleType, Prisma, RoleCategory } from '@prisma/client';
+import { PERMISSION_INHERITANCE } from '../../security/permission-inheritance';
+
+export const RESOURCE_DICTIONARY = [
+  {
+    module: 'CORE',
+    resources: [
+      {
+        name: 'staff',
+        actions: [
+          { id: 'manage', ui: 'Manage Staff' },
+          { id: 'view', ui: 'View Staff' },
+          { id: 'invite', ui: 'Invite Staff' },
+        ],
+      },
+      {
+        name: 'approval',
+        actions: [
+          { id: 'override', ui: 'Manager Override', sensitive: true },
+          { id: 'view', ui: 'View Approval History' },
+        ],
+      },
+      {
+        name: 'settings',
+        actions: [
+          { id: 'manage', ui: 'Manage Business Settings' },
+          { id: 'view', ui: 'View Settings' },
+        ],
+      },
+      {
+        name: 'report',
+        actions: [
+          { id: 'view', ui: 'View Reports' },
+          { id: 'export', ui: 'Export Data', sensitive: true },
+        ],
+      },
+      {
+        name: 'report.sale',
+        actions: [{ id: 'view', ui: 'View Sales Reports' }],
+      },
+      {
+        name: 'report.inventory',
+        actions: [{ id: 'view', ui: 'View Inventory Reports' }],
+      },
+      {
+        name: 'report.profit',
+        actions: [{ id: 'view', ui: 'View Profit Reports' }],
+      },
+      {
+        name: 'dashboard',
+        actions: [
+          { id: 'view', ui: 'View Dashboard' },
+        ],
+      },
+      {
+         name: 'expense',
+         actions: [
+           { id: 'create', ui: 'Log Expenses' },
+           { id: 'view', ui: 'View Expenses' },
+         ]
+      },
+      {
+        name: 'system',
+        actions: [
+          { id: 'manage', ui: 'System Manage' },
+          { id: 'view', ui: 'System View' },
+        ]
+      },
+      {
+        name: 'ai',
+        actions: [
+          { id: 'use', ui: 'Use AI Features' },
+        ]
+      },
+      {
+        name: 'audit',
+        actions: [
+          { id: 'view', ui: 'View Audit Logs' },
+        ]
+      },
+      {
+        name: 'notification',
+        actions: [
+          { id: 'view', ui: 'View Notifications' },
+          { id: 'manage', ui: 'Manage Notifications' },
+        ]
+      },
+      {
+        name: 'profile',
+        actions: [
+          { id: 'view', ui: 'View Profile' },
+          { id: 'update', ui: 'Update Profile' },
+        ]
+      },
+      {
+        name: 'billing',
+        actions: [
+          { id: 'view', ui: 'View Billing' },
+          { id: 'manage', ui: 'Manage Billing' },
+        ]
+      }
+    ],
+  },
+  {
+    module: 'MOBILE_SHOP',
+    resources: [
+      {
+        name: 'sale',
+        actions: [
+          { id: 'manage', ui: 'Manage Sales (Base)' },
+          { id: 'view_base', ui: 'View Sales (Base)' },
+          { id: 'create', ui: 'Create Invoice' },
+          { id: 'view', ui: 'View Invoices' },
+          { id: 'view_all', ui: 'View All Sales' },
+          { id: 'view_financial', ui: 'View Financial Details' },
+          { id: 'update', ui: 'Update Invoice' },
+          { id: 'edit', ui: 'Edit Invoice (Legacy)', sensitive: true },
+          { id: 'refund', ui: 'Process Refund', sensitive: true },
+          { id: 'cancel', ui: 'Cancel Sale', sensitive: true },
+          { id: 'record_payment', ui: 'Record Payment' },
+          { id: 'add_item', ui: 'Add Item to Sale' },
+        ],
+      },
+      {
+        name: 'inventory',
+        actions: [
+          { id: 'manage', ui: 'Manage Inventory (Base)' },
+          { id: 'view_base', ui: 'View Inventory (Base)' },
+          { id: 'view', ui: 'View Inventory' },
+          { id: 'create', ui: 'Add Products' },
+          { id: 'update', ui: 'Update Products' },
+          { id: 'delete', ui: 'Delete Products', sensitive: true },
+          { id: 'adjust', ui: 'Adjust Stock', sensitive: true },
+        ],
+      },
+      {
+        name: 'jobcard',
+        actions: [
+          { id: 'manage', ui: 'Manage Job Cards (Base)' },
+          { id: 'view_base', ui: 'View Job Cards (Base)' },
+          { id: 'create', ui: 'Create Job Card' },
+          { id: 'view', ui: 'View Job Card' },
+          { id: 'view_all', ui: 'View All Job Cards' },
+          { id: 'view_assigned', ui: 'View Assigned Jobs' },
+          { id: 'update_status', ui: 'Update Repair Status' },
+          { id: 'assign', ui: 'Assign Technician' },
+          { id: 'update', ui: 'Update Job Card' },
+          { id: 'delete', ui: 'Delete Job Card', sensitive: true },
+          { id: 'add_part', ui: 'Add Part to Job' },
+          { id: 'remove_part', ui: 'Remove Part from Job' },
+          { id: 'cancel', ui: 'Cancel Job Card', sensitive: true },
+          { id: 'update_charge', ui: 'Update Service Charge' },
+          { id: 'manage_advance', ui: 'Manage Advance Payments' },
+          { id: 'reopen', ui: 'Reopen Cancelled Job' },
+          { id: 'create_warranty', ui: 'Create Warranty Job' },
+          { id: 'record_consent', ui: 'Record Customer Consent' },
+        ],
+      },
+      {
+        name: 'purchase',
+        actions: [
+          { id: 'manage', ui: 'Manage Purchases (Base)' },
+          { id: 'create', ui: 'Create Purchase Order' },
+          { id: 'view', ui: 'View Purchases' },
+          { id: 'update', ui: 'Update Purchase' },
+          { id: 'delete', ui: 'Delete Purchase', sensitive: true },
+        ],
+      },
+      {
+        name: 'supplier',
+        actions: [
+          { id: 'manage', ui: 'Manage Suppliers (Base)' },
+          { id: 'create', ui: 'Add Supplier' },
+          { id: 'view', ui: 'View Suppliers' },
+          { id: 'update', ui: 'Update Supplier' },
+          { id: 'delete', ui: 'Delete Supplier', sensitive: true },
+        ],
+      },
+      {
+        name: 'customer',
+        actions: [
+          { id: 'manage', ui: 'Manage Customers (Base)' },
+          { id: 'create', ui: 'Add Customer' },
+          { id: 'view', ui: 'View Customers' },
+          { id: 'update', ui: 'Update Customer' },
+          { id: 'delete', ui: 'Delete Customer', sensitive: true },
+        ],
+      },
+      {
+        name: 'quotation',
+        actions: [
+          { id: 'create', ui: 'Generate Quote' },
+          { id: 'view', ui: 'View Quotes' },
+          { id: 'update', ui: 'Update Quote' },
+          { id: 'delete', ui: 'Delete Quote', sensitive: true },
+          { id: 'convert', ui: 'Convert Quote to Sale' },
+        ],
+      },
+      {
+         name: 'ledger',
+         actions: [
+           { id: 'view', ui: 'View Ledger' },
+           { id: 'collect', ui: 'Collect Payment' },
+           { id: 'manage', ui: 'Manage Ledger' },
+         ]
+      },
+      {
+        name: 'receipt',
+        actions: [
+          { id: 'create', ui: 'Create Receipt' },
+          { id: 'view', ui: 'View Receipts' },
+          { id: 'cancel', ui: 'Cancel Receipt' },
+        ],
+      },
+      {
+        name: 'voucher',
+        actions: [
+          { id: 'create', ui: 'Create Voucher' },
+          { id: 'view', ui: 'View Vouchers' },
+          { id: 'cancel', ui: 'Cancel Voucher' },
+        ],
+      },
+      {
+        name: 'repair',
+        actions: [
+          { id: 'bill', ui: 'Generate Repair Bill' },
+          { id: 'stock_out', ui: 'Stock Out for Repair' },
+        ],
+      },
+        {
+          name: 'whatsapp',
+          actions: [
+            { id: 'manage', ui: 'Manage WhatsApp' },
+            { id: 'view', ui: 'View WhatsApp' },
+            { id: 'send', ui: 'Send Messages' },
+            { id: 'template_manage', ui: 'Manage Templates' },
+            { id: 'automation_manage', ui: 'Manage Automations' },
+            { id: 'view_dashboard', ui: 'View WhatsApp Dashboard' },
+            { id: 'view_numbers', ui: 'View WhatsApp Numbers' },
+            { id: 'view_logs', ui: 'View Message Logs' },
+            { id: 'manage_campaigns', ui: 'Manage Campaigns' },
+            { id: 'onboard_sync', ui: 'Sync Onboarding State' },
+            { id: 'onboard_connect', ui: 'Connect WhatsApp Number' },
+            { id: 'disconnect', ui: 'Disconnect WhatsApp' },
+            { id: 'manage_numbers', ui: 'Manage Phone Numbers' },
+            { id: 'settings_view', ui: 'View WhatsApp Settings' },
+            { id: 'settings_manage', ui: 'Manage WhatsApp Settings' },
+          ]
+        },
+        {
+          name: 'crm',
+          actions: [
+            { id: 'manage', ui: 'Manage CRM (Base)' },
+            { id: 'view', ui: 'View CRM (Base)' },
+            { id: 'manage_followup', ui: 'Manage Followups' },
+            { id: 'view_timeline', ui: 'View Timeline' },
+          ]
+        },
+      {
+        name: 'shop',
+        actions: [
+          { id: 'manage', ui: 'Manage Shop' },
+          { id: 'view', ui: 'View Shop' },
+        ]
+      },
+      {
+        name: 'compatibility',
+        actions: [
+          { id: 'view', ui: 'View Compatibility' },
+          { id: 'manage', ui: 'Manage Compatibility' },
+          { id: 'autocomplete', ui: 'Compatibility Search' },
+        ],
+      },
+      {
+        name: 'credit_note',
+        actions: [
+          { id: 'create', ui: 'Create Credit Note' },
+          { id: 'view', ui: 'View Credit Notes' },
+          { id: 'issue', ui: 'Issue Credit Note' },
+          { id: 'apply', ui: 'Apply Credit Note' },
+          { id: 'refund', ui: 'Process Refund to Credit Note' },
+          { id: 'void', ui: 'Void Credit Note' },
+        ],
+      },
+      {
+        name: 'loyalty',
+        actions: [
+          { id: 'view', ui: 'View Loyalty Status' },
+          { id: 'manage', ui: 'Manage Loyalty Rules' },
+        ],
+      },
+      {
+        name: 'b2b',
+        actions: [
+          { id: 'onboard', ui: 'Onboard to B2B' },
+          { id: 'view_catalog', ui: 'View B2B Catalog' },
+          { id: 'link', ui: 'Link Distributor' },
+          { id: 'place_order', ui: 'Place B2B Order' },
+        ],
+      },
+    ],
+  },
+  {
+    module: 'GYM',
+    resources: [
+      {
+        name: 'member',
+        actions: [
+          { id: 'manage', ui: 'Manage Members (Base)' },
+          { id: 'create', ui: 'Register Member' },
+          { id: 'view', ui: 'View Members' },
+          { id: 'view_assigned', ui: 'View Assigned Members' },
+          { id: 'edit', ui: 'Edit Member profile' },
+          { id: 'delete', ui: 'Delete Member', sensitive: true },
+        ],
+      },
+      {
+        name: 'attendance',
+        actions: [
+          { id: 'manage', ui: 'Manage Attendance (Base)' },
+          { id: 'mark', ui: 'Mark Attendance' },
+          { id: 'view', ui: 'View Attendance Logs' },
+        ],
+      },
+      {
+        name: 'membership',
+        actions: [
+          { id: 'manage', ui: 'Manage Membership (Base)' },
+          { id: 'view_base', ui: 'View Membership (Base)' },
+          { id: 'create', ui: 'Assign Plan' },
+          { id: 'renew', ui: 'Renew Membership' },
+          { id: 'view', ui: 'View Membership Status' },
+        ],
+      },
+      {
+        name: 'payment',
+        actions: [
+          { id: 'manage', ui: 'Manage Payments (Base)' },
+          { id: 'collect', ui: 'Collect Payment' },
+          { id: 'view', ui: 'View Payments' },
+        ],
+      },
+      {
+        name: 'workout',
+        actions: [
+          { id: 'update', ui: 'Update Workout plans' },
+        ],
+      },
+    ],
+  },
+];
+
+export const roleTemplates = [
+  // --- MobiBix Roles ---
+  {
+    module: 'MOBILE_SHOP',
+    roleName: 'SHOP_OWNER',
+    jobDescription:
+      'Full administrative control over all shop resources and staff.',
+    defaultPermissions: [
+      'mobile_shop.sale.manage',
+      'mobile_shop.inventory.manage',
+      'mobile_shop.jobcard.manage',
+      'mobile_shop.purchase.manage',
+      'mobile_shop.supplier.manage',
+      'mobile_shop.customer.manage',
+      'core.report.view',
+      'core.staff.manage',
+      'core.settings.manage',
+      'core.dashboard.view',
+      'core.profile.view',
+      'mobile_shop.whatsapp.manage',
+      'mobile_shop.crm.manage',
+      'mobile_shop.ledger.manage',
+      'mobile_shop.b2b.onboard',
+      'mobile_shop.loyalty.manage',
+      'mobile_shop.compatibility.manage',
+      'mobile_shop.shop.manage',
+      'mobile_shop.shop.view',
+      'core.billing.view',
+      'core.billing.manage',
+      'core.notification.view',
+    ],
+  },
+  {
+    module: 'MOBILE_SHOP',
+    roleName: 'SHOP_MANAGER',
+    jobDescription:
+      'Manage shop operations, staff assignments, and inventory control.',
+    defaultPermissions: [
+      'mobile_shop.sale.manage',
+      'mobile_shop.inventory.manage',
+      'mobile_shop.jobcard.manage',
+      'mobile_shop.crm.manage',
+      'mobile_shop.customer.view',
+      'core.report.view',
+      'core.dashboard.view',
+      'mobile_shop.compatibility.view',
+      'mobile_shop.shop.view',
+      'core.profile.view',
+      'core.notification.view',
+    ],
+  },
+  {
+    module: 'MOBILE_SHOP',
+    roleName: 'SALES_EXECUTIVE',
+    jobDescription: 'Handle sales, generate invoices, and manage customers.',
+    defaultPermissions: [
+      'mobile_shop.sale.create',
+      'mobile_shop.sale.view',
+      'mobile_shop.customer.manage',
+      'mobile_shop.inventory.view',
+      'core.dashboard.view',
+      'mobile_shop.compatibility.view',
+      'mobile_shop.shop.view',
+      'core.profile.view',
+      'core.notification.view',
+    ],
+  },
+  {
+    module: 'MOBILE_SHOP',
+    roleName: 'TECHNICIAN',
+    jobDescription: 'Repairs management and parts consumption.',
+    defaultPermissions: [
+      'mobile_shop.jobcard.view_assigned',
+      'mobile_shop.jobcard.update_status',
+      'mobile_shop.jobcard.add_part',
+      'mobile_shop.jobcard.view',
+      'mobile_shop.inventory.view',
+      'core.dashboard.view',
+      'mobile_shop.compatibility.view',
+      'mobile_shop.shop.view',
+      'core.profile.view',
+      'core.notification.view',
+    ],
+  },
+  {
+    module: 'MOBILE_SHOP',
+    roleName: 'SHOP_ACCOUNTANT',
+    jobDescription: 'Manage business finances, ledger, and accounting reports.',
+    defaultPermissions: [
+      'mobile_shop.ledger.manage',
+      'mobile_shop.sale.record_payment',
+      'mobile_shop.receipt.manage',
+      'mobile_shop.voucher.manage',
+      'mobile_shop.inventory.view',
+      'mobile_shop.purchase.view',
+      'core.report.view',
+      'core.dashboard.view',
+      'mobile_shop.shop.view',
+      'core.profile.view',
+      'core.notification.view',
+    ],
+  },
+
+  // --- Gym Roles ---
+  {
+    module: 'GYM',
+    roleName: 'GYM_OWNER',
+    jobDescription: 'Full control over the gym.',
+    defaultPermissions: [
+      'membership.manage', 'member.manage', 'attendance.manage', 'payment.manage', 'report.view', 'staff.manage', 'settings.manage', 'dashboard.view', 'profile.view'
+    ]
+  },
+  {
+    module: 'GYM',
+    roleName: 'GYM_MANAGER',
+    jobDescription: 'Manage gym floor operations.',
+    defaultPermissions: [
+      'membership.view', 'member.manage', 'attendance.view', 'payment.view', 'dashboard.view'
+    ]
+  },
+  {
+    module: 'GYM',
+    roleName: 'TRAINER',
+    jobDescription: 'Deliver training sessions.',
+    defaultPermissions: [
+      'attendance.mark', 'member.view_assigned'
+    ]
+  }
+];
 
 export async function runPermissionSeed(prisma: PrismaClient) {
-  // 1. Define Dictionary (The "What" can be done)
-  const dictionary = [
-    {
-      module: 'CORE',
-      resources: [
-        {
-          name: 'staff',
-          actions: [
-            { id: 'manage', ui: 'Manage Staff' },
-            { id: 'view', ui: 'View Staff' },
-            { id: 'invite', ui: 'Invite Staff' },
-          ],
-        },
-        {
-          name: 'approval',
-          actions: [
-            { id: 'override', ui: 'Manager Override', sensitive: true },
-            { id: 'view', ui: 'View Approval History' },
-          ],
-        },
-        {
-          name: 'settings',
-          actions: [
-            { id: 'manage', ui: 'Manage Business Settings' },
-            { id: 'view', ui: 'View Settings' },
-          ],
-        },
-        {
-          name: 'report',
-          actions: [
-            { id: 'view', ui: 'View Reports' },
-            { id: 'export', ui: 'Export Data', sensitive: true },
-          ],
-        },
-        {
-          name: 'dashboard',
-          actions: [
-            { id: 'view', ui: 'View Dashboard' },
-          ],
-        },
-        {
-           name: 'expense',
-           actions: [
-             { id: 'create', ui: 'Log Expenses' },
-             { id: 'view', ui: 'View Expenses' },
-           ]
-        },
-        {
-          name: 'system',
-          actions: [
-            { id: 'manage', ui: 'System Manage' },
-            { id: 'view', ui: 'System View' },
-          ]
-        },
-        {
-          name: 'ai',
-          actions: [
-            { id: 'use', ui: 'Use AI Features' },
-          ]
-        },
-        {
-          name: 'audit',
-          actions: [
-            { id: 'view', ui: 'View Audit Logs' },
-          ]
-        }
-      ],
-    },
-    {
-      module: 'MOBILE_SHOP',
-      resources: [
-        {
-          name: 'sales', // Base permission resource
-          actions: [
-            { id: 'manage', ui: 'Manage Sales (Base)' },
-            { id: 'view', ui: 'View Sales (Base)' },
-          ],
-        },
-        {
-          name: 'inventory_base', // Prevent name clash if inventory already exists
-          actions: [
-            { id: 'manage', ui: 'Manage Inventory (Base)' },
-            { id: 'view', ui: 'View Inventory (Base)' },
-          ],
-        },
-        {
-          name: 'jobcard_base',
-          actions: [
-            { id: 'manage', ui: 'Manage Job Cards (Base)' },
-            { id: 'view', ui: 'View Job Cards (Base)' },
-          ],
-        },
-        {
-          name: 'sale',
-          actions: [
-            { id: 'create', ui: 'Create Invoice' },
-            { id: 'view', ui: 'View Invoices' },
-            { id: 'view_all', ui: 'View All Sales' },
-            { id: 'view_financial', ui: 'View Financial Details' },
-            { id: 'edit', ui: 'Edit Invoice', sensitive: true },
-            { id: 'refund', ui: 'Process Refund', sensitive: true },
-          ],
-        },
-        {
-          name: 'inventory',
-          actions: [
-            { id: 'view', ui: 'View Inventory' },
-            { id: 'create', ui: 'Add Products' },
-            { id: 'adjust', ui: 'Adjust Stock', sensitive: true },
-          ],
-        },
-        {
-          name: 'jobcard',
-          actions: [
-            { id: 'create', ui: 'Create Job Card' },
-            { id: 'view', ui: 'View Job Card' },
-            { id: 'view_all', ui: 'View All Job Cards' },
-            { id: 'view_assigned', ui: 'View Assigned Jobs' },
-            { id: 'update_status', ui: 'Update Repair Status' },
-            { id: 'assign', ui: 'Assign Technician' },
-          ],
-        },
-        {
-          name: 'purchase',
-          actions: [
-            { id: 'manage', ui: 'Manage Purchases (Base)' },
-            { id: 'create', ui: 'Create Purchase Order' },
-            { id: 'view', ui: 'View Purchases' },
-          ],
-        },
-        {
-          name: 'supplier',
-          actions: [
-            { id: 'manage', ui: 'Manage Suppliers (Base)' },
-            { id: 'create', ui: 'Add Supplier' },
-            { id: 'view', ui: 'View Suppliers' },
-          ],
-        },
-        {
-          name: 'customer',
-          actions: [
-            { id: 'manage', ui: 'Manage Customers (Base)' },
-            { id: 'create', ui: 'Add Customer' },
-            { id: 'view', ui: 'View Customers' },
-          ],
-        },
-        {
-          name: 'quotation',
-          actions: [
-            { id: 'create', ui: 'Generate Quote' },
-            { id: 'view', ui: 'View Quotes' },
-          ],
-        },
-        {
-           name: 'ledger',
-           actions: [
-             { id: 'view', ui: 'View Ledger' }
-           ]
-        }
-      ],
-    },
-    {
-      module: 'GYM',
-      resources: [
-        {
-          name: 'membership_base',
-          actions: [
-            { id: 'manage', ui: 'Manage Membership (Base)' },
-            { id: 'view', ui: 'View Membership (Base)' },
-          ],
-        },
-        {
-          name: 'member',
-          actions: [
-            { id: 'manage', ui: 'Manage Members (Base)' },
-            { id: 'create', ui: 'Register Member' },
-            { id: 'view', ui: 'View Members' },
-            { id: 'view_assigned', ui: 'View Assigned Members' },
-            { id: 'edit', ui: 'Edit Member profile' },
-          ],
-        },
-        {
-          name: 'attendance',
-          actions: [
-            { id: 'manage', ui: 'Manage Attendance (Base)' },
-            { id: 'mark', ui: 'Mark Attendance' },
-            { id: 'view', ui: 'View Attendance Logs' },
-          ],
-        },
-        {
-          name: 'membership',
-          actions: [
-            { id: 'manage', ui: 'Manage Membership (Base)' },
-            { id: 'create', ui: 'Assign Plan' },
-            { id: 'renew', ui: 'Renew Membership' },
-            { id: 'view', ui: 'View Membership Status' },
-          ],
-        },
-        {
-          name: 'payment',
-          actions: [
-            { id: 'manage', ui: 'Manage Payments (Base)' },
-            { id: 'collect', ui: 'Collect Payment' },
-            { id: 'view', ui: 'View Payments' },
-          ],
-        },
-        {
-          name: 'workout',
-          actions: [
-            { id: 'update', ui: 'Update Workout plans' },
-          ],
-        },
-      ],
-    },
-  ];
-
   console.log('🌱 Seeding Permissions Dictionary...');
-  for (const mod of dictionary) {
+  for (const mod of RESOURCE_DICTIONARY) {
     for (const res of mod.resources) {
       const dbResource = await prisma.resource.upsert({
         where: {
@@ -257,175 +521,131 @@ export async function runPermissionSeed(prisma: PrismaClient) {
     }
   }
 
-  // 2. Define System Templates
-  const roleTemplates = [
-    // --- MobiBix Roles ---
-    {
-      module: 'MOBILE_SHOP',
-      roleName: 'SHOP_OWNER',
-      jobDescription: 'Full system access. Manage business settings, view reports, and approve sensitive operations.',
-      defaultPermissions: [
-        'sales.manage', 'inventory_base.manage', 'jobcard_base.manage', 'purchase.create', 'purchase.view',
-        'supplier.create', 'supplier.view', 'customer.create', 'customer.view',
-        'report.view', 'staff.manage', 'approval.override', 'settings.manage'
-      ]
-    },
-    {
-      module: 'MOBILE_SHOP',
-      roleName: 'SHOP_MANAGER',
-      jobDescription: 'Manage daily shop operations, supervise sales and inventory. Cannot change system plans.',
-      defaultPermissions: [
-        'dashboard.view',
-        'sales.manage',
-        'inventory_base.manage',
-        'jobcard_base.manage',
-        'report.view', 'customer.view', 'customer.create', 'supplier.view', 'supplier.create',
-        'expense.view', 'expense.create',
-        'purchase.view', 'purchase.create'
-      ]
-    },
-    {
-      module: 'MOBILE_SHOP',
-      roleName: 'SALES_EXECUTIVE',
-      jobDescription: 'Handle billing and customer sales, create invoices.',
-      defaultPermissions: [
-        'dashboard.view', 'sales.manage', 'customer.view', 'customer.create', 'inventory_base.view'
-      ]
-    },
-    {
-      module: 'MOBILE_SHOP',
-      roleName: 'TECHNICIAN',
-      jobDescription: 'Handle repair workflow and update repair status.',
-      defaultPermissions: [
-        'dashboard.view', 'jobcard_base.manage', 'inventory_base.view'
-      ]
-    },
-    {
-      module: 'MOBILE_SHOP',
-      roleName: 'SHOP_ACCOUNTANT',
-      jobDescription: 'Manage shop finances, track payments/expenses, and export tax reports.',
-      defaultPermissions: [
-        'dashboard.view', 'report.view', 'report.export', 'sales.view', 'expense.create', 'expense.view', 'ledger.view',
-        'purchase.view'
-      ]
-    },
-
-    // --- GymPilot Roles ---
-    {
-      module: 'GYM',
-      roleName: 'GYM_OWNER',
-      jobDescription: 'Full control of gym operations, revenue analytics, membership plans, and staff.',
-      defaultPermissions: [
-        'membership_base.manage', 'attendance.mark', 'attendance.view', 'payment.collect', 'payment.view',
-        'report.view', 'staff.manage', 'approval.override', 'settings.manage'
-      ]
-    },
-    {
-      module: 'GYM',
-      roleName: 'GYM_MANAGER',
-      jobDescription: 'Manage gym members, trainers, attendance and renewals.',
-      defaultPermissions: [
-        'dashboard.view', 'membership_base.manage',
-        'attendance.view', 'attendance.mark',
-        'report.view'
-      ]
-    },
-    {
-      module: 'GYM',
-      roleName: 'RECEPTIONIST',
-      jobDescription: 'Register new members, collect payments and renew memberships.',
-      defaultPermissions: [
-        'dashboard.view', 'membership_base.manage', 'payment.collect', 'attendance.view'
-      ]
-    },
-    {
-      module: 'GYM',
-      roleName: 'TRAINER',
-      jobDescription: 'Manage assigned members, track workouts and attendance.',
-      defaultPermissions: [
-        'dashboard.view', 'membership_base.view', 'attendance.mark', 'workout.update'
-      ]
-    },
-    {
-      module: 'GYM',
-      roleName: 'GYM_ACCOUNTANT',
-      jobDescription: 'Handle gym finances, generate reports and track payments.',
-      defaultPermissions: [
-        'dashboard.view', 'payment.view', 'report.view', 'report.export', 'expense.create', 'expense.view'
-      ]
-    }
-  ];
-
-  console.log('🌱 Syncing System Role Templates...');
-  for (const t of roleTemplates) {
-    let dbRole = await prisma.role.findFirst({
-      where: { name: t.roleName, tenantId: null, isSystem: true }
+  console.log('🚀 Seeding Role Templates...');
+  for (const template of roleTemplates) {
+    // Find global system role
+    let role = await prisma.role.findFirst({
+      where: {
+        tenantId: null,
+        name: template.roleName,
+        isSystem: true,
+      },
     });
 
-    if (dbRole) {
-      dbRole = await prisma.role.update({
-        where: { id: dbRole.id },
-        data: { description: t.jobDescription, category: RoleCategory.SYSTEM_TEMPLATE }
+    if (role) {
+      role = await prisma.role.update({
+        where: { id: role.id },
+        data: {
+          description: template.jobDescription,
+          category: RoleCategory.SYSTEM_TEMPLATE,
+        },
       });
     } else {
-      console.log(`✨ Creating System Template: ${t.roleName}`);
-      dbRole = await prisma.role.create({
+      role = await prisma.role.create({
         data: {
-          name: t.roleName,
-          description: t.jobDescription,
+          name: template.roleName,
           isSystem: true,
-          tenantId: null,
-          category: RoleCategory.SYSTEM_TEMPLATE
-        }
+          tenantId: null as any,
+          description: template.jobDescription,
+          category: RoleCategory.SYSTEM_TEMPLATE,
+        },
       });
     }
 
-    await prisma.rolePermission.deleteMany({ where: { roleId: dbRole.id } });
-
-    const permissionIds = new Set<string>();
-    for (const pStr of t.defaultPermissions) {
-      const [resName, actName] = pStr.split('.');
-      const modulesToSearch = [t.module, 'CORE'];
+    // Sync permissions for this role
+    const validPermissionIds: string[] = [];
+    
+    // Expand permissions
+    const expandedPerms = new Set<string>();
+    for (const p of template.defaultPermissions) {
+      // Prefix search (e.g. mobile_shop.sales.manage)
+      const prefix = template.module === 'MOBILE_SHOP' ? 'mobile_shop.' : 'gym.';
+      const hasPrefix = p.startsWith('mobile_shop.') || p.startsWith('gym.') || p.startsWith('core.');
+      const fullKey = hasPrefix ? p : `${prefix}${p}`;
       
-      const where: Prisma.PermissionWhereInput = {
-        resource: {
-          name: resName,
-          moduleType: { in: modulesToSearch as ModuleType[] }
-        }
-      };
+      const children = PERMISSION_INHERITANCE[fullKey] || PERMISSION_INHERITANCE[p];
+      if (children) {
+        children.forEach(c => expandedPerms.add(c));
+      } else {
+        expandedPerms.add(p);
+      }
+    }
 
-      if (actName !== '*') {
-        where.action = actName;
+    console.log(`  Processing role: ${template.roleName} (Module: ${template.module})`);
+    for (const permName of expandedPerms) {
+      const parts = permName.split('.');
+      let modSearch: ModuleType | undefined;
+      let resSearch: string;
+      let actSearch: string;
+
+      const validModules = Object.values(ModuleType) as string[];
+      if (parts.length >= 3 && validModules.includes(parts[0].toUpperCase())) {
+        // Handle core.report.sale.view -> mod: core, res: report.sale, act: view
+        modSearch = parts[0].toUpperCase() as ModuleType;
+        actSearch = parts[parts.length - 1];
+        resSearch = parts.slice(1, parts.length - 1).join('.');
+      } else if (parts.length >= 2) {
+        // Handle sale.create or report.sale.view
+        resSearch = parts.slice(0, parts.length - 1).join('.');
+        actSearch = parts[parts.length - 1];
+        modSearch = undefined;
+      } else {
+        continue;
       }
 
-      const dbPerms = await prisma.permission.findMany({ where });
-      dbPerms.forEach(p => permissionIds.add(p.id));
+      // Simple sequential lookup
+      const searchModules: ModuleType[] = modSearch 
+        ? [modSearch] 
+        : [template.module as ModuleType, ModuleType.CORE];
+
+      let dbResource: any = null;
+      for (const m of searchModules) {
+        if (!m) continue;
+        try {
+          dbResource = await prisma.resource.findFirst({
+            where: {
+              name: resSearch,
+              moduleType: m,
+            },
+          });
+          if (dbResource) break;
+        } catch (err) {
+          console.error(`  Prisma Error searching ${resSearch} in module ${m}:`, err.message);
+          continue;
+        }
+      }
+
+      if (!dbResource) continue;
+
+      const dbPerm = await prisma.permission.findUnique({
+        where: {
+          resourceId_action: {
+            resourceId: dbResource.id,
+            action: actSearch
+          }
+        }
+      });
+
+      if (dbPerm) {
+        validPermissionIds.push(dbPerm.id);
+      }
     }
 
-      const perms = Array.from(permissionIds).map(pid => ({
-        roleId: dbRole.id,
-        permissionId: pid
-      }));
-      
+    // Wipe and replace permissions
+    await prisma.rolePermission.deleteMany({
+      where: { roleId: role.id },
+    });
+
+    if (validPermissionIds.length > 0) {
       await prisma.rolePermission.createMany({
-        data: perms,
-        skipDuplicates: true
+        data: validPermissionIds.map((pid) => ({
+          roleId: role.id,
+          permissionId: pid,
+        })),
+        skipDuplicates: true,
       });
+    }
+
+    console.log(`  Synced ${validPermissionIds.length} permissions for ${template.roleName}`);
   }
-
-  // Cleanup old legacy templates or duplicates
-  const legacyNames = ['Manager', 'Staff', 'OWNER', 'SHOP_STAFF', 'GYM_TRAINER', 'SUPERVISOR', 'ACCOUNTANT'];
-  await prisma.role.updateMany({
-    where: { 
-      name: { in: legacyNames }, 
-      tenantId: null, 
-      isSystem: true 
-    },
-    data: { deletedAt: new Date() }
-  });
-  
-  // Also ensure if we have 'TRAINER' and 'Trainer' it's cleaned up (if applicable)
-  // For now the seed uses 'TRAINER'.
-
-  return { success: true };
 }

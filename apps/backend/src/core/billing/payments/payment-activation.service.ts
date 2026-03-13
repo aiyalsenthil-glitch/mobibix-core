@@ -41,13 +41,18 @@ export class PaymentActivationService {
    * Both webhook + verify.controller call this method.
    */
   async activateSubscriptionFromPayment(paymentId: string) {
-    return await this.prisma.$transaction(async (tx) => {
+    // Invoice generation happens AFTER the outer transaction commits (see bottom of method)
+    // to avoid nesting a Serializable $transaction inside this one (causes deadlocks).
+    let activatedSubscriptionId: string | null = null;
+
+    const result = await this.prisma.$transaction(async (tx) => {
       const payment = await tx.payment.findUniqueOrThrow({
         where: { id: paymentId },
         select: {
           id: true,
           tenantId: true,
           planId: true,
+          module: true,
           billingCycle: true,
           status: true,
           amount: true,
@@ -79,7 +84,7 @@ export class PaymentActivationService {
         const subscription = await this.subscriptionsService.buyPlanPhase1({
           tenantId: payment.tenantId,
           planId: payment.planId,
-          module: plan.module,
+          module: payment.module,
           billingCycle: payment.billingCycle,
           initialStatus: 'ACTIVE' as any,
           skipExternalPayment: true,
@@ -112,6 +117,8 @@ export class PaymentActivationService {
         this.logger.log(
           `[PAYMENT] ✅ Activation complete: Payment ${payment.id} → Subscription ${subscription.id}`,
         );
+
+        activatedSubscriptionId = subscription.id;
 
         // Module 6: Partner Referral & Commission Logic (tiered: 30% first / dynamic renewal)
         try {
@@ -217,23 +224,6 @@ export class PaymentActivationService {
           // Don't fail the payment activation if partner logic fails
         }
 
-        // ✅ GENERATE INVOICE (Called separately but inside this flow's logic)
-        // Note: invoiceService.createInvoiceForPayment handles its own retry/transaction logic
-        // We call it AFTER the nested update to ensure we don't block the core activation
-        try {
-          const invoice = await this.invoiceService.createInvoiceForPayment(
-            payment.id,
-          );
-          this.logger.log(
-            `[INVOICE] ✅ Generated invoice ${invoice.invoiceNumber} for payment ${payment.id}`,
-          );
-        } catch (invoiceErr) {
-          this.logger.error(
-            `[INVOICE] ⚠️ Failed to generate invoice for payment ${payment.id}`,
-            invoiceErr as Error,
-          );
-        }
-
         return {
           status: 'activated',
           paymentId,
@@ -247,6 +237,20 @@ export class PaymentActivationService {
         throw err;
       }
     });
+
+    // ✅ Generate invoice AFTER the outer transaction commits.
+    // Must be outside to avoid nesting a Serializable $transaction inside the outer one
+    // (Serializable inside READ COMMITTED causes deadlocks on the payment/subscription rows).
+    if (activatedSubscriptionId) {
+      try {
+        const invoice = await this.invoiceService.createInvoiceForPayment(paymentId);
+        this.logger.log(`[INVOICE] ✅ Generated invoice ${invoice.invoiceNumber} for payment ${paymentId}`);
+      } catch (invoiceErr) {
+        this.logger.error(`[INVOICE] ⚠️ Failed to generate invoice for payment ${paymentId}`, invoiceErr as Error);
+      }
+    }
+
+    return result;
   }
 
   /**

@@ -67,38 +67,22 @@ async function loadCorsOrigins(prisma: PrismaService): Promise<string[]> {
   }
 }
 
-// Force Hot Reload: Public Invoice Fix
-
 async function bootstrap() {
-  /**
-   * 0️⃣ SECURITY FIX: Validate environment variables FIRST
-   * ✅ Phase 1 Production Blocker #3
-   * Fail fast if critical env vars are missing
-   */
   validateEnv();
 
-  // 🔍 Initialize Sentry (Phase 5)
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
     integrations: [nodeProfilingIntegration()],
-    tracesSampleRate: 1.0, // Capture 100% of transactions
-    profilesSampleRate: 1.0, // Capture 100% of profiles
+    tracesSampleRate: 1.0,
+    profilesSampleRate: 1.0,
   });
 
-  /**
-   * 1️⃣ Create raw Express server
-   */
   const server = express();
 
-  // 🌐 Pre-warm Prisma to load CORS origins before Express middleware attaches
   const tempPrisma = new PrismaService();
   const allowedOrigins = await loadCorsOrigins(tempPrisma);
   await tempPrisma.$disconnect();
 
-  /**
-   * 🔥 2️⃣ Enable raw body for Razorpay webhook
-   * MUST be on Express, NOT Nest app
-   */
   server.use(
     /^\/(api\/)?(billing\/webhook\/REMOVED_PAYMENT_INFRA|payments\/webhook)$/,
     bodyParser.json({
@@ -108,40 +92,23 @@ async function bootstrap() {
     }),
   );
   
-  // Normal JSON parsing for all other routes
   server.use(bodyParser.json());
-
-  // Parse cookies for httpOnly auth
   server.use(cookieParser());
 
-  /**
-   * 🚀 3️⃣ Enable response compression (Tier 4 Performance)
-   * - Compresses all responses > 1KB
-   * - 70-90% size reduction for JSON
-   * - Critical for slow networks (3G/4G)
-   */
   server.use(
     compression({
-      level: 6, // Balance between compression ratio and CPU (1-9)
-      threshold: 1024, // Only compress responses larger than 1KB
+      level: 6,
+      threshold: 1024,
       filter: (req, res) => {
-        // Don't compress if client doesn't accept encoding
-        if (req.headers['x-no-compression']) {
-          return false;
-        }
-        // Use default compression filter
+        if (req.headers['x-no-compression']) return false;
         return compression.filter(req, res);
       },
     }),
   );
 
-  /**
-   * 4️⃣ Enable CORS at Express level — origins loaded from DB (admin-managed)
-   */
   server.use(
     cors({
       origin: (requestOrigin, callback) => {
-        // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
         if (!requestOrigin) return callback(null, true);
         if (allowedOrigins.includes(requestOrigin)) {
           return callback(null, true);
@@ -149,38 +116,21 @@ async function bootstrap() {
         callback(new Error(`CORS: origin '${requestOrigin}' not allowed`));
       },
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: [
-        'Authorization',
-        'Content-Type',
-        'Accept',
-        'X-CSRF-Token',
-      ],
+      allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'X-CSRF-Token'],
       credentials: true,
     }),
   );
 
-  /**
-   * 5️⃣ Serve static files
-   */
   server.use('/public', express.static(join(__dirname, '..', '..', 'public')));
 
-  /**
-   * 6️⃣ QR check-in page
-   */
   server.get('/public/checkin/:tenantCode', (_req, res) => {
-    res.sendFile(
-      join(__dirname, '..', '..', 'public', 'checkin', 'index.html'),
-    );
+    res.sendFile(join(__dirname, '..', '..', 'public', 'checkin', 'index.html'));
   });
 
-  /**
-   * 7️⃣ Health check
-   */
   server.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok' });
   });
 
-  // Root health check for Render/Cloud providers (prevents 404 on HEAD /)
   server.get('/', (_req, res) => {
     res.status(200).json({ status: 'ok', message: 'MobiBix API' });
   });
@@ -188,42 +138,18 @@ async function bootstrap() {
     res.status(200).end();
   });
 
-  /**
-   * 8️⃣ Create NestJS app ON SAME Express instance
-   */
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
     bufferLogs: true,
   });
 
-  // Replace default Nest logger with Pino
   app.useLogger(app.get(PinoLogger));
 
-  /**
-   * 📊 9️⃣ Add global performance monitoring (Tier 4)
-   * Logs request duration and warns on slow queries
-   */
-  app.useGlobalInterceptors(
-    new PerformanceInterceptor(),
-    new TransformInterceptor(),
-  );
+  app.useGlobalInterceptors(new PerformanceInterceptor(), new TransformInterceptor());
 
-  /**
-   * 🛡️ 1️⃣0️⃣ Global exception filters (Tier 4 Security)
-   * Sanitizes all error responses and logs full details on server
-   */
-  app.useGlobalFilters(
-    new AllExceptionsFilter(),
-    new ThrottlerExceptionFilter(), // ← Rate limit errors
-  );
+  app.useGlobalFilters(new AllExceptionsFilter(), new ThrottlerExceptionFilter());
 
-  /**
-   * 🌐 1️⃣1️⃣ Global API prefix
-   */
   app.setGlobalPrefix('api');
 
-  /**
-   * 8.5️⃣ Enable validation pipe
-   */
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -232,21 +158,10 @@ async function bootstrap() {
     }),
   );
 
-  /**
-   * 9️⃣ CORS is handled at the Express level (step 4️⃣) with DB-driven origins.
-   * Do NOT call app.enableCors() here — it would override the strict allowlist
-   * with `origin: true` (accept all), defeating the security model.
-   */
-
-  /**
-   * 🔟 Start server
-   */
   const port = process.env.PORT || 3000;
-  // Validate WhatsApp Config
   WhatsAppConfigValidator.validateOrExit();
 
-  // Routes removed: /admin/inject-sub (Moved to AdminController)
-
+  console.log(`📡 Attempting to listen on port ${port}...`);
   await app.listen(port);
 
   const logger = new Logger('Bootstrap');

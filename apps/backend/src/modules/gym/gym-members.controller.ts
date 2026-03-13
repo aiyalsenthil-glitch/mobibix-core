@@ -45,7 +45,7 @@ export class GymMembersController {
   // CREATE / ADMISSION
   // OWNER + STAFF
   // ======================
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.CREATE)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.CREATE)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Post()
   create(@Req() req: any, @Body() dto: CreateMemberDto) {
@@ -58,7 +58,7 @@ export class GymMembersController {
   // ======================
   // RENEWAL / EXPIRY LISTS
   // ======================
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('renewal-due')
   listRenewalDue(
@@ -71,6 +71,8 @@ export class GymMembersController {
       take: take ? parseInt(take, 10) : undefined,
     });
   }
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('payment-due')
   getPaymentDue(
     @Req() req: any,
@@ -83,7 +85,7 @@ export class GymMembersController {
     });
   }
 
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('expiring-soon')
   listExpiringSoon(@Req() req: any, @Query('days') days = '7') {
@@ -96,7 +98,7 @@ export class GymMembersController {
   // DELETE MEMBER
   // OWNER ONLY
   // ======================
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.EDIT)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.EDIT)
   @Roles(UserRole.OWNER)
   @Delete(':id')
   async delete(@Req() req: any, @Param('id') memberId: string) {
@@ -107,7 +109,7 @@ export class GymMembersController {
   // LIST ALL MEMBERS
   // OWNER + STAFF
   // ======================
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get()
   list(
@@ -123,6 +125,8 @@ export class GymMembersController {
     });
   }
 
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.EDIT)
+  @Roles(UserRole.OWNER)
   @Patch(':id/owner-edit')
   async updateMemberByOwner(
     @Req() req,
@@ -142,7 +146,7 @@ export class GymMembersController {
   // UPDATE MEMBER
   // OWNER + STAFF (admission fixes)
   // ======================
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.EDIT)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.EDIT)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Patch(':id')
   update(
@@ -161,7 +165,7 @@ export class GymMembersController {
   // ======================
   // RENEW MEMBERSHIP (🔥 FIXED)
   // ======================
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.EDIT)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.EDIT)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Post(':id/renew')
   renewMember(
@@ -179,6 +183,8 @@ export class GymMembersController {
     );
   }
   //Summary for Web View
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('summary')
   async listMembersSummary(@Req() req: any) {
     const tenantId = req.user.tenantId;
@@ -188,14 +194,14 @@ export class GymMembersController {
   // ======================
   // PAYMENT HISTORY
   // ======================
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get(':id/payments')
   getPayments(@Req() req: any, @Param('id') id: string) {
     return this.membersService.getMemberPayments(req.user.tenantId, id);
   }
 
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('expired-today')
   expiredToday(@Req() req: any) {
@@ -205,7 +211,7 @@ export class GymMembersController {
   // ======================
   // PAYMENT PENDING
   // ======================
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('payment-pending')
   paymentPending(@Req() req: any) {
@@ -215,7 +221,7 @@ export class GymMembersController {
   // ======================
   // SEARCH BY PHONE
   // ======================
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('search')
   async searchByPhone(@Req() req: any, @Query('phone') phone: string) {
@@ -234,6 +240,8 @@ export class GymMembersController {
 
     return member;
   }
+  @RequirePermission(PERMISSIONS.GYM.PAYMENT.COLLECT)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Post('collect-payment')
   async collectPayment(
     @Req() req,
@@ -249,7 +257,7 @@ export class GymMembersController {
   // ======================
   // GET MEMBER BY ID
   // ======================
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get(':id')
   getById(@Req() req: any, @Param('id') id: string) {

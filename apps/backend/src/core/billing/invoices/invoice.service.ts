@@ -75,10 +75,15 @@ export class InvoiceService {
   async createInvoiceForPayment(paymentId: string): Promise<any> {
     let retries = 0;
     const maxRetries = 3;
+    // Capture email-related data outside the transaction so we can send after commit.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let emailContext: any = null;
+    let createdInvoiceId: string | null = null;
+    let createdInvoiceNumber: string | null = null;
 
     while (retries < maxRetries) {
       try {
-        return await this.prisma.$transaction(
+        const invoice = await this.prisma.$transaction(
           async (tx) => {
             const payment = await tx.payment.findUnique({
               where: { id: paymentId },
@@ -99,55 +104,43 @@ export class InvoiceService {
               throw new NotFoundException('Payment not found');
             }
 
-            // Check if invoice already exists
+            // Check if invoice already exists (idempotency)
             const existing = await tx.subscriptionInvoice.findUnique({
               where: { paymentId },
             });
-
             if (existing) {
-              this.logger.log(
-                `Invoice already exists for payment ${paymentId}`,
-              );
+              this.logger.log(`Invoice already exists for payment ${paymentId}`);
               return existing;
             }
 
-            // Get tenant's state code for robust GST calculation
+            // Get tenant's state code for GST calculation
             const tenantFull = await tx.tenant.findUnique({
               where: { id: payment.tenantId },
               select: { state: true, stateCode: true },
             });
 
-            const companyStateCode = 'TN'; // Tamil Nadu ISO code
+            const companyStateCode = 'TN';
             const isInterstate = tenantFull?.stateCode
               ? tenantFull.stateCode.trim().toUpperCase() !== companyStateCode
               : tenantFull?.state &&
                 tenantFull.state.trim().toLowerCase() !== 'tamil nadu';
 
-            // Get plan details
             const plan = await tx.plan.findUnique({
               where: { id: payment.planId },
-              select: {
-                id: true,
-                name: true,
-                module: true,
-                code: true,
-              },
+              select: { id: true, name: true, module: true, code: true },
             });
 
             const invoiceNumber = await this.generateInvoiceNumber(tx);
-
-            // Calculate GST based on state
             const gst = this.calculateGST(payment.amount, !!isInterstate);
             const total = payment.amount + gst.cgst! + gst.sgst! + gst.igst!;
 
-            // Create invoice
             const invoice = await tx.subscriptionInvoice.create({
               data: {
                 invoiceNumber,
                 tenant: { connect: { id: payment.tenantId } },
                 payment: { connect: { id: payment.id } },
                 gstin: process.env.COMPANY_GSTIN || null,
-                sacCode: '998314', // SAC for subscription services
+                sacCode: '998314',
                 invoiceDate: new Date(),
                 amount: payment.amount,
                 cgst: gst.cgst,
@@ -165,84 +158,70 @@ export class InvoiceService {
               },
             });
 
-            this.logger.log(
-              `✅ Invoice ${invoiceNumber} created and FINALIZED for payment ${paymentId}`,
-            );
+            this.logger.log(`✅ Invoice ${invoiceNumber} created and FINALIZED for payment ${paymentId}`);
 
-            // Send GST Invoice Email
+            // Capture email context for post-commit sending (PDF requires committed invoice)
             if (payment.tenant.contactEmail) {
-              try {
-                // We generate the PDF buffer to attach it to the email
-                const pdfBuffer = (await this.generatePDF(
-                  invoice.id,
-                )) as Buffer;
-
-                await this.emailService.send({
-                  tenantId: payment.tenant.id,
-                  recipientType: 'TENANT',
-                  emailType: 'PAYMENT_SUCCESS',
-                  referenceId: invoice.id,
-                  module: plan?.module || 'GYM',
-                  to: payment.tenant.contactEmail,
-                  subject: `Tax Invoice ${invoice.invoiceNumber} - GymPilot`,
-                  data: {
-                    tenantName: payment.tenant.name,
-                    amount: total,
-                    invoiceNumber: invoice.invoiceNumber,
-                  },
-                  attachments: [
-                    {
-                      filename: `${invoice.invoiceNumber}.pdf`,
-                      content: pdfBuffer,
-                    },
-                  ],
-                });
-
-                // Mark as sent
-                await tx.subscriptionInvoice.update({
-                  where: { id: invoice.id },
-                  data: {
-                    emailSent: true,
-                    emailSentAt: new Date(),
-                  },
-                });
-              } catch (emailErr) {
-                this.logger.error(
-                  `Failed to send invoice email to ${payment.tenant.contactEmail}`,
-                  emailErr,
-                );
-              }
+              emailContext = {
+                contactEmail: payment.tenant.contactEmail,
+                tenantId: payment.tenant.id,
+                tenantName: payment.tenant.name,
+                total,
+                module: plan?.module || 'GYM',
+              };
+              createdInvoiceId = invoice.id;
+              createdInvoiceNumber = invoice.invoiceNumber;
             }
 
             return invoice;
           },
-          {
-            isolationLevel: 'Serializable', // Use Serializable to catch conflicts
-          },
+          { isolationLevel: 'Serializable' },
         );
+
+        // ✅ Send email AFTER transaction commits — generatePDF reads the committed invoice
+        const ctx = emailContext;
+        if (ctx && createdInvoiceId && createdInvoiceNumber) {
+          const invoiceId = createdInvoiceId;
+          const invoiceNumber = createdInvoiceNumber;
+          try {
+            const pdfBuffer = (await this.generatePDF(invoiceId)) as Buffer;
+            await this.emailService.send({
+              tenantId: ctx.tenantId,
+              recipientType: 'TENANT',
+              emailType: 'PAYMENT_SUCCESS',
+              referenceId: invoiceId,
+              module: ctx.module as any,
+              to: ctx.contactEmail,
+              subject: `Tax Invoice ${invoiceNumber} - GymPilot`,
+              data: {
+                tenantName: ctx.tenantName,
+                amount: ctx.total,
+                invoiceNumber,
+              },
+              attachments: [{ filename: `${invoiceNumber}.pdf`, content: pdfBuffer }],
+            });
+            await this.prisma.subscriptionInvoice.update({
+              where: { id: invoiceId },
+              data: { emailSent: true, emailSentAt: new Date() },
+            });
+          } catch (emailErr) {
+            this.logger.error(`Failed to send invoice email to ${ctx.contactEmail}`, emailErr);
+          }
+        }
+
+        return invoice;
       } catch (error: any) {
-        // Check for Prisma unique constraint violation (P2002)
-        if (
-          error.code === 'P2002' &&
-          error.meta?.target?.includes('invoiceNumber')
-        ) {
+        if (error.code === 'P2002' && error.meta?.target?.includes('invoiceNumber')) {
           retries++;
-          this.logger.warn(
-            `Invoice number collision, retry ${retries}/${maxRetries}...`,
-          );
-          // Small random delay before retry
-          await new Promise((resolve) =>
-            setTimeout(resolve, Math.random() * 100),
-          );
+          this.logger.warn(`Invoice number collision, retry ${retries}/${maxRetries}...`);
+          await new Promise((resolve) => setTimeout(resolve, Math.random() * 100));
           continue;
         }
         throw error;
       }
     }
 
-    throw new Error(
-      'Failed to generate unique invoice number after multiple retries',
-    );
+    throw new Error('Failed to generate unique invoice number after multiple retries');
   }
 
   /**

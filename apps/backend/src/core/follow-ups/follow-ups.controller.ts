@@ -25,7 +25,7 @@ import { GranularPermissionGuard } from '../permissions/guards/granular-permissi
 import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('core/follow-ups')
-@ModuleScope(ModuleType.CORE)
+@ModuleScope(ModuleType.MOBILE_SHOP)
 @ModulePermission('crm')
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
 @Roles(UserRole.OWNER, UserRole.STAFF)

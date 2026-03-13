@@ -61,6 +61,7 @@ const CATEGORY_NAMES: Record<string, string> = {
 };
 
 export default function CompatibilityFinderClient() {
+  const { authUser, isLoading } = useAuth();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<PhoneModelSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -68,6 +69,35 @@ export default function CompatibilityFinderClient() {
   const [results, setResults] = useState<SearchCompatibilityResponse | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const suggestionRef = useRef<HTMLDivElement>(null);
+
+  // 1. Loading State
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
+        <p className="text-slate-500 font-medium">Verifying access...</p>
+      </div>
+    );
+  }
+
+  // 2. Access Control Validation
+  const isMobibix = authUser?.tenantType === 'MOBILE_SHOP' || authUser?.planCode?.startsWith("MOBIBIX");
+  const isAccountant = authUser?.role === 'accountant' || authUser?.role === 'shop_accountant';
+  const hasPermission = authUser?.permissions?.includes("mobile_shop.compatibility.view") || authUser?.permissions?.includes("*");
+
+  if (!authUser || !isMobibix || isAccountant || !hasPermission) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
+        <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-4">
+          <AlertCircle size={32} />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Access Restricted</h2>
+        <p className="text-slate-500 max-w-md">
+          This tool is only available for Mobibix users. Accountants and non-Mobibix staff do not have permission to access the Compatibility Finder.
+        </p>
+      </div>
+    );
+  }
 
   // Feedback State
   const [feedbackTarget, setFeedbackTarget] = useState<{ category: string; type: 'REPORT_ERROR' | 'SUGGEST_LINK' } | null>(null);

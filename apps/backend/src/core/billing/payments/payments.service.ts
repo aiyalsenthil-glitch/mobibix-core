@@ -38,6 +38,8 @@ export class PaymentsService {
     amount: number;
     tenantId: string;
     planId: string;
+    module?: string;
+    billingCycle?: string;
   }): Promise<{ order: any; expiresAt: Date }> {
     if (!this.REMOVED_PAYMENT_INFRA) {
       throw new InternalServerErrorException(
@@ -57,7 +59,9 @@ export class PaymentsService {
       notes: {
         tenantId: params.tenantId,
         planId: params.planId,
-        expiresAt: expiresAt.toISOString(), // Store in Razorpay notes
+        module: params.module || '',
+        billingCycle: params.billingCycle || 'MONTHLY',
+        expiresAt: expiresAt.toISOString(),
       },
     });
 

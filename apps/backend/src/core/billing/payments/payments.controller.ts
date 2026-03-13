@@ -170,6 +170,8 @@ export class PaymentsController {
         amount: planPrice.price,
         tenantId,
         planId: plan.id,
+        module: tenantModule,
+        billingCycle: body.billingCycle,
       });
 
       // 4️⃣ SAVE INIT PAYMENT with expiresAt
@@ -177,6 +179,7 @@ export class PaymentsController {
         data: {
           tenantId,
           planId: plan.id,
+          module: tenantModule,      // ✅ Required by PaymentActivationService
           billingCycle: body.billingCycle,
           priceSnapshot: planPrice.price,
           provider: 'RAZORPAY',

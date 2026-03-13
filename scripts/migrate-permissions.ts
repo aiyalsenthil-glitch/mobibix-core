@@ -51,12 +51,18 @@ async function migrate() {
       await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // 1. Add new base permissions
         for (const baseStr of toAdd) {
-          const [resName, actName] = baseStr.split('.');
+          const parts = baseStr.split('.');
+          const resName = parts.length === 3 ? parts[1] : parts[0];
+          const actName = parts.length === 3 ? parts[2] : parts[1];
+          const modType = parts.length === 3 ? parts[0].toUpperCase() : undefined;
           
           // Find or create the base permission in DB if it doesn't exist
           // First find resource
           let resource = await tx.resource.findFirst({
-            where: { name: resName }
+            where: { 
+              name: resName,
+              ...(modType ? { moduleType: modType as any } : {})
+            }
           });
 
           if (!resource) {

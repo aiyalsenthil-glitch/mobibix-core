@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CompatibilityService } from './compatibility.service';
 import { CreatePhoneModelDto, SmartLinkModelsDto, UnlinkModelDto } from './dto/compatibility.dto';

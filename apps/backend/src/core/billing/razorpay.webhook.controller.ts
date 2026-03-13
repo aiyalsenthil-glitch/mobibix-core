@@ -9,6 +9,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { RazorpayService } from './REMOVED_PAYMENT_INFRA.service';
 import { RazorpayWebhookProcessor } from './REMOVED_PAYMENT_INFRA.webhook.processor';
 import { PrismaService } from '../prisma/prisma.service';
@@ -34,6 +35,7 @@ export class RazorpayWebhookController {
   ) {}
 
   @Public()
+  @Throttle({ default: { limit: 60, ttl: 60000 } }) // 60 req/min per IP
   @Post()
   async handleWebhook(
     @Headers('x-REMOVED_PAYMENT_INFRA-signature') signature: string,

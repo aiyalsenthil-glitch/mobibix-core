@@ -17,7 +17,7 @@ export class UserResolutionService {
         userTenants: {
           include: {
             tenant: {
-              select: { id: true, name: true, code: true },
+              select: { id: true, name: true, code: true, tenantType: true },
             },
           },
         },
@@ -40,7 +40,7 @@ export class UserResolutionService {
           userTenants: {
             include: {
               tenant: {
-                select: { id: true, name: true, code: true },
+                select: { id: true, name: true, code: true, tenantType: true },
               },
             },
           },
@@ -58,7 +58,7 @@ export class UserResolutionService {
           userTenants: {
             include: {
               tenant: {
-                select: { id: true, name: true, code: true },
+                select: { id: true, name: true, code: true, tenantType: true },
               },
             },
           },

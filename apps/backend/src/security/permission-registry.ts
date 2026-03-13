@@ -21,10 +21,10 @@ export const PERMISSIONS = {
       MANAGE: { module: ModuleType.CORE, resource: 'settings', action: 'manage' } as Permission,
       VIEW: { module: ModuleType.CORE, resource: 'settings', action: 'view' } as Permission,
     },
-    REPORTS: {
+    REPORT: {
       VIEW: { module: ModuleType.CORE, resource: 'report', action: 'view' } as Permission,
       EXPORT: { module: ModuleType.CORE, resource: 'report', action: 'export' } as Permission,
-      SALES_VIEW: { module: ModuleType.CORE, resource: 'report.sales', action: 'view' } as Permission,
+      SALES_VIEW: { module: ModuleType.CORE, resource: 'report.sale', action: 'view' } as Permission,
       INVENTORY_VIEW: { module: ModuleType.CORE, resource: 'report.inventory', action: 'view' } as Permission,
       PROFIT_VIEW: { module: ModuleType.CORE, resource: 'report.profit', action: 'view' } as Permission,
     },
@@ -73,13 +73,13 @@ export const PERMISSIONS = {
       VIEW: { module: ModuleType.CORE, resource: 'party', action: 'view' } as Permission,
       MANAGE: { module: ModuleType.CORE, resource: 'party', action: 'manage' } as Permission,
     },
-    NOTIFICATIONS: {
+    NOTIFICATION: {
       VIEW: { module: ModuleType.CORE, resource: 'notification', action: 'view' } as Permission,
       MANAGE: { module: ModuleType.CORE, resource: 'notification', action: 'manage' } as Permission,
     },
   },
   MOBILE_SHOP: {
-    SALES: {
+    SALE: {
       CREATE: { module: ModuleType.MOBILE_SHOP, resource: 'sale', action: 'create' } as Permission,
       VIEW: { module: ModuleType.MOBILE_SHOP, resource: 'sale', action: 'view' } as Permission,
       VIEW_ALL: { module: ModuleType.MOBILE_SHOP, resource: 'sale', action: 'view_all' } as Permission,
@@ -197,7 +197,7 @@ export const PERMISSIONS = {
     },
   },
   GYM: {
-    MEMBERS: {
+    MEMBER: {
       CREATE: { module: ModuleType.GYM, resource: 'member', action: 'create' } as Permission,
       VIEW: { module: ModuleType.GYM, resource: 'member', action: 'view' } as Permission,
       EDIT: { module: ModuleType.GYM, resource: 'member', action: 'edit' } as Permission,

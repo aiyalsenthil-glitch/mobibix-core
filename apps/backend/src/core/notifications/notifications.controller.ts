@@ -28,7 +28,7 @@ export class NotificationsController {
    * Returns the latest 30 IN_APP notifications for the current user.
    * Includes isRead flag based on readAt field.
    */
-  @RequirePermission(PERMISSIONS.CORE.NOTIFICATIONS.VIEW)
+  @RequirePermission(PERMISSIONS.CORE.NOTIFICATION.VIEW)
   @Get()
   async getNotifications(@Req() req: any) {
     const userId = req.user.id;
@@ -67,7 +67,7 @@ export class NotificationsController {
    * GET /notifications/unread-count
    * Returns how many unread notifications the user has (for bell badge).
    */
-  @RequirePermission(PERMISSIONS.CORE.NOTIFICATIONS.VIEW)
+  @RequirePermission(PERMISSIONS.CORE.NOTIFICATION.VIEW)
   @Get('unread-count')
   async getUnreadCount(@Req() req: any) {
     const userId = req.user.id;
@@ -89,7 +89,7 @@ export class NotificationsController {
    * PATCH /notifications/:id/read
    * Marks a single notification as read.
    */
-  @RequirePermission(PERMISSIONS.CORE.NOTIFICATIONS.VIEW)
+  @RequirePermission(PERMISSIONS.CORE.NOTIFICATION.VIEW)
   @Patch(':id/read')
   async markAsRead(@Req() req: any, @Param('id') id: string) {
     const tenantId = req.user.tenantId;
@@ -114,7 +114,7 @@ export class NotificationsController {
    * PATCH /notifications/read-all
    * Marks all unread notifications as read (bell dismiss all).
    */
-  @RequirePermission(PERMISSIONS.CORE.NOTIFICATIONS.VIEW)
+  @RequirePermission(PERMISSIONS.CORE.NOTIFICATION.VIEW)
   @Patch('read-all')
   async markAllAsRead(@Req() req: any) {
     const userId = req.user.id;

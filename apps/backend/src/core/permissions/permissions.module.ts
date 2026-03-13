@@ -7,11 +7,12 @@ import { BranchAccessGuard } from './guards/branch-access.guard';
 import { GranularPermissionGuard } from './guards/granular-permission.guard';
 import { RolesController } from './roles.controller';
 import { ApprovalsController } from './approvals.controller';
+import { RbacDebugController } from './rbac-debug.controller';
 
 @Global()
 @Module({
   imports: [PrismaModule, CacheModule],
-  controllers: [RolesController, ApprovalsController],
+  controllers: [RolesController, ApprovalsController, RbacDebugController],
   providers: [
     PermissionService,
     ActionDispatcherService,

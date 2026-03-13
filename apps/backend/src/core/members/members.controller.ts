@@ -41,7 +41,7 @@ import { PERMISSIONS } from '../../security/permission-registry';
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Get()
   list(
     @Req() req: any,
@@ -56,7 +56,7 @@ export class MembersController {
     });
   }
 
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.CREATE)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.CREATE)
   @Post()
   create(@Req() req: any, @Body() dto: CreateMemberDto) {
     // tenantId guaranteed by TenantRequiredGuard
@@ -68,7 +68,7 @@ export class MembersController {
     );
   }
 
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.EDIT)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.EDIT)
   @Patch(':id')
   update(
     @Req() req: any,
@@ -83,29 +83,29 @@ export class MembersController {
     );
   }
 
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.EDIT)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.EDIT)
   @Delete(':id')
   delete(@Req() req: any, @Param('id') id: string) {
     return this.membersService.deleteMember(req.user, id);
   }
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Get('stats/expiring-soon')
   countExpiring(@Req() req: any) {
     return this.membersService.countExpiringSoon(req.user.tenantId, 5);
   }
 
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Get(':id/payments')
   getPayments(@Req() req: any, @Param('id') id: string) {
     return this.membersService.getMemberPayments(req.user.tenantId, id);
   }
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Get('expired-today-count')
   countExpiredToday(@Req() req: any) {
     return this.membersService.countExpiredToday(req.user.tenantId);
   }
 
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Get('search')
   async searchByPhone(@Req() req: any, @Query('phone') phone: string) {
     if (!phone) {
@@ -124,7 +124,7 @@ export class MembersController {
     return member;
   }
 
-  @RequirePermission(PERMISSIONS.GYM.MEMBERS.VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Get(':id')
   getById(@Req() req: any, @Param('id') id: string) {
     return this.membersService.getMemberById(req.user.tenantId, id);

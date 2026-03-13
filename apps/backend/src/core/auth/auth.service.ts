@@ -76,6 +76,7 @@ export class AuthService {
         id: true,
         tenantId: true,
         role: true,
+        isSystemOwner: true,
       },
     });
 
@@ -93,11 +94,14 @@ export class AuthService {
       );
     }
 
+    const isSystemOwner = userTenant?.isSystemOwner || userTenant?.role === UserRole.OWNER;
+    
     const accessToken = this.tokenFactory.generateAccessToken({
       sub: user.id,
       tenantId,
       userTenantId: userTenant?.id ?? null,
       role,
+      isSystemOwner,
       tokenVersion: user.tokenVersion,
       permissions,
     });
@@ -198,6 +202,7 @@ export class AuthService {
           id: user.id,
           tenantId,
           tenantCode: activeUserTenant?.tenant.code ?? null,
+          tenantType: activeUserTenant?.tenant.tenantType ?? null,
           role: role as UserRole,
           isSystemOwner,
           name: user.fullName,
@@ -289,7 +294,7 @@ export class AuthService {
    * 🧪 FOR QA AUTOMATION ONLY
    */
   async loginWithCredentials(email: string, password?: string) {
-    if (email !== 'test@gmail.com' && !email.startsWith('staff')) {
+    if (email !== 'test@gmail.com' && !email.startsWith('staff') && !email.endsWith('@test.com')) {
       throw new UnauthorizedException('QA Login only allowed for test accounts');
     }
 

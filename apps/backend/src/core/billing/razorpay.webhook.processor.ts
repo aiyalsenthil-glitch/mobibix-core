@@ -17,7 +17,7 @@ import {
 } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-@Processor('REMOVED_PAYMENT_INFRA-webhooks')
+@Processor('REMOVED_PAYMENT_INFRA-webhooks', { concurrency: 5 })
 export class RazorpayWebhookProcessor extends WorkerHost {
   private readonly logger = new Logger(RazorpayWebhookProcessor.name);
 
@@ -220,6 +220,18 @@ export class RazorpayWebhookProcessor extends WorkerHost {
     if (!internalPayment) {
       const notes = payment.notes || {};
       if (notes.tenantId && notes.planId) {
+        // Security: verify the tenantId from notes actually exists before trusting it
+        const tenantExists = await this.prisma.tenant.findUnique({
+          where: { id: notes.tenantId },
+          select: { id: true },
+        });
+        if (!tenantExists) {
+          this.logger.error(
+            `[ORPHAN RECOVERY] tenantId "${notes.tenantId}" from notes does not exist in DB. Possible spoofed notes — dropping payment ${payment.id}.`,
+          );
+          return;
+        }
+
         this.logger.warn(
           `[ORPHAN RECOVERY] No local Payment record for ${payment.id}. Reconstructing from Razorpay notes.`,
         );
@@ -352,6 +364,14 @@ export class RazorpayWebhookProcessor extends WorkerHost {
       //
       // Any other non-ACTIVE status (CANCELLED, DISPUTED, etc.) — non-retriable.
       // ─────────────────────────────────────────────────────────────────────
+      // Do not renew if tenant explicitly cancelled auto-renewal
+      if (!subscription.autoRenew) {
+        this.logger.warn(
+          `[SKIP] subscription.charged for sub ${subscription.id} with autoRenew=false. Ignoring renewal.`,
+        );
+        return;
+      }
+
       if (subscription.status !== 'ACTIVE') {
         if (
           (subscription.status === 'EXPIRED' || subscription.status === 'PAST_DUE') &&
@@ -726,7 +746,7 @@ export class RazorpayWebhookProcessor extends WorkerHost {
         // ACTIVE, both try to set PAST_DUE, and the second would be a no-op at best or cause
         // inconsistent audit logs at worst.
         await tx.$executeRaw`
-          SELECT id FROM "mb_tenant_subscription"
+          SELECT id FROM "TenantSubscription"
           WHERE "tenantId" = ${internalPayment.tenantId}
             AND "planId" = ${internalPayment.planId}
             AND status IN ('ACTIVE', 'PENDING')
@@ -855,28 +875,29 @@ export class RazorpayWebhookProcessor extends WorkerHost {
         },
       });
 
-      // Scenario A & B: Full Refund -> Immediate Cancellation
-      if (isFullRefund) {
-        const activeSub = await tx.tenantSubscription.findFirst({
-          where: {
-            tenantId: internalPayment.tenantId,
-            module: internalPayment.module,
-            status: { in: ['ACTIVE', 'PAST_DUE'] },
-          },
-        });
+      const activeSub = await tx.tenantSubscription.findFirst({
+        where: {
+          tenantId: internalPayment.tenantId,
+          module: internalPayment.module,
+          status: { in: ['ACTIVE', 'PAST_DUE'] },
+        },
+      });
 
-        if (activeSub) {
+      if (activeSub) {
+        if (isFullRefund) {
+          // Full refund → immediate cancellation
           await tx.tenantSubscription.update({
             where: { id: activeSub.id },
-            data: {
-              status: SubscriptionStatus.CANCELLED,
-              updatedAt: new Date(),
-            },
+            data: { status: SubscriptionStatus.CANCELLED, updatedAt: new Date() },
           });
-
-          this.logger.log(
-            `Subscription ${activeSub.id} cancelled due to full refund.`,
-          );
+          this.logger.log(`Subscription ${activeSub.id} cancelled due to full refund.`);
+        } else if (activeSub.status === 'ACTIVE') {
+          // Partial refund → PAST_DUE for human review; access limited to read-only
+          await tx.tenantSubscription.update({
+            where: { id: activeSub.id },
+            data: { status: SubscriptionStatus.PAST_DUE, updatedAt: new Date() },
+          });
+          this.logger.warn(`Subscription ${activeSub.id} set to PAST_DUE due to partial refund.`);
         }
       }
     });

@@ -80,23 +80,23 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
 
   const visibleItems = useMemo(() => {
     if (!authUser) return [];
-    if (authUser.isSystemOwner) return navItems;
 
     return navItems.filter((item) => {
-      // Role-based exclusion for Compatibility Finder
-      // Only for Mobibix users (plan starts with MOBIBIX), excluding accountants
+      // 1. Module-level validation for specialized tools
       if (item.label === "Compatibility Finder") {
-        const isMobibix = authUser.planCode?.startsWith("MOBIBIX") || authUser.permissions?.includes("mobile_shop.compatibility.view");
-        if (!isMobibix || authUser.role === 'accountant') {
-          return false;
-        }
+        const isMobibix = authUser.tenantType === 'MOBILE_SHOP' || authUser.planCode?.startsWith("MOBIBIX");
+        // Accountants are strictly excluded from this tool
+        const isAccountant = authUser.role === 'accountant' || authUser.role === 'shop_accountant';
+        
+        if (!isMobibix || isAccountant) return false;
       }
 
+      // 2. Standard RBAC check
+      // System Owners and users with '*' permission see everything else in their module
+      if (authUser.isSystemOwner || authUser.permissions?.includes("*")) return true;
       if (!item.requiredPermission) return true;
-      return (
-        authUser.permissions?.includes("*") ||
-        authUser.permissions?.includes(item.requiredPermission)
-      );
+      
+      return authUser.permissions?.includes(item.requiredPermission);
     });
   }, [authUser]);
 

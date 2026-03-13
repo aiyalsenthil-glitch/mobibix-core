@@ -104,7 +104,7 @@ export class SubscriptionGuard implements CanActivate {
           const subscription = await this.prisma.tenantSubscription.findFirst({
             where: {
               tenantId,
-              module: moduleScope,
+              module: moduleScope === ModuleType.CORE ? { in: [ModuleType.GYM, ModuleType.MOBILE_SHOP] } : moduleScope,
               status: { in: ['ACTIVE', 'TRIAL'] }
             },
             include: {

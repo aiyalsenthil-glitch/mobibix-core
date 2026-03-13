@@ -28,6 +28,7 @@ import { TenantStatusGuard } from '../tenant/guards/tenant-status.guard';
 import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
 import { PermissionService } from '../permissions/permissions.service';
 import { RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('mobileshop/sales')
 @ModuleScope(ModuleType.MOBILE_SHOP)
@@ -47,14 +48,14 @@ export class SalesController {
   ) {}
 
   @Post('invoice')
-  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'create')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SALE.CREATE)
   async create(@Req() req: any, @Body() dto: SalesInvoiceDto) {
     const tenantId = req.user.tenantId;
     return this.service.createInvoice(tenantId, dto);
   }
 
   @Patch('invoice/:invoiceId')
-  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'create')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SALE.REFUND) // Using REFUND for update/edit or create a specific one
   async update(
     @Req() req: any,
     @Param('invoiceId') invoiceId: string,
@@ -65,13 +66,14 @@ export class SalesController {
   }
 
   @Post('invoice/:invoiceId/cancel')
-  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'create')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SALE.REFUND)
   async cancel(@Req() req: any, @Param('invoiceId') invoiceId: string) {
     const tenantId = req.user.tenantId;
     return this.service.cancelInvoice(tenantId, invoiceId);
   }
 
   @Get('invoices')
+  @RequirePermission([PERMISSIONS.MOBILE_SHOP.SALE.VIEW, PERMISSIONS.MOBILE_SHOP.JOBCARD.VIEW])
   async list(
     @Req() req: any,
     @Query('shopId') shopId: string,
@@ -127,7 +129,7 @@ export class SalesController {
   }
 
   @Get('invoice/:invoiceId')
-  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'view')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SALE.VIEW)
   async getInvoice(@Req() req: any, @Param('invoiceId') invoiceId: string) {
     const tenantId = req.user.tenantId;
     if (!tenantId) {
@@ -137,7 +139,7 @@ export class SalesController {
   }
 
   @Post('invoice/:invoiceId/payment')
-  @Permissions(Permission.SALES_CREATE)
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SALE.CREATE)
   async recordPayment(
     @Req() req: any,
     @Param('invoiceId') invoiceId: string,
@@ -166,7 +168,7 @@ export class SalesController {
   }
 
   @Post('invoice/:invoiceId/collect-payment')
-  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'create')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SALE.CREATE)
   async collectPayment(
     @Req() req: any,
     @Param('invoiceId') invoiceId: string,
@@ -177,7 +179,7 @@ export class SalesController {
   }
 
   @Post('invoice/:invoiceId/items')
-  @Permissions(Permission.SALES_CREATE)
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SALE.EDIT)
   async addItem(
     @Req() req: any,
     @Param('invoiceId') invoiceId: string,
@@ -189,14 +191,14 @@ export class SalesController {
   }
 
   @Get('invoice/:invoiceId/payments')
-  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'view')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SALE.VIEW)
   async listPayments(@Req() req: any, @Param('invoiceId') invoiceId: string) {
     const tenantId = req.user.tenantId;
     return this.paymentService.listPayments(tenantId, invoiceId);
   }
 
   @Get('summary')
-  @RequirePermission(ModuleType.MOBILE_SHOP, 'sale', 'view')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SALE.VIEW)
   async getSalesSummary(
     @Req() req: any,
     @Query('shopId') shopId: string,

@@ -27,7 +27,7 @@ export class ReportsHardeningController {
   /**
    * GET /gstr1 - Generate GSTR-1 sales register
    */
-  @RequirePermission(PERMISSIONS.CORE.REPORTS.VIEW)
+  @RequirePermission(PERMISSIONS.CORE.REPORT.VIEW)
   @Get('gstr1')
   async getGSTR1(
     @Query('startDate') startDate: string,
@@ -49,7 +49,7 @@ export class ReportsHardeningController {
   /**
    * GET /gstr1/hsn-summary - GSTR-1 HSN-wise summary
    */
-  @RequirePermission(PERMISSIONS.CORE.REPORTS.VIEW)
+  @RequirePermission(PERMISSIONS.CORE.REPORT.VIEW)
   @Get('gstr1/hsn-summary')
   async getGSTR1HSNSummary(
     @Query('startDate') startDate: string,
@@ -67,7 +67,7 @@ export class ReportsHardeningController {
   /**
    * GET /gstr2 - Generate GSTR-2 purchase register with ITC tracking
    */
-  @RequirePermission(PERMISSIONS.CORE.REPORTS.VIEW)
+  @RequirePermission(PERMISSIONS.CORE.REPORT.VIEW)
   @Get('gstr2')
   async getGSTR2(
     @Query('startDate') startDate: string,
@@ -85,7 +85,7 @@ export class ReportsHardeningController {
   /**
    * GET /gstr2/hsn-summary - GSTR-2 HSN-wise summary
    */
-  @RequirePermission(PERMISSIONS.CORE.REPORTS.VIEW)
+  @RequirePermission(PERMISSIONS.CORE.REPORT.VIEW)
   @Get('gstr2/hsn-summary')
   async getGSTR2HSNSummary(
     @Query('startDate') startDate: string,
@@ -103,7 +103,7 @@ export class ReportsHardeningController {
   /**
    * GET /gstr2/itc-summary - ITC eligible summary
    */
-  @RequirePermission(PERMISSIONS.CORE.REPORTS.VIEW)
+  @RequirePermission(PERMISSIONS.CORE.REPORT.VIEW)
   @Get('gstr2/itc-summary')
   async getITCSummary(
     @Query('startDate') startDate: string,
@@ -121,7 +121,7 @@ export class ReportsHardeningController {
   /**
    * GET /receivables-aging - Receivables aging summary
    */
-  @RequirePermission(PERMISSIONS.CORE.REPORTS.VIEW)
+  @RequirePermission(PERMISSIONS.CORE.REPORT.VIEW)
   @Get('receivables-aging')
   async getReceivablesAging(@Request() req: any) {
     const tenantId = req.user.tenantId;
@@ -131,7 +131,7 @@ export class ReportsHardeningController {
   /**
    * GET /receivables-aging/detailed - Receivables aging with invoice list
    */
-  @RequirePermission(PERMISSIONS.CORE.REPORTS.VIEW)
+  @RequirePermission(PERMISSIONS.CORE.REPORT.VIEW)
   @Get('receivables-aging/detailed')
   async getDetailedReceivablesAging(@Request() req: any) {
     const tenantId = req.user.tenantId;
@@ -141,7 +141,7 @@ export class ReportsHardeningController {
   /**
    * GET /payables-aging - Payables aging summary
    */
-  @RequirePermission(PERMISSIONS.CORE.REPORTS.VIEW)
+  @RequirePermission(PERMISSIONS.CORE.REPORT.VIEW)
   @Get('payables-aging')
   async getPayablesAging(@Request() req: any) {
     const tenantId = req.user.tenantId;
@@ -151,7 +151,7 @@ export class ReportsHardeningController {
   /**
    * GET /payables-aging/detailed - Payables aging with purchase list
    */
-  @RequirePermission(PERMISSIONS.CORE.REPORTS.VIEW)
+  @RequirePermission(PERMISSIONS.CORE.REPORT.VIEW)
   @Get('payables-aging/detailed')
   async getDetailedPayablesAging(@Request() req: any) {
     const tenantId = req.user.tenantId;

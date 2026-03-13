@@ -100,18 +100,27 @@ export class GranularPermissionGuard implements CanActivate {
       null;
 
     try {
-      const hasPermission = await this.permissionService.hasPermission(
-        user.id,
-        user.tenantId,
-        shopId,
-        requiredPermission.module,
-        requiredPermission.resource,
-        requiredPermission.action,
-      );
+      const requiredArr = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission];
+      let hasAny = false;
 
-      if (!hasPermission) {
+      for (const perm of requiredArr) {
+        const allowed = await this.permissionService.hasPermission(
+          user.id,
+          user.tenantId,
+          shopId,
+          perm.module,
+          perm.resource,
+          perm.action,
+        );
+        if (allowed) {
+          hasAny = true;
+          break;
+        }
+      }
+
+      if (!hasAny) {
         this.logger.warn(
-          `[ACCESS DENIED] User ${user.id} denied: ${requiredPermission.module}.${requiredPermission.resource}.${requiredPermission.action} at shop ${shopId || 'global'}`,
+          `[ACCESS DENIED] User ${user.id} denied: ${JSON.stringify(requiredPermission)} at shop ${shopId || 'global'}`,
         );
         return false;
       }

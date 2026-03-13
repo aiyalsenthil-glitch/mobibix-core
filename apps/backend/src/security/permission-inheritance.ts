@@ -9,44 +9,59 @@ export interface BasePermission {
 
 // Base permissions are the simplified set that users manage in the UI
 export const BASE_PERMISSIONS: Record<string, string[]> = {
-  'sales.manage': ['MOBILE_SHOP'],
-  'sales.view': ['MOBILE_SHOP', 'CORE'],
-  'inventory_base.manage': ['MOBILE_SHOP'],
-  'inventory_base.view': ['MOBILE_SHOP'],
-  'jobcard_base.manage': ['MOBILE_SHOP'],
-  'jobcard_base.view': ['MOBILE_SHOP'],
-  'purchase.manage': ['MOBILE_SHOP'],
-  'purchase.view': ['MOBILE_SHOP'],
-  'supplier.manage': ['MOBILE_SHOP'],
-  'supplier.view': ['MOBILE_SHOP'],
-  'customer.manage': ['MOBILE_SHOP', 'CORE'],
-  'customer.view': ['MOBILE_SHOP', 'CORE'],
-  'report.view': ['MOBILE_SHOP', 'CORE', 'GYM'],
-  'staff.manage': ['MOBILE_SHOP', 'CORE', 'GYM'],
-  'staff.view': ['MOBILE_SHOP', 'CORE', 'GYM'],
-  'settings.manage': ['MOBILE_SHOP', 'CORE', 'GYM'],
-  'membership_base.manage': ['GYM'],
-  'membership_base.view': ['GYM'],
-  'membership.manage': ['GYM'],
-  'membership.view': ['GYM'],
-  'member.manage': ['GYM'],
-  'member.view': ['GYM'],
-  'attendance.manage': ['GYM'],
-  'attendance.view': ['GYM'],
-  'payment.manage': ['GYM'],
-  'payment.view': ['GYM'],
-  'crm.manage': ['MOBILE_SHOP'],
-  'whatsapp.manage': ['MOBILE_SHOP'],
-  'ai.use': ['CORE'],
-  'audit.view': ['CORE'],
-  'system.manage': ['CORE'],
-  'system.view': ['CORE'],
+  'mobile_shop.sale.manage': ['MOBILE_SHOP'],
+  'mobile_shop.sale.view': ['MOBILE_SHOP', 'CORE'],
+  'mobile_shop.inventory.manage': ['MOBILE_SHOP'],
+  'mobile_shop.inventory.view': ['MOBILE_SHOP'],
+  'mobile_shop.jobcard.manage': ['MOBILE_SHOP'],
+  'mobile_shop.jobcard.view': ['MOBILE_SHOP'],
+  'mobile_shop.purchase.manage': ['MOBILE_SHOP'],
+  'mobile_shop.purchase.view': ['MOBILE_SHOP'],
+  'mobile_shop.supplier.manage': ['MOBILE_SHOP'],
+  'mobile_shop.supplier.view': ['MOBILE_SHOP'],
+  'mobile_shop.customer.manage': ['MOBILE_SHOP', 'CORE'],
+  'mobile_shop.customer.view': ['MOBILE_SHOP', 'CORE'],
+  'core.report.view': ['MOBILE_SHOP', 'CORE', 'GYM'],
+  'core.staff.manage': ['MOBILE_SHOP', 'CORE', 'GYM'],
+  'core.staff.view': ['MOBILE_SHOP', 'CORE', 'GYM'],
+  'core.settings.manage': ['MOBILE_SHOP', 'CORE', 'GYM'],
+  'gym.membership_base.manage': ['GYM'],
+  'gym.membership_base.view': ['GYM'],
+  'gym.membership.manage': ['GYM'],
+  'gym.membership.view': ['GYM'],
+  'gym.member.manage': ['GYM'],
+  'gym.member.view': ['GYM'],
+  'gym.attendance.manage': ['GYM'],
+  'gym.attendance.view': ['GYM'],
+  'gym.payment.manage': ['GYM'],
+  'gym.payment.view': ['GYM'],
+  'mobile_shop.crm.manage': ['MOBILE_SHOP'],
+  'mobile_shop.whatsapp.manage': ['MOBILE_SHOP'],
+  'core.ai.use': ['CORE'],
+  'core.audit.view': ['CORE'],
+  'core.system.manage': ['CORE'],
+  'core.system.view': ['CORE'],
+  'core.admin.manage': ['CORE'],
+  'core.dashboard.view': ['CORE', 'MOBILE_SHOP', 'GYM'],
+  'core.profile.view': ['CORE', 'MOBILE_SHOP', 'GYM'],
+  'core.notification.view': ['CORE', 'MOBILE_SHOP', 'GYM'],
+  'core.billing.manage': ['CORE'],
+  'core.billing.view': ['CORE'],
+  'mobile_shop.shop.manage': ['MOBILE_SHOP'],
+  'mobile_shop.shop.view': ['MOBILE_SHOP'],
+  'mobile_shop.ledger.manage': ['MOBILE_SHOP'],
+  'mobile_shop.receipt.manage': ['MOBILE_SHOP'],
+  'mobile_shop.receipt.view': ['MOBILE_SHOP'],
+  'mobile_shop.voucher.manage': ['MOBILE_SHOP', 'CORE'],
+  'mobile_shop.voucher.view': ['MOBILE_SHOP', 'CORE'],
+  'mobile_shop.compatibility.manage': ['MOBILE_SHOP'],
+  'mobile_shop.compatibility.view': ['MOBILE_SHOP'],
 };
 
 // Permission expansion rules
 // Map a "base.action" to multiple "resource.action" pairs
 export const PERMISSION_INHERITANCE: Record<string, string[]> = {
-  'sales.manage': [
+  'mobile_shop.sale.manage': [
     'sale.create',
     'sale.update',
     'sale.delete',
@@ -58,22 +73,25 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
     'quotation.create',
     'quotation.update',
     'quotation.delete',
+    'receipt.create',
+    'receipt.view',
+    'receipt.cancel',
   ],
-  'sales.view': [
+  'mobile_shop.sale.view': [
     'sale.view',
     'quotation.view',
   ],
-  'inventory_base.manage': [
+  'mobile_shop.inventory.manage': [
     'inventory.create',
     'inventory.update',
     'inventory.delete',
     'inventory.adjust',
     'inventory.view',
   ],
-  'inventory_base.view': [
+  'mobile_shop.inventory.view': [
     'inventory.view',
   ],
-  'jobcard_base.manage': [
+  'mobile_shop.jobcard.manage': [
     'jobcard.create',
     'jobcard.update',
     'jobcard.delete',
@@ -83,57 +101,71 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
     'jobcard.view_all',
     'jobcard.add_part',
     'jobcard.remove_part',
+    'repair.bill',
+    'repair.stock_out',
   ],
-  'jobcard_base.view': [
+  'mobile_shop.jobcard.view': [
     'jobcard.view',
     'jobcard.view_assigned',
   ],
-  'purchase.manage': [
+  'mobile_shop.purchase.manage': [
     'purchase.create',
     'purchase.update',
     'purchase.delete',
     'purchase.view',
   ],
-  'purchase.view': [
+  'mobile_shop.purchase.view': [
     'purchase.view',
   ],
-  'supplier.manage': [
+  'mobile_shop.supplier.manage': [
     'supplier.create',
     'supplier.update',
     'supplier.delete',
     'supplier.view',
   ],
-  'supplier.view': [
+  'mobile_shop.supplier.view': [
     'supplier.view',
   ],
-  'customer.manage': [
+  'mobile_shop.customer.manage': [
     'customer.create',
     'customer.update',
     'customer.delete',
     'customer.view',
   ],
-  'customer.view': [
+  'mobile_shop.customer.view': [
     'customer.view',
   ],
-  'report.view': [
-    'report.view',
-    'report.sales_view',
-    'report.inventory_view',
-    'report.profit_view',
+  'core.report.view': [
+    'core.report.view',
+    'core.report.sale.view',
+    'core.report.inventory.view',
+    'core.report.profit.view',
   ],
-  'staff.manage': [
+  'core.staff.manage': [
     'staff.manage',
     'staff.invite',
     'staff.view',
   ],
-  'staff.view': [
+  'core.staff.view': [
     'staff.view',
+    'dashboard.view',
+    'notification.view',
+    'profile.view',
   ],
-  'settings.manage': [
+  'core.dashboard.view': [
+    'dashboard.view',
+  ],
+  'core.profile.view': [
+    'profile.view',
+  ],
+  'core.notification.view': [
+    'notification.view',
+  ],
+  'core.settings.manage': [
     'settings.manage',
     'settings.view',
   ],
-  'membership_base.manage': [
+  'gym.membership_base.manage': [
     'membership.create',
     'membership.renew',
     'membership.view',
@@ -141,56 +173,111 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
     'member.edit',
     'member.delete',
   ],
-  'membership_base.view': [
+  'gym.membership_base.view': [
     'membership.view',
     'member.view',
     'member.view_assigned',
   ],
-  'membership.manage': [
+  'gym.membership.manage': [
     'membership.create',
     'membership.renew',
     'membership.view',
   ],
-  'member.manage': [
+  'gym.member.manage': [
     'member.create',
     'member.edit',
     'member.delete',
     'member.view',
   ],
-  'attendance.manage': [
+  'gym.attendance.manage': [
     'attendance.mark',
     'attendance.view',
   ],
-  'attendance.view': [
+  'gym.attendance.view': [
     'attendance.view',
   ],
-  'payment.manage': [
+  'gym.payment.manage': [
     'payment.collect',
     'payment.view',
   ],
-  'payment.view': [
+  'gym.payment.view': [
     'payment.view',
   ],
-  'crm.manage': [
-    'crm.manage_followup',
+  'mobile_shop.crm.manage': [
+    'crm.manage',
     'crm.view',
+    'crm.manage_followup',
     'crm.view_timeline',
   ],
-  'whatsapp.manage': [
+  'mobile_shop.receipt.manage': [
+    'receipt.create',
+    'receipt.view',
+    'receipt.cancel',
+  ],
+  'mobile_shop.receipt.view': [
+    'receipt.view',
+  ],
+  'mobile_shop.voucher.manage': [
+    'voucher.create',
+    'voucher.view',
+    'voucher.cancel',
+  ],
+  'mobile_shop.voucher.view': [
+    'voucher.view',
+  ],
+  'mobile_shop.whatsapp.manage': [
     'whatsapp.template_manage',
     'whatsapp.automation_manage',
     'whatsapp.settings_manage',
     'whatsapp.view_dashboard',
     'whatsapp.send',
   ],
-  'system.manage': [
+  'core.system.manage': [
     'system.manage',
     'system.view',
     'tenant.manage',
     'tenant.view',
   ],
-  'system.view': [
+  'core.system.view': [
     'system.view',
     'tenant.view',
+  ],
+  'core.admin.manage': [
+     'system.view',
+     'system.manage',
+     'settings.manage',
+     'staff.manage',
+     'report.view'
+  ],
+  'core.billing.manage': [
+    'billing.manage',
+    'billing.view',
+  ],
+  'core.billing.view': [
+    'billing.view',
+  ],
+  'mobile_shop.shop.manage': [
+    'shop.manage',
+    'shop.view',
+  ],
+  'mobile_shop.shop.view': [
+    'shop.view',
+  ],
+  'mobile_shop.ledger.manage': [
+    'ledger.view',
+    'ledger.collect',
+    'ledger.manage',
+    'voucher.create',
+    'voucher.view',
+    'voucher.cancel',
+  ],
+  'mobile_shop.compatibility.manage': [
+    'compatibility.view',
+    'compatibility.manage',
+    'compatibility.autocomplete',
+  ],
+  'mobile_shop.compatibility.view': [
+    'compatibility.view',
+    'compatibility.autocomplete',
   ],
 };
