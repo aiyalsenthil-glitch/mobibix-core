@@ -28,7 +28,7 @@ import { PERMISSIONS } from '../../security/permission-registry';
 @ModuleScope(ModuleType.MOBILE_SHOP)
 @ModulePermission('crm')
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
-@Roles(UserRole.OWNER, UserRole.STAFF)
+@Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.TECHNICIAN)
 export class FollowUpsController {
   constructor(private readonly service: FollowUpsService) {}
 

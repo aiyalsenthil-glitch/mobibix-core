@@ -24,7 +24,7 @@ import { ModuleType, UserRole } from '@prisma/client';
 @ModuleScope(ModuleType.MOBILE_SHOP)
 @ModulePermission('crm')
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, TenantStatusGuard, GranularPermissionGuard)
-@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.STAFF)
+@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF, UserRole.TECHNICIAN, UserRole.ACCOUNTANT)
 export class CrmDashboardController {
   constructor(private readonly dashboardService: CrmDashboardService) {}
 
