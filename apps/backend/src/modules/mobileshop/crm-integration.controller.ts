@@ -34,7 +34,7 @@ import { CreateFollowUpDto } from '../../core/follow-ups/dto/create-follow-up.dt
 @ModuleScope(ModuleType.MOBILE_SHOP)
 @ModulePermission('crm')
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
-@Roles(UserRole.OWNER, UserRole.STAFF)
+@Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.TECHNICIAN)
 export class MobileShopCrmController extends TenantScopedController {
   constructor(
     private readonly crmIntegration: CrmIntegrationService,

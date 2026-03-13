@@ -444,6 +444,7 @@ export const roleTemplates = [
       'core.dashboard.view',
       'mobile_shop.shop.view',
       'core.profile.view',
+      'core.notification.view',
       'core.billing.view',
       'core.ai.use',
       'core.daily_closing.manage',
