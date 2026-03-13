@@ -1,4 +1,4 @@
-import { CompatibilityFinderClient } from "./CompatibilityFinderClient";
+import CompatibilityFinderClient from "./CompatibilityFinderClient";
 
 export const metadata = {
   title: "Compatibility Finder | MobiBix",

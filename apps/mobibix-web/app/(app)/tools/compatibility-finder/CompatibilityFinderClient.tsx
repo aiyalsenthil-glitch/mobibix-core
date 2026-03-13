@@ -177,8 +177,10 @@ export default function CompatibilityFinderClient() {
   return (
     <div className="space-y-8 pb-20">
       {/* Search Header */}
-      <Card className="border-none shadow-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
+      <Card className="border-none shadow-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 relative">
+        <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
+        </div>
         <CardHeader className="relative z-10 pt-10 pb-6">
           <div className="flex items-center gap-3 mb-4">
              <div className="p-2 bg-white/10 rounded-xl backdrop-blur-md">
@@ -216,7 +218,7 @@ export default function CompatibilityFinderClient() {
             {showSuggestions && suggestions.length > 0 && (
               <div 
                 ref={suggestionRef}
-                className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+                className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-[100] overflow-hidden max-h-72 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200"
               >
                 {suggestions.map((suggestion) => (
                   <button

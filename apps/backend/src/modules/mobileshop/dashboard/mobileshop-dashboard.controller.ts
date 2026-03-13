@@ -34,7 +34,7 @@ export class MobileShopDashboardController extends TenantScopedController {
     return this.dashboardService.getOwnerDashboard(tenantId, shopId, skipCache);
   }
 
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
   @RequirePermission(PERMISSIONS.CORE.DASHBOARD.VIEW)
   @Get('shop-breakdown')
   getShopBreakdown(@Req() req: any) {

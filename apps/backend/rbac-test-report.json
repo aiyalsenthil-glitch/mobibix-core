@@ -85,9 +85,9 @@
     "Module": "Purchase",
     "Action": "GET",
     "Endpoint": "/purchases?shopId=cmmf1dbed000slevoyvirr5h4",
-    "Response": 200,
+    "Response": 403,
     "Result": "PASS",
-    "HasPerm": "YES"
+    "HasPerm": "NO"
   },
   {
     "Staff": "staff_qa_2@test.com",
@@ -205,9 +205,9 @@
     "Module": "Sales",
     "Action": "GET",
     "Endpoint": "/mobileshop/sales/invoices?shopId=cmmf1dbed000slevoyvirr5h4",
-    "Response": 200,
+    "Response": 403,
     "Result": "PASS",
-    "HasPerm": "YES"
+    "HasPerm": "NO"
   },
   {
     "Staff": "staff_qa_5@test.com",
@@ -225,9 +225,9 @@
     "Module": "Inventory",
     "Action": "GET",
     "Endpoint": "/mobileshop/inventory/stock-levels?shopId=cmmf1dbed000slevoyvirr5h4",
-    "Response": 403,
+    "Response": 200,
     "Result": "PASS",
-    "HasPerm": "NO"
+    "HasPerm": "YES"
   },
   {
     "Staff": "staff_qa_5@test.com",
@@ -251,7 +251,7 @@
   },
   {
     "Staff": "staff_qa_6@test.com",
-    "Role": "GYM_OWNER",
+    "Role": "RECEPTIONIST",
     "Module": "Sales",
     "Action": "GET",
     "Endpoint": "/mobileshop/sales/invoices?shopId=cmmf1dbed000slevoyvirr5h4",
@@ -261,7 +261,7 @@
   },
   {
     "Staff": "staff_qa_6@test.com",
-    "Role": "GYM_OWNER",
+    "Role": "RECEPTIONIST",
     "Module": "Jobcard",
     "Action": "GET",
     "Endpoint": "/mobileshop/shops/cmmf1dbed000slevoyvirr5h4/job-cards",
@@ -271,7 +271,7 @@
   },
   {
     "Staff": "staff_qa_6@test.com",
-    "Role": "GYM_OWNER",
+    "Role": "RECEPTIONIST",
     "Module": "Inventory",
     "Action": "GET",
     "Endpoint": "/mobileshop/inventory/stock-levels?shopId=cmmf1dbed000slevoyvirr5h4",
@@ -281,7 +281,7 @@
   },
   {
     "Staff": "staff_qa_6@test.com",
-    "Role": "GYM_OWNER",
+    "Role": "RECEPTIONIST",
     "Module": "Purchase",
     "Action": "GET",
     "Endpoint": "/purchases?shopId=cmmf1dbed000slevoyvirr5h4",
@@ -291,6 +291,56 @@
   },
   {
     "Staff": "staff_qa_6@test.com",
+    "Role": "RECEPTIONIST",
+    "Module": "Reports",
+    "Action": "GET",
+    "Endpoint": "/mobileshop/reports/sales/summary?shopId=cmmf1dbed000slevoyvirr5h4",
+    "Response": 403,
+    "Result": "PASS",
+    "HasPerm": "NO"
+  },
+  {
+    "Staff": "staff_qa_7@test.com",
+    "Role": "GYM_OWNER",
+    "Module": "Sales",
+    "Action": "GET",
+    "Endpoint": "/mobileshop/sales/invoices?shopId=cmmf1dbed000slevoyvirr5h4",
+    "Response": 403,
+    "Result": "PASS",
+    "HasPerm": "NO"
+  },
+  {
+    "Staff": "staff_qa_7@test.com",
+    "Role": "GYM_OWNER",
+    "Module": "Jobcard",
+    "Action": "GET",
+    "Endpoint": "/mobileshop/shops/cmmf1dbed000slevoyvirr5h4/job-cards",
+    "Response": 403,
+    "Result": "PASS",
+    "HasPerm": "NO"
+  },
+  {
+    "Staff": "staff_qa_7@test.com",
+    "Role": "GYM_OWNER",
+    "Module": "Inventory",
+    "Action": "GET",
+    "Endpoint": "/mobileshop/inventory/stock-levels?shopId=cmmf1dbed000slevoyvirr5h4",
+    "Response": 403,
+    "Result": "PASS",
+    "HasPerm": "NO"
+  },
+  {
+    "Staff": "staff_qa_7@test.com",
+    "Role": "GYM_OWNER",
+    "Module": "Purchase",
+    "Action": "GET",
+    "Endpoint": "/purchases?shopId=cmmf1dbed000slevoyvirr5h4",
+    "Response": 403,
+    "Result": "PASS",
+    "HasPerm": "NO"
+  },
+  {
+    "Staff": "staff_qa_7@test.com",
     "Role": "GYM_OWNER",
     "Module": "Reports",
     "Action": "GET",
@@ -300,7 +350,7 @@
     "HasPerm": "YES"
   },
   {
-    "Staff": "staff_qa_7@test.com",
+    "Staff": "staff_qa_8@test.com",
     "Role": "GYM_MANAGER",
     "Module": "Sales",
     "Action": "GET",
@@ -310,7 +360,7 @@
     "HasPerm": "NO"
   },
   {
-    "Staff": "staff_qa_7@test.com",
+    "Staff": "staff_qa_8@test.com",
     "Role": "GYM_MANAGER",
     "Module": "Jobcard",
     "Action": "GET",
@@ -320,7 +370,7 @@
     "HasPerm": "NO"
   },
   {
-    "Staff": "staff_qa_7@test.com",
+    "Staff": "staff_qa_8@test.com",
     "Role": "GYM_MANAGER",
     "Module": "Inventory",
     "Action": "GET",
@@ -330,7 +380,7 @@
     "HasPerm": "NO"
   },
   {
-    "Staff": "staff_qa_7@test.com",
+    "Staff": "staff_qa_8@test.com",
     "Role": "GYM_MANAGER",
     "Module": "Purchase",
     "Action": "GET",
@@ -340,58 +390,8 @@
     "HasPerm": "NO"
   },
   {
-    "Staff": "staff_qa_7@test.com",
+    "Staff": "staff_qa_8@test.com",
     "Role": "GYM_MANAGER",
-    "Module": "Reports",
-    "Action": "GET",
-    "Endpoint": "/mobileshop/reports/sales/summary?shopId=cmmf1dbed000slevoyvirr5h4",
-    "Response": 200,
-    "Result": "PASS",
-    "HasPerm": "YES"
-  },
-  {
-    "Staff": "staff_qa_8@test.com",
-    "Role": "RECEPTIONIST",
-    "Module": "Sales",
-    "Action": "GET",
-    "Endpoint": "/mobileshop/sales/invoices?shopId=cmmf1dbed000slevoyvirr5h4",
-    "Response": 403,
-    "Result": "PASS",
-    "HasPerm": "NO"
-  },
-  {
-    "Staff": "staff_qa_8@test.com",
-    "Role": "RECEPTIONIST",
-    "Module": "Jobcard",
-    "Action": "GET",
-    "Endpoint": "/mobileshop/shops/cmmf1dbed000slevoyvirr5h4/job-cards",
-    "Response": 403,
-    "Result": "PASS",
-    "HasPerm": "NO"
-  },
-  {
-    "Staff": "staff_qa_8@test.com",
-    "Role": "RECEPTIONIST",
-    "Module": "Inventory",
-    "Action": "GET",
-    "Endpoint": "/mobileshop/inventory/stock-levels?shopId=cmmf1dbed000slevoyvirr5h4",
-    "Response": 403,
-    "Result": "PASS",
-    "HasPerm": "NO"
-  },
-  {
-    "Staff": "staff_qa_8@test.com",
-    "Role": "RECEPTIONIST",
-    "Module": "Purchase",
-    "Action": "GET",
-    "Endpoint": "/purchases?shopId=cmmf1dbed000slevoyvirr5h4",
-    "Response": 403,
-    "Result": "PASS",
-    "HasPerm": "NO"
-  },
-  {
-    "Staff": "staff_qa_8@test.com",
-    "Role": "RECEPTIONIST",
     "Module": "Reports",
     "Action": "GET",
     "Endpoint": "/mobileshop/reports/sales/summary?shopId=cmmf1dbed000slevoyvirr5h4",

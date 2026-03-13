@@ -83,7 +83,7 @@ export class MobileShopCrmController extends TenantScopedController {
   /**
    * GET /mobileshop/crm/follow-ups/counts
    */
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.MANAGE_FOLLOWUP)
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW)
   @Get('follow-ups/counts')
   async getFollowUpCounts(@Request() req) {
     const tenantId = req.user.tenantId;

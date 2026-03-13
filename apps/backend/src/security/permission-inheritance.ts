@@ -36,7 +36,9 @@ export const BASE_PERMISSIONS: Record<string, string[]> = {
   'gym.payment.manage': ['GYM'],
   'gym.payment.view': ['GYM'],
   'mobile_shop.crm.manage': ['MOBILE_SHOP'],
+  'mobile_shop.crm.view': ['MOBILE_SHOP'],
   'mobile_shop.whatsapp.manage': ['MOBILE_SHOP'],
+  'mobile_shop.whatsapp.view': ['MOBILE_SHOP'],
   'core.ai.use': ['CORE'],
   'core.audit.view': ['CORE'],
   'core.system.manage': ['CORE'],
@@ -56,6 +58,16 @@ export const BASE_PERMISSIONS: Record<string, string[]> = {
   'mobile_shop.voucher.view': ['MOBILE_SHOP', 'CORE'],
   'mobile_shop.compatibility.manage': ['MOBILE_SHOP'],
   'mobile_shop.compatibility.view': ['MOBILE_SHOP'],
+  'mobile_shop.loyalty.manage': ['MOBILE_SHOP'],
+  'mobile_shop.loyalty.view': ['MOBILE_SHOP'],
+  'core.daily_closing.manage': ['MOBILE_SHOP', 'CORE'],
+  'core.daily_closing.view': ['MOBILE_SHOP', 'CORE'],
+  'core.stock_verification.manage': ['MOBILE_SHOP', 'CORE'],
+  'core.stock_verification.view': ['MOBILE_SHOP', 'CORE'],
+  'core.expense.manage': ['MOBILE_SHOP', 'CORE'],
+  'core.expense.view': ['MOBILE_SHOP', 'CORE'],
+  'core.monthly_report.view': ['MOBILE_SHOP', 'CORE'],
+  'core.shrinkage.view': ['MOBILE_SHOP', 'CORE'],
 };
 
 // Permission expansion rules
@@ -76,20 +88,32 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
     'receipt.create',
     'receipt.view',
     'receipt.cancel',
+    'credit_note.view',
+    'credit_note.create',
+    'credit_note.issue',
+    'credit_note.apply',
+    'credit_note.refund',
+    'credit_note.void',
   ],
   'mobile_shop.sale.view': [
     'sale.view',
     'quotation.view',
+    'receipt.view',
+    'credit_note.view',
   ],
   'mobile_shop.inventory.manage': [
     'inventory.create',
     'inventory.update',
+    'inventory.edit',
     'inventory.delete',
     'inventory.adjust',
     'inventory.view',
+    'stock.view',
+    'stock.adjust',
   ],
   'mobile_shop.inventory.view': [
     'inventory.view',
+    'stock.view',
   ],
   'mobile_shop.jobcard.manage': [
     'jobcard.create',
@@ -145,9 +169,11 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
     'staff.manage',
     'staff.invite',
     'staff.view',
+    'system.view',
   ],
   'core.staff.view': [
     'staff.view',
+    'system.view',
     'dashboard.view',
     'notification.view',
     'profile.view',
@@ -164,6 +190,14 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
   'core.settings.manage': [
     'settings.manage',
     'settings.view',
+    'tenant.view',
+    'tenant.manage',
+    'billing.view',
+  ],
+  'core.settings.view': [
+    'settings.view',
+    'tenant.view',
+    'billing.view',
   ],
   'gym.membership_base.manage': [
     'membership.create',
@@ -208,6 +242,11 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
     'crm.view',
     'crm.manage_followup',
     'crm.view_timeline',
+    'crm.send_whatsapp',
+  ],
+  'mobile_shop.crm.view': [
+    'crm.view',
+    'crm.view_timeline',
   ],
   'mobile_shop.receipt.manage': [
     'receipt.create',
@@ -229,8 +268,17 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
     'whatsapp.template_manage',
     'whatsapp.automation_manage',
     'whatsapp.settings_manage',
+    'whatsapp.settings_view',
     'whatsapp.view_dashboard',
+    'whatsapp.view_numbers',
+    'whatsapp.view_logs',
     'whatsapp.send',
+    'whatsapp.view',
+  ],
+  'mobile_shop.whatsapp.view': [
+    'whatsapp.view_dashboard',
+    'whatsapp.view_logs',
+    'whatsapp.settings_view',
   ],
   'core.system.manage': [
     'system.manage',
@@ -279,5 +327,40 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
   'mobile_shop.compatibility.view': [
     'compatibility.view',
     'compatibility.autocomplete',
+  ],
+  'mobile_shop.loyalty.manage': [
+    'loyalty.view',
+    'loyalty.manage',
+  ],
+  'mobile_shop.loyalty.view': [
+    'loyalty.view',
+  ],
+  'core.daily_closing.manage': [
+    'daily_closing.view',
+    'daily_closing.manage',
+  ],
+  'core.daily_closing.view': [
+    'daily_closing.view',
+  ],
+  'core.stock_verification.manage': [
+    'stock_verification.view',
+    'stock_verification.manage',
+  ],
+  'core.stock_verification.view': [
+    'stock_verification.view',
+  ],
+  'core.expense.manage': [
+    'expense.view',
+    'expense.create',
+    'expense.manage',
+  ],
+  'core.expense.view': [
+    'expense.view',
+  ],
+  'core.monthly_report.view': [
+    'monthly_report.view',
+  ],
+  'core.shrinkage.view': [
+    'shrinkage.view',
   ],
 };

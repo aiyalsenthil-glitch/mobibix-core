@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Query, UseGuards, Req } from '@nestjs/common';
 import { PermissionService } from '../permissions/permissions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
@@ -52,5 +52,16 @@ export class RbacDebugController {
       shopId: shopId || 'global',
       permissions: perms,
     };
+  }
+
+  @ApiOperation({ summary: 'Flush permission cache for current user (use after role changes)' })
+  @Post('flush-my-cache')
+  @RequirePermission(PERMISSIONS.CORE.PROFILE.VIEW)
+  async flushMyCache(@Req() req: any) {
+    await this.permissionService.invalidateUserPermissions(
+      req.user.userId,
+      req.user.tenantId,
+    );
+    return { flushed: true, userId: req.user.userId };
   }
 }

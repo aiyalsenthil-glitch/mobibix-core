@@ -97,55 +97,41 @@ export class JobCardsService {
   }
 
   async assertAccess(user: any, shopId: string) {
-    // OWNER → any shop under tenant
-    if (user.role === 'OWNER') {
+    // 1. SYSTEM ROLES (Absolute access to all shops in tenant)
+    if (user.role === 'OWNER' || user.isSystemOwner) {
       const shop = await this.prisma.shop.findFirst({
-        where: {
-          id: shopId,
-          tenantId: user.tenantId,
-        },
+        where: { id: shopId, tenantId: user.tenantId },
       });
 
       if (!shop) {
-        // Check if tenant has any shops
-        const shopCount = await this.prisma.shop.count({
-          where: { tenantId: user.tenantId },
-        });
-
-        if (shopCount === 0) {
-          throw new BadRequestException(
-            'NO_SHOPS_FOUND|Create a shop to start creating job cards.|/mobileshop/shops',
-          );
-        }
-
-        if (shopCount === 0) {
-          throw new BadRequestException(
-            'NO_SHOPS_FOUND|Create a shop to start creating job cards.|/mobileshop/shops',
-          );
-        }
         throw new BadRequestException('Shop not accessible');
       }
-
       return;
     }
 
-    // STAFF → only assigned shop
-    if (user.role === 'STAFF') {
+    // 2. SHOP-RESTRICTED ROLES (Must be assigned to the specific shop)
+    const SHOP_LEVEL_ROLES = ['MANAGER', 'STAFF', 'ACCOUNTANT', 'TECHNICIAN'];
+    
+    if (SHOP_LEVEL_ROLES.includes(user.role)) {
       const staff = await this.prisma.shopStaff.findFirst({
         where: {
-          userId: user.sub,
+          userId: user.id || user.sub,
           shopId,
           tenantId: user.tenantId,
-          role: 'STAFF',
           isActive: true,
         },
       });
 
       if (!staff) {
-        throw new BadRequestException('Shop not accessible');
+        throw new BadRequestException('Shop not accessible or you are not assigned to this shop');
       }
 
       return;
+    }
+
+    // 3. INTERNAL ADMINS
+    if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+        return;
     }
 
     throw new BadRequestException('Access denied');

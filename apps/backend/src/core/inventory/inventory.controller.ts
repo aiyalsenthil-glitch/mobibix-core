@@ -23,6 +23,7 @@ import { UserRole, ModuleType } from '@prisma/client';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 type ReqWithUser = { user: { tenantId: string } };
 
@@ -37,14 +38,14 @@ export class InventoryController {
   ) {}
 
   @Post('product')
-  @RequirePermission(ModuleType.MOBILE_SHOP, 'inventory', 'create')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.CREATE)
   async createProduct(@Req() req: ReqWithUser, @Body() dto: CreateProductDto) {
     const tenantId = req.user.tenantId;
     return await this.service.createProduct(tenantId, dto);
   }
 
   @Patch('product/:id')
-  @RequirePermission(ModuleType.MOBILE_SHOP, 'inventory', 'edit')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.UPDATE)
   async updateProduct(
     @Req() req: ReqWithUser,
     @Param('id') id: string,
@@ -55,14 +56,14 @@ export class InventoryController {
   }
 
   @Post('stock-in')
-  @RequirePermission(ModuleType.MOBILE_SHOP, 'inventory', 'adjust')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.ADJUST)
   async stockIn(@Req() req: ReqWithUser, @Body() dto: StockInDto) {
     const tenantId = req.user.tenantId;
     return await this.stockService.stockInSingleProduct(tenantId, dto);
   }
 
   @Get('low-stock')
-  @RequirePermission(ModuleType.MOBILE_SHOP, 'inventory', 'view')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.VIEW)
   async getLowStock(
     @Req() req: ReqWithUser,
     @Query('threshold') threshold?: string,

@@ -88,6 +88,7 @@ export class AuthService {
 
     // If we have a tenant context, fetch dynamic permissions
     if (tenantId) {
+      await this.permissionService.invalidateUserPermissions(user.id, tenantId);
       permissions = await this.permissionService.getConsolidatedPermissions(
         user.id,
         tenantId,
@@ -103,7 +104,8 @@ export class AuthService {
       role,
       isSystemOwner,
       tokenVersion: user.tokenVersion,
-      permissions,
+      // 🚀 NOTE: Permissions removed from JWT to keep cookie size < 4KB.
+      // GranularPermissionGuard fetches them from DB/Cache using userId.
     });
 
     // Refresh Token Rotation: Revoke old and create new
@@ -162,7 +164,9 @@ export class AuthService {
       let permissions: (string | any)[] = ROLE_PERMISSIONS[roleKey] || [];
 
       // If we have a tenant context, fetch dynamic permissions
+      // Always invalidate cache on login so users get fresh permissions immediately
       if (tenantId && !isSystemOwner) {
+        await this.permissionService.invalidateUserPermissions(user.id, tenantId);
         permissions = await this.permissionService.getConsolidatedPermissions(
           user.id,
           tenantId,
@@ -176,7 +180,7 @@ export class AuthService {
         role,
         isSystemOwner,
         tokenVersion: user.tokenVersion,
-        permissions, // Include permissions in JWT for frontend/guards
+        // 🚀 NOTE: Permissions removed from JWT to keep cookie size < 4KB.
       });
 
       const refreshToken = await this.tokenFactory.createRefreshToken(user.id);
@@ -320,6 +324,7 @@ export class AuthService {
     let permissions: (string | any)[] = ROLE_PERMISSIONS[roleKey] || [];
 
     if (tenantId && !isSystemOwner) {
+      await this.permissionService.invalidateUserPermissions(user.id, tenantId);
       permissions = await this.permissionService.getConsolidatedPermissions(
         user.id,
         tenantId,
@@ -333,7 +338,6 @@ export class AuthService {
       role,
       isSystemOwner,
       tokenVersion: user.tokenVersion,
-      permissions,
     });
 
     return {

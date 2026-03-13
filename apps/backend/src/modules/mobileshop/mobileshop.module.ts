@@ -10,6 +10,7 @@ import { B2BModule } from './b2b/b2b.module';
 import { QuotationsModule } from './quotations/quotations.module';
 import { CreditNotesModule } from './credit-notes/credit-notes.module';
 import { CompatibilityModule } from './compatibility/compatibility.module';
+import { OperationsModule } from './operations/operations.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { CompatibilityModule } from './compatibility/compatibility.module';
     QuotationsModule,
     CreditNotesModule,
     CompatibilityModule,
+    OperationsModule,
   ],
 })
 export class MobileShopModule {}

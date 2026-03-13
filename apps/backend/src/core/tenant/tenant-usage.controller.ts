@@ -242,6 +242,7 @@ export class TenantUsageController {
    * Returns the AI token quota for the current tenant's active subscription.
    * Used by frontend AI quota badge. Safe to call even in grace period.
    */
+   @Roles(UserRole.OWNER, UserRole.MANAGER)
    @RequirePermission(PERMISSIONS.CORE.DASHBOARD.VIEW)
   @Get('ai-quota')
   @SkipSubscriptionCheck()

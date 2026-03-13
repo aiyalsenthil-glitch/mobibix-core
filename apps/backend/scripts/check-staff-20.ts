@@ -2,11 +2,11 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-    const userId = '42e6c927-09dc-4dca-be6f-5f050e4aeace';
-    console.log(`Checking user: ${userId}`);
+    const email = 'staff20@gmail.com';
+    console.log(`Checking user: ${email}`);
     
-    const user: any = await prisma.user.findUnique({
-        where: { id: userId },
+    const user: any = await prisma.user.findFirst({
+        where: { email },
         include: {
             userTenants: true,
             shopStaffs: {
@@ -34,28 +34,24 @@ async function main() {
         return;
     }
 
-    console.log('User Email:', user.email);
-    console.log('User Tenants (count):', user.userTenants.length);
-    for (const ut of user.userTenants) {
-        console.log(` - TenantID: ${ut.tenantId}, isSystemOwner: ${ut.isSystemOwner}, legacyRole: ${ut.role}`);
-    }
-
-    console.log('Shop Staff assignments (count):', user.shopStaffs.length);
+    console.log(`User ID: ${user.id}`);
+    console.log('UserTenants:', user.userTenants.map((ut: any) => ({ tenantId: ut.tenantId, role: ut.role, isSystemOwner: ut.isSystemOwner })));
+    
     for (const ss of user.shopStaffs) {
-        console.log(` - ShopID: ${ss.shopId}, roleId: ${ss.roleId}, legacyRole: ${ss.role}`);
+        console.log(` - ShopID: ${ss.shopId}, role: ${ss.dynamicRole?.name} (ID: ${ss.dynamicRole?.id})`);
         if (ss.dynamicRole) {
-            console.log(`   Dynamic Role: ${ss.dynamicRole.name} (isSystem: ${ss.dynamicRole.isSystem})`);
             const perms = ss.dynamicRole.rolePermissions.map((rp: any) => 
                 `${rp.permission.resource.moduleType}.${rp.permission.resource.name}.${rp.permission.action}`
             );
-            console.log(`   Permissions (${perms.length}):`, perms.slice(0, 10).join(', '), perms.length > 10 ? '...' : '');
-            if (perms.includes('MOBILE_SHOP.shop.view')) {
-                 console.log('✅ FOUND MOBILE_SHOP.shop.view');
-            } else {
-                 console.log('❌ MISSING MOBILE_SHOP.shop.view');
-            }
-        } else {
-            console.log('   No dynamic role assigned!');
+            console.log('Perms count:', perms.length);
+            const needed = ['CORE.billing.view', 'MOBILE_SHOP.crm.view', 'MOBILE_SHOP.shop.view'];
+            needed.forEach(n => {
+                if (perms.includes(n)) {
+                    console.log(`✅ FOUND ${n}`);
+                } else {
+                    console.log(`❌ MISSING ${n}`);
+                }
+            });
         }
     }
 }

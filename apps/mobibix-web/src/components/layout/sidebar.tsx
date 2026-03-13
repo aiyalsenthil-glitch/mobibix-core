@@ -28,6 +28,10 @@ import {
   FileMinus,
   Sparkles,
   Receipt,
+  Lock,
+  WalletCards,
+  ClipboardCheck,
+  CalendarDays,
 } from "lucide-react";
 import { AiQuotaBadge } from "@/components/common/AiQuotaBadge";
 
@@ -45,11 +49,11 @@ const navItems: NavItem[] = [
   { label: "Job Cards", href: "/jobcards", icon: Wrench, requiredPermission: "mobile_shop.jobcard.view", category: "Transactions" },
   { label: "Quotations", href: "/quotations", icon: ClipboardList, requiredPermission: "mobile_shop.quotation.view", category: "Transactions" },
   { label: "Credit Notes", href: "/credit-notes", icon: FileMinus, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
-  { label: "Sales Receipts", href: "/receipts", icon: CreditCard, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
-  { label: "Payment Vouchers", href: "/vouchers", icon: Receipt, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
+  { label: "Sales Receipts", href: "/receipts", icon: CreditCard, requiredPermission: "mobile_shop.receipt.view", category: "Transactions" },
+  { label: "Payment Vouchers", href: "/vouchers", icon: Receipt, requiredPermission: "mobile_shop.voucher.view", category: "Transactions" },
   { label: "Customers", href: "/customers", icon: Users, requiredPermission: "mobile_shop.customer.view", category: "CRM & Marketing" },
-  { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare, requiredPermission: "mobile_shop.customer.view", category: "CRM & Marketing" },
-  { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift, requiredPermission: "core.settings.manage", category: "CRM & Marketing" },
+  { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare, requiredPermission: "mobile_shop.whatsapp.view", category: "CRM & Marketing" },
+  { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift, requiredPermission: "mobile_shop.loyalty.view", category: "CRM & Marketing" },
   { label: "Products", href: "/products", icon: Tags, requiredPermission: "mobile_shop.inventory.view", category: "Inventory" },
   { label: "Inventory", href: "/inventory", icon: PackageSearch, requiredPermission: "mobile_shop.inventory.view", category: "Inventory" },
   ...(process.env.NEXT_PUBLIC_ENABLE_RESTOCK === 'true'
@@ -62,7 +66,11 @@ const navItems: NavItem[] = [
   { label: "Shops", href: "/shops", icon: Store, requiredPermission: "core.settings.manage", category: "Management" },
   { label: "Staff Management", href: "/staff-management", icon: ShieldCheck, requiredPermission: "core.staff.manage", category: "Management" },
   { label: "Settings", href: "/settings", icon: Settings, requiredPermission: "core.settings.manage", category: "Management" },
-  { label: "Compatibility Finder", href: "/tools/compatibility-finder", icon: Sparkles, requiredPermission: "mobile_shop.compatibility.view", category: "Tools" },
+  { label: "Compatibility Finder", href: "/tools/compatibility-finder", icon: Sparkles,       requiredPermission: "mobile_shop.compatibility.view", category: "Tools" },
+  { label: "Daily Closing",        href: "/tools/daily-closing",        icon: Lock,            requiredPermission: "core.daily_closing.view",         category: "Tools" },
+  { label: "Expense Manager",      href: "/tools/expenses",             icon: WalletCards,     requiredPermission: "core.expense.view",               category: "Tools" },
+  { label: "Stock Verification",   href: "/tools/stock-verification",   icon: ClipboardCheck,  requiredPermission: "core.stock_verification.view",     category: "Tools" },
+  { label: "Monthly Report",       href: "/tools/monthly-report",       icon: CalendarDays,    requiredPermission: "core.report.view",                 category: "Tools" },
 ];
 
 interface SidebarProps {
@@ -258,22 +266,26 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
             </Link>
           )}
 
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent("open-ai-chat", { detail: { prompt: "" } }))}
-             className={`flex items-center justify-center gap-2 py-2 rounded-lg transition-all duration-200 w-full font-medium ${isDark ? 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg shadow-indigo-500/10' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'}`}
-            title={effectiveCollapsed ? "MobiBix AI Assistant" : ""}
-          >
-            <Sparkles size={15} />
-            {!effectiveCollapsed && <span className="text-[13px] tracking-wide">MobiBix AI</span>}
-          </button>
+          {/* AI Features — Only for Owners and Managers */}
+          {(authUser?.role === 'OWNER' || authUser?.role === 'MANAGER') && (
+            <>
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent("open-ai-chat", { detail: { prompt: "" } }))}
+                className={`flex items-center justify-center gap-2 py-2 rounded-lg transition-all duration-200 w-full font-medium ${isDark ? 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg shadow-indigo-500/10' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'}`}
+                title={effectiveCollapsed ? "MobiBix AI Assistant" : ""}
+              >
+                <Sparkles size={15} />
+                {!effectiveCollapsed && <span className="text-[13px] tracking-wide">MobiBix AI</span>}
+              </button>
+              
+              {!effectiveCollapsed && (
+                <div className="mt-2">
+                  <AiQuotaBadge />
+                </div>
+              )}
+            </>
+          )}
         </div>
-
-        {/* AI Token Quota — only visible when sidebar is expanded */}
-        {!effectiveCollapsed && (
-          <div className="px-3 pb-3">
-             <AiQuotaBadge />
-          </div>
-        )}
 
       </aside>
 

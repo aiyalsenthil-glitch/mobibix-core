@@ -25,7 +25,7 @@ import { PERMISSIONS } from '../../security/permission-registry';
 @ModuleScope(ModuleType.CORE)
 @ModulePermission('system')
 @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
-@Roles(UserRole.OWNER)
+@Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
 export class RolesController {
   constructor(private readonly permissionService: PermissionService) {}
   

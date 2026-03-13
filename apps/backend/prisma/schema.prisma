@@ -115,6 +115,10 @@ model Tenant {
   quotations               Quotation[]             @relation("TenantQuotations")
   creditNotes              CreditNote[]            @relation("TenantCreditNotes")
   receipts                 Receipt[]               @relation("TenantReceipts")
+  dailyClosings            DailyClosing[]
+  cashVariances            CashVariance[]
+  stockVerifications       StockVerification[]
+  dailyMetrics             DailyMetrics[]
   shops                    Shop[]
   shopProducts             ShopProduct[]
   shopStaffs               ShopStaff[]
@@ -1342,6 +1346,10 @@ model Shop {
   loyaltyConfig       LoyaltyConfig?
   loyaltyTransactions LoyaltyTransaction[]
   creditNotes         CreditNote[]
+  dailyClosings       DailyClosing[]
+  cashVariances       CashVariance[]
+  stockVerifications  StockVerification[]
+  dailyMetrics        DailyMetrics[]
 
   @@unique([tenantId, invoicePrefix])
   @@index([tenantId])
@@ -1544,8 +1552,9 @@ model ShopProduct {
   global           GlobalProduct?    @relation(fields: [globalProductId], references: [id])
   shop             Shop              @relation(fields: [shopId], references: [id])
   tenant           Tenant            @relation(fields: [tenantId], references: [id])
-  stockCorrections StockCorrection[]
-  stockEntries     StockLedger[]
+  stockCorrections       StockCorrection[]
+  stockEntries           StockLedger[]
+  stockVerificationItems StockVerificationItem[]
 
   // Compatibility Integration
   compatibilityGroupId String?
@@ -3311,9 +3320,216 @@ enum CreditNoteStatus {
   VOIDED
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// OPERATIONAL TOOLS — Daily Closing, Stock Verification, Daily Metrics
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum DailyClosingStatus {
+  DRAFT
+  CONFIRMED
+  REOPENED
+}
+
+enum AdjustmentReason {
+  BREAKAGE
+  DAMAGE
+  LOST
+  INTERNAL_USE
+  CORRECTION
+  SPARE_DAMAGE
+}
+
+enum StockVerificationStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum CashVarianceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model DailyClosing {
+  id       String @id @default(cuid())
+  tenantId String
+  shopId   String
+
+  date DateTime @db.Date // The business date (one per shop per day)
+
+  // Opening
+  openingBalance Int // Paisa — carried from previous confirmed closing
+
+  // Cash IN (from FinancialEntry aggregation at close time)
+  salesCash  Int @default(0)
+  salesUpi   Int @default(0)
+  salesCard  Int @default(0)
+  salesBank  Int @default(0)
+  otherIncome Int @default(0)
+
+  // Cash OUT
+  expensesCash     Int @default(0) // PaymentVoucher EXPENSE type
+  purchasePayments Int @default(0) // SupplierPayment outflows
+  refunds          Int @default(0) // CreditNote refunded amounts
+  salaryPayments   Int @default(0) // PaymentVoucher SALARY type
+  otherDeductions  Int @default(0)
+
+  // Computed closing
+  expectedClosingBalance Int // opening + in - out (computed by service, stored for audit)
+  physicalCashCounted    Int? // Staff-entered physical drawer count
+  cashDifference         Int? // physicalCashCounted - expectedClosingBalance
+
+  status    DailyClosingStatus @default(DRAFT)
+  notes     String?
+  closedBy  String // userId — required
+  closedAt  DateTime?
+
+  // Reopen audit trail
+  reopenedAt     DateTime?
+  reopenedBy     String? // userId of person who reopened
+  reopenedReason String? // "missed expense", "wrong cash count", etc.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  shop          Shop          @relation(fields: [shopId], references: [id])
+  cashVariances CashVariance[]
+
+  @@unique([tenantId, shopId, date]) // one closing per shop per day
+  @@index([tenantId, shopId, date])
+  @@map("mb_daily_closing")
+}
+
+// Tracks discrepancies between expected and physical cash
+model CashVariance {
+  id             String @id @default(cuid())
+  tenantId       String
+  shopId         String
+  dailyClosingId String
+
+  expectedCash Int // from DailyClosing.expectedClosingBalance
+  physicalCash Int // actual cash counted
+  difference   Int // physicalCash - expectedCash (negative = short)
+
+  reason     String // staff mistake / missed expense / theft / etc.
+  reportedBy String // userId
+  approvedBy String? // owner/manager userId
+  approvedAt DateTime?
+
+  status    CashVarianceStatus @default(PENDING)
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  shop        Shop         @relation(fields: [shopId], references: [id])
+  dailyClosing DailyClosing @relation(fields: [dailyClosingId], references: [id])
+
+  @@index([tenantId, shopId])
+  @@index([dailyClosingId])
+  @@map("mb_cash_variance")
+}
+
+model StockVerification {
+  id          String                  @id @default(cuid())
+  tenantId    String
+  shopId      String
+  sessionDate DateTime                @db.Date
+  status      StockVerificationStatus @default(DRAFT)
+  notes       String?
+  createdBy   String // userId — required
+  confirmedBy String?
+  confirmedAt DateTime?
+  cancelledBy String?
+  cancelledAt DateTime?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  items  StockVerificationItem[]
+  tenant Tenant                  @relation(fields: [tenantId], references: [id])
+  shop   Shop                    @relation(fields: [shopId], references: [id])
+
+  @@index([tenantId, shopId, sessionDate])
+  @@index([tenantId, status])
+  @@map("mb_stock_verification")
+}
+
+model StockVerificationItem {
+  id             String            @id @default(cuid())
+  verificationId String
+  tenantId       String
+  shopId         String
+  shopProductId  String
+
+  systemQty   Int  // snapshot of ShopProduct.quantity at session start
+  physicalQty Int  // entered by staff
+  difference  Int  // physicalQty - systemQty
+
+  reason        AdjustmentReason? // required when difference ≠ 0
+  stockLedgerId String?           // set after confirmation — links to StockLedger entry
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  verification StockVerification @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+  shopProduct  ShopProduct       @relation(fields: [shopProductId], references: [id])
+
+  @@unique([verificationId, shopProductId])
+  @@index([tenantId, shopId])
+  @@index([shopProductId])
+  @@map("mb_stock_verification_item")
+}
+
+// Pre-computed daily metrics cache — eliminates expensive dashboard queries
+model DailyMetrics {
+  id       String   @id @default(cuid())
+  tenantId String
+  shopId   String
+  date     DateTime @db.Date
+
+  // Sales
+  totalSales    Int @default(0) // Paisa
+  totalInvoices Int @default(0)
+  cashSales     Int @default(0)
+  upiSales      Int @default(0)
+  cardSales     Int @default(0)
+  creditSales   Int @default(0)
+
+  // Purchases
+  totalPurchases Int @default(0) // Paisa
+
+  // Expenses
+  totalExpenses Int @default(0) // Paisa
+
+  // Operations
+  totalJobCards     Int @default(0)
+  completedJobCards Int @default(0)
+
+  // Profit (gross — Sales - COGS)
+  grossProfit Int @default(0) // Paisa
+
+  // Inventory loss (from stock adjustments)
+  inventoryLoss Int @default(0) // Paisa
+
+  // Footfall (unique customers served)
+  footfall Int @default(0)
+
+  computedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  shop   Shop   @relation(fields: [shopId], references: [id])
+
+  @@unique([tenantId, shopId, date])
+  @@index([tenantId, shopId, date])
+  @@map("mb_daily_metrics")
+}
+
 model SystemAiConfig {
   id               String   @id @default(cuid())
-  provider         String   @default("OLLAMA") // OLLAMA, OPENAI, ANTHROPIC 
+  provider         String   @default("OLLAMA") // OLLAMA, OPENAI, ANTHROPIC
   baseUrl          String?  // e.g., http://localhost_REPLACED:11434
   apiKey           String?  // Keep null for OLLAMA, use API keys for cloud providers
   defaultModel     String   @default("llama3:8b")

@@ -179,7 +179,7 @@ export class PermissionService {
   async invalidateUserPermissions(userId: string, tenantId: string) {
     // Clear both individual check cache and consolidated set cache
     await this.cacheService.invalidatePattern(`perm:${userId}:${tenantId}:*`);
-    await this.cacheService.invalidatePattern(`user_permissions:${tenantId}:${userId}:*`);
+    await this.cacheService.invalidatePattern(`user_perms:${tenantId}:${userId}:*`);
   }
 
   async getApprovalPolicy(

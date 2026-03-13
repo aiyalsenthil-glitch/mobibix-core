@@ -31,7 +31,7 @@ import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorato
 @ModuleScope(ModuleType.MOBILE_SHOP)
 @ModulePermission('jobcard')
 @UseGuards(JwtAuthGuard, TenantRequiredGuard, RolesGuard, GranularPermissionGuard, TenantStatusGuard)
-@Roles(UserRole.OWNER, UserRole.STAFF)
+@Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ACCOUNTANT, UserRole.TECHNICIAN)
 export class JobCardsController extends TenantScopedController {
   constructor(private readonly service: JobCardsService) {
     super();

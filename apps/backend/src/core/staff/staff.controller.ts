@@ -73,7 +73,7 @@ export class StaffController {
     PlanFeatureGuard,
   )
   @RequirePermission(PERMISSIONS.CORE.STAFF.MANAGE)
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Post()
   async create(
     @Req() req: any,
@@ -102,7 +102,7 @@ export class StaffController {
     GranularPermissionGuard,
   )
   @RequirePermission(PERMISSIONS.CORE.STAFF.INVITE)
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Post('invite')
   async invite(
     @Req() req: any,
@@ -133,7 +133,7 @@ export class StaffController {
     GranularPermissionGuard,
   )
   @RequirePermission(PERMISSIONS.CORE.STAFF.VIEW)
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Get('invites')
   async listInvites(@Req() req: any) {
     return this.staffService.listInvites(req.user.tenantId);
@@ -161,7 +161,7 @@ export class StaffController {
     GranularPermissionGuard,
   )
   @RequirePermission(PERMISSIONS.CORE.STAFF.MANAGE)
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Delete('invite/:id')
   async revokeInvite(@Req() req: any, @Param('id') inviteId: string) {
     return this.staffService.revokeInvite(req.user.tenantId, inviteId);

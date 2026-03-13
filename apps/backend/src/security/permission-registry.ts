@@ -31,6 +31,13 @@ export const PERMISSIONS = {
     EXPENSE: {
       CREATE: { module: ModuleType.CORE, resource: 'expense', action: 'create' } as Permission,
       VIEW: { module: ModuleType.CORE, resource: 'expense', action: 'view' } as Permission,
+      MANAGE: { module: ModuleType.CORE, resource: 'expense', action: 'manage' } as Permission,
+    },
+    MONTHLY_REPORT: {
+      VIEW: { module: ModuleType.CORE, resource: 'monthly_report', action: 'view' } as Permission,
+    },
+    SHRINKAGE: {
+      VIEW: { module: ModuleType.CORE, resource: 'shrinkage', action: 'view' } as Permission,
     },
     SYSTEM: {
       VIEW: { module: ModuleType.CORE, resource: 'system', action: 'view' } as Permission,
@@ -77,6 +84,14 @@ export const PERMISSIONS = {
       VIEW: { module: ModuleType.CORE, resource: 'notification', action: 'view' } as Permission,
       MANAGE: { module: ModuleType.CORE, resource: 'notification', action: 'manage' } as Permission,
     },
+    DAILY_CLOSING: {
+      VIEW: { module: ModuleType.CORE, resource: 'daily_closing', action: 'view' } as Permission,
+      MANAGE: { module: ModuleType.CORE, resource: 'daily_closing', action: 'manage' } as Permission,
+    },
+    STOCK_VERIFICATION: {
+      VIEW: { module: ModuleType.CORE, resource: 'stock_verification', action: 'view' } as Permission,
+      MANAGE: { module: ModuleType.CORE, resource: 'stock_verification', action: 'manage' } as Permission,
+    },
   },
   MOBILE_SHOP: {
     SALE: {
@@ -90,6 +105,7 @@ export const PERMISSIONS = {
     INVENTORY: {
       VIEW: { module: ModuleType.MOBILE_SHOP, resource: 'inventory', action: 'view' } as Permission,
       CREATE: { module: ModuleType.MOBILE_SHOP, resource: 'inventory', action: 'create' } as Permission,
+      UPDATE: { module: ModuleType.MOBILE_SHOP, resource: 'inventory', action: 'update' } as Permission,
       ADJUST: { module: ModuleType.MOBILE_SHOP, resource: 'inventory', action: 'adjust' } as Permission,
     },
     JOBCARD: {
