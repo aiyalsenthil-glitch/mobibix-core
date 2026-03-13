@@ -16,8 +16,13 @@ export class CreateExpenseDto {
   @IsPositive()
   amount: number; // Rupees — converted to Paisa in service
 
+  @IsOptional()
   @IsString()
-  category: string; // tea | courier | petrol | salary_advance | electricity | internet | misc
+  categoryId?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string; // name of category (legacy)
 
   @IsEnum(PaymentMode)
   paymentMethod: PaymentMode;

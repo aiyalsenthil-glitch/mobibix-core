@@ -1935,7 +1935,8 @@ model PaymentVoucher {
   transactionRef      String?
   narration           String?
   globalSupplierId    String?
-  expenseCategory     String?
+  expenseCategoryId   String?
+  expenseCategory     ExpenseCategory?     @relation(fields: [expenseCategoryId], references: [id])
   linkedPurchaseId    String?
   status              VoucherStatus        @default(ACTIVE)
   createdAt           DateTime             @default(now())
@@ -1949,6 +1950,21 @@ model PaymentVoucher {
   @@index([shopId])
   @@map("mb_payment_voucher")
 }
+
+model ExpenseCategory {
+  id        String           @id @default(cuid())
+  tenantId  String
+  shopId    String?
+  name      String
+  isDefault Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  vouchers  PaymentVoucher[]
+
+  @@index([tenantId])
+  @@index([shopId])
+  @@map("mb_expense_category")
+}
+
 
 model AdvanceApplication {
   id               String         @id @default(cuid())

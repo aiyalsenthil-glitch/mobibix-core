@@ -20,6 +20,7 @@ export class ExpensesService {
         voucherType:     VoucherType.EXPENSE,
         amount:          dto.amount,
         paymentMethod:   dto.paymentMethod,
+        expenseCategoryId: dto.categoryId,
         expenseCategory: dto.category,
         narration:       dto.note,
       },

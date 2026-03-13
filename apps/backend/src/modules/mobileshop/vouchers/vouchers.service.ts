@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
-import { PaymentMode, VoucherStatus } from '@prisma/client';
+import { PaymentMode, VoucherStatus, FinanceType, FinanceRefType } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { CreateVoucherDto } from './dto/create-voucher.dto';
 import { VoucherEntity } from './entities/voucher.entity';
@@ -75,24 +75,42 @@ export class VouchersService {
           new Date(),
         );
 
-      const voucher = await this.prisma.paymentVoucher.create({
-        data: {
-          id: uuidv4(),
-          tenantId,
-          shopId,
-          voucherId: nextVoucherId,
-          voucherType: createVoucherDto.voucherType,
-          date: new Date(),
-          amount: this.toPaisa(createVoucherDto.amount),
-          paymentMethod: createVoucherDto.paymentMethod,
-          transactionRef: createVoucherDto.transactionRef,
-          narration: createVoucherDto.narration,
-          globalSupplierId: createVoucherDto.globalSupplierId || null,
-          expenseCategory: createVoucherDto.expenseCategory || null,
-          linkedPurchaseId: createVoucherDto.linkedPurchaseId || null,
-          status: VoucherStatus.ACTIVE,
-          createdBy: userId,
-        },
+      const voucher = await this.prisma.$transaction(async (tx) => {
+        const v = await tx.paymentVoucher.create({
+          data: {
+            id: uuidv4(),
+            tenantId,
+            shopId,
+            voucherId: nextVoucherId,
+            voucherType: createVoucherDto.voucherType,
+            date: new Date(),
+            amount: this.toPaisa(createVoucherDto.amount),
+            paymentMethod: createVoucherDto.paymentMethod,
+            transactionRef: createVoucherDto.transactionRef,
+            narration: createVoucherDto.narration,
+            globalSupplierId: createVoucherDto.globalSupplierId || null,
+            expenseCategoryId: createVoucherDto.expenseCategoryId || null,
+            linkedPurchaseId: createVoucherDto.linkedPurchaseId || null,
+            status: VoucherStatus.ACTIVE,
+            createdBy: userId,
+          },
+        });
+
+        // Add Financial Entry (Ledger Record)
+        await tx.financialEntry.create({
+          data: {
+            tenantId,
+            shopId,
+            type: FinanceType.OUT, // Vouchers are always payments/outflows
+            amount: v.amount,
+            mode: v.paymentMethod,
+            referenceType: v.voucherType === 'SUPPLIER' ? FinanceRefType.PURCHASE : FinanceRefType.EXPENSE,
+            referenceId: v.id,
+            note: v.narration,
+          }
+        });
+
+        return v;
       });
 
       // Convert back to Rupees for response
@@ -243,12 +261,26 @@ export class VouchersService {
     }
 
     try {
-      const cancelled = await this.prisma.paymentVoucher.update({
-        where: { id: voucherId },
-        data: {
-          status: VoucherStatus.CANCELLED,
-          narration: `${voucher.narration || ''} [CANCELLED: ${reason}]`.trim(),
-        },
+      const cancelled = await this.prisma.$transaction(async (tx) => {
+        const v = await tx.paymentVoucher.update({
+          where: { id: voucherId },
+          data: {
+            status: VoucherStatus.CANCELLED,
+            narration: `${voucher.narration || ''} [CANCELLED: ${reason}]`.trim(),
+          },
+        });
+
+        // Delete associated Financial Entry to keep ledger accurate
+        await tx.financialEntry.deleteMany({
+          where: {
+            tenantId,
+            shopId,
+            referenceId: voucherId,
+            referenceType: { in: [FinanceRefType.EXPENSE, FinanceRefType.PURCHASE] }
+          }
+        });
+
+        return v;
       });
 
       this.logger.log(

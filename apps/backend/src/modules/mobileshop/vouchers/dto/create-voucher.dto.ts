@@ -29,6 +29,10 @@ export class CreateVoucherDto {
 
   @IsOptional()
   @IsString()
+  expenseCategoryId?: string;
+
+  @IsOptional()
+  @IsString()
   expenseCategory?: string; // rent, eb, tea, donation, misc, etc.
 
   @IsOptional()
