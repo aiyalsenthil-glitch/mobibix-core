@@ -1,8 +1,10 @@
 import { authenticatedFetch, extractData } from "./auth.api";
 
-export type DailyClosingStatus = "DRAFT" | "CONFIRMED" | "REOPENED";
+export type DailyClosingStatus = "DRAFT" | "SUBMITTED" | "REOPENED";
 export type CashVarianceStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type StockVerificationStatus = "DRAFT" | "CONFIRMED" | "CANCELLED";
+export type ShiftClosingStatus = "OPEN" | "CLOSED";
+export type CashClosingMode = "DAILY_ONLY" | "SHIFT_AND_DAILY";
 export type AdjustmentReason =
   | "BREAKAGE"
   | "DAMAGE"
@@ -11,26 +13,52 @@ export type AdjustmentReason =
   | "CORRECTION"
   | "SPARE_DAMAGE";
 
+export interface CashLeakageAnalysis {
+  difference: number;
+  severity: "NONE" | "LOW" | "MEDIUM" | "HIGH";
+  suggestions: string[];
+}
+
 // ─── DAILY CLOSING ────────────────────────────────────────────────────────────
 
 export interface DailySummary {
   date: string;
   shopId: string;
   status: DailyClosingStatus | "OPEN";
-  openingBalance: number;
+  openingCash: number;
   salesCash: number;
   salesUpi: number;
   salesCard: number;
   salesBank: number;
-  otherIncome: number;
+  cashWithdrawFromBank: number;
+  cashDepositToBank: number;
+  otherCashIn: number;
+  otherCashOut: number;
   totalIn: number;
-  expensesCash: number;
-  purchasePayments: number;
-  salaryPayments: number;
-  otherDeductions: number;
-  refunds: number;
   totalOut: number;
-  expectedClosingBalance: number;
+  supplierPaymentsCash: number;
+  expenseCash: number;
+  expectedClosingCash: number;
+  reportedClosingCash: number;
+  cashDifference: number;
+  shiftInfo?: {
+    totalShifts: number;
+    closedShifts: number;
+    shifts: ShiftClosing[];
+  } | null;
+}
+
+export interface ShiftClosing {
+  id: string;
+  date: string;
+  shiftName: string;
+  openingCash: number;
+  reportedClosingCash?: number;
+  cashDifference?: number;
+  status: ShiftClosingStatus;
+  openedBy: string;
+  closedBy?: string;
+  closedAt?: string;
 }
 
 export interface DailyClosing {
@@ -38,25 +66,18 @@ export interface DailyClosing {
   shopId: string;
   date: string;
   status: DailyClosingStatus;
-  openingBalance: number;
+  openingCash: number;
   salesCash: number;
   salesUpi: number;
   salesCard: number;
   salesBank: number;
-  totalIn?: number;
-  expensesCash: number;
-  purchasePayments: number;
-  salaryPayments: number;
-  refunds: number;
-  expectedClosingBalance: number;
-  physicalCashCounted?: number;
-  cashDifference?: number;
-  notes?: string;
-  closedBy: string;
+  expectedClosingCash: number;
+  reportedClosingCash: number;
+  cashDifference: number;
+  varianceReason?: string;
+  varianceNote?: string;
+  closedBy?: string;
   closedAt?: string;
-  reopenedAt?: string;
-  reopenedBy?: string;
-  reopenedReason?: string;
   createdAt: string;
 }
 
@@ -82,19 +103,45 @@ export async function getDailySummary(
   date: string
 ): Promise<DailySummary> {
   const res = await authenticatedFetch(
-    `/operations/daily-closing/summary?shopId=${shopId}&date=${date}`
+    `/mobileshop/reports/daily-summary?shopId=${shopId}&date=${date}`
   );
   if (!res.ok) throw new Error("Failed to fetch daily summary");
+  return extractData(res);
+}
+
+export async function getCashLeakageAnalysis(
+  shopId: string,
+  date: string
+): Promise<CashLeakageAnalysis> {
+  const res = await authenticatedFetch(
+    `/mobileshop/reports/cash-leakage-analysis?shopId=${shopId}&date=${date}`
+  );
+  if (!res.ok) throw new Error("Failed to fetch leakage analysis");
   return extractData(res);
 }
 
 export async function closeDay(payload: {
   shopId: string;
   date: string;
-  physicalCashCounted: number;
-  notes?: string;
+  mode: "SYSTEM" | "MANUAL";
+  reportedClosingCash: number;
+  manualEntries?: {
+    salesCash?: number;
+    salesUpi?: number;
+    salesCard?: number;
+    salesBank?: number;
+    otherCashIn?: number;
+    cashWithdrawFromBank?: number;
+    expenseCash?: number;
+    supplierPaymentsCash?: number;
+    otherCashOut?: number;
+    cashDepositToBank?: number;
+  };
+  denominations?: Record<string, number>;
+  varianceReason?: string;
+  varianceNote?: string;
 }): Promise<DailyClosing> {
-  const res = await authenticatedFetch(`/operations/daily-closing/close`, {
+  const res = await authenticatedFetch(`/cash/daily-close`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -111,6 +158,7 @@ export async function reopenDay(payload: {
   date: string;
   reason: string;
 }): Promise<DailyClosing> {
+  // Note: Backend might need a specific reopen endpoint in CashController if not reusing legacy
   const res = await authenticatedFetch(`/operations/daily-closing/reopen`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -124,14 +172,50 @@ export async function reopenDay(payload: {
 }
 
 export async function getDailyClosings(
-  shopId: string,
-  filters?: { startDate?: string; endDate?: string }
+  shopId: string
 ): Promise<DailyClosing[]> {
-  const p = new URLSearchParams({ shopId });
-  if (filters?.startDate) p.append("startDate", filters.startDate);
-  if (filters?.endDate) p.append("endDate", filters.endDate);
-  const res = await authenticatedFetch(`/operations/daily-closing?${p}`);
+  const res = await authenticatedFetch(`/cash/daily-history?shopId=${shopId}`);
   if (!res.ok) throw new Error("Failed to fetch closings");
+  return extractData(res);
+}
+
+// ─── SHIFT MANAGEMENT ──────────────────────────────────────────────────────────
+
+export async function openShift(payload: {
+  shopId: string;
+  shiftName: string;
+}): Promise<ShiftClosing> {
+  const res = await authenticatedFetch(`/cash/shift/open`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await extractData(res);
+    throw new Error((err as any).message || "Failed to open shift");
+  }
+  return extractData(res);
+}
+
+export async function closeShift(payload: {
+  shopId: string;
+  reportedClosingCash: number;
+}): Promise<ShiftClosing> {
+  const res = await authenticatedFetch(`/cash/shift/close`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await extractData(res);
+    throw new Error((err as any).message || "Failed to close shift");
+  }
+  return extractData(res);
+}
+
+export async function getCurrentShift(shopId: string): Promise<ShiftClosing | null> {
+  const res = await authenticatedFetch(`/cash/shift/current?shopId=${shopId}`);
+  if (!res.ok) throw new Error("Failed to fetch current shift");
   return extractData(res);
 }
 
@@ -141,8 +225,6 @@ export async function getCashVariances(
 ): Promise<CashVariance[]> {
   const p = new URLSearchParams({ shopId });
   if (filters?.status) p.append("status", filters.status);
-  if (filters?.startDate) p.append("startDate", filters.startDate);
-  if (filters?.endDate) p.append("endDate", filters.endDate);
   const res = await authenticatedFetch(`/operations/daily-closing/variances?${p}`);
   if (!res.ok) throw new Error("Failed to fetch variances");
   return extractData(res);
@@ -350,6 +432,15 @@ export async function getVerificationSession(
 
 // ─── MONTHLY REPORT ───────────────────────────────────────────────────────────
 
+export interface MonthlyProfit {
+  totalSales: number;
+  totalCogs: number;
+  totalExpenses: number;
+  totalRefunds: number;
+  totalInvLoss: number;
+  netProfit: number;
+}
+
 export interface MonthlyReport {
   period: { month: number; year: number; startDate: string; endDate: string };
   sales: { totalAmount: number; totalInvoices: number };
@@ -379,6 +470,21 @@ export async function getMonthlySummary(
   });
   const res = await authenticatedFetch(`/operations/monthly-report?${p}`);
   if (!res.ok) throw new Error("Failed to fetch monthly report");
+  return extractData(res);
+}
+
+export async function getMonthlyProfit(
+  shopId: string,
+  month: number,
+  year: number
+): Promise<MonthlyProfit> {
+  const p = new URLSearchParams({
+    shopId,
+    month: String(month),
+    year: String(year),
+  });
+  const res = await authenticatedFetch(`/mobileshop/reports/monthly-profit?${p}`);
+  if (!res.ok) throw new Error("Failed to fetch monthly profit");
   return extractData(res);
 }
 

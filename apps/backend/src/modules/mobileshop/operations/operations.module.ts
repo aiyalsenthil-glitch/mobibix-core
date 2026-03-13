@@ -4,6 +4,7 @@ import { VouchersModule } from '../vouchers/vouchers.module';
 
 import { DailyClosingService } from './daily-closing/daily-closing.service';
 import { DailyClosingController } from './daily-closing/daily-closing.controller';
+import { CashModule } from './cash/cash.module';
 
 import { ExpensesService } from './expenses/expenses.service';
 import { ExpensesController } from './expenses/expenses.controller';
@@ -18,7 +19,7 @@ import { ShrinkageService } from './shrinkage/shrinkage.service';
 import { ShrinkageController } from './shrinkage/shrinkage.controller';
 
 @Module({
-  imports: [PrismaModule, VouchersModule],
+  imports: [PrismaModule, VouchersModule, CashModule],
   controllers: [
     DailyClosingController,
     ExpensesController,
@@ -35,6 +36,7 @@ import { ShrinkageController } from './shrinkage/shrinkage.controller';
   ],
   exports: [
     DailyClosingService,
+    CashModule, // Exporting the module instead of just the service
     ExpensesService,
     StockVerificationService,
     MonthlyReportService,

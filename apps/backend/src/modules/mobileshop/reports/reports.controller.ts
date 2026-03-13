@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards, Request, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Request, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
 import { RequirePermission } from '../../../core/permissions/decorators/require-permission.decorator';
 import { MobileShopReportsService } from './reports.service';
@@ -19,6 +19,7 @@ import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorato
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
 import { PERMISSIONS } from '../../../security/permission-registry';
+import { CashService } from '../operations/cash/cash.service';
 
 @Controller('mobileshop/reports')
 @ModuleScope(ModuleType.MOBILE_SHOP)
@@ -35,6 +36,7 @@ export class MobileShopReportsController extends TenantScopedController {
     private readonly warranty: WarrantyService,
     private readonly dailySales: DailySalesReportService,
     private readonly prisma: PrismaService,
+    private readonly cashService: CashService,
   ) {
     super();
   }
@@ -527,5 +529,35 @@ export class MobileShopReportsController extends TenantScopedController {
       to,
     );
     return { csv };
+  }
+
+  @Get('daily-summary')
+  @RequirePermission(PERMISSIONS.CORE.DAILY_CLOSING.VIEW)
+  async getDailySummary(
+    @CurrentUser() user: any,
+    @Query('shopId') shopId: string,
+    @Query('date') date: string,
+  ) {
+    const resolvedShopId = await this.validateShopAccess(user, shopId);
+    if (!resolvedShopId) throw new BadRequestException('shopId is required');
+    return this.cashService.getDailySummary(user.tenantId, resolvedShopId, date);
+  }
+
+  @Get('monthly-profit')
+  @RequirePermission(PERMISSIONS.CORE.REPORT.PROFIT_VIEW)
+  async getMonthlyProfit(
+    @CurrentUser() user: any,
+    @Query('shopId') shopId: string,
+    @Query('year') year: string,
+    @Query('month') month: string,
+  ) {
+    const resolvedShopId = await this.validateShopAccess(user, shopId);
+    if (!resolvedShopId) throw new BadRequestException('shopId is required');
+    return this.cashService.getMonthlyProfit(
+      user.tenantId,
+      resolvedShopId,
+      parseInt(year),
+      parseInt(month),
+    );
   }
 }

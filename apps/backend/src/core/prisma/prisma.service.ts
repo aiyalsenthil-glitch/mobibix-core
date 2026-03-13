@@ -84,6 +84,8 @@ export class PrismaService
       'WhatsAppCampaign',
       'WhatsAppDailyUsage',
       'AuditLog', // FIXED: Was missing!
+      'DailyClosing',
+      'ShiftClosing',
     ]);
 
     const rootClient = this as any;

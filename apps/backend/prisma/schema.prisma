@@ -3364,12 +3364,19 @@ enum CashVarianceStatus {
   REJECTED
 }
 
+enum DailyClosingMode {
+  SYSTEM
+  MANUAL
+}
+
 model DailyClosing {
   id       String @id @default(cuid())
   tenantId String
   shopId   String
 
   date DateTime @db.Date // The business date (one per shop per day)
+
+  mode DailyClosingMode @default(SYSTEM)
 
   openingCash Int @default(0) // Paisa — carried from previous confirmed closing
 
@@ -3394,6 +3401,7 @@ model DailyClosing {
 
   varianceReason String?
   varianceNote   String?
+  denominations  Json? // { "500": 10, "200": 5, ... }
 
   status   DailyClosingStatus @default(DRAFT)
   closedBy String? // userId 

@@ -7,14 +7,15 @@ import {
   IndianRupee, ArrowUpRight, ArrowDownRight,
 } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
-import { getMonthlySummary, type MonthlyReport } from "@/services/operations.api";
+import { getMonthlySummary, getMonthlyProfit, type MonthlyReport, type MonthlyProfit } from "@/services/operations.api";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
 
-function fmt(v: number) {
+function fmt(paisa: number) {
+  const v = paisa / 100;
   if (Math.abs(v) >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
   if (Math.abs(v) >= 1000)   return `₹${(v / 1000).toFixed(1)}K`;
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v);
@@ -63,6 +64,7 @@ export default function MonthlyReportPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear]   = useState(now.getFullYear());
   const [report, setReport] = useState<MonthlyReport | null>(null);
+  const [profitData, setProfitData] = useState<MonthlyProfit | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -70,8 +72,12 @@ export default function MonthlyReportPage() {
     if (!shopId) return;
     setLoading(true); setError("");
     try {
-      const r = await getMonthlySummary(shopId, month, year);
+      const [r, p] = await Promise.all([
+        getMonthlySummary(shopId, month, year),
+        getMonthlyProfit(shopId, month, year),
+      ]);
       setReport(r);
+      setProfitData(p);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -180,31 +186,28 @@ export default function MonthlyReportPage() {
             />
           </div>
 
-          {/* P&L Table */}
-          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+          {/* P&L Table (New Logic) */}
+          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 shadow-sm backdrop-blur-sm bg-white/80 dark:bg-slate-900/80">
             <p className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-3 flex items-center gap-2">
-              <BarChart2 size={16} className="text-blue-500" /> Profit &amp; Loss
+              <BarChart2 size={16} className="text-blue-500" /> Operational P&amp;L
             </p>
 
             <p className="text-xs font-semibold uppercase text-green-600 dark:text-green-400 tracking-wide mb-1">Income</p>
-            <RowItem label="Total Sales"    value={report.sales.totalAmount} />
+            <RowItem label="Total Sales Revenue" value={profitData?.totalSales ?? 0} />
+            
             <div className="mt-3 mb-1">
-              <p className="text-xs font-semibold uppercase text-red-500 dark:text-red-400 tracking-wide">Costs</p>
+              <p className="text-xs font-semibold uppercase text-red-500 dark:text-red-400 tracking-wide">Expenditure & Adjustments</p>
             </div>
-            <RowItem label="Purchases"      value={-report.purchases.totalAmount} />
-            <RowItem label="Expenses"       value={-report.expenses.totalAmount} />
-            <RowItem label="Salary"         value={-report.salary.totalAmount} />
-            <RowItem label="Refunds"        value={-report.refunds.totalAmount} />
-            <RowItem label="Inventory Loss" value={-report.inventoryLoss} muted />
+            <RowItem label="Cost of Goods Sold (COGS)" value={-(profitData?.totalCogs ?? 0)} />
+            <RowItem label="Operational Expenses"      value={-(profitData?.totalExpenses ?? 0)} />
+            <RowItem label="Sales Refunds"             value={-(profitData?.totalRefunds ?? 0)} />
+            <RowItem label="Inventory Loss (Shrinkage)" value={-(profitData?.totalInvLoss ?? 0)} muted />
 
-            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-800 flex justify-between items-center">
-              <span className="text-sm font-bold text-gray-700 dark:text-slate-200">Net Profit</span>
-              <span className={`text-lg font-bold ${report.profitSummary.netProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                {fmt(report.profitSummary.netProfit)}
+            <div className="mt-4 pt-3 border-t border-gray-200 dark:border-slate-800 flex justify-between items-center">
+              <span className="text-base font-bold text-gray-900 dark:text-white">Net Operational Profit</span>
+              <span className={`text-xl font-bold ${profitData && profitData.netProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                {fmt(profitData?.netProfit ?? 0)}
               </span>
-            </div>
-            <div className="text-right text-xs text-gray-400 mt-1">
-              Margin: {report.profitSummary.profitMarginPct}%
             </div>
           </div>
 

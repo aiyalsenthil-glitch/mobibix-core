@@ -31,7 +31,7 @@ export class DailyClosingService {
           where: {
             tenantId,
             shopId,
-            status: DailyClosingStatus.CONFIRMED,
+            status: DailyClosingStatus.SUBMITTED,
             date: { lt: new Date(date) },
           },
           orderBy: { date: 'desc' },
@@ -53,7 +53,7 @@ export class DailyClosingService {
         }),
       ]);
 
-    const openingBalance = previousClosing?.expectedClosingBalance ?? 0;
+    const openingCash = previousClosing?.reportedClosingCash ?? 0;
 
     // Tally IN by mode
     let salesCash = 0, salesUpi = 0, salesCard = 0, salesBank = 0, otherIncome = 0;
@@ -83,7 +83,7 @@ export class DailyClosingService {
 
     const totalIn  = salesCash + salesUpi + salesCard + salesBank + otherIncome;
     const totalOut = expensesCash + purchasePayments + salaryPayments + otherDeductions + refunds;
-    const expectedClosingBalance = openingBalance + totalIn - totalOut;
+    const expectedClosingCash = openingCash + totalIn - totalOut;
 
     // Check if already closed today
     const existingClosing = await this.prisma.dailyClosing.findFirst({
@@ -94,7 +94,7 @@ export class DailyClosingService {
       date,
       shopId,
       status: existingClosing?.status ?? 'OPEN',
-      openingBalance:         this.fromPaisa(openingBalance),
+      openingCash:         this.fromPaisa(openingCash),
       salesCash:              this.fromPaisa(salesCash),
       salesUpi:               this.fromPaisa(salesUpi),
       salesCard:              this.fromPaisa(salesCard),
@@ -107,7 +107,7 @@ export class DailyClosingService {
       otherDeductions:        this.fromPaisa(otherDeductions),
       refunds:                this.fromPaisa(refunds),
       totalOut:               this.fromPaisa(totalOut),
-      expectedClosingBalance: this.fromPaisa(expectedClosingBalance),
+      expectedClosingCash: this.fromPaisa(expectedClosingCash),
     };
   }
 
@@ -116,23 +116,23 @@ export class DailyClosingService {
   async closeDay(tenantId: string, userId: string, dto: CloseDayDto) {
     const businessDate = new Date(dto.date);
 
-    // Block if already CONFIRMED (not DRAFT / REOPENED)
+    // Block if already SUBMITTED (not DRAFT / REOPENED)
     const existing = await this.prisma.dailyClosing.findFirst({
       where: { tenantId, shopId: dto.shopId, date: businessDate },
     });
 
-    if (existing?.status === DailyClosingStatus.CONFIRMED) {
+    if (existing?.status === DailyClosingStatus.SUBMITTED) {
       throw new ConflictException(
-        `Day ${dto.date} is already confirmed. Use reopen first.`,
+        `Day ${dto.date} is already submitted. Use reopen first.`,
       );
     }
 
     // Build the summary figures
     const summary = await this.getDailySummary(tenantId, dto.shopId, dto.date);
 
-    const expectedClosingBalance = this.toPaisa(summary.expectedClosingBalance);
-    const physicalCashCounted    = this.toPaisa(dto.physicalCashCounted);
-    const cashDifference         = physicalCashCounted - expectedClosingBalance;
+    const expectedClosingCash = this.toPaisa(summary.expectedClosingCash);
+    const reportedClosingCash    = this.toPaisa(dto.physicalCashCounted);
+    const cashDifference         = reportedClosingCash - expectedClosingCash;
 
     return this.prisma.$transaction(async (tx) => {
       let closing;
@@ -142,22 +142,19 @@ export class DailyClosingService {
         closing = await tx.dailyClosing.update({
           where: { id: existing.id },
           data: {
-            openingBalance:         this.toPaisa(summary.openingBalance),
+            openingCash:         this.toPaisa(summary.openingCash),
             salesCash:              this.toPaisa(summary.salesCash),
             salesUpi:               this.toPaisa(summary.salesUpi),
             salesCard:              this.toPaisa(summary.salesCard),
             salesBank:              this.toPaisa(summary.salesBank),
-            otherIncome:            this.toPaisa(summary.otherIncome),
-            expensesCash:           this.toPaisa(summary.expensesCash),
-            purchasePayments:       this.toPaisa(summary.purchasePayments),
-            salaryPayments:         this.toPaisa(summary.salaryPayments),
-            otherDeductions:        this.toPaisa(summary.otherDeductions),
-            refunds:                this.toPaisa(summary.refunds),
-            expectedClosingBalance,
-            physicalCashCounted,
+            otherCashIn:            this.toPaisa(summary.otherIncome),
+            expenseCash:           this.toPaisa(summary.expensesCash),
+            supplierPaymentsCash:       this.toPaisa(summary.purchasePayments),
+            otherCashOut:        this.toPaisa(summary.otherDeductions + summary.salaryPayments + summary.refunds),
+            expectedClosingCash,
+            reportedClosingCash,
             cashDifference,
-            status:                 DailyClosingStatus.CONFIRMED,
-            notes:                  dto.notes,
+            status:                 DailyClosingStatus.SUBMITTED,
             closedBy:               userId,
             closedAt:               new Date(),
           },
@@ -168,22 +165,19 @@ export class DailyClosingService {
             tenantId,
             shopId:                 dto.shopId,
             date:                   businessDate,
-            openingBalance:         this.toPaisa(summary.openingBalance),
+            openingCash:         this.toPaisa(summary.openingCash),
             salesCash:              this.toPaisa(summary.salesCash),
             salesUpi:               this.toPaisa(summary.salesUpi),
             salesCard:              this.toPaisa(summary.salesCard),
             salesBank:              this.toPaisa(summary.salesBank),
-            otherIncome:            this.toPaisa(summary.otherIncome),
-            expensesCash:           this.toPaisa(summary.expensesCash),
-            purchasePayments:       this.toPaisa(summary.purchasePayments),
-            salaryPayments:         this.toPaisa(summary.salaryPayments),
-            otherDeductions:        this.toPaisa(summary.otherDeductions),
-            refunds:                this.toPaisa(summary.refunds),
-            expectedClosingBalance,
-            physicalCashCounted,
+            otherCashIn:            this.toPaisa(summary.otherIncome),
+            expenseCash:           this.toPaisa(summary.expensesCash),
+            supplierPaymentsCash:       this.toPaisa(summary.purchasePayments),
+            otherCashOut:        this.toPaisa(summary.otherDeductions + summary.salaryPayments + summary.refunds),
+            expectedClosingCash,
+            reportedClosingCash,
             cashDifference,
-            status:                 DailyClosingStatus.CONFIRMED,
-            notes:                  dto.notes,
+            status:                 DailyClosingStatus.SUBMITTED,
             closedBy:               userId,
             closedAt:               new Date(),
           },
@@ -197,8 +191,8 @@ export class DailyClosingService {
             tenantId,
             shopId:        dto.shopId,
             dailyClosingId: closing.id,
-            expectedCash:  expectedClosingBalance,
-            physicalCash:  physicalCashCounted,
+            expectedCash:  expectedClosingCash,
+            physicalCash:  reportedClosingCash,
             difference:    cashDifference,
             reason:        'Pending owner review',
             reportedBy:    userId,
@@ -227,17 +221,14 @@ export class DailyClosingService {
     if (!closing) {
       throw new NotFoundException(`No closing found for date ${dto.date}`);
     }
-    if (closing.status !== DailyClosingStatus.CONFIRMED) {
-      throw new BadRequestException('Only CONFIRMED closings can be reopened.');
+    if (closing.status !== DailyClosingStatus.SUBMITTED) {
+      throw new BadRequestException('Only SUBMITTED closings can be reopened.');
     }
 
     const updated = await this.prisma.dailyClosing.update({
       where: { id: closing.id },
       data: {
         status:         DailyClosingStatus.REOPENED,
-        reopenedBy:     userId,
-        reopenedAt:     new Date(),
-        reopenedReason: dto.reason,
       },
     });
 

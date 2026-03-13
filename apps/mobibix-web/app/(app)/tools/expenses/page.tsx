@@ -24,7 +24,8 @@ const CATEGORIES = [
 
 const PAYMENT_METHODS = ["CASH", "UPI", "CARD", "BANK"] as const;
 
-function fmt(v: number) {
+function fmt(paisa: number) {
+  const v = paisa / 100;
   return new Intl.NumberFormat("en-IN", {
     style: "currency", currency: "INR", maximumFractionDigits: 0,
   }).format(v);
@@ -145,10 +146,10 @@ export default function ExpensesPage() {
               <button
                 key={value}
                 onClick={() => setCategory(value)}
-                className={`flex flex-col items-center gap-1 p-2 rounded-lg text-xs border transition-colors ${
+                className={`flex flex-col items-center gap-1 p-2 rounded-lg text-xs border transition-all ${
                   category === value
-                    ? "bg-blue-50 border-blue-300 text-blue-700"
-                    : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                    ? "bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-400 shadow-inner"
+                    : "border-gray-200 dark:border-slate-800 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800"
                 }`}
               >
                 <Icon size={18} />
