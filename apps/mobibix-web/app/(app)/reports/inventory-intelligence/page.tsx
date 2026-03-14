@@ -58,29 +58,34 @@ function SectionCard({ title, icon: Icon, children }: { title: string; icon: any
   );
 }
 
-// Bar chart (CSS only)
+// Bar chart — uses px heights so % doesn't break inside flex children
+const BAR_MAX_PX = 100;
 function BarChart({ data }: { data: { month: string; lossValueRupees: number }[] }) {
   const max = Math.max(...data.map((d) => d.lossValueRupees), 1);
   return (
-    <div className="flex items-end gap-1 h-32 w-full">
-      {data.map((d) => {
-        const h = Math.max((d.lossValueRupees / max) * 100, 2);
-        return (
-          <div key={d.month} className="flex-1 flex flex-col items-center gap-1 group relative">
-            <div
-              className="w-full rounded-t bg-rose-400 dark:bg-rose-500 group-hover:bg-rose-500 dark:group-hover:bg-rose-400 transition-colors cursor-default"
-              style={{ height: `${h}%` }}
-            />
-            <span className="text-[10px] text-gray-400 dark:text-slate-500 rotate-[-40deg] origin-top-left translate-y-1 whitespace-nowrap">
-              {monthLabel(d.month)}
-            </span>
-            {/* Tooltip */}
-            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-              {monthLabel(d.month)}: {fmt(d.lossValueRupees)}
+    <div className="w-full overflow-x-auto">
+      <div className="flex items-end gap-1 w-full" style={{ height: `${BAR_MAX_PX + 28}px` }}>
+        {data.map((d) => {
+          const barPx = Math.max(Math.round((d.lossValueRupees / max) * BAR_MAX_PX), d.lossValueRupees > 0 ? 4 : 1);
+          return (
+            <div key={d.month} className="flex-1 flex flex-col items-center group relative" style={{ height: '100%', justifyContent: 'flex-end' }}>
+              {/* Tooltip */}
+              {d.lossValueRupees > 0 && (
+                <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                  {monthLabel(d.month)}: {fmt(d.lossValueRupees)}
+                </div>
+              )}
+              <div
+                className={`w-full rounded-t transition-colors cursor-default ${d.lossValueRupees > 0 ? "bg-rose-400 dark:bg-rose-500 group-hover:bg-rose-500 dark:group-hover:bg-rose-400" : "bg-gray-100 dark:bg-slate-800"}`}
+                style={{ height: `${barPx}px` }}
+              />
+              <span className="text-[9px] text-gray-400 dark:text-slate-500 mt-1 whitespace-nowrap">
+                {monthLabel(d.month)}
+              </span>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

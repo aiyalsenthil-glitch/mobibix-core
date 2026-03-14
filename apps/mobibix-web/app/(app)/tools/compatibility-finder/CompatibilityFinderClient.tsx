@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -251,10 +253,10 @@ export default function CompatibilityFinderClient() {
               <Loader2 className="h-6 w-6 animate-spin text-indigo-500 ml-4" />
             )}
             <div className="hidden lg:flex items-center gap-2.5 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-2xl ml-4 border border-slate-100 dark:border-slate-800">
-               <div className="p-1 bg-amber-500 rounded-md">
-                 <Zap size={10} className="text-white fill-current" />
+               <div className="p-1 bg-indigo-500 rounded-md">
+                 <Database size={10} className="text-white fill-current" />
                </div>
-               <span className="text-[10px] font-black text-slate-500 tracking-widest">AI SEARCH ACTIVE</span>
+               <span className="text-[10px] font-black text-slate-500 tracking-widest">DATABASE SEARCH ACTIVE</span>
             </div>
           </div>
 
@@ -301,8 +303,8 @@ export default function CompatibilityFinderClient() {
               </div>
             </div>
             <div className="text-center space-y-1">
-              <p className="text-slate-900 dark:text-white font-black text-lg tracking-tight">Accessing Neural Database</p>
-              <p className="text-slate-400 font-bold text-sm">Matching model signatures with 4.2M cross-references...</p>
+              <p className="text-slate-900 dark:text-white font-black text-lg tracking-tight">Accessing Reference Database</p>
+              <p className="text-slate-400 font-bold text-sm">Matching model with global cross-references...</p>
             </div>
           </div>
         ) : results ? (

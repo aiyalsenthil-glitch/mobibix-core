@@ -141,7 +141,6 @@ services:
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
     ports:
       - "3000:3000"
-      - "9229:9229"
     volumes:
       - ./apps/backend/src:/app/src:cached
       - ./apps/backend/prisma:/app/prisma:cached

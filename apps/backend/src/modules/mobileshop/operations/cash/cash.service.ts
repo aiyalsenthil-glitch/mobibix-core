@@ -344,11 +344,11 @@ export class CashService {
       })
     ]);
 
-    const totalSales = sales._sum.totalAmount ?? 0;
-    const totalCogs = cogs.reduce((acc, entry) => acc + (entry.quantity * (entry.costPerUnit ?? 0)), 0);
-    const totalExpenses = expenses._sum.amount ?? 0;
-    const totalRefunds = refunds._sum.refundedAmount ?? 0;
-    const totalInvLoss = inventoryLoss._sum.inventoryLoss ?? 0;
+    const totalSales = (sales._sum.totalAmount ?? 0) / 100;
+    const totalCogs = cogs.reduce((acc, entry) => acc + (entry.quantity * (entry.costPerUnit ?? 0)), 0) / 100;
+    const totalExpenses = (expenses._sum.amount ?? 0) / 100;
+    const totalRefunds = (refunds._sum.refundedAmount ?? 0) / 100;
+    const totalInvLoss = (inventoryLoss._sum.inventoryLoss ?? 0) / 100;
 
     const netProfit = totalSales - totalCogs - totalExpenses - totalRefunds - totalInvLoss;
 

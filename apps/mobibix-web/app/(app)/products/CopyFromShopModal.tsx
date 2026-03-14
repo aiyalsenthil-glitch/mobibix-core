@@ -83,10 +83,11 @@ export function CopyFromShopModal({
       setIsSubmitting(true);
       setError(null);
 
-      // TODO: Call backend API to copy products
-      const response = await fetch("/api/products/copy-from-shop", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
+      const response = await fetch(`${apiUrl}/mobileshop/products/copy-from-shop`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           sourceShopId: selectedShopId,
           targetShopId: currentShopId,

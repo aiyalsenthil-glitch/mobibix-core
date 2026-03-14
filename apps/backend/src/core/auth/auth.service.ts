@@ -155,7 +155,13 @@ export class AuthService {
       // 5️⃣ Resolve IDs for JWT
       const tenantId = activeUserTenant?.tenantId ?? null;
       const userTenantId = activeUserTenant?.id ?? null;
-      const role = activeUserTenant?.role ?? user.role;
+      
+      // 🛡️ SECURITY: If user is globally a platform ADMIN/SUPER_ADMIN, 
+      // preserve that role even if they have a tenant context (is OWNER of a test tenant, etc)
+      // to ensure they don't lose admin-access via RoleHierarchy check (Level 90 vs 80)
+      const isPlatformAdmin = user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN;
+      const role = isPlatformAdmin ? user.role : (activeUserTenant?.role ?? user.role);
+      
       const isSystemOwner = 
         activeUserTenant?.isSystemOwner || activeUserTenant?.role === UserRole.OWNER;
 

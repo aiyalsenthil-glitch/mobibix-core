@@ -22,11 +22,10 @@ const CATEGORY_ICONS: Record<string, any> = {
 
 const PAYMENT_METHODS = ["CASH", "UPI", "CARD", "BANK"] as const;
 
-function fmt(paisa: number) {
-  const v = paisa / 100;
+function fmt(rupees: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency", currency: "INR", maximumFractionDigits: 0,
-  }).format(v);
+  }).format(rupees);
 }
 
 function todayStr() {

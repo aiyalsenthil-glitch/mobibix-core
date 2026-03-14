@@ -6,6 +6,7 @@ import { ExpressAdapter } from '@nestjs/platform-express';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import * as bodyParser from 'body-parser';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
@@ -21,7 +22,14 @@ import { ThrottlerExceptionFilter } from './common/filters/throttler-exception.f
 import { validateEnv } from './config/env.validation';
 
 // ─── Hardcoded fallback origins (used when DB is empty / first boot) ──────────
-const FALLBACK_ORIGINS = [
+const PRODUCTION_ORIGINS = [
+  'https://mobibix.in',
+  'https://www.mobibix.in',
+  'https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com',
+  'https://gym-saas-cxg5.onrender.com',
+];
+
+const DEV_ORIGINS = [
   'http://localhost_REPLACED:3000',
   'http://localhost_REPLACED:3001',
   'http://localhost_REPLACED:3002',
@@ -30,12 +38,12 @@ const FALLBACK_ORIGINS = [
   'http://localhost_REPLACED:3005',
   'http://localhost_REPLACED:5200',
   'http://10.0.2.2:3000',
-  'https://mobibix.in',
-  'https://www.mobibix.in',
-  'https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com',
-  'https://gym-saas-cxg5.onrender.com',
-  'https://marlen-unarmed-subcentrally.ngrok-free.dev',
 ];
+
+const FALLBACK_ORIGINS =
+  process.env.NODE_ENV === 'production'
+    ? PRODUCTION_ORIGINS
+    : [...PRODUCTION_ORIGINS, ...DEV_ORIGINS];
 
 /** Load allowed origins from DB; seed defaults on first run */
 async function loadCorsOrigins(prisma: PrismaService): Promise<string[]> {
@@ -82,6 +90,13 @@ async function bootstrap() {
   const tempPrisma = new PrismaService();
   const allowedOrigins = await loadCorsOrigins(tempPrisma);
   await tempPrisma.$disconnect();
+
+  server.use(
+    helmet({
+      crossOriginEmbedderPolicy: false, // Allow embedding (needed for print previews)
+      contentSecurityPolicy: false,     // Managed separately; enabling here breaks API responses
+    }),
+  );
 
   server.use(
     /^\/(api\/)?(billing\/webhook\/REMOVED_PAYMENT_INFRA|payments\/webhook)$/,

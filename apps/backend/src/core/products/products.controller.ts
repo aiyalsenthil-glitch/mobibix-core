@@ -23,6 +23,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { ProductsService } from './products.service';
 import { ImportProductDto } from './dto/import-product.dto';
+import { CopyFromShopDto } from './dto/copy-from-shop.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
 import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
@@ -80,6 +81,18 @@ export class ProductsController {
     }
     const tenantId = req.user.tenantId;
     return this.service.findOne(tenantId, shopId, id);
+  }
+
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.CREATE)
+  @Post('copy-from-shop')
+  async copyFromShop(@Req() req, @Body() dto: CopyFromShopDto) {
+    const tenantId = req.user.tenantId;
+    return this.service.copyFromShop(
+      tenantId,
+      dto.sourceShopId,
+      dto.targetShopId,
+      dto.productIds,
+    );
   }
 
   /**

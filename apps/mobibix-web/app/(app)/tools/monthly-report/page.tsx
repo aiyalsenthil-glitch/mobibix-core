@@ -14,11 +14,10 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-function fmt(paisa: number) {
-  const v = paisa / 100;
-  if (Math.abs(v) >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
-  if (Math.abs(v) >= 1000)   return `₹${(v / 1000).toFixed(1)}K`;
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v);
+function fmt(rupees: number) {
+  if (Math.abs(rupees) >= 100000) return `₹${(rupees / 100000).toFixed(1)}L`;
+  if (Math.abs(rupees) >= 1000)   return `₹${(rupees / 1000).toFixed(1)}K`;
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(rupees);
 }
 
 function KpiCard({

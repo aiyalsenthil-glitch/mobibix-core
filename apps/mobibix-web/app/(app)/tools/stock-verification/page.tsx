@@ -133,6 +133,9 @@ export default function StockVerificationPage() {
   const [confirming, setConfirming] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+  const [sessionDetailCache, setSessionDetailCache] = useState<Record<string, StockVerificationSession & { items: StockVerificationItem[] }>>({});
+  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
 
   // New session form
   const [showNewForm, setShowNewForm] = useState(false);
@@ -240,6 +243,24 @@ export default function StockVerificationPage() {
       setError(e.message);
     } finally {
       setConfirming(false);
+    }
+  };
+
+  const handleToggleSession = async (sessionId: string) => {
+    if (expandedSessionId === sessionId) {
+      setExpandedSessionId(null);
+      return;
+    }
+    setExpandedSessionId(sessionId);
+    if (sessionDetailCache[sessionId]) return;
+    setLoadingSessionId(sessionId);
+    try {
+      const detail = await getVerificationSession(sessionId);
+      setSessionDetailCache((prev) => ({ ...prev, [sessionId]: detail }));
+    } catch {
+      // silently fail — summary data still visible
+    } finally {
+      setLoadingSessionId(null);
     }
   };
 
@@ -484,27 +505,101 @@ export default function StockVerificationPage() {
                   <p className="text-sm text-gray-400 dark:text-slate-500 text-center py-6">No completed sessions yet.</p>
                 ) : sessions
                   .filter((s) => s.status !== "DRAFT")
-                  .map((s) => (
-                    <div key={s.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/30 transition-colors">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-slate-200">
-                          {new Date(s.sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                        </p>
-                        <p className="text-xs text-gray-400 dark:text-slate-500">
-                          {s.summary?.totalItemsChecked ?? s._count?.items ?? 0} checked
-                          {s.summary && s.summary.mismatchItems > 0 && (
-                            <> · <span className="text-orange-500 dark:text-orange-400">{s.summary.mismatchItems} mismatches</span></>
-                          )}
-                          {s.summary && s.summary.totalLossValueRupees > 0 && (
-                            <> · <span className="text-red-500 dark:text-red-400">
-                              {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(s.summary.totalLossValueRupees)} lost
-                            </span></>
-                          )}
-                        </p>
+                  .map((s) => {
+                    const isExpanded = expandedSessionId === s.id;
+                    const isLoading = loadingSessionId === s.id;
+                    const detail = sessionDetailCache[s.id];
+                    const fmtINR = (r: number) =>
+                      new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(r);
+                    return (
+                      <div key={s.id}>
+                        <button
+                          onClick={() => handleToggleSession(s.id)}
+                          className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/30 transition-colors text-left"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-slate-200">
+                              {new Date(s.sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            </p>
+                            <p className="text-xs text-gray-400 dark:text-slate-500">
+                              {s.summary?.totalItemsChecked ?? s._count?.items ?? 0} checked
+                              {s.summary && s.summary.mismatchItems > 0 && (
+                                <> · <span className="text-orange-500 dark:text-orange-400">{s.summary.mismatchItems} mismatches</span></>
+                              )}
+                              {s.summary && s.summary.totalLossValueRupees > 0 && (
+                                <> · <span className="text-red-500 dark:text-red-400">{fmtINR(s.summary.totalLossValueRupees)} lost</span></>
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <StatusBadge status={s.status} />
+                            {isLoading
+                              ? <Loader2 size={14} className="animate-spin text-gray-400" />
+                              : isExpanded ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+                          </div>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="px-4 pb-4 space-y-3 bg-gray-50 dark:bg-slate-800/20 border-t border-gray-100 dark:border-slate-800">
+                            {isLoading && (
+                              <div className="flex justify-center py-4">
+                                <Loader2 size={20} className="animate-spin text-blue-400" />
+                              </div>
+                            )}
+                            {detail && (
+                              <>
+                                {detail.summary && (
+                                  <div className="grid grid-cols-3 gap-2 pt-3">
+                                    <div className="text-center bg-white dark:bg-slate-900 rounded-lg p-2 border border-gray-100 dark:border-slate-800">
+                                      <p className="text-base font-bold text-gray-900 dark:text-white">{detail.summary.totalItemsChecked}</p>
+                                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Checked</p>
+                                    </div>
+                                    <div className="text-center bg-white dark:bg-slate-900 rounded-lg p-2 border border-gray-100 dark:border-slate-800">
+                                      <p className={`text-base font-bold ${detail.summary.mismatchItems > 0 ? "text-orange-500" : "text-green-600"}`}>{detail.summary.mismatchItems}</p>
+                                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Mismatches</p>
+                                    </div>
+                                    <div className="text-center bg-white dark:bg-slate-900 rounded-lg p-2 border border-gray-100 dark:border-slate-800">
+                                      <p className={`text-base font-bold ${detail.summary.totalLossValueRupees > 0 ? "text-red-500" : "text-gray-900 dark:text-white"}`}>{fmtINR(detail.summary.totalLossValueRupees)}</p>
+                                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Loss</p>
+                                    </div>
+                                  </div>
+                                )}
+                                {detail.notes && (
+                                  <p className="text-xs text-gray-500 dark:text-slate-400 italic pt-1">{detail.notes}</p>
+                                )}
+                                {detail.items.length === 0 ? (
+                                  <p className="text-xs text-gray-400 dark:text-slate-500 text-center py-3">No items recorded.</p>
+                                ) : (
+                                  <div className="bg-white dark:bg-slate-900 rounded-lg border border-gray-100 dark:border-slate-800 overflow-hidden">
+                                    <div className="grid grid-cols-[1fr_48px_48px_56px_80px] text-[10px] text-gray-400 dark:text-slate-500 uppercase px-3 py-1.5 border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 font-bold tracking-wider">
+                                      <span>Product</span>
+                                      <span className="text-center">Sys</span>
+                                      <span className="text-center">Phy</span>
+                                      <span className="text-center">Diff</span>
+                                      <span className="text-center">Reason</span>
+                                    </div>
+                                    <div className="divide-y divide-gray-50 dark:divide-slate-800 max-h-56 overflow-y-auto">
+                                      {detail.items.map((item) => (
+                                        <div key={item.id} className="grid grid-cols-[1fr_48px_48px_56px_80px] items-center px-3 py-2 gap-1">
+                                          <p className="text-xs font-medium truncate text-gray-800 dark:text-slate-300">{item.shopProduct?.name ?? item.shopProductId}</p>
+                                          <p className="text-center text-xs text-gray-500 dark:text-slate-400 font-mono">{item.systemQty}</p>
+                                          <p className="text-center text-xs text-gray-500 dark:text-slate-400 font-mono">{item.physicalQty}</p>
+                                          <p className={`text-center text-xs font-bold font-mono ${item.difference < 0 ? "text-red-500 dark:text-red-400" : item.difference > 0 ? "text-green-500 dark:text-green-400" : "text-gray-400"}`}>
+                                            {item.difference > 0 ? "+" : ""}{item.difference}
+                                          </p>
+                                          <p className="text-center text-[10px] text-gray-400 dark:text-slate-500 truncate">{item.reason ? item.reason.replace("_", " ") : "—"}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <StatusBadge status={s.status} />
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
             )}
           </div>
