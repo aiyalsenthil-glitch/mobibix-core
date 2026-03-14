@@ -49,7 +49,8 @@ export class RepairPipelineController extends TenantScopedController {
   /**
    * 👷 Feature 4: Technician Work Queue
    */
-  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF) // STAFF includes Technician role in UserRole enum usually, or mapped
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.TECHNICIAN, UserRole.STAFF)
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.PIPELINE.VIEW_QUEUE)
   @Get('my-queue')
   async getMyQueue(@Req() req: any) {
     const tenantId = this.getTenantId(req);
@@ -60,12 +61,15 @@ export class RepairPipelineController extends TenantScopedController {
   /**
    * 📋 Feature 7: QC Checklist
    */
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.TECHNICIAN, UserRole.STAFF)
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.PIPELINE.VIEW_QC)
   @Get('qc/:jobId')
   async getQC(@Param('jobId') jobId: string) {
     return this.qcService.getQC(jobId);
   }
 
   @Post('qc/:jobId')
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.TECHNICIAN, UserRole.STAFF)
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.PIPELINE.MANAGE_QC)
   async saveQC(
     @Req() req: any,
@@ -78,6 +82,8 @@ export class RepairPipelineController extends TenantScopedController {
   /**
    * 🛠️ Feature 3: Smart Parts Suggestion
    */
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.TECHNICIAN, UserRole.STAFF)
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.PIPELINE.SUGGEST)
   @Get('suggest-parts/:faultTypeId')
   async suggestParts(
     @Req() req: any,
@@ -91,6 +97,8 @@ export class RepairPipelineController extends TenantScopedController {
   /**
    * 🤖 Feature 2: Auto Fault Detection (Live Suggestion)
    */
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.TECHNICIAN, UserRole.STAFF)
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.PIPELINE.SUGGEST)
   @Get('suggest-fault')
   async suggestFault(
     @Req() req: any,

@@ -71,6 +71,8 @@ export const BASE_PERMISSIONS: Record<string, string[]> = {
   'core.expense.view': ['MOBILE_SHOP', 'CORE'],
   'core.monthly_report.view': ['MOBILE_SHOP', 'CORE'],
   'core.shrinkage.view': ['MOBILE_SHOP', 'CORE'],
+  'mobile_shop.pipeline.manage': ['MOBILE_SHOP'],
+  'mobile_shop.pipeline.view': ['MOBILE_SHOP'],
 };
 
 // Permission expansion rules
@@ -378,5 +380,17 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
   ],
   'mobile_shop.repair_knowledge.view': [
     'repair_knowledge.view',
+  ],
+  'mobile_shop.pipeline.manage': [
+    'pipeline.view_monitor',
+    'pipeline.manage_qc',
+    'pipeline.view_qc',
+    'pipeline.suggest',
+    'pipeline.view_queue',
+  ],
+  'mobile_shop.pipeline.view': [
+    'pipeline.view_qc',
+    'pipeline.suggest',
+    'pipeline.view_queue',
   ],
 };

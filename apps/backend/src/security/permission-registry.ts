@@ -219,6 +219,9 @@ export const PERMISSIONS = {
     PIPELINE: {
       VIEW_MONITOR: { module: ModuleType.MOBILE_SHOP, resource: 'pipeline', action: 'view_monitor' } as Permission,
       MANAGE_QC: { module: ModuleType.MOBILE_SHOP, resource: 'pipeline', action: 'manage_qc' } as Permission,
+      VIEW_QC: { module: ModuleType.MOBILE_SHOP, resource: 'pipeline', action: 'view_qc' } as Permission,
+      SUGGEST: { module: ModuleType.MOBILE_SHOP, resource: 'pipeline', action: 'suggest' } as Permission,
+      VIEW_QUEUE: { module: ModuleType.MOBILE_SHOP, resource: 'pipeline', action: 'view_queue' } as Permission,
     },
   },
   GYM: {

@@ -338,6 +338,9 @@ export const RESOURCE_DICTIONARY = [
         actions: [
           { id: 'view_monitor', ui: 'View Pipeline Monitor' },
           { id: 'manage_qc', ui: 'Manage QC Checklist' },
+          { id: 'view_qc', ui: 'View QC Checklist' },
+          { id: 'suggest', ui: 'Pipeline Suggestions' },
+          { id: 'view_queue', ui: 'View Personal Queue' },
         ],
       },
     ],
@@ -433,6 +436,7 @@ export const roleTemplates = [
       'core.expense.manage',
       'core.monthly_report.view',
       'core.shrinkage.view',
+      'mobile_shop.pipeline.manage',
     ],
   },
   {
@@ -469,6 +473,7 @@ export const roleTemplates = [
       'core.expense.manage',
       'core.monthly_report.view',
       'core.shrinkage.view',
+      'mobile_shop.pipeline.manage',
     ],
   },
   {
@@ -505,6 +510,7 @@ export const roleTemplates = [
       'mobile_shop.repair_knowledge.view',
       'mobile_shop.repair_knowledge.contribute',
       'mobile_shop.crm.manage',
+      'mobile_shop.pipeline.view',
       'core.dashboard.view',
       'mobile_shop.shop.view',
       'core.profile.view',
