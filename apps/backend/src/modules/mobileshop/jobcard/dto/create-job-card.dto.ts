@@ -74,4 +74,8 @@ export class CreateJobCardDto {
   @IsOptional()
   @IsString()
   assignedToUserId?: string;
+
+  @IsOptional()
+  @IsString()
+  faultTypeId?: string;
 }

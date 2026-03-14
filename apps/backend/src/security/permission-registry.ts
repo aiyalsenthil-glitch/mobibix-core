@@ -216,6 +216,10 @@ export const PERMISSIONS = {
       VIEW: { module: ModuleType.MOBILE_SHOP, resource: 'shop', action: 'view' } as Permission,
       MANAGE: { module: ModuleType.MOBILE_SHOP, resource: 'shop', action: 'manage' } as Permission,
     },
+    PIPELINE: {
+      VIEW_MONITOR: { module: ModuleType.MOBILE_SHOP, resource: 'pipeline', action: 'view_monitor' } as Permission,
+      MANAGE_QC: { module: ModuleType.MOBILE_SHOP, resource: 'pipeline', action: 'manage_qc' } as Permission,
+    },
   },
   GYM: {
     MEMBER: {

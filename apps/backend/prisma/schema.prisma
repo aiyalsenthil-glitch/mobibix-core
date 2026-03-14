@@ -1457,6 +1457,13 @@ model JobCard {
   deletedBy            String?
   customer             Party?        @relation(fields: [customerId], references: [id])
   shop                 Shop          @relation(fields: [shopId], references: [id])
+  faultTypeId          String?
+  faultType            FaultType?    @relation(fields: [faultTypeId], references: [id])
+  suggestedFaultTypeId String?
+  
+  qcCompleted          Boolean       @default(false)
+  qcChecklist          JobCardQC?
+
   receipts             Receipt[]     @relation("JobCardReceipts")
   tenant               Tenant        @relation("TenantJobCards", fields: [tenantId], references: [id])
   parts                JobCardPart[]
@@ -1518,8 +1525,36 @@ model FaultType {
 
   diagnoses  FaultDiagnosis[]
   knowledges RepairKnowledge[]
+  jobCards   JobCard[]
 
   @@map("mb_repair_fault_type")
+}
+
+model JobCardQC {
+  id                   String   @id @default(cuid())
+  jobCardId            String   @unique
+  jobCard              JobCard  @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+
+  // Technical Checks
+  cameraWorking        Boolean @default(false)
+  micWorking           Boolean @default(false)
+  speakerWorking       Boolean @default(false)
+  chargingWorking      Boolean @default(false)
+  wifiWorking          Boolean @default(false)
+
+  // Accessories Checklist
+  chargerReturned      Boolean @default(false)
+  simCardReturned      Boolean @default(false)
+  memoryCardReturned   Boolean @default(false)
+  otherAccessories     String?
+
+  completedByUserId    String?
+  completedAt          DateTime?
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("mb_job_card_qc")
 }
 
 model FaultDiagnosis {
@@ -2286,6 +2321,8 @@ enum JobStatus {
   CANCELLED // Job cancelled (terminal)
   RETURNED // Job returned without repair (terminal)
   SCRAPPED // Job scrapped/abandoned (terminal)
+  REPAIR_FAILED // Repair not possible
+  WAITING_CUSTOMER // Customer action required
 }
 
 enum InvoiceStatus {

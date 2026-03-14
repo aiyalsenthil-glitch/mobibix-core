@@ -333,6 +333,13 @@ export const RESOURCE_DICTIONARY = [
           { id: 'manage', ui: 'Manage Repair Knowledge' },
         ],
       },
+      {
+        name: 'pipeline',
+        actions: [
+          { id: 'view_monitor', ui: 'View Pipeline Monitor' },
+          { id: 'manage_qc', ui: 'Manage QC Checklist' },
+        ],
+      },
     ],
   },
   {

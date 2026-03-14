@@ -111,7 +111,14 @@ async function main() {
     'DeletionRequest',
     'DistributorTenantLink',
     'mb_b2_b_purchase_order',
-    'mb_b2_b_order_item'
+    'mb_b2_b_order_item',
+
+    // Partner System
+    'Partner',
+    'PromoCode',
+    'promo_usages',
+    'mb_partner_referral',
+    'mb_partner_notification'
   ];
 
   // 3. Execution

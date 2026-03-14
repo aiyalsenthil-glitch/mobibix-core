@@ -12,6 +12,7 @@ import { CreditNotesModule } from './credit-notes/credit-notes.module';
 import { CompatibilityModule } from './compatibility/compatibility.module';
 import { OperationsModule } from './operations/operations.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
+import { RepairIntelligenceModule } from './repair-intelligence/repair-intelligence.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { KnowledgeModule } from './knowledge/knowledge.module';
     CompatibilityModule,
     OperationsModule,
     KnowledgeModule,
+    RepairIntelligenceModule,
   ],
 })
 export class MobileShopModule {}

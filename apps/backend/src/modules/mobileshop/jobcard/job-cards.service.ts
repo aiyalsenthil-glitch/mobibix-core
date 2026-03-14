@@ -3,7 +3,11 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
+import { RepairIntelligenceService } from '../repair-intelligence/repair-intelligence.service';
+import { JobCardQCService } from '../repair-intelligence/job-card-qc.service';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { BillingService } from '../../../core/sales/billing.service';
 import * as crypto from 'crypto';
@@ -46,6 +50,10 @@ export class JobCardsService {
     private stockValidation: StockValidationService,
     private billingService: BillingService,
     private followUpsService: FollowUpsService,
+    @Inject(forwardRef(() => RepairIntelligenceService))
+    private intelligenceService: RepairIntelligenceService,
+    @Inject(forwardRef(() => JobCardQCService))
+    private qcService: JobCardQCService,
   ) {}
 
   private mapJobCard(job: any) {
@@ -376,6 +384,9 @@ export class JobCardsService {
           jobNumber: await this.nextJobNumber(shopId),
           publicToken: crypto.randomUUID(),
           status: JobStatus.RECEIVED,
+
+          faultTypeId: dto.faultTypeId || null,
+          suggestedFaultTypeId: (await this.intelligenceService.suggestFaultType(user.tenantId, dto.customerComplaint))?.id || null,
 
           createdByUserId: user.sub,
           createdByName: user.name ?? user.email ?? 'Staff',
@@ -1182,6 +1193,9 @@ export class JobCardsService {
           );
         }
 
+        // 📋 NEW: QC Checklist enforcement
+        await this.qcService.validateQCBeforeReady(id);
+
         // 🛡️ GUARD: SERVICE products cannot be in parts
         const servicePartExists = job.parts.some(
           (p) => p.product?.type === ProductType.SERVICE,
@@ -1912,5 +1926,47 @@ export class JobCardsService {
     return this.prisma.jobCard.delete({
       where: { id },
     });
+  }
+
+  /**
+   * 👷 Feature 4: Technician Work Queue
+   */
+  async getMyQueue(userId: string, tenantId: string) {
+    const jobs = await this.prisma.jobCard.findMany({
+      where: {
+        assignedToUserId: userId,
+        tenantId,
+        status: {
+          in: [
+            JobStatus.WAITING_APPROVAL,
+            JobStatus.WAITING_FOR_PARTS,
+            JobStatus.IN_PROGRESS,
+            JobStatus.DIAGNOSING,
+          ],
+        },
+        deletedAt: null,
+      },
+      include: {
+        faultType: { select: { name: true } },
+      },
+    });
+
+    const priority = {
+      [JobStatus.WAITING_APPROVAL]: 1,
+      [JobStatus.WAITING_FOR_PARTS]: 2,
+      [JobStatus.IN_PROGRESS]: 3,
+      [JobStatus.DIAGNOSING]: 4,
+    };
+
+    return jobs
+      .sort((a, b) => (priority[a.status] || 99) - (priority[b.status] || 99))
+      .map((job) => ({
+        jobId: job.id,
+        jobNumber: job.jobNumber,
+        device: `${job.deviceBrand} ${job.deviceModel}`,
+        faultType: job.faultType?.name || 'Unspecified',
+        status: job.status,
+        customerName: job.customerName,
+      }));
   }
 }

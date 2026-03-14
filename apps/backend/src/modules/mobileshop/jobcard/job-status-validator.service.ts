@@ -38,6 +38,7 @@ export class JobStatusValidator {
       JobStatus.WAITING_APPROVAL,
       JobStatus.IN_PROGRESS, // Skip approval if minor repair
       JobStatus.CANCELLED,
+      JobStatus.REPAIR_FAILED,
     ],
 
     // Waiting for customer approval - can be approved, re-diagnosed, or cancelled
@@ -63,6 +64,8 @@ export class JobStatusValidator {
       JobStatus.WAITING_FOR_PARTS,
       JobStatus.CANCELLED,
       JobStatus.SCRAPPED,
+      JobStatus.REPAIR_FAILED,
+      JobStatus.WAITING_CUSTOMER,
     ],
 
     // Ready for pickup - can deliver, return, or re-repair
@@ -88,6 +91,16 @@ export class JobStatusValidator {
 
     // Terminal state - no further transitions
     [JobStatus.SCRAPPED]: [],
+
+    // Repair failed - can be returned or scrapped
+    [JobStatus.REPAIR_FAILED]: [JobStatus.RETURNED, JobStatus.SCRAPPED],
+
+    // Waiting for customer - can resume once customer responds
+    [JobStatus.WAITING_CUSTOMER]: [
+      JobStatus.IN_PROGRESS,
+      JobStatus.WAITING_APPROVAL,
+      JobStatus.CANCELLED,
+    ],
   };
 
   /**
@@ -132,6 +145,8 @@ export class JobStatusValidator {
   shouldTriggerWhatsApp(status: JobStatus): boolean {
     // Only customer-facing statuses trigger WhatsApp
     const customerFacingStatuses: JobStatus[] = [
+      JobStatus.RECEIVED, // New: "We have received your device"
+      JobStatus.WAITING_APPROVAL, // New: "Estimate is ready, please approve"
       JobStatus.READY, // "Your device is ready for pickup"
       JobStatus.DELIVERED, // "Thank you for choosing us"
       JobStatus.CANCELLED, // "Your job has been cancelled"
