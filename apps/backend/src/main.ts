@@ -25,6 +25,8 @@ import { validateEnv } from './config/env.validation';
 const PRODUCTION_ORIGINS = [
   'https://mobibix.in',
   'https://www.mobibix.in',
+  'https://REMOVED_DOMAIN',
+  'https://www.REMOVED_DOMAIN',
   'https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com',
   'https://gym-saas-cxg5.onrender.com',
 ];
