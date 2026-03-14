@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { SKIP_TENANT_KEY } from '../decorators/skip-tenant.decorator';
 
 @Injectable()
 export class TenantRequiredGuard implements CanActivate {
@@ -22,6 +23,17 @@ export class TenantRequiredGuard implements CanActivate {
     }
 
     const req = context.switchToHttp().getRequest();
+    
+    // 🛡️ Industry Standard: Decorator-based bypass
+    const skipTenant = this.reflector.getAllAndOverride<boolean>(SKIP_TENANT_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (skipTenant) {
+      return true;
+    }
+
     const user = req.user;
     const tenantId = user?.tenantId;
 

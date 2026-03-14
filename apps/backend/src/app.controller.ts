@@ -14,6 +14,7 @@ import { Request } from 'express';
 import type { UserContext } from './app.service';
 import { RequirePermission } from './core/permissions/decorators/require-permission.decorator';
 import { PERMISSIONS } from './security/permission-registry';
+import { SkipTenant } from './core/auth/decorators/skip-tenant.decorator';
 
 type AppRequest = Request & {
   user: UserContext;
@@ -43,7 +44,8 @@ export class AppController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Roles('ADMIN', 'OWNER', 'STAFF')
+  @Roles('ADMIN', 'OWNER', 'STAFF', 'USER')
+  @SkipTenant()
   @RequirePermission(PERMISSIONS.CORE.PROFILE.VIEW)
   @Get('me')
   getMe(@Req() req: AppRequest) {
@@ -54,7 +56,8 @@ export class AppController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Roles('ADMIN', 'OWNER', 'STAFF')
+  @Roles('ADMIN', 'OWNER', 'STAFF', 'USER')
+  @SkipTenant()
   @RequirePermission(PERMISSIONS.CORE.TENANT.VIEW)
   @Get('tenants')
   getTenants(@Req() req: AppRequest): ReturnType<AppService['getTenants']> {
@@ -62,7 +65,8 @@ export class AppController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Roles('ADMIN', 'OWNER', 'STAFF')
+  @Roles('ADMIN', 'OWNER', 'STAFF', 'USER')
+  @SkipTenant()
   @RequirePermission(PERMISSIONS.CORE.TENANT.VIEW)
   @Get('tenants/:tenantType')
   getTenantsByType(

@@ -166,10 +166,14 @@ export class VouchersService {
     if (filters?.startDate || filters?.endDate) {
       where.date = {};
       if (filters.startDate) {
-        where.date.gte = filters.startDate;
+        const start = new Date(filters.startDate);
+        start.setHours(0, 0, 0, 0);
+        where.date.gte = start;
       }
       if (filters.endDate) {
-        where.date.lte = filters.endDate;
+        const end = new Date(filters.endDate);
+        end.setHours(23, 59, 59, 999);
+        where.date.lte = end;
       }
     }
 

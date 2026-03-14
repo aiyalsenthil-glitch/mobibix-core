@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Calendar, Lock, Unlock, AlertTriangle, CheckCircle2,
   TrendingUp, TrendingDown, Banknote, Wallet, Loader2,
-  RefreshCw, ChevronDown, ChevronUp, History, X
+  RefreshCw, ChevronDown, ChevronUp, History, X, HelpCircle
 } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
 import {
@@ -16,6 +16,76 @@ import {
 } from "@/services/operations.api";
 
 const today = () => new Date().toISOString().split("T")[0];
+
+// ─── Help Panel ───────────────────────────────────────────────────────────────
+
+const CLOSING_HELP = [
+  {
+    icon: Banknote,
+    title: "System vs Manual Mode",
+    desc: "System mode uses auto-calculated data. Use Manual mode to override figures if you need to reconcile specific entry errors.",
+  },
+  {
+    icon: Wallet,
+    title: "Opening Cash",
+    desc: "The cash carried forward from the previous confirmed closing. Ensure this matches your start-of-day drawer.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Expected Closing Cash",
+    desc: "Opening + (Sales + Withdrawals + Other In) - (Expenses + Payments + Deposits + Other Out).",
+  },
+  {
+    icon: RefreshCw,
+    title: "Cash Difference",
+    desc: "The 'Gap' between your Physical count and the System expectation. Shortages or Excesses are recorded as Variances.",
+  },
+  {
+    icon: History,
+    title: "Denomination Counter",
+    desc: "Use the detailed counter (500s, 200s, etc.) to ensure your physical count is absolute and verified.",
+  },
+  {
+    icon: AlertTriangle,
+    title: "Submission & Locking",
+    desc: "Once submitted, the day is locked. Financial entries for this date cannot be modified without manager reopening.",
+  },
+];
+
+function DailyClosingHelpPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="bg-blue-50 dark:bg-slate-800/70 border border-blue-200 dark:border-slate-700 rounded-xl p-5 space-y-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-bold text-blue-900 dark:text-blue-300">Daily Closing Guide</p>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+            Ensure your physical cash drawer perfectly matches your digital sales records.
+          </p>
+        </div>
+        <button onClick={onClose} className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1">
+          <ChevronUp size={16} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {CLOSING_HELP.map((h) => {
+          const Icon = h.icon;
+          return (
+            <div key={h.title} className="flex gap-3">
+              <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Icon size={13} className="text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">{h.title}</p>
+                <p className="text-[11px] text-blue-700 dark:text-blue-400 leading-relaxed">{h.desc}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function fmt(paisa: number) {
   const v = paisa / 100;
@@ -67,6 +137,7 @@ export default function DailyClosingPage() {
   });
   const [showDenominations, setShowDenominations] = useState(false);
   const [analysis, setAnalysis] = useState<CashLeakageAnalysis | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   const load = useCallback(async () => {
     if (!shopId) return;
@@ -240,10 +311,21 @@ export default function DailyClosingPage() {
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Daily Account Closing</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400">Seal the day's cash position for {selectedShop?.name}</p>
         </div>
-        <button onClick={load} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 transition-colors">
-          <RefreshCw size={16} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowHelp(v => !v)}
+            title="Daily Closing Guide"
+            className={`p-2 rounded-lg transition-colors ${showHelp ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 dark:text-slate-500"}`}
+          >
+            <HelpCircle size={16} />
+          </button>
+          <button onClick={load} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 transition-colors">
+            <RefreshCw size={16} />
+          </button>
+        </div>
       </div>
+
+      {showHelp && <DailyClosingHelpPanel onClose={() => setShowHelp(false)} />}
 
       {/* Date Picker */}
       <div className="flex items-center gap-3">

@@ -36,6 +36,7 @@ import { GranularPermissionGuard } from '../permissions/guards/granular-permissi
 import { RequirePermission, ModulePermission } from '../permissions/decorators/require-permission.decorator';
 import { PERMISSIONS } from '../../security/permission-registry';
 import { Public } from '../auth/decorators/public.decorator';
+import { SkipTenant } from '../auth/decorators/skip-tenant.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Controller('tenant')
@@ -94,13 +95,14 @@ export class TenantController {
   @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard, TenantStatusGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.USER) // Allow USER role for first-time tenant creation
   @SkipSubscriptionCheck()
+  @SkipTenant()
   @Post()
   async createTenant(
     @Req() req: any,
     @Body() dto: CreateTenantDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const userId = req.user.sub;
+    const userId = req.user.id; // Corrected: Use id instead of sub for consistency if needed, but sub is ID in strategy
 
     const { tenant, userTenant } = await this.tenantService.createTenant(
       userId,
@@ -183,7 +185,8 @@ export class TenantController {
    */
   @RequirePermission(PERMISSIONS.CORE.TENANT.VIEW)
   @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
-  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF, UserRole.USER)
+  @SkipTenant()
   @Get('usage')
   getUsage(@Req() req: any) {
     return this.tenantService.getUsage(req.user.tenantId);

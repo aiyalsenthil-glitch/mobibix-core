@@ -91,8 +91,8 @@ export class ExpensesService {
         status: 'ACTIVE',
         isDeleted: false,
         date: {
-          gte: new Date(startDate),
-          lte: new Date(endDate),
+          gte: (() => { const d = new Date(startDate); d.setHours(0,0,0,0); return d; })(),
+          lte: (() => { const d = new Date(endDate); d.setHours(23,59,59,999); return d; })(),
         },
       },
       select: { 

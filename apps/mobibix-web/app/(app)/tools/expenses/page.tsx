@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  Plus, IndianRupee, Loader2, AlertTriangle, CheckCircle2,
-  ChevronDown, Coffee, Truck, Fuel, Zap, Wifi, MoreHorizontal,
-  BarChart2, RefreshCw,
+  Plus, BarChart2, RefreshCw, HelpCircle, ChevronUp, Coffee, Truck, Fuel, Zap, Wifi, MoreHorizontal,
+  IndianRupee, Loader2, AlertTriangle, CheckCircle2, Lightbulb
 } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
 import {
@@ -12,6 +11,7 @@ import {
   getExpenseCategories, seedExpenseCategories,
   type Expense, type ExpenseCategoryBreakdown, type ExpenseCategory,
 } from "@/services/operations.api";
+import { ExpenseIntelligenceDashboard } from "@/components/operations/ExpenseIntelligenceDashboard";
 
 const CATEGORY_ICONS: Record<string, any> = {
   "tea": Coffee, "snacks": Coffee,
@@ -40,6 +40,76 @@ function monthRange() {
   return { start, end };
 }
 
+// ─── Help Panel ───────────────────────────────────────────────────────────────
+
+const EXPENSE_HELP = [
+  {
+    icon: Coffee,
+    title: "Daily Operational Costs",
+    desc: "Track petty cash and daily spending like tea, snacks, and minor office supplies.",
+  },
+  {
+    icon: BarChart2,
+    title: "Category Breakdown",
+    desc: "See exactly where your money goes. The breakdown chart shows percentage spending by category.",
+  },
+  {
+    icon: IndianRupee,
+    title: "Financial Ledger Link",
+    desc: "Every expense automatically records a 'CASH OUT' entry in your financial ledger.",
+  },
+  {
+    icon: Zap,
+    title: "Daily Closing Impact",
+    desc: "Expense cash is automatically deducted from your shop's 'Expected Cash' during the daily closing.",
+  },
+  {
+    icon: Truck,
+    title: "Payment Modes",
+    desc: "Record if the expense was paid via Cash, UPI, Card, or Bank transfer for accurate reconciliation.",
+  },
+  {
+    icon: HelpCircle,
+    title: "Audit Trail",
+    desc: "Expenses can be updated or soft-deleted. Deleted expenses are hidden but preserved for audits.",
+  },
+];
+
+function ExpenseHelpPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="bg-blue-50 dark:bg-slate-800/70 border border-blue-200 dark:border-slate-700 rounded-xl p-5 space-y-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-bold text-blue-900 dark:text-blue-300">Expense Management Guide</p>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+            Track and categorize every rupee spent from your shop's cash drawer or bank.
+          </p>
+        </div>
+        <button onClick={onClose} className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1">
+          <ChevronUp size={16} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {EXPENSE_HELP.map((h) => {
+          const Icon = h.icon;
+          return (
+            <div key={h.title} className="flex gap-3">
+              <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Icon size={13} className="text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">{h.title}</p>
+                <p className="text-[11px] text-blue-700 dark:text-blue-400 leading-relaxed">{h.desc}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function ExpensesPage() {
   const { selectedShop } = useShop();
   const shopId = selectedShop?.id ?? "";
@@ -63,6 +133,8 @@ export default function ExpensesPage() {
   // Filter state
   const [startDate, setStartDate] = useState(monthRange().start);
   const [endDate, setEndDate] = useState(monthRange().end);
+  const [showHelp, setShowHelp] = useState(false);
+  const [activeTab, setActiveTab] = useState<"RECORDS" | "INTELLIGENCE">("RECORDS");
 
   const load = useCallback(async () => {
     if (!shopId) return;
@@ -128,18 +200,45 @@ export default function ExpensesPage() {
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Expense Manager</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400">Track daily operational costs</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowHelp(v => !v)}
+            title="How to use Expense Manager"
+            className={`p-2 rounded-lg transition-colors ${showHelp ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 dark:text-slate-500"}`}
+          >
+            <HelpCircle size={16} />
+          </button>
           <button onClick={load} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-100 transition-colors">
             <RefreshCw size={16} />
           </button>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 bg-blue-600 dark:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-all shadow-md active:scale-95"
-          >
-            <Plus size={16} /> Add Expense
-          </button>
+          {activeTab === "RECORDS" && (
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="flex items-center gap-2 bg-blue-600 dark:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-all shadow-md active:scale-95"
+            >
+              <Plus size={16} /> Add Expense
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Tabs */}
+      <div className="flex bg-gray-100 dark:bg-slate-800/50 p-1 rounded-xl w-fit">
+         <button 
+           onClick={() => setActiveTab("RECORDS")}
+           className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === "RECORDS" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-gray-500 hover:text-gray-700 dark:hover:text-slate-300"}`}
+         >
+           Records
+         </button>
+         <button 
+           onClick={() => setActiveTab("INTELLIGENCE")}
+           className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === "INTELLIGENCE" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-gray-500 hover:text-gray-700 dark:hover:text-slate-300"}`}
+         >
+           <Lightbulb size={14} /> Intelligence
+         </button>
+      </div>
+
+      {showHelp && <ExpenseHelpPanel onClose={() => setShowHelp(false)} />}
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-lg p-3 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
@@ -152,6 +251,11 @@ export default function ExpensesPage() {
         </div>
       )}
 
+      {/* Tab Content */}
+      {activeTab === "INTELLIGENCE" ? (
+         <ExpenseIntelligenceDashboard shopId={shopId} selectedShopName={selectedShop?.name} />
+      ) : (
+        <>
       {/* Add Expense Form */}
       {showForm && (
         <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
@@ -317,6 +421,8 @@ export default function ExpensesPage() {
             })}
           </div>
         </>
+      )}
+      </>
       )}
     </div>
   );

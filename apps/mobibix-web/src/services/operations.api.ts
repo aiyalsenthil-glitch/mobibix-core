@@ -610,3 +610,50 @@ export async function getShrinkageMonthlyTrend(
   if (!res.ok) throw new Error("Failed to fetch shrinkage trend");
   return extractData(res);
 }
+// ─── EXPENSE INTELLIGENCE ────────────────────────────────────────────────────
+
+export interface ExpenseIntelligenceOverview {
+  totalExpense: number;
+  averageDailyExpense: number;
+  highestExpenseDay: {
+    date: string;
+    amount: number;
+  };
+}
+
+export interface ExpenseIntelligenceCategory {
+  category: string;
+  amount: number;
+}
+
+export interface ExpenseIntelligenceTrend {
+  month: string;
+  amount: number;
+}
+
+export interface ExpenseIntelligencePayment {
+  method: string;
+  amount: number;
+}
+
+export interface ExpenseIntelligence {
+  overview: ExpenseIntelligenceOverview;
+  categoryBreakdown: ExpenseIntelligenceCategory[];
+  monthlyTrend: ExpenseIntelligenceTrend[];
+  paymentMethods: ExpenseIntelligencePayment[];
+  insights: { insights: string[] };
+}
+
+export async function getExpenseIntelligence(
+  shopId: string,
+  startDate?: string,
+  endDate?: string
+): Promise<ExpenseIntelligence> {
+  const p = new URLSearchParams({ shopId });
+  if (startDate) p.append("startDate", startDate);
+  if (endDate) p.append("endDate", endDate);
+  
+  const res = await authenticatedFetch(`/reports/expense-intelligence?${p}`);
+  if (!res.ok) throw new Error("Failed to fetch expense intelligence");
+  return extractData(res);
+}

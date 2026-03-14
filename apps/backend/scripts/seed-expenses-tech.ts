@@ -4,19 +4,20 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  const shop = await prisma.shop.findFirst({
+  const shopId = 'cmmf1dbed000slevoyvirr5h4'; // Aiyal Technologies
+  const shop = await prisma.shop.findUnique({
+    where: { id: shopId },
     select: { id: true, tenantId: true, name: true }
   });
 
   if (!shop) {
-    console.error('No shop found to seed data for.');
+    console.error('Shop not found');
     return;
   }
 
   const tenantId = shop.tenantId;
-  const shopId = shop.id;
 
-  console.log(`Seeding data for Shop: ${shop.name} (${shopId}), Tenant: ${tenantId}`);
+  console.log(`Seeding for Shop: ${shop.name} (${shop.id}), Tenant: ${tenantId}`);
 
   const categoryNames = [
     'Tea & Snacks',
@@ -27,7 +28,6 @@ async function main() {
   ];
 
   for (const name of categoryNames) {
-    // Check if category exists
     const existing = await (prisma as any).expenseCategory.findFirst({
         where: { tenantId, name }
     });
@@ -36,7 +36,7 @@ async function main() {
         await (prisma as any).expenseCategory.create({
             data: {
                 tenantId,
-                shopId,
+                shopId: shop.id,
                 name,
                 isDefault: true
             }
@@ -58,11 +58,15 @@ async function main() {
 
   const now = new Date();
 
-  for (const exp of expenses) {
+  for (let i = 0; i < expenses.length; i++) {
+    const exp = expenses[i];
+    const voucherId = `EXP-TECH-${Math.floor(10000 + Math.random() * 90000)}-${i}`;
+    
     const voucher = await (prisma as any).paymentVoucher.create({
       data: {
         tenantId,
-        shopId,
+        shopId: shop.id,
+        voucherId,
         voucherType: 'EXPENSE',
         amount: exp.amount,
         paymentMethod: exp.method,
@@ -75,28 +79,22 @@ async function main() {
       }
     });
 
-    // Create corresponding Financial Entry
-    const financialEntryData: any = {
+    await (prisma as any).financialEntry.create({
+      data: {
         tenantId,
-        shopId,
+        shopId: shop.id,
         type: 'OUT',
         amount: exp.amount,
         mode: exp.method,
         referenceType: 'EXPENSE',
         referenceId: voucher.id,
-        narration: exp.narration,
+        note: exp.narration,
         createdAt: now
-    };
-
-    // Check if FinancialEntry model has extra fields or different names
-    await (prisma as any).financialEntry.create({
-      data: financialEntryData
+      }
     });
   }
 
-  console.log(`Successfully seeded expenses for ${shop.name}`);
+  console.log(`Successfully seeded 5 expenses for ${shop.name}`);
 }
 
-main()
-  .catch(e => console.error(e))
-  .finally(async () => await prisma.$disconnect());
+main().finally(() => prisma.$disconnect());

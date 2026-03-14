@@ -8,10 +8,12 @@ import { GranularPermissionGuard } from '../permissions/guards/granular-permissi
 import { RequirePermission, ModulePermission } from '../permissions/decorators/require-permission.decorator';
 import { PERMISSIONS } from '../../security/permission-registry';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { SkipTenant } from '../auth/decorators/skip-tenant.decorator';
 
 @Controller('users')
 @ModuleScope(ModuleType.CORE)
 @ModulePermission('profile')
+@SkipTenant()
 @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
 export class UsersMeController {
   constructor(private readonly usersService: UsersService) {}

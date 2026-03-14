@@ -12,9 +12,10 @@ import { LoyaltyModule } from '../../../core/loyalty/loyalty.module';
 import { OperationsModule } from '../operations/operations.module';
 import { CashModule } from '../operations/cash/cash.module';
 import { CashAnalysisModule } from './cash-analysis/cash-analysis.module';
+import { ExpenseIntelligenceModule } from './expense-intelligence/expense-intelligence.module';
 
 @Module({
-  imports: [LoyaltyModule, forwardRef(() => OperationsModule), CashModule, CashAnalysisModule],
+  imports: [LoyaltyModule, forwardRef(() => OperationsModule), CashModule, CashAnalysisModule, ExpenseIntelligenceModule],
   controllers: [MobileShopReportsController],
   providers: [
     MobileShopReportsService,
