@@ -325,6 +325,13 @@ export const RESOURCE_DICTIONARY = [
           { id: 'place_order', ui: 'Place B2B Order' },
         ],
       },
+      {
+        name: 'repair_knowledge',
+        actions: [
+          { id: 'view', ui: 'View Repair Knowledge' },
+          { id: 'manage', ui: 'Manage Repair Knowledge' },
+        ],
+      },
     ],
   },
   {
@@ -404,6 +411,7 @@ export const roleTemplates = [
       'mobile_shop.compatibility.manage',
       'mobile_shop.shop.manage',
       'mobile_shop.shop.view',
+      'mobile_shop.repair_knowledge.manage',
       'core.staff.manage',
       'core.settings.manage',
       'core.dashboard.view',
@@ -438,6 +446,7 @@ export const roleTemplates = [
       'mobile_shop.receipt.manage',
       'mobile_shop.voucher.manage',
       'mobile_shop.compatibility.manage',
+      'mobile_shop.repair_knowledge.manage',
       'core.report.view',
       'core.staff.manage',
       'core.settings.manage',
@@ -485,6 +494,7 @@ export const roleTemplates = [
       'mobile_shop.compatibility.view',
       'mobile_shop.loyalty.view',
       'mobile_shop.whatsapp.view',
+      'mobile_shop.repair_knowledge.view',
       'mobile_shop.crm.manage',
       'core.dashboard.view',
       'mobile_shop.shop.view',

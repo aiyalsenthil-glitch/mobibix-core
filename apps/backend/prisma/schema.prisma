@@ -1498,6 +1498,37 @@ model ProductCategory {
   @@map("mb_product_category")
 }
 
+model FaultDiagnosis {
+  id          String   @id @default(cuid())
+  faultType   String   @unique // e.g., "Not Charging"
+  steps       String[] // JSON array of strings
+  description String?
+  tenantId    String? // If null, it's a global/system checklist. If set, it's tenant-specific.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([faultType])
+  @@index([tenantId])
+  @@map("mb_fault_diagnosis")
+}
+
+model RepairKnowledge {
+  id        String   @id @default(cuid())
+  brand     String // e.g., Xiaomi
+  model     String // e.g., Redmi Note 10
+  faultType String // e.g., Not Charging
+  content   String   @db.Text
+  videoUrl  String?
+  tenantId  String? // null = Global/Community note
+  userId    String? // Author (System or User ID)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([brand, model, faultType])
+  @@index([tenantId])
+  @@map("mb_repair_knowledge")
+}
+
 model GlobalProduct {
   id           String          @id @default(cuid())
   name         String

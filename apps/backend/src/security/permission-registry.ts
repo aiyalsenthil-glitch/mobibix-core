@@ -203,6 +203,10 @@ export const PERMISSIONS = {
        STOCK_OUT: { module: ModuleType.MOBILE_SHOP, resource: 'repair', action: 'stock_out' } as Permission,
        BILL: { module: ModuleType.MOBILE_SHOP, resource: 'repair', action: 'bill' } as Permission,
     },
+    REPAIR_KNOWLEDGE: {
+      VIEW: { module: ModuleType.MOBILE_SHOP, resource: 'repair_knowledge', action: 'view' } as Permission,
+      MANAGE: { module: ModuleType.MOBILE_SHOP, resource: 'repair_knowledge', action: 'manage' } as Permission,
+    },
     LOYALTY: {
       VIEW: { module: ModuleType.MOBILE_SHOP, resource: 'loyalty', action: 'view' } as Permission,
       MANAGE: { module: ModuleType.MOBILE_SHOP, resource: 'loyalty', action: 'manage' } as Permission,

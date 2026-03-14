@@ -11,6 +11,7 @@ import { QuotationsModule } from './quotations/quotations.module';
 import { CreditNotesModule } from './credit-notes/credit-notes.module';
 import { CompatibilityModule } from './compatibility/compatibility.module';
 import { OperationsModule } from './operations/operations.module';
+import { KnowledgeModule } from './knowledge/knowledge.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { OperationsModule } from './operations/operations.module';
     CreditNotesModule,
     CompatibilityModule,
     OperationsModule,
+    KnowledgeModule,
   ],
 })
 export class MobileShopModule {}
