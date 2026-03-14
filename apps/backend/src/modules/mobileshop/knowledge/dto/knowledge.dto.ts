@@ -1,6 +1,16 @@
-import { IsString, IsNotEmpty, IsOptional, IsArray, IsUrl, IsInt, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsArray,
+  IsUrl,
+  IsInt,
+  IsEnum,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { RepairKnowledgeStatus, RepairKnowledgeSource } from '@prisma/client';
 
 export class CreateFaultTypeDto {
   @ApiProperty({ example: 'Not Charging' })
@@ -14,14 +24,14 @@ export class FaultDiagnosisStepDto {
   @IsInt()
   order: number;
 
-  @ApiProperty({ example: 'Clean charging port' })
+  @ApiProperty({ example: 'Clean charging port with a brush' })
   @IsString()
   @IsNotEmpty()
   stepText: string;
 }
 
 export class CreateFaultDiagnosisDto {
-  @ApiProperty({ example: 'fault-type-uuid' })
+  @ApiProperty({ example: 'fault-type-cuid' })
   @IsString()
   @IsNotEmpty()
   faultTypeId: string;
@@ -39,12 +49,12 @@ export class CreateFaultDiagnosisDto {
 }
 
 export class CreateRepairKnowledgeDto {
-  @ApiProperty({ example: 'phone-model-uuid', required: false })
+  @ApiProperty({ example: 'phone-model-cuid', required: false })
   @IsString()
   @IsOptional()
   phoneModelId?: string;
 
-  @ApiProperty({ example: 'fault-type-uuid' })
+  @ApiProperty({ example: 'fault-type-cuid' })
   @IsString()
   @IsNotEmpty()
   faultTypeId: string;
@@ -58,4 +68,21 @@ export class CreateRepairKnowledgeDto {
   @IsUrl()
   @IsOptional()
   videoUrl?: string;
+
+  @ApiProperty({ enum: RepairKnowledgeSource, default: RepairKnowledgeSource.COMMUNITY })
+  @IsEnum(RepairKnowledgeSource)
+  @IsOptional()
+  source?: RepairKnowledgeSource;
+}
+
+export class VoteRepairKnowledgeDto {
+  @ApiProperty({ enum: ['helpful', 'notHelpful'] })
+  @IsEnum(['helpful', 'notHelpful'])
+  vote: 'helpful' | 'notHelpful';
+}
+
+export class ModerateRepairKnowledgeDto {
+  @ApiProperty({ enum: RepairKnowledgeStatus })
+  @IsEnum(RepairKnowledgeStatus)
+  status: RepairKnowledgeStatus;
 }

@@ -1498,6 +1498,18 @@ model ProductCategory {
   @@map("mb_product_category")
 }
 
+enum RepairKnowledgeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RepairKnowledgeSource {
+  SYSTEM
+  ADMIN
+  COMMUNITY
+}
+
 model FaultType {
   id        String   @id @default(cuid())
   name      String   @unique
@@ -1538,13 +1550,17 @@ model FaultDiagnosisStep {
 }
 
 model RepairKnowledge {
-  id           String   @id @default(cuid())
+  id           String                 @id @default(cuid())
   phoneModelId String?
   faultTypeId  String
-  content      String   @db.Text
+  content      String                 @db.Text
   videoUrl     String?
   tenantId     String?
   userId       String?
+  status       RepairKnowledgeStatus  @default(APPROVED)
+  source       RepairKnowledgeSource  @default(ADMIN)
+  helpfulCount    Int @default(0)
+  notHelpfulCount Int @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -1553,6 +1569,7 @@ model RepairKnowledge {
 
   @@index([phoneModelId, faultTypeId])
   @@index([tenantId])
+  @@index([status])
   @@map("mb_repair_knowledge")
 }
 
