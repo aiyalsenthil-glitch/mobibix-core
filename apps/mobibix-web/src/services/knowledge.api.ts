@@ -143,3 +143,34 @@ export async function upsertChecklist(data: {
   }
   return extractData(response);
 }
+
+/**
+ * Get diagnostic checklist for a fault type
+ */
+export async function getChecklist(faultTypeId: string): Promise<FaultDiagnosis | null> {
+  const response = await authenticatedFetch(`/mobileshop/knowledge/checklist/${faultTypeId}`);
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to fetch checklist");
+  }
+  return extractData(response);
+}
+
+/**
+ * Get repair notes for a model and/or fault type
+ */
+export async function getRepairNotes(params: {
+  phoneModelId?: string;
+  faultTypeId?: string;
+}): Promise<RepairNote[]> {
+  const query = new URLSearchParams();
+  if (params.phoneModelId) query.set("phoneModelId", params.phoneModelId);
+  if (params.faultTypeId) query.set("faultTypeId", params.faultTypeId);
+
+  const response = await authenticatedFetch(`/mobileshop/knowledge/notes?${query.toString()}`);
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to fetch repair notes");
+  }
+  return extractData(response);
+}

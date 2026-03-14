@@ -43,7 +43,6 @@ import {
   ReceiptText,
   Search,
   X,
-  Lightbulb,
 } from "lucide-react";
 import { AddPartModal } from "./AddPartModal";
 import { Input } from "@/components/ui/input";
@@ -378,13 +377,21 @@ export default function JobCardsPage() {
         >
           Job Cards
         </h1>
-        <button
-          onClick={handleAddNew}
-          disabled={!selectedShopId}
-          className="px-6 py-2 bg-linear-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-bold transition shadow-lg"
-        >
-          + Create New Job Card
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => router.push("/tools/repair-knowledge")}
+            className="px-6 py-2 bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-900/50 rounded-lg font-bold hover:bg-amber-100 dark:hover:bg-amber-900/30 transition shadow-sm flex items-center gap-2"
+          >
+            <span>💡</span> Repair Assistant
+          </button>
+          <button
+            onClick={handleAddNew}
+            disabled={!selectedShopId}
+            className="px-6 py-2 bg-linear-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-bold transition shadow-lg"
+          >
+            + Create New Job Card
+          </button>
+        </div>
       </div>
 
 
@@ -644,15 +651,6 @@ export default function JobCardsPage() {
                         >
                           <Eye className="w-4 h-4" />
                           View
-                        </button>
-
-                        {/* Repair Assistant Quick Link */}
-                        <button
-                          onClick={() => router.push(`/jobcards/${job.id}#repair-assistant-section`)}
-                          className="p-1.5 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded-md hover:bg-amber-200 dark:hover:bg-amber-500/30 transition flex items-center justify-center"
-                          title="Repair Assistant"
-                        >
-                          <Lightbulb className="w-4 h-4" />
                         </button>
 
                         {/* Quick Action: Add Part */}

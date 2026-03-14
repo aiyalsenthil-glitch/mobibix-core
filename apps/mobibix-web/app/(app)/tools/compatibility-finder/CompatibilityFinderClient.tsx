@@ -1,6 +1,5 @@
-"use client";
-
 import { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { 
   Search, 
   SearchCheck, 
@@ -65,6 +64,8 @@ const CATEGORY_NAMES: Record<string, string> = {
 
 export default function CompatibilityFinderClient() {
   const { authUser, isLoading } = useAuth();
+  const searchParams = useSearchParams();
+  
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<PhoneModelSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -72,6 +73,35 @@ export default function CompatibilityFinderClient() {
   const [results, setResults] = useState<SearchCompatibilityResponse | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const suggestionRef = useRef<HTMLDivElement>(null);
+
+  // Auto-search if model is in URL
+  useEffect(() => {
+    const modelParam = searchParams.get("model");
+    if (modelParam && !selectedModel && !isSearching) {
+      setQuery(modelParam);
+      handleSearch(modelParam);
+    }
+  }, [searchParams]);
+
+  const handleSearch = async (modelName: string) => {
+    setIsSearching(true);
+    setResults(null);
+    setFeedbackSuccess(false);
+
+    try {
+      const data = await searchCompatibility(modelName);
+      setResults(data);
+      if (data.suggestions && data.suggestions.length > 0) {
+        // Optionally set selected model if first suggestion matches exactly
+        const exactMatch = data.suggestions.find(s => s.fullName.toLowerCase() === modelName.toLowerCase());
+        if (exactMatch) setSelectedModel(exactMatch);
+      }
+    } catch (err) {
+      console.error("Search failed", err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   // 1. Loading State
   if (isLoading) {
@@ -139,18 +169,7 @@ export default function CompatibilityFinderClient() {
     setQuery(model.fullName);
     setSelectedModel(model);
     setShowSuggestions(false);
-    setIsSearching(true);
-    setResults(null);
-    setFeedbackSuccess(false);
-
-    try {
-      const data = await searchCompatibility(model.fullName);
-      setResults(data);
-    } catch (err) {
-      console.error("Search failed", err);
-    } finally {
-      setIsSearching(false);
-    }
+    handleSearch(model.fullName);
   };
 
   const handleSubmitFeedback = async () => {
