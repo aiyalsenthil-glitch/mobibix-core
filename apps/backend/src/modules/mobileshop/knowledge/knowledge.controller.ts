@@ -1,7 +1,11 @@
 import { Controller, Get, Post, Body, Query, Param, UseGuards, Req } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { KnowledgeService } from './knowledge.service';
-import { CreateFaultDiagnosisDto, CreateRepairNoteDto } from './dto/knowledge.dto';
+import { 
+  CreateFaultDiagnosisDto, 
+  CreateRepairKnowledgeDto, 
+  CreateFaultTypeDto 
+} from './dto/knowledge.dto';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { UserRole, ModuleType } from '@prisma/client';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
@@ -23,22 +27,21 @@ export class KnowledgeController extends TenantScopedController {
   }
 
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.REPAIR_KNOWLEDGE.VIEW)
-  @Get('checklist')
-  async getChecklist(@Req() req: any, @Query('faultType') faultType: string) {
+  @Get('checklist/:faultTypeId')
+  async getChecklist(@Req() req: any, @Param('faultTypeId') faultTypeId: string) {
     const tenantId = this.getTenantId(req);
-    return this.knowledgeService.getChecklist(faultType, tenantId);
+    return this.knowledgeService.getChecklist(faultTypeId, tenantId);
   }
 
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.REPAIR_KNOWLEDGE.VIEW)
   @Get('notes')
   async getNotes(
     @Req() req: any,
-    @Query('brand') brand: string,
-    @Query('model') model: string,
-    @Query('faultType') faultType: string,
+    @Query('phoneModelId') phoneModelId: string,
+    @Query('faultTypeId') faultTypeId: string,
   ) {
     const tenantId = this.getTenantId(req);
-    return this.knowledgeService.getRepairNotes(brand, model, faultType, tenantId);
+    return this.knowledgeService.getRepairNotes(phoneModelId, faultTypeId, tenantId);
   }
 
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.REPAIR_KNOWLEDGE.VIEW)
@@ -49,17 +52,21 @@ export class KnowledgeController extends TenantScopedController {
   }
 
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.REPAIR_KNOWLEDGE.MANAGE)
+  @Post('fault-type')
+  async createFaultType(@Body() dto: CreateFaultTypeDto) {
+    return this.knowledgeService.createFaultType(dto);
+  }
+
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.REPAIR_KNOWLEDGE.MANAGE)
   @Post('checklist')
   async createChecklist(@Req() req: any, @Body() dto: CreateFaultDiagnosisDto) {
-    // Check if user is STAFF (could be tenant admin/owner) or SUPER_ADMIN
-    // For now, allow tenant owners to create their own.
     const tenantId = this.getTenantId(req);
     return this.knowledgeService.createFaultDiagnosis(tenantId, dto);
   }
 
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.REPAIR_KNOWLEDGE.MANAGE)
   @Post('notes')
-  async createNote(@Req() req: any, @Body() dto: CreateRepairNoteDto) {
+  async createNote(@Req() req: any, @Body() dto: CreateRepairKnowledgeDto) {
     const tenantId = this.getTenantId(req);
     const userId = req.user.userId;
     return this.knowledgeService.createRepairNote(tenantId, userId, dto);

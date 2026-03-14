@@ -1,16 +1,36 @@
-import { IsString, IsNotEmpty, IsOptional, IsArray, IsUrl } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsArray, IsUrl, IsInt, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class CreateFaultDiagnosisDto {
+export class CreateFaultTypeDto {
   @ApiProperty({ example: 'Not Charging' })
   @IsString()
   @IsNotEmpty()
-  faultType: string;
+  name: string;
+}
 
-  @ApiProperty({ example: ['Clean charging port', 'Test cable'] })
+export class FaultDiagnosisStepDto {
+  @ApiProperty({ example: 1 })
+  @IsInt()
+  order: number;
+
+  @ApiProperty({ example: 'Clean charging port' })
+  @IsString()
+  @IsNotEmpty()
+  stepText: string;
+}
+
+export class CreateFaultDiagnosisDto {
+  @ApiProperty({ example: 'fault-type-uuid' })
+  @IsString()
+  @IsNotEmpty()
+  faultTypeId: string;
+
+  @ApiProperty({ type: [FaultDiagnosisStepDto] })
   @IsArray()
-  @IsString({ each: true })
-  steps: string[];
+  @ValidateNested({ each: true })
+  @Type(() => FaultDiagnosisStepDto)
+  steps: FaultDiagnosisStepDto[];
 
   @ApiProperty({ required: false })
   @IsString()
@@ -18,21 +38,16 @@ export class CreateFaultDiagnosisDto {
   description?: string;
 }
 
-export class CreateRepairNoteDto {
-  @ApiProperty({ example: 'Xiaomi' })
+export class CreateRepairKnowledgeDto {
+  @ApiProperty({ example: 'phone-model-uuid', required: false })
   @IsString()
-  @IsNotEmpty()
-  brand: string;
+  @IsOptional()
+  phoneModelId?: string;
 
-  @ApiProperty({ example: 'Redmi Note 10' })
+  @ApiProperty({ example: 'fault-type-uuid' })
   @IsString()
   @IsNotEmpty()
-  model: string;
-
-  @ApiProperty({ example: 'Not Charging' })
-  @IsString()
-  @IsNotEmpty()
-  faultType: string;
+  faultTypeId: string;
 
   @ApiProperty()
   @IsString()

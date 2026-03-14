@@ -1498,33 +1498,60 @@ model ProductCategory {
   @@map("mb_product_category")
 }
 
-model FaultDiagnosis {
-  id          String   @id @default(cuid())
-  faultType   String   @unique // e.g., "Not Charging"
-  steps       String[] // JSON array of strings
-  description String?
-  tenantId    String? // If null, it's a global/system checklist. If set, it's tenant-specific.
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([faultType])
-  @@index([tenantId])
-  @@map("mb_fault_diagnosis")
-}
-
-model RepairKnowledge {
+model FaultType {
   id        String   @id @default(cuid())
-  brand     String // e.g., Xiaomi
-  model     String // e.g., Redmi Note 10
-  faultType String // e.g., Not Charging
-  content   String   @db.Text
-  videoUrl  String?
-  tenantId  String? // null = Global/Community note
-  userId    String? // Author (System or User ID)
+  name      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([brand, model, faultType])
+  diagnoses  FaultDiagnosis[]
+  knowledges RepairKnowledge[]
+
+  @@map("mb_repair_fault_type")
+}
+
+model FaultDiagnosis {
+  id          String   @id @default(cuid())
+  faultTypeId String
+  tenantId    String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  faultType FaultType            @relation(fields: [faultTypeId], references: [id])
+  steps     FaultDiagnosisStep[]
+
+  @@unique([tenantId, faultTypeId])
+  @@map("mb_fault_diagnosis")
+}
+
+model FaultDiagnosisStep {
+  id       String @id @default(cuid())
+  guideId  String
+  order    Int
+  stepText String
+
+  guide FaultDiagnosis @relation(fields: [guideId], references: [id], onDelete: Cascade)
+
+  @@index([guideId])
+  @@map("mb_fault_diagnosis_step")
+}
+
+model RepairKnowledge {
+  id           String   @id @default(cuid())
+  phoneModelId String?
+  faultTypeId  String
+  content      String   @db.Text
+  videoUrl     String?
+  tenantId     String?
+  userId       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  phoneModel PhoneModel? @relation(fields: [phoneModelId], references: [id])
+  faultType  FaultType   @relation(fields: [faultTypeId], references: [id])
+
+  @@index([phoneModelId, faultTypeId])
   @@index([tenantId])
   @@map("mb_repair_knowledge")
 }
@@ -2600,6 +2627,7 @@ model PhoneModel {
   groups      CompatibilityGroupPhone[]
   reportedFeedback  CompatibilityFeedback[] @relation("SourcePhone")
   suggestedLinks    CompatibilityFeedback[] @relation("TargetPhone")
+  repairKnowledges  RepairKnowledge[]
 
   @@unique([brandId, modelName])
   @@index([modelName])
