@@ -4,10 +4,10 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findFirst({
     where: { email: 'test@gmail.com' },
     include: {
-      tenants: {
+      userTenants: {
         include: {
           tenant: {
             include: {
@@ -24,8 +24,8 @@ async function main() {
     return;
   }
 
-  const tenantId = user.tenants[0]?.tenantId;
-  const shopId = user.tenants[0]?.tenant?.shops[0]?.id;
+  const tenantId = user.userTenants[0]?.tenantId;
+  const shopId = user.userTenants[0]?.tenant?.shops[0]?.id;
 
   if (!tenantId || !shopId) {
     console.error('Tenant or Shop not found for user');
@@ -33,6 +33,14 @@ async function main() {
   }
 
   console.log(`Feeding data for Tenant: ${tenantId}, Shop: ${shopId}, User: ${user.id}`);
+
+  // 0. Clean up existing test data to avoid unique constraint errors
+  await prisma.jobCard.deleteMany({
+    where: {
+      jobNumber: { in: ['TEST-001', 'TEST-002', 'TEST-003'] },
+      tenantId
+    }
+  });
 
   // 1. Ensure FaultTypes exist
   const faultTypes = [
@@ -53,15 +61,14 @@ async function main() {
 
   // 2. Ensure ShopProducts exist for parts suggestion
   const products = [
-    { name: 'Charging Port Flex', quantity: 15, salePrice: 50000, type: 'PART' },
-    { name: 'Replacement Battery', quantity: 5, salePrice: 120000, type: 'PART' }
+    { name: 'Charging Port Flex', quantity: 15, salePrice: 50000, type: 'SPARE' },
+    { name: 'Replacement Battery', quantity: 5, salePrice: 120000, type: 'SPARE' }
   ];
 
   for (const p of products) {
     await prisma.shopProduct.upsert({
       where: { 
-        tenantId_shopId_name: {
-          tenantId,
+        shopId_name: {
           shopId,
           name: p.name
         }
