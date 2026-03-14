@@ -9,6 +9,7 @@ import { getProfitSummary } from "@/services/reports.api";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { getUsageHistory, UsageSnapshot } from "@/services/tenant.api";
 import { authenticatedFetch } from "@/services/auth.api";
+import { getBottlenecks, getCustomerDelays } from "@/services/jobcard.api";
 import { UsageTrendsChart } from "@/components/dashboard/UsageTrendsChart";
 import {
   LineChart,
@@ -100,6 +101,8 @@ export default function DashboardPage() {
 
   const [usageHistory, setUsageHistory] = useState<UsageSnapshot[]>([]);
   const [shopBreakdown, setShopBreakdown] = useState<ShopBreakdownItem[]>([]);
+  const [bottlenecks, setBottlenecks] = useState<any[]>([]);
+  const [delays, setDelays] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const userRole = authUser?.role?.toLowerCase();
@@ -140,7 +143,7 @@ export default function DashboardPage() {
       const reportParams = selectedShopId ? { shopId: selectedShopId } : {};
 
       // Optimized: Reduced from 5 to 3 calls. Sales/Trend data now comes from main dashboard API.
-      const [dashRes, profitRes, usageRes, breakdownRes] = await Promise.all([
+      const [dashRes, profitRes, usageRes, breakdownRes, bottleneckRes, delayRes] = await Promise.all([
         authenticatedFetch(
           `/mobileshop/dashboard/${endpoint}${shopQuery ? "?" + shopQuery.substring(1) : ""}`,
         ).catch(() => null),
@@ -155,6 +158,8 @@ export default function DashboardPage() {
         isOwner && isAllShops
           ? authenticatedFetch("/mobileshop/dashboard/shop-breakdown").then(r => r.json()).catch(() => [])
           : Promise.resolve([]),
+        isOwner ? getBottlenecks().catch(() => []) : Promise.resolve([]),
+        isOwner ? getCustomerDelays().catch(() => []) : Promise.resolve([]),
       ]);
 
       if (dashRes?.ok) {
@@ -171,6 +176,9 @@ export default function DashboardPage() {
       if (Array.isArray(breakdownRes)) {
         setShopBreakdown(breakdownRes as ShopBreakdownItem[]);
       }
+
+      setBottlenecks(bottleneckRes || []);
+      setDelays(delayRes || []);
     } catch (error) {
       console.error("Dashboard Fetch Error:", error);
     } finally {
@@ -508,6 +516,59 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* PIPELINE INTELLIGENCE (Feature 5 & 6) */}
+      {isOwner && (bottlenecks.length > 0 || delays.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {bottlenecks.length > 0 && (
+            <div className="p-6 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-xl shadow-sm">
+               <h3 className="text-red-900 dark:text-red-400 font-bold flex items-center gap-2 mb-4 uppercase text-xs tracking-widest">
+                 <AlertTriangle size={18} /> Bottleneck Detected
+               </h3>
+               <div className="space-y-3">
+                 {bottlenecks.map(b => (
+                   <div key={b.status} className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-xs">
+                      <div>
+                        <p className="font-bold text-sm text-gray-900 dark:text-gray-100">{b.status}</p>
+                        <p className="text-xs text-gray-500">Stagnant Jobs: {b.count}</p>
+                      </div>
+                      <button 
+                        onClick={() => router.push(`/jobcards?status=${b.status}`)}
+                        className="text-xs bg-red-100 text-red-700 px-3 py-1.5 rounded-lg font-bold hover:bg-red-200 transition"
+                      >
+                        Action Needed
+                      </button>
+                   </div>
+                 ))}
+               </div>
+            </div>
+          )}
+
+          {delays.length > 0 && (
+            <div className="p-6 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl shadow-sm">
+               <h3 className="text-amber-900 dark:text-amber-400 font-bold flex items-center gap-2 mb-4 uppercase text-xs tracking-widest">
+                 <Clock size={18} /> Customer Follow-ups
+               </h3>
+               <div className="space-y-3">
+                 {delays.map(d => (
+                   <div key={d.id} className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-xs">
+                      <div>
+                        <p className="font-bold text-sm text-gray-900 dark:text-gray-100">{d.customerName}</p>
+                        <p className="text-xs text-gray-500">{d.status} for {d.daysDelay} days</p>
+                      </div>
+                      <button 
+                        onClick={() => router.push(`/jobcards/${d.id}`)}
+                        className="text-xs bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold hover:bg-amber-200 transition"
+                      >
+                        Send Reminder
+                      </button>
+                   </div>
+                 ))}
+               </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Row 3: Repairs (Secondary) */}
       <div>

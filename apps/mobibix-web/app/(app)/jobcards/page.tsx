@@ -8,6 +8,7 @@ import {
   deleteJobCard,
   type JobCard,
   type JobStatus,
+  getMyQueue,
 } from "@/services/jobcard.api";
 import { hasSessionHint } from "@/services/auth.api";
 import { JobCardModal } from "./JobCardModal";
@@ -67,6 +68,8 @@ const STATUS_OPTIONS: JobStatus[] = [
   "CANCELLED",
   "RETURNED",
   "SCRAPPED",
+  "REPAIR_FAILED",
+  "WAITING_CUSTOMER",
 ];
 
 const STATUS_COLORS: Record<JobStatus, string> = {
@@ -94,6 +97,10 @@ const STATUS_COLORS: Record<JobStatus, string> = {
     "bg-pink-200 text-pink-900 border-pink-400 dark:bg-pink-500/20 dark:text-pink-200 dark:border-pink-500/50",
   SCRAPPED:
     "bg-stone-300 text-stone-900 border-stone-500 dark:bg-stone-500/20 dark:text-stone-300 dark:border-stone-500/50",
+  REPAIR_FAILED:
+    "bg-red-200 text-red-900 border-red-400 dark:bg-red-500/20 dark:text-red-200 dark:border-red-500/50",
+  WAITING_CUSTOMER:
+    "bg-amber-100 text-amber-900 border-amber-400 dark:bg-amber-500/10 dark:text-amber-100 dark:border-amber-400/50",
 };
 
 /**
@@ -108,16 +115,19 @@ const VALID_TRANSITIONS: Record<JobStatus, JobStatus[]> = {
     "WAITING_FOR_PARTS",
     "IN_PROGRESS",
     "CANCELLED",
+    "REPAIR_FAILED",
   ],
   WAITING_APPROVAL: ["APPROVED", "CANCELLED"],
   APPROVED: ["WAITING_FOR_PARTS", "IN_PROGRESS", "CANCELLED"],
   WAITING_FOR_PARTS: ["IN_PROGRESS", "CANCELLED"],
-  IN_PROGRESS: ["READY", "WAITING_FOR_PARTS", "CANCELLED", "SCRAPPED"],
+  IN_PROGRESS: ["READY", "WAITING_FOR_PARTS", "CANCELLED", "SCRAPPED", "REPAIR_FAILED", "WAITING_CUSTOMER"],
   READY: ["DELIVERED", "RETURNED", "IN_PROGRESS", "SCRAPPED"],
   DELIVERED: [], // Terminal state
   CANCELLED: [], // Terminal state
   RETURNED: [], // Terminal state
   SCRAPPED: [], // Terminal state
+  REPAIR_FAILED: ["RETURNED", "SCRAPPED"],
+  WAITING_CUSTOMER: ["IN_PROGRESS", "WAITING_APPROVAL", "CANCELLED"],
 };
 
 /**
@@ -178,6 +188,7 @@ export default function JobCardsPage() {
   } | null>(null);
 
   const [billingJob, setBillingJob] = useState<JobCard | null>(null);
+  const [isMyQueueActive, setIsMyQueueActive] = useState(false);
 
   // URL Syncing
   const searchParams = useSearchParams();
@@ -243,6 +254,12 @@ export default function JobCardsPage() {
     useCallback(
       async () => {
         if (!selectedShopId) return { jobCards: [], total: 0 };
+        
+        if (isMyQueueActive) {
+           const queue = await getMyQueue();
+           return { jobCards: queue, total: queue.length };
+        }
+
         const result = await listJobCards(selectedShopId, {
           status: statusFilter === "ALL" ? undefined : (statusFilter as JobStatus),
           customerName: debouncedCustomerName || undefined,
@@ -251,10 +268,10 @@ export default function JobCardsPage() {
         });
         return result;
       },
-      [selectedShopId, statusFilter, debouncedCustomerName, currentPage],
+      [selectedShopId, statusFilter, debouncedCustomerName, currentPage, isMyQueueActive],
     ),
-    [selectedShopId, statusFilter, debouncedCustomerName, currentPage],
-    { jobCards: [], total: 0 },
+    [selectedShopId, statusFilter, debouncedCustomerName, currentPage, isMyQueueActive],
+    { jobCards: [] as JobCard[], total: 0 },
   );
 
   const jobCards = data?.jobCards || [];
@@ -378,6 +395,16 @@ export default function JobCardsPage() {
           Job Cards
         </h1>
         <div className="flex gap-3">
+          <button
+            onClick={() => setIsMyQueueActive(!isMyQueueActive)}
+            className={`px-6 py-2 rounded-lg font-bold transition shadow-sm flex items-center gap-2 ${
+               isMyQueueActive 
+                 ? "bg-teal-600 text-white border-teal-700" 
+                 : "bg-white text-teal-700 border-teal-200 dark:bg-teal-900/10 dark:text-teal-300 dark:border-teal-800"
+            } border`}
+          >
+            {isMyQueueActive ? "🏠 Show All Jobs" : "👷 My Work Queue"}
+          </button>
           <button
             onClick={() => router.push("/tools/repair-knowledge")}
             className="px-6 py-2 bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-900/50 rounded-lg font-bold hover:bg-amber-100 dark:hover:bg-amber-900/30 transition shadow-sm flex items-center gap-2"
@@ -611,7 +638,7 @@ export default function JobCardsPage() {
                                 e.target.value as JobStatus,
                               )
                             }
-                            className={`px-3 py-1 rounded-lg text-xs font-semibold border ${STATUS_COLORS[job.status]} focus:outline-none ${isTerminal ? "cursor-not-allowed" : "cursor-pointer"} appearance-none`}
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold border ${STATUS_COLORS[job.status as JobStatus]} focus:outline-none ${isTerminal ? "cursor-not-allowed" : "cursor-pointer"} appearance-none`}
                             disabled={isTerminal}
                             title={
                               isTerminal
@@ -776,7 +803,7 @@ export default function JobCardsPage() {
 
                             {(() => {
                               const invoice = job.invoices?.find(
-                                (i) => i.status !== "VOIDED",
+                                (i: any) => i.status !== "VOIDED",
                               );
                               if (invoice) {
                                 return (

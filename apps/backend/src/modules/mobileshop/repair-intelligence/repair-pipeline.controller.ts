@@ -87,4 +87,16 @@ export class RepairPipelineController extends TenantScopedController {
     const tenantId = this.getTenantId(req);
     return this.intelligenceService.suggestParts(tenantId, shopId, faultTypeId);
   }
+
+  /**
+   * 🤖 Feature 2: Auto Fault Detection (Live Suggestion)
+   */
+  @Get('suggest-fault')
+  async suggestFault(
+    @Req() req: any,
+    @Query('complaint') complaint: string,
+  ) {
+    const tenantId = this.getTenantId(req);
+    return this.intelligenceService.suggestFaultType(tenantId, complaint);
+  }
 }

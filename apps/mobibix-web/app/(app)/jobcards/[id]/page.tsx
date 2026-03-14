@@ -22,6 +22,8 @@ import { AdvanceModal } from "./AdvanceModal";
 import { AddPartModal } from "../AddPartModal";
 import { RepairBillingModal } from "@/components/repair/RepairBillingModal";
 import { KnowledgePanel } from "@/components/knowledge/KnowledgePanel";
+import { QCChecklist } from "./QCChecklist";
+import { suggestParts } from "@/services/jobcard.api";
 
 // Helper for status colors (reused)
 const STATUS_COLORS: Record<JobStatus, string> = {
@@ -49,21 +51,27 @@ const STATUS_COLORS: Record<JobStatus, string> = {
     "bg-pink-200 text-pink-900 border-pink-400 dark:bg-pink-500/20 dark:text-pink-200",
   SCRAPPED:
     "bg-stone-300 text-stone-900 border-stone-500 dark:bg-stone-500/20 dark:text-stone-300",
+  REPAIR_FAILED:
+    "bg-red-200 text-red-900 border-red-400 dark:bg-red-500/20 dark:text-red-200",
+  WAITING_CUSTOMER:
+    "bg-amber-100 text-amber-900 border-amber-400 dark:bg-amber-500/10 dark:text-amber-100",
 };
 
 const VALID_TRANSITIONS: Record<JobStatus, JobStatus[]> = {
   RECEIVED: ["ASSIGNED", "DIAGNOSING", "CANCELLED"],
   ASSIGNED: ["DIAGNOSING", "CANCELLED"],
-  DIAGNOSING: ["WAITING_APPROVAL", "WAITING_FOR_PARTS", "IN_PROGRESS", "CANCELLED"],
+  DIAGNOSING: ["WAITING_APPROVAL", "WAITING_FOR_PARTS", "IN_PROGRESS", "CANCELLED", "REPAIR_FAILED"],
   WAITING_APPROVAL: ["APPROVED", "CANCELLED"],
   APPROVED: ["WAITING_FOR_PARTS", "IN_PROGRESS", "CANCELLED"],
   WAITING_FOR_PARTS: ["IN_PROGRESS", "CANCELLED"],
-  IN_PROGRESS: ["READY", "WAITING_FOR_PARTS", "CANCELLED", "SCRAPPED"],
+  IN_PROGRESS: ["READY", "WAITING_FOR_PARTS", "CANCELLED", "SCRAPPED", "REPAIR_FAILED", "WAITING_CUSTOMER"],
   READY: ["DELIVERED", "RETURNED", "IN_PROGRESS", "SCRAPPED"],
   DELIVERED: [], // Terminal state
   CANCELLED: [], // Terminal state
   RETURNED: [], // Terminal state
   SCRAPPED: [], // Terminal state
+  REPAIR_FAILED: ["RETURNED", "SCRAPPED"],
+  WAITING_CUSTOMER: ["IN_PROGRESS", "WAITING_APPROVAL", "CANCELLED"],
 };
 
 function getAllowedTransitions(currentStatus: JobStatus): JobStatus[] {
@@ -101,6 +109,9 @@ export default function JobCardDetailPage() {
   const isOwner = user?.role?.toLowerCase() === "owner";
   const isPro = user?.planCode === "MOBIBIX_PRO" || user?.planCode === "GYM_PRO";
 
+  const [suggestedPartsList, setSuggestedPartsList] = useState<any[]>([]);
+  const [isQCCompleted, setIsQCCompleted] = useState(false);
+
   // Load Job Details
   const {
     data: job,
@@ -118,6 +129,15 @@ export default function JobCardDetailPage() {
     [selectedShopId, params.id],
     null,
   );
+
+  useEffect(() => {
+    if (job?.faultTypeId && selectedShopId) {
+      suggestParts(job.faultTypeId).then(setSuggestedPartsList).catch(console.error);
+    }
+    if (job?.qcCompleted) {
+      setIsQCCompleted(true);
+    }
+  }, [job, selectedShopId]);
 
   // FINANCIAL CALCULATIONS
   const partsTotal =
@@ -269,6 +289,11 @@ export default function JobCardDetailPage() {
             {job.notes?.includes("Warranty rework") && (
               <span className="px-3 py-1 bg-purple-100 text-purple-700 border border-purple-300 rounded-full text-xs font-bold uppercase tracking-wider">
                 Warranty Rework
+              </span>
+            )}
+            {job.qcCompleted && (
+              <span className="px-3 py-1 bg-teal-100 text-teal-700 border border-teal-300 rounded-full text-xs font-bold uppercase tracking-wider">
+                QC PASSED
               </span>
             )}
           </div>
@@ -455,7 +480,6 @@ export default function JobCardDetailPage() {
             </div>
           </div>
 
-          {/* PARTS MANAGEMENT */}
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold dark:text-white">
@@ -527,6 +551,43 @@ export default function JobCardDetailPage() {
               </div>
             )}
           </div>
+
+          {/* SMART PARTS SUGGESTION */}
+          {suggestedPartsList.length > 0 && (
+            <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-200 dark:border-teal-800 rounded-xl p-6 shadow-sm">
+              <h2 className="text-lg font-bold mb-4 text-teal-900 dark:text-teal-100 flex items-center gap-2">
+                <span>🤖</span> Smart Parts Suggestion
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {suggestedPartsList.map((part) => (
+                  <div key={part.id} className="p-3 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-xs flex justify-between items-center animate-in fade-in slide-in-from-top-2">
+                    <div>
+                      <p className="font-bold text-sm dark:text-gray-100">{part.name}</p>
+                      <p className="text-xs text-gray-500">Stock: <span className={part.quantity > 0 ? "text-green-600 font-bold" : "text-red-500 font-bold"}>{part.quantity}</span></p>
+                    </div>
+                    {part.quantity > 0 ? (
+                      <button 
+                         onClick={() => setIsAddPartModalOpen(true)}
+                         className="px-3 py-1 text-xs bg-teal-600 text-white rounded font-bold hover:bg-teal-700"
+                      >
+                         Add
+                      </button>
+                    ) : (
+                      <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">Out of Stock</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* QC CHECKLIST (Feature 6) */}
+          {(job.status === 'IN_PROGRESS' || job.status === 'DIAGNOSING') && (
+            <QCChecklist jobId={job.id} onComplete={() => {
+              setIsQCCompleted(true);
+              reload();
+            }} />
+          )}
 
           {/* INVOICES */}
           {job.invoices && job.invoices.length > 0 && (
@@ -766,31 +827,48 @@ export default function JobCardDetailPage() {
               DELIVERED.
             </p>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setIsReadyConfirmOpen(false);
-                  setIsAddPartModalOpen(true);
-                }}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition"
-              >
-                + Add Parts
-              </button>
-              <button
-                onClick={() => {
-                  setIsReadyConfirmOpen(false);
-                  setIsBillingModalOpen(true);
-                }}
-                className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
-              >
-                Proceed to Billing
-              </button>
-              <button
-                onClick={() => setIsReadyConfirmOpen(false)}
-                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 rounded-lg font-semibold transition"
-              >
-                Cancel
-              </button>
+            <div className="flex flex-col gap-3">
+              {!isQCCompleted ? (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 mb-2">
+                  ⚠️ <strong>QC Checklist Required:</strong> You must complete and save the QC checklist before marking this job as READY.
+                </div>
+              ) : (
+                <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg text-sm text-teal-700 mb-2 font-bold">
+                  ✅ QC Checklist Verified
+                </div>
+              )}
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setIsReadyConfirmOpen(false);
+                    setIsAddPartModalOpen(true);
+                  }}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition"
+                >
+                  + Add Parts
+                </button>
+                <button
+                  onClick={() => {
+                    if (!isQCCompleted) {
+                      alert("Please complete the QC Checklist first!");
+                      return;
+                    }
+                    setIsReadyConfirmOpen(false);
+                    setIsBillingModalOpen(true);
+                  }}
+                  disabled={!isQCCompleted}
+                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-semibold transition"
+                >
+                  Proceed to Billing
+                </button>
+                <button
+                  onClick={() => setIsReadyConfirmOpen(false)}
+                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 rounded-lg font-semibold transition"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>

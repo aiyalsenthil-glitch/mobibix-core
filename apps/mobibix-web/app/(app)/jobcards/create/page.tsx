@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createJobCard, type CreateJobCardDto } from "@/services/jobcard.api";
+import { createJobCard, type CreateJobCardDto, suggestFault } from "@/services/jobcard.api";
 import { useShop } from "@/context/ShopContext";
 import { PartySelector } from "@/components/common/PartySelector";
 import { type Party } from "@/services/parties.api";
@@ -36,6 +36,8 @@ export default function CreateJobCardPage() {
 
   const [selectedParty, setSelectedParty] = useState<Party | null>(null);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [suggestedFault, setSuggestedFault] = useState<{ id: string; name: string } | null>(null);
+  const [isSuggesting, setIsSuggesting] = useState(false);
 
   const [formData, setFormData] = useState<StepFormData>({
     deviceType: "Mobile",
@@ -57,11 +59,31 @@ export default function CreateJobCardPage() {
     if (shop) {
       const targetType = shop.gstEnabled ? "WITH_GST" : "WITHOUT_GST";
       if (formData.billType !== targetType) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setFormData((prev) => ({ ...prev, billType: targetType }));
       }
     }
   }, [shop, formData.billType]);
+
+  // LIVE FAULT SUGGESTION
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (formData.customerComplaint.length > 5) {
+        setIsSuggesting(true);
+        try {
+          const suggestion = await suggestFault(formData.customerComplaint);
+          setSuggestedFault(suggestion);
+        } catch (err) {
+          console.error("Fault suggestion failed", err);
+        } finally {
+          setIsSuggesting(false);
+        }
+      } else {
+        setSuggestedFault(null);
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [formData.customerComplaint]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -110,6 +132,7 @@ export default function CreateJobCardPage() {
         : undefined,
       billType: formData.billType,
       estimatedDelivery: formData.estimatedDelivery || undefined,
+      faultTypeId: suggestedFault?.id || undefined,
     };
 
     try {
@@ -347,6 +370,27 @@ export default function CreateJobCardPage() {
                   placeholder="Describe the customer's complaint in detail..."
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition resize-none"
                 />
+                {isSuggesting && (
+                  <p className="text-xs text-teal-600 animate-pulse mt-1">Analyzing issue...</p>
+                )}
+                {suggestedFault && (
+                  <div className="mt-3 p-3 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🤖</span>
+                      <div>
+                        <p className="text-xs font-bold text-teal-800 dark:text-teal-300 uppercase tracking-wider">Smart Suggestion</p>
+                        <p className="text-sm font-semibold text-teal-900 dark:text-teal-100">Mapped to: {suggestedFault.name}</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setSuggestedFault(null)}
+                      className="text-xs text-teal-600 hover:underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

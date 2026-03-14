@@ -17,7 +17,9 @@ export type JobStatus =
   | "DELIVERED"
   | "CANCELLED"
   | "RETURNED"
-  | "SCRAPPED";
+  | "SCRAPPED"
+  | "REPAIR_FAILED"
+  | "WAITING_CUSTOMER";
 
 export interface JobCard {
   id: string;
@@ -87,9 +89,29 @@ export interface JobCard {
   profit?: number;
   revenue?: number;
 
+  // Intelligence fields
+  faultTypeId?: string | null;
+  suggestedFaultTypeId?: string | null;
+  qcCompleted?: boolean;
+
   // Additional UI fields
   whatsappSent?: boolean;
   shopName?: string;
+}
+
+export interface JobCardQC {
+  id: string;
+  jobCardId: string;
+  cameraWorking: boolean;
+  micWorking: boolean;
+  speakerWorking: boolean;
+  chargingWorking: boolean;
+  wifiWorking: boolean;
+  returnedCharger: boolean;
+  returnedSimTray: boolean;
+  returnedMemoryCard: boolean;
+  technicianNotes?: string;
+  completedAt?: Date | string;
 }
 
 export interface CreateJobCardDto {
@@ -114,6 +136,7 @@ export interface CreateJobCardDto {
   billType?: string;
   estimatedDelivery?: Date | string;
   assignedToUserId?: string;
+  faultTypeId?: string;
 }
 
 export interface UpdateJobCardDto {
@@ -457,4 +480,47 @@ export async function generateRepairBill(
     }
 
     return extractData(response);
+}
+
+/**
+ * 👷 Pipeline Intelligence APIs
+ */
+
+export async function getBottlenecks(): Promise<any[]> {
+  const response = await authenticatedFetch('/mobileshop/pipeline/bottlenecks');
+  return extractData(response);
+}
+
+export async function getCustomerDelays(): Promise<any[]> {
+  const response = await authenticatedFetch('/mobileshop/pipeline/delays');
+  return extractData(response);
+}
+
+export async function getMyQueue(): Promise<JobCard[]> {
+  const response = await authenticatedFetch('/mobileshop/pipeline/my-queue');
+  return extractData(response);
+}
+
+export async function getJobQC(jobId: string): Promise<JobCardQC | null> {
+  const response = await authenticatedFetch(`/mobileshop/pipeline/qc/${jobId}`);
+  return extractData(response);
+}
+
+export async function saveJobQC(jobId: string, data: Partial<JobCardQC>): Promise<JobCardQC> {
+  const response = await authenticatedFetch(`/mobileshop/pipeline/qc/${jobId}`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return extractData(response);
+}
+
+export async function suggestParts(faultTypeId: string): Promise<any[]> {
+  const response = await authenticatedFetch(`/mobileshop/pipeline/suggest-parts/${faultTypeId}`);
+  return extractData(response);
+}
+
+export async function suggestFault(complaint: string): Promise<{ id: string; name: string } | null> {
+  const query = new URLSearchParams({ complaint });
+  const response = await authenticatedFetch(`/mobileshop/pipeline/suggest-fault?${query.toString()}`);
+  return extractData(response);
 }
