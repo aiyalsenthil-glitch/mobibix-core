@@ -71,7 +71,7 @@ export class KnowledgeController extends TenantScopedController {
     return this.knowledgeService.getRepairNotes(phoneModelId ?? null, faultTypeId, tenantId);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.REPAIR_KNOWLEDGE.MANAGE)
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.REPAIR_KNOWLEDGE.CONTRIBUTE)
   @Post('notes')
   async createNote(@Req() req: any, @Body() dto: CreateRepairKnowledgeDto) {
     const tenantId = this.getTenantId(req);

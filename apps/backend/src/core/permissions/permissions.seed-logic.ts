@@ -329,6 +329,7 @@ export const RESOURCE_DICTIONARY = [
         name: 'repair_knowledge',
         actions: [
           { id: 'view', ui: 'View Repair Knowledge' },
+          { id: 'contribute', ui: 'Contribute Repair Notes' },
           { id: 'manage', ui: 'Manage Repair Knowledge' },
         ],
       },
@@ -495,6 +496,7 @@ export const roleTemplates = [
       'mobile_shop.loyalty.view',
       'mobile_shop.whatsapp.view',
       'mobile_shop.repair_knowledge.view',
+      'mobile_shop.repair_knowledge.contribute',
       'mobile_shop.crm.manage',
       'core.dashboard.view',
       'mobile_shop.shop.view',

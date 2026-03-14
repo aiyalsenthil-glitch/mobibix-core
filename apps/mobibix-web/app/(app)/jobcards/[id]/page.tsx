@@ -21,6 +21,7 @@ import { sendWhatsAppMessage } from "@/services/whatsapp.api";
 import { AdvanceModal } from "./AdvanceModal";
 import { AddPartModal } from "../AddPartModal";
 import { RepairBillingModal } from "@/components/repair/RepairBillingModal";
+import { KnowledgePanel } from "@/components/knowledge/KnowledgePanel";
 
 // Helper for status colors (reused)
 const STATUS_COLORS: Record<JobStatus, string> = {
@@ -690,6 +691,9 @@ export default function JobCardDetailPage() {
               </div>
             </div>
           )}
+
+          {/* REPAIR KNOWLEDGE PANEL */}
+          <KnowledgePanel jobCardId={job.id} />
         </div>
       </div>
       {/* Add Part Modal */}

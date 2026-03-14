@@ -61,6 +61,7 @@ export const BASE_PERMISSIONS: Record<string, string[]> = {
   'mobile_shop.loyalty.manage': ['MOBILE_SHOP'],
   'mobile_shop.loyalty.view': ['MOBILE_SHOP'],
   'mobile_shop.repair_knowledge.manage': ['MOBILE_SHOP'],
+  'mobile_shop.repair_knowledge.contribute': ['MOBILE_SHOP'],
   'mobile_shop.repair_knowledge.view': ['MOBILE_SHOP'],
   'core.daily_closing.manage': ['MOBILE_SHOP', 'CORE'],
   'core.daily_closing.view': ['MOBILE_SHOP', 'CORE'],
@@ -368,7 +369,12 @@ export const PERMISSION_INHERITANCE: Record<string, string[]> = {
   ],
   'mobile_shop.repair_knowledge.manage': [
     'repair_knowledge.view',
+    'repair_knowledge.contribute',
     'repair_knowledge.manage',
+  ],
+  'mobile_shop.repair_knowledge.contribute': [
+    'repair_knowledge.view',
+    'repair_knowledge.contribute',
   ],
   'mobile_shop.repair_knowledge.view': [
     'repair_knowledge.view',

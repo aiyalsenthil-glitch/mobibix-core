@@ -11,6 +11,8 @@ import { LoyaltySettings } from "@/components/loyalty/LoyaltySettings";
 import { useShop } from "@/context/ShopContext";
 import { useAuth } from "@/hooks/useAuth";
 import { AccountDeletionDialog } from "@/components/settings/AccountDeletionDialog";
+import { KnowledgeModerationSection } from "@/components/knowledge/KnowledgeModerationSection";
+import { BookOpen } from "lucide-react";
 
 import { PaymentHistory } from "@/components/billing/PaymentHistory";
 
@@ -57,7 +59,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { selectedShopId } = useShop();
-  const [activeTab, setActiveTab] = useState<"SUBSCRIPTION" | "BILLING" | "LOYALTY" | "LEGAL">("SUBSCRIPTION");
+  const [activeTab, setActiveTab] = useState<"SUBSCRIPTION" | "BILLING" | "LOYALTY" | "LEGAL" | "KNOWLEDGE">("SUBSCRIPTION");
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null);
   const [loyaltyConfig, setLoyaltyConfig] = useState<LoyaltyConfig | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -351,6 +353,16 @@ export default function SettingsPage() {
         >
           <Shield size={16} /> Legal & Privacy
         </button>
+        <button
+          onClick={() => setActiveTab("KNOWLEDGE")}
+          className={`px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+            activeTab === "KNOWLEDGE"
+              ? "bg-white dark:bg-stone-800 text-teal-600 dark:text-teal-400 shadow-sm"
+              : "text-gray-500 hover:text-gray-700 dark:hover:text-stone-300"
+          }`}
+        >
+          <BookOpen size={16} /> Knowledge Base
+        </button>
       </div>
 
       {error && (
@@ -377,6 +389,10 @@ export default function SettingsPage() {
       ) : activeTab === "LOYALTY" ? (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           <LoyaltySettings initialConfig={loyaltyConfig} />
+        </div>
+      ) : activeTab === "KNOWLEDGE" ? (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <KnowledgeModerationSection />
         </div>
       ) : activeTab === "LEGAL" ? (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">

@@ -205,6 +205,7 @@ export const PERMISSIONS = {
     },
     REPAIR_KNOWLEDGE: {
       VIEW: { module: ModuleType.MOBILE_SHOP, resource: 'repair_knowledge', action: 'view' } as Permission,
+      CONTRIBUTE: { module: ModuleType.MOBILE_SHOP, resource: 'repair_knowledge', action: 'contribute' } as Permission,
       MANAGE: { module: ModuleType.MOBILE_SHOP, resource: 'repair_knowledge', action: 'manage' } as Permission,
     },
     LOYALTY: {
