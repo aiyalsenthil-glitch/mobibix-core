@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { 
   CreateCompatibilityGroupDto, 
@@ -11,6 +11,7 @@ import { PartType, FeedbackStatus } from '@prisma/client';
 
 @Injectable()
 export class CompatibilityService {
+  private readonly logger = new Logger(CompatibilityService.name);
   constructor(private prisma: PrismaService) {}
 
   async searchCompatibleParts(modelName: string) {
@@ -38,11 +39,11 @@ export class CompatibilityService {
     }
 
     if (!phoneModel) {
-      console.log(`[CompatibilityService] No model found for: ${modelName}`);
+      this.logger.warn(`No model found for: ${modelName}`);
       throw new NotFoundException(`Phone model "${modelName}" not found`);
     }
 
-    console.log(`[CompatibilityService] Found model: ${phoneModel.brand.name} ${phoneModel.modelName} (ID: ${phoneModel.id})`);
+    this.logger.debug(`Found model: ${phoneModel.brand.name} ${phoneModel.modelName} (ID: ${phoneModel.id})`);
 
 
     // 2. Find all compatibility groups this phone belongs to
@@ -426,7 +427,7 @@ export class CompatibilityService {
         await this.mergePhoneModels(dup.duplicate.id, dup.canonical.id);
         results.mergedCount++;
       } catch (err) {
-        console.error(`Failed to merge ${dup.duplicate.id} into ${dup.canonical.id}`, err);
+        this.logger.error(`Failed to merge ${dup.duplicate.id} into ${dup.canonical.id}`, err);
         results.failedCount++;
       }
     }

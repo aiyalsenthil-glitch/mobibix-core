@@ -16,28 +16,28 @@ export class RepairIntelligenceService {
 
     // Mapping: Keyword -> FaultType Name
     const mapping: Record<string, string> = {
-      'charging': 'Not Charging',
-      'charge': 'Not Charging',
-      'port': 'Not Charging',
-      'screen': 'No Display',
-      'display': 'No Display',
-      'black': 'No Display',
-      'touch': 'No Display',
-      'bootloop': 'Boot Loop',
-      'restart': 'Boot Loop',
-      'logo': 'Boot Loop',
-      'network': 'No Network',
-      'signal': 'No Network',
-      'sim': 'No Network',
-      'wifi': 'No Network',
-      'battery': 'Battery Issue',
-      'drain': 'Battery Issue',
-      'backup': 'Battery Issue',
-      'mic': 'Audio Issue',
-      'speaker': 'Audio Issue',
-      'sound': 'Audio Issue',
-      'water': 'Liquid Damage',
-      'liquid': 'Liquid Damage',
+      charging: 'Not Charging',
+      charge: 'Not Charging',
+      port: 'Not Charging',
+      screen: 'No Display',
+      display: 'No Display',
+      black: 'No Display',
+      touch: 'No Display',
+      bootloop: 'Boot Loop',
+      restart: 'Boot Loop',
+      logo: 'Boot Loop',
+      network: 'No Network',
+      signal: 'No Network',
+      sim: 'No Network',
+      wifi: 'No Network',
+      battery: 'Battery Issue',
+      drain: 'Battery Issue',
+      backup: 'Battery Issue',
+      mic: 'Audio Issue',
+      speaker: 'Audio Issue',
+      sound: 'Audio Issue',
+      water: 'Liquid Damage',
+      liquid: 'Liquid Damage',
     };
 
     let matchedFaultName: string | null = null;
@@ -72,20 +72,26 @@ export class RepairIntelligenceService {
 
     // 2. Logic: Query RepairKnowledge or use static mapping if knowledge base is empty
     // RepairKnowledge model exists but might be empty.
-    const repairNotes = await this.prisma.repairKnowledge.findMany({
-      where: { faultTypeId, status: 'APPROVED' },
-      select: { content: true },
-    });
-
-    // For Phase 1, we combine static mapping with approved repair tips
+    // For Phase 1, use static mapping (RepairKnowledge tips wired in Phase 2)
     const staticPartsMapping: Record<string, string[]> = {
-      'Not Charging': ['Charging Port Flex', 'Battery Connector', 'Charging IC'],
-      'No Display': ['LCD Screen Assembly', 'Display Connector Flex', 'Backlight IC'],
+      'Not Charging': [
+        'Charging Port Flex',
+        'Battery Connector',
+        'Charging IC',
+      ],
+      'No Display': [
+        'LCD Screen Assembly',
+        'Display Connector Flex',
+        'Backlight IC',
+      ],
       'Boot Loop': ['Battery', 'Power Button Flex', 'Flash Memory'],
       'No Network': ['Antenna Flex', 'Network IC', 'SIM Tray'],
       'Battery Issue': ['Replacement Battery', 'Charging IC'],
       'Audio Issue': ['Speaker', 'Microphone', 'Audio IC'],
-      'Liquid Damage': ['Isopropyl Alcohol (Service)', 'Ultrasonic Cleaning (Service)'],
+      'Liquid Damage': [
+        'Isopropyl Alcohol (Service)',
+        'Ultrasonic Cleaning (Service)',
+      ],
     };
 
     const suggestedPartNames = staticPartsMapping[faultType.name] || [];

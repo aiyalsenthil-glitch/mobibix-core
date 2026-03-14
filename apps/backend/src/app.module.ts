@@ -28,7 +28,6 @@ import { NotificationsModule } from './core/notifications/notifications.module';
 import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { MobileShopModule } from './modules/mobileshop/mobileshop.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
-import { PartnersModule } from './modules/partners/partners.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { CacheModule as CustomCacheModule } from './core/cache/cache.module';
 import { SuppliersModule } from './core/suppliers/suppliers.module';
@@ -170,11 +169,13 @@ type LoggerRequest = {
         return {
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           store: require('cache-manager-ioredis'),
-          ...(url 
-            ? { url } 
+          ...(url
+            ? { url }
             : {
                 host: process.env.REDIS_HOST || 'localhost',
-                port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
+                port: process.env.REDIS_PORT
+                  ? parseInt(process.env.REDIS_PORT)
+                  : 6379,
                 password: process.env.REDIS_PASSWORD || undefined,
               }),
           ttl: 60,
@@ -227,9 +228,11 @@ type LoggerRequest = {
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(rawBodyMiddleware).forRoutes(
-      { path: 'billing/webhook/REMOVED_PAYMENT_INFRA', method: RequestMethod.POST },
-      { path: 'payments/webhook', method: RequestMethod.POST },
-    );
+    consumer
+      .apply(rawBodyMiddleware)
+      .forRoutes(
+        { path: 'billing/webhook/REMOVED_PAYMENT_INFRA', method: RequestMethod.POST },
+        { path: 'payments/webhook', method: RequestMethod.POST },
+      );
   }
 }
