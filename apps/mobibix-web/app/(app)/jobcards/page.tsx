@@ -274,7 +274,7 @@ export default function JobCardsPage() {
     { jobCards: [] as JobCard[], total: 0 },
   );
 
-  const jobCards = data?.jobCards || [];
+  const jobCards = Array.isArray(data?.jobCards) ? data.jobCards : [];
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / 50);
 
@@ -597,7 +597,7 @@ export default function JobCardsPage() {
               <tbody
                 className={`divide-y ${theme === "dark" ? "divide-white/10" : "divide-gray-300"}`}
               >
-                {(jobCards || []).map((job) => (
+                {jobCards.map((job) => (
                   <tr
                     key={job.id}
                     className="hover:bg-gray-50 dark:hover:bg-white/5 transition"

@@ -90,7 +90,6 @@ export class RepairIntelligenceService {
 
     const suggestedPartNames = staticPartsMapping[faultType.name] || [];
 
-    // 3. Check Inventory for these parts in the specific shop
     const partsInStock = await Promise.all(
       suggestedPartNames.map(async (name) => {
         const product = await this.prisma.shopProduct.findFirst({
@@ -100,12 +99,13 @@ export class RepairIntelligenceService {
             name: { contains: name, mode: 'insensitive' },
             isActive: true,
           },
-          select: { name: true, quantity: true },
+          select: { id: true, name: true, quantity: true },
         });
 
         return {
-          partName: name,
-          stockAvailable: product ? product.quantity : 0,
+          id: product?.id || `suggested-${name}`,
+          name: product?.name || name,
+          quantity: product ? product.quantity : 0,
         };
       }),
     );

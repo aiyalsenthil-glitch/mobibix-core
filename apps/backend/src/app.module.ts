@@ -76,10 +76,8 @@ type LoggerRequest = {
             : 6379,
           password: process.env.REDIS_PASSWORD || undefined,
           tls: process.env.REDIS_TLS === 'true' ? {} : undefined,
-          // Fast-fail settings: detect Redis unavailability quickly for sync fallback
-          enableOfflineQueue: false,
-          maxRetriesPerRequest: 0,
           connectTimeout: 5000,
+          maxRetriesPerRequest: null,
         }) as any,
       }),
     }),

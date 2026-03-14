@@ -187,8 +187,8 @@ export async function listJobCards(
 
   const data: any = await extractData(response);
   return {
-    jobCards: data.jobCards || [],
-    total: data.total || 0
+    jobCards: Array.isArray(data?.jobCards) ? data.jobCards : [],
+    total: typeof data?.total === 'number' ? data.total : 0
   };
 }
 
@@ -498,7 +498,8 @@ export async function getCustomerDelays(): Promise<any[]> {
 
 export async function getMyQueue(): Promise<JobCard[]> {
   const response = await authenticatedFetch('/mobileshop/pipeline/my-queue');
-  return extractData(response);
+  const data = await extractData(response);
+  return Array.isArray(data) ? data : [];
 }
 
 export async function getJobQC(jobId: string): Promise<JobCardQC | null> {
@@ -514,8 +515,9 @@ export async function saveJobQC(jobId: string, data: Partial<JobCardQC>): Promis
   return extractData(response);
 }
 
-export async function suggestParts(faultTypeId: string): Promise<any[]> {
-  const response = await authenticatedFetch(`/mobileshop/pipeline/suggest-parts/${faultTypeId}`);
+export async function suggestParts(shopId: string, faultTypeId: string): Promise<any[]> {
+  const query = new URLSearchParams({ shopId });
+  const response = await authenticatedFetch(`/mobileshop/pipeline/suggest-parts/${faultTypeId}?${query.toString()}`);
   return extractData(response);
 }
 

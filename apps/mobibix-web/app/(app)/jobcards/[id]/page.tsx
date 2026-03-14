@@ -132,7 +132,7 @@ export default function JobCardDetailPage() {
 
   useEffect(() => {
     if (job?.faultTypeId && selectedShopId) {
-      suggestParts(job.faultTypeId).then(setSuggestedPartsList).catch(console.error);
+      suggestParts(selectedShopId, job.faultTypeId).then(setSuggestedPartsList).catch(console.error);
     }
     if (job?.qcCompleted) {
       setIsQCCompleted(true);
