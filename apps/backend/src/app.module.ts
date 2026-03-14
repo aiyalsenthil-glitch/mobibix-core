@@ -76,16 +76,12 @@ type LoggerRequest = {
           password: process.env.REDIS_PASSWORD || undefined,
           tls: process.env.REDIS_TLS === 'true' ? {} : undefined,
           connectTimeout: 5000,
-          maxRetriesPerRequest: null,
+          maxRetriesPerRequest: 0,
         }) as any,
         // Reduce Redis command rate for Upstash free-tier compatibility
         defaultJobOptions: {
           removeOnComplete: 100,
           removeOnFail: 200,
-        },
-        settings: {
-          stalledInterval: 60000,  // Check stalled jobs every 60s (default: 30s)
-          maxStalledCount: 2,
         },
       }),
     }),
