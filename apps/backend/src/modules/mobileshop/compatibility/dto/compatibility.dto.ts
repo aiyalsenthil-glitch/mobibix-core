@@ -1,4 +1,4 @@
-import { IsEnum, IsString, IsNotEmpty } from 'class-validator';
+import { IsEnum, IsString, IsNotEmpty, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { PartType, FeedbackType, FeedbackStatus } from '@prisma/client';
 
@@ -66,6 +66,7 @@ export class CreateFeedbackDto {
 
   @ApiProperty({ required: false })
   @IsString()
+  @IsOptional()
   targetModelId?: string;
 
   @ApiProperty({ enum: PartType })
@@ -74,6 +75,7 @@ export class CreateFeedbackDto {
 
   @ApiProperty({ required: false })
   @IsString()
+  @IsOptional()
   details?: string;
 }
 

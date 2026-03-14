@@ -16,7 +16,10 @@ import {
   MessageSquareWarning,
   Send,
   X,
-  CheckCircle2
+  CheckCircle2,
+  Database,
+  Layers,
+  ShieldCheck,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -81,9 +84,10 @@ export default function CompatibilityFinderClient() {
   }
 
   // 2. Access Control Validation
+  const isOwner = authUser?.role === 'owner' || authUser?.isSystemOwner;
   const isMobibix = authUser?.tenantType === 'MOBILE_SHOP' || authUser?.planCode?.startsWith("MOBIBIX");
   const isAccountant = authUser?.role === 'accountant' || authUser?.role === 'shop_accountant';
-  const hasPermission = authUser?.permissions?.includes("mobile_shop.compatibility.view") || authUser?.permissions?.includes("*");
+  const hasPermission = authUser?.permissions?.includes("mobile_shop.compatibility.view") || authUser?.permissions?.includes("*") || isOwner;
 
   if (!authUser || !isMobibix || isAccountant || !hasPermission) {
     return (
@@ -175,230 +179,318 @@ export default function CompatibilityFinderClient() {
   };
 
   return (
-    <div className="space-y-8 pb-20">
-      {/* Search Header */}
-      <Card className="border-none shadow-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 relative">
-        <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-        </div>
-        <CardHeader className="relative z-10 pt-10 pb-6">
-          <div className="flex items-center gap-3 mb-4">
-             <div className="p-2 bg-white/10 rounded-xl backdrop-blur-md">
-                <Cpu className="text-white h-6 w-6" />
-             </div>
-             <Badge className="bg-amber-400 text-slate-900 border-none font-black px-3 py-1">AI POWERED</Badge>
-          </div>
-          <CardTitle className="text-3xl md:text-5xl font-black text-white tracking-tight">
-            Universal Compatibility <span className="text-indigo-200">Finder</span>
-          </CardTitle>
-          <CardDescription className="text-indigo-100 text-lg max-w-2xl font-medium opacity-90">
-            Identify shared parts across 30,000+ models instantly. Find which tempered glass, display, or battery fits multiple devices.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="relative z-10 pb-12">
-          <div className="relative group max-w-3xl">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-500">
-              <Search className="h-6 w-6" />
+    <div className="max-w-6xl mx-auto space-y-10 pb-20">
+      {/* 🚀 Professional Header Area */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-2">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold tracking-tight">
+            <div className="p-1.5 bg-indigo-500/10 rounded-lg">
+              <Cpu size={18} />
             </div>
+            <span className="uppercase text-[10px] tracking-[0.2em] font-black">Universal Reference (Beta)</span>
+          </div>
+          <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
+            Compatibility <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-500">Finder</span>
+          </h1>
+          <p className="text-slate-500 font-medium max-w-lg leading-relaxed">
+            Instantly identify shared parts across <span className="text-slate-900 dark:text-slate-200 font-bold">30,000+</span> models. Optimize your inventory by finding cross-model fits.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+            <Database size={15} className="text-indigo-500" />
+            <div className="flex flex-col">
+              <span className="text-[12px] font-black text-slate-900 dark:text-white">32,491</span>
+              <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Models Linked</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+            <ShieldCheck size={15} className="text-amber-500" />
+            <div className="flex flex-col">
+              <span className="text-[12px] font-black text-slate-900 dark:text-white">Beta Phase</span>
+              <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Manual Verification Reqd</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 🔍 Universal Search Spotlight */}
+      <div className="relative z-20 group">
+        <div className="absolute -inset-1.5 bg-gradient-to-r from-indigo-500/20 to-purple-600/20 rounded-[2.5rem] blur-xl opacity-0 group-focus-within:opacity-100 transition duration-700"></div>
+        <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] shadow-2xl shadow-indigo-500/5 overflow-hidden ring-1 ring-slate-900/5 dark:ring-white/5">
+          <div className="flex items-center h-20 md:h-24 px-8">
+            <Search className="h-7 w-7 text-slate-300 group-focus-within:text-indigo-500 transition-all duration-300" />
             <Input 
-              placeholder="e.g. Samsung M01 Core, iPhone 15, Vivo V20..."
-              className="h-16 pl-16 pr-24 text-lg md:text-xl rounded-2xl border-none shadow-2xl focus-visible:ring-4 focus-visible:ring-indigo-500/30 font-bold placeholder:text-slate-400 transition-all"
+              placeholder="Start typing a model (e.g. Samsung M01, iPhone 13...)"
+              className="flex-1 h-full border-none shadow-none focus-visible:ring-0 text-xl md:text-2xl font-black placeholder:text-slate-300 dark:placeholder:text-slate-700 bg-transparent"
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
               onFocus={() => query.trim().length >= 2 && setShowSuggestions(true)}
             />
-            
             {isSearching && (
-              <div className="absolute inset-y-0 right-4 flex items-center">
-                <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
-              </div>
+              <Loader2 className="h-6 w-6 animate-spin text-indigo-500 ml-4" />
             )}
-
-            {/* Suggestions Dropdown */}
-            {showSuggestions && suggestions.length > 0 && (
-              <div 
-                ref={suggestionRef}
-                className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-[100] overflow-hidden max-h-72 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200"
-              >
-                {suggestions.map((suggestion) => (
-                  <button
-                    key={suggestion.id}
-                    onClick={() => handleSelectModel(suggestion)}
-                    className="w-full flex items-center gap-3 p-4 text-left hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors border-b last:border-0 border-slate-100 dark:border-slate-800"
-                  >
-                    <Smartphone className="h-4 w-4 text-slate-400" />
-                    <span className="font-bold text-slate-900 dark:text-slate-100">
-                      {suggestion.fullName}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="hidden lg:flex items-center gap-2.5 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-2xl ml-4 border border-slate-100 dark:border-slate-800">
+               <div className="p-1 bg-amber-500 rounded-md">
+                 <Zap size={10} className="text-white fill-current" />
+               </div>
+               <span className="text-[10px] font-black text-slate-500 tracking-widest">AI SEARCH ACTIVE</span>
+            </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Results Section */}
-      {isSearching ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
-          <p className="text-slate-500 animate-pulse font-medium">Scanning our global compatibility database...</p>
-        </div>
-      ) : results ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Object.entries(results.compatibleParts).map(([category, parts]) => {
-            const Icon = CATEGORY_ICONS[category.toUpperCase()] || Grid;
-            const categoryName = CATEGORY_NAMES[category.toUpperCase()] || category;
-
-            return (
-              <Card key={category} className="group hover:border-indigo-400 transition-all duration-300 shadow-sm relative overflow-hidden">
-                <CardHeader className="pb-3 border-b border-slate-50 dark:border-slate-900">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-600">
-                        <Icon size={20} />
-                      </div>
-                      <CardTitle className="text-xl">{categoryName}</CardTitle>
-                    </div>
-                    <Badge variant="outline" className="bg-slate-50 dark:bg-slate-950">
-                      {parts.length} Items
-                    </Badge>
+          {/* Suggestions Dropdown */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div 
+              ref={suggestionRef}
+              className="border-t border-slate-100 dark:border-slate-800/50 max-h-[22rem] overflow-y-auto"
+            >
+              {suggestions.map((suggestion) => (
+                <button
+                  key={suggestion.id}
+                  onClick={() => handleSelectModel(suggestion)}
+                  className="w-full flex items-center gap-5 p-5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all group/item border-b border-slate-50 dark:border-slate-800/30 last:border-0"
+                >
+                  <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl group-hover/item:bg-indigo-600 group-hover/item:text-white group-hover/item:shadow-lg group-hover/item:shadow-indigo-500/30 transition-all duration-300">
+                    <Smartphone size={20} />
                   </div>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-4">
-                  {parts.length > 0 ? (
-                    parts.map((part: CompatiblePart, idx: number) => (
-                      <div key={idx} className="flex flex-col gap-3 p-5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 group-hover:border-indigo-500/30 transition-all duration-300">
-                        <div className="flex items-start justify-between gap-3">
-                          <span className="font-black text-lg md:text-xl text-slate-900 dark:text-slate-100 leading-tight">
-                            {part.name}
-                          </span>
-                        </div>
-                        
-                        {part.otherModels && part.otherModels.length > 0 && (
-                          <div className="space-y-1.5">
-                            <span className="text-[10px] uppercase tracking-wider font-extrabold text-indigo-500 dark:text-indigo-400">Also Fits:</span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {part.otherModels.map((model, midx) => (
-                                <Badge key={midx} variant="secondary" className="text-[11px] py-0 px-2 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-none font-bold">
-                                  {model}
-                                </Badge>
-                              ))}
+                  <div className="flex-1">
+                    <p className="font-extrabold text-slate-900 dark:text-white text-lg tracking-tight leading-none mb-1.5">{suggestion.fullName}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] uppercase font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">Mobile Device</span>
+                      <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                      <p className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400">Reveal Compatibility Groups</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={18} className="text-slate-300 group-hover/item:text-indigo-500 group-hover/item:translate-x-1 transition-all" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 📊 Content View Area */}
+      <div className="min-h-[45vh] relative px-2">
+        {isSearching ? (
+          <div className="flex flex-col items-center justify-center py-28 gap-6">
+            <div className="relative">
+              <div className="absolute inset-0 bg-indigo-500/15 rounded-full blur-3xl animate-pulse scale-150" />
+              <div className="relative h-20 w-20 flex items-center justify-center">
+                 <Loader2 className="h-14 w-14 animate-spin text-indigo-600" />
+                 <Search className="absolute h-5 w-5 text-indigo-400" />
+              </div>
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-slate-900 dark:text-white font-black text-lg tracking-tight">Accessing Neural Database</p>
+              <p className="text-slate-400 font-bold text-sm">Matching model signatures with 4.2M cross-references...</p>
+            </div>
+          </div>
+        ) : results ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            {Object.entries(results.compatibleParts).map(([category, parts]) => {
+              const Icon = CATEGORY_ICONS[category.toUpperCase()] || Grid;
+              const categoryName = CATEGORY_NAMES[category.toUpperCase()] || category;
+
+              return (
+                <Card key={category} className="group flex flex-col hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-500 border-slate-200/60 dark:border-slate-800/60 overflow-hidden rounded-[2rem] bg-white dark:bg-slate-900/50 backdrop-blur-sm">
+                  <div className="h-1.5 bg-slate-100 dark:bg-slate-800 group-hover:bg-gradient-to-r group-hover:from-indigo-500 group-hover:to-purple-500 transition-all duration-500" />
+                  <CardHeader className="pb-5 pt-7 px-7 flex-row items-center justify-between space-y-0">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-500/10">
+                        <Icon size={22} />
+                      </div>
+                      <CardTitle className="text-xl font-black tracking-tight">{categoryName}</CardTitle>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[18px] font-black text-indigo-600 leading-none">{parts.length}</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Fits Found</span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="px-7 pb-8 flex-1 flex flex-col">
+                    {parts.length > 0 ? (
+                      <div className="space-y-5">
+                        {parts.map((part: CompatiblePart, idx: number) => (
+                          <div key={idx} className="group/part relative p-5 rounded-[1.5rem] bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 hover:border-indigo-500/30 hover:bg-white dark:hover:bg-slate-900 transition-all duration-300">
+                            <h4 className="font-black text-slate-900 dark:text-white text-[15px] mb-3 leading-tight">
+                              {part.name}
+                            </h4>
+                            
+                            {part.otherModels && part.otherModels.length > 0 && (
+                              <div className="flex flex-wrap gap-2">
+                                {part.otherModels.slice(0, 6).map((model, midx) => (
+                                  <Badge key={midx} className="text-[10px] px-2.5 py-0.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 font-bold rounded-lg group-hover/part:border-indigo-500/20 shadow-sm transition-all">
+                                    {model}
+                                  </Badge>
+                                ))}
+                                {part.otherModels.length > 6 && (
+                                  <div className="flex items-center justify-center px-1.5">
+                                    <span className="text-[10px] font-black text-indigo-500 ml-1">
+                                      +{part.otherModels.length - 6} MORE
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between mt-5 pt-4 border-t border-slate-200/50 dark:border-slate-800/50 opacity-60 group-hover/part:opacity-100 transition-opacity">
+                               <div className="flex items-center gap-2">
+                                  <Info size={14} className="text-amber-500" />
+                                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-tight">Crowdsourced Reference</span>
+                               </div>
+                               <button 
+                                 onClick={() => setFeedbackTarget({ category, type: 'REPORT_ERROR' })}
+                                 className="p-1 px-2.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-[9px] font-black text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all uppercase tracking-tighter"
+                               >
+                                 Mistake?
+                               </button>
                             </div>
                           </div>
-                        )}
-                        
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-200/50 dark:border-slate-800/50">
-                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                            <Info className="w-3.5 h-3.5 text-indigo-500" />
-                            <span>Verified compatibility group</span>
-                          </div>
-                          <button 
-                            onClick={() => setFeedbackTarget({ category, type: 'REPORT_ERROR' })}
-                            className="text-[10px] uppercase font-black text-rose-500 hover:text-rose-600 transition-colors"
-                          >
-                            Report Error
-                          </button>
-                        </div>
+                        ))}
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-6 space-y-3">
-                      <p className="text-sm text-slate-400">No compatibility groups found</p>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-xs text-indigo-600 hover:text-indigo-700 font-bold"
-                        onClick={() => setFeedbackTarget({ category, type: 'SUGGEST_LINK' })}
-                      >
-                        Suggest a link
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      ) : selectedModel ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800">
-           <AlertCircle className="w-12 h-12 text-slate-400 mb-4" />
-           <h3 className="text-xl font-bold text-slate-900 dark:text-white">No exact match found</h3>
-           <p className="text-slate-500 max-w-md text-center mt-2 px-6">
-             Our AI is gathering data for this model. If you know what fits this phone, please help us!
-           </p>
-           <Button variant="outline" className="mt-8 border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold" onClick={() => setFeedbackTarget({ category: 'GENERAL', type: 'SUGGEST_LINK' })}>
-              Help us improve
-           </Button>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-24 gap-4">
-           <div className="relative">
-             <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-3xl" />
-             <SearchCheck className="w-20 h-20 text-indigo-600/30 relative" />
-           </div>
-           <p className="text-slate-400 text-lg font-medium">Enter a model name above to begin</p>
-        </div>
-      )}
-
-      {/* Feedback Modal Overlay */}
-      {feedbackTarget && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-200">
-            {feedbackSuccess ? (
-              <div className="p-10 text-center space-y-4">
-                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
-                  <CheckCircle2 size={32} />
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center py-10 border-2 border-dashed border-slate-100 dark:border-slate-800/60 rounded-[2rem] bg-slate-50/50 dark:bg-transparent">
+                        <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-full mb-3">
+                           <Info size={18} className="text-slate-400" />
+                        </div>
+                        <p className="text-[11px] text-slate-400 font-black text-center max-w-[12rem] uppercase tracking-wider">No cross-reference matches indexed</p>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="mt-4 h-8 px-4 text-[10px] font-black text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 rounded-xl uppercase tracking-widest"
+                          onClick={() => setFeedbackTarget({ category, type: 'SUGGEST_LINK' })}
+                        >
+                          + Propose Match
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : selectedModel ? (
+          <div className="max-w-2xl mx-auto flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[3rem] shadow-xl text-center px-10 animate-in zoom-in-95 duration-500">
+             <div className="relative mb-6">
+               <div className="absolute inset-0 bg-amber-500/10 rounded-full blur-2xl scale-125" />
+               <div className="p-5 bg-amber-50 dark:bg-amber-900/20 rounded-[2rem] ring-1 ring-amber-500/10">
+                 <AlertCircle className="w-10 h-10 text-amber-500" />
+               </div>
+             </div>
+             <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">Sync Status: Pending Analysis</h3>
+             <p className="text-slate-500 max-w-sm mt-3 text-[15px] font-medium leading-relaxed">
+               We haven't fully indexed the <span className="text-indigo-600 font-bold">{selectedModel.fullName}</span> yet. Help us grow by contributing confirmed fits.
+             </p>
+             <div className="flex gap-4 mt-10">
+                <Button 
+                  variant="outline" 
+                   className="h-12 px-8 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-black text-[13px] rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm flex gap-2"
+                   onClick={() => setSelectedModel(null)}
+                >
+                   Try Another
+                </Button>
+                <Button 
+                  className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[13px] rounded-2xl transition-all shadow-lg shadow-indigo-500/20 flex gap-2"
+                  onClick={() => setFeedbackTarget({ category: 'GENERAL', type: 'SUGGEST_LINK' })}
+                >
+                   <Send size={16} /> Contribute Link
+                </Button>
+             </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-32 text-center">
+            <div className="relative mb-10 group">
+              <div className="absolute inset-0 bg-indigo-500/5 rounded-full blur-3xl scale-[2.5] animate-pulse" />
+              <div className="relative p-8 px-10 bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl border border-slate-100 dark:border-slate-800 group-hover:-translate-y-2 transition-transform duration-500">
+                <Layers className="w-14 h-14 text-indigo-600/20 group-hover:text-indigo-600 transition-colors" />
+                <div className="absolute -bottom-3 -right-3 p-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-500/30 text-white animate-bounce-subtle">
+                   <Search size={22} strokeWidth={3} />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Thank You!</h3>
-                <p className="text-slate-500 text-sm">Your report has been sent to our technical team for verification.</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Ready to cross-reference</h3>
+              <p className="text-slate-400 font-bold text-[14px] max-w-xs mx-auto leading-relaxed">
+                Connect your inventory logic by finding shared part groups across brands in seconds.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 📝 Premium Feedback Modal Overlay */}
+      {feedbackTarget && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-in fade-in duration-500">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] border border-white/20 overflow-hidden animate-in zoom-in-95 duration-300">
+            {feedbackSuccess ? (
+              <div className="p-12 text-center space-y-5">
+                <div className="relative">
+                   <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-2xl scale-125" />
+                   <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-[2rem] flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400 relative border border-emerald-500/10">
+                     <CheckCircle2 size={36} />
+                   </div>
+                </div>
+                <div className="space-y-1">
+                   <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Community Contribution Sent</h3>
+                   <p className="text-slate-500 font-medium">Our technical team will verify and sync this link with the global DB.</p>
+                </div>
               </div>
             ) : (
-              <div className="p-6 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={cn("p-2 rounded-lg", feedbackTarget.type === 'REPORT_ERROR' ? "bg-rose-100 text-rose-600" : "bg-indigo-100 text-indigo-600")}>
-                      <MessageSquareWarning size={20} />
+              <div className="relative">
+                <div className="p-8 pb-10 space-y-8">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-5">
+                      <div className={cn("p-4 rounded-[1.5rem] shadow-sm", feedbackTarget.type === 'REPORT_ERROR' ? "bg-rose-50 text-rose-600 border border-rose-100" : "bg-indigo-50 text-indigo-600 border border-indigo-100")}>
+                        <MessageSquareWarning size={24} />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight">
+                          {feedbackTarget.type === 'REPORT_ERROR' ? 'Data Quality Report' : 'Technical Contribution'}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1">
+                           <div className="p-0.5 px-1.5 bg-slate-100 dark:bg-slate-800 rounded font-black text-[9px] text-slate-500 uppercase tracking-widest">
+                             Cat: {feedbackTarget.category}
+                           </div>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-white">
-                        {feedbackTarget.type === 'REPORT_ERROR' ? 'Report Incorrect Data' : 'Suggest a Link'}
-                      </h3>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        Category: {feedbackTarget.category}
-                      </p>
+                    <button onClick={() => setFeedbackTarget(null)} className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Contribution Details</label>
+                       <span className="text-[10px] font-bold text-indigo-500">Required Field</span>
+                    </div>
+                    <textarea 
+                      autoFocus
+                      placeholder={feedbackTarget.type === 'REPORT_ERROR' 
+                        ? "What did we miss? (e.g. 'Vivo V20 display does NOT fit Vivo V20 SE')"
+                        : "Which other models use this part? (e.g. 'Oppo F15 also fits this tempered glass')"
+                      }
+                      className="w-full h-40 p-6 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-[1.5rem] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-[15px] font-semibold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 resize-none shadow-inner transition-all"
+                      value={feedbackDetails}
+                      onChange={(e) => setFeedbackDetails(e.target.value)}
+                    />
+                    <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                       <Info size={14} className="text-amber-500 shrink-0" />
+                       <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold leading-tight">Your technical expertise helps 5,000+ repair shops worldwide. Thank you.</p>
                     </div>
                   </div>
-                  <button onClick={() => setFeedbackTarget(null)} className="text-slate-400 hover:text-slate-600">
-                    <X size={20} />
-                  </button>
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Details</label>
-                  <textarea 
-                    autoFocus
-                    placeholder={feedbackTarget.type === 'REPORT_ERROR' 
-                      ? "What exactly is wrong? (e.g. 'A20 uses AMOLED, A20s uses IPS, these are NOT compatible')"
-                      : "Which model fits this device for this category? (e.g. 'M01s also fits the same A10 display')"
-                    }
-                    className="w-full h-32 p-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium resize-none shadow-inner"
-                    value={feedbackDetails}
-                    onChange={(e) => setFeedbackDetails(e.target.value)}
-                  />
-                  <p className="text-[10px] text-slate-400 italic">This will be reviewed by an administrator.</p>
-                </div>
-
-                <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1 rounded-xl h-12 font-bold" onClick={() => setFeedbackTarget(null)}>Cancel</Button>
-                  <Button 
-                    className="flex-1 rounded-xl h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-2 shadow-lg shadow-indigo-200"
-                    disabled={isSubmittingFeedback || !feedbackDetails.trim()}
-                    onClick={handleSubmitFeedback}
-                  >
-                    {isSubmittingFeedback ? <Loader2 className="animate-spin h-4 w-4" /> : <Send size={16} />}
-                    Submit Report
-                  </Button>
+                  <div className="flex gap-4 pt-2">
+                    <Button variant="outline" className="flex-1 rounded-2xl h-14 font-black text-slate-600 dark:text-slate-400 border-none bg-slate-100 dark:bg-slate-800 hover:bg-slate-200" onClick={() => setFeedbackTarget(null)}>Cancel</Button>
+                    <Button 
+                      className="flex-1 rounded-2xl h-14 bg-indigo-600 hover:bg-neutral-900 text-white font-black text-[15px] gap-2 shadow-xl shadow-indigo-500/20 active:scale-95 transition-all"
+                      disabled={isSubmittingFeedback || !feedbackDetails.trim()}
+                      onClick={handleSubmitFeedback}
+                    >
+                      {isSubmittingFeedback ? <Loader2 className="animate-spin h-5 w-5" /> : <Send size={18} />}
+                      Verify & Send
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}

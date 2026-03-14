@@ -2624,6 +2624,8 @@ enum PartType {
   TOUCH_GLASS
   FLEX_CABLE
   FRAME
+  SPEAKER
+  GENERAL
 }
 
 model Brand {

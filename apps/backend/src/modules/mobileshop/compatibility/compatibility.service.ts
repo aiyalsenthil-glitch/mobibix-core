@@ -77,7 +77,7 @@ export class CompatibilityService {
     // Group parts by their type
     groupLinks.forEach(link => {
       const group = link.group;
-      const typeKey = group.partType.toLowerCase();
+      const typeKey = group.partType;
       
       if (!compatibleParts[typeKey]) {
         compatibleParts[typeKey] = [];

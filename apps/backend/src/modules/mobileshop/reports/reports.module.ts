@@ -13,9 +13,10 @@ import { OperationsModule } from '../operations/operations.module';
 import { CashModule } from '../operations/cash/cash.module';
 import { CashAnalysisModule } from './cash-analysis/cash-analysis.module';
 import { ExpenseIntelligenceModule } from './expense-intelligence/expense-intelligence.module';
+import { InventoryIntelligenceModule } from './inventory-intelligence/inventory-intelligence.module';
 
 @Module({
-  imports: [LoyaltyModule, forwardRef(() => OperationsModule), CashModule, CashAnalysisModule, ExpenseIntelligenceModule],
+  imports: [LoyaltyModule, forwardRef(() => OperationsModule), CashModule, CashAnalysisModule, ExpenseIntelligenceModule, InventoryIntelligenceModule],
   controllers: [MobileShopReportsController],
   providers: [
     MobileShopReportsService,

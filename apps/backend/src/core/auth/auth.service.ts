@@ -165,7 +165,7 @@ export class AuthService {
 
       // If we have a tenant context, fetch dynamic permissions
       // Always invalidate cache on login so users get fresh permissions immediately
-      if (tenantId && !isSystemOwner) {
+      if (tenantId) {
         await this.permissionService.invalidateUserPermissions(user.id, tenantId);
         permissions = await this.permissionService.getConsolidatedPermissions(
           user.id,

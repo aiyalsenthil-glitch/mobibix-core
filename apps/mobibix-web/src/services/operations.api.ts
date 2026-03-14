@@ -341,6 +341,13 @@ export async function getExpenseCategoryBreakdown(
 
 // ─── STOCK VERIFICATION ───────────────────────────────────────────────────────
 
+export interface StockVerificationSummary {
+  totalItemsChecked: number;
+  mismatchItems: number;
+  totalLossValue: number;        // Paisa
+  totalLossValueRupees: number;  // Rupees (ready to display)
+}
+
 export interface StockVerificationSession {
   id: string;
   shopId: string;
@@ -352,6 +359,7 @@ export interface StockVerificationSession {
   confirmedAt?: string;
   createdAt: string;
   _count?: { items: number };
+  summary?: StockVerificationSummary;
 }
 
 export interface StockVerificationItem {
@@ -363,7 +371,7 @@ export interface StockVerificationItem {
   reason?: AdjustmentReason;
   notes?: string;
   stockLedgerId?: string;
-  shopProduct?: { name: string; category?: string; quantity: number };
+  shopProduct?: { name: string; category?: string; quantity: number; avgCost?: number };
 }
 
 export async function createVerificationSession(payload: {

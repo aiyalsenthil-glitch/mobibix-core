@@ -103,7 +103,7 @@ export class UsersService {
     });
 
     const isSystemOwner =
-      userTenant?.isSystemOwner ?? userTenant?.role === UserRole.OWNER;
+      userTenant?.isSystemOwner || userTenant?.role === UserRole.OWNER;
     let grantedPermissions: string[] = [];
 
     if (isSystemOwner) {
@@ -113,6 +113,20 @@ export class UsersService {
         userId,
         userTenant.tenantId,
       );
+    }
+
+    // Fetch active plan code for the tenant
+    let planCode: string | null = null;
+    if (userTenant?.tenantId) {
+      const sub = await this.prisma.tenantSubscription.findFirst({
+        where: { 
+          tenantId: userTenant.tenantId,
+          status: { in: ['ACTIVE', 'TRIAL'] }
+        },
+        include: { plan: true },
+        orderBy: { createdAt: 'desc' }
+      });
+      planCode = sub?.plan?.code ?? null;
     }
 
     // Check for pending invite
@@ -142,6 +156,7 @@ export class UsersService {
       businessType: userTenant?.tenant?.businessType ?? null,
       isComingSoon: userTenant?.tenant?.businessCategory?.isComingSoon ?? false,
       isSystemOwner,
+      planCode,
       enabledModules: userTenant?.tenant?.enabledModules ?? [],
       permissions: grantedPermissions, // Map for frontend
       inviteToken: invite?.id ?? null,

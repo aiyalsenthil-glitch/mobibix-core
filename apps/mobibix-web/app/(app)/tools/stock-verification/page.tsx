@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   ClipboardCheck, Plus, Loader2, AlertTriangle,
   CheckCircle2, RefreshCw, PackageSearch, Check, History,
-  ChevronDown, ChevronUp, HelpCircle,
+  ChevronDown, ChevronUp, HelpCircle, BookOpen,
 } from "lucide-react";
 import { useShop } from "@/context/ShopContext";
 import {
   createVerificationSession, getVerificationSessions, getVerificationSession,
   addVerificationItems, confirmVerificationSession,
   type StockVerificationSession, type StockVerificationItem, type AdjustmentReason,
+  type StockVerificationSummary,
 } from "@/services/operations.api";
 import { listProducts } from "@/services/products.api";
 
@@ -81,6 +83,27 @@ const REASONS: { value: AdjustmentReason; label: string }[] = [
   { value: "CORRECTION",   label: "Data Correction" },
   { value: "SPARE_DAMAGE", label: "Spare Part Damage" },
 ];
+
+function SummaryBar({ summary }: { summary: StockVerificationSummary }) {
+  const fmt = (r: number) =>
+    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(r);
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-3 text-center shadow-sm">
+        <p className="text-lg font-bold text-gray-900 dark:text-white">{summary.totalItemsChecked}</p>
+        <p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide font-medium">Items Checked</p>
+      </div>
+      <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-3 text-center shadow-sm">
+        <p className={`text-lg font-bold ${summary.mismatchItems > 0 ? "text-orange-500 dark:text-orange-400" : "text-green-600 dark:text-green-400"}`}>{summary.mismatchItems}</p>
+        <p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide font-medium">Mismatches</p>
+      </div>
+      <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-3 text-center shadow-sm">
+        <p className={`text-lg font-bold ${summary.totalLossValueRupees > 0 ? "text-red-500 dark:text-red-400" : "text-gray-900 dark:text-white"}`}>{fmt(summary.totalLossValueRupees)}</p>
+        <p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide font-medium">Loss Value</p>
+      </div>
+    </div>
+  );
+}
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -236,9 +259,16 @@ export default function StockVerificationPage() {
           <p className="text-sm text-gray-500 dark:text-slate-400">Physical count vs system quantity</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/tools/stock-verification/guide"
+            title="Full guide"
+            className="p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-500 dark:text-blue-400 transition-colors"
+          >
+            <BookOpen size={16} />
+          </Link>
           <button
             onClick={() => setShowHelp((v) => !v)}
-            title="How it works"
+            title="Quick help"
             className={`p-2 rounded-lg transition-colors ${showHelp ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 dark:text-slate-500"}`}
           >
             <HelpCircle size={16} />
@@ -321,6 +351,8 @@ export default function StockVerificationPage() {
           {/* Active Session */}
           {activeSession && (
             <div className="space-y-4">
+              {activeSession.summary && <SummaryBar summary={activeSession.summary} />}
+
               <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/30 rounded-xl p-4 flex items-center justify-between shadow-sm">
                 <div>
                   <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-400">Active Session</p>
@@ -458,7 +490,17 @@ export default function StockVerificationPage() {
                         <p className="text-sm font-semibold text-gray-900 dark:text-slate-200">
                           {new Date(s.sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                         </p>
-                        <p className="text-xs text-gray-400 dark:text-slate-500">{s._count?.items ?? 0} products counted</p>
+                        <p className="text-xs text-gray-400 dark:text-slate-500">
+                          {s.summary?.totalItemsChecked ?? s._count?.items ?? 0} checked
+                          {s.summary && s.summary.mismatchItems > 0 && (
+                            <> · <span className="text-orange-500 dark:text-orange-400">{s.summary.mismatchItems} mismatches</span></>
+                          )}
+                          {s.summary && s.summary.totalLossValueRupees > 0 && (
+                            <> · <span className="text-red-500 dark:text-red-400">
+                              {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(s.summary.totalLossValueRupees)} lost
+                            </span></>
+                          )}
+                        </p>
                       </div>
                       <StatusBadge status={s.status} />
                     </div>
