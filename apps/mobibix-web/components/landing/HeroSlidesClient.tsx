@@ -157,10 +157,10 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                 {[
-                  { title: "Never Lose Stock", desc: "Track every IMEI. Stop theft with serial-perfect accuracy.", icon: "/assets/landing/inventory-icon.png" },
-                  { title: "Control Repairs", desc: "Track technician parts. Stop disputes with digital proof.", icon: "/assets/landing/repairs-icon.png" },
-                  { title: "Instant GST Build", desc: "Generate professional bills in 5 seconds. Look premium.", icon: "/assets/landing/billing-icon.png" },
-                  { title: "WhatsApp Marketing", desc: "Auto-send reminders. Get paid faster and sell accessories.", icon: "/assets/landing/marketing-icon.png" },
+                  { title: "Never Lose Stock", desc: "Track every IMEI. Stop theft with serial-perfect accuracy.", icon: "/assets/landing/inventory-icon.png", alt: "IMEI tracking and inventory management interface icon" },
+                  { title: "Control Repairs", desc: "Track technician parts. Stop disputes with digital proof.", icon: "/assets/landing/repairs-icon.png", alt: "Mobile repair job tracking and technician management icon" },
+                  { title: "Instant GST Build", desc: "Generate professional bills in 5 seconds. Look premium.", icon: "/assets/landing/billing-icon.png", alt: "GST compliant billing and invoice generation icon" },
+                  { title: "WhatsApp Marketing", desc: "Auto-send reminders. Get paid faster and sell accessories.", icon: "/assets/landing/marketing-icon.png", alt: "WhatsApp CRM and automated customer notifications icon" },
                 ].map((feat, i) => (
                   <motion.div 
                     key={i}
@@ -174,7 +174,7 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                       
                       <div className="relative z-10">
                         <div className="w-20 h-20 rounded-2xl bg-white/40 dark:bg-muted/30 backdrop-blur-md flex items-center justify-center mb-8 border border-border/50 group-hover:border-primary/30 group-hover:shadow-lg group-hover:shadow-primary/5 transition-all duration-500 overflow-hidden p-4 shadow-sm relative">
-                            <NextImage src={feat.icon} alt={feat.title} fill className="object-contain filter drop-shadow-xl group-hover:scale-110 transition-transform duration-500 p-4" />
+                            <NextImage src={feat.icon} alt={feat.alt} fill className="object-contain filter drop-shadow-xl group-hover:scale-110 transition-transform duration-500 p-4" />
                         </div>
                         <h3 className="text-xl font-black mb-4 uppercase tracking-tight">{feat.title}</h3>
                         <p className="text-muted-foreground font-bold text-sm leading-relaxed">{feat.desc}</p>

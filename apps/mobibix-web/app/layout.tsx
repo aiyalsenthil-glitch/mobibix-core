@@ -15,6 +15,8 @@ export const metadata: Metadata = {
     "Run your mobile shop smarter. IMEI tracking, repair management, GST billing and customer records — all in one platform built for Indian mobile retailers.",
   metadataBase: new URL("https://REMOVED_DOMAIN"),
   alternates: { canonical: "/" },
+  applicationName: "MobiBix",
+  manifest: "/manifest.json",
   icons: { 
     icon: "/assets/mobibix-app-icon.png",
     apple: "/assets/mobibix-app-icon.png"
@@ -29,6 +31,7 @@ export const metadata: Metadata = {
         url: "/assets/mobibix-app-icon.png",
         width: 800,
         height: 600,
+        alt: "MobiBix POS Dashboard Preview",
       }
     ],
     locale: "en_IN",
@@ -36,9 +39,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "MobiBix — Mobile Shop POS",
-    description: "Complete OS for mobile retailers. Manage EMI, repairs, and GST billing.",
+    title: "MobiBix — Mobile Shop POS & Retail OS",
+    description: "Complete OS for mobile retailers. Manage IMEI, repairs, and GST billing.",
     images: ["/assets/mobibix-app-icon.png"],
+    creator: "@mobibix",
   },
   robots: {
     index: true,
@@ -50,6 +54,11 @@ export const metadata: Metadata = {
       'max-image-preview': 'large',
       'max-snippet': -1,
     },
+  },
+  other: {
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "default",
+    "format-detection": "telephone=no",
   },
 };
 export const playfair = Playfair_Display({

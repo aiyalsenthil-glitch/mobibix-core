@@ -83,8 +83,36 @@ export default function FeaturesPage() {
     }
   ];
 
+  const serviceSchema = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "serviceType": "Mobile Shop POS & Management Software",
+    "provider": {
+      "@type": "Organization",
+      "name": "MobiBix",
+      "url": "https://REMOVED_DOMAIN"
+    },
+    "areaServed": "India",
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "MobiBix Features",
+      "itemListElement": features.map((f, i) => ({
+        "@type": "Offer",
+        "itemOffered": {
+          "@type": "Service",
+          "name": f.title,
+          "description": f.description
+        }
+      }))
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 transition-colors duration-500 px-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }}
+      />
       <Header />
 
       {/* Background Effects */}

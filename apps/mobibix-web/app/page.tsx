@@ -7,9 +7,9 @@ import { Header } from "../components/layout/Header";
 import { Footer } from "../components/layout/Footer";
 
 export const metadata: Metadata = {
-  title: "MobiBix — Mobile Shop POS, IMEI Tracking & Repair Management Software",
+  title: "MobiBix — #1 Mobile Shop Billing Software, IMEI & Repair Management",
   description:
-    "Run your mobile shop smarter. Manage IMEI stock, repair jobs, GST billing, and customer records — all in one platform built for Indian mobile retailers.",
+    "India's best mobile shop POS. Manage IMEI tracking, repair jobs, GST billing, and inventory. Trusted by 5000+ Indian mobile retailers. Start your free trial today.",
   keywords: [
     "mobile shop software",
     "mobile shop POS India",
@@ -17,11 +17,14 @@ export const metadata: Metadata = {
     "mobile repair management",
     "GST billing mobile shop",
     "mobile shop ERP India",
+    "cell phone store software",
+    "mobile shop inventory management",
+    "billing app for mobile shop",
   ],
   openGraph: {
     title: "MobiBix — The Retail OS for Indian Mobile Shops",
     description:
-      "Track IMEI, manage repairs, generate GST bills and run your mobile shop from anywhere.",
+      "Track IMEI, manage repairs, generate GST bills and run your mobile shop from anywhere. Start 14-day free trial.",
     url: "https://REMOVED_DOMAIN",
     siteName: "MobiBix",
     locale: "en_IN",
@@ -31,7 +34,7 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   const posts = getAllPosts();
-  const jsonLd = {
+  const softwareSchema = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name: "MobiBix",
@@ -49,11 +52,54 @@ export default function HomePage() {
     },
   };
 
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is MobiBix?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "MobiBix is a complete Operating System for Indian mobile retailers, providing IMEI tracking, repair management, GST billing, and inventory control."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does MobiBix support IMEI tracking?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, MobiBix offers serial-perfect IMEI tracking to help you manage stock and prevent theft with 100% accuracy."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I generate GST bills with MobiBix?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Absolutely. MobiBix allows you to generate professional, GST-compliant invoices in just 5 seconds."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does MobiBix provide WhatsApp integration?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, MobiBix automates payment reminders and repair status updates via WhatsApp to help you get paid faster."
+        }
+      }
+    ]
+  };
+
   return (
     <main className="min-h-screen bg-background transition-colors duration-500 overflow-hidden">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
       <HeroSlidesClient posts={posts} />
       <WhatsAppWidget />
