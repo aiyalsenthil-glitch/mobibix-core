@@ -1,11 +1,14 @@
 import {
   Controller,
   Get,
+  Post,
   Param,
   Query,
   Res,
   NotFoundException,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { InvoiceService } from './invoice.service';
@@ -25,6 +28,22 @@ import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
 @UseGuards(JwtAuthGuard, GranularPermissionGuard)
 export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
+
+  /**
+   * Resend invoice email
+   * POST /billing/invoices/:invoiceId/resend-email
+   */
+  @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
+  @Post(':invoiceId/resend-email')
+  @HttpCode(HttpStatus.OK)
+  async resendEmail(
+    @Param('invoiceId') invoiceId: string,
+    @CurrentUser() user: User,
+  ) {
+    if (!user.tenantId) throw new NotFoundException('User not associated with any tenant');
+    await this.invoiceService.resendInvoiceEmail(invoiceId, user.tenantId);
+    return { message: 'Invoice email sent successfully' };
+  }
 
   /**
    * Download invoice PDF

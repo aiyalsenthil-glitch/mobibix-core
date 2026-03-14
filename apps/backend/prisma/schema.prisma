@@ -161,6 +161,7 @@ model Tenant {
   promoUsages        PromoUsage[]
   aiUsageLogs        AiUsageLog[]
   loyaltyAdjustments LoyaltyAdjustment[]
+  healthScore        TenantHealthScore?
   billingEventLogs   BillingEventLog[]
 }
 
@@ -3723,4 +3724,62 @@ model SystemAiConfig {
   createdAt        DateTime @default(now())
 
   @@map("mb_system_ai_config")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SAAS COMMAND CENTER — ANALYTICS MODELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Daily pre-aggregated MRR movements per product.
+/// Computed by MetricsAggregatorService at 00:05 UTC each day.
+/// Replaces expensive live aggregation queries on large tenants tables.
+model DailyRevenueStat {
+  id             String   @id @default(cuid())
+  date           DateTime @db.Date
+  product        String   // "MOBIBIX" | "GYMPILOT" | "ALL"
+  newMrr         Int      @default(0) // paise — subscriptions started this day
+  expansionMrr   Int      @default(0) // paise — plan upgrades
+  contractedMrr  Int      @default(0) // paise — plan downgrades
+  churnedMrr     Int      @default(0) // paise — cancellations
+  netMrr         Int      @default(0) // paise — net change
+  totalMrr       Int      @default(0) // paise — running total at end of day
+  newTenants     Int      @default(0)
+  churnedTenants Int      @default(0)
+  activeTenants  Int      @default(0)
+  successfulPayments Int  @default(0)
+  failedPayments     Int  @default(0)
+  paymentVolume      Int  @default(0) // paise — total collected this day
+
+  @@unique([date, product])
+  @@index([date])
+  @@index([product, date])
+  @@map("admin_daily_revenue_stats")
+}
+
+/// Per-tenant health score computed daily by MetricsAggregatorService.
+/// Used by Tenant Intelligence module for churn risk detection.
+model TenantHealthScore {
+  id           String    @id @default(cuid())
+  tenantId     String    @unique
+  score        Int       // 0–100 composite
+  loginScore   Int       @default(0) // 0–25: recency of logins
+  featureScore Int       @default(0) // 0–25: breadth of feature usage
+  revenueScore Int       @default(0) // 0–30: payment health
+  activityScore Int      @default(0) // 0–20: data creation proxy
+  churnRisk    ChurnRisk @default(MEDIUM)
+  computedAt   DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([churnRisk])
+  @@index([score])
+  @@index([computedAt])
+  @@map("admin_tenant_health_scores")
+}
+
+enum ChurnRisk {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }

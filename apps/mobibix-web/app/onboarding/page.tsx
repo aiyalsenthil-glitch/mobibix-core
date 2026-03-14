@@ -72,7 +72,8 @@ export default function OnboardingPage() {
       setCheckingAuth(false);
       
       // 🔥 SAAS FLOW: Check if user has a pending invite
-      if (authUser?.pendingInvite) {
+      // Use pendingInvite property from authUser (which is ExchangeTokenResponse.user + pendingInvite merged in useAuth)
+      if (authUser?.pendingInvite || (authUser as any)?.pendingInvite) {
         setDecidingInvite(true);
       } else {
         setDecidingInvite(false);
@@ -85,7 +86,7 @@ export default function OnboardingPage() {
         setFormData(prev => ({ ...prev, promoCode: codeToUse }));
       }
     }
-  }, [authUser?.tenantId, authUser?.pendingInvite]);
+  }, [authUser?.tenantId, authUser?.pendingInvite, (authUser as any)?.pendingInvite]);
 
   const handleJoinStaff = async () => {
     if (!authUser?.pendingInvite) return;

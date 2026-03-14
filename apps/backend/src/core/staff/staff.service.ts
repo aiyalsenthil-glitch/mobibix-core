@@ -488,6 +488,37 @@ export class StaffService {
       entityId: invite.id,
       meta: { email: normalizedEmail, roleId: sanitizedRoleId },
     });
+
+    // ⚡ Trigger Email Notification
+    try {
+      const inviter = await this.prisma.user.findUnique({
+        where: { id: creatorId },
+        select: { fullName: true },
+      });
+
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { enabledModules: true, tenantType: true },
+      });
+
+      // Determine branding module
+      const module =
+        tenant?.enabledModules?.[0] ||
+        ((tenant as any)?.tenantType === 'MOBILE_SHOP'
+          ? ModuleType.MOBILE_SHOP
+          : ModuleType.GYM);
+
+      this.eventEmitter.emit('staff.invited', {
+        tenantId,
+        module,
+        timestamp: new Date(),
+        invite,
+        inviterName: inviter?.fullName || 'Shop Owner',
+      });
+    } catch (err) {
+      // Don't fail the invite if email trigger fails
+      console.error('Failed to emit staff.invited event:', err);
+    }
   }
 
   // List staff invites

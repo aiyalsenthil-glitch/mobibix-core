@@ -461,6 +461,17 @@ export class JobCardsService {
         });
       }
 
+      // 3. Emit Event
+      this.eventEmitter.emit('job.created', {
+        tenantId: user.tenantId,
+        shopId,
+        jobId: job.id,
+        jobNumber: job.jobNumber,
+        customerName: job.customerName,
+        customerPhone: job.customerPhone,
+        deviceModel: job.deviceModel,
+      });
+
       return job;
     });
   }

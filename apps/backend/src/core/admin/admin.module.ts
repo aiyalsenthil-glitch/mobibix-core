@@ -29,6 +29,11 @@ import { MobibixAdminController } from './products/mobibix/mobibix-admin.control
 import { GympilotAdminController } from './products/mobibix/mobibix-admin.controller';
 import { RevenueAdminController } from './revenue/revenue-admin.controller';
 import { InvestorController } from './investor/investor.controller';
+import { FinancialsAdminController } from './financials/financials-admin.controller';
+import { FinancialsAdminService } from './financials/financials-admin.service';
+import { MetricsAggregatorService } from './jobs/metrics-aggregator.service';
+import { TenantIntelligenceController } from './tenant-intelligence/tenant-intelligence.controller';
+import { TenantIntelligenceService } from './tenant-intelligence/tenant-intelligence.service';
 
 @Module({
   imports: [
@@ -62,12 +67,17 @@ import { InvestorController } from './investor/investor.controller';
     GympilotAdminController,
     RevenueAdminController,
     InvestorController,
+    FinancialsAdminController,
+    TenantIntelligenceController,
   ],
   providers: [
     AdminCorsService,
     AdminCacheService,
     AdminJobsCronService,
     RefreshKpiCacheJob,
+    FinancialsAdminService,
+    MetricsAggregatorService,
+    TenantIntelligenceService,
   ],
   exports: [AdminCorsService, AdminCacheService],
 })

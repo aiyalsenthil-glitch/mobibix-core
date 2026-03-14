@@ -8,6 +8,10 @@ import {
   PaymentFailedEvent,
   MemberExpiringEvent,
 } from './email.events';
+import {
+  InvoiceCreatedEvent,
+  JobStatusChangedEvent,
+} from '../../core/events/crm.events';
 
 type TenantWelcomePayload = {
   module: 'GYM' | 'MOBILE_SHOP';
@@ -168,6 +172,188 @@ export class EmailListener {
           ? nextRetry.toDateString() + ' ' + nextRetry.toLocaleTimeString()
           : null,
         payLink: `${baseUrl}/settings/billing`,
+      },
+    });
+  }
+
+  @OnEvent('staff.invited')
+  async handleStaffInvited(event: {
+    tenantId: string;
+    module: 'GYM' | 'MOBILE_SHOP';
+    invite: any;
+    inviterName: string;
+  }) {
+    const { tenantId, module, invite, inviterName } = event;
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+
+    const baseUrl =
+      module === 'MOBILE_SHOP'
+        ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.REMOVED_DOMAIN'
+        : this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
+
+    // The invite link depends on the frontend being able to handle the token
+    const inviteLink = `${baseUrl}/onboarding?token=${invite.inviteToken}`;
+
+    await this.emailService.send({
+      tenantId,
+      recipientType: 'STAFF',
+      emailType: 'STAFF_INVITED',
+      referenceId: invite.id,
+      module,
+      to: invite.email,
+      subject: `You've been invited to join ${tenant?.name || 'a shop'} on ${module === 'MOBILE_SHOP' ? 'MobiBix' : 'GymPilot'}!`,
+      data: {
+        staffName: invite.name || 'Staff Member',
+        inviterName: inviterName,
+        role: invite.role, // Or resolve dynamic role name if available
+        inviteLink: inviteLink,
+      },
+    });
+  }
+
+  @OnEvent('invoice.created')
+  async handleInvoiceCreated(payload: InvoiceCreatedEvent) {
+    const { tenantId, invoiceId, customerId } = payload;
+
+    if (!customerId) return;
+
+    const customer = await this.prisma.party.findUnique({
+      where: { id: customerId },
+      select: { email: true, name: true },
+    });
+
+    if (!customer?.email) return;
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+
+    await this.emailService.send({
+      tenantId,
+      recipientType: 'CUSTOMER',
+      emailType: 'INVOICE_GENERATED',
+      referenceId: invoiceId,
+      module: 'MOBILE_SHOP',
+      to: customer.email,
+      subject: `Invoice generated for your purchase at ${tenant?.name || 'our shop'}`,
+      data: {
+        customerName: customer.name || 'Valued Customer',
+        invoiceNumber: payload.invoiceNumber,
+        amount: payload.amount,
+        viewLink: `https://shop.REMOVED_DOMAIN/p/invoice/${invoiceId}`,
+      },
+    });
+  }
+
+  @OnEvent('job.created')
+  async handleJobCreated(payload: {
+    tenantId: string;
+    jobId: string;
+    jobNumber: string;
+    customerName: string;
+    customerPhone: string;
+    deviceModel: string;
+  }) {
+    const { tenantId, jobId, jobNumber } = payload;
+
+    // We try to find customer email
+    const job = await this.prisma.jobCard.findUnique({
+      where: { id: jobId },
+      select: { customerId: true, publicToken: true },
+    });
+
+    let email: string | null = null;
+    if (job?.customerId) {
+      const party = await this.prisma.party.findUnique({
+        where: { id: job.customerId },
+        select: { email: true },
+      });
+      email = party?.email || null;
+    }
+
+    if (!email) return;
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+
+    await this.emailService.send({
+      tenantId,
+      recipientType: 'CUSTOMER',
+      emailType: 'JOBCARD_CREATED',
+      referenceId: jobId,
+      module: 'MOBILE_SHOP',
+      to: email,
+      subject: `Service Request Received: ${jobNumber}`,
+      data: {
+        customerName: payload.customerName,
+        jobNumber,
+        deviceModel: payload.deviceModel,
+        shopName: tenant?.name || 'MobiBix Shop',
+        statusLink: `https://shop.REMOVED_DOMAIN/p/status/${job?.publicToken}`,
+      },
+    });
+  }
+
+  @OnEvent('job.status.changed')
+  async handleJobStatusChanged(payload: JobStatusChangedEvent) {
+    const { tenantId, jobId, status } = payload;
+
+    const job = await this.prisma.jobCard.findUnique({
+      where: { id: jobId },
+      select: { jobNumber: true, customerId: true, publicToken: true },
+    });
+
+    let email: string | null = null;
+    let customerName = 'Valued Customer';
+
+    if (job?.customerId) {
+      const party = await this.prisma.party.findUnique({
+        where: { id: job.customerId },
+        select: { email: true, name: true },
+      });
+      email = party?.email || null;
+      customerName = party?.name || customerName;
+    }
+
+    if (!email) return;
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+
+    let emailType: any = 'JOBCARD_STATUS_UPDATED';
+    let subject = `Job Status Update: ${job?.jobNumber}`;
+
+    if (status === 'READY') {
+      subject = `Your device is ready for pickup! - ${job?.jobNumber}`;
+    } else if (status === 'DELIVERED') {
+      emailType = 'JOBCARD_COMPLETED';
+      subject = `Service Completed: ${job?.jobNumber} - Thank you!`;
+    }
+
+    await this.emailService.send({
+      tenantId,
+      recipientType: 'CUSTOMER',
+      emailType,
+      referenceId: `${jobId}-${status}`,
+      module: 'MOBILE_SHOP',
+      to: email,
+      subject,
+      data: {
+        customerName,
+        jobNumber: job?.jobNumber,
+        status,
+        deviceModel: payload.deviceModel,
+        shopName: tenant?.name || 'MobiBix Shop',
+        statusLink: `https://shop.REMOVED_DOMAIN/p/status/${job?.publicToken}`,
       },
     });
   }

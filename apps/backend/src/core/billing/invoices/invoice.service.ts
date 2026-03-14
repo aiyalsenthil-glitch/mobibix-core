@@ -113,13 +113,13 @@ export class InvoiceService {
               return existing;
             }
 
-            // Get tenant's state code for GST calculation
+            // Get tenant's state + GSTIN for GST calculation
             const tenantFull = await tx.tenant.findUnique({
               where: { id: payment.tenantId },
-              select: { state: true, stateCode: true },
+              select: { state: true, stateCode: true, gstNumber: true },
             });
 
-            const companyStateCode = 'TN';
+            const companyStateCode = (process.env.COMPANY_STATE_CODE || 'TN').trim().toUpperCase();
             const isInterstate = tenantFull?.stateCode
               ? tenantFull.stateCode.trim().toUpperCase() !== companyStateCode
               : tenantFull?.state &&
@@ -140,6 +140,7 @@ export class InvoiceService {
                 tenant: { connect: { id: payment.tenantId } },
                 payment: { connect: { id: payment.id } },
                 gstin: process.env.COMPANY_GSTIN || null,
+                customerGstin: tenantFull?.gstNumber || null,
                 sacCode: '998314',
                 invoiceDate: new Date(),
                 amount: payment.amount,
@@ -446,6 +447,51 @@ export class InvoiceService {
         emailSent: true,
         emailSentAt: new Date(),
       },
+    });
+  }
+
+  /**
+   * Resend invoice email (manual trigger / retry)
+   */
+  async resendInvoiceEmail(invoiceId: string, tenantId: string): Promise<void> {
+    const invoice = await this.prisma.subscriptionInvoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        tenant: { select: { id: true, name: true, contactEmail: true } },
+        payment: { select: { id: true, billingCycle: true } },
+      },
+    });
+
+    if (!invoice) throw new NotFoundException('Invoice not found');
+    if (invoice.tenantId !== tenantId) throw new NotFoundException('Invoice not found');
+    if (!invoice.tenant.contactEmail) {
+      throw new NotFoundException('Tenant has no contact email');
+    }
+
+    const pdfBuffer = (await this.generatePDF(invoiceId)) as Buffer;
+
+    // Force resend by using a unique referenceId that bypasses idempotency
+    await this.emailService.send({
+      tenantId: invoice.tenantId,
+      recipientType: 'TENANT',
+      emailType: 'INVOICE_GENERATED',
+      referenceId: `${invoiceId}:resend:${Date.now()}`,
+      module: 'MOBILE_SHOP' as any, // subscription invoices use generic module
+      to: invoice.tenant.contactEmail,
+      subject: `Tax Invoice ${invoice.invoiceNumber}`,
+      data: {
+        customerName: invoice.tenant.name,
+        invoiceNumber: invoice.invoiceNumber,
+        amount: invoice.total,
+        storeName: process.env.COMPANY_NAME || 'MobiBix',
+        invoiceDate: invoice.invoiceDate.toLocaleDateString('en-IN'),
+      },
+      attachments: [{ filename: `${invoice.invoiceNumber}.pdf`, content: pdfBuffer }],
+    });
+
+    await this.prisma.subscriptionInvoice.update({
+      where: { id: invoiceId },
+      data: { emailSent: true, emailSentAt: new Date() },
     });
   }
 

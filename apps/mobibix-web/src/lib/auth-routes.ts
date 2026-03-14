@@ -6,6 +6,11 @@ import type {
 
 // Compute post-login redirect path based on user status
 export function getRoleRedirect(user: AuthUserPayload): string {
+  // If user has a pending invite (from useAuth state), guide them to onboarding
+  if ((user as any)?.pendingInvite) {
+    return "/onboarding";
+  }
+
   // Owners without a tenant must complete setup
   if (user.isSystemOwner && !user.tenantId) {
     return "/onboarding";
@@ -17,10 +22,13 @@ export function getRoleRedirect(user: AuthUserPayload): string {
 
 // Post-login routing using backend response (tenant counts)
 export function getPostLoginRedirect(response: ExchangeTokenResponse): string {
-  const { user, tenant, tenants, tenantCount } = response;
+  const { user, tenant, tenants, tenantCount, pendingInvite } = response;
   const count = tenantCount ?? tenants?.length ?? (tenant ? 1 : 0);
 
-  // No tenants yet
+  // 1️⃣ Priority: Pending Invitation
+  if (pendingInvite) return "/onboarding";
+
+  // 2️⃣ No tenants yet
   if (!count || count === 0) return "/onboarding";
 
   // Multiple tenants → ask to select

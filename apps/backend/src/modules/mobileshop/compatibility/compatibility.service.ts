@@ -283,32 +283,159 @@ export class CompatibilityService {
   // --- ADMIN METHODS ---
 
   async createPhoneModel(dto: { brandName: string; modelName: string }) {
-    const brand = await this.prisma.brand.upsert({
-      where: { name: dto.brandName },
-      update: {},
-      create: { name: dto.brandName },
+    const brandName = dto.brandName.trim();
+    const modelName = dto.modelName.trim();
+
+    // 1. Find or create brand case-insensitively
+    let brand = await this.prisma.brand.findFirst({
+      where: { name: { equals: brandName, mode: 'insensitive' } },
     });
 
-    const existing = await this.prisma.phoneModel.findUnique({
+    if (!brand) {
+      brand = await this.prisma.brand.create({
+        data: { name: brandName },
+      });
+    }
+
+    // 2. Check if model exists case-insensitively for this brand
+    const existing = await this.prisma.phoneModel.findFirst({
       where: {
-        brandId_modelName: {
-          brandId: brand.id,
-          modelName: dto.modelName,
-        },
+        brandId: brand.id,
+        modelName: { equals: modelName, mode: 'insensitive' },
       },
     });
 
     if (existing) {
-      throw new ConflictException(`Model "${dto.modelName}" already exists for brand "${dto.brandName}"`);
+      throw new ConflictException(`Model "${modelName}" already exists for brand "${brand.name}"`);
     }
 
     return this.prisma.phoneModel.create({
       data: {
         brandId: brand.id,
-        modelName: dto.modelName,
+        modelName: modelName,
       },
     });
   }
+
+  async mergePhoneModels(sourceId: string, targetId: string) {
+    if (sourceId === targetId) throw new Error("Cannot merge a model into itself");
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Consolidate compatibility links efficiently
+      // Get all groups the source model belongs to
+      const sourceLinks = await tx.compatibilityGroupPhone.findMany({
+        where: { phoneModelId: sourceId },
+        select: { id: true, groupId: true },
+      });
+
+      if (sourceLinks.length > 0) {
+        const sourceGroupIds = sourceLinks.map(l => l.groupId);
+
+        // Find which of these groups the target model already belongs to
+        const existingTargetLinks = await tx.compatibilityGroupPhone.findMany({
+          where: {
+            phoneModelId: targetId,
+            groupId: { in: sourceGroupIds },
+          },
+          select: { groupId: true },
+        });
+
+        const existingGroupIds = new Set(existingTargetLinks.map(l => l.groupId));
+
+        // Links to move: groups source has but target doesn't
+        const linksToMove = sourceLinks
+          .filter(l => !existingGroupIds.has(l.groupId))
+          .map(l => l.id);
+
+        // Links to delete: groups both source and target have (duplicates)
+        const linksToDelete = sourceLinks
+          .filter(l => existingGroupIds.has(l.groupId))
+          .map(l => l.id);
+
+        if (linksToMove.length > 0) {
+          await tx.compatibilityGroupPhone.updateMany({
+            where: { id: { in: linksToMove } },
+            data: { phoneModelId: targetId },
+          });
+        }
+
+        if (linksToDelete.length > 0) {
+          await tx.compatibilityGroupPhone.deleteMany({
+            where: { id: { in: linksToDelete } },
+          });
+        }
+      }
+
+      // 2. Batch re-route feedback and knowledge base
+      await tx.compatibilityFeedback.updateMany({
+        where: { phoneModelId: sourceId },
+        data: { phoneModelId: targetId },
+      });
+
+      await tx.compatibilityFeedback.updateMany({
+        where: { targetModelId: sourceId },
+        data: { targetModelId: targetId },
+      });
+
+      await tx.repairKnowledge.updateMany({
+        where: { phoneModelId: sourceId },
+        data: { phoneModelId: targetId },
+      });
+
+      // 3. Cleanup duplicate model
+      return tx.phoneModel.delete({
+        where: { id: sourceId },
+      });
+    });
+  }
+
+
+  async findPotentialDuplicates() {
+    const allModels = await this.prisma.phoneModel.findMany({
+      include: { brand: true },
+    });
+
+    const duplicates: any[] = [];
+    const seen = new Map();
+
+    for (const model of allModels) {
+      const key = `${model.brand.name.toLowerCase()}|${model.modelName.toLowerCase()}`;
+      if (seen.has(key)) {
+        const original = seen.get(key);
+        // Only report if normalized name is same but actual string is different
+        if (original.modelName !== model.modelName || original.brand.name !== model.brand.name) {
+          duplicates.push({
+            canonical: original,
+            duplicate: model,
+          });
+        }
+      } else {
+        seen.set(key, model);
+      }
+    }
+
+    return duplicates;
+  }
+
+  async bulkMergeDuplicates() {
+    const duplicates = await this.findPotentialDuplicates();
+    const results = { mergedCount: 0, failedCount: 0 };
+
+    for (const dup of duplicates) {
+      try {
+        await this.mergePhoneModels(dup.duplicate.id, dup.canonical.id);
+        results.mergedCount++;
+      } catch (err) {
+        console.error(`Failed to merge ${dup.duplicate.id} into ${dup.canonical.id}`, err);
+        results.failedCount++;
+      }
+    }
+
+    return results;
+  }
+
+
+
 
   async smartLinkModels(dto: { modelAId: string; modelBId: string; categories: PartType[] }) {
     const { modelAId, modelBId, categories } = dto;
@@ -447,5 +574,35 @@ export class CompatibilityService {
       where: { id },
       data: { status },
     });
+  }
+
+  async getModelLinks(phoneModelId: string) {
+    const groups = await this.prisma.compatibilityGroupPhone.findMany({
+      where: { phoneModelId },
+      include: {
+        group: {
+          include: {
+            phones: {
+              include: {
+                phoneModel: {
+                  include: { brand: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return groups.map((g) => ({
+      groupId: g.groupId,
+      partType: g.group.partType,
+      linkedModels: g.group.phones
+        .filter((p) => p.phoneModelId !== phoneModelId)
+        .map((p) => ({
+          id: p.phoneModel.id,
+          fullName: `${p.phoneModel.brand.name} ${p.phoneModel.modelName}`,
+        })),
+    }));
   }
 }

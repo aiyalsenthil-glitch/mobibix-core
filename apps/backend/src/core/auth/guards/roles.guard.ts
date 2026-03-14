@@ -48,9 +48,10 @@ export class RolesGuard implements CanActivate {
       [UserRole.STAFF]: 50,
       [UserRole.TECHNICIAN]: 50, // Technician is a specialized staff
       [UserRole.ACCOUNTANT]: 60, // Accountant > standard staff
-      [UserRole.MANAGER]: 70,    // Manager > Accountant/Staff
-      [UserRole.OWNER]: 80,      // Owner > Manager
-      [UserRole.ADMIN]: 90,      // System Admin
+      [UserRole.SUPERVISOR]: 65, // Supervisor > Accountant/Staff
+      [UserRole.MANAGER]: 70, // Manager > Supervisor
+      [UserRole.OWNER]: 80, // Owner > Manager
+      [UserRole.ADMIN]: 90, // System Admin
       [UserRole.SUPER_ADMIN]: 100, // Root Admin
     };
 
@@ -60,7 +61,7 @@ export class RolesGuard implements CanActivate {
     // Check if user has exact role OR a higher level role than ANY required role
     const hasRole = requiredRoles.some((role) => {
       const roleStr = typeof role === 'string' ? role : (role as string);
-      
+
       // Exact match always wins
       if (userRole === roleStr) return true;
 

@@ -10,7 +10,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { GranularPermissionGuard } from '../../core/permissions/guards/granular-permission.guard';
-import { RequirePermission, ModulePermission } from '../../core/permissions/decorators/require-permission.decorator';
+import {
+  RequirePermission,
+  ModulePermission,
+} from '../../core/permissions/decorators/require-permission.decorator';
 import { PERMISSIONS } from '../../security/permission-registry';
 import { Public } from '../../core/auth/decorators/public.decorator';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
@@ -33,8 +36,13 @@ import { CreateFollowUpDto } from '../../core/follow-ups/dto/create-follow-up.dt
 @Controller('mobileshop/crm')
 @ModuleScope(ModuleType.MOBILE_SHOP)
 @ModulePermission('crm')
-@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
-@Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.TECHNICIAN)
+@UseGuards(
+  JwtAuthGuard,
+  RolesGuard,
+  TenantRequiredGuard,
+  GranularPermissionGuard,
+)
+@Roles(UserRole.USER)
 export class MobileShopCrmController extends TenantScopedController {
   constructor(
     private readonly crmIntegration: CrmIntegrationService,
@@ -68,16 +76,10 @@ export class MobileShopCrmController extends TenantScopedController {
     const tenantId = req.user.tenantId;
     const userId = req.user.userId || req.user.sub;
 
-    return this.followUpsService.listMyFollowUps(
-      tenantId,
-      userId,
-      {},
-      false,
-      {
-        skip: skip ? parseInt(skip, 10) : undefined,
-        take: take ? parseInt(take, 10) : undefined,
-      },
-    );
+    return this.followUpsService.listMyFollowUps(tenantId, userId, {}, false, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
   }
 
   /**
@@ -165,7 +167,11 @@ export class MobileShopCrmController extends TenantScopedController {
     const headers = this.crmIntegration.buildAuthHeaders(
       this.getAccessToken(req),
     );
-    return this.crmIntegration.getCustomerTimeline(headers, customerId, sources);
+    return this.crmIntegration.getCustomerTimeline(
+      headers,
+      customerId,
+      sources,
+    );
   }
 
   // ─────────────────────────────────────────────

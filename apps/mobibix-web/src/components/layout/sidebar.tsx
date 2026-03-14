@@ -122,21 +122,21 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   }, [visibleItems]);
 
   useEffect(() => {
+    if (!mounted || !authUser) return;
+
     async function loadCounts() {
       try {
         const data = await getFollowUpCounts();
         setCounts(data);
-      } catch (err) {
-        console.error("Failed to load follow-up counts", err);
+      } catch {
+        // Silently ignore — sidebar badge is non-critical
       }
     }
 
-    if (mounted) {
-      loadCounts();
-      const interval = setInterval(loadCounts, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [mounted]);
+    loadCounts();
+    const interval = setInterval(loadCounts, 30000);
+    return () => clearInterval(interval);
+  }, [mounted, authUser]);
 
   useEffect(() => {
     setMounted(true);

@@ -64,4 +64,32 @@ export class CompatibilityAdminController {
   async processFeedback(@Param('id') id: string, @Body('status') status: FeedbackStatus) {
     return this.compatibilityService.processFeedback(id, status);
   }
+
+  @Get('models/:id/links')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.COMPATIBILITY.VIEW)
+  @ApiOperation({ summary: 'Get all models linked to a specific phone model' })
+  async getModelLinks(@Param('id') id: string) {
+    return this.compatibilityService.getModelLinks(id);
+  }
+
+  @Post('merge')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.COMPATIBILITY.MANAGE)
+  @ApiOperation({ summary: 'Merge source model into target model' })
+  async mergeModels(@Body() dto: { sourceId: string; targetId: string }) {
+    return this.compatibilityService.mergePhoneModels(dto.sourceId, dto.targetId);
+  }
+
+  @Get('duplicates')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.COMPATIBILITY.VIEW)
+  @ApiOperation({ summary: 'Find potential duplicate models (case mismatch)' })
+  async findDuplicates() {
+    return this.compatibilityService.findPotentialDuplicates();
+  }
+
+  @Post('bulk-merge')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.COMPATIBILITY.MANAGE)
+  @ApiOperation({ summary: 'Merge all identified duplicates automatically' })
+  async bulkMerge() {
+    return this.compatibilityService.bulkMergeDuplicates();
+  }
 }
