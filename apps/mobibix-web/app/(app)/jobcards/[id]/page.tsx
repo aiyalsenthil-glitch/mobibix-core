@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   getJobCard,
@@ -81,6 +81,17 @@ export default function JobCardDetailPage() {
   const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
   const [isWarrantyConfirmOpen, setIsWarrantyConfirmOpen] = useState(false);
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+  
+  // Auto-scroll to Repair Assistant if hash is present in URL
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#repair-assistant-section") {
+      const scrollTimer = setTimeout(() => {
+        const element = document.getElementById("repair-assistant-section");
+        element?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 800);
+      return () => clearTimeout(scrollTimer);
+    }
+  }, []);
 
   // Advance Modals
   const [isAddAdvanceModalOpen, setIsAddAdvanceModalOpen] = useState(false);
@@ -272,6 +283,15 @@ export default function JobCardDetailPage() {
             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-white/10 dark:text-white transition"
           >
             Back
+          </button>
+          <button
+            onClick={() => {
+              const element = document.getElementById("repair-assistant-section");
+              element?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            className="px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-900/50 rounded-lg font-bold hover:bg-amber-100 dark:hover:bg-amber-900/30 transition flex items-center gap-2"
+          >
+            <span>💡</span> Assistant
           </button>
           <a
             href={`/print/jobcard/${job.id}?shopId=${selectedShopId}`}
@@ -693,7 +713,9 @@ export default function JobCardDetailPage() {
           )}
 
           {/* REPAIR KNOWLEDGE PANEL */}
-          <KnowledgePanel jobCardId={job.id} />
+          <div id="repair-assistant-section">
+            <KnowledgePanel jobCardId={job.id} />
+          </div>
         </div>
       </div>
       {/* Add Part Modal */}
