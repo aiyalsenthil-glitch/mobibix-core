@@ -19,7 +19,7 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: /auth\.setup\.ts/,
-      timeout: 60000,
+      timeout: 90000,
     },
     // Main tests: depend on setup, reuse its auth state
     {

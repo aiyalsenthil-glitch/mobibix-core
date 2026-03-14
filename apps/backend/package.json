@@ -26,7 +26,10 @@
     "test:load:webhooks": "k6 run load-tests/webhooks.js",
     "typecheck": "npx prisma generate && npx tsc -p tsconfig.json --noEmit",
     "rbac-audit": "ts-node scripts/scan-rbac-endpoints.ts",
-    "rbac-validate": "ts-node scripts/validate-rbac.ts"
+    "rbac-validate": "ts-node scripts/validate-rbac.ts",
+    "db:migrate:deploy": "npx prisma migrate deploy",
+    "db:migrate:status": "npx prisma migrate status",
+    "db:pull": "npx prisma db pull"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

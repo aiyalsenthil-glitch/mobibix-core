@@ -27,6 +27,23 @@ setup('authenticate', async ({ page }) => {
       });
     });
 
+    // Mock Firebase token refresh (called internally by SDK after sign-in)
+    await page.route('**/securetoken.googleapis.com/v1/token*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          access_token: 'mock_REMOVED_AUTH_PROVIDER_id_token',
+          expires_in: '3600',
+          token_type: 'Bearer',
+          refresh_token: 'mock_REMOVED_AUTH_PROVIDER_refresh_token',
+          id_token: 'mock_REMOVED_AUTH_PROVIDER_id_token',
+          user_id: 'mock_REMOVED_AUTH_PROVIDER_uid',
+          REMOVED_PROJECT_ID: 'mock_project',
+        }),
+      });
+    });
+
     await page.route('**/api/auth/google/exchange', async (route) => {
       console.log('[playwright mock] Intercepted exchange request');
       await route.fulfill({
@@ -73,7 +90,7 @@ setup('authenticate', async ({ page }) => {
       });
     });
 
-    await page.goto('/signin', { timeout: 15000, waitUntil: 'networkidle' });
+    await page.goto('/signin', { timeout: 15000, waitUntil: 'domcontentloaded' });
     
     // Fill email
     await page.fill('input[type="email"]', TEST_EMAIL, { timeout: 5000 });
