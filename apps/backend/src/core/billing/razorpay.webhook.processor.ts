@@ -17,7 +17,7 @@ import {
 } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-@Processor('REMOVED_PAYMENT_INFRA-webhooks', { concurrency: 5 })
+@Processor('REMOVED_PAYMENT_INFRA-webhooks', { concurrency: 2 })
 export class RazorpayWebhookProcessor extends WorkerHost {
   private readonly logger = new Logger(RazorpayWebhookProcessor.name);
 

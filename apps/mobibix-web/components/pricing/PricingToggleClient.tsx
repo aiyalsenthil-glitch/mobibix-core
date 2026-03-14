@@ -206,26 +206,6 @@ export function PricingToggleClient({ plans }: { plans: Plan[] }) {
             </motion.div>
           )}
 
-          {/* Social Proof Section for Conversion */}
-          <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="mt-24 mb-12"
-          >
-              <div className="text-center mb-8">
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground px-4 py-1.5 rounded-full border border-border/50 bg-muted/20">
-                      Trusted by 1,000+ Retailers
-                  </span>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto opacity-70 hover:opacity-100 transition-opacity duration-300">
-                  {['Reliance Digital', 'Croma Partner', 'Poorvika', 'Sangeetha'].map(brand => (
-                      <div key={brand} className="flex items-center justify-center p-6 rounded-2xl bg-card border border-border grayscale hover:grayscale-0 transition-all duration-300">
-                          <span className="font-black text-xl tracking-tighter uppercase text-muted-foreground">{brand}</span>
-                      </div>
-                  ))}
-              </div>
-          </motion.div>
 
         </div>
       </section>
