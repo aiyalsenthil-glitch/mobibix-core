@@ -358,7 +358,7 @@ export class WhatsAppVariableResolver {
         if (!invoiceId) return null;
         const baseUrl = module === WhatsAppModule.GYM 
           ? this.configService.get('GYM_FRONTEND_URL') || 'https://mobibix.in'
-          : this.configService.get('ERP_FRONTEND_URL') || 'https://shop.mobibix.com';
+          : this.configService.get('ERP_FRONTEND_URL') || 'https://shop.REMOVED_DOMAIN';
         return `${baseUrl}/print/invoice/${invoiceId}`;
       }
 
@@ -371,7 +371,7 @@ export class WhatsAppVariableResolver {
         });
         if (!jobCard?.publicToken) return null;
         const baseUrl = module === WhatsAppModule.MOBILE_REPAIR
-          ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.mobibix.com'
+          ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.REMOVED_DOMAIN'
           : this.configService.get('GYM_FRONTEND_URL') || 'https://mobibix.in';
         return `${baseUrl}/track/${jobCard.publicToken}`;
       }

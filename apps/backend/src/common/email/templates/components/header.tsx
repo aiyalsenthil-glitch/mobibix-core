@@ -25,8 +25,8 @@ const BRAND = {
   MOBILE_SHOP: {
     name: 'MobiBix',
     primaryColor: '#059669',
-    logo: 'https://app.mobibix.com/assets/mobibix-main-logo.png',
-    website: 'https://app.mobibix.com',
+    logo: 'https://app.REMOVED_DOMAIN/assets/mobibix-main-logo.png',
+    website: 'https://app.REMOVED_DOMAIN',
     tagline: 'The modern OS for mobile retailers',
   },
 };

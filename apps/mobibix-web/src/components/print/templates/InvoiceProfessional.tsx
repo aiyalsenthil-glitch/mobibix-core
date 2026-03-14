@@ -42,7 +42,7 @@ export function InvoiceProfessional({ data }: { data: PrintDocumentData }) {
   };
 
   // Parse contact info strings like "Ph: 8838822461" and "Email: abc@gmail.com"
-  // Use strict prefix matching to avoid false positives (e.g. "mob" in "mobibix.com")
+  // Use strict prefix matching to avoid false positives (e.g. "mob" in "REMOVED_DOMAIN")
   const rawPhone = header.contactInfo?.find(c => /^(ph|phone|cell|mobile|mob\.)\s*:/i.test(c.trim()));
   const rawEmail = header.contactInfo?.find(c => /^(email|e-mail|mail)\s*:/i.test(c.trim()));
   const cellNum = rawPhone ? rawPhone.replace(/^[^:]+:\s*/i, '').trim() : '';

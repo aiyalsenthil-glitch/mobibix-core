@@ -46,7 +46,7 @@ export class EmailListener {
     }
 
     const baseUrl = event.module === 'MOBILE_SHOP' 
-      ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.mobibix.com'
+      ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.REMOVED_DOMAIN'
       : this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
 
     await this.emailService.send({
@@ -84,7 +84,7 @@ export class EmailListener {
     }
 
     const baseUrl = module === 'MOBILE_SHOP'
-      ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.mobibix.com'
+      ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.REMOVED_DOMAIN'
       : this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
 
     await this.emailService.send({
@@ -145,7 +145,7 @@ export class EmailListener {
     if (!ownerEmail) return;
 
     const baseUrl = module === 'MOBILE_SHOP'
-      ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.mobibix.com'
+      ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.REMOVED_DOMAIN'
       : this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
 
     await this.emailService.send({

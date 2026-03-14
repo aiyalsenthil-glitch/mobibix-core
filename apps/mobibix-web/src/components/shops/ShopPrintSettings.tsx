@@ -180,7 +180,7 @@ export function ShopPrintSettings({ shop, onUpdate }: ShopPrintSettingsProps) {
           `Ph: ${shop.phone || "+91 98765 43210"}`,
           settings.email
             ? `Email: ${settings.email}`
-            : (shop.website ? `Web: ${shop.website}` : "Email: support@mobibix.com"),
+            : (shop.website ? `Web: ${shop.website}` : "Email: support@REMOVED_DOMAIN"),
         ],
         gstNumber: shop.gstEnabled ? (shop.gstNumber || "29ABCDE1234F1Z5") : undefined,
       },
@@ -204,7 +204,7 @@ export function ShopPrintSettings({ shop, onUpdate }: ShopPrintSettingsProps) {
         phone: "9988776655",
         address: "42, Green Avenue, Bangalore" 
       },
-      qrCode: "https://mobibix.com/track/preview",
+      qrCode: "https://REMOVED_DOMAIN/track/preview",
       config: {
         isB2B: false,
         pricesInclusive: true,

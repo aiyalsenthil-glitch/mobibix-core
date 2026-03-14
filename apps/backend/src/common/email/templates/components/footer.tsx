@@ -9,7 +9,7 @@ interface EmailFooterProps {
 export const EmailFooter = ({ module }: EmailFooterProps) => {
   const brandName = module === 'MOBILE_SHOP' ? 'MobiBix' : 'GymPilot';
   const website =
-    module === 'MOBILE_SHOP' ? 'https://mobibix.com' : 'https://mobibix.in';
+    module === 'MOBILE_SHOP' ? 'https://REMOVED_DOMAIN' : 'https://mobibix.in';
 
   return (
     <Section style={{ marginTop: '48px' }}>

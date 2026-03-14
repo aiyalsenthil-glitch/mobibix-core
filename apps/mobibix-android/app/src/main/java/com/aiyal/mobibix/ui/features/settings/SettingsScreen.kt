@@ -184,7 +184,7 @@ fun SettingsScreen(
                             icon = Icons.Default.Description,
                             color = Color(0xFF64748B),
                             onClick = {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mobibix.com/terms"))
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://REMOVED_DOMAIN/terms"))
                                 context.startActivity(intent)
                             }
                         )
@@ -194,7 +194,7 @@ fun SettingsScreen(
                             icon = Icons.Default.Shield,
                             color = Color(0xFF64748B),
                             onClick = {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mobibix.com/privacy"))
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://REMOVED_DOMAIN/privacy"))
                                 context.startActivity(intent)
                             }
                         )
@@ -207,7 +207,7 @@ fun SettingsScreen(
                                 if (isOwner) {
                                     navController.navigate("delete_account")
                                 } else {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mobibix.com/data-deletion"))
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://REMOVED_DOMAIN/data-deletion"))
                                     context.startActivity(intent)
                                 }
                             }

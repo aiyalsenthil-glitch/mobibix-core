@@ -18,7 +18,7 @@ export class TrialOnboardingCron {
 
   private getBaseUrl(module: ModuleType): string {
     return module === 'MOBILE_SHOP'
-      ? this.configService.get<string>('ERP_FRONTEND_URL') || 'https://shop.mobibix.com'
+      ? this.configService.get<string>('ERP_FRONTEND_URL') || 'https://shop.REMOVED_DOMAIN'
       : this.configService.get<string>('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
   }
 

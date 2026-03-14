@@ -96,7 +96,7 @@ export default function WhatsAppCrmContactSupport() {
           {/* Support Link */}
           <div className="mt-12 pt-8 border-t border-gray-100">
             <p className="text-sm text-gray-500">
-              Need help? <a href="mailto:support@mobibix.com" className="text-teal-600 font-semibold hover:underline">Contact our setup team</a>
+              Need help? <a href="mailto:support@REMOVED_DOMAIN" className="text-teal-600 font-semibold hover:underline">Contact our setup team</a>
             </p>
           </div>
         </div>

@@ -25,7 +25,7 @@ export const WaitlistConfirmedEmail = ({
   const isMobibix = module === 'MOBILE_SHOP';
   const appName = isMobibix ? 'MobiBix' : 'GymPilot';
   const logoUrl = isMobibix
-    ? 'https://mobibix.com/logo.png' // Replace with actual logo URL
+    ? 'https://REMOVED_DOMAIN/logo.png' // Replace with actual logo URL
     : 'https://mobibix.in/logo.png'; // Replace with actual logo URL
   const primaryColor = isMobibix ? '#2563eb' : '#dc2626';
 

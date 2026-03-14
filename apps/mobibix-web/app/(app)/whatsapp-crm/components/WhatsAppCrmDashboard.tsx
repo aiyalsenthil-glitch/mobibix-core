@@ -87,7 +87,7 @@ export default function WhatsAppCrmDashboard({
           </div>
 
           <p className="text-sm text-gray-500">
-             Need help? <a href="mailto:support@mobibix.com" className="text-teal-600 font-semibold hover:underline">Contact Setup Team</a>
+             Need help? <a href="mailto:support@REMOVED_DOMAIN" className="text-teal-600 font-semibold hover:underline">Contact Setup Team</a>
           </p>
 
           <WhatsAppSettingsModal 

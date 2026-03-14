@@ -135,7 +135,7 @@ const envSchema = z.object({
 
   EMAIL_FROM_MOBIBIX: z
     .string()
-    .default('MobiBix <notifications@mobibix.com>')
+    .default('MobiBix <notifications@REMOVED_DOMAIN>')
     .describe('Verified sender address for Mobibix emails'),
 
   // ═══════════════════════════════════════════════════

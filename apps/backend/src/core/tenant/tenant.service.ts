@@ -364,7 +364,7 @@ export class TenantService {
         const firstShop = await this.prisma.shop.create({
           data: {
             tenantId: tenant.id,
-            name: `${dto.name} - Main Branch`,
+            name: dto.name,
             phone: dto.contactPhone || '',
             addressLine1: dto.addressLine1 ?? '',
             city: dto.city ?? '',

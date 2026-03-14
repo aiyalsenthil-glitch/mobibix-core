@@ -136,6 +136,13 @@ export class StockVerificationService {
       throw new BadRequestException('Cannot confirm an empty verification session.');
     }
 
+    // Fetch avgCost snapshot for all products upfront (outside transaction)
+    const productCosts = await this.prisma.shopProduct.findMany({
+      where: { id: { in: items.map((i) => i.shopProductId) } },
+      select: { id: true, avgCost: true },
+    });
+    const costMap = new Map(productCosts.map((p) => [p.id, p.avgCost ?? 0]));
+
     await this.prisma.$transaction(async (tx) => {
       for (const item of items) {
         if (item.difference === 0) continue;
@@ -149,7 +156,7 @@ export class StockVerificationService {
             quantity:      Math.abs(item.difference),
             referenceType: StockRefType.ADJUSTMENT,
             referenceId:   item.id,
-            costPerUnit:   0, // no cost impact for verification adjustments
+            costPerUnit:   costMap.get(item.shopProductId) ?? 0,
             note:          `Stock verification: ${item.reason ?? 'CORRECTION'}`,
           },
         });
@@ -215,11 +222,26 @@ export class StockVerificationService {
       if (filters.endDate)   where.sessionDate.lte = new Date(filters.endDate);
     }
 
-    return this.prisma.stockVerification.findMany({
+    const sessions = await this.prisma.stockVerification.findMany({
       where,
       orderBy: { sessionDate: 'desc' },
-      include: { _count: { select: { items: true } } },
+      include: {
+        _count: { select: { items: true } },
+        items: { select: { difference: true, shopProduct: { select: { avgCost: true } } } },
+      },
     });
+
+    return sessions.map(({ items, ...s }) => ({
+      ...s,
+      summary: {
+        totalItemsChecked: items.length,
+        mismatchItems:     items.filter((i) => i.difference !== 0).length,
+        totalLossValue:    items.reduce((sum, i) => {
+          if (i.difference >= 0) return sum;
+          return sum + Math.abs(i.difference) * (i.shopProduct?.avgCost ?? 0);
+        }, 0), // Paisa
+      },
+    }));
   }
 
   async getSession(tenantId: string, sessionId: string) {
@@ -228,14 +250,31 @@ export class StockVerificationService {
       include: {
         items: {
           include: {
-            shopProduct: { select: { name: true, category: true, quantity: true } },
+            shopProduct: { select: { name: true, category: true, quantity: true, avgCost: true } },
           },
         },
       },
     });
 
     if (!session) throw new NotFoundException('Verification session not found.');
-    return session;
+
+    const totalItemsChecked = session.items.length;
+    const mismatchItems     = session.items.filter((i) => i.difference !== 0).length;
+    const totalLossValue    = session.items.reduce((sum, i) => {
+      if (i.difference >= 0) return sum;
+      const costPerUnit = i.shopProduct?.avgCost ?? 0; // Paisa
+      return sum + Math.abs(i.difference) * costPerUnit;
+    }, 0); // Paisa
+
+    return {
+      ...session,
+      summary: {
+        totalItemsChecked,
+        mismatchItems,
+        totalLossValue,          // Paisa — divide by 100 on frontend
+        totalLossValueRupees: totalLossValue / 100,
+      },
+    };
   }
 
   // ─── PRIVATE ───────────────────────────────────────────────────────────────

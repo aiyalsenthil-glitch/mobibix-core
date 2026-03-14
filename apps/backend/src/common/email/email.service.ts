@@ -437,7 +437,7 @@ export class EmailService {
     // In production, ensure these domains are verified in Resend
     if (module === 'MOBILE_SHOP') {
       return (
-        process.env.EMAIL_FROM_MOBIBIX || 'MobiBix <notifications@mobibix.com>'
+        process.env.EMAIL_FROM_MOBIBIX || 'MobiBix <notifications@REMOVED_DOMAIN>'
       );
     }
     return (
