@@ -76,42 +76,42 @@ export async function getInventoryIntelligence(
   return extractData(res);
 }
 
-export async function getInventoryOverview(shopId: string, startDate?: string, endDate?: string) {
+export async function getInventoryOverview(shopId: string, startDate?: string, endDate?: string): Promise<InventoryOverview> {
   const res = await authenticatedFetch(
     `/reports/inventory-intelligence/overview?${buildParams(shopId, startDate, endDate)}`,
   );
   if (!res.ok) throw new Error("Failed to load overview");
-  return extractData(res) as InventoryOverview;
+  return extractData<InventoryOverview>(res);
 }
 
-export async function getInventoryTopProducts(shopId: string, startDate?: string, endDate?: string) {
+export async function getInventoryTopProducts(shopId: string, startDate?: string, endDate?: string): Promise<InventoryTopProduct[]> {
   const res = await authenticatedFetch(
     `/reports/inventory-intelligence/top-loss-products?${buildParams(shopId, startDate, endDate)}`,
   );
   if (!res.ok) throw new Error("Failed to load top products");
-  return extractData(res) as InventoryTopProduct[];
+  return extractData<InventoryTopProduct[]>(res);
 }
 
-export async function getInventoryLossByCategory(shopId: string, startDate?: string, endDate?: string) {
+export async function getInventoryLossByCategory(shopId: string, startDate?: string, endDate?: string): Promise<InventoryByCategory[]> {
   const res = await authenticatedFetch(
     `/reports/inventory-intelligence/loss-by-category?${buildParams(shopId, startDate, endDate)}`,
   );
   if (!res.ok) throw new Error("Failed to load category breakdown");
-  return extractData(res) as InventoryByCategory[];
+  return extractData<InventoryByCategory[]>(res);
 }
 
-export async function getInventoryMonthlyTrend(shopId: string) {
+export async function getInventoryMonthlyTrend(shopId: string): Promise<InventoryMonthlyTrend[]> {
   const res = await authenticatedFetch(
     `/reports/inventory-intelligence/monthly-loss-trend?${new URLSearchParams({ shopId })}`,
   );
   if (!res.ok) throw new Error("Failed to load monthly trend");
-  return extractData(res) as InventoryMonthlyTrend[];
+  return extractData<InventoryMonthlyTrend[]>(res);
 }
 
-export async function getInventoryReasonBreakdown(shopId: string, startDate?: string, endDate?: string) {
+export async function getInventoryReasonBreakdown(shopId: string, startDate?: string, endDate?: string): Promise<InventoryByReason[]> {
   const res = await authenticatedFetch(
     `/reports/inventory-intelligence/reason-breakdown?${buildParams(shopId, startDate, endDate)}`,
   );
   if (!res.ok) throw new Error("Failed to load reason breakdown");
-  return extractData(res) as InventoryByReason[];
+  return extractData<InventoryByReason[]>(res);
 }

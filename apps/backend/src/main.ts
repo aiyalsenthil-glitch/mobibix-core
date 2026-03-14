@@ -64,13 +64,18 @@ async function loadCorsOrigins(prisma: PrismaService): Promise<string[]> {
       })),
       skipDuplicates: true,
     });
-    
+
     const logger = new Logger('CORS');
-    logger.log(`🌐 Seeded ${FALLBACK_ORIGINS.length} default CORS origins into DB`);
+    logger.log(
+      `🌐 Seeded ${FALLBACK_ORIGINS.length} default CORS origins into DB`,
+    );
     return FALLBACK_ORIGINS;
   } catch (err) {
     const logger = new Logger('CORS');
-    logger.warn('⚠️ Could not load CORS origins from DB, using fallback: ' + (err as Error).message);
+    logger.warn(
+      '⚠️ Could not load CORS origins from DB, using fallback: ' +
+        (err as Error).message,
+    );
     return FALLBACK_ORIGINS;
   }
 }
@@ -94,7 +99,7 @@ async function bootstrap() {
   server.use(
     helmet({
       crossOriginEmbedderPolicy: false, // Allow embedding (needed for print previews)
-      contentSecurityPolicy: false,     // Managed separately; enabling here breaks API responses
+      contentSecurityPolicy: false, // Managed separately; enabling here breaks API responses
     }),
   );
 
@@ -106,7 +111,7 @@ async function bootstrap() {
       },
     }),
   );
-  
+
   server.use(bodyParser.json());
   server.use(cookieParser());
 
@@ -131,7 +136,12 @@ async function bootstrap() {
         callback(new Error(`CORS: origin '${requestOrigin}' not allowed`));
       },
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'X-CSRF-Token'],
+      allowedHeaders: [
+        'Authorization',
+        'Content-Type',
+        'Accept',
+        'X-CSRF-Token',
+      ],
       credentials: true,
     }),
   );
@@ -139,7 +149,9 @@ async function bootstrap() {
   server.use('/public', express.static(join(__dirname, '..', '..', 'public')));
 
   server.get('/public/checkin/:tenantCode', (_req, res) => {
-    res.sendFile(join(__dirname, '..', '..', 'public', 'checkin', 'index.html'));
+    res.sendFile(
+      join(__dirname, '..', '..', 'public', 'checkin', 'index.html'),
+    );
   });
 
   server.get('/health', (_req, res) => {
@@ -159,9 +171,15 @@ async function bootstrap() {
 
   app.useLogger(app.get(PinoLogger));
 
-  app.useGlobalInterceptors(new PerformanceInterceptor(), new TransformInterceptor());
+  app.useGlobalInterceptors(
+    new PerformanceInterceptor(),
+    new TransformInterceptor(),
+  );
 
-  app.useGlobalFilters(new AllExceptionsFilter(), new ThrottlerExceptionFilter());
+  app.useGlobalFilters(
+    new AllExceptionsFilter(),
+    new ThrottlerExceptionFilter(),
+  );
 
   app.setGlobalPrefix('api');
 

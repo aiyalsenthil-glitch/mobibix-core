@@ -84,7 +84,7 @@ export class AuthService {
     const role = userTenant?.role ?? user.role;
 
     const roleKey = (role?.toUpperCase() || UserRole.USER) as UserRole;
-    let permissions: (string | any)[] = ROLE_PERMISSIONS[roleKey] || [];
+    let permissions: string[] = ROLE_PERMISSIONS[roleKey] || [];
 
     // If we have a tenant context, fetch dynamic permissions
     if (tenantId) {
@@ -95,8 +95,9 @@ export class AuthService {
       );
     }
 
-    const isSystemOwner = userTenant?.isSystemOwner || userTenant?.role === UserRole.OWNER;
-    
+    const isSystemOwner =
+      userTenant?.isSystemOwner || userTenant?.role === UserRole.OWNER;
+
     const accessToken = this.tokenFactory.generateAccessToken({
       sub: user.id,
       tenantId,
@@ -134,7 +135,7 @@ export class AuthService {
         await this.authVerification.verifyFirebaseToken(REMOVED_AUTH_PROVIDERToken);
 
       // 2️⃣ Resolve user and check for invites
-      let [user, staffInvite] = await Promise.all([
+      const [user, staffInvite] = await Promise.all([
         this.userResolution.resolveUser(decoded),
         this.userResolution.checkInvites(decoded.email),
       ]);
@@ -155,24 +156,31 @@ export class AuthService {
       // 5️⃣ Resolve IDs for JWT
       const tenantId = activeUserTenant?.tenantId ?? null;
       const userTenantId = activeUserTenant?.id ?? null;
-      
-      // 🛡️ SECURITY: If user is globally a platform ADMIN/SUPER_ADMIN, 
+
+      // 🛡️ SECURITY: If user is globally a platform ADMIN/SUPER_ADMIN,
       // preserve that role even if they have a tenant context (is OWNER of a test tenant, etc)
       // to ensure they don't lose admin-access via RoleHierarchy check (Level 90 vs 80)
-      const isPlatformAdmin = user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN;
-      const role = isPlatformAdmin ? user.role : (activeUserTenant?.role ?? user.role);
-      
-      const isSystemOwner = 
-        activeUserTenant?.isSystemOwner || activeUserTenant?.role === UserRole.OWNER;
+      const isPlatformAdmin =
+        user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN;
+      const role = isPlatformAdmin
+        ? user.role
+        : (activeUserTenant?.role ?? user.role);
+
+      const isSystemOwner =
+        activeUserTenant?.isSystemOwner ||
+        activeUserTenant?.role === UserRole.OWNER;
 
       // 6️⃣ Issue JWT & Refresh Token
       const roleKey = (role?.toUpperCase() || UserRole.USER) as UserRole;
-      let permissions: (string | any)[] = ROLE_PERMISSIONS[roleKey] || [];
+      let permissions: string[] = ROLE_PERMISSIONS[roleKey] || [];
 
       // If we have a tenant context, fetch dynamic permissions
       // Always invalidate cache on login so users get fresh permissions immediately
       if (tenantId) {
-        await this.permissionService.invalidateUserPermissions(user.id, tenantId);
+        await this.permissionService.invalidateUserPermissions(
+          user.id,
+          tenantId,
+        );
         permissions = await this.permissionService.getConsolidatedPermissions(
           user.id,
           tenantId,
@@ -304,8 +312,14 @@ export class AuthService {
    * 🧪 FOR QA AUTOMATION ONLY
    */
   async loginWithCredentials(email: string, password?: string) {
-    if (email !== 'test@gmail.com' && !email.startsWith('staff') && !email.endsWith('@test.com')) {
-      throw new UnauthorizedException('QA Login only allowed for test accounts');
+    if (
+      email !== 'test@gmail.com' &&
+      !email.startsWith('staff') &&
+      !email.endsWith('@test.com')
+    ) {
+      throw new UnauthorizedException(
+        'QA Login only allowed for test accounts',
+      );
     }
 
     const user = await this.prisma.user.findFirst({
@@ -327,7 +341,7 @@ export class AuthService {
       activeUserTenant?.isSystemOwner || role === UserRole.OWNER;
 
     const roleKey = (role?.toUpperCase() || UserRole.USER) as UserRole;
-    let permissions: (string | any)[] = ROLE_PERMISSIONS[roleKey] || [];
+    let permissions: string[] = ROLE_PERMISSIONS[roleKey] || [];
 
     if (tenantId && !isSystemOwner) {
       await this.permissionService.invalidateUserPermissions(user.id, tenantId);

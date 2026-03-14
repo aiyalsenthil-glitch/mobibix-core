@@ -34,7 +34,7 @@ function formatCurrency(paisa: number) {
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
 export default function ExpenseIntelligencePage() {
-  const { shopId, selectedShop } = useShop();
+  const { selectedShopId: shopId, selectedShop } = useShop();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ExpenseIntelligence | null>(null);
   const [error, setError] = useState("");
@@ -170,7 +170,7 @@ export default function ExpenseIntelligencePage() {
                     />
                     <Tooltip 
                       contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                      formatter={(val: number) => [formatCurrency(val), 'Expenses']}
+                      formatter={(val: number | undefined) => [formatCurrency(val ?? 0), 'Expenses'] as [string, string]}
                     />
                     <Area type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorSpend)" />
                   </AreaChart>

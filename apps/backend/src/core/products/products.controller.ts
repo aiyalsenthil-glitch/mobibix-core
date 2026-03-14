@@ -25,7 +25,10 @@ import { ProductsService } from './products.service';
 import { ImportProductDto } from './dto/import-product.dto';
 import { CopyFromShopDto } from './dto/copy-from-shop.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import {
+  ModulePermission,
+  RequirePermission,
+} from '../permissions/decorators/require-permission.decorator';
 import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
 import { PERMISSIONS } from '../../security/permission-registry';
 
@@ -148,7 +151,7 @@ export class ProductsController {
     }
 
     // Parse CSV file
-    const products = await this.parseCSV(file.buffer.toString('utf-8'));
+    const products = this.parseCSV(file.buffer.toString('utf-8'));
 
     if (products.length === 0) {
       throw new BadRequestException(
@@ -222,7 +225,7 @@ export class ProductsController {
    * Parse CSV file to product array
    * Handles both comma and semicolon separators
    */
-  private async parseCSV(content: string): Promise<ImportProductDto[]> {
+  private parseCSV(content: string): ImportProductDto[] {
     const lines = content
       .split('\n')
       .map((line) => line.trim())

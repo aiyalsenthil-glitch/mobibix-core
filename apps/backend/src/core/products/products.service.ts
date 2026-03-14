@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModuleType } from '@prisma/client';
 import { PlanRulesService } from '../billing/plan-rules.service';
@@ -321,13 +325,21 @@ export class ProductsService {
     productIds: string[],
   ): Promise<{ copied: number; skipped: number }> {
     if (sourceShopId === targetShopId) {
-      throw new BadRequestException('Source and target shop cannot be the same');
+      throw new BadRequestException(
+        'Source and target shop cannot be the same',
+      );
     }
 
     // Verify both shops belong to this tenant
     const [sourceShop, targetShop] = await Promise.all([
-      this.prisma.shop.findFirst({ where: { id: sourceShopId, tenantId }, select: { id: true } }),
-      this.prisma.shop.findFirst({ where: { id: targetShopId, tenantId }, select: { id: true } }),
+      this.prisma.shop.findFirst({
+        where: { id: sourceShopId, tenantId },
+        select: { id: true },
+      }),
+      this.prisma.shop.findFirst({
+        where: { id: targetShopId, tenantId },
+        select: { id: true },
+      }),
     ]);
 
     if (!sourceShop) throw new NotFoundException('Source shop not found');
@@ -335,10 +347,22 @@ export class ProductsService {
 
     // Fetch selected products from source shop
     const sourceProducts = await this.prisma.shopProduct.findMany({
-      where: { id: { in: productIds }, shopId: sourceShopId, tenantId, isActive: true },
+      where: {
+        id: { in: productIds },
+        shopId: sourceShopId,
+        tenantId,
+        isActive: true,
+      },
       select: {
-        name: true, category: true, type: true, salePrice: true,
-        costPrice: true, gstRate: true, hsnCode: true, sku: true, globalProductId: true,
+        name: true,
+        category: true,
+        type: true,
+        salePrice: true,
+        costPrice: true,
+        gstRate: true,
+        hsnCode: true,
+        sku: true,
+        globalProductId: true,
       },
     });
 
@@ -351,7 +375,9 @@ export class ProductsService {
       where: { tenantId, shopId: targetShopId, isActive: true },
       select: { name: true },
     });
-    const existingNames = new Set(existingInTarget.map((p) => p.name.toLowerCase().trim()));
+    const existingNames = new Set(
+      existingInTarget.map((p) => p.name.toLowerCase().trim()),
+    );
 
     let copied = 0;
     let skipped = 0;
@@ -363,7 +389,10 @@ export class ProductsService {
       }
 
       const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const randomPart = Math.random()
+        .toString(36)
+        .substring(2, 6)
+        .toUpperCase();
 
       await this.prisma.shopProduct.create({
         data: {
