@@ -55,7 +55,8 @@ async function loadCorsOrigins(prisma: PrismaService): Promise<string[]> {
       select: { origin: true },
     });
     if (rows.length > 0) {
-      return rows.map((r) => r.origin);
+      const dbOrigins = rows.map((r) => r.origin);
+      return [...new Set([...FALLBACK_ORIGINS, ...dbOrigins])];
     }
     // First boot — seed defaults into DB so admin can manage them from UI
     await prisma.corsAllowedOrigin.createMany({
