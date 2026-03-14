@@ -45,11 +45,15 @@ export function mapInvoiceToPrintData(ctx: AdapterContext): PrintDocumentData {
       description,
       hsn: item.hsnCode || product?.hsnCode || "-",
       qty: item.quantity,
-      rate: item.rate, // This is the displayed rate (could be incl or excl depending on config)
+      rate: item.rate,
       total: item.lineTotal || 0,
       taxableValue,
       taxAmount: item.gstAmount || 0,
       taxRate: item.gstRate || 0,
+      imeis: item.imeis?.length ? item.imeis : undefined,
+      serialNumbers: item.serialNumbers?.length ? item.serialNumbers : undefined,
+      warrantyDays: item.warrantyDays,
+      warrantyEndAt: (item as any).warrantyEndAt,
     };
   });
 

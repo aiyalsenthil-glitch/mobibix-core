@@ -89,13 +89,19 @@ export interface PrintLineItem {
   qty: number;
   rate: number; // Unit Price
   unit?: string;
-  discount?: number; // Added discount field
-  
+  discount?: number;
+
+  // Serialized tracking
+  imeis?: string[];
+  serialNumbers?: string[];
+  warrantyDays?: number;
+  warrantyEndAt?: string; // ISO date string
+
   // Tax details per line (already calculated)
   taxableValue?: number;
   taxAmount?: number;
   taxRate?: number; // GST %
-  
+
   total: number; // Rate * Qty (+ Tax if exclusive)
 }
 

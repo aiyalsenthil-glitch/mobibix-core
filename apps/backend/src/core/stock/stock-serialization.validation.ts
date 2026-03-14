@@ -27,15 +27,17 @@ export function validateProductSerialization(
 }
 
 /**
- * Validate IMEI format
- * Standard IMEI: 15 digits (IMEI-SV: 16 digits, MEID: 14 digits)
- * We accept 14-17 digits to cover common variants
+ * Validate IMEI format.
+ * Standard IMEI is exactly 15 digits (3GPP TS 23.003).
+ * IMEI-SV (with software version) is 16 digits.
+ * We accept 15-16 digits only. MEID (14-digit) and custom 17-digit codes
+ * are rejected to prevent silent inventory errors.
  *
  * @returns true if valid, false otherwise
  */
 export function isValidIMEIFormat(imei: string): boolean {
   const trimmed = imei.trim();
-  return /^\d{14,17}$/.test(trimmed);
+  return /^\d{15,16}$/.test(trimmed);
 }
 
 /**
@@ -56,7 +58,7 @@ export function validateIMEIs(imeis: string[]): void {
   if (invalidIMEIs.length > 0) {
     throw new BadRequestException(
       `Invalid IMEI format(s): ${invalidIMEIs.join(', ')}. ` +
-        `IMEI must be 14-17 digits (standard IMEI: 15 digits).`,
+        `IMEI must be 15 digits (16 for IMEI-SV). Received invalid entries.`,
     );
   }
 

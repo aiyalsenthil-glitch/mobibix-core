@@ -76,6 +76,36 @@ const available = await prisma.iMEI.count({
 });
 ```
 
+### 6. IMEI Format — 15-16 Digits Only
+
+```typescript
+// ✅ CORRECT: Standard IMEI is 15 digits (IMEI-SV: 16 digits)
+isValidIMEIFormat('358000000000000'); // true  — 15 digits
+isValidIMEIFormat('3580000000000001'); // true  — 16 digits (IMEI-SV)
+
+// ❌ WRONG: 14-digit MEID or 17+ digit codes are rejected
+isValidIMEIFormat('35800000000000');   // false — 14 digits
+isValidIMEIFormat('358000000000000123'); // false — too long
+```
+
+### 7. Duplicate IMEIs Must Throw, Not Silently Skip
+
+```typescript
+// ✅ CORRECT: Pre-check for duplicates, reject explicitly
+const existing = await prisma.iMEI.findMany({
+  where: { tenantId, imei: { in: imeis } },
+  select: { imei: true },
+});
+if (existing.length > 0) {
+  throw new BadRequestException(
+    `IMEI(s) already exist in inventory: ${existing.map(e => e.imei).join(', ')}`,
+  );
+}
+
+// ❌ WRONG: skipDuplicates silently drops re-entered IMEIs
+await prisma.iMEI.createMany({ data: [...], skipDuplicates: true });
+```
+
 ### 6. Repairs Must Link to StockLedger
 
 ```typescript
@@ -128,27 +158,41 @@ await prisma.stockLedger.deleteMany({
 | ------------ | ------------ | --------------- | ---------------- | -------------- |
 | GOODS        | true         | IMEI per unit   | IN/OUT allowed   | Yes (per unit) |
 | GOODS        | false        | Quantity-based  | IN/OUT allowed   | No             |
+| SPARE        | true         | IMEI per unit   | IN/OUT allowed   | Yes (per unit) |
 | SPARE        | false        | Quantity-based  | IN/OUT allowed   | No             |
-| SERVICE      | false        | None            | IN/OUT BLOCKED   | No             |
+| SERVICE      | false (only) | None            | IN/OUT BLOCKED   | No (enforced)  |
 
 ---
 
 ## IMEI Status Flow
 
 ```
-Purchase
+GRN / Purchase
    ↓
-IN_STOCK (Available for sale)
-   ↓
-   ├→ SOLD (Customer invoice)
-   │   ↓
-   │   └→ RETURNED (Customer returned)
+IN_STOCK ──────────────────────────────────────────────────────┐
+   │                                                           │
+   ├─[reserve]──→ RESERVED ──[release]──────────────────────→ IN_STOCK
+   │                                                           │
+   ├─[sell]─────→ SOLD                                        │
+   │               │                                           │
+   │               ├─→ RETURNED ──────────────────────────────┘
+   │               ├─→ RETURNED_GOOD ──────────────────────────┘
+   │               └─→ RETURNED_DAMAGED ─→ DAMAGED / SCRAPPED
    │
-   ├→ DAMAGED (Unit broken)
-   │
-   ├→ TRANSFERRED (Moved to another shop)
-   │
-   └→ LOST (Missing/stolen)
+   ├─[transfer]──→ TRANSFERRED (shopId updated, status → IN_STOCK at new shop)
+   ├─[damage]────→ DAMAGED
+   ├─[loss]──────→ LOST
+   └─[scrap]─────→ SCRAPPED
+
+Allowed transitions (backend-enforced):
+  IN_STOCK       → DAMAGED, LOST, SCRAPPED, RESERVED
+  SOLD           → RETURNED, RETURNED_GOOD, RETURNED_DAMAGED
+  RESERVED       → IN_STOCK, SOLD
+  RETURNED       → IN_STOCK, DAMAGED, SCRAPPED
+  RETURNED_GOOD  → IN_STOCK
+  RETURNED_DAMAGED → DAMAGED, SCRAPPED
+
+Note: RETURNED → IN_STOCK automatically increments product.quantity by 1.
 ```
 
 ---
@@ -212,29 +256,48 @@ const history = await prisma.stockLedger.findMany({
 
 ```typescript
 const imei = await prisma.iMEI.findUnique({
-  where: { imei: 'ABC123' },
+  where: { tenantId_imei: { tenantId, imei: '358000000000000' } },
   include: { invoice: true, product: true },
 });
 
 console.log({
-  status: imei.status,
+  status: imei.status,       // Current status (IN_STOCK, SOLD, etc.)
   purchased: imei.createdAt,
   sold: imei.soldAt,
   returned: imei.returnedAt,
   invoice: imei.invoice?.invoiceNumber,
+  damageNotes: imei.damageNotes, // Populated on DAMAGED/RETURNED_DAMAGED
+  lostReason: imei.lostReason,   // Populated on LOST
 });
 ```
+
+### IMEI Management API Endpoints
+
+```
+GET    /mobileshop/stock/imei                  — List IMEIs (filter: status, shopId, productId, search, page, limit)
+GET    /mobileshop/stock/imei/:imei            — Get single IMEI details
+PATCH  /mobileshop/stock/imei/:imei/status     — Update status { status, notes? }
+POST   /mobileshop/stock/imei/:imei/transfer   — Transfer to shop { targetShopId }
+POST   /mobileshop/stock/imei/:imei/reserve    — Reserve (IN_STOCK → RESERVED)
+DELETE /mobileshop/stock/imei/:imei/reserve    — Release reserve (RESERVED → IN_STOCK)
+```
+
+All IMEI endpoints require: `INVENTORY.EDIT` permission (except GET which needs `INVENTORY.VIEW`).
 
 ---
 
 ## Error Messages to Watch For
 
-| Error                                           | Meaning                                     | Fix                                            |
-| ----------------------------------------------- | ------------------------------------------- | ---------------------------------------------- |
-| "SERVICE products cannot have stock"            | Tried to stock-in/out a SERVICE product     | Only use SERVICE for labor, not physical items |
-| "Insufficient stock. Available: X, Required: Y" | Not enough stock for OUT operation          | Check stock before issuing parts/sales         |
-| "Serialized products require IMEI list"         | Missing IMEIs for isSerialized=true product | Provide imeis[] array matching quantity        |
-| "IMEI not available (status: SOLD)"             | Tried to sell already-sold IMEI             | Check IMEI status before sale                  |
+| Error | Meaning | Fix |
+| --- | --- | --- |
+| "SERVICE products cannot have stock" | Tried to stock-in/out a SERVICE product | Only use SERVICE for labor, not physical items |
+| "Insufficient stock. Available: X, Required: Y" | Not enough stock for OUT operation | Check stock before issuing parts/sales |
+| "Serialized products require IMEI list" | Missing IMEIs for isSerialized=true product | Provide imeis[] array matching quantity |
+| "IMEI not available (status: SOLD)" | Tried to sell already-sold IMEI | Check IMEI status before sale |
+| "IMEI(s) already exist in inventory: …" | Re-entered an IMEI already in system (GRN) | Each IMEI is unique per tenant — check for re-receipt |
+| "Invalid IMEI format(s): … IMEI must be 15 digits" | IMEI is not 15-16 digits | Scan the barcode again; ensure it is a valid IMEI |
+| "Cannot transition IMEI from X to Y" | Invalid status change attempted | Check allowed transitions table above |
+| "Only IN_STOCK IMEIs can be transferred" | Tried to transfer a sold/damaged device | Update status to IN_STOCK first (e.g. via return) |
 
 ---
 
@@ -333,6 +396,35 @@ SELECT * FROM stock_calc WHERE balance < 0;
    - Audit trail preservation (who did what when)
    - Prevents historical data corruption
    - Cancellation is a business event (should be tracked)
+
+---
+
+---
+
+## Frontend — IMEI Tracker Page
+
+**Route:** `/inventory/imei` (tab in Inventory layout)
+
+**Capabilities:**
+- Search by IMEI number
+- Filter by status (all statuses supported)
+- Paginated table (50 per page) with product, invoice, customer, and sold-at info
+- **Update status** — guided modal, only shows valid next states per IMEI
+- **Transfer** — move IN_STOCK/RESERVED IMEI to another shop (multi-shop tenants only)
+- **Reserve / Release** — hold a device for a customer without invoicing
+
+**Frontend API (`src/services/stock.api.ts`):**
+
+| Function | Description |
+| --- | --- |
+| `getImeiList(filters)` | Paginated IMEI list |
+| `getImeiDetails(imei)` | Single IMEI lookup (also used in sales barcode scan) |
+| `updateImeiStatus(imei, status, notes?)` | State transition with optional notes |
+| `transferImei(imei, targetShopId)` | Shop transfer |
+| `reserveImei(imei)` | IN_STOCK → RESERVED |
+| `releaseImeiReserve(imei)` | RESERVED → IN_STOCK |
+
+**Print:** `PrintLineItem` now carries `imeis`, `serialNumbers`, `warrantyDays`, `warrantyEndAt` — invoice print templates can render sold IMEI numbers on the customer copy.
 
 ---
 

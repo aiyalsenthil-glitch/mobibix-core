@@ -46,13 +46,28 @@ import { EmailTemplateType } from './email-template-types';
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private resend: Resend;
+  private resendMobiBix: Resend | null = null;
+  private resendGymPilot: Resend | null = null;
+  private resendDefault: Resend;
 
   constructor(private readonly prisma: PrismaService) {
-    if (!process.env.RESEND_API_KEY) {
-      this.logger.warn('RESEND_API_KEY is not set. Email sending will fail.');
+    // 1. Initialize default Resend (legacy or fallback)
+    const defaultKey = process.env.RESEND_API_KEY;
+    if (!defaultKey) {
+      this.logger.warn('RESEND_API_KEY is not set. Email sending will fail if specifics are missing.');
     }
-    this.resend = new Resend(process.env.RESEND_API_KEY);
+    this.resendDefault = new Resend(defaultKey || 'fake_key');
+
+    // 2. Initialize brand-specific Resends
+    if (process.env.RESEND_API_KEY_MOBIBIX) {
+      this.resendMobiBix = new Resend(process.env.RESEND_API_KEY_MOBIBIX);
+      this.logger.log('📩 Resend [MobiBix] initialized');
+    }
+
+    if (process.env.RESEND_API_KEY_GYMPILOT) {
+      this.resendGymPilot = new Resend(process.env.RESEND_API_KEY_GYMPILOT);
+      this.logger.log('📩 Resend [GymPilot] initialized');
+    }
   }
 
   /**
@@ -127,10 +142,24 @@ export class EmailService {
     }
 
     try {
-      // 4️⃣ SEND VIA RESEND
-      const fromAddress = this.getSenderAddress(module);
+      // 4️⃣ SELECT CORRECT RESEND INSTANCE
+      let resendInstance = this.resendDefault;
+      if (module === 'GYM' && this.resendGymPilot) {
+        resendInstance = this.resendGymPilot;
+      } else if (
+        (module === 'MOBILE_SHOP' || module === 'MOBILE_REPAIR') &&
+        this.resendMobiBix
+      ) {
+        resendInstance = this.resendMobiBix;
+      }
 
-      const response = await this.resend.emails.send({
+      // 5️⃣ SEND VIA RESEND
+      const fromAddress = this.getSenderAddress(module, emailType);
+      
+      this.logger.log(`📧 [ROUTING] Account: ${resendInstance === this.resendMobiBix ? 'MobiBix' : resendInstance === this.resendGymPilot ? 'GymPilot' : 'Default'}`);
+      this.logger.log(`📧 [ROUTING] From: ${fromAddress}`);
+
+      const response = await resendInstance.emails.send({
         from: fromAddress,
         to,
         subject,
@@ -145,7 +174,7 @@ export class EmailService {
         throw new Error(response.error.message);
       }
 
-      // 5️⃣ LOG SUCCESS
+      // 6️⃣ LOG SUCCESS
       await this.logResult(options, 'SENT', null);
       this.logger.log(`[SENT] Email ${emailType} sent to ${to}`);
     } catch (err: unknown) {
@@ -433,15 +462,39 @@ export class EmailService {
     });
   }
 
-  private getSenderAddress(module: ModuleType): string {
-    // In production, ensure these domains are verified in Resend
-    if (module === 'MOBILE_SHOP') {
-      return (
-        process.env.EMAIL_FROM_MOBIBIX || 'MobiBix <notifications@REMOVED_DOMAIN>'
-      );
+  private getSenderAddress(module: ModuleType, type: string): string {
+    const isMobiBix = module === 'MOBILE_SHOP' || module === 'MOBILE_REPAIR';
+    const domain = isMobiBix ? 'REMOVED_DOMAIN' : 'mobibix.in';
+    const brandName = isMobiBix ? 'MobiBix' : 'GymPilot';
+
+    // 1. BILLING EMAILS
+    const billingTypes = [
+      'PAYMENT_SUCCESS',
+      'PAYMENT_FAILED',
+      'INVOICE_GENERATED',
+      'PAYMENT_RECEIPT',
+      'PLAN_UPGRADED',
+      'PLAN_DOWNGRADED',
+      'SUBSCRIPTION_ACTIVATED',
+    ];
+    if (billingTypes.includes(type)) {
+      return `${brandName} Billing <billing@${domain}>`;
     }
-    return (
-      process.env.EMAIL_FROM_GYMPILOT || 'GymPilot <notifications@mobibix.in>'
-    );
+
+    // 2. SUPPORT & ONBOARDING
+    const supportTypes = [
+      'TENANT_WELCOME',
+      'TRIAL_STARTED',
+      'STAFF_INVITED',
+      'TRIAL_ONBOARDING_DAY1',
+      'TRIAL_ONBOARDING_DAY3',
+      'TRIAL_ONBOARDING_DAY10',
+    ];
+    if (supportTypes.includes(type)) {
+      return `${brandName} Team <hello@${domain}>`;
+    }
+
+    // 3. SECURITY & UPDATES (Default)
+    return `${brandName} <noreply@${domain}>`;
   }
 }

@@ -344,6 +344,16 @@ export class StockService {
         if (p.isSerialized) {
           for (const item of itemGroup) {
             if (item.imeis?.length) {
+              // Check for existing IMEIs before insert — reject duplicates explicitly
+              const existing = await prisma.iMEI.findMany({
+                where: { tenantId, imei: { in: item.imeis } },
+                select: { imei: true },
+              });
+              if (existing.length > 0) {
+                throw new BadRequestException(
+                  `IMEI(s) already exist in inventory: ${existing.map(e => e.imei).join(', ')}`,
+                );
+              }
               await prisma.iMEI.createMany({
                 data: item.imeis.map(imei => ({
                   tenantId,
@@ -353,7 +363,6 @@ export class StockService {
                   status: IMEIStatus.IN_STOCK,
                   updatedAt: new Date(),
                 })),
-                skipDuplicates: true,
               });
             }
           }
@@ -522,5 +531,166 @@ export class StockService {
     }
 
     return imeiRecord;
+  }
+
+  async getImeiList(
+    tenantId: string,
+    filters: {
+      status?: IMEIStatus;
+      shopId?: string;
+      productId?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+    },
+  ) {
+    const { status, shopId, productId, search, page = 1, limit = 50 } = filters;
+    const where: any = { tenantId };
+    if (status) where.status = status;
+    if (shopId) where.shopId = shopId;
+    if (productId) where.shopProductId = productId;
+    if (search) where.imei = { contains: search };
+
+    const [items, total] = await Promise.all([
+      this.prisma.iMEI.findMany({
+        where,
+        include: {
+          product: { select: { id: true, name: true, type: true } },
+          invoice: {
+            select: {
+              id: true,
+              invoiceNumber: true,
+              invoiceDate: true,
+              customerName: true,
+            },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.iMEI.count({ where }),
+    ]);
+
+    return { items, total, page, limit };
+  }
+
+  async updateImeiStatus(
+    tenantId: string,
+    imei: string,
+    status: IMEIStatus,
+    notes?: string,
+  ) {
+    const allowedTransitions: Partial<Record<IMEIStatus, IMEIStatus[]>> = {
+      [IMEIStatus.SOLD]: [IMEIStatus.RETURNED, IMEIStatus.RETURNED_GOOD, IMEIStatus.RETURNED_DAMAGED],
+      [IMEIStatus.IN_STOCK]: [IMEIStatus.DAMAGED, IMEIStatus.LOST, IMEIStatus.SCRAPPED, IMEIStatus.RESERVED],
+      [IMEIStatus.RESERVED]: [IMEIStatus.IN_STOCK, IMEIStatus.SOLD],
+      [IMEIStatus.RETURNED]: [IMEIStatus.IN_STOCK, IMEIStatus.DAMAGED, IMEIStatus.SCRAPPED],
+      [IMEIStatus.RETURNED_GOOD]: [IMEIStatus.IN_STOCK],
+      [IMEIStatus.RETURNED_DAMAGED]: [IMEIStatus.DAMAGED, IMEIStatus.SCRAPPED],
+    };
+
+    const record = await this.prisma.iMEI.findUnique({
+      where: { tenantId_imei: { tenantId, imei } },
+    });
+    if (!record) throw new BadRequestException(`IMEI "${imei}" not found.`);
+
+    const allowed = allowedTransitions[record.status] || [];
+    if (!allowed.includes(status)) {
+      throw new BadRequestException(
+        `Cannot transition IMEI from ${record.status} to ${status}.`,
+      );
+    }
+
+    const updateData: any = { status, updatedAt: new Date() };
+
+    if ([IMEIStatus.RETURNED, IMEIStatus.RETURNED_GOOD, IMEIStatus.RETURNED_DAMAGED].includes(status)) {
+      updateData.returnedAt = new Date();
+      updateData.invoiceId = null;
+    }
+    if (notes) {
+      if ([IMEIStatus.DAMAGED, IMEIStatus.RETURNED_DAMAGED].includes(status)) updateData.damageNotes = notes;
+      if (status === IMEIStatus.LOST) updateData.lostReason = notes;
+    }
+
+    // Returning to IN_STOCK from a return state — increment product stock
+    const returningToStock =
+      status === IMEIStatus.IN_STOCK &&
+      [IMEIStatus.RETURNED, IMEIStatus.RETURNED_GOOD].includes(record.status);
+
+    if (returningToStock) {
+      await this.prisma.$transaction([
+        this.prisma.iMEI.update({ where: { tenantId_imei: { tenantId, imei } }, data: updateData }),
+        this.prisma.shopProduct.update({
+          where: { id: record.shopProductId },
+          data: { quantity: { increment: 1 } },
+        }),
+      ]);
+      return { success: true, imei, status };
+    }
+
+    await this.prisma.iMEI.update({ where: { tenantId_imei: { tenantId, imei } }, data: updateData });
+    return { success: true, imei, status };
+  }
+
+  async transferImei(tenantId: string, imei: string, targetShopId: string) {
+    const record = await this.prisma.iMEI.findUnique({
+      where: { tenantId_imei: { tenantId, imei } },
+    });
+    if (!record) throw new BadRequestException(`IMEI "${imei}" not found.`);
+    if (record.status !== IMEIStatus.IN_STOCK && record.status !== IMEIStatus.RESERVED) {
+      throw new BadRequestException(
+        `Only IN_STOCK or RESERVED IMEIs can be transferred. Current: ${record.status}`,
+      );
+    }
+    if (record.shopId === targetShopId) {
+      throw new BadRequestException('IMEI is already in the target shop.');
+    }
+
+    const shop = await this.prisma.shop.findFirst({
+      where: { id: targetShopId, tenantId },
+      select: { id: true },
+    });
+    if (!shop) throw new BadRequestException('Target shop not found.');
+
+    return this.prisma.iMEI.update({
+      where: { tenantId_imei: { tenantId, imei } },
+      data: {
+        shopId: targetShopId,
+        transferredToShopId: targetShopId,
+        status: IMEIStatus.IN_STOCK,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async reserveImei(tenantId: string, imei: string) {
+    const record = await this.prisma.iMEI.findUnique({
+      where: { tenantId_imei: { tenantId, imei } },
+    });
+    if (!record) throw new BadRequestException(`IMEI "${imei}" not found.`);
+    if (record.status !== IMEIStatus.IN_STOCK) {
+      throw new BadRequestException(
+        `Only IN_STOCK IMEIs can be reserved. Current: ${record.status}`,
+      );
+    }
+    return this.prisma.iMEI.update({
+      where: { tenantId_imei: { tenantId, imei } },
+      data: { status: IMEIStatus.RESERVED, updatedAt: new Date() },
+    });
+  }
+
+  async releaseImeiReserve(tenantId: string, imei: string) {
+    const record = await this.prisma.iMEI.findUnique({
+      where: { tenantId_imei: { tenantId, imei } },
+    });
+    if (!record) throw new BadRequestException(`IMEI "${imei}" not found.`);
+    if (record.status !== IMEIStatus.RESERVED) {
+      throw new BadRequestException(`IMEI is not reserved. Current: ${record.status}`);
+    }
+    return this.prisma.iMEI.update({
+      where: { tenantId_imei: { tenantId, imei } },
+      data: { status: IMEIStatus.IN_STOCK, updatedAt: new Date() },
+    });
   }
 }
