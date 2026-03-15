@@ -18,7 +18,7 @@ export class AdminJobsCronService implements OnApplicationBootstrap {
       {},
       {
         repeat: {
-          pattern: CronExpression.EVERY_5_MINUTES,
+          pattern: '*/15 * * * *', // Every 15 min — admin KPI dashboard tolerance
         },
       },
     );

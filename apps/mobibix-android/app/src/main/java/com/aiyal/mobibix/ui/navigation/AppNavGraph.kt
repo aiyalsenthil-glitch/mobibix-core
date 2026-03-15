@@ -672,7 +672,7 @@ fun AppNavGraph(
 
         // ── Approvals ────────────────────────────────────────────────────────
         composable("approvals") {
-            com.aiyal.mobibix.ui.features.approvals.ApprovalInboxScreen(navController = navController)
+            com.aiyal.mobibix.ui.features.approvals.ApprovalInboxScreen(onNavigateBack = { navController.popBackStack() })
         }
 
         // ── Purchase Report ───────────────────────────────────────────────────

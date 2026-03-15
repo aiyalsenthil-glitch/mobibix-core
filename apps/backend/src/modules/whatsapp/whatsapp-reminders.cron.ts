@@ -24,7 +24,7 @@ export class WhatsAppRemindersCron {
    * - If job crashes mid-way, remaining reminders stay SCHEDULED
    * - Retrying the job will process them again
    */
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron("*/10 * * * *") // Every 10 min — acceptable delay for scheduled reminders
   async processReminders() {
     this.logger.debug('Checking for scheduled WhatsApp reminders...');
     try {

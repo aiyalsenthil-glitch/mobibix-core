@@ -83,6 +83,11 @@ type LoggerRequest = {
           removeOnComplete: 100,
           removeOnFail: 200,
         },
+        // ⚡ Reduce BullMQ Redis polling frequency
+        // Default stalledInterval=30s → bumped to 5min (reduces ZRANGEBYSCORE polls)
+        stalledInterval: 300000,
+        maxStalledCount: 2,
+        lockDuration: 60000,
       }),
     }),
 
@@ -188,7 +193,7 @@ type LoggerRequest = {
                   : 6379,
                 password: process.env.REDIS_PASSWORD || undefined,
               }),
-          ttl: 60,
+          ttl: 300, // 5 minutes — reduces SET/EXPIRE churn vs previous 60s
         } as any;
       },
     }),
