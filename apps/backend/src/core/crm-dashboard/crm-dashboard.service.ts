@@ -24,12 +24,9 @@ export class CrmDashboardService {
   async getDashboardMetrics(
     tenantId: string,
     query: DashboardQueryDto,
+    role?: string,
   ): Promise<CrmDashboardResponse> {
     const { startDate, endDate } = this.resolveDateRange(query);
-
-    this.logger.debug(
-      `Generating CRM dashboard for tenant ${tenantId} from ${startDate.toISOString()} to ${endDate.toISOString()}`,
-    );
 
     // Fetch all KPIs in parallel for performance
     const [customers, followUps, financials, loyalty, whatsapp] =
@@ -40,11 +37,16 @@ export class CrmDashboardService {
         this.getLoyaltyMetrics(tenantId, startDate, endDate),
         this.getWhatsAppMetrics(tenantId, startDate, endDate),
       ]);
+    // 🔒 Role-based filtering for sensitive metrics
+    const isStaff = role === 'STAFF';
+    const filteredFinancials = isStaff
+      ? { totalOutstanding: 0, highValueCustomers: [] }
+      : financials;
 
     return {
       customers,
       followUps,
-      financials,
+      financials: filteredFinancials,
       loyalty,
       whatsapp,
       dateRange: {
@@ -69,13 +71,14 @@ export class CrmDashboardService {
     endDate: Date,
     shopId?: string,
   ): Promise<CustomerMetrics> {
-    const where = {
+    const where: any = {
       tenantId,
       ...(shopId && { shopId }),
+      partyType: { in: ['CUSTOMER', 'BOTH'] },
     };
 
     // 1️⃣ Total customers
-    const total = await this.prisma.customer.count({ where });
+    const total = await this.prisma.party.count({ where });
 
     // 2️⃣ Active customers (has invoice in last 90 days)
     const ninetyDaysAgo = new Date();
@@ -102,13 +105,13 @@ export class CrmDashboardService {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const [newLast7Days, newLast30Days] = await Promise.all([
-      this.prisma.customer.count({
+      this.prisma.party.count({
         where: {
           ...where,
           createdAt: { gte: sevenDaysAgo },
         },
       }),
-      this.prisma.customer.count({
+      this.prisma.party.count({
         where: {
           ...where,
           createdAt: { gte: thirtyDaysAgo },
@@ -247,14 +250,14 @@ export class CrmDashboardService {
     const unpaidInvoices = await this.prisma.invoice.aggregate({
       where: {
         ...where,
-        status: 'CREDIT', // ✅ Correct field
+        status: 'PARTIALLY_PAID',
       },
       _sum: {
         totalAmount: true, // ✅ Correct field
       },
     });
 
-    const totalOutstanding = unpaidInvoices._sum?.totalAmount || 0;
+    const totalOutstanding = (unpaidInvoices._sum?.totalAmount || 0) / 100;
 
     // 2️⃣ High-value customers (top 10 by total spend)
     const topSpenders = await this.prisma.invoice.groupBy({
@@ -286,7 +289,7 @@ export class CrmDashboardService {
       .map((s) => s.customerId)
       .filter((id): id is string => id !== null);
 
-    const customers = await this.prisma.customer.findMany({
+    const customers = await this.prisma.party.findMany({
       where: {
         id: { in: customerIds },
       },
@@ -296,14 +299,16 @@ export class CrmDashboardService {
       },
     });
 
-    const customerMap = new Map(customers.map((c) => [c.id, c.name]));
+    const customerMap = new Map<string, string>(
+      customers.map((c) => [c.id, c.name]),
+    );
 
     const highValueCustomers: HighValueCustomer[] = topSpenders
       .filter((s) => s.customerId !== null)
       .map((s) => ({
         customerId: s.customerId as string,
         customerName: customerMap.get(s.customerId as string) || 'Unknown',
-        totalSpent: s._sum?.totalAmount || 0,
+        totalSpent: (s._sum?.totalAmount || 0) / 100,
         invoiceCount: s._count?.id || 0,
         lastInvoiceDate: s._max?.invoiceDate || new Date(),
       }));
@@ -361,12 +366,25 @@ export class CrmDashboardService {
     const netPointsBalance = totalPointsIssued - totalPointsRedeemed;
 
     // Active customers with points (current balance > 0)
-    const activeCustomersWithPoints = await this.prisma.customer.count({
+    // 💡 Performance Note: Aggregating transactions is better than redundant field cache
+    const loyalCustomerAgg = await this.prisma.loyaltyTransaction.groupBy({
+      by: ['customerId'],
       where: {
         tenantId,
-        loyaltyPoints: { gt: 0 }, // ✅ Correct field (on Customer model)
+      },
+      _sum: {
+        points: true,
+      },
+      having: {
+        points: {
+          _sum: {
+            gt: 0,
+          },
+        },
       },
     });
+
+    const activeCustomersWithPoints = loyalCustomerAgg.length;
 
     return {
       totalPointsIssued,

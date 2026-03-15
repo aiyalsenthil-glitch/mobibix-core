@@ -18,10 +18,7 @@ import {
 import { auth } from "@/lib/REMOVED_AUTH_PROVIDER";
 import {
   exchangeFirebaseToken,
-  clearAccessToken,
-  isAuthenticated,
-  decodeAccessToken,
-  getAccessToken,
+  logout as apiLogout,
   type ExchangeTokenResponse,
   type AuthRole,
 } from "@/services/auth.api";
@@ -33,8 +30,23 @@ export interface AuthUser {
   email: string;
   name?: string;
   REMOVED_AUTH_PROVIDERUid: string;
-  role: AuthRole;
+  role: AuthRole | string;
+  isSystemOwner: boolean;
+  permissions?: string[];
   tenantId?: string;
+  tenantType?: string;
+  planCode?: string;
+  pendingInvite?: {
+    id: string;
+    inviteToken: string;
+    tenantId: string;
+    role: string;
+    shopIds: string[];
+    tenant: {
+      name: string;
+      code: string;
+    };
+  } | null;
 }
 
 export interface AuthContextType {
@@ -48,6 +60,7 @@ export interface AuthContextType {
     REMOVED_AUTH_PROVIDERUser: FirebaseUser,
     tenantCode?: string,
   ) => Promise<ExchangeTokenResponse>;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -79,37 +92,17 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       if (user) {
         setFirebaseUser(user);
 
-        // If we already have a valid JWT but no authUser, derive it from token claims
-        if (isAuthenticated() && !authUser) {
-          const token = getAccessToken();
-          if (token) {
-            const claims = decodeAccessToken(token);
-            if (claims?.role) {
-              setAuthUser({
-                id: claims.sub || user.uid,
-                email: user.email || "",
-                name: user.displayName || undefined,
-                REMOVED_AUTH_PROVIDERUid: user.uid,
-                role: claims.role,
-                tenantId: claims.tenantId,
-              });
-              setIsLoading(false);
-              return;
-            }
-          }
-        }
-
-        if (!isAuthenticated()) {
-          try {
-            const response = await exchangeFirebaseToken(
-              await user.getIdToken(),
-            );
-            setAuthUser(response.user);
-          } catch (err: any) {
-            console.error("Auth exchange error:", err);
-            setError(err.message || "Authentication failed");
-            setFirebaseUser(null);
-          }
+        try {
+          const response = await exchangeFirebaseToken(await user.getIdToken());
+          setAuthUser({
+            ...response.user,
+            role: response.user.role?.toLowerCase(), // ✅ Normalize Role
+            pendingInvite: response.pendingInvite,
+          });
+        } catch (err: unknown) {
+          console.error("Auth exchange error:", err);
+          setError((err as any)?.message || "Authentication failed");
+          setFirebaseUser(null);
         }
       } else {
         setFirebaseUser(null);
@@ -129,39 +122,72 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         setError(null);
 
         const idToken = await REMOVED_AUTH_PROVIDERUser.getIdToken();
+
         const response = await exchangeFirebaseToken(idToken, tenantCode);
 
-        setAuthUser(response.user);
+        setAuthUser({
+          ...response.user,
+          role: response.user.role?.toLowerCase(), // ✅ Normalize Role
+          pendingInvite: response.pendingInvite,
+        });
         setFirebaseUser(REMOVED_AUTH_PROVIDERUser);
 
         // Post-login redirect based on tenant count/role
+        // Use window.location.href (hard navigation) instead of router.replace()
+        // to prevent the signin page from briefly flashing during soft navigation
         const redirectPath = getPostLoginRedirect(response);
-        router.replace(redirectPath);
+        window.location.href = redirectPath;
 
+        // Keep isLoading = true; the hard navigation will tear down this page
         return response as ExchangeTokenResponse;
-      } catch (err: any) {
-        setError(err.message || "Failed to exchange token");
-        throw err;
-      } finally {
+      } catch (err: unknown) {
+        setError((err as any)?.message || "Failed to exchange token");
         setIsLoading(false);
+        throw err;
       }
     },
-    [router],
+    [],
   );
 
   // Redirect if authUser already resolved (e.g., page reload with valid token)
   useEffect(() => {
     if (!authUser) return;
-    
-    // Don't redirect if we are already on a dashboard or print page
-    if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/print")) return;
+
+    // Don't redirect if we are already on an app or print page
+    if (!pathname) return;
+    const appRoutePrefixes = [
+      "/dashboard",
+      "/sales",
+      "/jobcards",
+      "/products",
+      "/inventory",
+      "/customers",
+      "/whatsapp",
+      "/whatsapp-crm",
+      "/suppliers",
+      "/purchases",
+      "/receipts",
+      "/vouchers",
+      "/reports",
+      "/shops",
+      "/staff",
+      "/settings",
+      "/print",
+    ];
+
+    if (appRoutePrefixes.some((prefix) => pathname.startsWith(prefix))) {
+      return;
+    }
 
     // Only redirect from public/auth pages
-    if (pathname === "/" || pathname?.startsWith("/signin") || pathname?.startsWith("/signup")) {
-        const path = getRoleRedirect(authUser);
-        router.replace(path);
+    if (
+      pathname?.startsWith("/signin") ||
+      pathname?.startsWith("/signup")
+    ) {
+      const path = getRoleRedirect(authUser);
+      window.location.href = path;
     }
-  }, [authUser, router, pathname]);
+  }, [authUser, pathname]);
 
   const logout = useCallback(async () => {
     try {
@@ -169,16 +195,52 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       if (auth) {
         await signOut(auth);
       }
-      clearAccessToken();
+      await apiLogout();
+      
+      // Clear local caches
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem("shops_cache");
+      }
+
       setFirebaseUser(null);
       setAuthUser(null);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || "Logout failed");
+
+      // Force hard redirect to clear all context/state
+      window.location.href = "/auth";
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Logout failed");
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  const refreshSession = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const { getCurrentUser } = await import("@/services/auth.api");
+      const user = await getCurrentUser();
+      
+      if (user) {
+        setAuthUser((prev) => ({
+          ...prev,
+          ...(user as unknown as AuthUser), // Merge new permissions/context
+        }));
+      }
+    } catch (err) {
+      console.warn("Silent session refresh failed:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Phase 5: Rehydrate Context on Branch Change
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleBranchChange = () => { refreshSession(); };
+    window.addEventListener("branch_changed", handleBranchChange);
+    return () => window.removeEventListener("branch_changed", handleBranchChange);
+  }, [refreshSession]);
 
   const value: AuthContextType = {
     REMOVED_AUTH_PROVIDERUser,
@@ -188,6 +250,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     error,
     logout,
     exchangeToken,
+    refreshSession,
   };
 
   return createElement(AuthContext.Provider, { value }, children);

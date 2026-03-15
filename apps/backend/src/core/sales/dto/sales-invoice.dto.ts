@@ -27,14 +27,30 @@ export class SalesInvoiceItemDto {
   @Max(100)
   gstRate: number; // GST rate percentage (frontend-calculated)
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  gstAmount: number; // GST amount (frontend-calculated)
+  // Frontend preview value — backend IGNORES this and recalculates via calculateInvoiceTotals().
+  // Kept optional for backward compatibility with existing clients.
+  gstAmount?: number;
 
   @IsOptional()
   @IsArray()
   @ArrayNotEmpty()
   imeis?: string[]; // IMEI list for MOBILE products
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  warrantyDays?: number;
+
+  @IsOptional()
+  @IsArray()
+  serialNumbers?: string[]; // Non-IMEI serial numbers
+
+  @IsOptional()
+  @IsString()
+  hsnCode?: string;
 }
 
 export class PaymentMethodDto {
@@ -50,8 +66,13 @@ export class SalesInvoiceDto {
   @IsString()
   shopId: string;
 
+  @IsOptional()
   @IsString()
-  invoiceNumber: string;
+  invoiceNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  invoiceDate?: string; // ISO date string
 
   @IsOptional()
   @IsString()
@@ -77,7 +98,7 @@ export class SalesInvoiceDto {
 
   @IsOptional()
   @IsString()
-  paymentMode?: 'CASH' | 'CARD' | 'UPI' | 'BANK'; // Deprecated: use paymentMethods
+  paymentMode?: 'CASH' | 'CARD' | 'UPI' | 'BANK' | 'CREDIT'; // Deprecated: use paymentMethods
 
   @IsOptional()
   @IsArray()
@@ -86,4 +107,13 @@ export class SalesInvoiceDto {
   @IsOptional()
   @IsBoolean()
   pricesIncludeTax?: boolean; // Whether displayed prices include GST
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  loyaltyPointsRedeemed?: number;
+
+  @IsOptional()
+  @IsString()
+  quotationId?: string;
 }

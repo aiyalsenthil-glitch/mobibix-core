@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, unwrapStandardResponse, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -8,6 +8,7 @@ export interface Shop {
   tenantId: string;
   name: string;
   phone?: string;
+  email?: string;  // Shop email (shown in invoice header)
   addressLine1?: string;
   addressLine2?: string;
   city?: string;
@@ -24,25 +25,37 @@ export interface Shop {
   isActive: boolean;
   createdAt: Date | string;
   updatedAt: Date | string;
+  currency?: string;
 
   // Print Settings
   invoicePrinterType?: "NORMAL" | "THERMAL";
-  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL";
-  jobCardPrinterType?: "THERMAL";
-  jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL";
-  
-  // Custom Header
+  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL" | "SIMPLE" | "RECEIPT_THERMAL" | "PROFESSIONAL";
+  jobCardPrinterType?: "NORMAL" | "THERMAL";
+  jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL" | "CLASSIC" | "VOUCHER_CLASSIC";
+
+  // Custom Header (synced with print/types.ts HeaderConfig)
   headerConfig?: {
-    layout: 'CLASSIC' | 'CENTERED' | 'SPLIT' | 'MINIMAL';
+    layout: "CLASSIC" | "CENTERED" | "SPLIT" | "MINIMAL";
     showLogo: boolean;
     showTagline: boolean;
     accentColor?: string;
+    enableWarrantyJobs?: boolean;
+    professionalHeader?: {
+      logoPosition: 'LEFT' | 'CENTER' | 'NONE';
+      contactDisplay: 'RIGHT' | 'BELOW_ADDRESS' | 'NONE';
+      showCell: boolean;
+      showEmail: boolean;
+      showTaglineBanner: boolean;
+      customTagline?: string;
+    };
   };
   // Bank Details
   bankName?: string;
   accountNumber?: string;
   ifscCode?: string;
   branchName?: string;
+  repairInvoiceNumberingMode?: RepairInvoiceNumberingMode;
+  repairGstDefault?: boolean;
 }
 
 export interface CreateShopDto {
@@ -57,10 +70,11 @@ export interface CreateShopDto {
   website?: string;
   logoUrl?: string;
   invoiceFooter?: string;
-  
+
   // Default Print Settings
   invoicePrinterType?: "NORMAL" | "THERMAL";
-  invoiceTemplate?: "CLASSIC" | "MODERN" | "THERMAL";
+  invoiceTemplate?: "CLASSIC" | "MODERN" | "THERMAL" | "SIMPLE" | "RECEIPT_THERMAL" | "PROFESSIONAL";
+  currency?: string;
 }
 
 export interface UpdateShopDto {
@@ -76,11 +90,13 @@ export interface UpdateShopDto {
   logoUrl?: string;
   invoiceFooter?: string;
   terms?: string[];
+  currency?: string;
 }
 
 export interface UpdateShopSettingsDto {
   name?: string;
   phone?: string;
+  email?: string;
   addressLine1?: string;
   addressLine2?: string;
   city?: string;
@@ -96,21 +112,34 @@ export interface UpdateShopSettingsDto {
 
   // Print Settings Updates
   invoicePrinterType?: "NORMAL" | "THERMAL";
-  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL";
-  jobCardPrinterType?: "THERMAL";
-  jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL";
-  
+  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL" | "SIMPLE" | "RECEIPT_THERMAL" | "PROFESSIONAL";
+  currency?: string;
+  jobCardPrinterType?: "NORMAL" | "THERMAL";
+  jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL" | "CLASSIC" | "VOUCHER_CLASSIC";
+
   headerConfig?: {
-    layout: 'CLASSIC' | 'CENTERED' | 'SPLIT' | 'MINIMAL';
+    layout: "CLASSIC" | "CENTERED" | "SPLIT" | "MINIMAL";
     showLogo: boolean;
     showTagline: boolean;
     accentColor?: string;
+    enableWarrantyJobs?: boolean;
+    professionalHeader?: {
+      logoPosition: 'LEFT' | 'CENTER' | 'NONE';
+      contactDisplay: 'RIGHT' | 'BELOW_ADDRESS' | 'NONE';
+      showCell: boolean;
+      showEmail: boolean;
+      showTaglineBanner: boolean;
+      customTagline?: string;
+    };
   };
   // Bank Details
   bankName?: string;
   accountNumber?: string;
   ifscCode?: string;
   branchName?: string;
+
+  repairInvoiceNumberingMode?: RepairInvoiceNumberingMode;
+  repairGstDefault?: boolean;
 }
 
 /**
@@ -120,11 +149,29 @@ export async function listShops(): Promise<Shop[]> {
   const response = await authenticatedFetch(`/mobileshop/shops`);
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch shops");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch shops");
   }
 
-  return response.json();
+  const json = await extractData(response);
+  const result = unwrapStandardResponse<unknown>(json);
+  
+  // Handle paginated response: { data: [], total, skip, take }
+  if (result && typeof result === 'object' && 'data' in result && Array.isArray((result as any).data)) {
+    return (result as any).data;
+  }
+  
+  // Fallback: if it's already an array, return it
+  if (Array.isArray(result)) {
+    return result;
+  }
+  
+  // Last resort: return empty array
+  if (result && Object.keys(result).length > 0) {
+    console.error('[listShops] API returned unexpected response shape:', result);
+  }
+  
+  return [];
 }
 
 /**
@@ -134,11 +181,11 @@ export async function getShop(shopId: string): Promise<Shop> {
   const response = await authenticatedFetch(`/mobileshop/shops/${shopId}`);
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch shop");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch shop");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -151,11 +198,11 @@ export async function createShop(data: CreateShopDto): Promise<Shop> {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to create shop");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to create shop");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -171,11 +218,11 @@ export async function updateShop(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to update shop");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to update shop");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -187,11 +234,11 @@ export async function getShopSettings(shopId: string): Promise<Shop> {
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch shop settings");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch shop settings");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -210,9 +257,108 @@ export async function updateShopSettings(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to update shop settings");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to update shop settings");
   }
 
-  return response.json();
+  return extractData(response);
+}
+
+/**
+ * Document Setting Types
+ */
+export enum DocumentType {
+  SALES_INVOICE = "SALES_INVOICE",
+  PURCHASE_INVOICE = "PURCHASE_INVOICE",
+  JOB_CARD = "JOB_CARD",
+  RECEIPT = "RECEIPT",
+  QUOTATION = "QUOTATION",
+  PURCHASE_ORDER = "PURCHASE_ORDER",
+  REPAIR_INVOICE = "REPAIR_INVOICE",
+}
+
+export enum RepairInvoiceNumberingMode {
+  SHARED = "SHARED",
+  SEPARATE = "SEPARATE",
+}
+
+export enum YearFormat {
+  FY = "FY",
+  YYYY = "YYYY",
+  YY = "YY",
+  NONE = "NONE",
+}
+
+export enum ResetPolicy {
+  YEARLY = "YEARLY",
+  MONTHLY = "MONTHLY",
+  NEVER = "NEVER",
+}
+
+export interface ShopDocumentSetting {
+  id: string;
+  shopId: string;
+  documentType: DocumentType;
+  prefix: string;
+  separator: string;
+  documentCode: string;
+  yearFormat: YearFormat;
+  numberLength: number;
+  resetPolicy: ResetPolicy;
+  currentNumber: number;
+  currentYear?: string;
+  lastGenerated?: string; // Virtual field if needed or constructed on client
+}
+
+export interface UpdateDocumentSettingDto {
+  prefix?: string;
+  separator?: string;
+  documentCode?: string;
+  yearFormat?: YearFormat;
+  numberLength?: number;
+  resetPolicy?: ResetPolicy;
+  currentNumber?: number;
+  currentYear?: string;
+}
+
+/**
+ * Get all document settings for a shop
+ */
+export async function getShopDocumentSettings(
+  shopId: string,
+): Promise<ShopDocumentSetting[]> {
+  const response = await authenticatedFetch(
+    `/mobileshop/shops/${shopId}/document-settings`,
+  );
+
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch document settings");
+  }
+
+  return extractData(response);
+}
+
+/**
+ * Update a specific document setting
+ */
+export async function updateShopDocumentSetting(
+  shopId: string,
+  documentType: DocumentType,
+  data: UpdateDocumentSettingDto,
+): Promise<ShopDocumentSetting> {
+  const response = await authenticatedFetch(
+    `/mobileshop/shops/${shopId}/document-settings/${documentType}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to update document setting");
+  }
+
+  return extractData(response);
 }

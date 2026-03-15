@@ -61,6 +61,7 @@ export default function OwnerDashboard() {
             Logout
           </button>
         </div>
+        {/* Existing Dashboard Cards */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-4">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
             <div>

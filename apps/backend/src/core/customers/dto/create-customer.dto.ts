@@ -1,4 +1,10 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  Matches,
+  IsEmail,
+} from 'class-validator';
 import { BusinessType, PartyType } from '@prisma/client';
 
 export class CreateCustomerDto {
@@ -9,8 +15,16 @@ export class CreateCustomerDto {
   phone: string;
 
   @IsOptional()
-  @IsString()
+  @IsEmail({}, { message: 'Invalid email address' })
   email?: string;
+
+  @IsOptional()
+  @IsString()
+  countryCode?: string; // ISO-3166-1 alpha-2 (e.g., IN, AE)
+
+  @IsOptional()
+  @IsString()
+  isoStateCode?: string; // ISO-3166-2 state code (e.g., TN)
 
   @IsString()
   state: string;

@@ -27,6 +27,10 @@ export class UpdateShopDto {
 
   @IsOptional()
   @IsString()
+  stateCode?: string;
+
+  @IsOptional()
+  @IsString()
   pincode?: string;
 
   @IsOptional()
@@ -65,4 +69,8 @@ export class UpdateShopDto {
   @IsOptional()
   @IsString()
   branchName?: string;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
 }

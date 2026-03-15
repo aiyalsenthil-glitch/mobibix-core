@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   createCustomer,
   updateCustomer,
@@ -12,6 +12,7 @@ import { useTheme } from "@/context/ThemeContext";
 interface CustomerModalProps {
   customer?: Customer | null;
   onClose: () => void;
+  onSuccess?: (customer: Customer) => void;
 }
 
 const INDIAN_STATES = [
@@ -53,7 +54,11 @@ const INDIAN_STATES = [
   "Puducherry",
 ];
 
-export function CustomerModal({ customer, onClose }: CustomerModalProps) {
+export function CustomerModal({
+  customer,
+  onClose,
+  onSuccess,
+}: CustomerModalProps) {
   const { theme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -86,6 +91,22 @@ export function CustomerModal({ customer, onClose }: CustomerModalProps) {
       return;
     }
 
+    // Phone validation
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(formData.phone)) {
+      alert("Please enter a valid 10-digit Indian mobile number.");
+      return;
+    }
+
+    // Email validation (if provided)
+    if (formData.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -99,15 +120,17 @@ export function CustomerModal({ customer, onClose }: CustomerModalProps) {
         partyType: formData.partyType,
       };
 
+      let result: Customer;
       if (customer) {
-        await updateCustomer(customer.id, dto);
+        result = await updateCustomer(customer.id, dto);
       } else {
-        await createCustomer(dto);
+        result = await createCustomer(dto);
       }
 
+      onSuccess?.(result);
       onClose();
-    } catch (err: any) {
-      alert(err.message || "Failed to save customer");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to save customer");
     } finally {
       setIsSubmitting(false);
     }

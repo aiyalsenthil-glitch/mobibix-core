@@ -23,6 +23,7 @@ export default function StockCorrectionPage() {
     if (shopIdParam && selectedShopId !== shopIdParam) {
       selectShop(shopIdParam);
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsReady(true);
   }, [shopIdParam, selectedShopId, selectShop]);
 

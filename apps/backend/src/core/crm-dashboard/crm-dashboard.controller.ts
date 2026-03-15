@@ -10,10 +10,21 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CrmDashboardService } from './crm-dashboard.service';
 import { DashboardQueryDto } from './dto/dashboard-query.dto';
 import { CrmDashboardResponse } from './dto/dashboard-response.dto';
-import { UserRole } from '@prisma/client';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { TenantStatusGuard } from '../tenant/guards/tenant-status.guard';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModuleType, UserRole } from '@prisma/client';
 
 @Controller('core/crm-dashboard')
-@UseGuards(JwtAuthGuard)
+@ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('crm')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, TenantStatusGuard, GranularPermissionGuard)
+@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF, UserRole.TECHNICIAN, UserRole.ACCOUNTANT)
 export class CrmDashboardController {
   constructor(private readonly dashboardService: CrmDashboardService) {}
 
@@ -21,9 +32,10 @@ export class CrmDashboardController {
    * GET /api/core/crm-dashboard
    * Get CRM dashboard metrics
    *
-   * @access OWNER, ADMIN only
+   * @access OWNER, ADMIN, STAFF
    * @returns Comprehensive dashboard with customer, follow-up, financial, loyalty, WhatsApp KPIs
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW)
   @Get()
   async getDashboard(
     @Request() req,
@@ -32,13 +44,7 @@ export class CrmDashboardController {
     const tenantId = req.user.tenantId;
     const role = req.user.role as UserRole;
 
-    // ✅ Role check: Only OWNER or ADMIN can access dashboard
-    if (role !== UserRole.OWNER && role !== UserRole.ADMIN) {
-      throw new ForbiddenException(
-        'Only Owners and Admins can access CRM dashboard',
-      );
-    }
-
-    return this.dashboardService.getDashboardMetrics(tenantId, query);
+    // ✅ Access check: Authenticated users can access, but service handles filtering
+    return this.dashboardService.getDashboardMetrics(tenantId, query, role);
   }
 }

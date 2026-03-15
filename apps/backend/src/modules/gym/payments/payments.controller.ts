@@ -2,19 +2,38 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import {
   Controller,
   Post,
+  Get,
   Body,
   Req,
   UseGuards,
   NotFoundException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
 import { TenantStatusGuard } from '../../../core/tenant/guards/tenant-status.guard';
+import { RolesGuard } from '../../../core/auth/guards/roles.guard';
+import { Roles } from '../../../core/auth/decorators/roles.decorator';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
+import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
 
-@UseGuards(JwtAuthGuard, TenantStatusGuard)
+@UseGuards(
+  JwtAuthGuard,
+  RolesGuard,
+  GranularPermissionGuard,
+  TenantRequiredGuard,
+  TenantStatusGuard,
+)
+@ModuleScope(ModuleType.GYM)
+@ModulePermission('payment')
+@Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('gym/payments')
 export class PaymentsController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @RequirePermission(PERMISSIONS.GYM.PAYMENT.COLLECT)
   @Post('receive')
   async receivePayment(
     @Req() req,
@@ -71,5 +90,39 @@ export class PaymentsController {
       paymentStatus,
       pendingAmount: Math.max(member.feeAmount - newPaid, 0),
     };
+  }
+
+  @RequirePermission(PERMISSIONS.GYM.PAYMENT.VIEW)
+  @Get()
+  @Get('history')
+  async getPaymentHistory(@Req() req) {
+    // Get all payments with member details for this tenant
+    const payments = await this.prisma.memberPayment.findMany({
+      where: {
+        tenantId: req.user.tenantId,
+      },
+      include: {
+        member: {
+          select: {
+            fullName: true,
+            feeAmount: true,
+            paidAmount: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Format for frontend
+    return payments.map((payment) => ({
+      id: payment.id,
+      memberName: payment.member.fullName,
+      planName: 'Membership', // Could be enhanced to include actual plan name
+      totalAmount: payment.member.feeAmount,
+      paidAmount: payment.amount,
+      createdAt: payment.createdAt,
+    }));
   }
 }

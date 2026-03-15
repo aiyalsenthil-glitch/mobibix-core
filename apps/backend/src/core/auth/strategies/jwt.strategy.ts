@@ -1,14 +1,25 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
-  constructor() {
+  constructor(
+    private configService: ConfigService,
+    private prisma: PrismaService,
+  ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        (req) => req?.cookies?.accessToken,
+      ]),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET as string,
+      secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
+      jsonWebTokenOptions: {
+        clockTolerance: 30,
+      },
     });
   }
   async validate(payload: any) {
@@ -16,10 +27,26 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Invalid JWT payload');
     }
 
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { tokenVersion: true },
+    });
+
+    if (!user || user.tokenVersion !== payload.tokenVersion) {
+      return null;
+    }
+
+
     return {
-      sub: payload.sub, // ✅ MUST be `sub`
+      id: payload.sub, // Ensure req.user.id works throughout the codebase
+      userId: payload.sub, // Added for backend compatibility
+      sub: payload.sub,
       tenantId: payload.tenantId ?? null,
+      shopId: payload.shopId ?? null,
+      userTenantId: payload.userTenantId ?? null,
       role: payload.role,
+      isSystemOwner: payload.isSystemOwner ?? false,
+      tokenVersion: user.tokenVersion,
       permissions: payload.permissions ?? [],
     };
   }

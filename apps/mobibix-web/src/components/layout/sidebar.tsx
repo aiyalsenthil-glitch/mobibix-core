@@ -1,305 +1,306 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/hooks/useAuth";
+import { getFollowUpCounts } from "@/services/crm.api";
+import {
+  LayoutDashboard,
+  Banknote,
+  Wrench,
+  Tags,
+  PackageSearch,
+  Users,
+  MessageSquareShare,
+  Truck,
+  Inbox,
+  CreditCard,
+  LineChart,
+  Store,
+  ShieldCheck,
+  Settings,
+  Gift,
+  ShoppingBag,
+  FileText,
+  ClipboardList,
+  FileMinus,
+  Sparkles,
+  Receipt,
+  Lock,
+  WalletCards,
+  ClipboardCheck,
+  CalendarDays,
+  Activity,
+  BarChart2,
+} from "lucide-react";
+import { AiQuotaBadge } from "@/components/common/AiQuotaBadge";
 
 interface NavItem {
   label: string;
   href?: string;
-  icon: string;
-  submenu?: Array<{ label: string; href: string }>;
+  icon: React.ElementType;
+  requiredPermission?: string;
+  category?: string;
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: "📊" },
-  { label: "Sales", href: "/sales", icon: "💰" },
-  { label: "Job Cards", href: "/jobcards", icon: "🔧" },
-  { label: "Products", href: "/products", icon: "🏷️" },
-  {
-    label: "Inventory",
-    href: "/inventory",
-    icon: "📦",
-    submenu: [
-      { label: "Stock Management", href: "/inventory" },
-      { label: "Negative Stock Report", href: "/inventory/negative-stock" },
-      { label: "Stock Correction", href: "/inventory/stock-correction" },
-    ],
-  },
-  {
-    label: "Customers",
-    href: "/customers",
-    icon: "👥",
-    submenu: [
-      { label: "All Customers", href: "/customers" },
-      { label: "CRM Dashboard", href: "/crm" },
-      { label: "My Follow-ups", href: "/crm/follow-ups" },
-      { label: "Customer Timeline", href: "/crm/timeline" },
-    ],
-  },
-  { label: "Suppliers", href: "/suppliers", icon: "🚚" },
-  { label: "Purchases", href: "/purchases", icon: "📥" },
-  {
-    label: "Payments",
-    icon: "💳",
-    submenu: [
-      { label: "Receipts", href: "/receipts" },
-      { label: "Vouchers", href: "/vouchers" },
-    ],
-  },
-  { label: "Reports", href: "/reports", icon: "📈" },
-  { label: "Shops", href: "/shops", icon: "🏪" },
-  {
-    label: "Settings",
-    icon: "⚙️",
-    submenu: [
-      { label: "General", href: "/settings" },
-      { label: "Document Numbering", href: "/settings/numbering" },
-    ],
-  },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, requiredPermission: "core.dashboard.view", category: "Core" },
+  { label: "Sales", href: "/sales", icon: Banknote, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
+  { label: "Job Cards", href: "/jobcards", icon: Wrench, requiredPermission: "mobile_shop.jobcard.view", category: "Transactions" },
+  { label: "Quotations", href: "/quotations", icon: ClipboardList, requiredPermission: "mobile_shop.quotation.view", category: "Transactions" },
+  { label: "Credit Notes", href: "/credit-notes", icon: FileMinus, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
+  { label: "Sales Receipts", href: "/receipts", icon: CreditCard, requiredPermission: "mobile_shop.receipt.view", category: "Transactions" },
+  { label: "Payment Vouchers", href: "/vouchers", icon: Receipt, requiredPermission: "mobile_shop.voucher.view", category: "Transactions" },
+  { label: "Customers", href: "/customers", icon: Users, requiredPermission: "mobile_shop.customer.view", category: "CRM & Marketing" },
+  { label: "WhatsApp", href: "/whatsapp", icon: MessageSquareShare, requiredPermission: "mobile_shop.whatsapp.view", category: "CRM & Marketing" },
+  { label: "Loyalty Program", href: "/settings?tab=loyalty", icon: Gift, requiredPermission: "mobile_shop.loyalty.view", category: "CRM & Marketing" },
+  { label: "Products", href: "/products", icon: Tags, requiredPermission: "mobile_shop.inventory.view", category: "Inventory" },
+  { label: "Inventory", href: "/inventory", icon: PackageSearch, requiredPermission: "mobile_shop.inventory.view", category: "Inventory" },
+  ...(process.env.NEXT_PUBLIC_ENABLE_RESTOCK === 'true'
+    ? [{ label: "Restock", href: "/restock", icon: ShoppingBag, requiredPermission: "mobile_shop.inventory.view", category: "Inventory" }]
+    : []),
+  { label: "Suppliers", href: "/suppliers", icon: Truck, requiredPermission: "mobile_shop.supplier.view", category: "Inventory" },
+  { label: "Purchase Orders", href: "/purchase-orders", icon: FileText, requiredPermission: "mobile_shop.purchase.view", category: "Inventory" },
+  { label: "Supplier Invoices", href: "/purchases", icon: Inbox, requiredPermission: "mobile_shop.purchase.view", category: "Inventory" },
+  { label: "Reports", href: "/reports", icon: LineChart, requiredPermission: "core.report.view", category: "Management" },
+  { label: "Shops", href: "/shops", icon: Store, requiredPermission: "core.settings.manage", category: "Management" },
+  { label: "Staff Management", href: "/staff-management", icon: ShieldCheck, requiredPermission: "core.staff.manage", category: "Management" },
+  { label: "Settings", href: "/settings", icon: Settings, requiredPermission: "core.settings.manage", category: "Management" },
+  { label: "Compatibility Finder", href: "/tools/compatibility-finder", icon: Sparkles,       requiredPermission: "mobile_shop.compatibility.view", category: "Tools" },
+  { label: "Daily Closing",        href: "/tools/daily-closing",        icon: Lock,            requiredPermission: "core.daily_closing.view",         category: "Tools" },
+  { label: "Expense Manager",      href: "/tools/expenses",             icon: WalletCards,     requiredPermission: "core.expense.view",               category: "Tools" },
+  { label: "Stock Verification",   href: "/tools/stock-verification",   icon: ClipboardCheck,  requiredPermission: "core.stock_verification.view",     category: "Tools" },
+  { label: "Monthly Report",       href: "/tools/monthly-report",       icon: CalendarDays,    requiredPermission: "core.report.view",                 category: "Tools" },
+  { label: "Shrinkage Intelligence",    href: "/tools/shrinkage",                          icon: Activity,   requiredPermission: "core.shrinkage.view",          category: "Tools" },
+  { label: "Inventory Intelligence",    href: "/reports/inventory-intelligence",           icon: BarChart2,  requiredPermission: "core.report.inventory_view",   category: "Management" },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { theme } = useTheme();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { authUser } = useAuth();
   const [mounted, setMounted] = useState(false);
-  const [expandedSubmenus, setExpandedSubmenus] = useState<string[]>([]);
+  const [counts, setCounts] = useState<{ total: number } | null>(null);
   const isDark = mounted && theme === "dark";
+
+  const visibleItems = useMemo(() => {
+    if (!authUser) return [];
+
+    return navItems.filter((item) => {
+      // 1. Module-level validation for specialized tools
+      if (item.label === "Compatibility Finder") {
+        const isMobibix = authUser.tenantType === 'MOBILE_SHOP' || authUser.planCode?.startsWith("MOBIBIX");
+        // Accountants are strictly excluded from this tool
+        const isAccountant = authUser.role === 'accountant' || authUser.role === 'shop_accountant';
+        
+        if (!isMobibix || isAccountant) return false;
+      }
+
+      // 2. Standard RBAC check
+      // System Owners and users with '*' permission see everything else in their module
+      if (authUser.isSystemOwner || authUser.permissions?.includes("*")) return true;
+      if (!item.requiredPermission) return true;
+      
+      return authUser.permissions?.includes(item.requiredPermission);
+    });
+  }, [authUser]);
+
+  const groupedItems = useMemo(() => {
+    return visibleItems.reduce((acc, item) => {
+      const category = item.category || "General";
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(item);
+      return acc;
+    }, {} as Record<string, NavItem[]>);
+  }, [visibleItems]);
+
+  useEffect(() => {
+    if (!mounted || !authUser) return;
+
+    async function loadCounts() {
+      try {
+        const data = await getFollowUpCounts();
+        setCounts(data);
+      } catch {
+        // Silently ignore — sidebar badge is non-critical
+      }
+    }
+
+    loadCounts();
+    const interval = setInterval(loadCounts, 30000);
+    return () => clearInterval(interval);
+  }, [mounted, authUser]);
 
   useEffect(() => {
     setMounted(true);
-    const stored = localStorage.getItem("sidebarCollapsed");
-    if (stored) setIsCollapsed(JSON.parse(stored));
   }, []);
-
-  const toggleCollapse = () => {
-    const newState = !isCollapsed;
-    setIsCollapsed(newState);
-    localStorage.setItem("sidebarCollapsed", JSON.stringify(newState));
-  };
 
   if (!mounted) return null;
 
-  const sidebarWidth = isCollapsed ? "w-20" : "w-60";
-  const sidebarPadding = isCollapsed ? "p-4" : "p-6";
+  const effectiveCollapsed = false;
+  const sidebarWidth = "w-64";
+  const sidebarPadding = "py-4 px-4";
 
   return (
     <>
-      {/* Sidebar */}
-      <aside
-        className={`fixed left-0 top-0 h-screen ${sidebarWidth} flex flex-col transition-all duration-300 shadow-lg ${
-          isDark
-            ? "bg-gray-950 border-gray-800"
-            : "bg-gradient-to-b from-white via-teal-50/30 to-white border-teal-100"
-        } border-r z-40`}
-      >
-        {/* Logo/Brand */}
+      {mobileOpen && (
         <div
-          className={`${sidebarPadding} border-b transition-all duration-300 ${
-            isDark
-              ? "border-gray-800"
-              : "border-teal-100 bg-gradient-to-r from-teal-50/50 to-transparent"
+          className="fixed inset-0 bg-slate-900/60 z-40 lg:hidden backdrop-blur-sm transition-opacity"
+          onClick={onClose}
+        />
+      )}
+
+      <aside
+        className={`fixed left-0 top-0 h-screen ${sidebarWidth} flex flex-col transition-all duration-300 shadow-lg group/sidebar ${
+          isDark
+            ? "bg-[#0f172a] border-slate-800"
+            : "bg-white border-slate-200"
+        } border-r z-50 lg:z-40 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
+      >
+        <div
+          className={`${sidebarPadding} border-b transition-all duration-300 flex items-center justify-center ${
+            isDark ? "border-slate-800" : "border-slate-100 bg-slate-50/50"
           }`}
         >
-          {!isCollapsed && (
-            <>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-md">
-                  M
-                </div>
-                <h1
-                  className={`text-xl font-bold bg-gradient-to-r ${
-                    isDark
-                      ? "text-white"
-                      : "from-teal-600 to-teal-700 bg-clip-text text-transparent"
-                  }`}
-                >
-                  MobiBix
-                </h1>
-              </div>
-              <p
-                className={`text-[10px] mt-1.5 leading-tight ${
-                  isDark ? "text-stone-400" : "text-teal-600/70 font-medium"
-                }`}
-              >
-                Digital Retail Platform
-              </p>
-            </>
+          {!effectiveCollapsed && (
+            <img
+              src="/assets/mobibix-main-logo.png"
+              alt="MobiBix Logo"
+              className="h-14 w-auto object-contain py-1"
+            />
           )}
-          {isCollapsed && (
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-lg">
-              M
-            </div>
+
+          {mobileOpen && (
+            <button
+              onClick={onClose}
+              className="absolute right-4 top-4 lg:hidden p-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+
+          {effectiveCollapsed && (
+            <img
+              src="/assets/mobibix-app-icon.png"
+              alt="MobiBix Icon"
+              className="w-10 h-10 object-contain"
+            />
           )}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            const hasSubmenu = item.submenu && item.submenu.length > 0;
-            const isSubmenuActive =
-              hasSubmenu &&
-              item.submenu!.some((sub) => pathname.startsWith(sub.href));
-            const isExpanded = expandedSubmenus.includes(item.label);
-
-            const toggleSubmenu = () => {
-              setExpandedSubmenus((prev) =>
-                prev.includes(item.label)
-                  ? prev.filter((label) => label !== item.label)
-                  : [...prev, item.label],
-              );
-            };
-
-            return (
-              <div key={item.label}>
-                {hasSubmenu ? (
-                  <button
-                    onClick={toggleSubmenu}
-                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${
-                      isSubmenuActive
+        <nav className={`flex-1 overflow-y-auto py-6 px-3 space-y-7 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700/50 [&::-webkit-scrollbar-thumb]:rounded-full ${effectiveCollapsed ? 'overflow-x-hidden' : ''}`}>
+          {Object.entries(groupedItems).map(([category, items]) => (
+            <div key={category} className="space-y-1">
+              {!effectiveCollapsed && (
+                <div className="px-3 mb-2.5 text-[10px] font-bold tracking-[0.1em] uppercase text-slate-400/80 dark:text-slate-500/80 pointer-events-none">
+                  {category}
+                </div>
+              )}
+              {items.map((item) => {
+                const isActive = pathname === item.href || (item.label === "Loyalty Program" && pathname === "/settings" && typeof window !== "undefined" && window.location.search.includes("tab=loyalty"));
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href!}
+                    onClick={() => mobileOpen && onClose && onClose()}
+                    className={`flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 group relative ${
+                      isActive
                         ? isDark
-                          ? "bg-teal-500/20 text-teal-300 border border-teal-500/30 shadow-md"
-                          : "bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/30 border border-teal-400 font-semibold"
+                          ? "bg-indigo-500/10 text-white font-medium before:absolute before:left-0 before:w-[3px] before:h-5 before:bg-indigo-500 before:rounded-r-full shadow-sm shadow-indigo-500/5"
+                          : "bg-indigo-50 text-indigo-700 font-medium before:absolute before:left-0 before:w-[3px] before:h-5 before:bg-indigo-600 before:rounded-r-full"
                         : isDark
-                          ? "text-gray-400 hover:bg-gray-800 hover:text-white"
-                          : "text-gray-700 hover:bg-teal-50 hover:text-teal-700 hover:shadow-sm font-medium"
-                    } ${isCollapsed ? "justify-center" : ""}`}
-                    title={isCollapsed ? item.label : ""}
+                          ? "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    } ${effectiveCollapsed ? "justify-center px-0 before:hidden" : ""}`}
+                    title={effectiveCollapsed ? item.label : ""}
                   >
-                    <span className="text-lg flex-shrink-0">{item.icon}</span>
-                    {!isCollapsed && (
+                    <div className={`flex-shrink-0 ${effectiveCollapsed ? 'mx-auto' : ''}`}>
+                       <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className={isActive ? (isDark ? "text-indigo-400" : "text-indigo-600") : "text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors"} />
+                    </div>
+                    {!effectiveCollapsed && (
                       <>
-                        <span className="font-medium text-sm flex-1 text-left">
+                        <span className="text-[14px] flex-1">
                           {item.label}
                         </span>
-                        <span className="text-xs">
-                          {isExpanded ? "▼" : "▶"}
-                        </span>
+                        {item.label === "Customers" && counts && counts.total > 0 && (
+                          <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow-sm whitespace-nowrap">
+                            {counts.total}
+                          </span>
+                        )}
                       </>
                     )}
 
-                    {isCollapsed && (
-                      <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                        {item.label}
-                      </div>
-                    )}
-                  </button>
-                ) : (
-                  <Link
-                    href={item.href!}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${
-                      isActive
-                        ? isDark
-                          ? "bg-teal-500/20 text-teal-300 border border-teal-500/30 shadow-md"
-                          : "bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/30 border border-teal-400 font-semibold"
-                        : isDark
-                          ? "text-gray-400 hover:bg-gray-800 hover:text-white"
-                          : "text-gray-700 hover:bg-teal-50 hover:text-teal-700 hover:shadow-sm font-medium"
-                    } ${isCollapsed ? "justify-center" : ""}`}
-                    title={isCollapsed ? item.label : ""}
-                  >
-                    <span className="text-lg flex-shrink-0">{item.icon}</span>
-                    {!isCollapsed && (
-                      <span className="font-medium text-sm">{item.label}</span>
-                    )}
-
-                    {isCollapsed && (
-                      <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                    {effectiveCollapsed && (
+                      <div className="absolute left-[calc(100%+8px)] px-2 py-1 bg-slate-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-xl pointer-events-none z-50">
                         {item.label}
                       </div>
                     )}
                   </Link>
-                )}
-
-                {/* Submenu */}
-                {hasSubmenu && isExpanded && !isCollapsed && (
-                  <div className="ml-4 mt-1 space-y-1 border-l-2 border-teal-200 dark:border-teal-800 pl-2">
-                    {item.submenu!.map((subitem) => {
-                      const isSubActive = pathname === subitem.href;
-                      return (
-                        <Link
-                          key={subitem.href}
-                          href={subitem.href}
-                          className={`block px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
-                            isSubActive
-                              ? isDark
-                                ? "bg-teal-500/30 text-teal-300"
-                                : "bg-teal-100 text-teal-700"
-                              : isDark
-                                ? "text-gray-400 hover:bg-gray-800/50 hover:text-white"
-                                : "text-gray-600 hover:bg-teal-50 hover:text-teal-700"
-                          }`}
-                        >
-                          {subitem.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
-        {/* Toggle Button */}
-        <div
-          className={`p-2 border-t transition-all duration-300 ${
-            isDark ? "border-gray-800" : "border-teal-100"
-          }`}
-        >
-          <button
-            onClick={toggleCollapse}
-            className={`w-full flex items-center justify-center gap-2 px-3 py-3 rounded-xl transition-all duration-200 ${
-              isDark
-                ? "bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white"
-                : "bg-teal-50 hover:bg-teal-100 text-teal-700 hover:text-teal-800 font-medium shadow-sm hover:shadow-md"
-            }`}
-            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {isCollapsed ? (
-              <>
-                <span>→</span>
-              </>
-            ) : (
-              <>
-                <span>←</span>
-                <span className="text-sm font-medium">Collapse</span>
-              </>
-            )}
-          </button>
-        </div>
+        <div className={`px-4 mt-auto space-y-3 pb-4 pt-2 border-t mt-4 ${isDark ? 'border-slate-800/50' : 'border-slate-100'} ${effectiveCollapsed ? 'flex flex-col items-center px-2 space-y-2' : ''}`}>
 
-        {/* Footer */}
-        {!isCollapsed && (
-          <div
-            className={`p-4 border-t transition-all duration-300 ${
-              isDark
-                ? "border-gray-800 text-gray-500"
-                : "border-teal-100 text-teal-600/60"
-            }`}
-          >
-            <p
-              className={`text-xs font-medium ${
-                isDark ? "" : "text-teal-700/70"
+          {/* Upgrade CTA for trial/starter users */}
+          {!effectiveCollapsed && authUser?.planCode && (authUser.planCode.includes('TRIAL') || authUser.planCode.includes('STARTER')) && (
+            <Link
+              href="/settings?tab=billing"
+              className={`block w-full px-3 py-2.5 rounded-xl text-center text-xs font-bold transition-all ${
+                isDark
+                  ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-400 hover:from-amber-500/30 hover:to-orange-500/30'
+                  : 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-700 hover:border-amber-300'
               }`}
             >
-              v1.0.0
-            </p>
-          </div>
-        )}
+              ⚡ Upgrade to Pro — unlock WhatsApp & more
+            </Link>
+          )}
+
+          {/* AI Features — Only for Owners and Managers */}
+          {(authUser?.role === 'OWNER' || authUser?.role === 'MANAGER') && (
+            <>
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent("open-ai-chat", { detail: { prompt: "" } }))}
+                className={`flex items-center justify-center gap-2 py-2 rounded-lg transition-all duration-200 w-full font-medium ${isDark ? 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg shadow-indigo-500/10' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md'}`}
+                title={effectiveCollapsed ? "MobiBix AI Assistant" : ""}
+              >
+                <Sparkles size={15} />
+                {!effectiveCollapsed && <span className="text-[13px] tracking-wide">MobiBix AI</span>}
+              </button>
+              
+              {!effectiveCollapsed && (
+                <div className="mt-2">
+                  <AiQuotaBadge />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
       </aside>
 
       {/* Content Shift */}
       <div
-        className={`${isCollapsed ? "ml-20" : "ml-60"} transition-all duration-300`}
+        className="ml-60 transition-all duration-300"
         style={{
           position: "fixed",
           top: 0,
           right: 0,
-          left: isCollapsed ? "80px" : "240px",
+          left: "240px",
         }}
       />
     </>

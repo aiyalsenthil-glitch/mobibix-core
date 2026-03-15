@@ -7,7 +7,7 @@ export class HsnService {
 
   async search(query: string) {
     if (!query) return [];
-    
+
     return this.prisma.hSNCode.findMany({
       where: {
         isActive: true,

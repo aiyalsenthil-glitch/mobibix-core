@@ -10,6 +10,7 @@ import { ExportProductsModal } from "./ExportProductsModal";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { NoShopsAlert } from "../components/NoShopsAlert";
+import { ProductModal } from "./ProductModal";
 
 export default function ProductsPage() {
   const { theme } = useTheme();
@@ -33,6 +34,7 @@ export default function ProductsPage() {
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Load products when shop selection changes
   useEffect(() => {
@@ -46,7 +48,9 @@ export default function ProductsPage() {
         setIsLoading(true);
         setError(null);
         const data = await listProducts(selectedShopId);
-        setProducts(data);
+        // Handle both paginated and non-paginated responses
+        const productsList = Array.isArray(data) ? data : data.data;
+        setProducts(productsList);
       } catch (err: any) {
         console.error("Error loading products:", err);
         setError(err.message || "Failed to load products");
@@ -76,11 +80,17 @@ export default function ProductsPage() {
     );
   };
 
+  const handleProductCreated = (newProduct: ShopProduct) => {
+    setProducts((prev) => [newProduct, ...prev]);
+  };
+
   const reloadProducts = async () => {
     if (selectedShopId) {
       try {
         const data = await listProducts(selectedShopId);
-        setProducts(data);
+        // Handle both paginated and non-paginated responses
+        const productsList = Array.isArray(data) ? data : data.data;
+        setProducts(productsList);
       } catch (err: any) {
         console.error("Error reloading products:", err);
       }
@@ -178,6 +188,26 @@ export default function ProductsPage() {
                 Copy from Shop
               </button>
             )}
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition flex items-center gap-2"
+              title="Add a single new product"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
+              </svg>
+              Add Product
+            </button>
           </div>
         )}
       </div>
@@ -364,6 +394,7 @@ export default function ProductsPage() {
                     "Type",
                     "HSN/SAC",
                     "Sale Price",
+                    "Cost Status",
                     "GST Rate",
                     "Status",
                     "Actions",
@@ -414,7 +445,19 @@ export default function ProductsPage() {
                       <td
                         className={`px-6 py-4 ${theme === "dark" ? "text-white" : "text-gray-900"} font-semibold`}
                       >
-                        ₹{product.salePrice?.toFixed(2) || "0.00"}
+                        ₹{(product.salePrice / 100).toFixed(2) || "0.00"}
+                      </td>
+                      {/* Cost Status Column */}
+                      <td className="px-6 py-4">
+                        {product.costPrice && product.costPrice > 0 ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-300">
+                            ✓ Set
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300">
+                            ⚠ Not Set
+                          </span>
+                        )}
                       </td>
                       <td
                         className={`px-6 py-4 ${theme === "dark" ? "text-stone-400" : "text-gray-700"}`}
@@ -512,6 +555,15 @@ export default function ProductsPage() {
           shopId={selectedShopId}
           shopName={selectedShop.name}
           onClose={() => setShowExportModal(false)}
+        />
+      )}
+
+      {/* Create Product Modal */}
+      {showCreateModal && selectedShopId && (
+        <ProductModal
+          shopId={selectedShopId}
+          onClose={() => setShowCreateModal(false)}
+          onProductCreated={handleProductCreated}
         />
       )}
     </div>

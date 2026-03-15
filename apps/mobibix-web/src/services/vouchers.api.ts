@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -63,17 +63,18 @@ export async function createVoucher(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to create voucher");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to create voucher");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
  * Get all vouchers for the authenticated shop
  */
 export async function getVouchers(filters?: {
+  shopId?: string;
   startDate?: Date | string;
   endDate?: Date | string;
   paymentMethod?: PaymentMode;
@@ -92,6 +93,9 @@ export async function getVouchers(filters?: {
   }
   if (filters?.paymentMethod) {
     params.append("paymentMethod", filters.paymentMethod);
+  }
+  if (filters?.shopId) {
+    params.append("shopId", filters.shopId);
   }
   if (filters?.status) {
     params.append("status", filters.status);
@@ -113,7 +117,7 @@ export async function getVouchers(filters?: {
     throw new Error("Failed to fetch vouchers");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -126,7 +130,7 @@ export async function getVoucher(voucherId: string): Promise<PaymentVoucher> {
     throw new Error("Voucher not found");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -143,21 +147,26 @@ export async function cancelVoucher(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to cancel voucher");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to cancel voucher");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
  * Get voucher summary by date range
  */
 export async function getVoucherSummary(
+  shopId?: string,
   startDate?: Date | string,
   endDate?: Date | string,
 ): Promise<VoucherSummary> {
   const params = new URLSearchParams();
+
+  if (shopId) {
+    params.append("shopId", shopId);
+  }
 
   if (startDate) {
     params.append("startDate", new Date(startDate).toISOString());
@@ -173,5 +182,43 @@ export async function getVoucherSummary(
     throw new Error("Failed to fetch voucher summary");
   }
 
-  return response.json();
+  return extractData(response);
 }
+
+/**
+ * Get advance balance for a supplier voucher
+ */
+export async function getAdvanceBalance(
+  voucherId: string
+): Promise<{ originalAmount: number; appliedAmount: number; remainingBalance: number }> {
+  const response = await authenticatedFetch(`/vouchers/advance/${voucherId}/balance`);
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch advance balance");
+  }
+
+  return extractData(response);
+}
+
+/**
+ * Apply advance to a purchase invoice
+ */
+export async function applyAdvanceToPurchase(
+  voucherId: string,
+  purchaseId: string,
+  appliedAmount: number
+): Promise<{ message: string; appliedAmount: number }> {
+  const response = await authenticatedFetch(`/vouchers/advance/${voucherId}/apply-to-purchase`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ purchaseId, appliedAmount }),
+  });
+
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to apply advance to purchase");
+  }
+
+  return extractData(response);
+}
+

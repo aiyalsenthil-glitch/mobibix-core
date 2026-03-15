@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,12 +25,13 @@ import {
   type ShopProduct,
   ProductType,
 } from "@/services/products.api";
-import { getStockBalances } from "@/services/stock.api";
-import { correctStock } from "@/services/stock.api";
+import { getStockBalances, correctStock } from "@/services/stock.api";
+import { stockIn } from "@/services/inventory.api";
 
 interface StockCorrectionFormProps {
   shopId: string;
   preSelectedProductId?: string;
+  source?: "PRODUCT_CREATE" | "INVENTORY_PAGE";
   onSuccess?: () => void;
   onCancel?: () => void;
 }
@@ -46,6 +47,7 @@ const CORRECTION_REASONS = [
 export function StockCorrectionForm({
   shopId,
   preSelectedProductId,
+  source,
   onSuccess,
   onCancel,
 }: StockCorrectionFormProps) {
@@ -56,8 +58,29 @@ export function StockCorrectionForm({
   const [selectedProductId, setSelectedProductId] = useState(
     preSelectedProductId || "",
   );
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
   const [quantity, setQuantity] = useState("");
-  const [reason, setReason] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  const [costPrice, setCostPrice] = useState(""); // Cost input for stock correction
+  const [imeisText, setImeisText] = useState("");
+  const [reason, setReason] = useState(
+    source === "PRODUCT_CREATE" ? "INITIAL_SETUP" : "",
+  );
   const [note, setNote] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,20 +91,33 @@ export function StockCorrectionForm({
     loadData();
   }, [shopId]);
 
+  useEffect(() => {
+    if (preSelectedProductId && products.length > 0) {
+      const p = products.find((prod) => prod.id === preSelectedProductId);
+      if (p) setSearchTerm(p.name);
+    }
+  }, [preSelectedProductId, products]);
+
   const loadData = async () => {
     try {
       setIsLoading(true);
       setError("");
 
-      const [productsData, balancesData] = await Promise.all([
+      const [productsResponse, balancesData] = await Promise.all([
         listProducts(shopId),
         getStockBalances(shopId),
       ]);
+      // Handle paginated response
+      const productsData = Array.isArray(productsResponse)
+        ? productsResponse
+        : productsResponse.data;
 
-      // Filter out serialized and SERVICE products
-      const eligibleProducts = productsData.filter(
-        (p) => !p.isSerialized && p.type !== ProductType.SERVICE,
-      );
+      // Filter: INVENTORY_PAGE only allows non-serialized. PRODUCT_CREATE allows both.
+      const eligibleProducts = productsData.filter((p) => {
+        if (p.type === ProductType.SERVICE) return false;
+        if (source === "PRODUCT_CREATE") return true;
+        return !p.isSerialized;
+      });
       setProducts(eligibleProducts);
 
       // Index balances by product ID
@@ -104,15 +140,28 @@ export function StockCorrectionForm({
   const currentStock = stockBalances[selectedProductId]?.stockQty ?? 0;
   const isCurrentlyNegative =
     stockBalances[selectedProductId]?.isNegative ?? false;
-  const quantityValue = parseFloat(quantity) || 0;
+
+  // For serialized products, quantity is derived from IMEI lines
+  const imeis = imeisText
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const quantityValue = selectedProduct?.isSerialized
+    ? imeis.length
+    : parseFloat(quantity) || 0;
+
   const projectedStock = currentStock + quantityValue;
   const willRemainNegative = projectedStock < 0;
 
   const isFormValid =
     selectedProductId &&
-    quantity !== "" &&
-    quantityValue !== 0 &&
+    (selectedProduct?.isSerialized ? imeis.length > 0 : quantityValue !== 0) &&
     reason &&
+    (source === "PRODUCT_CREATE" || quantityValue > 0) && // For IN corrections, ensure cost set
+    (source === "INVENTORY_PAGE" && quantityValue > 0
+      ? parseFloat(costPrice) > 0
+      : true) &&
     !isSubmitting;
 
   const handleSubmit = async () => {
@@ -122,13 +171,39 @@ export function StockCorrectionForm({
       setIsSubmitting(true);
       setError("");
 
-      await correctStock({
-        shopId,
-        shopProductId: selectedProductId,
-        quantity: quantityValue,
-        reason,
-        note: note.trim() || undefined,
-      });
+      if (source === "PRODUCT_CREATE") {
+        // For initial setup, require cost input
+        const cost = parseFloat(costPrice);
+        if (!cost || cost <= 0) {
+          setError("Cost must be greater than 0 for initial stock setup");
+          setIsSubmitting(false);
+          return;
+        }
+
+        await stockIn(shopId, {
+          shopProductId: selectedProductId,
+          quantity: quantityValue,
+          costPrice: cost, // Use provided cost instead of 0
+          imeis: selectedProduct.isSerialized ? imeis : undefined,
+          type: selectedProduct.isSerialized ? "GOODS" : undefined,
+        });
+      } else {
+        // For corrections, cost is optional but should be provided if available
+        const cost = costPrice ? parseFloat(costPrice) : undefined;
+        if (cost !== undefined && cost <= 0) {
+          setError("Cost must be greater than 0");
+          setIsSubmitting(false);
+          return;
+        }
+
+        await correctStock({
+          shopId,
+          shopProductId: selectedProductId,
+          quantity: quantityValue,
+          reason,
+          note: note.trim() || undefined,
+        });
+      }
 
       // Success
       setShowConfirmModal(false);
@@ -166,32 +241,85 @@ export function StockCorrectionForm({
           </div>
         )}
 
-        <div className="space-y-2">
+        {source === "PRODUCT_CREATE" && (
+          <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm text-amber-900 dark:text-amber-200">
+            <div className="font-bold flex items-center gap-2 mb-1">
+              <span>⚠️</span> ERP GUIDANCE
+            </div>
+            <p className="leading-relaxed">
+              Stock initialization <strong>bypasses</strong> purchase entry. Use
+              this ONLY for opening stock or manual migration. For normal
+              inventory intake, please use <strong>New Purchase</strong>.
+            </p>
+          </div>
+        )}
+
+        <div className="space-y-2 relative" ref={dropdownRef}>
           <Label
             htmlFor="product"
             className="text-slate-700 dark:text-slate-300"
           >
             Product
           </Label>
-          <Select
-            value={selectedProductId}
-            onValueChange={setSelectedProductId}
-            disabled={!!preSelectedProductId}
-          >
-            <SelectTrigger
+          <div className="relative">
+            <Input
               id="product"
+              type="text"
+              placeholder="Search product..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setSelectedProductId("");
+                setShowDropdown(true);
+              }}
+              onFocus={() => !preSelectedProductId && setShowDropdown(true)}
+              disabled={!!preSelectedProductId}
               className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-50"
-            >
-              <SelectValue placeholder="Select a product" />
-            </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-              {products.map((product) => (
-                <SelectItem key={product.id} value={product.id}>
-                  {product.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            />
+            {!!preSelectedProductId && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                Locked
+              </div>
+            )}
+          </div>
+
+          {!preSelectedProductId &&
+            showDropdown &&
+            searchTerm.length > 0 &&
+            !selectedProductId && (
+              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                {products
+                  .filter((p) =>
+                    p.name.toLowerCase().includes(searchTerm.toLowerCase()),
+                  )
+                  .map((product) => (
+                    <div
+                      key={product.id}
+                      className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer text-sm"
+                      onClick={() => {
+                        setSelectedProductId(product.id);
+                        setSearchTerm(product.name);
+                        setShowDropdown(false);
+                      }}
+                    >
+                      <div className="font-medium text-slate-900 dark:text-slate-50">
+                        {product.name}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        Stock: {stockBalances[product.id]?.stockQty ?? 0}
+                        {product.isSerialized ? " • Serialized" : ""}
+                      </div>
+                    </div>
+                  ))}
+                {products.filter((p) =>
+                  p.name.toLowerCase().includes(searchTerm.toLowerCase()),
+                ).length === 0 && (
+                  <div className="px-4 py-3 text-sm text-slate-500 italic">
+                    No products found
+                  </div>
+                )}
+              </div>
+            )}
         </div>
 
         {selectedProduct && (
@@ -235,30 +363,84 @@ export function StockCorrectionForm({
           </div>
         )}
 
-        <div className="space-y-2">
-          <Label
-            htmlFor="quantity"
-            className="text-slate-700 dark:text-slate-300"
-          >
-            Quantity Adjustment{" "}
-            <span className="text-slate-500 dark:text-slate-400 text-xs">
-              (Positive = add, Negative = reduce)
-            </span>
-          </Label>
-          <Input
-            id="quantity"
-            type="number"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            placeholder="e.g. -5 or +10"
-            className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-50"
-          />
-          {quantity !== "" && quantityValue === 0 && (
-            <p className="text-xs text-red-600 dark:text-red-400">
-              Quantity cannot be zero
+        {selectedProduct?.isSerialized ? (
+          <div className="space-y-2">
+            <Label
+              htmlFor="imeis"
+              className="text-slate-700 dark:text-slate-300"
+            >
+              IMEIs / Serial Numbers{" "}
+              <span className="text-slate-500 dark:text-slate-400 text-xs">
+                (One per line)
+              </span>
+            </Label>
+            <Textarea
+              id="imeis"
+              value={imeisText}
+              onChange={(e) => setImeisText(e.target.value)}
+              placeholder="Enter one IMEI per line..."
+              rows={5}
+              className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-50 font-mono text-sm"
+            />
+            <p className="text-xs font-medium text-slate-500">
+              Total Count: {imeis.length} products
             </p>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label
+              htmlFor="quantity"
+              className="text-slate-700 dark:text-slate-300"
+            >
+              Quantity Adjustment{" "}
+              <span className="text-slate-500 dark:text-slate-400 text-xs">
+                (Positive = add, Negative = reduce)
+              </span>
+            </Label>
+            <Input
+              id="quantity"
+              type="number"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              placeholder="e.g. -5 or +10"
+              className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-50"
+            />
+            {quantity !== "" && quantityValue === 0 && (
+              <p className="text-xs text-red-600 dark:text-red-400">
+                Quantity cannot be zero
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Cost Input - Show for initial setup or when adding stock */}
+        {source === "PRODUCT_CREATE" || quantityValue > 0 ? (
+          <div className="space-y-2">
+            <Label
+              htmlFor="costPrice"
+              className="text-slate-700 dark:text-slate-300"
+            >
+              Cost Price (₹) <span className="text-red-600">*</span>
+            </Label>
+            <Input
+              id="costPrice"
+              type="number"
+              value={costPrice}
+              onChange={(e) => setCostPrice(e.target.value)}
+              placeholder="Cost per unit"
+              min="0.01"
+              step="0.01"
+              className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-50"
+            />
+            <p
+              className={`text-xs ${source === "PRODUCT_CREATE" ? "text-red-600 dark:text-red-400 font-medium" : "text-slate-600 dark:text-slate-400"}`}
+            >
+              {source === "PRODUCT_CREATE"
+                ? "⚠️ Stock added without cost cannot be sold. Enter cost to make sellable."
+                : "💡 Cost is required to make this stock sellable."}
+            </p>
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <Label

@@ -4,7 +4,9 @@ import {
   IsBoolean,
   IsArray,
   ArrayNotEmpty,
+  IsEnum,
 } from 'class-validator';
+import { RepairInvoiceNumberingMode } from '@prisma/client';
 
 export class UpdateShopSettingsDto {
   @IsOptional()
@@ -30,6 +32,10 @@ export class UpdateShopSettingsDto {
   @IsOptional()
   @IsString()
   state?: string;
+
+  @IsOptional()
+  @IsString()
+  stateCode?: string;
 
   @IsOptional()
   @IsString()
@@ -65,19 +71,19 @@ export class UpdateShopSettingsDto {
   // Print Configuration
   @IsOptional()
   @IsString()
-  invoicePrinterType?: "NORMAL" | "THERMAL";
+  invoicePrinterType?: 'NORMAL' | 'THERMAL';
 
   @IsOptional()
   @IsString()
-  invoiceTemplate?: "CLASSIC" | "MODERN" | "CORPORATE" | "COMPACT" | "THERMAL";
+  invoiceTemplate?: 'CLASSIC' | 'MODERN' | 'CORPORATE' | 'COMPACT' | 'THERMAL' | 'SIMPLE' | 'RECEIPT_THERMAL' | 'PROFESSIONAL';
 
   @IsOptional()
   @IsString()
-  jobCardPrinterType?: "THERMAL";
+  jobCardPrinterType?: 'NORMAL' | 'THERMAL';
 
   @IsOptional()
   @IsString()
-  jobCardTemplate?: "SIMPLE" | "DETAILED" | "THERMAL";
+  jobCardTemplate?: 'SIMPLE' | 'DETAILED' | 'THERMAL' | 'CLASSIC' | 'VOUCHER_CLASSIC';
 
   @IsOptional()
   headerConfig?: any; // Using any for Json, could be specific DTO
@@ -85,6 +91,14 @@ export class UpdateShopSettingsDto {
   @IsOptional()
   @IsString()
   tagline?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
 
   // Bank Details
   @IsOptional()
@@ -102,4 +116,13 @@ export class UpdateShopSettingsDto {
   @IsOptional()
   @IsString()
   branchName?: string;
+
+  // Repair Module
+  @IsOptional()
+  @IsEnum(RepairInvoiceNumberingMode)
+  repairInvoiceNumberingMode?: RepairInvoiceNumberingMode;
+
+  @IsOptional()
+  @IsBoolean()
+  repairGstDefault?: boolean;
 }

@@ -6,6 +6,8 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Request,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CustomerTimelineService } from './customer-timeline.service';
 import {
@@ -13,25 +15,34 @@ import {
   GetCustomerTimelineDto,
 } from './dto/timeline.dto';
 import { TimelineSource, TimelineActivityType } from './timeline.enum';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
-// Assuming you have JWT auth guard
-// import { JwtAuthGuard } from 'src/core/auth/jwt-auth.guard';
-// import { GetUser } from 'src/core/auth/get-user.decorator';
-
-@Controller('api/crm/timeline')
-// @UseGuards(JwtAuthGuard) // Uncomment when auth is ready
+@Controller('core/customer-timeline')
+@ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('crm')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
+@Roles(UserRole.OWNER, UserRole.STAFF)
 export class CustomerTimelineController {
   constructor(private readonly timelineService: CustomerTimelineService) {}
 
   /**
    * Get customer timeline
-   * GET /api/crm/timeline/:customerId
+   * GET /api/core/customer-timeline/:customerId
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW_TIMELINE)
   @Get(':customerId')
   @HttpCode(HttpStatus.OK)
   async getCustomerTimeline(
+    @Request() req: any,
     @Param('customerId') customerId: string,
-    @Query('tenantId') tenantId: string, // TODO: Get from auth user
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('sources') sources?: string, // Comma-separated
@@ -41,6 +52,9 @@ export class CustomerTimelineController {
     @Query('shopId') shopId?: string,
     @Query('sortOrder') sortOrder?: 'ASC' | 'DESC',
   ): Promise<CustomerTimelineResponseDto> {
+    // Extract tenantId from JWT payload
+    const tenantId = req.user.tenantId;
+
     const query: GetCustomerTimelineDto = {
       customerId,
       tenantId,
@@ -59,14 +73,16 @@ export class CustomerTimelineController {
 
   /**
    * Get timeline statistics
-   * GET /api/crm/timeline/:customerId/stats
+   * GET /api/core/customer-timeline/:customerId/stats
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW_TIMELINE)
   @Get(':customerId/stats')
   @HttpCode(HttpStatus.OK)
   async getTimelineStats(
+    @Request() req: any,
     @Param('customerId') customerId: string,
-    @Query('tenantId') tenantId: string, // TODO: Get from auth user
   ) {
+    const tenantId = req.user.tenantId;
     return this.timelineService.getTimelineStats(customerId, tenantId);
   }
 }

@@ -70,6 +70,9 @@ export class StockCorrectionService {
           absQty,
           'ADJUSTMENT',
           correction.id,
+          undefined, // costPerUnit (uses current average or 0)
+          undefined, // imeis
+          tx,
         );
       } else {
         await this.stockService.recordStockOut(
@@ -79,6 +82,9 @@ export class StockCorrectionService {
           absQty,
           'ADJUSTMENT',
           correction.id,
+          undefined, // costPerUnit
+          undefined, // imeis
+          tx,
         );
       }
 

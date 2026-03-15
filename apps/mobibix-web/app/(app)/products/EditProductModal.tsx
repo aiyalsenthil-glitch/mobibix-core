@@ -28,8 +28,9 @@ export function EditProductModal({
     name: product.name,
     type: (product.type as ProductType) || ProductType.GOODS,
     hsnSac: product.hsnCode || "",
-    salePrice: product.salePrice?.toString() || "0",
+    salePrice: ((product.salePrice || 0) / 100).toString(),
     gstRate: product.gstRate?.toString() || "18",
+    reorderLevel: product.reorderLevel?.toString() || "",
   });
 
   const [hsnResults, setHsnResults] = useState<HSNCode[]>([]);
@@ -53,7 +54,7 @@ export function EditProductModal({
         const results = await searchHsn(searchTerm);
         setHsnResults(results);
         setShowHsnDropdown(true);
-      } catch (err) {
+      } catch {
         console.warn("HSN search unavailable, using manual entry");
         setShowHsnDropdown(false);
       }
@@ -82,18 +83,23 @@ export function EditProductModal({
     try {
       setIsSubmitting(true);
 
-      const updatedProduct = await updateProduct(product.id, shopId, {
+      const updatedProduct = await updateProduct(shopId, product.id, {
         name: formData.name.trim(),
         type: formData.type,
         hsnSac: formData.hsnSac.trim() || undefined,
         salePrice: parseFloat(formData.salePrice),
         gstRate: parseFloat(formData.gstRate),
+        reorderLevel: formData.reorderLevel
+          ? parseInt(formData.reorderLevel)
+          : undefined,
       });
 
       onProductUpdated?.(updatedProduct);
       onClose();
-    } catch (err: any) {
-      alert(err.message || "Failed to update product");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update product";
+      alert(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -275,7 +281,36 @@ export function EditProductModal({
                 <option value="18">18%</option>
                 <option value="28">28%</option>
               </select>
+
             </div>
+
+            {/* Reorder Level */}
+            <div>
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                Low Stock Alert Level
+              </label>
+              <input
+                type="number"
+                name="reorderLevel"
+                value={formData.reorderLevel}
+                onChange={handleChange}
+                min="0"
+                placeholder="e.g. 5"
+                className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                  theme === "dark"
+                    ? "bg-gray-800 border-white/20 text-white"
+                    : "bg-white border-gray-300 text-gray-900"
+                }`}
+              />
+              <p className="text-xs mt-1 text-gray-500">
+                Alert when stock falls below this quantity.
+              </p>
+            </div>
+
 
             {/* Sale Price */}
             <div className="md:col-span-2">

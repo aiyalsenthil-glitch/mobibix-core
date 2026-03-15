@@ -3,16 +3,32 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePurchaseDto } from './dto/create-purchase.dto';
 import { UpdatePurchaseDto, PurchaseStatus } from './dto/update-purchase.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { PurchaseResponseDto } from './dto/purchase.response.dto';
+import { StockService } from '../../core/stock/stock.service';
+import { PartiesService } from '../parties/parties.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PurchasesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly stockService: StockService,
+    private readonly partiesService: PartiesService,
+  ) {}
+
+  private toPaisa(amount: number): number {
+    return Math.round(amount * 100);
+  }
+
+  private fromPaisa(amount: number): number {
+    return amount / 100;
+  }
 
   /**
    * Create a new purchase invoice
@@ -21,81 +37,111 @@ export class PurchasesService {
     tenantId: string,
     dto: CreatePurchaseDto,
   ): Promise<PurchaseResponseDto> {
-    // Check if invoice number already exists for this shop
-    const existingPurchase = await this.prisma.purchase.findFirst({
-      where: {
-        shopId: dto.shopId,
-        invoiceNumber: dto.invoiceNumber,
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      // 🛡️ Party Role Validation & Auto-Upgrade
+      if (dto.globalSupplierId) {
+        const party = await tx.party.findUnique({
+          where: { id: dto.globalSupplierId },
+        });
 
-    if (existingPurchase) {
-      throw new ConflictException(
-        `Purchase invoice "${dto.invoiceNumber}" already exists for this shop`,
-      );
-    }
+        if (!party || party.tenantId !== tenantId) {
+          throw new NotFoundException('Party not found');
+        }
 
-    // Calculate totals from items
-    let subTotal = 0;
-    let totalGst = 0;
+        if (party.partyType === 'CUSTOMER') {
+          // Auto-upgrade to BOTH
+          await tx.party.update({
+            where: { id: party.id },
+            data: { partyType: 'BOTH' },
+          });
+        }
+      }
 
-    const itemsData = dto.items.map((item) => {
-      const itemSubTotal = item.purchasePrice * item.quantity;
-      const gstRate = item.gstRate || 0;
-      const taxAmount = Math.round((itemSubTotal * gstRate) / 100);
-      const totalAmount = itemSubTotal + taxAmount;
-
-      subTotal += itemSubTotal;
-      totalGst += taxAmount;
-
-      return {
-        shopProductId: item.shopProductId,
-        description: item.description,
-        hsnSac: item.hsnSac,
-        quantity: item.quantity,
-        purchasePrice: item.purchasePrice,
-        gstRate,
-        taxAmount,
-        totalAmount,
-      };
-    });
-
-    const grandTotal = subTotal + totalGst;
-
-    // Create purchase with items
-    const purchase = await this.prisma.purchase.create({
-      data: {
-        tenantId,
-        shopId: dto.shopId,
-        globalSupplierId: dto.globalSupplierId,
-        supplierName: dto.supplierName,
-        invoiceNumber: dto.invoiceNumber,
-        invoiceDate: dto.invoiceDate ? new Date(dto.invoiceDate) : new Date(),
-        dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
-        subTotal,
-        totalGst,
-        grandTotal,
-        paidAmount: 0,
-        paymentMethod: dto.paymentMethod,
-        paymentReference: dto.paymentReference,
-        cashAmount: dto.cashAmount,
-        upiAmount: dto.upiAmount,
-        purchaseType: dto.purchaseType || 'Goods',
-        taxInclusive: dto.taxInclusive || false,
-        status: 'DRAFT',
-        notes: dto.notes,
-        createdBy: 'system',
-        items: {
-          create: itemsData,
+      // Check if invoice number already exists for this shop
+      const existingPurchase = await tx.purchase.findFirst({
+        where: {
+          shopId: dto.shopId,
+          invoiceNumber: dto.invoiceNumber,
         },
-      },
-      include: {
-        items: true,
-        payments: true,
-      },
-    });
+      });
 
-    return this.mapToResponseDto(purchase);
+      if (existingPurchase) {
+        throw new ConflictException(
+          `Purchase invoice "${dto.invoiceNumber}" already exists for this shop`,
+        );
+      }
+
+      const status = dto.status || 'DRAFT';
+
+      // Calculate totals from items
+      let subTotal = 0;
+      let totalGst = 0;
+
+      const itemsData = dto.items.map((item) => {
+        // Convert input Rupees to Paisa
+        const purchasePricePaisa = this.toPaisa(item.purchasePrice);
+
+        const itemSubTotal = purchasePricePaisa * item.quantity;
+        const gstRate = item.gstRate || 0;
+        const taxAmount = Math.round((itemSubTotal * gstRate) / 100);
+        const totalAmount = itemSubTotal + taxAmount;
+
+        subTotal += itemSubTotal;
+        totalGst += taxAmount;
+
+        return {
+          shopProductId: item.shopProductId,
+          description: item.description,
+          hsnSac: item.hsnSac,
+          quantity: item.quantity,
+          purchasePrice: purchasePricePaisa, // Store Paisa
+          gstRate,
+          taxAmount,
+          totalAmount,
+        };
+      });
+
+      const grandTotal = subTotal + totalGst;
+
+      // Create purchase with items
+      const purchase = await tx.purchase.create({
+        data: {
+          tenantId,
+          shopId: dto.shopId,
+          globalSupplierId: dto.globalSupplierId,
+          supplierName: dto.supplierName,
+          supplierGstin: dto.supplierGstin,
+          invoiceNumber: dto.invoiceNumber,
+          invoiceDate: dto.invoiceDate ? new Date(dto.invoiceDate) : new Date(),
+          dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+          subTotal,
+          totalGst,
+          grandTotal,
+          paidAmount: 0,
+          paymentMethod: dto.paymentMethod,
+          paymentReference: dto.paymentReference,
+          cashAmount: dto.cashAmount,
+          upiAmount: dto.upiAmount,
+          purchaseType: dto.purchaseType || 'Goods',
+          taxInclusive: dto.taxInclusive || false,
+          status,
+          notes: dto.notes,
+          createdBy: 'system',
+          items: {
+            create: itemsData,
+          },
+        },
+        include: {
+          items: true,
+          payments: true,
+        },
+      });
+
+      // 🛡️ AUTO-SUBMIT: Removed. Stock is now handled EXCLUSIVELY by GRN.
+      // Supplier Invoice (Purchase) is now a purely financial and tax compliance document.
+
+      return this.mapToResponseDto(purchase);
+    });
   }
 
   /**
@@ -180,9 +226,12 @@ export class PurchasesService {
     id: string,
     dto: UpdatePurchaseDto,
   ): Promise<PurchaseResponseDto> {
-    const purchase = await this.prisma.purchase.findUnique({ where: { id } });
+    // SECURITY FIX: Use composite key to prevent cross-tenant access
+    const purchase = await this.prisma.purchase.findFirst({
+      where: { id, tenantId },
+    });
 
-    if (!purchase || purchase.tenantId !== tenantId) {
+    if (!purchase) {
       throw new NotFoundException(`Purchase with ID "${id}" not found`);
     }
 
@@ -196,6 +245,7 @@ export class PurchasesService {
       where: { id },
       data: {
         ...(dto.supplierName && { supplierName: dto.supplierName }),
+        ...(dto.supplierGstin && { supplierGstin: dto.supplierGstin }),
         ...(dto.invoiceDate && { invoiceDate: new Date(dto.invoiceDate) }),
         ...(dto.dueDate && { dueDate: new Date(dto.dueDate) }),
         ...(dto.status && { status: dto.status }),
@@ -224,9 +274,12 @@ export class PurchasesService {
    * Cancel a purchase (soft delete)
    */
   async remove(tenantId: string, id: string): Promise<PurchaseResponseDto> {
-    const purchase = await this.prisma.purchase.findUnique({ where: { id } });
+    // SECURITY FIX: Use composite key to prevent cross-tenant access
+    const purchase = await this.prisma.purchase.findFirst({
+      where: { id, tenantId },
+    });
 
-    if (!purchase || purchase.tenantId !== tenantId) {
+    if (!purchase) {
       throw new NotFoundException(`Purchase with ID "${id}" not found`);
     }
 
@@ -256,67 +309,102 @@ export class PurchasesService {
     purchaseId: string,
     dto: RecordPaymentDto,
   ): Promise<PurchaseResponseDto> {
-    const purchase = await this.prisma.purchase.findUnique({
-      where: { id: purchaseId },
-      include: { payments: true },
+    return this.prisma.$transaction(async (tx) => {
+      const purchase = await tx.purchase.findUnique({
+        where: { id: purchaseId },
+        include: { payments: true },
+      });
+
+      if (!purchase || purchase.tenantId !== tenantId) {
+        throw new NotFoundException(
+          `Purchase with ID "${purchaseId}" not found`,
+        );
+      }
+
+      if (purchase.status === 'CANCELLED') {
+        throw new BadRequestException(
+          'Cannot record payment for cancelled purchase',
+        );
+      }
+
+      const outstanding = purchase.grandTotal - purchase.paidAmount;
+
+      if (dto.amount > outstanding) {
+        throw new BadRequestException(
+          `Payment amount (${dto.amount}) exceeds outstanding amount (${outstanding})`,
+        );
+      }
+
+      // 1. Create Internal SupplierPayment (Helper Trace)
+      const supplierPayment = await tx.supplierPayment.create({
+        data: {
+          tenantId,
+          shopId: purchase.shopId,
+          purchaseId: purchase.id,
+          globalSupplierId: purchase.globalSupplierId,
+          amount: dto.amount,
+          paymentMethod: dto.paymentMethod,
+          paymentReference: dto.paymentReference,
+          paymentDate: new Date(),
+          notes: dto.notes,
+          createdBy: 'system',
+        },
+      });
+
+      // 2. 🛡️ FINANCIAL TRUTH: Create PaymentVoucher (Money OUT)
+      const voucherId = `PV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const voucher = await tx.paymentVoucher.create({
+        data: {
+          tenantId,
+          shopId: purchase.shopId,
+          voucherId: voucherId,
+          voucherType: 'SUPPLIER', // Paying a supplier
+          amount: dto.amount,
+          date: new Date(),
+          paymentMethod: dto.paymentMethod,
+          narration: `Payment for Purchase #${purchase.invoiceNumber} (Supplier: ${purchase.supplierName})`,
+          linkedPurchaseId: purchase.id, // Linking to Purchase
+          // partyName removed
+        },
+      });
+
+      // 3. 🛡️ LEDGER REFLECTION: Create FinancialEntry (OUT)
+      await tx.financialEntry.create({
+        data: {
+          tenantId,
+          shopId: purchase.shopId,
+          type: 'OUT',
+          amount: dto.amount,
+          mode: dto.paymentMethod,
+          referenceType: 'PURCHASE', // Linking back to Purchase context
+          referenceId: purchase.id,
+          note: `Purchase Payment: ${purchase.invoiceNumber} (Voucher: ${voucher.voucherId})`,
+        },
+      });
+
+      // 4. Update Purchase Status
+      const newPaidAmount = purchase.paidAmount + dto.amount;
+      const newStatus =
+        newPaidAmount >= purchase.grandTotal
+          ? 'PAID'
+          : newPaidAmount > 0
+            ? 'PARTIALLY_PAID'
+            : purchase.status;
+
+      const updated = await tx.purchase.update({
+        where: { id: purchaseId },
+        data: {
+          paidAmount: newPaidAmount,
+          status: newStatus,
+        },
+        include: {
+          items: true,
+          payments: true,
+        },
+      });
+
+      return this.mapToResponseDto(updated);
     });
-
-    if (!purchase || purchase.tenantId !== tenantId) {
-      throw new NotFoundException(`Purchase with ID "${purchaseId}" not found`);
-    }
-
-    if (purchase.status === 'CANCELLED') {
-      throw new BadRequestException(
-        'Cannot record payment for cancelled purchase',
-      );
-    }
-
-    const outstanding = purchase.grandTotal - purchase.paidAmount;
-
-    if (dto.amount > outstanding) {
-      throw new BadRequestException(
-        `Payment amount (${dto.amount}) exceeds outstanding amount (${outstanding})`,
-      );
-    }
-
-    // Create payment record
-    await this.prisma.supplierPayment.create({
-      data: {
-        tenantId,
-        shopId: purchase.shopId,
-        purchaseId: purchase.id,
-        globalSupplierId: purchase.globalSupplierId,
-        amount: dto.amount,
-        paymentMethod: dto.paymentMethod,
-        paymentReference: dto.paymentReference,
-        paymentDate: new Date(),
-        notes: dto.notes,
-        createdBy: 'system',
-      },
-    });
-
-    // Update purchase paid amount and status
-    const newPaidAmount = purchase.paidAmount + dto.amount;
-    const newStatus =
-      newPaidAmount >= purchase.grandTotal
-        ? 'PAID'
-        : newPaidAmount > 0
-          ? 'PARTIALLY_PAID'
-          : purchase.status;
-
-    const updated = await this.prisma.purchase.update({
-      where: { id: purchaseId },
-      data: {
-        paidAmount: newPaidAmount,
-        status: newStatus,
-      },
-      include: {
-        items: true,
-        payments: true,
-      },
-    });
-
-    return this.mapToResponseDto(updated);
   }
 
   /**
@@ -342,7 +430,7 @@ export class PurchasesService {
 
     return {
       supplierId,
-      totalOutstanding,
+      totalOutstanding: this.fromPaisa(totalOutstanding),
       purchases: purchases.map((p) => this.mapToResponseDto(p)),
     };
   }
@@ -385,15 +473,21 @@ export class PurchasesService {
       supplierName: purchase.supplierName,
       invoiceDate: purchase.invoiceDate,
       dueDate: purchase.dueDate,
-      subTotal: purchase.subTotal,
-      totalGst: purchase.totalGst,
-      grandTotal: purchase.grandTotal,
-      paidAmount: purchase.paidAmount,
-      outstandingAmount: purchase.grandTotal - purchase.paidAmount,
+      subTotal: this.fromPaisa(purchase.subTotal),
+      totalGst: this.fromPaisa(purchase.totalGst),
+      grandTotal: this.fromPaisa(purchase.grandTotal),
+      paidAmount: this.fromPaisa(purchase.paidAmount),
+      outstandingAmount: this.fromPaisa(
+        purchase.grandTotal - purchase.paidAmount,
+      ),
       paymentMethod: purchase.paymentMethod,
       paymentReference: purchase.paymentReference,
-      cashAmount: purchase.cashAmount,
-      upiAmount: purchase.upiAmount,
+      cashAmount: purchase.cashAmount
+        ? this.fromPaisa(purchase.cashAmount)
+        : undefined,
+      upiAmount: purchase.upiAmount
+        ? this.fromPaisa(purchase.upiAmount)
+        : undefined,
       purchaseType: purchase.purchaseType,
       taxInclusive: purchase.taxInclusive,
       status: purchase.status,
@@ -404,14 +498,14 @@ export class PurchasesService {
         description: item.description,
         hsnSac: item.hsnSac,
         quantity: item.quantity,
-        purchasePrice: item.purchasePrice,
+        purchasePrice: this.fromPaisa(item.purchasePrice),
         gstRate: item.gstRate,
-        taxAmount: item.taxAmount,
-        totalAmount: item.totalAmount,
+        taxAmount: this.fromPaisa(item.taxAmount),
+        totalAmount: this.fromPaisa(item.totalAmount),
       })),
       payments: purchase.payments?.map((payment: any) => ({
         id: payment.id,
-        amount: payment.amount,
+        amount: this.fromPaisa(payment.amount),
         paymentMethod: payment.paymentMethod,
         paymentReference: payment.paymentReference,
         paymentDate: payment.paymentDate,
@@ -419,6 +513,152 @@ export class PurchasesService {
       })),
       createdAt: purchase.createdAt,
       updatedAt: purchase.updatedAt,
+      currency: purchase.currency,
+      exchangeRate: Number(purchase.exchangeRate),
+      poId: purchase.poId,
+    };
+  }
+
+  /**
+   * Financial-only submission of purchase invoice.
+   * Stock updates are handled by GRN.
+   */
+  async atomicPurchaseSubmit(
+    tenantId: string,
+    purchaseId: string,
+  ): Promise<void> {
+    const purchase = await this.prisma.purchase.findUnique({
+      where: { id: purchaseId },
+    });
+
+    if (!purchase || purchase.tenantId !== tenantId) {
+      throw new NotFoundException('Purchase not found');
+    }
+
+    if (purchase.status !== 'DRAFT') {
+      throw new ConflictException(
+        `Purchase cannot be submitted. Current status: ${purchase.status}`,
+      );
+    }
+
+    // 🛡️ HARDENING: Critical Business Validations
+    const items = await this.prisma.purchaseItem.findMany({
+      where: { purchaseId },
+    });
+
+    if (items.length === 0) {
+      throw new BadRequestException('Cannot submit purchase without items');
+    }
+
+    // 1. GST & Compliance
+    if (purchase.totalGst > 0 && !purchase.supplierGstin) {
+      throw new BadRequestException(
+        'Supplier GSTIN is mandatory if GST amount is greater than zero.',
+      );
+    }
+
+    // 2. Invoice Date Validations
+    const now = new Date();
+    const invoiceDate = new Date(purchase.invoiceDate);
+
+    if (invoiceDate > now) {
+      throw new BadRequestException('Invoice date cannot be in the future');
+    }
+
+    // 3. ITC (Input Tax Credit) Safety: Limit to 180 days (standard audit recommendation)
+    const MAX_ITC_DAYS = 180;
+    const oldestAllowed = new Date();
+    oldestAllowed.setDate(now.getDate() - MAX_ITC_DAYS);
+
+    if (invoiceDate < oldestAllowed) {
+      throw new BadRequestException(
+        `Invoice is too old (>${MAX_ITC_DAYS} days). Input Tax Credit (ITC) may be ineligible.`,
+      );
+    }
+
+    await this.prisma.$transaction(
+      async (tx) => {
+        const current = await tx.purchase.findUnique({
+          where: { id: purchaseId },
+        });
+
+        if (current && current.status !== 'DRAFT') {
+          throw new ConflictException('Purchase already submitted');
+        }
+
+        await tx.purchase.update({
+          where: { id: purchaseId },
+          data: { status: 'SUBMITTED' },
+        });
+        
+        // Stock logic REMOVED. Handled by GRN.
+      },
+      { isolationLevel: 'Serializable' },
+    );
+  }
+
+  /**
+   * Get Payables Aging Report
+   */
+  async getPayablesAging(tenantId: string, shopId?: string) {
+    const today = new Date();
+    
+    const purchases = await this.prisma.purchase.findMany({
+      where: {
+        tenantId,
+        ...(shopId && { shopId }),
+        status: { in: ['SUBMITTED', 'PARTIALLY_PAID'] },
+        grandTotal: { gt: this.prisma.purchase.fields.paidAmount as any }, // Outstanding > 0
+      },
+      select: {
+        id: true,
+        invoiceNumber: true,
+        supplierName: true,
+        grandTotal: true,
+        paidAmount: true,
+        dueDate: true,
+        invoiceDate: true,
+      },
+    });
+
+    const report = {
+      current: 0,
+      '1-30': 0,
+      '31-60': 0,
+      '61-90': 0,
+      over90: 0,
+      totalOutstanding: 0,
+    };
+
+    purchases.forEach((p) => {
+      const outstanding = p.grandTotal - p.paidAmount;
+      report.totalOutstanding += outstanding;
+
+      const dateToCompare = p.dueDate || p.invoiceDate;
+      const diffDays = Math.floor(
+        (today.getTime() - dateToCompare.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      if (diffDays <= 0) {
+        report.current += outstanding;
+      } else if (diffDays <= 30) {
+        report['1-30'] += outstanding;
+      } else if (diffDays <= 60) {
+        report['31-60'] += outstanding;
+      } else if (diffDays <= 90) {
+        report['61-90'] += outstanding;
+      } else {
+        report.over90 += outstanding;
+      }
+    });
+
+    return {
+      current: report.current / 100,
+      '1-30': report['1-30'] / 100,
+      '31-60': report['31-60'] / 100,
+      '61-90': report['61-90'] / 100,
+      over90: report.over90 / 100,
+      totalOutstanding: report.totalOutstanding / 100,
     };
   }
 }

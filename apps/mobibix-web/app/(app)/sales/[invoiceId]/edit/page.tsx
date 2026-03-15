@@ -7,8 +7,10 @@ import {
   updateInvoice,
   type SalesInvoice,
   type PaymentMode,
+  type CreateInvoiceDto,
+  type InvoiceItemDetail,
 } from "@/services/sales.api";
-import { getAccessToken, decodeAccessToken } from "@/services/auth.api";
+import { useAuth } from "@/hooks/useAuth";
 import {
   listProducts,
   type ShopProduct,
@@ -17,6 +19,8 @@ import {
 import { getStockBalances } from "@/services/stock.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
+import { InvoiceItemModal } from "@/components/sales/InvoiceItemModal";
+import { type InvoiceItem } from "@/services/sales.api";
 
 const PAYMENT_MODES: PaymentMode[] = ["CASH", "UPI", "CARD", "BANK", "CREDIT"];
 
@@ -32,10 +36,11 @@ export default function EditInvoicePage() {
   const invoiceId = params.invoiceId as string;
   const shopId = searchParams.get("shopId");
 
+  const { authUser } = useAuth();
   const { selectedShop } = useShop();
-  const token = getAccessToken();
-  const userRole = token ? decodeAccessToken(token).role : null;
-  const isOwner = userRole === "OWNER";
+  const userRole = authUser?.role;
+  const isOwner = userRole === "owner";
+
 
   const [invoice, setInvoice] = useState<EditableInvoice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,6 +58,8 @@ export default function EditInvoicePage() {
     Array<{ mode: PaymentMode; amount: number }>
   >([{ mode: "CASH", amount: 0 }]);
   const [invoiceDate, setInvoiceDate] = useState("");
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [editableItems, setEditableItems] = useState<InvoiceItemDetail[]>([]);
 
   // Load invoice
   useEffect(() => {
@@ -70,10 +77,14 @@ export default function EditInvoicePage() {
         // Load products with stock balances for stock-aware display
         if (data.shopId) {
           try {
-            const [productList, balances] = await Promise.all([
+            const [productsResponse, balances] = await Promise.all([
               listProducts(data.shopId),
               getStockBalances(data.shopId),
             ]);
+            // Handle paginated response
+            const productList = Array.isArray(productsResponse)
+              ? productsResponse
+              : productsResponse.data;
             const balanceMap = new Map(balances.map((b) => [b.productId, b]));
             const merged: ShopProduct[] = productList.map((p) => {
               const b = balanceMap.get(p.id);
@@ -88,15 +99,27 @@ export default function EditInvoicePage() {
         }
 
         // Initialize payment methods
-        if (data.paymentMethods && data.paymentMethods.length > 0) {
-          setPaymentMethods(data.paymentMethods);
+        const invoiceData = data;
+        if (
+          invoiceData.payments &&
+          invoiceData.payments.length > 0
+        ) {
+          setPaymentMethods(
+            invoiceData.payments.map((p) => ({
+              mode: p.method,
+              amount: p.amount,
+            })),
+          );
         } else {
           setPaymentMethods([
             { mode: data.paymentMode as PaymentMode, amount: data.totalAmount },
           ]);
         }
-      } catch (err: any) {
-        setError(err.message || "Failed to load invoice");
+
+        // Initialize items
+        setEditableItems(data.items || []);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load invoice");
       } finally {
         setLoading(false);
       }
@@ -151,7 +174,18 @@ export default function EditInvoicePage() {
 
   const isPaid = invoice.status === "PAID";
   const isCredit = invoice.status === "CREDIT";
-  const totalAmount = invoice.totalAmount;
+
+  // Recalculate Totals Locally
+  const subTotal = editableItems.reduce(
+    (sum, item) => sum + (item.lineTotal || item.rate * item.quantity),
+    0,
+  );
+  const gstTotal = editableItems.reduce(
+    (sum, item) => sum + (item.gstAmount || 0),
+    0,
+  );
+  const totalAmount = subTotal + gstTotal;
+
   const totalPaid = paymentMethods.reduce((sum, p) => sum + p.amount, 0);
   const paymentDifference = totalAmount - totalPaid;
   const isBalanced = Math.abs(paymentDifference) < 0.01;
@@ -179,20 +213,23 @@ export default function EditInvoicePage() {
         customerGstin,
         paymentMethods: paymentMethods.filter((p) => p.amount > 0),
         pricesIncludeTax: false,
-        items:
-          invoice.items?.map((item) => ({
-            shopProductId: item.shopProductId,
-            quantity: item.quantity,
-            rate: item.rate,
-            gstRate: item.gstRate || 0,
-            gstAmount: item.gstAmount || 0,
-          })) || [],
+        items: editableItems.map((item) => ({
+          shopProductId: item.shopProductId,
+          quantity: item.quantity,
+          rate: item.rate,
+          gstRate: item.gstRate || 0,
+          gstAmount: item.gstAmount || 0,
+          imeis: item.imeis && item.imeis.length > 0 ? item.imeis : undefined,
+          serialNumbers: item.serialNumbers && item.serialNumbers.length > 0 ? item.serialNumbers : undefined,
+          warrantyDays: item.warrantyDays,
+          hsnCode: item.hsnCode,
+        })),
       };
 
-      await updateInvoice(invoiceId, payload as any);
+      await updateInvoice(invoiceId, payload as unknown as CreateInvoiceDto);
       router.push(`/sales?shopId=${shopId}`);
-    } catch (err: any) {
-      const msg = (err?.message || "Failed to save invoice") as string;
+    } catch (err: unknown) {
+      const msg = (err instanceof Error ? err.message : "Failed to save invoice") as string;
       if (msg.includes("Insufficient stock")) {
         setError("Insufficient stock. Please add purchase or reduce quantity.");
       } else if (msg.includes("Serialized products require IMEI")) {
@@ -390,7 +427,122 @@ export default function EditInvoicePage() {
       </div>
 
       <div
-        className={`border rounded-lg p-6 shadow-sm ${
+        className={`border rounded-lg p-6 shadow-sm mb-6 ${
+          theme === "dark"
+            ? "bg-white/5 border-white/10"
+            : "bg-white border-gray-200"
+        }`}
+      >
+        <h2
+          className={`text-lg font-semibold mb-4 ${
+            theme === "dark" ? "text-white" : "text-black"
+          }`}
+        >
+          Invoice Items
+        </h2>
+
+        <div className="overflow-x-auto mb-4">
+          <table className="w-full text-left text-sm">
+            <thead
+              className={`border-b ${theme === "dark" ? "border-white/10 text-stone-400" : "border-gray-100 text-gray-500"}`}
+            >
+              <tr>
+                <th className="py-3 px-2">Item</th>
+                <th className="py-3 px-2">Qty</th>
+                <th className="py-3 px-2">Rate</th>
+                <th className="py-3 px-2">GST</th>
+                <th className="py-3 px-2 text-right">Total</th>
+                <th className="py-3 px-2"></th>
+              </tr>
+            </thead>
+            <tbody
+              className={`divide-y ${theme === "dark" ? "divide-white/5" : "divide-gray-50"}`}
+            >
+              {editableItems.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="py-8 text-center text-gray-400 italic"
+                  >
+                    No items added yet.
+                  </td>
+                </tr>
+              )}
+              {editableItems.map((item, idx) => (
+                <tr
+                  key={`${item.shopProductId}-${idx}`}
+                  className={
+                    theme === "dark" ? "text-gray-200" : "text-gray-700"
+                  }
+                >
+                  <td className="py-3 px-2 font-medium">
+                    {products.find((p) => p.id === item.shopProductId)?.name ||
+                      "Unknown Product"}
+                  </td>
+                  <td className="py-3 px-2">{item.quantity}</td>
+                  <td className="py-3 px-2">₹{item.rate.toFixed(2)}</td>
+                  <td className="py-3 px-2">
+                    ₹{(item.gstAmount || 0).toFixed(2)} ({item.gstRate || 0}%)
+                  </td>
+                  <td className="py-3 px-2 text-right font-semibold">
+                    ₹
+                    {(
+                      item.lineTotal ||
+                      item.rate * item.quantity + (item.gstAmount || 0)
+                    ).toFixed(2)}
+                  </td>
+                  <td className="py-3 px-2 text-right">
+                    <button
+                      onClick={() => {
+                        setEditableItems(
+                          editableItems.filter((_, i) => i !== idx),
+                        );
+                      }}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsItemModalOpen(true)}
+          className={`w-full py-2 border-2 border-dashed rounded-lg font-medium transition ${
+            theme === "dark"
+              ? "border-white/10 text-stone-400 hover:bg-white/5"
+              : "border-gray-200 text-gray-500 hover:bg-gray-50"
+          }`}
+        >
+          + Add Product / Service
+        </button>
+
+        <InvoiceItemModal
+          isOpen={isItemModalOpen}
+          shopId={invoice.shopId}
+          gstEnabled={selectedShop?.gstEnabled || false}
+          onClose={() => setIsItemModalOpen(false)}
+          onAdd={async (newItem) => {
+            const detail: InvoiceItemDetail = {
+              shopProductId: newItem.shopProductId,
+              quantity: newItem.quantity,
+              rate: newItem.rate,
+              gstRate: newItem.gstRate,
+              gstAmount: newItem.gstAmount,
+              lineTotal: newItem.rate * newItem.quantity + (newItem.gstAmount || 0),
+              hsnCode: newItem.hsnCode,
+            };
+            setEditableItems([...editableItems, detail]);
+          }}
+        />
+      </div>
+
+      <div
+        className={`border rounded-lg p-6 shadow-sm mb-6 ${
           theme === "dark"
             ? "bg-white/5 border-white/10"
             : "bg-white border-gray-200"

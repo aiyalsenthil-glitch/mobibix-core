@@ -1,47 +1,73 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ModuleType } from '@prisma/client';
+import { PlanRulesService } from '../billing/plan-rules.service';
 
 @Injectable()
 export class ProductsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly planRulesService: PlanRulesService,
+  ) {}
 
-  async listByShop(tenantId: string, shopId: string) {
-    const products = await this.prisma.shopProduct.findMany({
-      where: {
-        tenantId,
-        shopId,
-        isActive: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        category: true,
-        salePrice: true,
-        costPrice: true,
-        isActive: true,
-        hsnCode: true,
-        gstRate: true,
-        global: {
-          select: {
-            hsn: {
-              select: {
-                code: true,
-                taxRate: true,
+  private fromPaisa(amount: number | null | undefined): number | null {
+    if (amount === null || amount === undefined) return null;
+    return amount / 100;
+  }
+
+  async listByShop(
+    tenantId: string,
+    shopId: string,
+    options?: { skip?: number; take?: number },
+  ) {
+    // Parallel queries for better performance
+    const [products, total] = await Promise.all([
+      this.prisma.shopProduct.findMany({
+        where: {
+          tenantId,
+          shopId,
+          isActive: true,
+        },
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          salePrice: true,
+          costPrice: true,
+          isActive: true,
+          hsnCode: true,
+          gstRate: true,
+          global: {
+            select: {
+              hsn: {
+                select: {
+                  code: true,
+                  taxRate: true,
+                },
               },
             },
           },
-        },
-        stockEntries: {
-          select: {
-            type: true,
-            quantity: true,
+          stockEntries: {
+            select: {
+              type: true,
+              quantity: true,
+            },
           },
         },
-      },
-      orderBy: { name: 'asc' },
-    });
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.shopProduct.count({
+        where: { tenantId, shopId, isActive: true },
+      }),
+    ]);
 
-    return products.map((p) => {
+    const mappedProducts = products.map((p) => {
       const stockQty = p.stockEntries.reduce((sum, e) => {
         return e.type === 'IN' ? sum + e.quantity : sum - e.quantity;
       }, 0);
@@ -58,5 +84,428 @@ export class ProductsService {
         stockQty,
       };
     });
+
+    return {
+      data: mappedProducts,
+      total,
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 50,
+    };
+  }
+  async findOne(tenantId: string, shopId: string, productId: string) {
+    const product = await this.prisma.shopProduct.findFirst({
+      where: { id: productId, tenantId, shopId },
+      include: {
+        global: {
+          select: {
+            hsn: { select: { code: true, taxRate: true } },
+          },
+        },
+        stockEntries: {
+          select: { type: true, quantity: true },
+        },
+      },
+    });
+
+    if (!product) {
+      return null;
+    }
+
+    const stockQty = product.stockEntries.reduce((sum, e) => {
+      return e.type === 'IN' ? sum + e.quantity : sum - e.quantity;
+    }, 0);
+
+    return {
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      hsnCode: product.hsnCode || product.global?.hsn?.code,
+      gstRate: product.gstRate || product.global?.hsn?.taxRate,
+      salePrice: product.salePrice,
+      costPrice: product.costPrice,
+      isActive: product.isActive,
+      stockQty,
+    };
+  }
+
+  /**
+   * Bulk import products from CSV/Excel
+   * @param tenantId - Tenant ID
+   * @param shopId - Shop ID
+   * @param products - Array of products to import
+   * @param includeStock - Whether to create opening stock entries
+   * @returns Import result with success/failed counts and errors
+   */
+  async bulkImport(
+    tenantId: string,
+    shopId: string,
+    products: Array<{
+      name: string;
+      category?: string;
+      type: 'GOODS' | 'SERVICE';
+      sellingPrice: number;
+      costPrice?: number;
+      gstRate?: number;
+      hsnCode?: string;
+      sku?: string;
+      openingStock?: number;
+    }>,
+    includeStock: boolean = false,
+  ): Promise<{
+    success: number;
+    failed: number;
+    errors: string[];
+    duplicates: string[];
+  }> {
+    // Verify shop access
+    const shop = await this.prisma.shop.findFirst({
+      where: { id: shopId, tenantId },
+    });
+
+    if (!shop) {
+      throw new NotFoundException('Shop not found');
+    }
+
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: [] as string[],
+      duplicates: [] as string[],
+    };
+
+    // 🔥 LIVE LIMIT ENFORCEMENT (Downgrade Bypass Protection)
+    await this.planRulesService.checkRuntimeLimits(
+      tenantId,
+      ModuleType.MOBILE_SHOP,
+    );
+
+    // Fetch all existing products for this shop to check duplicates
+    const existingProducts = await this.prisma.shopProduct.findMany({
+      where: {
+        tenantId,
+        shopId,
+        isActive: true,
+      },
+      select: {
+        name: true,
+        sku: true,
+      },
+    });
+
+    const existingNames = new Set(
+      existingProducts.map((p) => p.name.toLowerCase().trim()),
+    );
+    const existingSkus = new Set(
+      existingProducts
+        .filter((p) => p.sku)
+        .map((p) => p.sku!.toLowerCase().trim()),
+    );
+
+    for (let i = 0; i < products.length; i++) {
+      const productData = products[i];
+      const rowNum = i + 2; // +2 because: +1 for array index, +1 for header row
+
+      try {
+        // Validate required fields
+        if (!productData.name || productData.name.trim().length === 0) {
+          results.failed++;
+          results.errors.push(`Row ${rowNum}: Product name is required`);
+          continue;
+        }
+
+        // Check for duplicate by name
+        const normalizedName = productData.name.toLowerCase().trim();
+        if (existingNames.has(normalizedName)) {
+          results.failed++;
+          results.duplicates.push(productData.name);
+          results.errors.push(
+            `Row ${rowNum}: Product "${productData.name}" already exists`,
+          );
+          continue;
+        }
+
+        // Check for duplicate by SKU (if provided)
+        if (productData.sku) {
+          const normalizedSku = productData.sku.toLowerCase().trim();
+          if (existingSkus.has(normalizedSku)) {
+            results.failed++;
+            results.duplicates.push(`SKU: ${productData.sku}`);
+            results.errors.push(
+              `Row ${rowNum}: SKU "${productData.sku}" already exists`,
+            );
+            continue;
+          }
+        }
+
+        // Validate selling price
+        if (productData.sellingPrice <= 0) {
+          results.failed++;
+          results.errors.push(
+            `Row ${rowNum}: Selling price must be greater than 0`,
+          );
+          continue;
+        }
+
+        // Auto-generate SKU if not provided
+        let sku = productData.sku?.trim() || null;
+        if (!sku) {
+          // Format: PROD-YYYYMMDD-XXXX (e.g., PROD-20260211-A1B2)
+          const datePart = new Date()
+            .toISOString()
+            .slice(0, 10)
+            .replace(/-/g, '');
+          const randomPart = Math.random()
+            .toString(36)
+            .substring(2, 6)
+            .toUpperCase();
+          sku = `PROD-${datePart}-${randomPart}`;
+        }
+
+        // Create product
+        const createdProduct = await this.prisma.shopProduct.create({
+          data: {
+            tenantId,
+            shopId,
+            name: productData.name.trim(),
+            type: productData.type || 'GOODS',
+            category: productData.category?.trim() || 'Uncategorized',
+            salePrice: Math.round(productData.sellingPrice * 100), // Convert to paise
+            costPrice: productData.costPrice
+              ? Math.round(productData.costPrice * 100)
+              : null,
+            gstRate: productData.gstRate || 0,
+            hsnCode: productData.hsnCode?.trim() || null,
+            sku,
+            isActive: true,
+          },
+        });
+
+        // Add to existing names and SKUs set to prevent duplicates within the same import
+        existingNames.add(normalizedName);
+        existingSkus.add(sku.toLowerCase().trim());
+
+        // If includeStock and openingStock provided, create stock entry
+        if (
+          includeStock &&
+          productData.openingStock &&
+          productData.openingStock > 0
+        ) {
+          await this.prisma.stockLedger.create({
+            data: {
+              tenantId,
+              shopId,
+              shopProductId: createdProduct.id,
+              type: 'IN',
+              quantity: productData.openingStock,
+              referenceType: 'ADJUSTMENT',
+              note: 'Opening Stock (Import)',
+            },
+          });
+        }
+
+        results.success++;
+      } catch (error: any) {
+        results.failed++;
+        results.errors.push(
+          `Row ${rowNum}: ${error.message || 'Failed to import product'}`,
+        );
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Copy products (config only, no stock) from one shop to another within the same tenant
+   */
+  async copyFromShop(
+    tenantId: string,
+    sourceShopId: string,
+    targetShopId: string,
+    productIds: string[],
+  ): Promise<{ copied: number; skipped: number }> {
+    if (sourceShopId === targetShopId) {
+      throw new BadRequestException(
+        'Source and target shop cannot be the same',
+      );
+    }
+
+    // Verify both shops belong to this tenant
+    const [sourceShop, targetShop] = await Promise.all([
+      this.prisma.shop.findFirst({
+        where: { id: sourceShopId, tenantId },
+        select: { id: true },
+      }),
+      this.prisma.shop.findFirst({
+        where: { id: targetShopId, tenantId },
+        select: { id: true },
+      }),
+    ]);
+
+    if (!sourceShop) throw new NotFoundException('Source shop not found');
+    if (!targetShop) throw new NotFoundException('Target shop not found');
+
+    // Fetch selected products from source shop
+    const sourceProducts = await this.prisma.shopProduct.findMany({
+      where: {
+        id: { in: productIds },
+        shopId: sourceShopId,
+        tenantId,
+        isActive: true,
+      },
+      select: {
+        name: true,
+        category: true,
+        type: true,
+        salePrice: true,
+        costPrice: true,
+        gstRate: true,
+        hsnCode: true,
+        sku: true,
+        globalProductId: true,
+      },
+    });
+
+    if (sourceProducts.length === 0) {
+      throw new NotFoundException('No matching products found in source shop');
+    }
+
+    // Get existing product names in target shop to prevent duplicates
+    const existingInTarget = await this.prisma.shopProduct.findMany({
+      where: { tenantId, shopId: targetShopId, isActive: true },
+      select: { name: true },
+    });
+    const existingNames = new Set(
+      existingInTarget.map((p) => p.name.toLowerCase().trim()),
+    );
+
+    let copied = 0;
+    let skipped = 0;
+
+    for (const product of sourceProducts) {
+      if (existingNames.has(product.name.toLowerCase().trim())) {
+        skipped++;
+        continue;
+      }
+
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const randomPart = Math.random()
+        .toString(36)
+        .substring(2, 6)
+        .toUpperCase();
+
+      await this.prisma.shopProduct.create({
+        data: {
+          tenantId,
+          shopId: targetShopId,
+          globalProductId: product.globalProductId ?? undefined,
+          name: product.name,
+          category: product.category,
+          type: product.type,
+          salePrice: product.salePrice,
+          costPrice: product.costPrice,
+          gstRate: product.gstRate,
+          hsnCode: product.hsnCode,
+          sku: `COPY-${datePart}-${randomPart}`,
+          isActive: true,
+        },
+      });
+
+      existingNames.add(product.name.toLowerCase().trim());
+      copied++;
+    }
+
+    return { copied, skipped };
+  }
+
+  /**
+   * Export products to CSV format
+   * @param tenantId - Tenant ID
+   * @param shopId - Shop ID
+   * @param includeStock - Whether to include current stock levels
+   * @returns 2D array of CSV rows (first row is headers)
+   */
+  async exportProducts(
+    tenantId: string,
+    shopId: string,
+    includeStock: boolean = false,
+  ): Promise<string[][]> {
+    // Verify shop access
+    const shop = await this.prisma.shop.findFirst({
+      where: { id: shopId, tenantId },
+      select: { id: true, name: true },
+    });
+
+    if (!shop) {
+      throw new NotFoundException('Shop not found');
+    }
+
+    // Fetch products with stock entries if needed
+    const products = await this.prisma.shopProduct.findMany({
+      where: {
+        tenantId,
+        shopId,
+        isActive: true,
+      },
+      include: includeStock
+        ? {
+            stockEntries: {
+              select: {
+                type: true,
+                quantity: true,
+              },
+            },
+          }
+        : undefined,
+      orderBy: { name: 'asc' },
+    });
+
+    // Build CSV headers
+    const headers = [
+      'Product Name',
+      'Category',
+      'Product Type',
+      'Selling Price',
+      'Cost Price',
+      'GST Rate',
+      'HSN Code',
+      'SKU',
+    ];
+
+    if (includeStock) {
+      headers.push('Current Stock');
+    }
+
+    // Build CSV rows
+    const rows: string[][] = [headers];
+
+    for (const product of products) {
+      const row = [
+        product.name,
+        product.category || 'Uncategorized',
+        product.type || 'GOODS',
+        product.salePrice ? (product.salePrice / 100).toFixed(2) : '0', // Convert paise to rupees
+        product.costPrice ? (product.costPrice / 100).toFixed(2) : '',
+        product.gstRate?.toString() || '0',
+        product.hsnCode || '',
+        product.sku || '',
+      ];
+
+      if (includeStock) {
+        // Calculate current stock balance
+        const stockBalance =
+          (product as any).stockEntries?.reduce((sum: number, entry: any) => {
+            return entry.type === 'IN'
+              ? sum + entry.quantity
+              : sum - entry.quantity;
+          }, 0) || 0;
+
+        row.push(stockBalance.toString());
+      }
+
+      rows.push(row);
+    }
+
+    return rows;
   }
 }

@@ -11,6 +11,7 @@ interface WhatsAppQuickActionProps {
   source?: string;
   sourceId?: string;
   buttonLabel?: string;
+  whatsappAllowed?: boolean;
   onSuccess?: () => void;
 }
 
@@ -22,6 +23,7 @@ export function WhatsAppQuickAction({
   source,
   sourceId,
   buttonLabel = "📱 Send WhatsApp",
+  whatsappAllowed = true,
   onSuccess,
 }: WhatsAppQuickActionProps) {
   const [loading, setLoading] = useState(false);
@@ -51,8 +53,8 @@ export function WhatsAppQuickAction({
       setShowModal(false);
       onSuccess?.();
       alert("WhatsApp message sent successfully!");
-    } catch (err: any) {
-      setError(err.message || "Failed to send message");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to send message");
     } finally {
       setLoading(false);
     }
@@ -73,42 +75,55 @@ export function WhatsAppQuickAction({
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="bg-zinc-900 border border-white/10 rounded-xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-xl p-6 w-full max-w-md shadow-xl">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">Send WhatsApp Message</h3>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Send WhatsApp Message</h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="text-gray-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors"
               >
                 ✕
               </button>
             </div>
 
             {/* Customer Info */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-3 mb-4">
-              <p className="text-xs text-gray-400">To</p>
-              <p className="text-sm font-medium">
+            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-3 mb-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400">To</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-white">
                 {customerName || "Customer"} - {phone}
               </p>
             </div>
 
             {/* Message */}
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Message</label>
+              <label className="block text-sm font-medium mb-2 text-slate-900 dark:text-white">Message</label>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={5}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 resize-none"
+                disabled={!whatsappAllowed}
+                className={`w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-teal-400 resize-none ${!whatsappAllowed ? 'opacity-50 cursor-not-allowed' : ''}`}
+                placeholder={!whatsappAllowed ? "Upgrade to PRO to send manual messages" : ""}
               />
             </div>
 
+            {/* PRO Badge / Banner */}
+            {!whatsappAllowed && (
+              <div className="bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3 mb-4 flex items-center gap-3">
+                <span className="text-xl">⭐</span>
+                <div>
+                    <p className="text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase tracking-wider">Pro Feature</p>
+                    <p className="text-gray-600 dark:text-gray-300 text-[10px]">Manual messaging is available in the PRO plan.</p>
+                </div>
+              </div>
+            )}
+
             {/* Error */}
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4">
-                <p className="text-red-400 text-sm">⚠️ {error}</p>
+              <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg p-3 mb-4">
+                <p className="text-red-600 dark:text-red-400 text-sm">⚠️ {error}</p>
               </div>
             )}
 
@@ -117,14 +132,14 @@ export function WhatsAppQuickAction({
               <button
                 onClick={() => setShowModal(false)}
                 disabled={loading}
-                className="flex-1 bg-white/5 border border-white/10 text-white px-4 py-2 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+                className="flex-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white px-4 py-2 rounded-lg hover:bg-slate-200 dark:hover:bg-white/10 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSend}
-                disabled={loading || !message.trim()}
-                className="flex-1 bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors disabled:opacity-50"
+                disabled={loading || !message.trim() || !whatsappAllowed}
+                className={`flex-1 bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600 transition-colors disabled:opacity-50 ${!whatsappAllowed ? 'grayscale cursor-not-allowed' : ''}`}
               >
                 {loading ? "Sending..." : "Send"}
               </button>

@@ -1,5 +1,5 @@
-export type DocumentType = "INVOICE" | "JOBCARD" | "RECEIPT" | "VOUCHER";
-export type TemplateVariant = "CLASSIC" | "THERMAL" | "MODERN" | "SIMPLE" | "DETAILED";
+export type DocumentType = "INVOICE" | "JOBCARD" | "RECEIPT" | "VOUCHER" | "QUOTATION";
+export type TemplateVariant = "CLASSIC" | "THERMAL" | "MODERN" | "SIMPLE" | "DETAILED" | "PROFESSIONAL";
 
 // Header Customization Config
 export interface HeaderConfig {
@@ -7,6 +7,16 @@ export interface HeaderConfig {
   showLogo: boolean;
   showTagline: boolean;
   accentColor?: string; // Hex
+
+  // Professional A4 template header customization (Indian ERP style)
+  professionalHeader?: {
+    logoPosition: 'LEFT' | 'CENTER' | 'NONE';   // Where logo appears
+    contactDisplay: 'RIGHT' | 'BELOW_ADDRESS' | 'NONE'; // Cell/Email placement
+    showCell: boolean;     // Show phone in top-right corner
+    showEmail: boolean;    // Show email in top-right corner
+    showTaglineBanner: boolean; // Show tagline/distributor tagline strip
+    customTagline?: string; // Override tagline in the strip
+  };
 }
 
 export interface PrintDocumentData {
@@ -63,6 +73,11 @@ export interface PrintDocumentData {
     printDate: string;
     pricesInclusive: boolean; // Relevant for column headers
     isB2B: boolean;
+    accentColor?: string;
+    isIndianGSTInvoice?: boolean;
+    bankName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
   };
 }
 
@@ -74,12 +89,19 @@ export interface PrintLineItem {
   qty: number;
   rate: number; // Unit Price
   unit?: string;
-  
+  discount?: number;
+
+  // Serialized tracking
+  imeis?: string[];
+  serialNumbers?: string[];
+  warrantyDays?: number;
+  warrantyEndAt?: string; // ISO date string
+
   // Tax details per line (already calculated)
   taxableValue?: number;
   taxAmount?: number;
   taxRate?: number; // GST %
-  
+
   total: number; // Rate * Qty (+ Tax if exclusive)
 }
 

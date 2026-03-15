@@ -1,0 +1,318 @@
+import { useState, useCallback } from "react";
+import { type Party } from "@/services/parties.api";
+import { type ShopProduct } from "@/services/products.api";
+import { normalizeStateCode } from "@/lib/state-normalizer";
+
+export interface ProductItem {
+  id: string;
+  shopProductId: string;
+  productName: string;
+  hsnSac: string;
+  quantity: number;
+  rate: number;
+  gstRate: number;
+  gstAmount: number;
+  total: number;
+  imeis: string[];
+  serialNumbers: string[];
+  warrantyDays?: number;
+  /** Read-only. Computed server-side from warrantyDays + invoiceDate. Never send in payload. */
+  readonly warrantyEndAt?: string;
+  costPrice: number | null;
+}
+
+export type PaymentMode = "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT" | "MIXED";
+
+export interface SplitPayment {
+  id: string;
+  mode: Exclude<PaymentMode, "MIXED">;
+  amount: string;
+}
+
+interface UseInvoiceFormProps {
+  shopGstEnabled?: boolean;
+  shopState?: string; // Added shopState prop
+}
+
+export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoiceFormProps = {}) {
+  // Customer State
+  const [selectedCustomer, setSelectedCustomer] = useState<Party | null>(null);
+
+  // Invoice Details
+  const [invoiceDate, setInvoiceDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  
+  // Product Items
+  const [items, setItems] = useState<ProductItem[]>([]);
+  const [pricesIncludeTax, setPricesIncludeTax] = useState(true);
+
+  // Payment State
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("CASH");
+  const [splitPayments, setSplitPayments] = useState<SplitPayment[]>([
+    { id: crypto.randomUUID(), mode: "CASH", amount: "" },
+  ]);
+
+  // Loyalty Redemption State
+  const [loyaltyPoints, setLoyaltyPoints] = useState<number>(0);
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState<number>(0); // In Rupees
+  const [customerBalance, setCustomerBalance] = useState<number>(0);
+
+  // Actions
+  const addItem = useCallback(() => {
+    setItems((prev) => [
+      ...prev,
+      {
+        id: Math.random().toString(),
+        shopProductId: "",
+        productName: "",
+        hsnSac: "",
+        quantity: 1,
+        rate: 0,
+        gstRate: shopGstEnabled ? 18 : 0,
+        gstAmount: 0,
+        total: 0,
+        imeis: [],
+        serialNumbers: [],
+        costPrice: null,
+      },
+    ]);
+  }, [shopGstEnabled]);
+
+  const addItemWithDetails = useCallback((product: ShopProduct, imei?: string) => {
+    setItems((prev) => {
+      // Check if product already exists in items
+      const existingIdx = prev.findIndex(item => item.shopProductId === product.id);
+      
+      if (existingIdx > -1) {
+        const newItems = [...prev];
+        const item = { ...newItems[existingIdx] };
+        
+        if (imei && !item.imeis.includes(imei)) {
+          item.imeis = [...item.imeis, imei];
+          item.quantity = item.imeis.length;
+        } else if (!imei) {
+          item.quantity += 1;
+        }
+        
+        // Recalculate
+        const baseAmount = item.quantity * item.rate;
+        if (pricesIncludeTax) {
+          const divisor = 1 + item.gstRate / 100;
+          const base = baseAmount / divisor;
+          item.gstAmount = Math.round((baseAmount - base) * 100) / 100;
+          item.total = baseAmount;
+        } else {
+          item.gstAmount = Math.round(((baseAmount * item.gstRate) / 100) * 100) / 100;
+          item.total = Math.round((baseAmount + item.gstAmount) * 100) / 100;
+        }
+        
+        newItems[existingIdx] = item;
+        return newItems;
+      }
+
+      // New item
+      const quantity = 1;
+      const rate = (product.salePrice || 0) / 100;
+      const gstRate = shopGstEnabled ? product.gstRate || 18 : 0;
+      const baseAmount = quantity * rate;
+      let gstAmount = 0;
+      let total = 0;
+
+      if (pricesIncludeTax) {
+        const divisor = 1 + gstRate / 100;
+        const base = baseAmount / divisor;
+        gstAmount = Math.round((baseAmount - base) * 100) / 100;
+        total = baseAmount;
+      } else {
+        gstAmount = Math.round(((baseAmount * gstRate) / 100) * 100) / 100;
+        total = Math.round((baseAmount + gstAmount) * 100) / 100;
+      }
+
+      return [
+        ...prev,
+        {
+          id: Math.random().toString(),
+          shopProductId: product.id,
+          productName: product.name,
+          hsnSac: product.hsnCode || "",
+          quantity,
+          rate,
+          gstRate,
+          gstAmount,
+          total,
+          imeis: imei ? [imei] : [],
+          serialNumbers: [],
+          costPrice: product.costPrice ?? null,
+          warrantyDays: product.warrantyDays,
+        },
+      ];
+    });
+  }, [shopGstEnabled, pricesIncludeTax]);
+
+  const removeItem = useCallback((id: string) => {
+    setItems((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
+  const updateItem = useCallback(
+    (
+      id: string,
+      field: keyof ProductItem | "imeisText" | "serialNumbersText",
+      value: string | number | string[] | undefined,
+      products: ShopProduct[] = [],
+    ) => {
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.id === id) {
+            const updated: ProductItem = { ...item };
+            
+            if (field === "productName") updated.productName = value as string;
+            if (field === "hsnSac") updated.hsnSac = value as string;
+            if (field === "quantity") updated.quantity = value as number;
+            if (field === "rate") updated.rate = value as number;
+            if (field === "gstRate") updated.gstRate = value as number;
+            if (field === "shopProductId") updated.shopProductId = value as string;
+            if (field === "warrantyDays") updated.warrantyDays = value as number;
+
+            // Logic when product is selected
+            if (field === "shopProductId") {
+              const product = products.find((p) => p.id === value);
+              if (product) {
+                updated.productName = product.name;
+                updated.rate = (product.salePrice || 0) / 100;
+                updated.hsnSac = product.hsnCode || "";
+                updated.gstRate = shopGstEnabled ? product.gstRate || 18 : 0;
+                updated.costPrice = product.costPrice ?? null;
+                updated.warrantyDays = product.warrantyDays ?? undefined;
+                updated.imeis = []; // Reset IMEIs
+                updated.serialNumbers = []; // Reset Serials
+              }
+            }
+
+            // Recalculate totals
+            if (
+              field === "quantity" ||
+              field === "rate" ||
+              field === "gstRate" ||
+              field === "shopProductId"
+            ) {
+              const baseAmount = updated.quantity * updated.rate;
+
+              if (pricesIncludeTax) {
+                // Price includes GST
+                const divisor = 1 + updated.gstRate / 100;
+                const base = baseAmount / divisor;
+                updated.gstAmount = Math.round((baseAmount - base) * 100) / 100;
+                updated.total = baseAmount;
+              } else {
+                // Price excludes GST
+                updated.gstAmount =
+                  Math.round(((baseAmount * updated.gstRate) / 100) * 100) /
+                  100;
+                updated.total =
+                  Math.round((baseAmount + updated.gstAmount) * 100) / 100;
+              }
+            }
+
+            // Parse IMEIs from text
+            if (field === "imeisText") {
+              const text = value as string;
+              updated.imeis = text
+                .split(/\r?\n|,/)
+                .map((s) => s.trim())
+                .filter(Boolean);
+            }
+
+            // Parse Serial Numbers from text
+            if (field === "serialNumbersText") {
+              const text = value as string;
+              updated.serialNumbers = text
+                .split(/\r?\n|,/)
+                .map((s) => s.trim())
+                .filter(Boolean);
+            }
+
+            return updated;
+          }
+          return item;
+        }),
+      );
+    },
+    [shopGstEnabled, pricesIncludeTax],
+  );
+
+  // Recalculate all items when pricesIncludeTax changes
+  const togglePricesIncludeTax = useCallback((newValue: boolean) => {
+    setPricesIncludeTax(newValue);
+    setItems(prevItems => prevItems.map(item => {
+      const updated = { ...item };
+      const baseAmount = updated.quantity * updated.rate;
+      
+      if (newValue) {
+        // Price includes GST
+        const divisor = 1 + updated.gstRate / 100;
+        const base = baseAmount / divisor;
+        updated.gstAmount = Math.round((baseAmount - base) * 100) / 100;
+        updated.total = baseAmount;
+      } else {
+        // Price excludes GST
+        updated.gstAmount = Math.round(((baseAmount * updated.gstRate) / 100) * 100) / 100;
+        updated.total = Math.round((baseAmount + updated.gstAmount) * 100) / 100;
+      }
+      return updated;
+    }));
+  }, []);
+
+  // Summary Calculations
+  const subtotal = items.reduce((sum, item) => {
+    const base = pricesIncludeTax
+      ? item.quantity * item.rate - item.gstAmount
+      : item.quantity * item.rate;
+    return sum + base;
+  }, 0);
+
+  const totalGst = items.reduce((sum, item) => sum + item.gstAmount, 0);
+  const grandTotal = Math.max(0, subtotal + totalGst - loyaltyDiscount);
+  const shopStateNormalized = normalizeStateCode(shopState);
+  const customerStateNormalized = normalizeStateCode(selectedCustomer?.state);
+
+  const isInterState = Boolean(
+    shopGstEnabled &&
+    shopStateNormalized &&
+    customerStateNormalized &&
+    shopStateNormalized !== customerStateNormalized
+  );
+
+  return {
+    selectedCustomer,
+    setSelectedCustomer,
+    invoiceDate,
+    setInvoiceDate,
+    items,
+    setItems,
+    params: { pricesIncludeTax },
+    setPricesIncludeTax: togglePricesIncludeTax,
+    paymentMode,
+    setPaymentMode,
+    splitPayments,
+    setSplitPayments,
+    addItem,
+    addItemWithDetails,
+    removeItem,
+    updateItem,
+    totals: {
+      subtotal,
+      totalGst,
+      grandTotal,
+    },
+    loyalty: {
+      points: loyaltyPoints,
+      setPoints: setLoyaltyPoints,
+      discount: loyaltyDiscount,
+      setDiscount: setLoyaltyDiscount,
+      balance: customerBalance,
+      setBalance: setCustomerBalance,
+    },
+    isInterState,
+  };
+}

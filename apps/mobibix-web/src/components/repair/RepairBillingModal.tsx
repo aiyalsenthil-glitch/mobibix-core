@@ -1,0 +1,283 @@
+import { useState, useEffect } from "react";
+import { JobCard, RepairBillDto } from "@/services/jobcard.api";
+import { getCustomerLoyaltyBalance } from "@/services/loyalty.api";
+import { LoyaltyRedemptionInput } from "@/components/loyalty/LoyaltyRedemptionInput";
+import { CurrencyText } from "@/components/ui/currency-text";
+import { calculateGST } from "@/lib/gst.utils";
+
+interface RepairBillingModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: RepairBillDto) => Promise<void>;
+  job: JobCard;
+  shopId: string;
+}
+
+export function RepairBillingModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  job,
+  shopId,
+}: RepairBillingModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Form State
+  const [billingMode, setBillingMode] = useState<"WITH_GST" | "WITHOUT_GST">("WITHOUT_GST");
+  const [paymentMode, setPaymentMode] = useState("CASH");
+  const [serviceDescription, setServiceDescription] = useState("Repair Charges");
+  const [serviceAmount, setServiceAmount] = useState<number>(0);
+  const [serviceGstRate, setServiceGstRate] = useState<number>(18); // Default 18%
+  const [pricesIncludeTax, setPricesIncludeTax] = useState(false);
+  const [deliverImmediately, setDeliverImmediately] = useState(false);
+
+  // Loyalty State
+  const [loyaltyBalance, setLoyaltyBalance] = useState<number>(0);
+  const [pointsRedeemed, setPointsRedeemed] = useState<number>(0);
+  const [loyaltyDiscountPaise, setLoyaltyDiscountPaise] = useState<number>(0);
+
+  useEffect(() => {
+    if (isOpen && job) {
+      // ERP-Correct: Service Amount is independent of Parts
+      const initialService = job.estimatedCost || job.diagnosticCharge || 0;
+      setServiceAmount(initialService);
+
+      // Fetch loyalty balance if customer exists
+      if (job.customerId) {
+        getCustomerLoyaltyBalance(job.customerId).then(setLoyaltyBalance);
+      }
+    }
+  }, [isOpen, job]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const dto: RepairBillDto = {
+        shopId,
+        jobCardId: job.id,
+        billingMode,
+        paymentMode,
+        pricesIncludeTax,
+        services: [
+            {
+                description: serviceDescription,
+                amount: serviceAmount,
+                gstRate: billingMode === "WITH_GST" ? serviceGstRate : 0
+            }
+        ],
+        parts: job.parts?.map(p => ({
+            shopProductId: p.shopProductId,
+            quantity: p.quantity,
+            rate: (p.product?.salePrice || 0) / 100,
+            gstRate: billingMode === "WITH_GST" ? (p.product?.gstRate || 0) : 0
+        })),
+        deliverImmediately,
+        loyaltyPointsRedeemed: pointsRedeemed > 0 ? pointsRedeemed : undefined
+      };
+
+      await onSubmit(dto);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to generate bill");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Calculations for Preview (Math in Rupees for UI preview)
+  const partsTotal = job.parts?.reduce((sum, p) => sum + ((p.product?.salePrice || 0) / 100) * p.quantity, 0) || 0;
+  const serviceTotal = serviceAmount;
+  
+  let tax = 0;
+  if (billingMode === "WITH_GST") {
+      const serviceTaxCalculated = calculateGST(serviceAmount * 100, serviceGstRate);
+      const partsTaxAmount = job.parts?.reduce((sum, p) => {
+          const itemTax = calculateGST(((p.product?.salePrice || 0) / 100) * p.quantity * 100, p.product?.gstRate || 0);
+          return sum + itemTax.totalGST;
+      }, 0) || 0;
+      tax = (serviceTaxCalculated.totalGST + partsTaxAmount) / 100;
+  }
+  
+  const total = partsTotal + serviceTotal + tax;
+  const advance = (job.advancePaid || 0) / 100; // 🚨 FIX: Assume job.advancePaid is in Paise
+  const loyaltyDiscount = loyaltyDiscountPaise / 100;
+  const payable = Math.max(0, total - advance - loyaltyDiscount);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-stone-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6">
+          <h2 className="text-xl font-bold mb-6 text-slate-900 dark:text-white">Generate Repair Bill</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Billing Handling */}
+            <div className="space-y-4">
+                <h3 className="font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-white/10 pb-2">Billing Details</h3>
+                
+                <div>
+                    <label className="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Billing Mode</label>
+                    <select 
+                        value={billingMode}
+                        onChange={(e) => setBillingMode(e.target.value as "WITH_GST" | "WITHOUT_GST")}
+                        className="w-full p-2 border border-slate-200 dark:border-white/10 rounded bg-white dark:bg-black/20 text-slate-900 dark:text-white"
+                    >
+                        <option value="WITHOUT_GST">Estimate / Non-GST</option>
+                        <option value="WITH_GST">Tax Invoice (GST)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Payment Mode</label>
+                    <select 
+                        value={paymentMode}
+                        onChange={(e) => setPaymentMode(e.target.value)}
+                        className="w-full p-2 border border-slate-200 dark:border-white/10 rounded bg-white dark:bg-black/20 text-slate-900 dark:text-white"
+                    >
+                        <option value="CASH">Cash</option>
+                        <option value="UPI">UPI</option>
+                        <option value="CARD">Card</option>
+                        <option value="BANK">Bank Transfer</option>
+                    </select>
+                </div>
+
+                <div className="pt-2">
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                        <input 
+                            type="checkbox"
+                            checked={deliverImmediately}
+                            onChange={(e) => setDeliverImmediately(e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                        />
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-teal-600 transition-colors">
+                            Deliver job immediately
+                        </span>
+                    </label>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                        If checked, status will be <strong>DELIVERED</strong>. Otherwise <strong>READY</strong>.
+                    </p>
+                </div>
+            </div>
+
+            {/* Service Charges */}
+            <div className="space-y-4">
+                <h3 className="font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-white/10 pb-2">Labor / Service</h3>
+                
+                <div>
+                    <label className="block text-sm font-medium mb-1 dark:text-gray-400">Description</label>
+                    <input 
+                        type="text"
+                        value={serviceDescription}
+                        onChange={(e) => setServiceDescription(e.target.value)}
+                        className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className="block text-sm font-medium mb-1 dark:text-gray-400">Amount (₹)</label>
+                        <input 
+                            type="number"
+                            min="0"
+                            value={serviceAmount}
+                            onChange={(e) => setServiceAmount(parseFloat(e.target.value) || 0)}
+                            className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                        />
+                    </div>
+                     {billingMode === "WITH_GST" && (
+                        <div>
+                            <label className="block text-sm font-medium mb-1 dark:text-gray-400">GST %</label>
+                            <input 
+                                type="number"
+                                value={serviceGstRate}
+                                onChange={(e) => setServiceGstRate(parseFloat(e.target.value) || 0)}
+                                className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                            />
+                        </div>
+                    )}
+                </div>
+            </div>
+          </div>
+
+          {/* Parts Summary */}
+          <div className="mb-6 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+             <h3 className="font-semibold text-sm text-gray-500 uppercase mb-3">Bill Summary</h3>
+             
+             <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                    <span>Parts Cost ({job.parts?.length || 0} items)</span>
+                    <CurrencyText amount={partsTotal} isPaise={false} />
+                </div>
+                <div className="flex justify-between">
+                    <span>Service Charges</span>
+                    <CurrencyText amount={serviceTotal} isPaise={false} />
+                </div>
+                {billingMode === "WITH_GST" && (
+                    <div className="flex justify-between text-gray-500">
+                        <span>GST (Approx)</span>
+                        <CurrencyText amount={tax} isPaise={false} />
+                    </div>
+                )}
+                 <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2 dark:text-white">
+                    <span>Total Bill</span>
+                    <CurrencyText amount={total} isPaise={false} />
+                </div>
+                
+                 {advance > 0 && (
+                      <div className="flex justify-between text-teal-600 font-medium pt-2">
+                         <span>Less: Advance Paid</span>
+                         <CurrencyText amount={advance} isPaise={false} />
+                     </div>
+                 )}
+                 {loyaltyDiscount > 0 && (
+                      <div className="flex justify-between text-blue-600 font-medium pt-1">
+                         <span>Less: Loyalty Discount</span>
+                         <CurrencyText amount={loyaltyDiscount} isPaise={false} />
+                     </div>
+                 )}
+                  <div className="flex justify-between font-bold text-xl text-indigo-600 pt-2 border-t border-dashed border-gray-300 mt-2">
+                     <span>Payable Now</span>
+                     <CurrencyText amount={payable} isPaise={false} />
+                 </div>
+              </div>
+           </div>
+
+           {/* Loyalty Redemption */}
+           {job.customerId && (
+              <div className="mb-6">
+                <LoyaltyRedemptionInput 
+                  customerId={job.customerId}
+                  balance={loyaltyBalance}
+                  invoiceSubTotal={(partsTotal + serviceTotal) * 100} // Paisa
+                  shopId={shopId}
+                  onRedemptionChange={setPointsRedeemed}
+                  onDiscountChange={setLoyaltyDiscountPaise}
+                />
+              </div>
+           )}
+
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {isSubmitting ? "Generating..." : "Generate Bill & Deliver"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

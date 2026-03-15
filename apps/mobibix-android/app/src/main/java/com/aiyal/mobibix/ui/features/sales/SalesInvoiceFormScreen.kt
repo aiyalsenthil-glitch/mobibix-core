@@ -1,0 +1,221 @@
+package com.aiyal.mobibix.ui.features.sales
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.aiyal.mobibix.data.network.CreateInvoiceRequest
+import com.aiyal.mobibix.data.network.InvoiceItemRequest
+import com.aiyal.mobibix.data.network.PaymentMethodRequest
+import kotlin.math.roundToInt
+
+data class PaymentMethodUi(
+    val mode: String,
+    val amount: Double,
+    val transactionRef: String? = null
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SalesInvoiceFormScreen(
+    shopId: String,
+    navController: NavController,
+    viewModel: SalesViewModel = hiltViewModel()
+) {
+    val products by viewModel.products.collectAsState()
+    val gstEnabled by viewModel.gstEnabled.collectAsState()
+    var customerName by remember { mutableStateOf("") }
+    var customerPhone by remember { mutableStateOf("") }
+    var paymentMode by remember { mutableStateOf("CASH") }
+    var isSplitPayment by remember { mutableStateOf(false) }
+    val paymentMethods = remember { mutableStateListOf<PaymentMethodUi>() }
+
+    val items = remember { mutableStateListOf<InvoiceItemUi>() }
+
+    val saving by viewModel.saving.collectAsState() // Correctly collect the state
+
+    LaunchedEffect(shopId) {
+        if (shopId.isNotBlank()) {
+            viewModel.loadInitialData(shopId)
+        }
+    }
+
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("New Sale") }) }
+    ) { padding ->
+
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+
+            OutlinedTextField(value = customerName, onValueChange = { customerName = it }, label = { Text("Customer Name (optional)") }, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(value = customerPhone, onValueChange = { customerPhone = it }, label = { Text("Customer Phone (optional)") }, modifier = Modifier.fillMaxWidth())
+            
+            Spacer(Modifier.height(16.dp))
+            
+            if (gstEnabled) {
+                Text("GST billing enabled", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+            } else {
+                Text("GST billing not applicable", color = MaterialTheme.colorScheme.outline)
+            }
+            Spacer(Modifier.height(16.dp))
+
+            Text("Items", style = MaterialTheme.typography.titleMedium)
+            items.forEachIndexed { index, item ->
+                InvoiceItemRow(
+                    item = item,
+                    products = products,
+                    onRemove = { items.removeAt(index) },
+                    onItemChange = { updatedItem -> items[index] = updatedItem },
+                    gstEnabled = gstEnabled
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = { items.add(InvoiceItemUi(gstRate = 0.0)) }, modifier = Modifier.fillMaxWidth()) {
+                Text("+ Add Item")
+            }
+            
+            Spacer(Modifier.height(24.dp))
+            
+            val subTotal = items.sumOf { it.quantity * it.rate }
+            val gstTotal = items.sumOf {
+                val rate = if (it.gstRate == -1.0) it.customGstRate ?: 0.0 else it.gstRate
+                it.quantity * it.rate * rate / 100.0
+            }
+            val grandTotal = subTotal + gstTotal
+
+            Text("Sub Total: ₹${"%,.2f".format(subTotal)}", style = MaterialTheme.typography.bodyLarge)
+            if (gstEnabled) {
+                Text("GST: ₹${"%,.2f".format(gstTotal)}", style = MaterialTheme.typography.bodyLarge)
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Text("Total: ₹${"%,.2f".format(grandTotal)}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            
+            Spacer(Modifier.height(16.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = isSplitPayment, onCheckedChange = { 
+                    isSplitPayment = it
+                    if (it && paymentMethods.isEmpty()) {
+                        paymentMethods.add(PaymentMethodUi("CASH", grandTotal))
+                    }
+                })
+                Text("Split Payment")
+            }
+
+            if (!isSplitPayment) {
+                Text("Payment Mode", style = MaterialTheme.typography.titleMedium)
+                listOf("CASH", "UPI", "CARD", "BANK").forEach { mode ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = paymentMode == mode, onClick = { paymentMode = mode })
+                        Text(mode)
+                    }
+                }
+            } else {
+                Text("Payment Methods", style = MaterialTheme.typography.titleMedium)
+                paymentMethods.forEachIndexed { index, method ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                        Text(method.mode, modifier = Modifier.weight(1f))
+                        OutlinedTextField(
+                            value = method.amount.toString(),
+                            onValueChange = { 
+                                val newAmount = it.toDoubleOrNull() ?: 0.0
+                                paymentMethods[index] = method.copy(amount = newAmount)
+                            },
+                            modifier = Modifier.width(120.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                        )
+                        IconButton(onClick = { paymentMethods.removeAt(index) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Remove")
+                        }
+                    }
+                }
+                
+                var showAddMenu by remember { mutableStateOf(false) }
+                Button(onClick = { showAddMenu = true }) { Text("+ Add Method") }
+                // Implementation of Dropdown for adding modes omitted for brevity in this chunk
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            Button(
+                enabled = items.none { it.productId == null } && items.isNotEmpty() && !saving,
+                onClick = {
+                    val request = CreateInvoiceRequest(
+                        shopId = shopId,
+                        customerName = customerName.takeIf { it.isNotBlank() },
+                        customerPhone = customerPhone.takeIf { it.isNotBlank() },
+                        paymentMode = if (isSplitPayment) null else paymentMode,
+                        paymentMethods = if (isSplitPayment) paymentMethods.map { 
+                            PaymentMethodRequest(it.mode, it.amount) 
+                        } else null,
+                        items = items.map {
+                            val appliedGstRate = if (it.gstRate == -1.0) it.customGstRate ?: 0.0 else it.gstRate
+                            InvoiceItemRequest(
+                                shopProductId = it.productId!!,
+                                quantity = it.quantity,
+                                rate = it.rate,          // Already in Rupees (salePrice/100)
+                                gstRate = appliedGstRate, // Double — no Float precision issues
+                                imeis = if (it.isSerialized) it.imeis.filter { i -> i.isNotBlank() } else null
+                                // lineTotal intentionally omitted — not in backend DTO
+                            )
+                        }
+                    )
+                    viewModel.createInvoice(
+                        request = request, 
+                        onSuccess = { navController.popBackStack() }, 
+                        onError = { /* TODO: Show snackbar */ }
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                if (saving) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Text("Create Invoice")
+                }
+            }
+        }
+    }
+}

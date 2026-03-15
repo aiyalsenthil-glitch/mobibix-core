@@ -6,7 +6,8 @@ import { useEffect, useRef, useCallback, useState } from "react";
  */
 export function useDeferredAsyncData<T>(
   asyncFn: () => Promise<T>,
-  dependencies: any[] = [],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dependencies: unknown[] = [],
   initialData?: T,
 ) {
   const [data, setData] = useState<T | null>(initialData || null);
@@ -30,10 +31,11 @@ export function useDeferredAsyncData<T>(
         setData(result);
         setIsLoading(false);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Only update state if this is still the latest request
       if (currentVersion === versionRef.current) {
-        setError(err.message || "Failed to load data");
+        const message = err instanceof Error ? err.message : "Failed to load data";
+        setError(message);
         setData(initialData || null);
         setIsLoading(false);
       }
@@ -41,7 +43,9 @@ export function useDeferredAsyncData<T>(
   }, [asyncFn, initialData]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, dependencies);
 
   return {

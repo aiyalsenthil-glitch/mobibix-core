@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
   createJobCard,
   updateJobCard,
@@ -8,12 +8,16 @@ import {
   type JobCard,
   type UpdateJobCardDto,
 } from "@/services/jobcard.api";
+import { listStaff, type Staff } from "@/services/staff.api";
 import {
   getCustomer,
-  searchCustomers,
-  type Customer,
+  // searchCustomers,
+  // type Customer,
 } from "@/services/customers.api";
 import { CustomerModal } from "../customers/CustomerModal";
+import { PartySelector } from "@/components/common/PartySelector";
+import { type Party } from "@/services/parties.api";
+import { useShop } from "@/context/ShopContext";
 
 interface JobCardModalProps {
   shopId: string;
@@ -22,9 +26,7 @@ interface JobCardModalProps {
 }
 
 type StepFormData = {
-  customerName: string;
-  customerPhone: string;
-  customerAltPhone: string;
+  // customerName/Phone preserved for fallbacks if needed but relying on selectedParty
   deviceType: string;
   deviceBrand: string;
   deviceModel: string;
@@ -37,6 +39,7 @@ type StepFormData = {
   advancePaid: string;
   billType: string;
   estimatedDelivery: string;
+  assignedToUserId: string;
 };
 
 export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
@@ -45,21 +48,15 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [customerId, setCustomerId] = useState<string | null>(
-    (jobCard?.customerId as string | null | undefined) ?? null,
-  );
-  const [customerSummary, setCustomerSummary] = useState<Customer | null>(null);
-  const [searchQuery, setSearchQuery] = useState(jobCard?.customerPhone || "");
-  const [searchResults, setSearchResults] = useState<Customer[]>([]);
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedParty, setSelectedParty] = useState<Party | null>(null);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+
+  useEffect(() => {
+    listStaff().then(setStaffList).catch(console.error);
+  }, []);
 
   const [formData, setFormData] = useState<StepFormData>({
-    customerName: jobCard?.customerName || "",
-    customerPhone: jobCard?.customerPhone || "",
-    customerAltPhone: jobCard?.customerAltPhone || "",
     deviceType: jobCard?.deviceType || "",
     deviceBrand: jobCard?.deviceBrand || "",
     deviceModel: jobCard?.deviceModel || "",
@@ -67,23 +64,59 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
     devicePassword: jobCard?.devicePassword || "",
     customerComplaint: jobCard?.customerComplaint || "",
     physicalCondition: jobCard?.physicalCondition || "",
-    estimatedCost: jobCard?.estimatedCost?.toString() || "",
-    diagnosticCharge: jobCard?.diagnosticCharge?.toString() || "",
-    advancePaid: jobCard?.advancePaid?.toString() || "",
+    estimatedCost:
+      jobCard?.estimatedCost !== undefined && !isNaN(jobCard.estimatedCost)
+        ? jobCard.estimatedCost.toString()
+        : "",
+    diagnosticCharge:
+      jobCard?.diagnosticCharge !== undefined && !isNaN(jobCard.diagnosticCharge)
+        ? jobCard.diagnosticCharge.toString()
+        : "",
+    advancePaid:
+      jobCard?.advancePaid !== undefined && !isNaN(jobCard.advancePaid)
+        ? jobCard.advancePaid.toString()
+        : "",
     billType: jobCard?.billType || "WITHOUT_GST",
     estimatedDelivery: jobCard?.estimatedDelivery
       ? new Date(jobCard.estimatedDelivery).toISOString().split("T")[0]
       : "",
+    assignedToUserId: jobCard?.assignedToUserId || "",
   });
+
+  const { selectedShop: shop } = useShop();
+
+  // STRICT COMPLIANCE: Force WITH_GST if shop has GST enabled
+  useEffect(() => {
+     if (shop?.gstEnabled && formData.billType !== 'WITH_GST') {
+         setFormData(prev => ({ ...prev, billType: 'WITH_GST' }));
+     }
+  }, [shop, formData.billType]);
 
   useEffect(() => {
     const loadCustomer = async () => {
       if (jobCard?.customerId) {
         try {
           const c = await getCustomer(jobCard.customerId);
-          setCustomerSummary(c);
-          setCustomerId(c.id);
-          setSearchQuery(c.phone);
+          // Map Customer to Party structure for compatibility in state if feasible
+          // Since getCustomer returns a legacy Customer, and we want Party...
+          // effectively they share common fields id, name, phone.
+          if (c) {
+            const party: Party = {
+              id: c.id,
+              name: c.name,
+              phone: c.phone,
+              email: c.email,
+              state: c.state,
+              partyType: c.partyType,
+              businessType: c.businessType,
+              gstNumber: c.gstNumber,
+              loyaltyPoints: c.loyaltyPoints,
+              isActive: c.isActive,
+              createdAt: c.createdAt,
+              updatedAt: c.updatedAt,
+            };
+            setSelectedParty(party);
+          }
         } catch {
           //
         }
@@ -91,57 +124,6 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
     };
     loadCustomer();
   }, [jobCard?.customerId]);
-
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (searchQuery.length >= 2 && !customerId) {
-        setSearchLoading(true);
-        try {
-          const results = await searchCustomers(searchQuery, 5);
-          setSearchResults(results);
-          setShowSearchResults(true);
-        } catch {
-          setSearchResults([]);
-        } finally {
-          setSearchLoading(false);
-        }
-      } else {
-        setSearchResults([]);
-        setShowSearchResults(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, customerId]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        searchRef.current &&
-        !searchRef.current.contains(event.target as Node)
-      ) {
-        setShowSearchResults(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleSelectCustomer = (customer: Customer) => {
-    setCustomerId(customer.id);
-    setCustomerSummary(customer);
-    setSearchQuery(customer.phone);
-    setShowSearchResults(false);
-  };
-
-  const handleClearCustomer = () => {
-    setCustomerId(null);
-    setCustomerSummary(null);
-    setSearchQuery("");
-    setSearchResults([]);
-    setShowSearchResults(false);
-  };
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -156,9 +138,15 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
     setIsSubmitting(true);
     setError(null);
 
-    const hasCustomerId = !!customerId;
-    if (!hasCustomerId && (!formData.customerName || !formData.customerPhone)) {
-      setError("Please select a customer or enter name and phone");
+    // If edit, we might keep existing customerId if not changed, 
+    // but if changed, we need selectedParty.
+    // If Creating, we need selectedParty.
+    
+    // For edit mode, if selectedParty is null but we had an original jobCard.customerId?
+    // The useEffect above sets selectedParty. So we should rely on selectedParty.
+    
+    if (!selectedParty) {
+      setError("Please select a customer");
       setIsSubmitting(false);
       return;
     }
@@ -177,24 +165,22 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
       diagnosticCharge: formData.diagnosticCharge
         ? parseFloat(formData.diagnosticCharge)
         : undefined,
-      advancePaid: formData.advancePaid
-        ? parseFloat(formData.advancePaid)
-        : undefined,
+      // Strict Accounting: Cannot update advancePaid directly in edit mode
+      advancePaid:
+        !isEdit && formData.advancePaid
+          ? parseFloat(formData.advancePaid)
+          : undefined,
       billType: formData.billType,
       estimatedDelivery: formData.estimatedDelivery || undefined,
+      assignedToUserId: formData.assignedToUserId || undefined,
     };
 
-    const payload: CreateJobCardDto | UpdateJobCardDto = hasCustomerId
-      ? {
-          customerId,
-          ...basePayload,
-        }
-      : {
-          customerName: formData.customerName?.trim(),
-          customerPhone: formData.customerPhone?.trim(),
-          customerAltPhone: formData.customerAltPhone?.trim() || undefined,
-          ...basePayload,
-        };
+    const payload: CreateJobCardDto | UpdateJobCardDto = {
+        customerId: selectedParty.id,
+        customerName: selectedParty.name,
+        customerPhone: selectedParty.phone,
+        ...basePayload,
+    };
 
     try {
       if (isEdit) {
@@ -203,8 +189,8 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
         await createJobCard(shopId, payload as CreateJobCardDto);
       }
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to save job card");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save job card");
     } finally {
       setIsSubmitting(false);
     }
@@ -281,150 +267,37 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
                     Customer Information
                   </h3>
 
-                  {!customerId && !customerSummary ? (
-                    <div className="space-y-4" ref={searchRef}>
-                      <div className="relative">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Search Customer
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => {
-                              setSearchQuery(e.target.value);
-                              if (e.target.value.length >= 2) {
-                                setShowSearchResults(true);
-                              }
-                            }}
-                            onFocus={() => {
-                              if (
-                                searchQuery.length >= 2 &&
-                                searchResults.length > 0
-                              ) {
-                                setShowSearchResults(true);
-                              }
-                            }}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                            placeholder="Type name or phone (2+ chars)..."
-                          />
-                          {searchLoading && (
-                            <div className="absolute right-4 top-3.5 text-teal-600 animate-spin">
-                              ⟳
+                  {/* Customer Selection */}
+                  <div className="space-y-4">
+                      {selectedParty ? (
+                        <div className="bg-teal-50 border-2 border-teal-200 rounded-lg p-4">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="font-bold text-lg text-gray-900">
+                                {selectedParty.name}
+                              </div>
+                              <div className="text-sm text-gray-600 mt-1">
+                                {selectedParty.phone}
+                              </div>
                             </div>
-                          )}
-                        </div>
-
-                        {showSearchResults && searchResults.length > 0 && (
-                          <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
-                            {searchResults.map((customer) => (
-                              <button
-                                key={customer.id}
-                                type="button"
-                                onClick={() => handleSelectCustomer(customer)}
-                                className="w-full text-left px-4 py-3 hover:bg-teal-50 border-b border-gray-200 last:border-b-0 transition"
-                              >
-                                <div className="font-semibold text-gray-900">
-                                  {customer.name}
-                                </div>
-                                <div className="text-sm text-gray-600">
-                                  {customer.phone} • {customer.state}
-                                </div>
-                              </button>
-                            ))}
                             <button
-                              type="button"
-                              onClick={() => {
-                                setShowAddCustomer(true);
-                                setShowSearchResults(false);
-                              }}
-                              className="w-full text-left px-4 py-3 bg-teal-50 hover:bg-teal-100 text-teal-600 font-semibold border-t border-gray-200 transition"
-                            >
-                              + Add New Customer
-                            </button>
-                          </div>
-                        )}
-
-                        {showSearchResults &&
-                          searchResults.length === 0 &&
-                          searchQuery.length >= 2 &&
-                          !searchLoading && (
-                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg z-10">
-                              <button
                                 type="button"
-                                onClick={() => {
-                                  setShowAddCustomer(true);
-                                  setShowSearchResults(false);
-                                }}
-                                className="w-full text-left px-4 py-3 bg-teal-50 hover:bg-teal-100 text-teal-600 font-semibold transition"
+                                onClick={() => setSelectedParty(null)}
+                                className="text-teal-600 hover:text-teal-700 font-semibold text-sm px-3 py-1 hover:bg-teal-100 rounded transition"
                               >
-                                + Add New Customer
+                                Change
                               </button>
-                            </div>
-                          )}
-                      </div>
-
-                      <div className="relative py-4">
-                        <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-gray-300"></div>
-                        </div>
-                        <div className="relative flex justify-center text-sm">
-                          <span className="px-2 bg-white text-gray-600 font-semibold">
-                            Or Enter Manually
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input
-                          type="text"
-                          name="customerName"
-                          value={formData.customerName}
-                          onChange={handleChange}
-                          className="px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                          placeholder="Customer Name"
-                        />
-                        <input
-                          type="tel"
-                          name="customerPhone"
-                          value={formData.customerPhone}
-                          onChange={handleChange}
-                          className="px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                          placeholder="Phone Number"
-                        />
-                        <input
-                          type="tel"
-                          name="customerAltPhone"
-                          value={formData.customerAltPhone}
-                          onChange={handleChange}
-                          className="md:col-span-2 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
-                          placeholder="Alternate Phone (optional)"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-teal-50 border-2 border-teal-200 rounded-lg p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="font-bold text-lg text-gray-900">
-                            {customerSummary?.name}
-                          </div>
-                          <div className="text-sm text-gray-600 mt-1">
-                            {customerSummary?.phone} • {customerSummary?.state}
                           </div>
                         </div>
-                        {!jobCard?.customerId && (
-                          <button
-                            type="button"
-                            onClick={handleClearCustomer}
-                            className="text-teal-600 hover:text-teal-700 font-semibold text-sm px-3 py-1 hover:bg-teal-100 rounded transition"
-                          >
-                            Change
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                      ) : (
+                         <PartySelector
+                            type="CUSTOMER"
+                            onSelect={setSelectedParty}
+                            placeholder="Type name or phone (2+ chars)..."
+                            onCreateNew={() => setShowAddCustomer(true)}
+                          />
+                      )}
+                  </div>
                 </div>
               </div>
             )}
@@ -616,10 +489,18 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
                         onChange={handleChange}
                         step="0.01"
                         min="0"
-                        className="w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
+                        disabled={isEdit}
+                        className={`w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition ${
+                          isEdit ? "bg-gray-100 cursor-not-allowed" : ""
+                        }`}
                         placeholder="0.00"
                       />
                     </div>
+                    {isEdit && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Manage advance in Financials tab
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -628,15 +509,22 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Bill Type
                     </label>
-                    <select
-                      name="billType"
-                      value={formData.billType}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
-                    >
-                      <option value="WITHOUT_GST">Without GST</option>
-                      <option value="WITH_GST">With GST (18%)</option>
-                    </select>
+                    {shop?.gstEnabled ? (
+                         <div className="w-full px-4 py-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed flex items-center justify-between">
+                            <span>Tax Invoice (GST)</span>
+                            <span className="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded">LOCKED</span>
+                         </div>
+                    ) : (
+                        <select
+                          name="billType"
+                          value={formData.billType}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
+                        >
+                          <option value="WITHOUT_GST">Without GST</option>
+                          <option value="WITH_GST">With GST (18%)</option>
+                        </select>
+                    )}
                   </div>
 
                   <div>
@@ -651,6 +539,25 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
                     />
                   </div>
+                </div>
+
+                <div>
+                   <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Assign Technician
+                   </label>
+                   <select
+                      name="assignedToUserId"
+                      value={formData.assignedToUserId}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
+                   >
+                      <option value="">-- Unassigned --</option>
+                      {staffList.filter(s => s.status === 'ACTIVE').map((staff) => (
+                          <option key={staff.id} value={staff.id}>
+                              {staff.name || staff.email} ({staff.role})
+                          </option>
+                      ))}
+                   </select>
                 </div>
               </div>
             )}
@@ -704,8 +611,6 @@ export function JobCardModal({ shopId, jobCard, onClose }: JobCardModalProps) {
         <CustomerModal
           onClose={() => {
             setShowAddCustomer(false);
-            // The search useEffect will automatically trigger when searchQuery changes
-            // This will refresh results after customer creation
           }}
         />
       )}

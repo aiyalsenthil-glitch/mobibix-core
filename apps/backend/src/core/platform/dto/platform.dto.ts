@@ -3,12 +3,12 @@ import { WhatsAppFeature } from '../../billing/whatsapp-rules';
 
 export class UpdatePlanDto {
   @IsOptional()
-  @IsInt()
-  maxMembers?: number;
+  @IsBoolean()
+  isActive?: boolean;
 
   @IsOptional()
   @IsBoolean()
-  isActive?: boolean;
+  isPublic?: boolean;
 }
 
 export class CreatePlanFeatureDto {

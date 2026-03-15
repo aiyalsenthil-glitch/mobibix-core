@@ -1,15 +1,22 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
+import type { Shop } from "./shops.api";
+import type { ShopProduct } from "./products.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
 
 export type PaymentMode = "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT";
-export type InvoiceStatus = "PAID" | "CREDIT" | "CANCELLED";
+export type InvoiceStatus = "DRAFT" | "FINAL" | "PAID" | "PARTIALLY_PAID" | "CREDIT" | "VOIDED";
 export type PaymentStatus = "PAID" | "PARTIALLY_PAID" | "UNPAID" | "CANCELLED";
+
+export type InvoiceType = "SALES" | "REPAIR";
 
 export interface SalesInvoice {
   id: string;
+  tenantId?: string;
   shopId: string;
+  shopName?: string;
+  customerId?: string;
   invoiceNumber: string;
   totalAmount: number;
   paymentMode: PaymentMode;
@@ -28,8 +35,21 @@ export interface SalesInvoice {
   paymentStatus?: PaymentStatus;
   customerState?: string;
   customerGstin?: string;
+  shopGstin?: string;        // P0 GST: seller GSTIN snapshot — returned by getInvoiceDetails()
   createdAt: string | Date;
   updatedAt: string | Date;
+
+  // Tier 2 Fields
+  financialYear?: string;
+  cashAmount?: number;
+  upiAmount?: number;
+  cardAmount?: number;
+  invoiceType?: InvoiceType;
+  isGstApplicable?: boolean;
+  jobCardId?: string;
+  voidReason?: string;
+  voidedAt?: string | Date;
+
   payments?: {
     id: string;
     amount: number;
@@ -38,6 +58,14 @@ export interface SalesInvoice {
     createdAt: string | Date;
     receiptNumber: string;
   }[];
+  jobCard?: {
+    jobNumber: string;
+    deviceBrand: string;
+    deviceModel: string;
+    deviceSerial: string | null;
+    problem: string;
+  };
+  whatsappSent?: boolean;
 }
 
 export interface InvoiceItemDetail {
@@ -49,15 +77,34 @@ export interface InvoiceItemDetail {
   gstAmount?: number;
   lineTotal?: number;
   taxableValue?: number; // Accurate taxable value (with 2 decimal precision)
+  product?: {
+    id: string;
+    name: string;
+  };
+  itemName?: string;
+  imeis?: string[];
+  serialNumbers?: string[];
+  warrantyDays?: number;
+
+  // Tier 2 Fields
+  cgstRate?: number;
+  sgstRate?: number;
+  igstRate?: number;
+  cgstAmount?: number;
+  sgstAmount?: number;
+  igstAmount?: number;
 }
 
 export interface InvoiceItem {
   shopProductId: string;
   quantity: number;
-  rate: number;
-  gstRate: number; // GST rate percentage (0, 5, 18, 28, or custom)
-  gstAmount: number; // Calculated GST amount
-  imeis?: string[]; // Serialized IMEIs when applicable
+  rate: number;             // Unit price in Rupees
+  gstRate: number;          // GST rate as percentage (0, 5, 12, 18, 28)
+  gstAmount?: number;       // Optional preview value — backend recalculates; do not rely on this
+  imeis?: string[];         // IMEI numbers for serialized products
+  warrantyDays?: number;    // Warranty duration; backend computes warrantyEndAt server-side
+  serialNumbers?: string[]; // Non-IMEI serial numbers
+  hsnCode?: string;         // HSN/SAC code override
 }
 
 export interface CreateInvoiceDto {
@@ -65,44 +112,89 @@ export interface CreateInvoiceDto {
   customerId?: string;
   customerName: string;
   customerPhone?: string;
-  customerState?: string;
-  customerGstin?: string;
-  paymentMode: PaymentMode;
+  customerState?: string;   // Raw state name or 2-letter code; backend normalises
+  customerGstin?: string;   // Buyer GSTIN — validated as 15-char format by backend
+  invoiceDate?: string;     // ISO date string (e.g. '2026-02-28'); defaults to now
+  paymentMode?: PaymentMode; // Optional — use paymentMethods[] for split payments
   items: InvoiceItem[];
   pricesIncludeTax?: boolean;
+  paymentMethods?: {
+    mode: PaymentMode;
+    amount: number;
+    transactionRef?: string;
+  }[];
+  loyaltyPointsRedeemed?: number;
+  quotationId?: string;
 }
 
 /**
  * List all sales invoices for a shop (sorted by latest first on backend)
  */
-export async function listInvoices(shopId: string): Promise<SalesInvoice[]> {
+export async function listInvoices(
+  shopId: string,
+  fromJobCard?: boolean,
+  options?: {
+    skip?: number;
+    take?: number;
+    status?: string;
+    customerName?: string;
+  },
+): Promise<
+  | SalesInvoice[]
+  | { data: SalesInvoice[]; total: number; skip: number; take: number }
+> {
+  const startTime = Date.now();
   try {
-    const response = await authenticatedFetch(
-      `/mobileshop/sales/invoices?shopId=${shopId}`,
-    );
+    const query = new URLSearchParams({ shopId });
+    if (fromJobCard) query.append("fromJobCard", "true");
+    if (options?.skip !== undefined)
+      query.append("skip", options.skip.toString());
+    if (options?.take !== undefined)
+      query.append("take", options.take.toString());
+    if (options?.status) query.append("status", options.status);
+    if (options?.customerName) query.append("search", options.customerName); // Search already covers name
+
+    const url = `/mobileshop/sales/invoices?${query.toString()}`;
+
+    const fetchStart = Date.now();
+    const response = await authenticatedFetch(url);
 
     if (!response.ok) {
       let errorMessage = "Failed to fetch invoices";
       try {
-        const error = await response.json();
-        errorMessage = error.message || errorMessage;
-        console.error("API Error:", {
-          status: response.status,
-          message: errorMessage,
-          shopId,
-        });
+        const error = await extractData(response);
+        errorMessage = (error as any).message || errorMessage;
       } catch (e) {
-        console.error("Failed to parse error response:", e);
+        // ignore json parse error
       }
-      throw new Error(errorMessage);
+      console.error("API Error:", {
+        status: response.status,
+        message: errorMessage,
+        shopId,
+      });
+      return [];
     }
 
-    const data = await response.json();
-    // Backend returns { invoices: [...], empty: false }
-    return data.invoices || [];
-  } catch (error: any) {
-    console.error("List invoices error:", error);
-    throw error;
+    const data: any = await extractData(response);
+
+    // Handle paginated response (with pagination object)
+    if (data.data && data.pagination) {
+      return {
+        data: data.data,
+        total: data.pagination.total,
+        skip: data.pagination.offset || 0,
+        take: data.pagination.limit,
+      };
+    }
+
+    // Handle legacy array response or invoices field
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    return data.invoices || data.data || [];
+  } catch (error) {
+    return [];
   }
 }
 
@@ -115,11 +207,38 @@ export async function getInvoice(invoiceId: string): Promise<SalesInvoice> {
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch invoice");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to fetch invoice");
   }
 
-  return response.json();
+  return extractData(response);
+}
+
+export interface PublicInvoiceResponse {
+  invoice: SalesInvoice;
+  shop: Shop;
+  products: Partial<ShopProduct>[];
+}
+
+/**
+ * Get a single PUBLIC invoice by ID (No Auth)
+ */
+export async function getPublicInvoice(invoiceId: string): Promise<PublicInvoiceResponse> {
+  const url = `${API_BASE_URL}/mobileshop/sales/public/invoice/${invoiceId}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    let errorMessage = "Failed to fetch invoice";
+    try {
+      const error = await extractData(response);
+      errorMessage = (error as any).message || errorMessage;
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMessage);
+  }
+
+  return extractData(response);
 }
 
 /**
@@ -134,11 +253,11 @@ export async function createInvoice(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to create invoice");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to create invoice");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -157,11 +276,11 @@ export async function updateInvoice(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to update invoice");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to update invoice");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -176,55 +295,38 @@ export async function cancelInvoice(invoiceId: string): Promise<SalesInvoice> {
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to cancel invoice");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to cancel invoice");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
-/**
- * Record a payment against a credit invoice
- */
-export async function recordPayment(
-  invoiceId: string,
-  data: {
-    amount: number;
-    paymentMethod: PaymentMode;
-    transactionRef?: string;
-    narration?: string;
-  },
-) {
-  const response = await authenticatedFetch(
-    `/mobileshop/sales/invoice/${invoiceId}/payment`,
-    {
-      method: "POST",
-      body: JSON.stringify(data),
-    },
-  );
+// Legacy payment API removed – use collectPayment only
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to record payment");
-  }
-
-  return response.json();
+export interface InvoicePayment {
+  id: string;
+  amount: number;
+  method: PaymentMode;
+  transactionRef?: string;
+  createdAt: string | Date;
+  receiptNumber: string;
 }
 
 /**
  * Get all payments recorded against an invoice
  */
-export async function listPayments(invoiceId: string) {
+export async function listPayments(invoiceId: string): Promise<InvoicePayment[]> {
   const response = await authenticatedFetch(
     `/mobileshop/sales/invoice/${invoiceId}/payments`,
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch payments");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to fetch payments");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -246,7 +348,7 @@ export interface CollectPaymentDto {
 export async function collectPayment(
   invoiceId: string,
   data: CollectPaymentDto,
-) {
+): Promise<{ success: boolean; invoice: SalesInvoice }> {
   const response = await authenticatedFetch(
     `/mobileshop/sales/invoice/${invoiceId}/collect-payment`,
     {
@@ -256,9 +358,32 @@ export async function collectPayment(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to collect payment");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to collect payment");
   }
 
-  return response.json();
+  return extractData(response);
+}
+
+/**
+ * Add a single item to an invoice
+ */
+export async function addItemToInvoice(
+  invoiceId: string,
+  item: InvoiceItem,
+): Promise<SalesInvoice> {
+  const response = await authenticatedFetch(
+    `/mobileshop/sales/invoice/${invoiceId}/items`,
+    {
+      method: "POST",
+      body: JSON.stringify(item),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to add item");
+  }
+
+  return extractData(response);
 }

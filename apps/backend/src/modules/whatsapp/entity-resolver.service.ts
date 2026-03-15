@@ -64,6 +64,54 @@ export class EntityResolverService {
     }
   }
 
+  private normalizeGymEvent(
+    eventType: string,
+    offsetDays: number,
+  ): {
+    normalizedEventType: string;
+    effectiveOffsetDays: number;
+  } {
+    if (eventType === 'DATE') {
+      return {
+        normalizedEventType: 'MEMBERSHIP_EXPIRY',
+        effectiveOffsetDays: offsetDays,
+      };
+    }
+
+    if (eventType === 'MEMBERSHIP_EXPIRY_BEFORE') {
+      return {
+        normalizedEventType: 'MEMBERSHIP_EXPIRY',
+        effectiveOffsetDays: Math.abs(offsetDays),
+      };
+    }
+
+    if (eventType === 'MEMBERSHIP_EXPIRY_AFTER') {
+      return {
+        normalizedEventType: 'MEMBERSHIP_EXPIRY',
+        effectiveOffsetDays: -Math.abs(offsetDays),
+      };
+    }
+
+    if (eventType === 'PAYMENT_DUE_BEFORE') {
+      return {
+        normalizedEventType: 'PAYMENT_DUE',
+        effectiveOffsetDays: Math.abs(offsetDays),
+      };
+    }
+
+    if (eventType === 'PAYMENT_DUE_AFTER') {
+      return {
+        normalizedEventType: 'PAYMENT_DUE',
+        effectiveOffsetDays: -Math.abs(offsetDays),
+      };
+    }
+
+    return {
+      normalizedEventType: eventType,
+      effectiveOffsetDays: offsetDays,
+    };
+  }
+
   /**
    * ────────────────────────────────────────────────
    * GYM MODULE RESOLVER
@@ -75,14 +123,19 @@ export class EntityResolverService {
     offsetDays: number,
     conditions?: any,
   ): Promise<ResolvedEntity[]> {
+    const { normalizedEventType, effectiveOffsetDays } = this.normalizeGymEvent(
+      eventType,
+      offsetDays,
+    );
+
     const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + offsetDays);
+    targetDate.setDate(targetDate.getDate() + effectiveOffsetDays);
     targetDate.setHours(0, 0, 0, 0);
 
     const endDate = new Date(targetDate);
     endDate.setHours(23, 59, 59, 999);
 
-    switch (eventType) {
+    switch (normalizedEventType) {
       case 'MEMBER_CREATED': {
         // Members created today
         const members = await this.prisma.member.findMany({
@@ -254,6 +307,43 @@ export class EntityResolverService {
               gte: targetDate,
               lte: endDate,
             },
+            customerId: { not: null },
+            ...this.buildConditionFilter(conditions),
+          },
+          select: {
+            customerId: true,
+            jobNumber: true,
+            customer: {
+              select: {
+                name: true,
+                phone: true,
+              },
+            },
+          },
+        });
+
+        return jobs
+          .filter((job) => job.customerId)
+          .map((job) => ({
+            customerId: job.customerId!,
+            metadata: {
+              jobNumber: job.jobNumber,
+              name: job.customer?.name,
+              phone: job.customer?.phone,
+            },
+          }));
+      }
+
+      case 'JOB_READY': {
+        // Job cards ready (prepared) on target date
+        const jobs = await this.prisma.jobCard.findMany({
+          where: {
+            tenantId,
+            updatedAt: {
+              gte: targetDate,
+              lte: endDate,
+            },
+            status: 'READY',
             customerId: { not: null },
             ...this.buildConditionFilter(conditions),
           },

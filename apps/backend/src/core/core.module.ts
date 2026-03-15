@@ -10,17 +10,24 @@ import { PrismaModule } from './prisma/prisma.module';
 import { StaffModule } from './staff/staff.module';
 import { AdminModule } from './admin/admin.module';
 import { CustomersModule } from './customers/customers.module';
+import { PartiesModule } from './parties/parties.module';
 import { ShopModule } from './shops/shop.module';
 import { SalesModule } from './sales/sales.module';
 import { PurchaseModule } from './purchase/purchase.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { ProductsModule } from './products/products.module';
 import { StockModule } from './stock/stock.module';
+import { ReceiptsModule } from './receipts/receipts.module';
 import { HsnModule } from './hsn/hsn.module';
 import { FollowUpsModule } from './follow-ups/follow-ups.module';
 import { CrmDashboardModule } from './crm-dashboard/crm-dashboard.module';
 import { CommonModule } from '../common/common.module';
 import { PlatformModule } from './platform/platform.module';
+import { ReportsHardeningModule } from './reports/reports-hardening.module';
+import { SystemModule } from './system/system.module';
+import { PermissionsModule } from './permissions/permissions.module';
+import { AppConfigModule } from './config/config.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -35,16 +42,23 @@ import { PlatformModule } from './platform/platform.module';
     StaffModule,
     AdminModule,
     CustomersModule,
+    PartiesModule,
     ShopModule,
     SalesModule,
     PurchaseModule,
     InventoryModule,
     ProductsModule,
     StockModule,
+    ReceiptsModule,
     HsnModule,
     FollowUpsModule,
     CrmDashboardModule,
     PlatformModule,
+    ReportsHardeningModule,
+    SystemModule,
+    PermissionsModule,
+    AppConfigModule,
+    AiModule,
   ],
   exports: [
     AuthModule,
@@ -55,6 +69,7 @@ import { PlatformModule } from './platform/platform.module';
     AuditModule,
     StaffModule,
     HsnModule,
+    PermissionsModule,
   ],
 })
 export class CoreModule {}

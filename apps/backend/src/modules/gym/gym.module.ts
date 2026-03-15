@@ -12,6 +12,7 @@ import { GymDashboardService } from './dashboard/gym-dashboard.service';
 import { GymMembersController } from './gym-members.controller';
 import { PublicCheckinModule } from './public-checkin/public-checkin.module';
 import { PaymentsModule } from '../../core/billing//payments/payments.module';
+import { PaymentsController } from './payments/payments.controller';
 
 @Module({
   imports: [
@@ -22,10 +23,9 @@ import { PaymentsModule } from '../../core/billing//payments/payments.module';
     PaymentsModule,
   ],
   controllers: [
-    GymAttendanceController,
-    GymMembershipController,
     GymDashboardController,
     GymMembersController,
+    PaymentsController,
   ],
   providers: [GymAttendanceService, GymMembershipService, GymDashboardService],
 })

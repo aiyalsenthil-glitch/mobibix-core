@@ -4,11 +4,69 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
-import { WhatsAppPhoneNumberPurpose } from '@prisma/client';
+import {
+  UserRole,
+  WhatsAppPhoneNumberPurpose,
+  ModuleType,
+} from '@prisma/client';
+import { PlanRulesService } from '../../../core/billing/plan-rules.service';
+// import { WhatsAppPhoneNumber } from '@prisma/client'; // Now WhatsAppNumber
 
 @Injectable()
 export class WhatsAppPhoneNumbersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly planRulesService: PlanRulesService,
+  ) {}
+
+  /**
+   * Get all phone numbers for a tenant
+   */
+  async getNumbers(tenantId: string) {
+    const numbers = await this.prisma.whatsAppNumber.findMany({
+      where: { tenantId },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    return numbers.map((num) => ({
+      id: num.id,
+      phoneNumber: num.phoneNumber,
+      displayNumber: num.displayNumber || this.maskPhoneNumber(num.phoneNumber),
+      label: num.label,
+      isDefault: num.isDefault,
+      isEnabled: num.isEnabled,
+      qualityRating: num.qualityRating,
+    }));
+  }
+
+  /**
+   * Mask phone number (e.g. +91 ******4321)
+   */
+  maskPhoneNumber(phone: string): string {
+    if (!phone) return '';
+    const clean = phone.replace(/\s+/g, '');
+    if (clean.length <= 6) return phone;
+    return `${clean.substring(0, 3)} ****** ${clean.substring(clean.length - 4)}`;
+  }
+
+  /**
+   * Sanitize phone number response based on user role
+   */
+  sanitizePhoneNumber(phone: any, role: UserRole) {
+    if (role === UserRole.SUPER_ADMIN || role === UserRole.ADMIN) {
+      return phone;
+    }
+
+    return {
+      id: phone.id,
+      maskedPhone: this.maskPhoneNumber(phone.phoneNumber),
+      purpose: phone.purpose,
+      isDefault: phone.isDefault,
+      isEnabled: phone.isEnabled ?? phone.isActive ?? true, // Standardize on isEnabled
+      isInherited: phone.isInherited || false,
+      source: phone.source,
+    };
+  }
 
   /**
    * Get active phone number for tenant by purpose
@@ -16,31 +74,81 @@ export class WhatsAppPhoneNumbersService {
    */
   async getPhoneNumberForPurpose(
     tenantId: string,
-    purpose: WhatsAppPhoneNumberPurpose,
+    purpose: WhatsAppPhoneNumberPurpose = WhatsAppPhoneNumberPurpose.DEFAULT,
+    routingTrack?: 'SYSTEM_DEFAULT' | 'TENANT_OWNED',
   ) {
-    // Try to find active phone number for specific purpose
-    let phoneNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
+    // 1. Try to find specific phone number for this tenant
+    let phoneNumber = await this.prisma.whatsAppNumber.findFirst({
       where: {
         tenantId,
         purpose,
-        isActive: true,
+        isEnabled: true,
       },
     });
 
-    // Fallback to default if no purpose-specific found
+    if (phoneNumber) {
+      return phoneNumber;
+    }
+
+    // Fallback to tenant default if no purpose-specific found
+    phoneNumber = await this.prisma.whatsAppNumber.findFirst({
+      where: {
+        tenantId,
+        isDefault: true,
+        isEnabled: true,
+      },
+    });
+
+    if (phoneNumber) {
+      return phoneNumber;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // NEW: Fallback to Module-Level Defaults (Shared Numbers)
+    // ─────────────────────────────────────────────────────────────
+
+    // CRM tenants must use their own number.
+    if (routingTrack === 'TENANT_OWNED') {
+      throw new NotFoundException(
+        `No active tenant-owned WhatsApp number found for purpose ${purpose}. CRM Add-on requires your own number.`,
+      );
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { tenantType: true },
+    });
+
+    const moduleType = (tenant?.tenantType as ModuleType) ?? ModuleType.GYM;
+
+    // Try module purpose-specific (tenantId must be null for shared numbers)
+    phoneNumber = await this.prisma.whatsAppNumber.findFirst({
+      where: {
+        tenantId: null,
+        moduleType,
+        purpose,
+        isEnabled: true,
+      },
+    });
+
+    // Try module default
     if (!phoneNumber) {
-      phoneNumber = await this.prisma.whatsAppPhoneNumber.findFirst({
+      phoneNumber = await this.prisma.whatsAppNumber.findFirst({
         where: {
-          tenantId,
-          isDefault: true,
-          isActive: true,
+          tenantId: null,
+          moduleType,
+          isEnabled: true,
+          OR: [
+            { isDefault: true },
+            { purpose: WhatsAppPhoneNumberPurpose.DEFAULT },
+          ],
         },
       });
     }
 
     if (!phoneNumber) {
       throw new NotFoundException(
-        `No active WhatsApp phone number found for tenant ${tenantId} and purpose ${purpose}`,
+        `No active WhatsApp phone number found for tenant ${tenantId} or module ${moduleType} for purpose ${purpose}`,
       );
     }
 
@@ -51,10 +159,39 @@ export class WhatsAppPhoneNumbersService {
    * List all phone numbers for a tenant
    */
   async listPhoneNumbers(tenantId: string) {
-    return this.prisma.whatsAppPhoneNumber.findMany({
-      where: { tenantId },
+    // 1. Resolve module type
+    let moduleType: ModuleType;
+
+    const knownModules = ['GYM', 'MOBILE_SHOP'];
+    if (knownModules.includes(tenantId)) {
+      moduleType = tenantId as ModuleType;
+    } else {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { tenantType: true },
+      });
+      moduleType = (tenant?.tenantType as ModuleType) ?? ModuleType.GYM;
+    }
+
+    // 2. Fetch all relevant phone numbers (Tenant-specific OR Module-shared)
+    // ⚠️ Do NOT filter by isEnabled - we need to show inactive numbers so they can be toggled
+    const allPhones = await this.prisma.whatsAppNumber.findMany({
+      where: {
+        OR: [{ tenantId }, { tenantId: null, moduleType }],
+      },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     });
+
+    // 3. Map to unified structure - map isEnabled to isActive for frontend compatibility
+    return allPhones.map((p) => ({
+      ...p,
+      isActive: p.isEnabled, // Map for frontend compatibility
+      source: p.tenantId ? ('TENANT' as const) : ('MODULE' as const),
+      isInherited: !p.tenantId,
+      // Ensure virtual tenantId for module numbers if requested for a specific tenant
+      tenantId: p.tenantId || tenantId,
+      displayNumber: p.displayNumber || this.maskPhoneNumber(p.phoneNumber),
+    }));
   }
 
   /**
@@ -68,28 +205,84 @@ export class WhatsAppPhoneNumbersService {
     purpose: WhatsAppPhoneNumberPurpose;
     isDefault?: boolean;
   }) {
-    // If setting as default, unset other defaults
-    if (data.isDefault) {
-      await this.prisma.whatsAppPhoneNumber.updateMany({
-        where: {
-          tenantId: data.tenantId,
-          isDefault: true,
-        },
+    const knownModules = ['GYM', 'MOBILE_SHOP'];
+    const isModule = knownModules.includes(data.tenantId);
+
+    if (isModule) {
+      // Module-Level Creation
+      const moduleType = data.tenantId as ModuleType;
+
+      if (data.isDefault) {
+        await this.prisma.whatsAppNumber.updateMany({
+          where: { tenantId: null, moduleType, isDefault: true },
+          data: { isDefault: false },
+        });
+      }
+
+      const created = await this.prisma.whatsAppNumber.create({
         data: {
-          isDefault: false,
+          tenantId: null,
+          moduleType,
+          phoneNumber: data.phoneNumber,
+          phoneNumberId: data.phoneNumberId,
+          wabaId: data.wabaId,
+          purpose: data.purpose,
+          isDefault: data.isDefault || false,
+          isEnabled: true,
+          displayNumber: data.phoneNumber,
         },
+      });
+
+      return {
+        ...created,
+        tenantId: data.tenantId, // Return as requested (Virtual)
+        isInherited: true,
+        source: 'MODULE' as const,
+      };
+    }
+
+    // Tenant-Level Creation
+    if (data.isDefault) {
+      await this.prisma.whatsAppNumber.updateMany({
+        where: { tenantId: data.tenantId, isDefault: true },
+        data: { isDefault: false },
       });
     }
 
-    return this.prisma.whatsAppPhoneNumber.create({
+    // 🔒 GUARDRAIL: Plan Limits
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: data.tenantId },
+      select: { tenantType: true },
+    });
+    const module = (tenant?.tenantType as ModuleType) ?? ModuleType.GYM;
+
+    const planRules = await this.planRulesService.getPlanRulesForTenant(
+      data.tenantId,
+      module,
+    );
+    const maxNumbers = planRules?.whatsapp?.maxNumbers ?? 1;
+
+    const currentCount = await this.prisma.whatsAppNumber.count({
+      where: { tenantId: data.tenantId, isEnabled: true },
+    });
+
+    if (currentCount >= maxNumbers) {
+      throw new BadRequestException(
+        `Plan limit reached. Your plan allows ${maxNumbers} WhatsApp number(s). Upgrade to add more.`,
+      );
+    }
+
+    return this.prisma.whatsAppNumber.create({
       data: {
         tenantId: data.tenantId,
+        moduleType: module,
         phoneNumber: data.phoneNumber,
         phoneNumberId: data.phoneNumberId,
         wabaId: data.wabaId,
         purpose: data.purpose,
         isDefault: data.isDefault || false,
-        isActive: true,
+        isEnabled: true,
+        displayNumber: data.phoneNumber,
       },
     });
   }
@@ -106,72 +299,81 @@ export class WhatsAppPhoneNumbersService {
       qualityRating?: string;
     },
   ) {
-    const phoneNumber = await this.prisma.whatsAppPhoneNumber.findUnique({
+    const storedPhone = await this.prisma.whatsAppNumber.findUnique({
       where: { id },
     });
 
-    if (!phoneNumber) {
+    if (!storedPhone) {
       throw new NotFoundException('Phone number not found');
     }
 
-    // If setting as default, unset other defaults for this tenant
     if (data.isDefault) {
-      await this.prisma.whatsAppPhoneNumber.updateMany({
+      await this.prisma.whatsAppNumber.updateMany({
         where: {
-          tenantId: phoneNumber.tenantId,
+          tenantId: storedPhone.tenantId,
+          moduleType: storedPhone.tenantId ? undefined : storedPhone.moduleType,
           isDefault: true,
           id: { not: id },
         },
-        data: {
-          isDefault: false,
-        },
+        data: { isDefault: false },
       });
     }
 
-    return this.prisma.whatsAppPhoneNumber.update({
+    const updated = await this.prisma.whatsAppNumber.update({
       where: { id },
       data: {
         purpose: data.purpose,
         isDefault: data.isDefault,
-        isActive: data.isActive,
+        isEnabled: data.isActive,
         qualityRating: data.qualityRating,
         updatedAt: new Date(),
       },
     });
+
+    return {
+      ...updated,
+      source: updated.tenantId ? 'TENANT' : 'MODULE',
+      isInherited: !updated.tenantId,
+    };
   }
 
   /**
    * Delete phone number
    */
+  /**
+   * Delete phone number
+   */
   async deletePhoneNumber(id: string) {
-    const phoneNumber = await this.prisma.whatsAppPhoneNumber.findUnique({
+    const phone = await this.prisma.whatsAppNumber.findUnique({
       where: { id },
     });
 
-    if (!phoneNumber) {
+    if (!phone) {
       throw new NotFoundException('Phone number not found');
     }
 
-    // Prevent deleting default phone number if it's the only one
-    if (phoneNumber.isDefault) {
-      const count = await this.prisma.whatsAppPhoneNumber.count({
+    if (phone.isDefault) {
+      const count = await this.prisma.whatsAppNumber.count({
         where: {
-          tenantId: phoneNumber.tenantId,
+          tenantId: phone.tenantId,
+          moduleType: phone.tenantId ? undefined : phone.moduleType,
         },
       });
 
       if (count === 1) {
         throw new BadRequestException(
-          'Cannot delete the only phone number. Add another one first.',
+          phone.tenantId
+            ? 'Cannot delete the only phone number. Add another one first.'
+            : 'Cannot delete the only global number for this module.',
         );
       }
 
-      // Check if there's another active phone number to set as default
-      const anotherActive = await this.prisma.whatsAppPhoneNumber.findFirst({
+      const anotherActive = await this.prisma.whatsAppNumber.findFirst({
         where: {
-          tenantId: phoneNumber.tenantId,
           id: { not: id },
-          isActive: true,
+          tenantId: phone.tenantId,
+          moduleType: phone.tenantId ? undefined : phone.moduleType,
+          isEnabled: true,
         },
       });
 
@@ -181,14 +383,19 @@ export class WhatsAppPhoneNumbersService {
         );
       }
 
-      // Set the other phone as default
-      await this.prisma.whatsAppPhoneNumber.update({
+      await this.prisma.whatsAppNumber.update({
         where: { id: anotherActive.id },
         data: { isDefault: true },
       });
     }
 
-    return this.prisma.whatsAppPhoneNumber.delete({
+    return this.prisma.whatsAppNumber.delete({
+      where: { id },
+    });
+  }
+
+  async getPhoneNumberById(id: string) {
+    return this.prisma.whatsAppNumber.findUnique({
       where: { id },
     });
   }
@@ -197,11 +404,11 @@ export class WhatsAppPhoneNumbersService {
    * Ensure tenant has at least one default phone number
    */
   async ensureDefaultExists(tenantId: string): Promise<boolean> {
-    const defaultPhone = await this.prisma.whatsAppPhoneNumber.findFirst({
+    const defaultPhone = await this.prisma.whatsAppNumber.findFirst({
       where: {
         tenantId,
         isDefault: true,
-        isActive: true,
+        isEnabled: true,
       },
     });
 

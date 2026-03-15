@@ -21,37 +21,62 @@ export class SuppliersService {
     dto: CreateSupplierDto,
   ): Promise<SupplierResponseDto> {
     // Check if supplier with same name already exists in this tenant
-    const existingSupplier = await this.prisma.supplier.findFirst({
+    const existingSupplier = await this.prisma.party.findFirst({
       where: {
         tenantId,
-        name: {
-          equals: dto.name,
-          mode: 'insensitive',
-        },
+        OR: [
+          { name: { equals: dto.name, mode: 'insensitive' } },
+          ...(dto.phone ? [{ phone: dto.phone }] : []),
+        ],
       },
     });
 
     if (existingSupplier) {
+      if (existingSupplier.partyType === 'CUSTOMER') {
+        const upgraded = await this.prisma.party.update({
+          where: { id: existingSupplier.id },
+          data: {
+            partyType: 'BOTH',
+            gstNumber: dto.gstin ?? existingSupplier.gstNumber,
+            address: dto.address ?? existingSupplier.address,
+            state: dto.state ?? existingSupplier.state,
+          },
+        });
+        return this.mapToResponseDto(upgraded);
+      }
       throw new ConflictException(
-        `Supplier "${dto.name}" already exists for this tenant`,
+        `Supplier "${dto.name}" or phone already exists for this tenant`,
       );
     }
 
-    const supplier = await this.prisma.supplier.create({
+    const supplier = await this.prisma.party.create({
       data: {
         tenantId,
         name: dto.name,
-        namelowercase: dto.name.toLowerCase(),
-        primaryPhone: dto.phone || '',
+        phone: dto.phone || `VENDOR_${Date.now()}`,
         altPhone: dto.alternatePhone,
         email: dto.email,
-        gstin: dto.gstin,
+        gstNumber: dto.gstin,
         address: dto.address,
         state: dto.state,
         defaultPaymentTerms: dto.paymentTerms,
         tags: dto.tags || [],
         isActive: true,
+        partyType: 'VENDOR',
         createdBy: 'system',
+        supplierProfile: {
+          create: {
+            category: dto.category,
+            riskFlag: dto.riskFlag || false,
+            rating: dto.rating || 0,
+            paymentDueDays: dto.paymentDueDays || 30,
+            creditLimit: dto.creditLimit,
+            preferredCurrency: dto.preferredCurrency || 'INR',
+          },
+        },
+      },
+      include: {
+        supplierProfile: true,
       },
     });
 
@@ -77,14 +102,17 @@ export class SuppliersService {
   }> {
     const { skip = 0, take = 50, search = '', status } = options;
 
-    const whereClause: any = { tenantId };
+    const whereClause: any = {
+      tenantId,
+      partyType: { in: ['VENDOR', 'BOTH'] },
+    };
 
     if (search) {
       whereClause.OR = [
         { name: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
-        { primaryPhone: { contains: search, mode: 'insensitive' } },
-        { gstin: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+        { gstNumber: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -94,13 +122,16 @@ export class SuppliersService {
       whereClause.isActive = false;
     }
 
-    const total = await this.prisma.supplier.count({ where: whereClause });
+    const total = await this.prisma.party.count({ where: whereClause });
 
-    const suppliers = await this.prisma.supplier.findMany({
+    const suppliers = await this.prisma.party.findMany({
       where: whereClause,
       skip,
       take,
       orderBy: { createdAt: 'desc' },
+      include: {
+        supplierProfile: true,
+      },
     });
 
     return {
@@ -115,11 +146,15 @@ export class SuppliersService {
    * Get a single supplier by ID
    */
   async findOne(tenantId: string, id: string): Promise<SupplierResponseDto> {
-    const supplier = await this.prisma.supplier.findUnique({
-      where: { id },
+    const supplier = await this.prisma.party.findFirst({
+      where: {
+        id,
+        tenantId,
+        partyType: { in: ['VENDOR', 'BOTH'] },
+      },
     });
 
-    if (!supplier || supplier.tenantId !== tenantId) {
+    if (!supplier) {
       throw new NotFoundException(`Supplier with ID "${id}" not found`);
     }
 
@@ -134,14 +169,20 @@ export class SuppliersService {
     id: string,
     dto: UpdateSupplierDto,
   ): Promise<SupplierResponseDto> {
-    const supplier = await this.prisma.supplier.findUnique({ where: { id } });
+    const supplier = await this.prisma.party.findFirst({
+      where: {
+        id,
+        tenantId,
+        partyType: { in: ['VENDOR', 'BOTH'] },
+      },
+    });
 
-    if (!supplier || supplier.tenantId !== tenantId) {
+    if (!supplier) {
       throw new NotFoundException(`Supplier with ID "${id}" not found`);
     }
 
     if (dto.name && dto.name !== supplier.name) {
-      const existingSupplier = await this.prisma.supplier.findFirst({
+      const existingSupplier = await this.prisma.party.findFirst({
         where: {
           tenantId,
           name: { equals: dto.name, mode: 'insensitive' },
@@ -156,16 +197,15 @@ export class SuppliersService {
       }
     }
 
-    const updated = await this.prisma.supplier.update({
+    const updated = await this.prisma.party.update({
       where: { id },
       data: {
         ...(dto.name && {
           name: dto.name,
-          namelowercase: dto.name.toLowerCase(),
         }),
-        ...(dto.gstin !== undefined && { gstin: dto.gstin }),
+        ...(dto.gstin !== undefined && { gstNumber: dto.gstin }),
         ...(dto.email !== undefined && { email: dto.email }),
-        ...(dto.phone !== undefined && { primaryPhone: dto.phone }),
+        ...(dto.phone !== undefined && { phone: dto.phone }),
         ...(dto.alternatePhone !== undefined && {
           altPhone: dto.alternatePhone,
         }),
@@ -175,6 +215,19 @@ export class SuppliersService {
         ...(dto.paymentTerms !== undefined && {
           defaultPaymentTerms: dto.paymentTerms,
         }),
+        supplierProfile: {
+          update: {
+            ...(dto.category !== undefined && { category: dto.category }),
+            ...(dto.riskFlag !== undefined && { riskFlag: dto.riskFlag }),
+            ...(dto.rating !== undefined && { rating: dto.rating }),
+            ...(dto.paymentDueDays !== undefined && { paymentDueDays: dto.paymentDueDays }),
+            ...(dto.creditLimit !== undefined && { creditLimit: dto.creditLimit }),
+            ...(dto.preferredCurrency !== undefined && { preferredCurrency: dto.preferredCurrency }),
+          },
+        },
+      },
+      include: {
+        supplierProfile: true,
       },
     });
 
@@ -185,9 +238,15 @@ export class SuppliersService {
    * Soft delete a supplier
    */
   async remove(tenantId: string, id: string): Promise<SupplierResponseDto> {
-    const supplier = await this.prisma.supplier.findUnique({ where: { id } });
+    const supplier = await this.prisma.party.findFirst({
+      where: {
+        id,
+        tenantId,
+        partyType: { in: ['VENDOR', 'BOTH'] },
+      },
+    });
 
-    if (!supplier || supplier.tenantId !== tenantId) {
+    if (!supplier) {
       throw new NotFoundException(`Supplier with ID "${id}" not found`);
     }
 
@@ -198,13 +257,20 @@ export class SuppliersService {
       },
     });
 
-    if (activePurchases > 0) {
+    const openPOs = await this.prisma.purchaseOrder.count({
+      where: {
+        globalSupplierId: id,
+        status: { notIn: ['RECEIVED', 'CANCELLED'] },
+      },
+    });
+
+    if (activePurchases > 0 || openPOs > 0) {
       throw new BadRequestException(
-        `Cannot delete supplier with ${activePurchases} active purchase(es)`,
+        `Cannot delete supplier with ${activePurchases} active purchase(es) and ${openPOs} open purchase order(s)`,
       );
     }
 
-    const deleted = await this.prisma.supplier.update({
+    const deleted = await this.prisma.party.update({
       where: { id },
       data: { isActive: false },
     });
@@ -219,22 +285,91 @@ export class SuppliersService {
     tenantId: string,
     supplierId: string,
   ): Promise<number> {
-    const supplier = await this.prisma.supplier.findUnique({
-      where: { id: supplierId },
+    const supplier = await this.prisma.party.findFirst({
+      where: {
+        id: supplierId,
+        tenantId,
+        partyType: { in: ['VENDOR', 'BOTH'] },
+      },
+      select: { currentOutstanding: true },
     });
 
-    if (!supplier || supplier.tenantId !== tenantId) {
+    if (!supplier) {
       throw new NotFoundException(`Supplier with ID "${supplierId}" not found`);
     }
 
-    const shopSuppliers = await this.prisma.shopSupplier.findMany({
-      where: { globalSupplierId: supplierId },
+    // currentOutstanding is in Paisa, return in Rupees
+    return (supplier.currentOutstanding || 0) / 100;
+  }
+
+  /**
+   * Check if a GSTIN is already used by another supplier/party in the tenant
+   */
+  async checkGstinDuplicate(
+    tenantId: string,
+    gstin: string,
+    excludeId?: string,
+  ): Promise<boolean> {
+    if (!gstin) return false;
+
+    const existing = await this.prisma.party.findFirst({
+      where: {
+        tenantId,
+        gstNumber: gstin,
+        ...(excludeId && { id: { not: excludeId } }),
+      },
     });
 
-    return shopSuppliers.reduce(
-      (total, ss) => total + (ss.outstandingAmount || 0),
-      0,
-    );
+    return !!existing;
+  }
+
+  /**
+   * Get recent transactions (purchases and payments) for a supplier
+   */
+  async getTransactions(tenantId: string, supplierId: string) {
+    const supplier = await this.prisma.party.findFirst({
+      where: {
+        id: supplierId,
+        tenantId,
+        partyType: { in: ['VENDOR', 'BOTH'] },
+      },
+    });
+
+    if (!supplier) {
+      throw new NotFoundException(`Supplier with ID "${supplierId}" not found`);
+    }
+
+    const purchases = await this.prisma.purchase.findMany({
+      where: { tenantId, globalSupplierId: supplierId },
+      orderBy: { invoiceDate: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        invoiceNumber: true,
+        invoiceDate: true,
+        grandTotal: true,
+        paidAmount: true,
+        status: true,
+      },
+    });
+
+    const payments = await this.prisma.supplierPayment.findMany({
+      where: { tenantId, globalSupplierId: supplierId },
+      orderBy: { paymentDate: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        amount: true,
+        paymentMethod: true,
+        paymentDate: true,
+        paymentReference: true,
+      },
+    });
+
+    return {
+      purchases,
+      payments,
+    };
   }
 
   /**
@@ -245,9 +380,9 @@ export class SuppliersService {
       id: supplier.id,
       tenantId: supplier.tenantId,
       name: supplier.name,
-      gstin: supplier.gstin,
+      gstin: supplier.gstNumber,
       email: supplier.email,
-      phone: supplier.primaryPhone,
+      phone: supplier.phone,
       alternatePhone: supplier.altPhone,
       address: supplier.address,
       city: '',
@@ -263,6 +398,14 @@ export class SuppliersService {
       notes: '',
       createdAt: supplier.createdAt,
       updatedAt: supplier.updatedAt,
+      // SupplierProfile
+      category: supplier.supplierProfile?.category,
+      riskFlag: supplier.supplierProfile?.riskFlag,
+      rating: supplier.supplierProfile?.rating,
+      paymentDueDays: supplier.supplierProfile?.paymentDueDays,
+      creditLimit: supplier.supplierProfile?.creditLimit,
+      preferredCurrency: supplier.supplierProfile?.preferredCurrency,
+      outstandingBalance: (supplier.currentOutstanding || 0) / 100,
     };
   }
 }

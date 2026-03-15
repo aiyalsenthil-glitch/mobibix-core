@@ -8,47 +8,55 @@ import {
   Post,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { FollowUpsService } from './follow-ups.service';
 import { CreateFollowUpDto } from './dto/create-follow-up.dto';
 import { UpdateFollowUpDto } from './dto/update-follow-up.dto';
 import { FollowUpQueryDto } from './dto/follow-up-query.dto';
-import { FollowUpStatus, UserRole } from '@prisma/client';
+import { FollowUpStatus, UserRole, ModuleType } from '@prisma/client';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../security/permission-registry';
 
 @Controller('core/follow-ups')
+@ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('crm')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
+@Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.TECHNICIAN)
 export class FollowUpsController {
   constructor(private readonly service: FollowUpsService) {}
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.MANAGE_FOLLOWUP)
   @Post()
   async create(@Req() req: any, @Body() dto: CreateFollowUpDto) {
-    const tenantId = req.user?.tenantId;
-    const userId = req.user?.sub;
-    const role = req.user?.role as UserRole | undefined;
-
-    if (!tenantId || !userId || !role) {
-      throw new BadRequestException('Invalid user context');
-    }
+    const tenantId = req.user.tenantId;
+    const userId = req.user.userId || req.user.sub;
+    const role = req.user.role;
 
     return this.service.createFollowUp(tenantId, userId, role, dto);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.MANAGE_FOLLOWUP)
   @Patch(':followUpId')
   async update(
     @Req() req: any,
     @Param('followUpId') followUpId: string,
     @Body() dto: UpdateFollowUpDto,
   ) {
-    const tenantId = req.user?.tenantId;
-    const userId = req.user?.sub;
-    const role = req.user?.role as UserRole | undefined;
-
-    if (!tenantId || !userId || !role) {
-      throw new BadRequestException('Invalid user context');
-    }
+    const tenantId = req.user.tenantId;
+    const userId = req.user.userId || req.user.sub;
+    const role = req.user.role;
 
     return this.service.updateFollowUp(tenantId, userId, role, followUpId, dto);
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.MANAGE_FOLLOWUP)
   @Patch(':followUpId/status')
   async updateStatus(
     @Req() req: any,
@@ -72,32 +80,49 @@ export class FollowUpsController {
     );
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW)
   @Get('my')
   async listMy(
     @Req() req: any,
     @Query() query: FollowUpQueryDto,
     @Query('notify') notify?: string,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
   ) {
-    const tenantId = req.user?.tenantId;
-    const userId = req.user?.sub;
-
-    if (!tenantId || !userId) {
-      throw new BadRequestException('Invalid user context');
-    }
+    const tenantId = req.user.tenantId;
+    const userId = req.user.userId || req.user.sub;
 
     const notifyOnDue = notify === 'true';
-    return this.service.listMyFollowUps(tenantId, userId, query, notifyOnDue);
+    return this.service.listMyFollowUps(tenantId, userId, query, notifyOnDue, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW)
+  @Get('counts')
+  async getCounts(@Req() req: any) {
+    const tenantId = req.user.tenantId;
+    const userId = req.user.userId || req.user.sub;
+
+    return this.service.getMyFollowUpCounts(tenantId, userId);
+  }
+
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CRM.VIEW)
   @Get('all')
-  async listAll(@Req() req: any, @Query() query: FollowUpQueryDto) {
-    const tenantId = req.user?.tenantId;
-    const role = req.user?.role as UserRole | undefined;
+  async listAll(
+    @Req() req: any,
+    @Query() query: FollowUpQueryDto,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
+    const tenantId = req.user.tenantId;
+    const userId = req.user.userId || req.user.sub;
+    const role = req.user.role;
 
-    if (!tenantId || !role) {
-      throw new BadRequestException('Invalid user context');
-    }
-
-    return this.service.listAllFollowUps(tenantId, role, query);
+    return this.service.listAllFollowUps(tenantId, role, query, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
   }
 }

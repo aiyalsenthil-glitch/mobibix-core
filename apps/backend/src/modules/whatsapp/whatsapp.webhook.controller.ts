@@ -7,28 +7,38 @@ import {
   ForbiddenException,
   Logger,
   Inject,
+  Req,
+  Res,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../core/auth/decorators/public.decorator';
+import { SkipSubscriptionCheck } from '../../core/auth/decorators/skip-subscription-check.decorator';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { WhatsAppCapabilityRouter } from './router/whatsapp-capability.router';
 
 @Public()
+@SkipSubscriptionCheck()
+@Throttle({ default: { limit: 100, ttl: 60000 } }) // SECURITY: 100 webhook events per minute
 @Controller('webhook/whatsapp')
 export class WhatsAppWebhookController {
   private readonly logger = new Logger(WhatsAppWebhookController.name);
 
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    private readonly router: WhatsAppCapabilityRouter,
+  ) {}
 
   @Get()
-  verifyWebhook(
-    @Query('hub.mode') mode: string,
-    @Query('hub.verify_token') token: string,
-    @Query('hub.challenge') challenge: string,
-  ) {
+  verifyWebhook(@Req() req, @Res() res) {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
     if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-      return challenge;
+      return res.status(200).send(challenge);
     }
 
-    throw new ForbiddenException('Invalid verify token');
+    return res.status(403).json({ message: 'Invalid verify token' });
   }
 
   /**
@@ -37,103 +47,272 @@ export class WhatsAppWebhookController {
    */
   @Post()
   @Public()
-  async handleWebhook(@Body() body: any) {
+  async handleWebhook(@Req() req, @Res() res) {
+    // 1. Validations (Signature) - CRITICAL: Reject unsigned webhooks
+    const signature = req.headers['x-hub-signature-256'];
+    if (!signature) {
+      this.logger.error(
+        'SECURITY: Webhook received without X-Hub-Signature-256',
+      );
+      return res.status(403).json({ message: 'Missing signature' });
+    }
+
+    // ✅ SECURITY FIX: WHATSAPP_APP_SECRET is now REQUIRED
+    const appSecret = process.env.WHATSAPP_APP_SECRET;
+    if (!appSecret) {
+      this.logger.error(
+        'CRITICAL: WHATSAPP_APP_SECRET not configured! Webhook validation disabled.',
+      );
+      return res
+        .status(500)
+        .json({ message: 'Webhook validation misconfigured' });
+    }
+
+    // HMAC signature verification
+    const crypto = require('crypto');
+    const hmac = crypto.createHmac('sha256', appSecret);
+
+    // 🚨 SECURITY FIX: Prefer req.rawBody if available (requires configuration in main.ts)
+    // Fallback to JSON.stringify(req.body) if rawBody is missing
+    const bodyPayload = req.rawBody || Buffer.from(JSON.stringify(req.body));
+    const digest = Buffer.from(
+      'sha256=' + hmac.update(bodyPayload).digest('hex'),
+      'utf8',
+    );
+    const checksum = Buffer.from(signature, 'utf8');
+
+    if (
+      digest.length !== checksum.length ||
+      !crypto.timingSafeEqual(digest, checksum)
+    ) {
+      this.logger.warn('Invalid signature - payload mismatch');
+      return res.status(403).json({ message: 'Invalid signature' });
+    }
+
+    // 2. Fast ACK
+    res.status(200).send('EVENT_RECEIVED');
+
+    // 3. Async Processing
     try {
-      // Meta webhook structure
+      const body = req.body;
       const changes = body?.entry?.[0]?.changes?.[0];
-      if (!changes) {
-        return { received: true };
-      }
+      if (!changes) return; // Handshake or heartbeat
 
       const metadata = changes.value?.metadata;
-      const statuses = changes.value?.statuses || [];
       const messages = changes.value?.messages || [];
+      const statuses = changes.value?.statuses || [];
 
-      // Process status updates (message_status webhooks)
+
+      // A. Process Statuses (Async)
       for (const status of statuses) {
-        await this.handleStatusUpdate(status, metadata);
-      }
-
-      // Process incoming messages (optional, not needed for status tracking)
-      for (const message of messages) {
-        this.logger.debug(
-          `Incoming message from ${message.from}: ${message.id}`,
+        // Void promise to avoid unhandled rejection crash at top level
+        this.handleStatusUpdate(status, metadata).catch((err) =>
+          this.logger.error(`Status update error: ${err.message}`),
         );
       }
 
-      return { received: true };
+      // B. Process Messages (Async)
+      if (messages.length > 0) {
+        this.handleIncomingMessages(messages, metadata).catch((err) =>
+          this.logger.error(`Message processing error: ${err.message}`),
+        );
+      }
     } catch (error) {
-      this.logger.error('Webhook processing error', error);
-      return { received: true }; // Return success to Meta regardless
+      this.logger.error(
+        `Webhook processing crashed: ${error.message}`,
+        error.stack,
+      );
+    }
+  }
+
+  /**
+   * Handle incoming messages (Text, Quick Reply, etc.)
+   */
+  private async handleIncomingMessages(messages: any[], metadata: any) {
+
+    if (!messages || messages.length === 0) return;
+
+    const phoneNumberId = metadata?.phone_number_id;
+
+    if (!phoneNumberId) {
+      this.logger.warn('No phone_number_id in webhook metadata');
+      return;
+    }
+
+    try {
+      // 1. Resolve Number from unified WhatsAppNumber table
+      const waNumber = await this.prisma.whatsAppNumber.findUnique({
+        where: { phoneNumberId },
+        select: {
+          id: true,
+          tenantId: true,
+          moduleType: true,
+          isSystem: true,
+        },
+      });
+
+
+      if (!waNumber) {
+        this.logger.warn(`Unknown WhatsApp Number ID: ${phoneNumberId}`);
+        return;
+      }
+
+      // ── OUTBOUND-ONLY POLICY ──────────────────────────────────────────────
+      // ⚠️ CRITICAL: Shared numbers (where tenantId is NULL) are OUTBOUND-ONLY.
+      // We do NOT process inbound messages for them to avoid routing ambiguity.
+      //
+      // Rationale:
+      // - Shared numbers are owned by the PLATFORM, not individual tenants
+      // - Multiple tenants could theoretically receive inbound → NO CLEAR ROUTING TARGET
+      // - Solution: Each tenant must configure their OWN tenant-scoped phone numbers
+      // - Shared numbers suitable ONLY for outbound (notifications, broadcasts, announcements)
+      //
+      // Customer Guidance:
+      // - INBOUND flows (auto-reply, customer service): Use tenant-specific numbers
+      // - OUTBOUND only: Use shared/platform numbers for blast campaigns
+      // - HYBRID: Mix tenant-specific (inbound) + shared (outbound) for optimal coverage
+      //
+      // Documentation: https://docs.yourcompany.com/whatsapp-setup
+      // ──────────────────────────────────────────────────────────────────────
+      if (!waNumber.tenantId) {
+        this.logger.warn(
+          `[OUTBOUND-ONLY POLICY] Inbound message dropped on shared number +${metadata?.display_phone_number || phoneNumberId} ` +
+            `(Module: ${waNumber.moduleType}, MessageID: ${messages[0]?.id}). ` +
+            `If you need inbound support for this module, configure a tenant-scoped phone number. ` +
+            `See: https://docs.yourcompany.com/whatsapp-setup`,
+        );
+        return; // Silently drop — this is by design and expected behavior
+      }
+
+      const tenantId = waNumber.tenantId;
+
+      if (!tenantId) {
+        this.logger.warn(
+          `[Webhook] Message on number ${waNumber.id} has no Tenant ID mapping.`,
+        );
+        return;
+      }
+
+      for (const message of messages) {
+        const messageId = message.id; // wamid.HBgLM...
+        this.logger.debug(`[Webhook] Processing messageId: ${messageId}`);
+
+        // 2. Idempotency Check
+        const existingLog = await this.prisma.whatsAppLog.findFirst({
+          where: { messageId },
+          select: { id: true },
+        });
+
+        if (existingLog) {
+          this.logger.debug(`Duplicate message ignored: ${messageId}`);
+          this.logger.debug(`[Webhook] Duplicate ignored: ${messageId}`);
+          continue;
+        }
+
+        // 3. Process Content
+        const senderPhone = message.from;
+        let text = '';
+
+        if (message.type === 'text') {
+          text = message.text?.body;
+        } else if (message.type === 'interactive') {
+          const interactive = message.interactive;
+          if (interactive.type === 'button_reply') {
+            text = interactive.button_reply.id;
+          } else if (interactive.type === 'list_reply') {
+            text = interactive.list_reply.id;
+          }
+        }
+
+        // REMOVED: console.log message text for security
+        this.logger.debug(`[Webhook] Extracted text from ${senderPhone}`);
+
+        if (text) {
+          this.logger.log(
+            `📨 Received message from ${senderPhone} (Tenant: ${tenantId})`,
+          );
+
+          // 4. Log Incoming Message (Optional but good for history)
+          // We create a log entry so next time it's caught by idempotency
+          await this.prisma.whatsAppLog.create({
+            data: {
+              tenantId,
+              whatsAppNumberId: waNumber.id,
+              phone: senderPhone,
+              type: 'INCOMING',
+              status: 'RECEIVED',
+              messageId: messageId,
+              metadata: message,
+            },
+          });
+
+          // 5. Route to Automation
+          await this.router.routeMessage(
+            tenantId,
+            waNumber.id,
+            senderPhone,
+            text,
+          );
+        } else {
+        }
+      }
+    } catch (err) {
+      this.logger.error(
+        `Error handling incoming messages: ${err.message}`,
+        err.stack,
+      );
     }
   }
 
   /**
    * Handle message status updates from Meta
-   * Updates WhatsAppLog with delivery status
    */
   private async handleStatusUpdate(status: any, metadata: any) {
     const messageId = status.id;
-    const statusValue = status.status; // sent, delivered, read, failed
+    const statusValue = status.status;
     const timestamp = status.timestamp
       ? new Date(parseInt(status.timestamp) * 1000)
       : new Date();
-    const recipientId = status.recipient_id;
 
-    if (!messageId) {
-      return;
-    }
+    if (!messageId) return;
 
     try {
       // Find the log entry by messageId
       const log = await this.prisma.whatsAppLog.findFirst({
         where: { messageId },
+        select: { id: true }, // optim
       });
 
       if (!log) {
-        this.logger.warn(
-          `No log found for messageId: ${messageId}. Status: ${statusValue}`,
-        );
+        // Warning is okay, sometimes status arrives before log created if async race
+        // this.logger.warn(`No log found for status update: ${messageId}`);
         return;
       }
 
-      // Update log status based on Meta status
-      const updateData: any = {
-        updatedAt: timestamp,
-      };
+      const updateData: any = { updatedAt: timestamp };
 
-      switch (statusValue) {
-        case 'sent':
-          updateData.status = 'SENT';
-          break;
-        case 'delivered':
-          updateData.status = 'DELIVERED';
-          updateData.deliveredAt = timestamp;
-          break;
-        case 'read':
-          updateData.status = 'READ';
-          updateData.readAt = timestamp;
-          break;
-        case 'failed':
-          updateData.status = 'FAILED';
-          updateData.error = status.errors
-            ? JSON.stringify(status.errors)
-            : 'Failed to deliver';
-          break;
-        default:
-          break;
+      if (statusValue === 'sent') updateData.status = 'SENT';
+      else if (statusValue === 'delivered') {
+        updateData.status = 'DELIVERED';
+        updateData.deliveredAt = timestamp;
+      } else if (statusValue === 'read') {
+        updateData.status = 'READ';
+        updateData.readAt = timestamp;
+      } else if (statusValue === 'failed') {
+        updateData.status = 'FAILED';
+        updateData.error = status.errors
+          ? JSON.stringify(status.errors)
+          : 'Failed';
       }
 
       await this.prisma.whatsAppLog.update({
         where: { id: log.id },
         data: updateData,
       });
-
-      this.logger.log(`Updated message ${messageId} status to ${statusValue}`);
+      // this.logger.debug(`Updated status ${messageId} -> ${statusValue}`);
     } catch (error) {
       this.logger.error(
-        `Failed to update status for messageId ${messageId}:`,
-        error,
+        `Failed to update status ${messageId}: ${error.message}`,
       );
     }
   }

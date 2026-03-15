@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ReceiptsService } from './receipts.service';
+import { ReceiptsModule as CoreReceiptsModule } from '../../../core/receipts/receipts.module';
 import { ReceiptsController } from './receipts.controller';
 
 @Module({
+  imports: [CoreReceiptsModule],
   controllers: [ReceiptsController],
-  providers: [ReceiptsService],
-  exports: [ReceiptsService],
+  exports: [CoreReceiptsModule],
 })
 export class ReceiptsModule {}

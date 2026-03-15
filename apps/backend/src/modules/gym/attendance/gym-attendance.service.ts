@@ -2,6 +2,7 @@ import {
   Injectable,
   ForbiddenException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { TenantService } from '../../../core/tenant/tenant.service';
@@ -15,6 +16,34 @@ export class GymAttendanceService {
   private normalizePhone(phone: string): string {
     return phone.replace(/\D/g, '').slice(-10);
   }
+
+  /**
+   * SECURITY: QR Code Check-In via Tenant Code
+   *
+   * QR codes encode the tenant code (user-friendly), not the tenantId (internal).
+   * This method looks up the tenant by code, then performs check-in/out.
+   *
+   * ✅ SECURITY: Prevents QR holder from spoofing arbitrary tenantId
+   */
+  async checkInOrOutByPhoneByTenantCode(tenantCode: string, phone: string) {
+    if (!tenantCode) {
+      throw new BadRequestException('tenantCode required');
+    }
+
+    // Look up tenant by code
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { code: tenantCode },
+      select: { id: true, code: true },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant code invalid or gym not found');
+    }
+
+    // ✅ Use resolved tenantId from DB (not user input)
+    return this.checkInOrOutByPhone(tenant.id, phone);
+  }
+
   /**
    * CHECK-IN
    */
@@ -132,41 +161,52 @@ export class GymAttendanceService {
       },
     });
   }
-  async listTodayAttendance(tenantId: string) {
+  async listTodayAttendance(
+    tenantId: string,
+    options?: { skip?: number; take?: number },
+  ) {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const end = new Date();
     end.setHours(23, 59, 59, 999);
 
-    const records = await this.prisma.gymAttendance.findMany({
-      where: {
-        tenantId,
-        checkInTime: {
-          gte: start,
-          lte: end,
-        },
+    const where = {
+      tenantId,
+      checkInTime: {
+        gte: start,
+        lte: end,
       },
-      orderBy: { checkInTime: 'desc' },
-      include: {
-        member: {
-          select: {
-            id: true,
-            fullName: true,
-            phone: true,
+    };
+
+    const [records, total] = await Promise.all([
+      this.prisma.gymAttendance.findMany({
+        where,
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        orderBy: { checkInTime: 'desc' },
+        include: {
+          member: {
+            select: {
+              id: true,
+              fullName: true,
+              phone: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.gymAttendance.count({ where }),
+    ]);
 
-    // ✅ FLATTEN (this exposes attendanceId)
-    return records.map((r) => ({
-      attendanceId: r.id, // ← THIS IS THE ATTENDANCE ID
+    const data = records.map((r) => ({
+      attendanceId: r.id,
       checkInTime: r.checkInTime,
       checkOutTime: r.checkOutTime,
       memberId: r.member.id,
       memberName: r.member.fullName,
       phone: r.member.phone,
     }));
+
+    return { data, total, skip: options?.skip ?? 0, take: options?.take ?? 50 };
   }
 
   /**
@@ -258,19 +298,42 @@ export class GymAttendanceService {
   }
 
   //list currently checked-in members
-  async listCurrentlyCheckedInMembers(tenantId: string) {
-    return this.prisma.gymAttendance.findMany({
-      where: {
-        tenantId,
-        checkOutTime: null,
-      },
-      include: {
-        member: true,
-      },
-      orderBy: {
-        checkInTime: 'desc',
-      },
-    });
+  async listCurrentlyCheckedInMembers(
+    tenantId: string,
+    options?: { skip?: number; take?: number },
+  ) {
+    const where = {
+      tenantId,
+      checkOutTime: null,
+    };
+
+    const [records, total] = await Promise.all([
+      this.prisma.gymAttendance.findMany({
+        where,
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        include: {
+          member: {
+            select: {
+              id: true,
+              fullName: true,
+              phone: true,
+            },
+          },
+        },
+        orderBy: {
+          checkInTime: 'desc',
+        },
+      }),
+      this.prisma.gymAttendance.count({ where }),
+    ]);
+
+    return {
+      data: records,
+      total,
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 50,
+    };
   }
 
   //GET recent attendance for member

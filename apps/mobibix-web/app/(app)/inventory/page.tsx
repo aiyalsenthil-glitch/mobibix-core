@@ -1,12 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { listProducts, type ShopProduct } from "@/services/products.api";
-import { stockIn } from "@/services/inventory.api";
-import { getStockBalances } from "@/services/stock.api";
+import { useEffect, useState, useMemo } from "react";
+import type { ReactNode } from "react";
+import {
+  listProducts,
+  type ShopProduct,
+} from "@/services/products.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { NoShopsAlert } from "../components/NoShopsAlert";
+import { StockInModal } from "@/components/inventory/StockInModal";
+import { useProductCost } from "@/hooks/useProductCost";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { 
+  Search, 
+  Package, 
+  AlertTriangle, 
+  DollarSign, 
+  Plus, 
+  Store,
+  Box
+} from "lucide-react";
+import { TriggerAiButton } from "@/components/ai/TriggerAiButton";
 
 export default function InventoryPage() {
   const { theme } = useTheme();
@@ -23,407 +45,441 @@ export default function InventoryPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<ShopProduct | null>(
-    null,
-  );
-  const [quantity, setQuantity] = useState("");
-  const [costPrice, setCostPrice] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Modal control
+  const [showAddStockModal, setShowAddStockModal] = useState(false);
+  
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const {
+    editingCostId,
+    setEditingCostId,
+    editingCostValue,
+    setEditingCostValue,
+    updatingCostId,
+    handleUpdateCost,
+  } = useProductCost({
+    selectedShopId,
+    setProducts,
+    setError,
+    setSuccessMessage,
+  });
 
-  // Load products when shop selection changes
+  // Fetch products
   useEffect(() => {
-    const loadProducts = async () => {
-      if (!selectedShopId) {
-        setProducts([]);
-        return;
-      }
+    if (!selectedShopId) return;
 
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
-        setIsLoading(true);
-        setError(null);
-        // Fetch products and stock balances, then merge on productId
-        const [productList, balances] = await Promise.all([
-          listProducts(selectedShopId),
-          getStockBalances(selectedShopId),
-        ]);
-
-        const balanceMap = new Map(balances.map((b) => [b.productId, b]));
-
-        const merged: ShopProduct[] = productList.map((p) => {
-          const b = balanceMap.get(p.id);
-          const stockQty = b?.stockQty ?? p.stockQty ?? 0;
-          const isNegative = b?.isNegative ?? stockQty < 0;
-          return {
-            ...p,
-            stockQty,
-            isNegative,
-          };
-        });
-
-        setProducts(merged);
-      } catch (err: any) {
-        console.error("Error loading products:", err);
-        setError(err.message || "Failed to load products");
-        setProducts([]);
+        const data = await listProducts(selectedShopId);
+        const productList = Array.isArray(data) ? data : data.data;
+        setProducts(productList);
+      } catch (err: unknown) {
+        console.error("Failed to fetch products:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to load inventory",
+        );
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadProducts();
-  }, [selectedShopId]);
+    fetchProducts();
+  }, [selectedShopId, refreshTrigger]);
 
-  const filteredProducts = products.filter((product) => {
-    const query = searchQuery.toLowerCase();
-    return product.name.toLowerCase().includes(query);
-  });
+  // Derived state for filtered products
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery) return products;
+    return products.filter(p => 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [products, searchQuery]);
 
-  const handleStockIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedProduct || !selectedShopId) return;
+  // Derived stats
+  const stats = useMemo(() => {
+    const totalProducts = products.length;
+    const lowStock = products.filter(p => (p.stockQty || 0) <= (p.reorderLevel || 0)).length;
+    const totalValue = products.reduce((sum, p) => sum + ((p.costPrice || 0) * (p.stockQty || 0)), 0);
+    return { totalProducts, lowStock, totalValue };
+  }, [products]);
 
-    try {
-      setIsSubmitting(true);
-      setError(null);
-
-      await stockIn(selectedShopId, {
-        shopProductId: selectedProduct.id,
-        quantity: parseInt(quantity),
-        costPrice: parseFloat(costPrice) || 0,
-        type: selectedProduct.type,
-      });
-
-      // Reload products + stock balances to get updated stock
-      const [productList, balances] = await Promise.all([
-        listProducts(selectedShopId),
-        getStockBalances(selectedShopId),
-      ]);
-
-      const balanceMap = new Map(balances.map((b) => [b.productId, b]));
-      const merged: ShopProduct[] = productList.map((p) => {
-        const b = balanceMap.get(p.id);
-        const stockQty = b?.stockQty ?? p.stockQty ?? 0;
-        const isNegative = b?.isNegative ?? stockQty < 0;
-        return {
-          ...p,
-          stockQty,
-          isNegative,
-        };
-      });
-      setProducts(merged);
-
-      // Reset form
-      setSelectedProduct(null);
-      setQuantity("");
-      setCostPrice("");
-      setSearchQuery("");
-      setSuccessMessage("Stock added successfully!");
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err: any) {
-      setError(err.message || "Failed to add stock");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const isDark = theme === "dark";
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1
-          className={`text-3xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}
-        >
-          Inventory Management
-        </h1>
+    <div className={`min-h-screen pb-20`}>
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className={`text-2xl font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
+              Inventory Management
+            </h1>
+            <TriggerAiButton 
+              prompt="Analyze my inventory and tell me which items need restocking urgently." 
+              label="✨ AI Stock Advice"
+            />
+          </div>
+          <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+            Track stock levels, manage costs, and monitor inventory health
+          </p>
+        </div>
+        
+        {shops.length > 0 && selectedShopId && (
+           <button
+            onClick={() => setShowAddStockModal(true)}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-medium shadow-md transition-all hover:shadow-lg active:scale-95"
+          >
+            <Plus size={18} />
+            <span>Add Stock</span>
+          </button>
+        )}
       </div>
 
-      {/* Shop Filter Section */}
-      {isLoadingShops ? (
-        <div
-          className={`border rounded-lg p-4 mb-6 shadow-sm ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"}`}
-        >
-          <div className={theme === "dark" ? "text-gray-300" : "text-black"}>
-            Loading shops...
-          </div>
+      {/* Stats Cards */}
+      {selectedShopId && !isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <StatCard 
+            title="Total Products" 
+            value={stats.totalProducts} 
+            icon={<Package className="text-blue-500" size={24} />}
+            theme={theme}
+          />
+          <StatCard 
+            title="Low Stock Items" 
+            value={stats.lowStock} 
+            icon={<AlertTriangle className="text-amber-500" size={24} />}
+            theme={theme}
+            isWarning={stats.lowStock > 0}
+          />
+          <StatCard 
+            title="Inventory Value" 
+            value={`₹${(stats.totalValue / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} 
+            icon={<DollarSign className="text-green-500" size={24} />}
+            theme={theme}
+          />
         </div>
-      ) : shops.length === 0 ? (
-        <div className="mb-6">
-          <NoShopsAlert variant="compact" />
-        </div>
-      ) : (
-        hasMultipleShops && (
-          <div
-            className={`border rounded-lg p-4 mb-6 shadow-sm ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"}`}
-          >
-            <label
-              className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
-            >
-              Select Shop
-            </label>
-            <select
-              value={selectedShopId}
-              onChange={(e) => selectShop(e.target.value)}
-              className={`w-full px-4 py-2 rounded-lg border font-medium focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 ${
-                theme === "dark"
-                  ? "bg-gray-800 border-white/20 text-white"
-                  : "bg-white border-gray-300 text-black"
-              }`}
-            >
-              {shops.map((shop) => (
-                <option key={shop.id} value={shop.id}>
-                  {shop.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )
       )}
 
-      {/* Stock In Form */}
-      {shops.length > 0 && (
-        <div
-          className={`border rounded-lg p-6 mb-6 shadow-sm ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"}`}
-        >
-          <h2
-            className={`text-xl font-bold mb-4 ${theme === "dark" ? "text-white" : "text-black"}`}
-          >
-            Add Stock
-          </h2>
-
-          <form onSubmit={handleStockIn} className="space-y-4">
-            {/* Product Selection */}
-            <div>
-              <label
-                className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
-              >
-                Product <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder={
-                    selectedProduct ? selectedProduct.name : "Search product..."
-                  }
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    if (e.target.value) {
-                      setSelectedProduct(null);
-                    }
-                  }}
-                  className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                    theme === "dark"
-                      ? "bg-gray-800 border-white/20 text-white"
-                      : "bg-white border-gray-300 text-black"
+      {/* Main Content Area */}
+      <div className={`rounded-xl border shadow-sm overflow-hidden ${
+        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+      }`}>
+        
+        {/* Toolbar */}
+        <div className={`p-4 border-b flex flex-col md:flex-row gap-4 justify-between items-center ${
+           isDark ? "border-gray-700 bg-gray-800/50" : "border-gray-100 bg-gray-50"
+        }`}>
+          {/* Shop Selector */}
+          <div className="w-full md:w-auto min-w-[250px]">
+             {isLoadingShops ? (
+                <div className="h-10 w-full animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+             ) : hasMultipleShops ? (
+               <div className="relative">
+                 <Store className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? "text-gray-400" : "text-gray-500"}`} />
+                 <select
+                  value={selectedShopId || ""}
+                  onChange={(e) => selectShop(e.target.value)}
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm font-medium focus:ring-2 focus:ring-teal-500 outline-none transition-all ${
+                    isDark 
+                      ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" 
+                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
                   }`}
-                />
-                {searchQuery && (
-                  <div
-                    className={`absolute z-10 w-full mt-1 border rounded-lg shadow-lg max-h-60 overflow-auto ${theme === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-                  >
-                    {filteredProducts.map((product) => (
-                      <button
-                        key={product.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedProduct(product);
-                          setSearchQuery("");
-                        }}
-                        className={`w-full text-left px-4 py-2 hover:bg-teal-50 dark:hover:bg-teal-900/20 border-b last:border-0 ${
-                          theme === "dark"
-                            ? "border-gray-700 text-white"
-                            : "border-gray-100 text-gray-900"
-                        }`}
-                      >
-                        <div className="font-medium">{product.name}</div>
-                        <div
-                          className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}
-                        >
-                          Current Stock: {product.stockQty || 0} | Sale Price: ₹
-                          {product.salePrice}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {selectedProduct && (
-                <div
-                  className={`mt-2 p-2 rounded text-sm ${theme === "dark" ? "bg-teal-500/20 text-teal-200" : "bg-teal-50 text-teal-900"}`}
                 >
-                  Selected: {selectedProduct.name}
+                  {shops.map((shop) => (
+                    <option key={shop.id} value={shop.id}>{shop.name}</option>
+                  ))}
+                </select>
+               </div>
+             ) : shops.length > 0 ? (
+                <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border ${
+                   isDark ? "bg-gray-700/50 border-gray-600 text-gray-200" : "bg-white border-gray-200 text-gray-700"
+                }`}>
+                   <Store size={16} />
+                   <span className="font-medium text-sm">{shops[0]?.name}</span>
                 </div>
-              )}
-            </div>
+             ) : (
+                <NoShopsAlert variant="compact" />
+             )}
+          </div>
 
-            {/* Quantity */}
-            <div>
-              <label
-                className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
-              >
-                Quantity <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                required
-                min="1"
-                placeholder="Enter quantity"
-                className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                  theme === "dark"
-                    ? "bg-gray-800 border-white/20 text-white"
-                    : "bg-white border-gray-300 text-black"
-                }`}
-              />
-            </div>
-
-            {/* Cost Price */}
-            <div>
-              <label
-                className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
-              >
-                Cost Price (₹) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                value={costPrice}
-                onChange={(e) => setCostPrice(e.target.value)}
-                required
-                min="0"
-                step="0.01"
-                placeholder="Enter cost price"
-                className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                  theme === "dark"
-                    ? "bg-gray-800 border-white/20 text-white"
-                    : "bg-white border-gray-300 text-black"
-                }`}
-              />
-            </div>
-
-            {error && (
-              <div className="bg-rose-50 border border-rose-200 text-rose-700 dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-200 px-4 py-3 rounded-lg">
-                {error}
-              </div>
-            )}
-
-            {successMessage && (
-              <div className="bg-green-50 border border-green-200 text-green-700 dark:bg-green-500/20 dark:border-green-500/50 dark:text-green-200 px-4 py-3 rounded-lg">
-                {successMessage}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isSubmitting || !selectedProduct}
-              className="w-full px-6 py-3 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition"
-            >
-              {isSubmitting ? "Adding Stock..." : "Add Stock"}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* Products Table */}
-      {(error || shopsError) && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-700 dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-200 px-4 py-3 rounded-lg mb-4">
-          {error || shopsError}
-        </div>
-      )}
-
-      {isLoading ? (
-        <div
-          className={`text-center py-12 font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
-        >
-          Loading products...
-        </div>
-      ) : !selectedShopId ? (
-        <div className="text-center py-12">
-          <p
-            className={`font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
-          >
-            Select a shop to manage inventory
-          </p>
-        </div>
-      ) : products.length === 0 ? (
-        <div className="text-center py-12">
-          <p
-            className={`font-medium ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}
-          >
-            No products available
-          </p>
-        </div>
-      ) : (
-        <div
-          className={`border rounded-lg overflow-hidden shadow-sm ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-gray-200"}`}
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead
-                className={`border-b ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-gray-100 border-gray-300"}`}
-              >
-                <tr>
-                  {["Product Name", "Current Stock", "Sale Price"].map(
-                    (header) => (
-                      <th
-                        key={header}
-                        className={`text-left px-6 py-4 text-sm font-semibold ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
-                      >
-                        {header}
-                      </th>
-                    ),
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product) => (
-                  <tr
-                    key={product.id}
-                    className={`border-b last:border-b-0 transition ${theme === "dark" ? "border-white/10 hover:bg-white/5" : "border-gray-200 hover:bg-gray-50"}`}
-                  >
-                    <td
-                      className={`px-6 py-4 font-medium ${theme === "dark" ? "text-white" : "text-gray-900"}`}
-                    >
-                      {product.name}
-                    </td>
-                    <td
-                      className={`px-6 py-4 ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}
-                    >
-                      <span
-                        className={
-                          product.isNegative
-                            ? theme === "dark"
-                              ? "text-red-300"
-                              : "text-red-600"
-                            : undefined
-                        }
-                      >
-                        {product.stockQty || 0}
-                      </span>
-                      {product.isNegative && (
-                        <span
-                          className={`ml-2 inline-block text-xs px-2 py-0.5 rounded ${
-                            theme === "dark"
-                              ? "bg-red-500/20 text-red-200"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          Negative
-                        </span>
-                      )}
-                    </td>
-                    <td
-                      className={`px-6 py-4 font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
-                    >
-                      ₹{product.salePrice.toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Search Bar */}
+          <div className="w-full md:w-auto relative group">
+            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${
+              isDark ? "text-gray-500 group-focus-within:text-teal-400" : "text-gray-400 group-focus-within:text-teal-600"
+            }`} />
+            <input 
+              type="text"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={`w-full md:w-[300px] pl-10 pr-4 py-2.5 rounded-lg border text-sm focus:ring-2 focus:ring-teal-500 outline-none transition-all ${
+                isDark 
+                  ? "bg-gray-900/50 border-gray-600 text-white placeholder-gray-500 focus:border-teal-500/50" 
+                  : "bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-teal-500"
+              }`}
+            />
           </div>
         </div>
+
+        {/* Error State */}
+        {(error || shopsError) && (
+          <div className={`m-4 p-4 rounded-lg flex items-center gap-3 ${
+            isDark ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-red-50 text-red-700 border border-red-100"
+          }`}>
+            <AlertTriangle size={20} />
+            <span className="text-sm font-medium">{error || shopsError}</span>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="p-12 flex flex-col items-center justify-center gap-3">
+             <div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+             <p className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-500"}`}>Loading inventory...</p>
+          </div>
+        ) : !selectedShopId || products.length === 0 ? (
+          <div className="py-20 flex flex-col items-center justify-center text-center">
+             <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                isDark ? "bg-gray-700 text-gray-500" : "bg-gray-100 text-gray-400"
+             }`}>
+                <Box size={32} />
+             </div>
+             <h3 className={`text-lg font-medium mb-1 ${isDark ? "text-white" : "text-gray-900"}`}>
+                {products.length === 0 && selectedShopId ? "No products found" : "No shops selected"}
+             </h3>
+             <p className={`text-sm max-w-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                {products.length === 0 && selectedShopId 
+                   ? "Get started by adding stock to your inventory."
+                   : "Select a shop to view and manage your inventory."}
+             </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className={isDark ? "border-gray-700 hover:bg-transparent" : "border-gray-100 hover:bg-transparent"}>
+                  <TableHead className="w-[30%]">Product Name</TableHead>
+                  <TableHead>Stock Level</TableHead>
+                  <TableHead>Sale Price</TableHead>
+                  <TableHead>Cost Price</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.length === 0 ? (
+                   <TableRow>
+                      <TableCell colSpan={6} className="h-32 text-center">
+                         <p className={isDark ? "text-gray-400" : "text-gray-500"}>
+                            No products match &quot;{searchQuery}&quot;
+                         </p>
+                      </TableCell>
+                   </TableRow>
+                ) : (
+                  filteredProducts.map((product) => (
+                    <TableRow key={product.id} className={`group ${isDark ? "border-gray-700 hover:bg-gray-700/30" : "border-gray-100 hover:bg-gray-50"}`}>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                           <span className={isDark ? "text-gray-200" : "text-gray-900"}>{product.name}</span>
+                           {product.hsnCode && (
+                             <span className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>HSN: {product.hsnCode}</span>
+                           )}
+                        </div>
+                      </TableCell>
+                      
+                      {/* Stock Level with Visual Indicator */}
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                           <span className={`font-semibold ${
+                             product.isNegative ? "text-red-500" : 
+                             (product.stockQty || 0) <= (product.reorderLevel || 0) ? "text-amber-500" :
+                             isDark ? "text-gray-300" : "text-gray-700"
+                           }`}>
+                              {product.stockQty || 0}
+                           </span>
+                           {product.isNegative && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                                 isDark ? "bg-red-500/20 text-red-400" : "bg-red-100 text-red-600"
+                              }`}>Neg</span>
+                           )}
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                         <span className={isDark ? "text-gray-300" : "text-gray-700"}>
+                            ₹{(product.salePrice / 100).toFixed(2)}
+                         </span>
+                      </TableCell>
+
+                      <TableCell>
+                        {editingCostId === product.id ? (
+                          <div className="flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-200">
+                            <input
+                              type="number"
+                              autoFocus
+                              value={editingCostValue}
+                              onChange={(e) => setEditingCostValue(e.target.value)}
+                              min="0.01"
+                              step="0.01"
+                              className={`w-20 px-2 py-1 text-sm rounded border outline-none focus:ring-2 focus:ring-teal-500 ${
+                                 isDark ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-900"
+                              }`}
+                            />
+                            <button
+                              onClick={() => handleUpdateCost(product.id, editingCostValue)}
+                              disabled={updatingCostId === product.id}
+                              className="p-1 rounded bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                            >
+                              {updatingCostId === product.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "✓"}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingCostId(null);
+                                setEditingCostValue("");
+                              }}
+                              className={`p-1 rounded transition-colors ${
+                                 isDark ? "bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white" : "bg-gray-200 text-gray-500 hover:bg-gray-300 hover:text-gray-800"
+                              }`}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                             <div className={`font-medium ${
+                                !(product.avgCost || product.costPrice) 
+                                   ? "text-red-500" 
+                                   : isDark ? "text-gray-300" : "text-gray-700"
+                             }`}>
+                                {(product.avgCost || product.costPrice) 
+                                   ? `₹${((product.avgCost || product.costPrice || 0) / 100).toFixed(2)}` 
+                                   : "—"}
+                             </div>
+                             {(product.avgCost || product.costPrice) && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                  product.avgCost 
+                                    ? isDark ? "bg-blue-500/20 text-blue-300" : "bg-blue-100 text-blue-700"
+                                    : isDark ? "bg-green-500/20 text-green-300" : "bg-green-100 text-green-700"
+                                }`}>
+                                  {product.avgCost ? "WAC" : "Set"}
+                                </span>
+                             )}
+                          </div>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        <StatusBadge 
+                           isSet={!!(product.avgCost || product.costPrice)} 
+                           isDark={isDark} 
+                        />
+                      </TableCell>
+                      
+                      <TableCell className="text-right">
+                         {editingCostId !== product.id && (
+                            <button
+                               onClick={() => {
+                                 setEditingCostId(product.id);
+                                 setEditingCostValue(
+                                   ((product.avgCost || product.costPrice || 0) / 100)?.toString() || ""
+                                 );
+                               }}
+                               className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 ${
+                                  isDark 
+                                     ? "bg-gray-700 hover:bg-gray-600 text-teal-400" 
+                                     : "bg-gray-100 hover:bg-gray-200 text-teal-700"
+                               }`}
+                            >
+                               Edit Cost
+                            </button>
+                         )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+
+      {/* Success Toast */}
+      {successMessage && (
+        <div className="fixed bottom-6 right-6 px-6 py-3 bg-teal-600 text-white rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-right duration-300 z-50">
+          <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">✓</div>
+          <span className="font-medium">{successMessage}</span>
+        </div>
       )}
+
+      {/* Add Stock Modal */}
+      <StockInModal
+        open={showAddStockModal}
+        onOpenChange={setShowAddStockModal}
+        shopId={selectedShopId || ""}
+        filteredProducts={products}
+        onSuccess={() => {
+           if (selectedShopId) {
+             setRefreshTrigger(prev => prev + 1);
+           }
+           setSuccessMessage("Stock added successfully!");
+           setTimeout(() => setSuccessMessage(null), 3000);
+        }}
+      />
     </div>
   );
+}
+
+// Helper Components
+
+type StatCardProps = {
+  title: string;
+  value: string | number;
+  icon: ReactNode;
+  theme: string;
+  isWarning?: boolean;
+};
+
+function StatCard({ title, value, icon, theme, isWarning }: StatCardProps) {
+   const isDark = theme === "dark";
+   return (
+     <div className={`p-5 rounded-xl border shadow-sm flex items-center gap-4 transition-transform hover:scale-[1.01] ${
+        isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+     }`}>
+        <div className={`p-3 rounded-lg ${isDark ? "bg-gray-700/50" : "bg-gray-50"}`}>
+           {icon}
+        </div>
+        <div>
+           <p className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-500"}`}>{title}</p>
+           <p className={`text-2xl font-bold ${
+              isWarning ? "text-amber-500" : isDark ? "text-white" : "text-gray-900"
+           }`}>
+              {value}
+           </p>
+        </div>
+     </div>
+   )
+}
+
+function StatusBadge({ isSet, isDark }: { isSet: boolean, isDark: boolean }) {
+   if (isSet) {
+      return (
+         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+            isDark ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-green-50 text-green-700 border border-green-100"
+         }`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+            Ready
+         </span>
+      )
+   }
+   return (
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+         isDark ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-amber-50 text-amber-700 border border-amber-100"
+      }`}>
+         <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+         Incomplete
+      </span>
+   )
 }

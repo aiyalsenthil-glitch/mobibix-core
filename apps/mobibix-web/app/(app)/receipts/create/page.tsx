@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   createReceipt,
@@ -8,6 +8,8 @@ import {
   ReceiptType,
   PaymentMode,
 } from "@/services/receipts.api";
+import { getPartyBalance } from "@/services/parties.api";
+import { PartySelector } from "@/components/common/PartySelector";
 import { AlertCircle, Check, Loader } from "lucide-react";
 
 export default function CreateReceiptPage() {
@@ -16,12 +18,39 @@ export default function CreateReceiptPage() {
   const [error, setError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
+  // Outstanding Balance State
+  const [outstandingBalance, setOutstandingBalance] = useState<number | null>(
+    null,
+  );
+  const [fetchingBalance, setFetchingBalance] = useState(false);
+
   const [formData, setFormData] = useState<CreateReceiptRequest>({
     paymentMethod: "CASH",
     amount: 0,
     receiptType: "CUSTOMER",
     customerName: "",
+    customerId: undefined, // New field for linked party
   });
+
+  // Fetch balance when customerId changes
+  useEffect(() => {
+    if (formData.customerId) {
+      const fetchBalance = async () => {
+        setFetchingBalance(true);
+        try {
+          const result = await getPartyBalance(formData.customerId!);
+          setOutstandingBalance(result.balance);
+        } catch (err) {
+          console.error("Failed to fetch balance:", err);
+        } finally {
+          setFetchingBalance(false);
+        }
+      };
+      fetchBalance();
+    } else {
+      setOutstandingBalance(null);
+    }
+  }, [formData.customerId]);
 
   const handleChange = (field: keyof CreateReceiptRequest, value: any) => {
     setFormData((prev) => ({
@@ -70,7 +99,7 @@ export default function CreateReceiptPage() {
     setLoading(true);
     setError(null);
     try {
-      const receipt = await createReceipt(formData);
+      await createReceipt(formData);
       // Success - redirect to receipts list
       router.push("/receipts?success=created");
     } catch (err) {
@@ -114,40 +143,110 @@ export default function CreateReceiptPage() {
           onSubmit={handleSubmit}
           className="bg-white rounded-lg border border-gray-200 p-8 space-y-6"
         >
-          {/* Customer Name */}
+          {/* Customer Selection */}
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
               Customer Name <span className="text-red-600">*</span>
             </label>
-            <input
-              type="text"
-              value={formData.customerName}
-              onChange={(e) => handleChange("customerName", e.target.value)}
-              placeholder="Enter customer name"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div className="relative">
+              {formData.customerName && formData.customerId ? (
+                // Selected Customer View
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-blue-50 border-blue-200">
+                  <div>
+                    <div className="font-medium text-blue-900">
+                      {formData.customerName}
+                    </div>
+                    {/* Outstanding Balance Display */}
+                    <div className="text-sm mt-1">
+                      {fetchingBalance ? (
+                        <span className="text-gray-500 flex items-center gap-1">
+                          <Loader size={12} className="animate-spin" />
+                          Checking balance...
+                        </span>
+                      ) : outstandingBalance !== null ? (
+                        <span
+                          className={`font-medium px-2 py-0.5 rounded text-xs ${
+                            outstandingBalance > 0
+                              ? "bg-red-100 text-red-700 border border-red-200"
+                              : outstandingBalance < 0
+                              ? "bg-green-100 text-green-700 border border-green-200"
+                              : "bg-gray-100 text-gray-700 border border-gray-200"
+                          }`}
+                        >
+                          {outstandingBalance > 0
+                            ? `Dues: ${formatCurrency(outstandingBalance / 100)}`
+                            : outstandingBalance < 0
+                            ? `Advance: ${formatCurrency(Math.abs(outstandingBalance) / 100)}`
+                            : "No Dues"}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        customerId: undefined,
+                        customerName: "",
+                        customerPhone: undefined,
+                      }));
+                      setOutstandingBalance(null);
+                    }}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                // Search Input
+                <PartySelector
+                  type="CUSTOMER"
+                  onSelect={(party) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      customerId: party.id,
+                      customerName: party.name,
+                      customerPhone: party.phone,
+                    }));
+                  }}
+                  placeholder="Search customer..."
+                />
+              )}
+            </div>
           </div>
 
-          {/* Customer Phone (Optional) */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Customer Phone
-            </label>
-            <input
-              type="tel"
-              value={formData.customerPhone || ""}
-              onChange={(e) =>
-                handleChange("customerPhone", e.target.value || undefined)
-              }
-              placeholder="Enter customer phone (optional)"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+          {/* Customer Phone (Show only if manually entered or extra info needed) */}
+          {!formData.customerId && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Or Enter Details Manually
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  value={formData.customerName}
+                  onChange={(e) => handleChange("customerName", e.target.value)}
+                  placeholder="Customer Name"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <input
+                  type="tel"
+                  value={formData.customerPhone || ""}
+                  onChange={(e) =>
+                    handleChange("customerPhone", e.target.value || undefined)
+                  }
+                  placeholder="Phone (Optional)"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Amount */}
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Amount <span className="text-red-600">*</span>
+              Amount Received <span className="text-red-600">*</span>
             </label>
             <div className="relative">
               <span className="absolute left-4 top-2 text-gray-600 font-medium">
@@ -161,32 +260,43 @@ export default function CreateReceiptPage() {
                 className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            {formData.amount > 0 && (
-              <p className="text-sm text-gray-600 mt-2">
-                Amount in words: {/* Will need number-to-words utility */}
-              </p>
-            )}
           </div>
 
           {/* Payment Method */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Payment Method <span className="text-red-600">*</span>
-            </label>
-            <select
-              value={formData.paymentMethod}
-              onChange={(e) => handleChange("paymentMethod", e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="CASH">Cash</option>
-              <option value="UPI">UPI</option>
-              <option value="CARD">Card</option>
-              <option value="BANK">Bank Transfer</option>
-            </select>
-            <p className="text-sm text-gray-600 mt-2">
-              ⚠️ CREDIT payments do NOT create receipts - record receipt only
-              when payment is received
-            </p>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Payment Method <span className="text-red-600">*</span>
+              </label>
+              <select
+                value={formData.paymentMethod}
+                onChange={(e) => handleChange("paymentMethod", e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="CASH">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="CARD">Card</option>
+                <option value="BANK">Bank Transfer</option>
+              </select>
+            </div>
+
+            {/* Receipt Type */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Receipt Type
+              </label>
+              <select
+                value={formData.receiptType}
+                onChange={(e) =>
+                  handleChange("receiptType", e.target.value as ReceiptType)
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="CUSTOMER">Customer Payment</option>
+                <option value="GENERAL">General Income</option>
+                <option value="ADJUSTMENT">Adjustment</option>
+              </select>
+            </div>
           </div>
 
           {/* Transaction Reference (Optional) */}
@@ -205,26 +315,7 @@ export default function CreateReceiptPage() {
             />
           </div>
 
-          {/* Receipt Type (Optional) */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Receipt Type
-            </label>
-            <select
-              value={formData.receiptType}
-              onChange={(e) =>
-                handleChange("receiptType", e.target.value as ReceiptType)
-              }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="CUSTOMER">Customer</option>
-              <option value="GENERAL">General</option>
-              <option value="ADJUSTMENT">Adjustment</option>
-              <option value="PAYMENT">Payment</option>
-            </select>
-          </div>
-
-          {/* Narration (Optional) */}
+          {/* Notes (Optional) */}
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
               Notes
@@ -318,6 +409,14 @@ export default function CreateReceiptPage() {
                 </div>
               )}
             </div>
+            {outstandingBalance !== null && (
+               <div className="border-t pt-3 mt-3">
+                 <p className="text-sm text-gray-600">Outstanding Balance After Payment</p>
+                  <p className={`font-semibold ${outstandingBalance - formData.amount * 100 > 0 ? "text-red-600" : "text-green-600"}`}>
+                    {formatCurrency((outstandingBalance - formData.amount * 100) / 100)}
+                  </p>
+               </div>
+            )}
           </div>
 
           <div className="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-4">

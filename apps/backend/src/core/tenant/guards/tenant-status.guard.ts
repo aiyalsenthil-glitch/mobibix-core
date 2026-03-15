@@ -3,76 +3,203 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  Inject,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ModuleType, UserRole, SubscriptionStatus } from '@prisma/client';
+import {
+  GRACE_PERIOD_DAYS,
+  SOFT_GRACE_PERIOD_DAYS,
+  HARD_GRACE_PERIOD_HOURS,
+} from '../../billing/grace-period.constants';
+import { MODULE_SCOPE_KEY } from '../../auth/decorators/module-scope.decorator';
 
 @Injectable()
 export class TenantStatusGuard implements CanActivate {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly reflector: Reflector,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
 
-    if (request.method === 'POST' && request.route?.path === '/tenant') {
+    const requestPath = request.route?.path ?? request.path ?? '';
+    const originalUrl: string = request.originalUrl ?? '';
+    const isTenantCreate =
+      request.method === 'POST' &&
+      (requestPath === '/tenant' || originalUrl.startsWith('/api/tenant'));
+
+    if (isTenantCreate) {
       return true;
     }
 
     const user = request.user;
+
+    // Allow SUPER_ADMIN and ADMIN to bypass subscription checks
+    if (user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN) {
+      return true;
+    }
+
     const tenantId: string | undefined = user?.tenantId;
 
     if (!tenantId) {
       return true;
     }
 
+    // Extract module from request context (query, body, or default to MOBILE_SHOP)
+    let module: ModuleType | undefined;
+    if (request.query?.module) {
+      module = request.query.module;
+    } else if (request.body?.module) {
+      module = request.body.module;
+    }
+
+    // 🔥 FIX: Automatically detect module via Reflector if not in request
+    if (!module) {
+      module = this.reflector.getAllAndOverride<ModuleType>(MODULE_SCOPE_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
+    }
+
+    if (!module) {
+      const tenant = (await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { tenantType: true, deletionRequestPending: true },
+      })) as any;
+      module =
+        tenant?.tenantType === 'GYM' ? ModuleType.GYM : ModuleType.MOBILE_SHOP;
+
+      // 🛡️ GLOBAL DELETION SOFT LOCK
+      if (tenant?.deletionRequestPending) {
+        const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+        if (isMutation) {
+          throw new ForbiddenException(
+            'Your account is currently pending deletion and most operations are restricted. Please contact support if you need to cancel the request.',
+          );
+        }
+      }
+    } else {
+      // If module was provided, we still need to fetch the tenant's deletion status
+      const tenant = (await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { deletionRequestPending: true },
+      })) as any;
+      if (tenant?.deletionRequestPending) {
+        const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+        if (isMutation) {
+          throw new ForbiddenException(
+            'Your account is currently pending deletion and most operations are restricted. Please contact support if you need to cancel the request.',
+          );
+        }
+      }
+    }
+
     const now = new Date();
 
-    /**
-     * 1️⃣ ACTIVE always wins
-     */
-    const active = await this.prisma.tenantSubscription.findFirst({
+    // 1️⃣ Fetch subscription for module
+    const subscription = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
-        status: 'ACTIVE',
-        endDate: { gt: now },
+        module,
+        status: {
+          in: [
+            SubscriptionStatus.ACTIVE,
+            SubscriptionStatus.TRIAL,
+            SubscriptionStatus.PAST_DUE,
+          ],
+        },
       },
+      include: {
+        plan: true,
+      },
+      orderBy: [
+        { status: 'asc' }, // ACTIVE > PAST_DUE > TRIAL
+        { startDate: 'desc' },
+      ],
     });
 
-    if (active) {
-      return true;
+    if (!subscription) {
+      // Check for strictly SCHEDULED to give better error
+      const scheduled = await this.prisma.tenantSubscription.findFirst({
+        where: { tenantId, module, status: SubscriptionStatus.SCHEDULED },
+      });
+      if (scheduled) throw new ForbiddenException('SUBSCRIPTION_NOT_STARTED');
+
+      throw new ForbiddenException('SUBSCRIPTION_REQUIRED');
     }
 
-    /**
-     * 2️⃣ Valid TRIAL is treated as ACTIVE
-     */
-    const trial = await this.prisma.tenantSubscription.findFirst({
-      where: {
-        tenantId,
-        status: 'TRIAL',
-        endDate: { gt: now },
-      },
-    });
-
-    if (trial) {
-      return true;
+    // 🛡️ AI TOKEN QUOTA CHECK
+    const isAiRequest = originalUrl.includes('/ai/') || originalUrl.includes('/assistant/');
+    if (isAiRequest) {
+      const limit = subscription.plan.maxAiTokens ?? 0;
+      if (limit > 0 && subscription.aiTokensUsed >= limit) {
+        throw new ForbiddenException({
+          message: 'AI_TOKEN_QUOTA_EXCEEDED',
+          limit,
+          used: subscription.aiTokensUsed,
+          resetAt: subscription.lastQuotaResetAt,
+        });
+      }
     }
 
-    /**
-     * 3️⃣ If only SCHEDULED exists → deny
-     */
-    const scheduled = await this.prisma.tenantSubscription.findFirst({
-      where: {
-        tenantId,
-        status: 'SCHEDULED',
-      },
-    });
+    const softGracePeriodEnd = new Date(subscription.endDate || now);
+    softGracePeriodEnd.setDate(
+      softGracePeriodEnd.getDate() + SOFT_GRACE_PERIOD_DAYS,
+    );
 
-    if (scheduled) {
-      throw new ForbiddenException('SUBSCRIPTION_NOT_STARTED');
+    const isAutopay =
+      subscription.autopayStatus === 'ACTIVE' && subscription.autoRenew === true;
+
+    // 1️⃣ Determine if we are in the "Mutation Grace Period" (24h for autopay only)
+    const mutationGraceEnd = new Date(subscription.endDate || now);
+    if (isAutopay) {
+      mutationGraceEnd.setHours(
+        mutationGraceEnd.getHours() + HARD_GRACE_PERIOD_HOURS,
+      );
     }
 
-    /**
-     * 4️⃣ Everything else → expired
-     */
-    throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
+    const isBeyondMutationGrace = now > mutationGraceEnd;
+    const isBeyondSoftGrace = subscription.endDate && now > softGracePeriodEnd;
+    const isPastDue = subscription.status === SubscriptionStatus.PAST_DUE;
+
+
+    // 2️⃣ Hard Block: EXPIRED or beyond Soft Grace Period (14 days)
+    if (subscription.status === SubscriptionStatus.EXPIRED || isBeyondSoftGrace) {
+      throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
+    }
+
+    // 3️⃣ Soft Block: Read-Only for PAST_DUE or beyond mutation grace period
+    if (isBeyondMutationGrace || isPastDue) {
+      const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+      if (isMutation) {
+        throw new ForbiddenException(
+          isPastDue
+            ? 'PAYMENT_PAST_DUE_READ_ONLY'
+            : isAutopay
+            ? 'AUTOPAY_RENEWAL_PENDING_READ_ONLY'
+            : 'SUBSCRIPTION_EXPIRED_READ_ONLY',
+        );
+      }
+
+      const daysRemaining = subscription.endDate
+        ? Math.ceil(
+            (softGracePeriodEnd.getTime() - now.getTime()) /
+              (1000 * 60 * 60 * 24),
+          )
+        : 0;
+
+      request.gracePeriodWarning = {
+        daysRemaining,
+        expiryDate: subscription.endDate,
+        message: isPastDue
+          ? `Payment past due. Read-only mode active.`
+          : `Subscription ended. ${daysRemaining} days remaining in read-only grace period.`,
+      };
+    }
+
+    return true;
   }
 }

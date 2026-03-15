@@ -81,14 +81,20 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
 
   // Validate phone lookup for add mode
   useEffect(() => {
-    if (!isEditing && formData.phone.trim()) {
+    // Clear immediately on every phone change to avoid stale matches
+    setPhoneExistingCustomer(null);
+
+    if (!isEditing && formData.phone.trim().length >= 10) {
+      const currentPhone = formData.phone.trim();
       const validatePhone = async () => {
         try {
-          const existing = await getCustomerByPhone(formData.phone);
-          setPhoneExistingCustomer(existing);
+          const existing = await getCustomerByPhone(currentPhone);
+          // Only set if the phone still matches (user hasn't typed further)
+          if (existing && existing.phone === currentPhone) {
+            setPhoneExistingCustomer(existing);
+          }
         } catch {
           // Ignore errors during lookup
-          setPhoneExistingCustomer(null);
         }
       };
 
@@ -159,8 +165,8 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
       }
     }
 
-    // If adding new customer, phone must not exist
-    if (!isEditing && phoneExistingCustomer) {
+    // If adding new customer, phone must not exist (exact match only)
+    if (!isEditing && phoneExistingCustomer && phoneExistingCustomer.phone === formData.phone.trim()) {
       setError(
         `A customer with phone ${formData.phone} already exists: ${phoneExistingCustomer.name}`,
       );
@@ -194,8 +200,8 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
       }
 
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to save customer");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save customer");
     } finally {
       setIsSaving(false);
     }
@@ -538,7 +544,7 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
               className="flex-1 px-4 py-2 bg-teal-500 hover:bg-teal-600 disabled:bg-teal-500/50 text-white rounded-lg font-medium transition-colors"
               disabled={
                 isSaving ||
-                (!isEditing && phoneExistingCustomer !== null) ||
+                (!isEditing && phoneExistingCustomer !== null && phoneExistingCustomer.phone === formData.phone.trim()) ||
                 (isB2B && !!gstinError)
               }
             >

@@ -11,8 +11,12 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { PlatformService } from './platform.service';
+import { ModuleScope } from '../auth/decorators/module-scope.decorator';
+import { RequirePermission, ModulePermission } from '../permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
+import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
 import {
   UpdatePlanDto,
   UpdatePlanFeaturesDto,
@@ -25,7 +29,9 @@ import {
  * Manage plans and features dynamically
  */
 @Controller('platform')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('system')
+@UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
 @Roles(UserRole.SUPER_ADMIN)
 export class PlatformController {
   constructor(private readonly platformService: PlatformService) {}
@@ -38,6 +44,7 @@ export class PlatformController {
    * GET /platform/plans
    * List all plans with features
    */
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('plans')
   async listPlans() {
     return this.platformService.listAllPlans();
@@ -47,6 +54,7 @@ export class PlatformController {
    * GET /platform/plans/:planId
    * Get single plan with features
    */
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('plans/:planId')
   async getPlan(@Param('planId') planId: string) {
     return this.platformService.getPlanWithFeatures(planId);
@@ -56,6 +64,7 @@ export class PlatformController {
    * PATCH /platform/plans/:planId
    * Update plan (maxMembers, isActive, etc.)
    */
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Patch('plans/:planId')
   async updatePlan(
     @Param('planId') planId: string,
@@ -68,6 +77,7 @@ export class PlatformController {
    * PATCH /platform/plans/:planId/features
    * Update plan features (enable/disable WhatsApp features)
    */
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Patch('plans/:planId/features')
   async updatePlanFeatures(
     @Param('planId') planId: string,
@@ -84,6 +94,7 @@ export class PlatformController {
    * POST /platform/plans/:planId/features
    * Add a single feature to plan
    */
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.MANAGE)
   @Post('plans/:planId/features')
   async addPlanFeature(
     @Param('planId') planId: string,
@@ -104,6 +115,7 @@ export class PlatformController {
    * GET /platform/features/matrix
    * Get feature availability matrix (plan vs features grid)
    */
+  @RequirePermission(PERMISSIONS.CORE.SYSTEM.VIEW)
   @Get('features/matrix')
   async getFeatureMatrix() {
     return this.platformService.getFeatureMatrix();

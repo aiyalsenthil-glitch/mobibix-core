@@ -13,13 +13,12 @@ import { isMembershipExpired } from '../../common/utils/membership.util';
 import { MemberPaymentStatus } from '@prisma/client';
 import { startOfDay, endOfDay, addDays } from 'date-fns';
 import { RenewMemberDto } from './dto/renew-member.dto';
-import { formatDateDDMMYYYY } from '../../common/utils/date.util';
 import { normalizePhone } from '../../common/utils/phone.util';
 import { WhatsAppSender } from '../../modules/whatsapp/whatsapp.sender';
-import { WhatsAppTemplates } from '../../modules/whatsapp/whatsapp.templates';
-import { WhatsAppFeature } from '../billing/whatsapp-rules';
 import { TenantService } from '../tenant/tenant.service';
 import { PlanRulesService } from '../billing/plan-rules.service';
+import { getCreateAudit, getUpdateAudit } from '../audit/audit.helper';
+import { softDeleteData } from '../soft-delete/soft-delete.helper';
 
 // ─────────────────────────────
 // ✅ Membership duration resolver
@@ -105,18 +104,25 @@ function durationCodeToDays(code: 'D30' | 'D60' | 'D90' | 'M6' | 'Y1'): number {
   }
 }
 
+import { AutomationService } from '../../modules/whatsapp/automation.service';
+
 @Injectable()
 export class MembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly auditService: AuditService,
-    private readonly whatsAppSender: WhatsAppSender, // ✅ ADD
+    private readonly whatsAppSender: WhatsAppSender,
     private readonly tenantService: TenantService,
     private readonly planRulesService: PlanRulesService,
+    private readonly automationService: AutomationService, // ✅ Injected
   ) {}
 
-  async createMember(tenantId: string, dto: CreateMemberDto) {
+  async createMember(
+    tenantId: string,
+    dto: CreateMemberDto,
+    creatorId: string,
+  ) {
     const subscription = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
@@ -134,10 +140,28 @@ export class MembersService {
       throw new ForbiddenException('SUBSCRIPTION_EXPIRED');
     }
 
-    const limit = subscription.plan.memberLimit;
-    if (limit > 0) {
+    // 🛡️ CHECK FOR DELETION REQUEST (Soft Lock)
+    const tenant = (await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { deletionRequestPending: true } as any,
+    })) as any;
+    if (tenant?.deletionRequestPending) {
+      throw new BadRequestException(
+        'Your account is currently pending deletion and most operations are restricted. Please contact support if you need to cancel the request.',
+      );
+    }
+
+    const rules = await this.planRulesService.getPlanRulesForTenant(
+      tenantId,
+      subscription.module,
+    );
+
+    // 🔥 LIVE LIMIT ENFORCEMENT (Downgrade Bypass Protection)
+    await this.planRulesService.checkRuntimeLimits(tenantId, subscription.module);
+    const limit = rules?.maxMembers ?? subscription.plan.maxMembers;
+    if (limit !== null && limit !== undefined) {
       const count = await this.prisma.member.count({ where: { tenantId } });
-      if (count >= limit) {
+      if (limit <= 0 || count >= limit) {
         throw new ForbiddenException(
           `Member limit reached for ${subscription.plan.name} plan. Please upgrade.`,
         );
@@ -150,6 +174,30 @@ export class MembersService {
 
     if (existing) {
       throw new BadRequestException('MOBILE_ALREADY_EXISTS');
+    }
+
+    // ─────────────────────────────
+    // 🔗 Ensure Customer Exists (Bridge for Automation)
+    // ─────────────────────────────
+    let customer = await this.prisma.party.findUnique({
+      where: {
+        tenantId_phone: {
+          tenantId,
+          phone: normalizedPhone,
+        },
+      },
+    });
+
+    if (!customer) {
+      customer = await this.prisma.party.create({
+        data: {
+          tenantId,
+          name: dto.fullName,
+          phone: normalizedPhone,
+          state: 'Unknown', // Required field, default to Unknown
+          partyType: 'CUSTOMER',
+        },
+      });
     }
 
     const fee = dto.feeAmount;
@@ -192,6 +240,8 @@ export class MembersService {
         heightCm: dto.heightCm ?? 0,
         weightKg: dto.weightKg ?? 0,
         fitnessGoal: dto.fitnessGoal,
+        customerId: customer.id, // ✅ Linked Customer
+        ...getCreateAudit(creatorId), // ✅ Capture who created
       },
     });
     // ─────────────────────────────
@@ -211,85 +261,86 @@ export class MembersService {
     }
 
     // ─────────────────────────────
-    // ✅ Welcome WhatsApp (Plan Rules)
+    // ✅ Trigger WhatsApp Automation (Event-Driven)
     // ─────────────────────────────
     try {
-      if (member.isActive && !member.welcomeMessageSent) {
-        const isAllowed = await this.planRulesService.isFeatureEnabledForTenant(
-          tenantId,
-          WhatsAppFeature.WELCOME,
-        );
-
-        if (!isAllowed) {
-          return member;
-        }
-
-        // 🔹 Get tenant name for template
-        const tenant = await this.prisma.tenant.findUnique({
-          where: { id: tenantId },
-          select: { name: true },
+      if (member.isActive) {
+        await this.automationService.handleEvent({
+          moduleType: 'GYM',
+          eventType: 'MEMBER_CREATED',
+          tenantId: member.tenantId,
+          entityId: member.id,
         });
-
-        const result = await this.whatsAppSender.sendTemplateMessage(
-          tenantId,
-          WhatsAppFeature.WELCOME,
-          member.phone,
-          WhatsAppTemplates.WELCOME,
-          [
-            member.fullName,
-            tenant?.name || 'Gym',
-            formatDateDDMMYYYY(member.membershipStartAt),
-            formatDateDDMMYYYY(member.membershipEndAt),
-          ],
-        );
-
-        if (result.success) {
-          await this.prisma.member.update({
-            where: { id: member.id },
-            data: { welcomeMessageSent: true },
-          });
-        }
       }
     } catch (err) {
-      // ❌ Never fail member creation due to WhatsApp
-      console.error('Welcome WhatsApp failed', err.message);
+      // Failed to trigger WhatsApp automation: silencly fail
     }
+
     return member;
   }
 
-  async listMembers(tenantId: string) {
+  async listMembers(
+    tenantId: string,
+    options?: { skip?: number; take?: number; search?: string },
+  ) {
     if (!tenantId) {
       throw new ForbiddenException('Tenant not initialized');
     }
 
-    const members = await this.prisma.member.findMany({
-      where: {
-        tenantId,
-        isActive: true,
-      },
+    const where: any = {
+      tenantId,
+      isActive: true,
+    };
 
-      orderBy: { createdAt: 'desc' },
-    });
+    // Add search filter if provided
+    if (options?.search) {
+      where.OR = [
+        { fullName: { contains: options.search, mode: 'insensitive' } },
+        { phone: { contains: options.search } },
+      ];
+    }
 
-    return members.map((member) => ({
-      id: member.id,
-      fullName: member.fullName,
-      phone: member.phone,
-      photoUrl: member.photoUrl, // ✅ ADD THIS
-      membershipEndAt: member.membershipEndAt,
-      membershipStartAt: member.membershipStartAt,
-      paymentStatus: member.paymentStatus,
-      isActive: member.isActive,
-      isExpired: isMembershipExpired(member.membershipEndAt),
-      heightCm: member.heightCm,
-      weightKg: member.weightKg,
-    }));
+    // Parallel queries for better performance
+    const [members, total] = await Promise.all([
+      this.prisma.member.findMany({
+        where,
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          fullName: true,
+          phone: true,
+          photoUrl: true,
+          membershipEndAt: true,
+          membershipStartAt: true,
+          paymentStatus: true,
+          isActive: true,
+          heightCm: true,
+          weightKg: true,
+        },
+      }),
+      this.prisma.member.count({ where }),
+    ]);
+
+    return {
+      data: members.map((member) => ({
+        ...member,
+        isExpired: isMembershipExpired(member.membershipEndAt),
+      })),
+      total,
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 50,
+    };
   }
   // ===============================
   // MEMBERSHIP RENEWAL DUE
   // (expired + overdue)
   // ===============================
-  async listMembershipsDue(tenantId: string) {
+  async listMembershipsDue(
+    tenantId: string,
+    options?: { skip?: number; take?: number },
+  ) {
     const endToday = endOfDay(new Date());
     return this.prisma.member.findMany({
       where: {
@@ -299,6 +350,9 @@ export class MembersService {
           lte: endToday,
         },
       },
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 100,
+      orderBy: { membershipEndAt: 'desc' },
     });
   }
 
@@ -352,13 +406,19 @@ export class MembersService {
     };
   }
 
-  async getPaymentDueMembers(tenantId: string) {
+  async getPaymentDueMembers(
+    tenantId: string,
+    options?: { skip?: number; take?: number },
+  ) {
     const members = await this.prisma.member.findMany({
       where: {
         tenantId,
         isActive: true,
+        paymentStatus: { in: ['DUE', 'PARTIAL'] },
       },
-
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 100,
+      orderBy: { paymentDueDate: 'asc' },
       select: {
         id: true,
         fullName: true,
@@ -400,6 +460,17 @@ export class MembersService {
 
     if (!member) {
       throw new BadRequestException('Member not found');
+    }
+
+    // 🛡️ CHECK FOR DELETION REQUEST (Soft Lock)
+    const tenant = (await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { deletionRequestPending: true } as any,
+    })) as any;
+    if (tenant?.deletionRequestPending) {
+      throw new BadRequestException(
+        'Your account is currently pending deletion and most operations are restricted. Please contact support if you need to cancel the request.',
+      );
     }
 
     const newPaid = member.paidAmount + amount;
@@ -444,7 +515,12 @@ export class MembersService {
     return updatedMember;
   }
 
-  async updateMember(tenantId: string, memberId: string, dto: UpdateMemberDto) {
+  async updateMember(
+    tenantId: string,
+    memberId: string,
+    dto: UpdateMemberDto,
+    updaterId: string,
+  ) {
     const exists = await this.prisma.member.findFirst({
       where: {
         id: memberId,
@@ -469,7 +545,10 @@ export class MembersService {
 
     return this.prisma.member.update({
       where: { id: memberId },
-      data: updateData,
+      data: {
+        ...updateData,
+        ...getUpdateAudit(updaterId), // ✅ Capture who updated
+      },
     });
   }
   async getMemberPayments(tenantId: string, memberId: string) {
@@ -616,11 +695,54 @@ export class MembersService {
       },
       select: {
         membershipEndAt: true,
+        feeAmount: true,
+        paidAmount: true,
       },
     });
 
     if (!existingMember) {
       throw new BadRequestException('Member not found');
+    }
+
+    // 🛡️ CHECK FOR DELETION REQUEST (Soft Lock)
+    const tenant = (await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { deletionRequestPending: true } as any,
+    })) as any;
+    if (tenant?.deletionRequestPending) {
+      throw new BadRequestException(
+        'Your account is currently pending deletion and most operations are restricted. Please contact support if you need to cancel the request.',
+      );
+    }
+
+    // ─────────────────────────────
+    // 🚨 STRICT PENDING CHECK
+    // ─────────────────────────────
+    const oldFee = existingMember.feeAmount ?? 0;
+    const oldPaid = existingMember.paidAmount ?? 0;
+    const pendingAmount = Math.max(oldFee - oldPaid, 0);
+
+    if (pendingAmount > 0) {
+      if (!dto.resolvePendingDues) {
+        throw new BadRequestException(
+          `Member has pending dues of ${pendingAmount}. Please clear dues or select 'Collect Pending & Renew'.`,
+        );
+      }
+
+      // ✅ Auto-Resolve Pending (Separate Payment Record)
+      await this.prisma.memberPayment.create({
+        data: {
+          tenantId,
+          memberId,
+          amount: pendingAmount,
+          status: 'PAID',
+          method: dto.method ?? 'CASH',
+          reference: 'RENEWAL_CLEARANCE',
+          // Mark this as clearing previous debt
+        },
+      });
+
+      // We strictly consider old debt cleared now.
     }
 
     // ─────────────────────────────
@@ -747,11 +869,8 @@ export class MembersService {
       throw new ForbiddenException('Only owner can edit member');
     }
 
-    // 🚫 REMOVE FIELDS OWNER SHOULD NOT FORCE-EDIT
-    const {
-      paymentStatus, // ❌ ignore even if sent
-      ...safeData
-    } = dto;
+    const safeData = { ...dto };
+    delete (safeData as any).paymentStatus; // 🚫 REMOVE FIELDS OWNER SHOULD NOT FORCE-EDIT (❌ ignore even if sent)
 
     // 🗓 Convert date strings → Date (IMPORTANT)
     const updateData: any = {
@@ -795,19 +914,24 @@ export class MembersService {
     return member;
   }
 
-  //delete member
+  // delete member
   async deleteMember(user: any, memberId: string) {
     const member = await this.prisma.member.findFirst({
       where: {
         id: memberId,
         tenantId: user.tenantId,
       },
-      select: { id: true },
+      select: { id: true, phone: true },
     });
 
     if (!member) {
       throw new NotFoundException('Member not found');
     }
+
+    const deleteSuffix = `-del-${Date.now()}`;
+    const newPhone = member.phone
+      ? `${member.phone.substring(0, 15 - deleteSuffix.length)}${deleteSuffix}`
+      : undefined;
 
     await this.prisma.member.update({
       where: {
@@ -818,6 +942,8 @@ export class MembersService {
       },
       data: {
         isActive: false,
+        phone: newPhone,
+        ...softDeleteData(user.sub ?? user.id ?? user.userId ?? 'system'),
       },
     });
 
@@ -830,7 +956,9 @@ export class MembersService {
         entity: 'MEMBER',
         entityId: memberId,
       });
-    } catch {}
+    } catch (err) {
+      console.error('Failed to audit member deletion:', err);
+    }
 
     return { success: true };
   }

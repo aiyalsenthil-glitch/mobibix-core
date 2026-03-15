@@ -20,7 +20,8 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "jsx": "react-jsx"
   },
-  "exclude": ["node_modules", "dist", "dist/**", "prisma/generated"]
+  "exclude": ["node_modules", "dist", "dist/**", "prisma/generated", "scripts/**"]
 }

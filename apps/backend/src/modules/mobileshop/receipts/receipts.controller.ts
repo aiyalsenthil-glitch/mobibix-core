@@ -9,21 +9,40 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../core/auth/decorators/current-user.decorator';
-import { ReceiptsService } from './receipts.service';
-import { CreateReceiptDto } from './dto/create-receipt.dto';
-import { ReceiptEntity } from './entities/receipt.entity';
-import { PaymentMode, ReceiptStatus } from '@prisma/client';
+import { ReceiptsService } from '../../../core/receipts/receipts.service';
+import { CreateReceiptDto } from '../../../core/receipts/dto/create-receipt.dto';
+import { ReceiptEntity } from '../../../core/receipts/entities/receipt.entity';
+import {
+  PaymentMode,
+  ReceiptStatus,
+  UserRole,
+  ModuleType,
+} from '@prisma/client';
+import { Roles } from '../../../core/auth/decorators/roles.decorator';
+import { RolesGuard } from '../../../core/auth/guards/roles.guard';
+import { TenantRequiredGuard } from '../../../core/auth/guards/tenant.guard';
+import { TenantScopedController } from '../../../core/auth/tenant-scoped.controller';
+import { ModuleScope } from '../../../core/auth/decorators/module-scope.decorator';
+import { GranularPermissionGuard } from '../../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../../security/permission-registry';
 
 @Controller('receipts')
-@UseGuards(JwtAuthGuard)
-export class ReceiptsController {
-  constructor(private readonly receiptsService: ReceiptsService) {}
+@ModuleScope(ModuleType.MOBILE_SHOP)
+@ModulePermission('receipt')
+@UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard, GranularPermissionGuard)
+@Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.STAFF)
+export class ReceiptsController extends TenantScopedController {
+  constructor(private readonly receiptsService: ReceiptsService) {
+    super();
+  }
 
   /**
    * Create a receipt for money received
    * POST /receipts
    * Body: CreateReceiptDto
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.RECEIPT.CREATE)
   @Post()
   async create(
     @Body() createReceiptDto: CreateReceiptDto,
@@ -41,9 +60,11 @@ export class ReceiptsController {
    * Get all receipts for authenticated shop
    * GET /receipts?startDate=...&endDate=...&paymentMethod=...&skip=...&take=...
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.RECEIPT.VIEW)
   @Get()
   async findAll(
     @CurrentUser() user: any,
+    @Query('shopId') shopId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('paymentMethod') paymentMethod?: PaymentMode,
@@ -51,20 +72,25 @@ export class ReceiptsController {
     @Query('skip') skip?: string,
     @Query('take') take?: string,
   ): Promise<{ data: ReceiptEntity[]; total: number }> {
-    return this.receiptsService.getReceipts(user.tenantId, user.shopId, {
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate: endDate ? new Date(endDate) : undefined,
-      paymentMethod,
-      status,
-      skip: skip ? parseInt(skip, 10) : undefined,
-      take: take ? parseInt(take, 10) : undefined,
-    });
+    return this.receiptsService.getReceipts(
+      user.tenantId,
+      shopId || user.shopId,
+      {
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        paymentMethod,
+        status,
+        skip: skip ? parseInt(skip, 10) : undefined,
+        take: take ? parseInt(take, 10) : undefined,
+      },
+    );
   }
 
   /**
    * Get single receipt by ID
    * GET /receipts/:id
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.RECEIPT.VIEW)
   @Get(':id')
   async findOne(
     @Param('id') id: string,
@@ -78,6 +104,7 @@ export class ReceiptsController {
    * POST /receipts/:id/cancel
    * Body: { reason: string }
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.RECEIPT.CANCEL)
   @Post(':id/cancel')
   async cancel(
     @Param('id') id: string,
@@ -96,9 +123,11 @@ export class ReceiptsController {
    * Get receipt summary by date range
    * GET /receipts/summary?startDate=...&endDate=...
    */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.RECEIPT.VIEW)
   @Get('summary')
   async getSummary(
     @CurrentUser() user: any,
+    @Query('shopId') shopId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ): Promise<any> {
@@ -109,7 +138,7 @@ export class ReceiptsController {
 
     return this.receiptsService.getReceiptSummary(
       user.tenantId,
-      user.shopId,
+      shopId || user.shopId,
       start,
       end,
     );

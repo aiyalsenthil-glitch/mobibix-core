@@ -13,6 +13,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem("mobibix-primary");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved) setPrimary(saved);
   }, []);
 

@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 /**
  * Add stock for a product
@@ -10,6 +10,7 @@ export async function stockIn(
     quantity: number;
     costPrice: number;
     type?: string;
+    imeis?: string[];
   },
 ): Promise<void> {
   const response = await authenticatedFetch("/mobileshop/inventory/stock-in", {
@@ -19,16 +20,17 @@ export async function stockIn(
     },
     body: JSON.stringify({
       productId: data.shopProductId,
-      type: data.type || "GOODS",
+      type: data.type,
       quantity: data.quantity,
       costPerUnit: data.costPrice,
+      imeis: data.imeis,
     }),
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to add stock");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to add stock");
   }
 
-  return response.json();
+  return extractData(response);
 }

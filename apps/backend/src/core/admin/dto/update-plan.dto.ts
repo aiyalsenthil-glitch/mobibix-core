@@ -6,7 +6,7 @@ import {
   Min,
   IsEnum,
 } from 'class-validator';
-import { WhatsAppFeature } from '@prisma/client';
+import { WhatsAppFeature, ModuleType } from '@prisma/client';
 
 export class UpdatePlanDto {
   @IsOptional()
@@ -16,16 +16,23 @@ export class UpdatePlanDto {
   @IsOptional()
   @IsInt()
   @Min(0)
-  price?: number;
+  level?: number;
 
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  maxMembers?: number;
+  @IsEnum(ModuleType)
+  module?: ModuleType;
 
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isAddon?: boolean;
 }
 
 export class UpdatePlanFeaturesDto {

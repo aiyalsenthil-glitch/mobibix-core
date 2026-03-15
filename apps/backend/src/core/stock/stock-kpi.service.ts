@@ -21,21 +21,117 @@ export class StockKpiService {
 
     const fromDate = addDays(new Date(), -days);
 
-    // 1) MOVEMENT TREND
-    const ledger = await this.prisma.stockLedger.findMany({
-      where: {
-        tenantId,
-        shopId,
-        createdAt: { gte: fromDate },
-      },
-      select: {
-        type: true,
-        quantity: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+    // 🚀 PARALLEL QUERIES - fetch all KPIs at once
+    const [ledger, productMovement, negativeStockData] = await Promise.all([
+      // 1) MOVEMENT TREND - only last 50 entries for recent trend
+      this.prisma.stockLedger.findMany({
+        where: {
+          tenantId,
+          shopId,
+          createdAt: { gte: fromDate },
+        },
+        select: {
+          type: true,
+          quantity: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 500, // Limit to prevent large datasets
+      }),
 
+      // 2) FAST/DEAD STOCK - Use DB aggregation instead of loading all products
+      this.prisma.stockLedger
+        .groupBy({
+          by: ['shopProductId'],
+          where: {
+            tenantId,
+            shopId,
+            createdAt: { gte: fromDate },
+            type: 'OUT',
+          },
+          _sum: { quantity: true },
+          orderBy: { _sum: { quantity: 'desc' } },
+          take: 20, // Get top 20 before filtering
+        })
+        .then(async (groups) => {
+          // Get product names for the aggregated results
+          if (groups.length === 0) return [];
+          const productIds = groups.map((g) => g.shopProductId);
+          const products = await this.prisma.shopProduct.findMany({
+            where: { id: { in: productIds } },
+            select: { id: true, name: true },
+          });
+          const productMap = new Map(products.map((p) => [p.id, p.name]));
+          return groups
+            .filter((g) => (g._sum.quantity ?? 0) > 0)
+            .map((g) => ({
+              productId: g.shopProductId,
+              name: productMap.get(g.shopProductId) || 'Unknown',
+              outQty: g._sum.quantity ?? 0,
+            }))
+            .slice(0, 10);
+        }),
+
+      // 3) LOW STOCK & NEGATIVE STOCK - Optimized Calculation
+      (async () => {
+        // Fetch all active products FIRST to know what to track
+        const products = await this.prisma.shopProduct.findMany({
+          where: { tenantId, shopId, isActive: true },
+          select: { id: true, name: true, reorderLevel: true },
+        });
+
+        if (products.length === 0) return { negativeStock: [], lowStock: [] };
+
+        // Get balances from ledger
+        const stockStatus = await this.prisma.$queryRaw<
+          Array<{
+            shopProductId: string;
+            balance: string; // BigInt from SQL comes as string in queryRaw
+          }>
+        >`
+          SELECT "shopProductId", SUM(CASE WHEN "type" = 'IN' THEN "quantity" ELSE -"quantity" END) as "balance"
+          FROM "mb_stock_ledger"
+          WHERE "tenantId" = ${tenantId} AND "shopId" = ${shopId}
+          GROUP BY "shopProductId"
+        `;
+
+        // Create a map for O(1) balance lookup
+        const balanceMap = new Map(stockStatus.map((s) => [s.shopProductId, Number(s.balance)]));
+
+        const lowStockItems: any[] = [];
+        const negativeStockItems: any[] = [];
+
+        products.forEach((p) => {
+          const currentStock = balanceMap.get(p.id) ?? 0;
+
+          if (currentStock < 0) {
+            negativeStockItems.push({
+              productId: p.id,
+              name: p.name,
+              negativeCount: Math.abs(currentStock),
+              negativeDays: 1,
+            });
+          }
+
+          const reorderLevel = p.reorderLevel ?? 0;
+          if (currentStock <= reorderLevel) {
+            lowStockItems.push({
+              productId: p.id,
+              name: p.name,
+              stock: currentStock,
+              reorderLevel: reorderLevel,
+            });
+          }
+        });
+
+        return {
+          negativeStock: negativeStockItems,
+          lowStock: lowStockItems,
+        };
+      })(),
+    ]);
+
+    // Process trend data (in-memory, but limited to 500 entries)
     const trendMap = new Map<string, { stockIn: number; stockOut: number }>();
 
     for (const l of ledger) {
@@ -58,94 +154,19 @@ export class StockKpiService {
       stockOut: v.stockOut,
     }));
 
-    // 2) FAST / DEAD STOCK
-    const products = await this.prisma.shopProduct.findMany({
+    // Get dead stock (products with no movement)
+    const allProducts = await this.prisma.shopProduct.count({
       where: { tenantId, shopId, isActive: true },
-      select: {
-        id: true,
-        name: true,
-        stockEntries: {
-          where: {
-            createdAt: { gte: fromDate },
-            type: 'OUT',
-          },
-          select: { quantity: true },
-        },
-      },
     });
-
-    const movement = products.map((p) => {
-      const outQty = p.stockEntries.reduce((s, e) => s + e.quantity, 0);
-      return { productId: p.id, name: p.name, outQty };
-    });
-
-    const fastMoving = movement
-      .filter((m) => m.outQty > 0)
-      .sort((a, b) => b.outQty - a.outQty)
-      .slice(0, 10);
-
-    const deadStock = movement.filter((m) => m.outQty === 0);
-
-    // 3) NEGATIVE STOCK KPI
-    const fullLedger = await this.prisma.stockLedger.findMany({
-      where: {
-        tenantId,
-        shopId,
-        createdAt: { gte: addDays(new Date(), -90) }, // last 90 days only
-      },
-      select: {
-        shopProductId: true,
-        type: true,
-        quantity: true,
-        createdAt: true,
-        product: { select: { name: true } },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    const balanceMap = new Map<
-      string,
-      {
-        balance: number;
-        negativeCount: number;
-        negativeDays: Set<string>;
-        name: string;
-      }
-    >();
-
-    for (const l of fullLedger) {
-      const day = formatISO(l.createdAt, { representation: 'date' });
-      const row = balanceMap.get(l.shopProductId) ?? {
-        balance: 0,
-        negativeCount: 0,
-        negativeDays: new Set<string>(),
-        name: l.product.name,
-      };
-
-      row.balance += l.type === 'IN' ? l.quantity : -l.quantity;
-
-      if (row.balance < 0) {
-        row.negativeCount += 1;
-        row.negativeDays.add(day);
-      }
-
-      balanceMap.set(l.shopProductId, row);
-    }
-
-    const negativeStock = Array.from(balanceMap.entries())
-      .filter(([, v]) => v.negativeCount > 0)
-      .map(([productId, v]) => ({
-        productId,
-        name: v.name,
-        negativeCount: v.negativeCount,
-        negativeDays: v.negativeDays.size,
-      }));
+    const movedProductCount = productMovement.length;
+    const deadStockCount = Math.max(0, allProducts - movedProductCount);
 
     return {
       trend,
-      fastMoving,
-      deadStock,
-      negativeStock,
+      fastMoving: productMovement,
+      deadStock: deadStockCount > 0 ? [{ count: deadStockCount }] : [],
+      negativeStock: negativeStockData.negativeStock,
+      lowStock: negativeStockData.lowStock,
     };
   }
 }

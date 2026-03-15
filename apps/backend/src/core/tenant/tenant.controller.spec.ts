@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TenantController } from './tenant.controller';
+import { TenantService } from './tenant.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { UsageSnapshotService } from '../analytics/usage-snapshot.service';
+import { TenantStatusGuard } from './guards/tenant-status.guard';
+import { JwtService } from '@nestjs/jwt';
 
 describe('TenantController', () => {
   let controller: TenantController;
@@ -7,6 +12,46 @@ describe('TenantController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TenantController],
+      providers: [
+        {
+          provide: TenantService,
+          useValue: {
+            getTenant: jest.fn(),
+            updateTenant: jest.fn(),
+            listTenants: jest.fn(),
+          },
+        },
+        {
+          provide: PrismaService,
+          useValue: {
+            tenant: {
+              findUnique: jest.fn(),
+              update: jest.fn(),
+            },
+            usageSnapshot: {
+              findMany: jest.fn(),
+            },
+          },
+        },
+        {
+          provide: UsageSnapshotService,
+          useValue: {
+            captureSnapshot: jest.fn(),
+          },
+        },
+        {
+          provide: TenantStatusGuard,
+          useValue: {
+            canActivate: jest.fn().mockReturnValue(true),
+          },
+        },
+        {
+          provide: JwtService,
+          useValue: {
+            verify: jest.fn(),
+          },
+        },
+      ],
     }).compile();
 
     controller = module.get<TenantController>(TenantController);

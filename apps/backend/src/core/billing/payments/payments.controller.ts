@@ -7,25 +7,46 @@ import {
   Req,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { TenantRequiredGuard } from '../../auth/guards/tenant.guard';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ModuleType, UserRole } from '@prisma/client';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { ModulePermission, RequirePermission } from '../../permissions/decorators/require-permission.decorator';
+import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
+import { PERMISSIONS } from '../../../security/permission-registry';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
+@ModuleScope(ModuleType.CORE)
+@ModulePermission('core')
+@Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('payments')
 export class PaymentsController {
+  private readonly logger = new Logger(PaymentsController.name);
+
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly prisma: PrismaService,
   ) {}
 
-  // ─────────────────────────────────────────────
   // 🔒 CREATE RAZORPAY ORDER (JWT REQUIRED)
+  // Rate limited to 5 requests per 60 seconds to prevent abuse
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.BILLING.MANAGE)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('create-order')
-  async createOrder(@Req() req: any, @Body() body: { planId: string }) {
+  async createOrder(
+    @Req() req: any,
+    @Body()
+    body: { planId: string; billingCycle: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' },
+  ) {
     try {
       const tenantId = req.user?.tenantId;
 
@@ -41,6 +62,20 @@ export class PaymentsController {
         throw new BadRequestException('Tenant does not exist');
       }
 
+      const normalizedTenantType = (tenant.tenantType || '')
+        .toUpperCase()
+        .replace(/[\s_-]/g, '');
+      const tenantModule =
+        normalizedTenantType === 'MOBILESHOP'
+          ? ModuleType.MOBILE_SHOP
+          : normalizedTenantType === 'GYM'
+            ? ModuleType.GYM
+            : undefined;
+
+      if (!tenantModule) {
+        throw new BadRequestException('Unsupported tenant module');
+      }
+
       // 1️⃣ Validate plan exists
       const plan = await this.prisma.plan.findUnique({
         where: { id: body.planId },
@@ -50,38 +85,119 @@ export class PaymentsController {
         throw new NotFoundException('Plan not found');
       }
 
-      // 2️⃣ Validate price
-      if (plan.price === null || plan.price <= 0) {
-        throw new BadRequestException('Invalid plan price');
+      if (!plan.isActive || !plan.isPublic) {
+        throw new BadRequestException('Plan is not available for purchase');
       }
 
-      // 3️⃣ Create Razorpay order
-      // 3️⃣ Create Razorpay order
-      const order = await this.paymentsService.createOrder({
-        amount: plan.price,
-        tenantId,
-        planId: plan.id,
+      if (
+        plan.module !== tenantModule &&
+        plan.module !== ModuleType.WHATSAPP_CRM
+      ) {
+        throw new ForbiddenException(
+          'Plan module does not match tenant module',
+        );
+      }
+
+      // 2️⃣ Get price from PlanPrice table
+      const planPrice = await this.prisma.planPrice.findUnique({
+        where: {
+          planId_billingCycle_currency: {
+            planId: body.planId,
+            billingCycle: body.billingCycle,
+            currency: tenant.currency || 'INR',
+          },
+        },
       });
 
-      // 4️⃣ SAVE INIT PAYMENT (IMPORTANT STEP-2)
+      if (!planPrice || !planPrice.isActive) {
+        throw new BadRequestException(
+          `No active price found for plan "${plan.name}" @ ${body.billingCycle}`,
+        );
+      }
+
+      // 🛡️ IDEMPOTENCY CHECK: Prevent duplicate orders from double-clicks
+      // Check if there's already a pending or successful order for this tenant+plan+cycle
+      const existingOrder = await this.prisma.payment.findFirst({
+        where: {
+          tenantId,
+          planId: body.planId,
+          billingCycle: body.billingCycle,
+          status: {
+            in: ['PENDING', 'SUCCESS'],
+          },
+          createdAt: {
+            // Only check orders created in the last 10 minutes
+            gte: new Date(Date.now() - 10 * 60 * 1000),
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      // If pending/success order exists, check if expired
+      if (existingOrder) {
+        const isExpired =
+          existingOrder.expiresAt && new Date() > existingOrder.expiresAt;
+
+        if (isExpired) {
+          // Mark as expired and allow new order creation
+          await this.prisma.payment.update({
+            where: { id: existingOrder.id },
+            data: { status: 'EXPIRED' },
+          });
+          this.logger.log(
+            `Marked expired payment ${existingOrder.id} as EXPIRED`,
+          );
+        } else if (
+          existingOrder.status === 'PENDING' ||
+          existingOrder.status === 'SUCCESS'
+        ) {
+          // Still valid, return existing order
+          return {
+            orderId: existingOrder.providerOrderId,
+            amount: existingOrder.amount,
+            currency: existingOrder.currency,
+            key: process.env.RAZORPAY_KEY_ID,
+            expiresAt: existingOrder.expiresAt,
+            idempotent: true, // Flag to indicate this is a cached response
+          };
+        }
+      }
+
+      // 3️⃣ Create Razorpay order with expiry
+      const { order, expiresAt } = await this.paymentsService.createOrder({
+        amount: planPrice.price,
+        tenantId,
+        planId: plan.id,
+        module: tenantModule,
+        billingCycle: body.billingCycle,
+      });
+
+      // 4️⃣ SAVE INIT PAYMENT with expiresAt
       await this.prisma.payment.create({
         data: {
           tenantId,
           planId: plan.id,
+          module: tenantModule,      // ✅ Required by PaymentActivationService
+          billingCycle: body.billingCycle,
+          priceSnapshot: planPrice.price,
           provider: 'RAZORPAY',
           providerOrderId: order.id,
-          amount: plan.price, // INR value
+          amount: planPrice.price, // INR paise
           currency: 'INR',
           status: 'PENDING', // 👈 INIT STATE
+          expiresAt, // 🆕 Store expiry time
         },
       });
 
-      // 5️⃣ RETURN SAME RESPONSE (Android unchanged)
+      // 5️⃣ RETURN with expiry info (frontend can show countdown timer)
       return {
         orderId: order.id,
         amount: order.amount,
         currency: order.currency,
         key: process.env.RAZORPAY_KEY_ID,
+        expiresAt, // 🆕 Frontend can show countdown
       };
     } catch (err: any) {
       // rethrow known HTTP errors
@@ -99,25 +215,44 @@ export class PaymentsController {
   // ─────────────────────────────────────────────
   // 🔒 PAYMENT HISTORY (JWT + TENANT)
   // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @Get('history')
   async getHistory(@Req() req: any) {
-    return this.prisma.payment.findMany({
+    const payments = await this.prisma.payment.findMany({
       where: {
         tenantId: req.user.tenantId,
-        status: 'SUCCESS',
       },
       orderBy: {
         createdAt: 'desc',
       },
-      select: {
-        id: true,
-        planId: true,
-        amount: true,
-        currency: true,
-        status: true,
-        provider: true,
-        createdAt: true,
-      },
+      take: 50,
     });
+
+    // Resolve plan names
+    const planIds = [...new Set(payments.map((p) => p.planId).filter(Boolean))];
+    const plans = planIds.length
+      ? await this.prisma.plan.findMany({
+          where: { id: { in: planIds } },
+          select: { id: true, name: true, code: true },
+        })
+      : [];
+
+    const planMap = new Map(plans.map((p) => [p.id, p]));
+
+    return payments.map((p) => ({
+      id: p.id,
+      tenantId: p.tenantId,
+      planId: p.planId,
+      plan: p.planId ? planMap.get(p.planId) || null : null,
+      amount: p.amount,
+      currency: p.currency,
+      status: p.status,
+      provider: p.provider,
+      providerOrderId: p.providerOrderId,
+      providerPaymentId: p.providerPaymentId,
+      billingCycle: p.billingCycle,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    }));
   }
 }

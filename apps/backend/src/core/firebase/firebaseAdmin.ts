@@ -19,7 +19,7 @@ export class FirebaseAdminService {
         // Fall back to reading from file (for development)
         const credPath =
           process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-          '/app/secrets/REMOVED_AUTH_PROVIDER-admin.json';
+          path.join(__dirname, '../../..', 'secrets/REMOVED_AUTH_PROVIDER-admin.json');
 
         if (!fs.existsSync(credPath)) {
           throw new Error(`Firebase credentials not found at ${credPath}`);
@@ -42,5 +42,10 @@ export class FirebaseAdminService {
   // ✅ ADD THIS
   async setCustomUserClaims(uid: string, claims: Record<string, any>) {
     return admin.auth().setCustomUserClaims(uid, claims);
+  }
+
+  // Phase 3: Email Verification support
+  async generateEmailVerificationLink(email: string) {
+    return admin.auth().generateEmailVerificationLink(email);
   }
 }

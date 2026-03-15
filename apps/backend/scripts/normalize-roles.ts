@@ -3,8 +3,12 @@ import { PrismaClient } from '../generated/prisma/client';
 async function main() {
   const prisma = new PrismaClient({} as any);
   try {
-    const sql = `UPDATE "User" SET role = LOWER(role) WHERE role IS NOT NULL AND role <> LOWER(role);`;
-    const result = await prisma.$executeRawUnsafe(sql);
+    // ✅ SECURITY FIX: Use $executeRaw with template literal
+    const result = await prisma.$executeRaw`
+      UPDATE "User" 
+      SET role = LOWER(role) 
+      WHERE role IS NOT NULL AND role <> LOWER(role)
+    `;
   } finally {
     await prisma.$disconnect();
   }

@@ -1,6 +1,7 @@
 import type { PaymentVoucher as Voucher } from "@/services/vouchers.api";
 import type { Shop } from "@/services/shops.api";
 import type { PrintDocumentData } from "@/lib/print/types";
+import { numberToIndianWords } from "@/utils/numberToWords";
 
 export function mapVoucherToPrintData({
   voucher,
@@ -40,7 +41,7 @@ export function mapVoucherToPrintData({
     totals: {
       subTotal: voucher.amount,
       grandTotal: voucher.amount,
-      amountInWords: `${voucher.amount.toLocaleString('en-IN')} Rupees Only`,
+      amountInWords: numberToIndianWords(voucher.amount),
     },
     config: {
       printDate: new Date().toISOString(),

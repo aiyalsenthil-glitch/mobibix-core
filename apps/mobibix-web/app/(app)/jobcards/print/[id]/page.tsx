@@ -33,8 +33,10 @@ export default function PrintJobCardPage() {
         setError(null);
         const data = await getJobCard(shopId, params.id);
         setJob(data);
-      } catch (err: any) {
-        setError(err.message || "Failed to load job card");
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Failed to load job card";
+        setError(message);
       } finally {
         setIsLoading(false);
       }

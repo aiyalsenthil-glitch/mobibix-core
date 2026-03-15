@@ -81,4 +81,24 @@ export class CreateSupplierDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  riskFlag?: boolean;
+
+  @IsOptional()
+  rating?: number;
+
+  @IsOptional()
+  paymentDueDays?: number;
+
+  @IsOptional()
+  creditLimit?: number;
+
+  @IsOptional()
+  @IsString()
+  preferredCurrency?: string;
 }

@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: billing-auto-renew-cron
+  namespace: mobibix-prod
+spec:
+  schedule: "0 2 * * *" # Every day at 2 AM
+  concurrencyPolicy: Forbid # Ensure no concurrent runs 
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backend-cron
+            image: public.ecr.aws/mobibix/backend:latest # Substitute via CI/CD
+            imagePullPolicy: Always
+            command: ["node", "dist/scripts/run-crons.js", "auto-renew"]
+            envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-secrets
+          restartPolicy: OnFailure
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: billing-payment-expiry-cron
+  namespace: mobibix-prod
+spec:
+  schedule: "0 * * * *" # Every hour
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backend-cron
+            image: public.ecr.aws/mobibix/backend:latest
+            imagePullPolicy: Always
+            command: ["node", "dist/scripts/run-crons.js", "payment-expiry"]
+            envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-secrets
+          restartPolicy: OnFailure

@@ -1,6 +1,7 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { YearFormat, ResetPolicy } from '@prisma/client';
+import { YearFormat, ResetPolicy, ModuleType } from '@prisma/client';
+import { PlanRulesService } from '../billing/plan-rules.service';
 import { CreateShopDto } from './dto/create-shop.dto';
 import { UpdateShopDto } from './dto/update-shop.dto';
 import { UpdateShopSettingsDto } from './dto/update-shop-settings.dto';
@@ -9,15 +10,50 @@ import {
   DocumentType,
 } from './dto/update-document-setting.dto';
 import { isValidIndianGSTIN } from '../../common/validators/gstin.validator';
+import { getFinancialYear } from '../../common/utils/invoice-number.util';
+import { DocumentNumberService } from '../../common/services/document-number.service';
+import { PLAN_CAPABILITIES } from '../billing/plan-capabilities';
+
 @Injectable()
 export class ShopService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly docNumberService: DocumentNumberService,
+    private readonly planRulesService: PlanRulesService,
+  ) {}
 
-  async listShops(tenantId: string) {
-    return this.prisma.shop.findMany({
-      where: { tenantId, isActive: true },
-      orderBy: { createdAt: 'asc' },
-    });
+  async listShops(
+    tenantId: string,
+    options?: { skip?: number; take?: number },
+  ) {
+    // Parallel queries for better performance
+    const [shops, total] = await Promise.all([
+      this.prisma.shop.findMany({
+        where: { tenantId, isActive: true },
+        skip: options?.skip ?? 0,
+        take: options?.take ?? 50,
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          addressLine1: true,
+          city: true,
+          phone: true,
+          gstNumber: true,
+          gstEnabled: true,
+          isActive: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.shop.count({ where: { tenantId, isActive: true } }),
+    ]);
+
+    return {
+      data: shops,
+      total,
+      skip: options?.skip ?? 0,
+      take: options?.take ?? 50,
+    };
   }
 
   async createShop(tenantId: string, role: string, dto: CreateShopDto) {
@@ -31,7 +67,15 @@ export class ShopService {
       throw new ForbiddenException('Invalid GSTIN format');
     }
 
-    return this.prisma.shop.create({
+    // ───────────────────────────────────────────────
+    // 🛡️ LIVE LIMIT ENFORCEMENT (Downgrade Bypass Protection)
+    // ───────────────────────────────────────────────
+    await this.planRulesService.checkRuntimeLimits(
+      tenantId,
+      ModuleType.MOBILE_SHOP,
+    );
+
+    const shop = await this.prisma.shop.create({
       data: {
         tenantId,
         name: dto.name,
@@ -39,6 +83,7 @@ export class ShopService {
         addressLine1: dto.addressLine1,
         city: dto.city,
         state: dto.state,
+        stateCode: dto.stateCode,
         pincode: dto.pincode,
         invoicePrefix: dto.invoicePrefix,
         gstNumber,
@@ -48,6 +93,14 @@ export class ShopService {
         invoiceFooter: dto.invoiceFooter,
       },
     });
+
+    // Initialize document numbering settings for the new shop
+    await this.docNumberService.initializeShopDocumentSettings(
+      shop.id,
+      shop.invoicePrefix || 'HP', // Default prefix if none provided
+    );
+
+    return shop;
   }
   async getShopById(tenantId: string, shopId: string) {
     const shop = await this.prisma.shop.findFirst({
@@ -91,6 +144,7 @@ export class ShopService {
         addressLine1: dto.addressLine1,
         city: dto.city,
         state: dto.state,
+        stateCode: dto.stateCode,
         pincode: dto.pincode,
         gstNumber,
         // Auto-enable GST if a GST number is provided; otherwise leave unchanged
@@ -113,6 +167,7 @@ export class ShopService {
         addressLine2: true,
         city: true,
         state: true,
+        stateCode: true,
         pincode: true,
         website: true,
 
@@ -125,11 +180,25 @@ export class ShopService {
         logoUrl: true,
         tagline: true,
         headerConfig: true,
-        
+
+        // ✅ Print Settings (were missing — caused save not reflecting)
+        invoicePrinterType: true,
+        invoiceTemplate: true,
+        jobCardPrinterType: true,
+        jobCardTemplate: true,
+
         bankName: true,
         accountNumber: true,
         ifscCode: true,
         branchName: true,
+
+        repairInvoiceNumberingMode: true,
+        repairGstDefault: true,
+
+        isActive: true,
+        tenantId: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
 
@@ -177,6 +246,7 @@ export class ShopService {
         addressLine2: dto.addressLine2,
         city: dto.city,
         state: dto.state,
+        stateCode: dto.stateCode,
         pincode: dto.pincode,
         website: dto.website,
 
@@ -193,11 +263,15 @@ export class ShopService {
         jobCardTemplate: dto.jobCardTemplate,
         headerConfig: dto.headerConfig,
         tagline: dto.tagline,
-        
+
         bankName: dto.bankName,
         accountNumber: dto.accountNumber,
         ifscCode: dto.ifscCode,
+
         branchName: dto.branchName,
+
+        repairInvoiceNumberingMode: dto.repairInvoiceNumberingMode,
+        repairGstDefault: dto.repairGstDefault,
       },
     });
   }
@@ -223,79 +297,102 @@ export class ShopService {
     });
 
     // If no settings exist, create defaults for all document types
-    if (settings.length === 0) {
-      const defaultSettings = [
-        {
-          shopId,
-          documentType: DocumentType.SALES_INVOICE,
-          prefix: shop.invoicePrefix || 'HP',
-          separator: '-',
-          documentCode: 'SI',
-          yearFormat: YearFormat.FY,
-          numberLength: 4,
-          resetPolicy: ResetPolicy.YEARLY,
-        },
-        {
-          shopId,
-          documentType: DocumentType.PURCHASE_INVOICE,
-          prefix: shop.invoicePrefix || 'HP',
-          separator: '-',
-          documentCode: 'PI',
-          yearFormat: YearFormat.FY,
-          numberLength: 4,
-          resetPolicy: ResetPolicy.YEARLY,
-        },
-        {
-          shopId,
-          documentType: DocumentType.JOB_CARD,
-          prefix: shop.invoicePrefix || 'HP',
-          separator: '-',
-          documentCode: 'JC',
-          yearFormat: YearFormat.FY,
-          numberLength: 4,
-          resetPolicy: ResetPolicy.YEARLY,
-        },
-        {
-          shopId,
-          documentType: DocumentType.RECEIPT,
-          prefix: shop.invoicePrefix || 'HP',
-          separator: '-',
-          documentCode: 'R',
-          yearFormat: YearFormat.FY,
-          numberLength: 4,
-          resetPolicy: ResetPolicy.YEARLY,
-        },
-        {
-          shopId,
-          documentType: DocumentType.QUOTATION,
-          prefix: shop.invoicePrefix || 'HP',
-          separator: '-',
-          documentCode: 'Q',
-          yearFormat: YearFormat.FY,
-          numberLength: 4,
-          resetPolicy: ResetPolicy.YEARLY,
-        },
-        {
-          shopId,
-          documentType: DocumentType.PURCHASE_ORDER,
-          prefix: shop.invoicePrefix || 'HP',
-          separator: '-',
-          documentCode: 'PO',
-          yearFormat: YearFormat.FY,
-          numberLength: 4,
-          resetPolicy: ResetPolicy.YEARLY,
-        },
-      ];
+    const defaultSettings = [
+      {
+        shopId,
+        documentType: DocumentType.SALES_INVOICE,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'SI',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+      {
+        shopId,
+        documentType: DocumentType.REPAIR_INVOICE,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'RI',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+      {
+        shopId,
+        documentType: DocumentType.PURCHASE_INVOICE,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'PI',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+      {
+        shopId,
+        documentType: DocumentType.JOB_CARD,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'JC',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+      {
+        shopId,
+        documentType: DocumentType.RECEIPT,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'R',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+      {
+        shopId,
+        documentType: DocumentType.QUOTATION,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'Q',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+      {
+        shopId,
+        documentType: DocumentType.PURCHASE_ORDER,
+        prefix: shop.invoicePrefix || 'HP',
+        separator: '-',
+        documentCode: 'PO',
+        yearFormat: YearFormat.FY,
+        numberLength: 4,
+        resetPolicy: ResetPolicy.YEARLY,
+      },
+    ];
 
+    if (settings.length === 0) {
       await this.prisma.shopDocumentSetting.createMany({
         data: defaultSettings,
       });
+    } else {
+      // Lazy migration: Check if any default type is missing and create it
+      const existingTypes = new Set(settings.map((s) => s.documentType));
+      const missingSettings = defaultSettings.filter(
+        (ds) => !existingTypes.has(ds.documentType),
+      );
 
-      settings = await this.prisma.shopDocumentSetting.findMany({
-        where: { shopId },
-        orderBy: { documentType: 'asc' },
-      });
+      if (missingSettings.length > 0) {
+        await this.prisma.shopDocumentSetting.createMany({
+          data: missingSettings,
+        });
+      }
     }
+
+    // Re-fetch to ensure complete list and order
+    settings = await this.prisma.shopDocumentSetting.findMany({
+      where: { shopId },
+      orderBy: { documentType: 'asc' },
+    });
 
     return settings;
   }
@@ -336,17 +433,41 @@ export class ShopService {
       },
     });
 
-    // If documents exist (currentNumber > 0), prevent changing prefix/documentCode
+    // If documents exist, check if we can allow modification based on reset policy
     if (existing && existing.currentNumber > 0) {
-      if (dto.prefix && dto.prefix !== existing.prefix) {
-        throw new ForbiddenException(
-          'Cannot change prefix after documents have been generated',
-        );
+      let isLocked = false;
+      const today = new Date();
+
+      if (existing.resetPolicy === 'YEARLY') {
+        // Locked if invoices exist in current financial year
+        const currentFY = getFinancialYear(today);
+        if (existing.currentYear === currentFY) {
+          isLocked = true;
+        }
+      } else if (existing.resetPolicy === 'MONTHLY') {
+        // Locked if invoices exist in current month
+        const year = today.getFullYear();
+        const month = (today.getMonth() + 1).toString().padStart(2, '0');
+        const currentMonthKey = `${year}-${month}`;
+        if (existing.currentYear === currentMonthKey) {
+          isLocked = true;
+        }
+      } else {
+        // NEVER reset: always locked if any document exists
+        isLocked = true;
       }
-      if (dto.documentCode && dto.documentCode !== existing.documentCode) {
-        throw new ForbiddenException(
-          'Cannot change document code after documents have been generated',
-        );
+
+      if (isLocked) {
+        if (dto.prefix && dto.prefix !== existing.prefix) {
+          throw new ForbiddenException(
+            'Cannot change prefix: Documents have already been generated in the current financial period',
+          );
+        }
+        if (dto.documentCode && dto.documentCode !== existing.documentCode) {
+          throw new ForbiddenException(
+            'Cannot change document code: Documents have already been generated in the current financial period',
+          );
+        }
       }
     }
 
@@ -365,6 +486,8 @@ export class ShopService {
         yearFormat: dto.yearFormat,
         numberLength: dto.numberLength,
         resetPolicy: dto.resetPolicy,
+        currentNumber: dto.currentNumber,
+        currentYear: dto.currentYear,
       },
       create: {
         shopId,
@@ -383,7 +506,9 @@ export class ShopService {
                   ? 'R'
                   : documentType === DocumentType.QUOTATION
                     ? 'Q'
-                    : 'PO'),
+                    : documentType === DocumentType.REPAIR_INVOICE
+                      ? 'RI'
+                      : 'PO'),
         yearFormat: dto.yearFormat ?? 'FY',
         numberLength: dto.numberLength ?? 4,
         resetPolicy: dto.resetPolicy ?? 'YEARLY',

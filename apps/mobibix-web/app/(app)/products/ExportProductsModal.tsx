@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTheme } from "@/context/ThemeContext";
+import { exportProducts } from "@/services/products.api";
 
 interface ExportProductsModalProps {
   shopId: string;
@@ -25,33 +26,27 @@ export function ExportProductsModal({
       setIsExporting(true);
       setError(null);
 
-      // TODO: Call backend API to export products
-      const response = await fetch(
-        `/api/products/export?shopId=${shopId}&includeStock=${includeStock}&format=${format}`,
-        {
-          method: "GET",
-        },
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to export products");
-      }
+      // Call backend API to export products (CSV only, backend generates CSV)
+      const blob = await exportProducts(shopId, includeStock);
 
       // Download file
-      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       const timestamp = new Date().toISOString().split("T")[0];
-      const filename = `${shopName.replace(/\s+/g, "_")}_products_${timestamp}${includeStock ? "_with_stock" : ""}.${format === "excel" ? "xlsx" : "csv"}`;
+      const filename = `${shopName.replace(/\s+/g, "_")}_products_${timestamp}${includeStock ? "_with_stock" : ""}.csv`;
       a.download = filename;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to export products");
+      // Close modal after successful export
+      setTimeout(() => {
+        onClose();
+      }, 500);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to export products");
     } finally {
       setIsExporting(false);
     }

@@ -15,6 +15,8 @@ export enum DocumentType {
   RECEIPT = 'RECEIPT',
   QUOTATION = 'QUOTATION',
   PURCHASE_ORDER = 'PURCHASE_ORDER',
+  PAYMENT_VOUCHER = 'PAYMENT_VOUCHER',
+  REPAIR_INVOICE = 'REPAIR_INVOICE',
 }
 
 export enum YearFormat {
@@ -63,4 +65,13 @@ export class UpdateDocumentSettingDto {
   @IsOptional()
   @IsEnum(ResetPolicy)
   resetPolicy?: ResetPolicy;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  currentNumber?: number;
+
+  @IsOptional()
+  @IsString()
+  currentYear?: string;
 }

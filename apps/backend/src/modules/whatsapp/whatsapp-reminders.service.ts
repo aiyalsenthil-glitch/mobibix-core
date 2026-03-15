@@ -3,8 +3,35 @@ import { PrismaService } from '../../core/prisma/prisma.service';
 import { WhatsAppSender } from './whatsapp.sender';
 import { WhatsAppLogger } from './whatsapp.logger';
 import { toWhatsAppPhone } from '../../common/utils/phone.util';
-import { ReminderChannel, ReminderStatus } from '@prisma/client';
-import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
+import { Prisma, ReminderChannel, ReminderStatus } from '@prisma/client';
+import {
+  WhatsAppVariableResolver,
+  VariableResolutionContext,
+} from './variable-resolver.service';
+import { WhatsAppModule } from './variable-registry';
+
+// Type-safe reminder shape based on query structure
+type ReminderWithRelations = Prisma.CustomerReminderGetPayload<{
+  include: {
+    customer: {
+      select: {
+        id: true;
+        name: true;
+        phone: true;
+        email: true;
+        tenantId: true;
+      };
+    };
+    tenant: {
+      select: {
+        id: true;
+        name: true;
+        tenantType: true;
+        whatsappReminderNumberId: true;
+      };
+    };
+  };
+}>;
 
 interface ReminderTemplateParams {
   [key: string]: string | number;
@@ -24,6 +51,7 @@ export class WhatsAppRemindersService {
     private readonly prisma: PrismaService,
     private readonly whatsAppSender: WhatsAppSender,
     private readonly whatsAppLogger: WhatsAppLogger,
+    private readonly variableResolver: WhatsAppVariableResolver,
   ) {}
 
   /**
@@ -60,6 +88,10 @@ export class WhatsAppRemindersService {
           channel: ReminderChannel.WHATSAPP,
           scheduledAt: { lte: now },
         },
+        take: 50, // Process in batches of 50 to avoid slow queries
+        orderBy: {
+          scheduledAt: 'asc', // Process oldest first, utilizing index
+        },
         include: {
           customer: {
             select: {
@@ -74,15 +106,12 @@ export class WhatsAppRemindersService {
             select: {
               id: true,
               name: true,
+              tenantType: true,
+              whatsappReminderNumberId: true,
             },
           },
         },
-        take: 100, // Batch limit to avoid overwhelming DB
       });
-
-      this.logger.debug(
-        `Found ${pendingReminders.length} pending WhatsApp reminders`,
-      );
 
       if (pendingReminders.length === 0) {
         return {
@@ -92,11 +121,17 @@ export class WhatsAppRemindersService {
       }
 
       // 2️⃣ Process each reminder
+      const quotaCache = new Map<string, number | null>();
+
       for (const reminder of pendingReminders) {
         remindersToProcess.push(reminder.id);
 
+        this.logger.log(
+          `[CRON] Processing reminder ${reminder.id}, scheduledAt=${reminder.scheduledAt?.toISOString()}, now=${new Date().toISOString()}`,
+        );
+
         try {
-          await this.processSingleReminder(reminder);
+          await this.processSingleReminder(reminder, quotaCache);
         } catch (err) {
           // ⚠️ Fail gracefully - don't crash on individual reminder errors
           this.logger.error(
@@ -128,8 +163,34 @@ export class WhatsAppRemindersService {
    * Process a single reminder
    * Separated for testability
    */
-  private async processSingleReminder(reminder: any): Promise<void> {
+  private async processSingleReminder(
+    reminder: ReminderWithRelations,
+    quotaCache: Map<string, number | null>,
+  ): Promise<void> {
     const { id: reminderId, tenantId, customer, templateKey } = reminder;
+
+    // 0️⃣ Atomic Lock: Try to mark as SENT immediately to prevent race conditions
+    // This ensures only ONE process can pick up this reminder.
+    // If it fails (count === 0), it means another process already handled it.
+    const { count } = await this.prisma.customerReminder.updateMany({
+      where: {
+        id: reminderId,
+        status: ReminderStatus.SCHEDULED,
+        tenantId, // Defense-in-depth isolation
+      },
+      data: {
+        status: ReminderStatus.SENT, // Optimistically mark as SENT (Processing)
+        sentAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    if (count === 0) {
+      this.logger.warn(
+        `[WhatsAppReminders] Atomic Lock Failed for ${reminderId}. Already processed.`,
+      );
+      return;
+    }
 
     try {
       // 1️⃣ Check tenant WhatsApp is enabled
@@ -137,8 +198,62 @@ export class WhatsAppRemindersService {
         where: { tenantId },
       });
 
-      if (!whatsAppSetting?.enabled) {
-        // Silently skip - tenant has disabled WhatsApp
+      // Extract whatsAppNumberId early for logging
+      const whatsAppNumberId = reminder.tenant?.whatsappReminderNumberId;
+
+      // 🛡️ QUOTA CHECK: Daily Reminder Limit
+      let reminderQuotaPerDay: number | null = null;
+      if (quotaCache.has(tenantId)) {
+        reminderQuotaPerDay = quotaCache.get(tenantId) ?? null;
+      } else {
+        const activeSub = await this.prisma.tenantSubscription.findFirst({
+          where: { tenantId, status: 'ACTIVE' },
+          orderBy: { startDate: 'desc' },
+          select: {
+            plan: {
+              select: { meta: true },
+            },
+          },
+        });
+        
+        const planMeta = (activeSub?.plan?.meta as { reminderQuotaPerDay?: number | null; } | null) ?? null;
+        reminderQuotaPerDay = planMeta?.reminderQuotaPerDay ?? null;
+        quotaCache.set(tenantId, reminderQuotaPerDay);
+      }
+
+      if (reminderQuotaPerDay !== null && reminderQuotaPerDay !== undefined) {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
+        const sentToday = await this.prisma.whatsAppLog.count({
+          where: {
+            tenantId,
+            type: 'REMINDER',
+            status: 'SENT',
+            sentAt: { gte: todayStart },
+          },
+        });
+
+        if (sentToday >= reminderQuotaPerDay) {
+          const reason = `Daily quota reached (${sentToday}/${reminderQuotaPerDay})`;
+          await this.updateReminderStatus(
+            reminderId,
+            ReminderStatus.SKIPPED,
+            reason,
+          );
+          await this.logAttempt(
+            tenantId,
+            customer.id,
+            customer.phone || 'UNKNOWN',
+            'SKIPPED',
+            reason,
+          );
+          return;
+        }
+      }
+
+      // Permissive Default: Only skip if explicitly set to false
+      if (whatsAppSetting && whatsAppSetting.enabled === false) {
         await this.updateReminderStatus(
           reminderId,
           ReminderStatus.SKIPPED,
@@ -179,71 +294,301 @@ export class WhatsAppRemindersService {
           phone,
           'FAILED',
           'Invalid phone number format',
+          whatsAppNumberId,
         );
         return;
       }
 
-      // 4️⃣ Build template parameters
-      const parameters = this.buildTemplateParameters(reminder, customer);
+      // 4️⃣ Build template parameters using Variable Resolver
+      let parameters: string[] = [];
 
+      const rawTenantType = (reminder.tenant?.tenantType || '')
+        .toUpperCase()
+        .replace(/[\s_-]/g, '');
+      const tenantModuleHint =
+        rawTenantType === 'MOBILESHOP'
+          ? 'MOBILE_SHOP'
+          : rawTenantType === 'GYM'
+            ? 'GYM'
+            : undefined;
+
+      // Fetch template definition to get variable keys
+      // Try finding by templateKey (standard) OR metaTemplateName (legacy/direct reference)
+      // Get the LATEST active template for this key
+      const template = await this.prisma.whatsAppTemplate.findFirst({
+        where: {
+          status: 'ACTIVE',
+          ...(tenantModuleHint ? { moduleType: tenantModuleHint } : {}),
+          OR: [{ templateKey: templateKey }, { metaTemplateName: templateKey }],
+          // Templates are currently global/module-level, but we could add tenant-specific template support here.
+        },
+        orderBy: { updatedAt: 'desc' },
+      });
+
+
+      if (
+        template?.variables &&
+        Array.isArray(template.variables) &&
+        template.variables.length > 0
+      ) {
+        // Resolve variables dynamically
+        const variableKeys = template.variables as string[];
+
+        // Find Member for context (Link Customer -> Member via phone)
+        const member = await this.prisma.member.findFirst({
+          where: { tenantId, phone: customer.phone },
+        });
+
+        // 4a. For MOBILE_SHOP, we need to fetch the default Shop for context
+        let shopId: string | undefined;
+        if (reminder.tenant?.tenantType?.toUpperCase() === 'MOBILE_SHOP') {
+          const shop = await this.prisma.shop.findFirst({
+            where: { tenantId },
+            select: { id: true },
+          });
+          shopId = shop?.id;
+        }
+
+
+        // Robust module detection for Mobile Shop
+        const templateModule = (template?.moduleType || '')
+          .toUpperCase()
+          .replace(/[\s_-]/g, '');
+        const isMobileShop = rawTenantType === 'MOBILESHOP';
+        const isTemplateMobileShop = templateModule === 'MOBILESHOP';
+        const isTemplateGym = templateModule === 'GYM';
+        const mobileShopVariableKeys = new Set([
+          'shopName',
+          'customerName',
+          'customer_name',
+          'jobNumber',
+          'job_number',
+          'jobCardNumber',
+          'deviceModel',
+          'device_name',
+          'invoiceNumber',
+          'invoice_number',
+          'invoiceTotalAmount',
+          'invoicePendingAmount',
+        ]);
+        const hasMobileShopVariables = variableKeys.some((key) =>
+          mobileShopVariableKeys.has(key),
+        );
+
+        const context: VariableResolutionContext = {
+          module:
+            isTemplateMobileShop || hasMobileShopVariables || isMobileShop
+              ? WhatsAppModule.MOBILE_SHOP
+              : isTemplateGym
+                ? WhatsAppModule.GYM
+                : WhatsAppModule.GYM,
+          tenantId,
+          memberId: member?.id, // May be null for Mobile Shop
+          // 🚨 CRITICAL FIX: Trigger value could be Invoice ID OR JobCard ID
+          // We pass it to both; the resolver will use the one that matches the variable source
+          invoiceId: reminder.triggerValue || undefined,
+          jobCardId: reminder.triggerValue || undefined, // Support Job Cards
+          shopId,
+        };
+
+        // 5. Determine Event Type for Mobile Shop to ensure correct variable scoping
+        // 5. Determine Event Type via Automation Lookup (Dynamic)
+        // Instead of hardcoding, look up the automation definition by templateKey
+        let eventType: string | undefined;
+
+        // Try to find the automation that maps this template to an event
+        const automationModuleHint =
+          context.module === WhatsAppModule.MOBILE_SHOP
+            ? 'MOBILE_SHOP'
+            : context.module === WhatsAppModule.GYM
+              ? 'GYM'
+              : tenantModuleHint;
+
+        const automation = await this.prisma.whatsAppAutomation.findFirst({
+          where: {
+            templateKey: templateKey,
+            enabled: true,
+            ...(automationModuleHint
+              ? { moduleType: automationModuleHint }
+              : {}),
+          },
+          select: { eventType: true, moduleType: true },
+        });
+
+        if (automation) {
+          eventType = automation.eventType;
+          // TRUST AUTOMATION: If automation exists, its moduleType is the authority for variable context
+          const autoModule = String(automation.moduleType)
+            .toUpperCase()
+            .replace(/[\s_-]/g, '');
+          if (autoModule === 'MOBILESHOP')
+            context.module = WhatsAppModule.MOBILE_SHOP;
+          if (
+            autoModule === 'GYM' &&
+            context.module !== WhatsAppModule.MOBILE_SHOP
+          ) {
+            context.module = WhatsAppModule.GYM;
+          }
+        } else {
+          // Fallback for hardcoded/legacy templates not in Automation table
+          if (context.module === WhatsAppModule.MOBILE_SHOP) {
+            // Normalize templateKey for comparison (lowercase, remove spaces)
+            const normalizedKey = templateKey.toLowerCase().replace(/\s+/g, '');
+
+            if (
+              normalizedKey.includes('invoice') &&
+              normalizedKey.includes('creat')
+            ) {
+              eventType = 'INVOICE_CREATED';
+            } else if (
+              normalizedKey.includes('jobready') ||
+              normalizedKey.includes('job_ready') ||
+              normalizedKey.includes('ready')
+            ) {
+              eventType = 'JOB_READY';
+            } else if (
+              normalizedKey.includes('jobcompleted') ||
+              normalizedKey.includes('job_completed') ||
+              normalizedKey.includes('completed')
+            ) {
+              eventType = 'JOB_COMPLETED';
+            } else if (normalizedKey.includes('followup')) {
+              eventType = 'FOLLOW_UP_SCHEDULED';
+            }
+          }
+        }
+
+        this.logger.debug(
+          `[WhatsAppReminders] TRACE: REMINDER_ID=${reminderId} MOD=${context.module} EVT=${eventType} T_TYPE='${reminder.tenant?.tenantType}'`,
+        );
+
+
+        const resolvedMap = await this.variableResolver.resolveVariables(
+          variableKeys,
+          { ...context, eventType },
+        );
+
+
+        // Check for resolution errors
+        const errors = variableKeys
+          .map((k) => resolvedMap.get(k))
+          .filter((r) => r?.error);
+
+        if (errors.length > 0) {
+          const errorMsg = `Variable resolution failed: ${errors.map((e) => (e ? `${e.key} (${e.error})` : 'unknown')).join(', ')}`;
+          this.logger.error(errorMsg);
+          // Mark as FAILED and abort
+          await this.updateReminderStatus(
+            reminderId,
+            ReminderStatus.FAILED,
+            errorMsg,
+          );
+          await this.logAttempt(
+            tenantId,
+            customer.id,
+            whatsAppPhone,
+            'FAILED',
+            errorMsg,
+          );
+          return;
+        }
+
+        // Map back to array in order
+        parameters = variableKeys.map((key) => {
+          const res = resolvedMap.get(key);
+          return res?.formatted || '';
+        });
+
+        console.log(
+          `[WhatsAppReminders] Resolved Parameters: ${JSON.stringify(parameters)}`,
+        );
+      } else {
+        // Fallback for manually seeded templates or missing definitions
+        // Use the old hardcoded logic as fail-safe
+        parameters = this.buildTemplateParameters(reminder, customer);
+      }
       // 5️⃣ Send message via WhatsAppSender
-      // Note: WhatsAppSender handles subscription/plan checks internally
       const result = await this.whatsAppSender.sendTemplateMessage(
         tenantId,
-        WhatsAppFeature.REMINDER,
+        'REMINDER', // Core feature, always-on
         whatsAppPhone,
-        templateKey,
+        template?.metaTemplateName || templateKey,
         parameters,
+        {
+          whatsAppNumberId:
+            reminder.tenant?.whatsappReminderNumberId ?? undefined,
+        },
       );
 
       // 6️⃣ Handle result and update status
       if (result.skipped) {
-        // Plan-level or feature-level block
+        const reason =
+          result.reason || 'Blocked by subscription plan or feature limit';
         await this.updateReminderStatus(
           reminderId,
           ReminderStatus.SKIPPED,
-          'Blocked by subscription plan or feature limit',
+          reason,
         );
         await this.logAttempt(
           tenantId,
           customer.id,
           whatsAppPhone,
           'SKIPPED',
-          'Blocked by subscription plan',
+          reason,
+          whatsAppNumberId,
         );
         return;
       }
 
       if (result.success) {
-        await this.updateReminderStatus(reminderId, ReminderStatus.SENT);
-        await this.logAttempt(tenantId, customer.id, whatsAppPhone, 'SUCCESS');
+        // ✅ Already marked as SENT by the Atomic Lock.
+        // Just log the success attempt.
+        await this.logAttempt(
+          tenantId,
+          customer.id,
+          whatsAppPhone,
+          'SUCCESS',
+          undefined,
+          whatsAppNumberId,
+        );
       } else {
+        // ❌ Revert status to FAILED
+        const errorMessage =
+          result.error &&
+          typeof result.error === 'object' &&
+          'message' in result.error
+            ? String((result.error as { message: unknown }).message)
+            : 'Unknown error from WhatsApp API';
         await this.updateReminderStatus(
           reminderId,
           ReminderStatus.FAILED,
-          result.error?.message || 'Unknown error from WhatsApp API',
+          errorMessage,
         );
         await this.logAttempt(
           tenantId,
           customer.id,
           whatsAppPhone,
           'FAILED',
-          result.error?.message || 'Unknown error',
+          errorMessage,
+          whatsAppNumberId,
         );
       }
     } catch (err) {
+      // ❌ Revert status to FAILED on crash
       const errorMsg = err instanceof Error ? err.message : String(err);
       await this.updateReminderStatus(
         reminderId,
         ReminderStatus.FAILED,
         errorMsg,
       );
+      const whatsAppNumberId = reminder.tenant?.whatsappReminderNumberId;
       await this.logAttempt(
         tenantId,
         customer.id,
         customer.phone || 'UNKNOWN',
         'FAILED',
         errorMsg,
+        whatsAppNumberId,
       );
     }
   }
@@ -252,7 +597,10 @@ export class WhatsAppRemindersService {
    * Build template parameters based on reminder type and customer data
    * Use context from triggerType and triggerValue
    */
-  private buildTemplateParameters(reminder: any, customer: any): string[] {
+  private buildTemplateParameters(
+    reminder: ReminderWithRelations,
+    customer: NonNullable<ReminderWithRelations['customer']>,
+  ): string[] {
     const parameters: ReminderTemplateParams = {
       customerName: customer.name || 'valued customer',
       // Add more based on triggerType
@@ -275,13 +623,18 @@ export class WhatsAppRemindersService {
     status: ReminderStatus,
     failureReason?: string,
   ): Promise<void> {
+    // We don't have tenantId here, but we could pass it from caller or fetch it.
+    // However, id is UUID and caller already validated tenantId access in processSingleReminder.
+    // For consistency with hardening goals, we should really pass tenantId to this method too.
     await this.prisma.customerReminder.update({
       where: { id: reminderId },
       data: {
         status,
         sentAt: status === ReminderStatus.SENT ? new Date() : undefined,
         failureReason:
-          status === ReminderStatus.FAILED ? failureReason : undefined,
+          status === ReminderStatus.FAILED || status === ReminderStatus.SKIPPED
+            ? failureReason
+            : undefined,
         updatedAt: new Date(),
       },
     });
@@ -297,11 +650,14 @@ export class WhatsAppRemindersService {
     phone: string,
     status: 'SUCCESS' | 'FAILED' | 'SKIPPED',
     error?: string,
+    whatsAppNumberId?: string | null,
   ): Promise<void> {
     try {
       // Map reminder statuses to WhatsAppLog statuses
-      const logStatus: 'SENT' | 'FAILED' =
-        status === 'SUCCESS' ? 'SENT' : 'FAILED';
+      let logStatus: 'SENT' | 'FAILED' | 'SKIPPED';
+      if (status === 'SUCCESS') logStatus = 'SENT';
+      else if (status === 'SKIPPED') logStatus = 'SKIPPED';
+      else logStatus = 'FAILED';
 
       await this.whatsAppLogger.log({
         tenantId,
@@ -310,6 +666,7 @@ export class WhatsAppRemindersService {
         type: 'REMINDER',
         status: logStatus,
         error: error || null,
+        whatsAppNumberId: whatsAppNumberId || null,
       });
     } catch (err) {
       // Logging should not crash the process

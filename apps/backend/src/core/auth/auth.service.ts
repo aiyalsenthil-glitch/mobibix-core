@@ -2,19 +2,30 @@ import {
   Injectable,
   UnauthorizedException,
   InternalServerErrorException,
+  NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
-import { FirebaseAdminService } from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
 import { GoogleExchangeDto } from './dto/google-exchange.dto';
+import { AuthVerificationService } from './services/auth-verification.service';
+import { UserResolutionService } from './services/user-resolution.service';
+import { TokenFactoryService } from './services/token-factory.service';
+import { FirebaseAdminService } from '../REMOVED_AUTH_PROVIDER/REMOVED_AUTH_PROVIDERAdmin';
+import { EmailService } from '../../common/email/email.service';
+import { ROLE_PERMISSIONS } from './permissions.map';
+import { PermissionService } from '../permissions/permissions.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService,
+    private readonly authVerification: AuthVerificationService,
+    private readonly userResolution: UserResolutionService,
+    private readonly tokenFactory: TokenFactoryService,
     private readonly REMOVED_AUTH_PROVIDERAdmin: FirebaseAdminService,
+    private readonly emailService: EmailService,
+    private readonly permissionService: PermissionService,
   ) {}
 
   /**
@@ -35,204 +46,329 @@ export class AuthService {
   }
 
   /**
-   * 🔒 CORE AUTH LOGIC
+   * 🔁 Refresh access token using a stored refresh token
+   */
+  async refreshAccessToken(refreshToken: string) {
+    if (!refreshToken || refreshToken.trim() === '') {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    const tokenRecord = await this.prisma.refreshToken.findUnique({
+      where: { token: refreshToken },
+      include: { user: true },
+    });
+
+    if (
+      !tokenRecord ||
+      tokenRecord.revokedAt ||
+      tokenRecord.expiresAt.getTime() <= Date.now()
+    ) {
+      throw new UnauthorizedException(
+        'Invalid, revoked, or expired refresh token',
+      );
+    }
+
+    const user = tokenRecord.user;
+
+    const userTenant = await this.prisma.userTenant.findFirst({
+      where: { userId: user.id },
+      select: {
+        id: true,
+        tenantId: true,
+        role: true,
+        isSystemOwner: true,
+      },
+    });
+
+    const tenantId = userTenant?.tenantId ?? user.tenantId ?? null;
+    const role = userTenant?.role ?? user.role;
+
+    const roleKey = (role?.toUpperCase() || UserRole.USER) as UserRole;
+    let permissions: string[] = ROLE_PERMISSIONS[roleKey] || [];
+
+    // If we have a tenant context, fetch dynamic permissions
+    if (tenantId) {
+      await this.permissionService.invalidateUserPermissions(user.id, tenantId);
+      permissions = await this.permissionService.getConsolidatedPermissions(
+        user.id,
+        tenantId,
+      );
+    }
+
+    const isSystemOwner =
+      userTenant?.isSystemOwner || userTenant?.role === UserRole.OWNER;
+
+    const accessToken = this.tokenFactory.generateAccessToken({
+      sub: user.id,
+      tenantId,
+      userTenantId: userTenant?.id ?? null,
+      role,
+      isSystemOwner,
+      tokenVersion: user.tokenVersion,
+      // 🚀 NOTE: Permissions removed from JWT to keep cookie size < 4KB.
+      // GranularPermissionGuard fetches them from DB/Cache using userId.
+    });
+
+    // Refresh Token Rotation: Revoke old and create new
+    await this.tokenFactory.revokeRefreshToken(refreshToken);
+    const newRefreshToken = await this.tokenFactory.createRefreshToken(user.id);
+
+    return {
+      accessToken,
+      accessTokenExpiresIn: this.tokenFactory.accessTokenTtlMs,
+      refreshToken: newRefreshToken,
+      refreshTokenExpiresIn: this.tokenFactory.refreshTokenTtlMs,
+    };
+  }
+
+  async revokeRefreshToken(token: string) {
+    await this.tokenFactory.revokeRefreshToken(token);
+  }
+
+  /**
+   * 🔒 CORE AUTH LOGIC (MODULARIZED)
    */
   async loginWithFirebase(REMOVED_AUTH_PROVIDERToken: string, tenantCode?: string) {
     try {
-      // ─────────────────────────────
       // 1️⃣ Verify Firebase token
-      // ─────────────────────────────
-      const decoded = await this.REMOVED_AUTH_PROVIDERAdmin.verifyIdToken(REMOVED_AUTH_PROVIDERToken);
+      const decoded =
+        await this.authVerification.verifyFirebaseToken(REMOVED_AUTH_PROVIDERToken);
 
-      if (!decoded?.uid) {
-        throw new UnauthorizedException('Invalid Firebase payload');
-      }
+      // 2️⃣ Resolve user and check for invites
+      const [user, staffInvite] = await Promise.all([
+        this.userResolution.resolveUser(decoded),
+        this.userResolution.checkInvites(decoded.email),
+      ]);
 
-      // ─────────────────────────────
-      // 2️⃣ Find or create user (atomic upsert prevents race condition)
-      // ─────────────────────────────
-      const user = await this.prisma.user.upsert({
-        where: { REMOVED_AUTH_PROVIDERUid: decoded.uid },
-        update: {
-          email: decoded.email ?? null,
-          fullName: decoded.name ?? null,
-        },
-        create: {
-          REMOVED_AUTH_PROVIDERUid: decoded.uid,
-          email: decoded.email ?? null,
-          fullName: decoded.name ?? null,
-          role: UserRole.USER, // First login defaults to USER, can be upgraded to ADMIN/OWNER by admins
-          tenantId: null,
-        },
-      });
+      // 3️⃣ REMOVED: Auto-processing invite (Client will now ask for confirmation)
+      // if (staffInvite) {
+      //   await this.userResolution.processStaffInvite(user.id, staffInvite);
+      //   user = await this.userResolution.resolveUser(decoded);
+      // }
 
-      // ─────────────────────────────
-      // 3️⃣ Staff invite auto-accept
-      // ─────────────────────────────
-      if (decoded.email) {
-        const invite = await this.prisma.staffInvite.findFirst({
-          where: {
-            email: decoded.email,
-            accepted: false,
-          },
-        });
-
-        if (invite) {
-          await this.prisma.userTenant.upsert({
-            where: {
-              userId_tenantId: {
-                userId: user.id,
-                tenantId: invite.tenantId,
-              },
-            },
-            update: {
-              role: UserRole.STAFF,
-            },
-            create: {
-              userId: user.id,
-              tenantId: invite.tenantId,
-              role: UserRole.STAFF,
-            },
-          });
-
-          await this.prisma.staffInvite.update({
-            where: { id: invite.id },
-            data: { accepted: true },
-          });
-        }
-      }
-      // ─────────────────────────────
       // 4️⃣ Resolve active tenant context
-      // ─────────────────────────────
+      const activeUserTenant = await this.userResolution.resolveActiveTenant(
+        user,
+        tenantCode,
+      );
+      const userTenantCount = user.userTenants.length;
 
-      let activeUserTenant: {
-        tenantId: string;
-        role: UserRole;
-        tenant: {
-          id: string;
-          name: string;
-        };
-      } | null = null;
+      // 5️⃣ Resolve IDs for JWT
+      const tenantId = activeUserTenant?.tenantId ?? null;
+      const userTenantId = activeUserTenant?.id ?? null;
 
-      if (tenantCode) {
-        const tenant = await this.prisma.tenant.findUnique({
-          where: { code: tenantCode },
-        });
+      // 🛡️ SECURITY: If user is globally a platform ADMIN/SUPER_ADMIN,
+      // preserve that role even if they have a tenant context (is OWNER of a test tenant, etc)
+      // to ensure they don't lose admin-access via RoleHierarchy check (Level 90 vs 80)
+      const isPlatformAdmin =
+        user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN;
+      const role = isPlatformAdmin
+        ? user.role
+        : (activeUserTenant?.role ?? user.role);
 
-        if (!tenant) {
-          throw new UnauthorizedException('Tenant code is invalid');
-        }
+      const isSystemOwner =
+        activeUserTenant?.isSystemOwner ||
+        activeUserTenant?.role === UserRole.OWNER;
 
-        activeUserTenant = await this.prisma.userTenant.findFirst({
-          where: {
-            userId: user.id,
-            tenantId: tenant.id,
-          },
-          include: { tenant: true },
-        });
-      } else {
-        const userTenants = await this.prisma.userTenant.findMany({
-          where: { userId: user.id },
-          include: { tenant: true },
-        });
+      // 6️⃣ Issue JWT & Refresh Token
+      const roleKey = (role?.toUpperCase() || UserRole.USER) as UserRole;
+      let permissions: string[] = ROLE_PERMISSIONS[roleKey] || [];
 
-        activeUserTenant = userTenants[0] ?? null;
-      }
-
-      // 🚫 Tenant requested but user not linked → BLOCK
-      if (tenantCode && !activeUserTenant) {
-        throw new UnauthorizedException('User is not linked to this tenant');
-      }
-
-      // 🟢 First login without tenant context (allowed)
-      if (!tenantCode && !activeUserTenant) {
-        const token = this.jwtService.sign({
-          sub: user.id,
-          tenantId: null,
-          role: user.role.toLowerCase(), // Convert to lowercase for frontend
-        });
-
-        return {
-          accessToken: token,
-          user: {
-            id: user.id,
-            email: user.email,
-            fullName: user.fullName,
-            role: user.role.toLowerCase() as any, // Convert to lowercase for frontend
-            tenantId: null,
-          },
-          tenant: null,
-        };
-      }
-      const resolvedUserTenant = activeUserTenant!;
-      // ─────────────────────────────
-      // 4.5️⃣ Set Firebase custom claims (SAFE)
-      // ─────────────────────────────
-
-      if (activeUserTenant && decoded.tenantId !== activeUserTenant.tenantId) {
-        await this.REMOVED_AUTH_PROVIDERAdmin.setCustomUserClaims(user.REMOVED_AUTH_PROVIDERUid, {
-          tenantId: activeUserTenant.tenantId,
-          role: activeUserTenant.role,
-        });
-      }
-
-      // ─────────────────────────────
-      // 5️⃣ Issue JWT
-      // ─────────────────────────────
-      const token = this.jwtService.sign({
-        sub: user.id,
-        tenantId: resolvedUserTenant.tenantId,
-        role: resolvedUserTenant.role.toLowerCase(), // Convert to lowercase for frontend
-      });
-
-      return {
-        accessToken: token,
-        user: {
-          id: user.id,
-          tenantId: activeUserTenant?.tenantId ?? null,
-          role: (activeUserTenant?.role ?? UserRole.USER).toLowerCase() as any,
-          name: user.fullName,
-          email: user.email,
-        },
-        tenant: {
-          id: resolvedUserTenant.tenant.id,
-          name: resolvedUserTenant.tenant.name,
-        },
-      };
-    } catch (err) {
-      // Log the actual error for debugging
-      console.error('❌ Auth Service Error:', {
-        message: err?.message,
-        code: err?.code,
-        name: err?.name,
-        stack: err?.stack,
-        fullError: err,
-      });
-
-      // Firebase / auth errors → 401
-      if (
-        err instanceof UnauthorizedException ||
-        err?.code?.includes?.('auth')
-      ) {
-        throw new UnauthorizedException('Firebase authentication failed');
-      }
-
-      // Prisma errors
-      if (err?.code?.startsWith('P')) {
-        console.error('Prisma Error Details:', {
-          code: err.code,
-          clientVersion: err.clientVersion,
-          meta: err.meta,
-        });
-        throw new InternalServerErrorException(
-          `Database error: ${err.code} - ${err.message}`,
+      // If we have a tenant context, fetch dynamic permissions
+      // Always invalidate cache on login so users get fresh permissions immediately
+      if (tenantId) {
+        await this.permissionService.invalidateUserPermissions(
+          user.id,
+          tenantId,
+        );
+        permissions = await this.permissionService.getConsolidatedPermissions(
+          user.id,
+          tenantId,
         );
       }
 
-      // Everything else → controlled 500
+      const token = this.tokenFactory.generateAccessToken({
+        sub: user.id,
+        tenantId,
+        userTenantId,
+        role,
+        isSystemOwner,
+        tokenVersion: user.tokenVersion,
+        // 🚀 NOTE: Permissions removed from JWT to keep cookie size < 4KB.
+      });
+
+      const refreshToken = await this.tokenFactory.createRefreshToken(user.id);
+
+      // 7️⃣ Set Firebase custom claims (fire-and-forget)
+      if (tenantId) {
+        this.REMOVED_AUTH_PROVIDERAdmin
+          .setCustomUserClaims(user.REMOVED_AUTH_PROVIDERUid, {
+            tenantId,
+            role,
+          })
+          .catch((err) =>
+            console.warn('⚠️  Firebase Claims Sync Failed:', err.message),
+          );
+      }
+
+      return {
+        accessToken: token,
+        accessTokenExpiresIn: this.tokenFactory.accessTokenTtlMs,
+        refreshToken,
+        refreshTokenExpiresIn: this.tokenFactory.refreshTokenTtlMs,
+        user: {
+          id: user.id,
+          tenantId,
+          tenantCode: activeUserTenant?.tenant.code ?? null,
+          tenantType: activeUserTenant?.tenant.tenantType ?? null,
+          role: role as UserRole,
+          isSystemOwner,
+          name: user.fullName,
+          email: user.email,
+          permissions,
+        },
+        tenant: activeUserTenant
+          ? {
+              id: activeUserTenant.tenant.id,
+              name: activeUserTenant.tenant.name,
+              code: activeUserTenant.tenant.code,
+            }
+          : null,
+        tenantCount: userTenantCount,
+        pendingInvite: staffInvite
+          ? {
+              id: staffInvite.id,
+              inviteToken: staffInvite.inviteToken,
+              tenantId: staffInvite.tenantId,
+              role: staffInvite.role,
+              shopIds: staffInvite.shopIds,
+              tenant: staffInvite.tenant, // Include tenant info for frontend
+            }
+          : null,
+      };
+    } catch (err) {
+      if (
+        err instanceof UnauthorizedException ||
+        err instanceof InternalServerErrorException
+      ) {
+        throw err;
+      }
+
+      console.error('❌ AuthService Error:', err);
       throw new InternalServerErrorException(
-        `Authentication service failed: ${err?.message || 'Unknown error'}`,
+        `Authentication failed: ${err.message || 'Unknown error'}`,
       );
     }
+  }
+
+  /**
+   * 📧 Email Verification Endpoint
+   */
+  async sendVerificationEmail(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, fullName: true, id: true, tenantId: true },
+    });
+
+    if (!user || !user.email) {
+      throw new UnauthorizedException(
+        'User not found or missing email address',
+      );
+    }
+
+    const tenantId =
+      user.tenantId ||
+      (await this.prisma.userTenant.findFirst({ where: { userId } }))?.tenantId;
+
+    if (!tenantId) {
+      console.warn(
+        `[sendVerificationEmail] User ${userId} has no associated tenant context for EmailLog.`,
+      );
+    }
+
+    // Generate link directly via Firebase Admin
+    const link = await this.REMOVED_AUTH_PROVIDERAdmin.generateEmailVerificationLink(
+      user.email,
+    );
+
+    // Send the email using our custom Resend email service with our own templates
+    await this.emailService.send({
+      targetType: 'SYSTEM',
+      tenantId: tenantId || process.env.SYSTEM_TENANT_ID || 'dummy',
+      recipientType: 'STAFF',
+      emailType: 'EMAIL_VERIFICATION',
+      referenceId: user.id,
+      module: 'GYM', // Defaulting to GYM branding since it's global auth for now
+      to: user.email,
+      subject: 'Verify your GymPilot account',
+      data: {
+        name: user.fullName || 'User',
+        verificationLink: link,
+      },
+    } as any); // Cast as any if we need to bypass strict type for `targetType/recipientType`
+  }
+
+  /**
+   * 🧪 FOR QA AUTOMATION ONLY
+   */
+  async loginWithCredentials(email: string, password?: string) {
+    if (
+      email !== 'test@gmail.com' &&
+      !email.startsWith('staff') &&
+      !email.endsWith('@test.com')
+    ) {
+      throw new UnauthorizedException(
+        'QA Login only allowed for test accounts',
+      );
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: { email },
+      include: {
+        userTenants: {
+          include: { tenant: true },
+        },
+      },
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+
+    const activeUserTenant = user.userTenants[0];
+    const tenantId = activeUserTenant?.tenantId ?? null;
+    const userTenantId = activeUserTenant?.id ?? null;
+    const role = activeUserTenant?.role ?? user.role;
+    const isSystemOwner =
+      activeUserTenant?.isSystemOwner || role === UserRole.OWNER;
+
+    const roleKey = (role?.toUpperCase() || UserRole.USER) as UserRole;
+    let permissions: string[] = ROLE_PERMISSIONS[roleKey] || [];
+
+    if (tenantId && !isSystemOwner) {
+      await this.permissionService.invalidateUserPermissions(user.id, tenantId);
+      permissions = await this.permissionService.getConsolidatedPermissions(
+        user.id,
+        tenantId,
+      );
+    }
+
+    const token = this.tokenFactory.generateAccessToken({
+      sub: user.id,
+      tenantId,
+      userTenantId,
+      role,
+      isSystemOwner,
+      tokenVersion: user.tokenVersion,
+    });
+
+    return {
+      accessToken: token,
+      user: {
+        id: user.id,
+        tenantId,
+        role,
+        isSystemOwner,
+        permissions,
+      },
+    };
   }
 }

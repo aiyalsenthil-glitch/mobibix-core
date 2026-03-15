@@ -5,19 +5,33 @@ import { useRouter } from "next/navigation";
 import { listShops, type Shop } from "@/services/shops.api";
 import {
   createPurchase,
+  submitPurchase,
   type CreatePurchaseDto,
   type PurchaseItemDto,
   type PaymentMode,
 } from "@/services/purchases.api";
-import { listSuppliers, type Supplier } from "@/services/suppliers.api";
+import { listProducts, type ShopProduct } from "@/services/products.api";
+import { listPurchaseOrders, type PurchaseOrder } from "@/services/purchase-orders.api";
+import { listGrns, type GRN } from "@/services/grn.api";
 import { authenticatedFetch } from "@/services/auth.api";
 import { useTheme } from "@/context/ThemeContext";
+import { PartySelector } from "@/components/common/PartySelector";
+import { type Party } from "@/services/parties.api";
+import { 
+  getVouchers, 
+  applyAdvanceToPurchase,
+  getAdvanceBalance,
+  type PaymentVoucher 
+} from "@/services/vouchers.api";
+
+// GSTIN Regex Validation
+const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
 export default function NewPurchasePage() {
   const { theme } = useTheme();
   const router = useRouter();
   const [shops, setShops] = useState<Shop[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [selectedSupplier, setSelectedSupplier] = useState<Party | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,12 +41,76 @@ export default function NewPurchasePage() {
     shopId: "",
     globalSupplierId: "",
     supplierName: "",
+    supplierGstin: "",
     invoiceNumber: "",
     invoiceDate: new Date().toISOString().split("T")[0],
     dueDate: "",
     paymentMethod: "CASH",
     items: [],
+    currency: "INR",
+    exchangeRate: 1.0,
   });
+
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [grns, setGrns] = useState<GRN[]>([]);
+
+  // Advance vouchers
+  const [advanceVouchers, setAdvanceVouchers] = useState<PaymentVoucher[]>([]);
+  const [selectedVoucherId, setSelectedVoucherId] = useState<string>("");
+  const [selectedVoucherBalance, setSelectedVoucherBalance] = useState<number>(0);
+  const [applyAdvanceAmount, setApplyAdvanceAmount] = useState<number>(0);
+
+  // Product Search
+  const [products, setProducts] = useState<ShopProduct[]>([]);
+  const [productSearch, setProductSearch] = useState("");
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+  const [imeisText, setImeisText] = useState("");
+  const [serialNumbersText, setSerialNumbersText] = useState("");
+
+  // Fetch advance vouchers when supplier is selected
+  const fetchSupplierAdvances = async (supplierId: string) => {
+    try {
+      const response = await getVouchers({ 
+        voucherType: "SUPPLIER", 
+        status: "ACTIVE" // You can filter on the backend for globalSupplierId
+      });
+      // Further filter manually here since filtering parameter isn't strictly on getVouchers out of the box
+      const advances = response.data.filter(v => v.globalSupplierId === supplierId && v.voucherType === "SUPPLIER");
+      setAdvanceVouchers(advances);
+    } catch (err: unknown) {
+      console.error("Failed to fetch advance vouchers:", err);
+    }
+  };
+
+  const fetchSupplierPOs = async (supplierId: string) => {
+    try {
+      const pos = await listPurchaseOrders();
+      setPurchaseOrders(pos.filter(po => po.globalSupplierId === supplierId));
+      
+      const grnListData = await listGrns();
+      setGrns(grnListData.filter(g => g.status === "CONFIRMED"));
+    } catch (err) {
+      console.error("Failed to fetch POs/GRNs:", err);
+    }
+  };
+
+  const handleSelectVoucher = async (voucherId: string) => {
+    setSelectedVoucherId(voucherId);
+    setApplyAdvanceAmount(0);
+    if (!voucherId) {
+      setSelectedVoucherBalance(0);
+      return;
+    }
+
+    try {
+      const balanceObj = await getAdvanceBalance(voucherId);
+      setSelectedVoucherBalance(balanceObj.remainingBalance);
+    } catch (err: unknown) {
+      console.error("Failed to get voucher balance:", err);
+      setSelectedVoucherBalance(0);
+      setError("Failed to fetch selected voucher balance");
+    }
+  };
 
   // Current item being added
   const [currentItem, setCurrentItem] = useState<PurchaseItemDto>({
@@ -42,35 +120,35 @@ export default function NewPurchasePage() {
     gstRate: 18,
   });
 
-  // Load shops and suppliers
+  // Load shops and products
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        // Load shops and suppliers independently
+        // Load shops
         let shopsData: Shop[] = [];
-        let suppliersData: Supplier[] = [];
 
         try {
           shopsData = await listShops();
           if (shopsData.length > 0) {
             setFormData((prev) => ({ ...prev, shopId: shopsData[0].id }));
+            
+            // Load products for the first shop
+            try {
+              const productsResult = await listProducts(shopsData[0].id);
+              setProducts(Array.isArray(productsResult) ? productsResult : productsResult.data);
+            } catch (pErr) {
+              console.error("Failed to load products:", pErr);
+            }
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error("Failed to load shops:", err);
           setError("Failed to load shops");
         }
 
-        try {
-          suppliersData = await listSuppliers();
-        } catch (err: any) {
-          console.error("Failed to load suppliers:", err);
-        }
-
         setShops(shopsData);
-        setSuppliers(suppliersData);
       } finally {
         setIsLoading(false);
       }
@@ -79,10 +157,52 @@ export default function NewPurchasePage() {
     loadData();
   }, []);
 
+  // Hotfix: reload products when shopId changes
+  useEffect(() => {
+    if (formData.shopId) {
+      listProducts(formData.shopId).then(res => {
+        setProducts(Array.isArray(res) ? res : res.data);
+      }).catch(console.error);
+    }
+  }, [formData.shopId]);
+
+  const selectProduct = (product: ShopProduct) => {
+    setCurrentItem({
+      ...currentItem,
+      shopProductId: product.id,
+      description: product.name,
+      purchasePrice: product.costPrice || 0,
+      gstRate: product.gstRate || 0,
+    });
+    setProductSearch(product.name);
+    setIsProductDropdownOpen(false);
+  };
+
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(productSearch.toLowerCase())
+  ).slice(0, 10);
+
   const handleAddItem = () => {
     if (!currentItem.description || currentItem.quantity <= 0) {
       setError("Please fill in item details");
       return;
+    }
+
+    const selectedProd = products.find(p => p.id === currentItem.shopProductId);
+    const isSerialized = selectedProd?.isSerialized;
+
+    // Process IMEIs/Serials
+    const imeis = imeisText.split(/[\n,]/).map(s => s.trim()).filter(s => s.length > 0);
+    const serialNumbers = serialNumbersText.split(/[\n,]/).map(s => s.trim()).filter(s => s.length > 0);
+
+    if (isSerialized) {
+      const trackingType = selectedProd?.type === "DEVICE" ? "IMEIs" : "Serial Numbers";
+      const actualCount = selectedProd?.type === "DEVICE" ? imeis.length : serialNumbers.length;
+      
+      if (actualCount !== currentItem.quantity) {
+        setError(`Please enter exactly ${currentItem.quantity} ${trackingType}. (Got ${actualCount})`);
+        return;
+      }
     }
 
     const subtotal = currentItem.quantity * currentItem.purchasePrice;
@@ -94,6 +214,8 @@ export default function NewPurchasePage() {
       total: number;
     } = {
       ...currentItem,
+      imeis: imeis.length > 0 ? imeis : undefined,
+      serialNumbers: serialNumbers.length > 0 ? serialNumbers : undefined,
       subTotal: subtotal,
       gstAmount,
       total: subtotal + gstAmount,
@@ -110,6 +232,9 @@ export default function NewPurchasePage() {
       purchasePrice: 0,
       gstRate: 18,
     });
+    setProductSearch("");
+    setImeisText("");
+    setSerialNumbersText("");
     setError(null);
   };
 
@@ -154,6 +279,12 @@ export default function NewPurchasePage() {
       return;
     }
 
+    // Validate GSTIN if provided
+    if (formData.supplierGstin && !GSTIN_REGEX.test(formData.supplierGstin)) {
+      setError("Invalid GSTIN format (e.g., 29ABCDE1234F1Z5)");
+      return;
+    }
+
     if (!formData.invoiceNumber) {
       setError("Please enter invoice number");
       return;
@@ -168,10 +299,22 @@ export default function NewPurchasePage() {
       setIsSubmitting(true);
       setError(null);
 
+      // 1. Always Create Purchase (Draft)
       const purchase = await createPurchase(formData);
+
+      // 2. If 'SUBMITTED', trigger atomic approval
+      if (status === "SUBMITTED") {
+        await submitPurchase(purchase.id);
+      }
+
+      // 3. Apply advance if selected and amount > 0
+      if (selectedVoucherId && applyAdvanceAmount > 0) {
+        await applyAdvanceToPurchase(selectedVoucherId, purchase.id, applyAdvanceAmount);
+      }
+
       router.push("/purchases");
-    } catch (err: any) {
-      setError(err.message || "Failed to create purchase");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create purchase");
       console.error("Create purchase error:", err);
     } finally {
       setIsSubmitting(false);
@@ -219,14 +362,14 @@ export default function NewPurchasePage() {
               theme === "dark" ? "text-white" : "text-gray-900"
             }`}
           >
-            New Purchase Invoice
+            Record Supplier Invoice
           </h1>
           <p
             className={`mt-2 ${
               theme === "dark" ? "text-gray-400" : "text-gray-600"
             }`}
           >
-            Create and track supplier invoices
+            Match financial records against physical arrivals
           </p>
         </div>
 
@@ -293,30 +436,50 @@ export default function NewPurchasePage() {
                 >
                   Supplier
                 </label>
-                <select
-                  value={formData.globalSupplierId || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      globalSupplierId: e.target.value,
-                      supplierName:
-                        suppliers.find((s) => s.id === e.target.value)?.name ||
-                        "",
-                    })
-                  }
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    theme === "dark"
-                      ? "bg-gray-800 border-gray-700 text-white"
-                      : "bg-white border-gray-300 text-gray-900"
-                  }`}
-                >
-                  <option value="">Select or enter manually...</option>
-                  {suppliers.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  {selectedSupplier ? (
+                    <div className="flex items-center justify-between p-2 border rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {selectedSupplier.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {selectedSupplier.phone}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSupplier(null);
+                          setFormData((prev) => ({
+                            ...prev,
+                            globalSupplierId: "",
+                            supplierName: "",
+                          }));
+                        }}
+                        className="text-gray-400 hover:text-red-500 p-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <PartySelector
+                      type="VENDOR"
+                      onSelect={(party) => {
+                        setSelectedSupplier(party);
+                        setFormData((prev) => ({
+                          ...prev,
+                          globalSupplierId: party.id,
+                          supplierName: party.name,
+                        }));
+                        // Fetch their advance vouchers
+                        fetchSupplierAdvances(party.id);
+                        fetchSupplierPOs(party.id);
+                      }}
+                      placeholder="Search existing supplier..."
+                    />
+                  )}
+                </div>
               </div>
 
               {/* Supplier Name (Manual Entry) */}
@@ -340,6 +503,34 @@ export default function NewPurchasePage() {
                       : "bg-white border-gray-300 text-gray-900"
                   }`}
                   placeholder="Supplier name"
+                />
+              </div>
+
+              {/* Supplier GSTIN (Manual Entry) */}
+              <div>
+                <label
+                  className={`block text-sm font-medium mb-2 ${
+                    theme === "dark" ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
+                  Supplier GSTIN (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.supplierGstin || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      supplierGstin: e.target.value.toUpperCase(),
+                    })
+                  }
+                  className={`w-full px-3 py-2 rounded-lg border ${
+                    theme === "dark"
+                      ? "bg-gray-800 border-gray-700 text-white"
+                      : "bg-white border-gray-300 text-gray-900"
+                  }`}
+                  placeholder="Ex: 29ABCDE1234F1Z5"
+                  maxLength={15}
                 />
               </div>
             </div>
@@ -416,6 +607,87 @@ export default function NewPurchasePage() {
               </div>
             </div>
 
+            {/* Linking & Currency Section */}
+            <div className={`mt-6 p-4 rounded-lg border border-dashed ${
+              theme === "dark" ? "bg-gray-800/40 border-gray-700" : "bg-blue-50/50 border-blue-200"
+            }`}>
+              <div className="flex flex-col md:flex-row gap-6">
+                <div className="flex-1 space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Inventory Linking</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium mb-1 opacity-70">Purchase Order</label>
+                      <select
+                        value={formData.poId || ""}
+                        onChange={(e) => {
+                          const poId = e.target.value;
+                          const po = purchaseOrders.find(p => p.id === poId);
+                          if (po) {
+                            setFormData(prev => ({
+                              ...prev,
+                              poId,
+                              currency: po.currency,
+                              exchangeRate: po.exchangeRate,
+                              items: po.items.map(item => ({
+                                description: item.description,
+                                quantity: item.quantity,
+                                purchasePrice: item.price,
+                                gstRate: 18,
+                                shopProductId: item.shopProductId,
+                              }))
+                            }));
+                          } else {
+                            setFormData(prev => ({ ...prev, poId: "" }));
+                          }
+                        }}
+                        className={`w-full text-sm px-2 py-1.5 rounded border ${theme === "dark" ? "bg-gray-900 border-gray-700" : "bg-white border-gray-300"}`}
+                      >
+                        <option value="">-- No PO --</option>
+                        {purchaseOrders.map(po => <option key={po.id} value={po.id}>{po.poNumber}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1 opacity-70">Physical Receipt (GRN)</label>
+                      <select
+                        className={`w-full text-sm px-2 py-1.5 rounded border ${theme === "dark" ? "bg-gray-900 border-gray-700" : "bg-white border-gray-300"}`}
+                      >
+                        <option value="">-- No GRN --</option>
+                        {grns.map(g => <option key={g.id} value={g.id}>{g.grnNumber}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`flex-1 space-y-4 md:border-l md:pl-6 ${theme === "dark" ? "border-gray-700" : "border-gray-200"}`}>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">Multi-Currency</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium mb-1 opacity-70">Currency</label>
+                      <select
+                        value={formData.currency}
+                        onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+                        className={`w-full text-sm px-2 py-1.5 rounded border ${theme === "dark" ? "bg-gray-900 border-gray-700" : "bg-white border-gray-300"}`}
+                      >
+                        <option value="INR">INR (₹)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1 opacity-70">Exchange Rate</label>
+                      <input
+                        type="number"
+                        step="0.0001"
+                        value={formData.exchangeRate}
+                        onChange={(e) => setFormData(prev => ({ ...prev, exchangeRate: parseFloat(e.target.value) || 1 }))}
+                        className={`w-full text-sm px-2 py-1.5 rounded border ${theme === "dark" ? "bg-gray-900 border-gray-700" : "bg-white border-gray-300"}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Payment Method */}
             <div className="grid grid-cols-1 gap-6">
               <div>
@@ -446,6 +718,59 @@ export default function NewPurchasePage() {
                   <option value="BANK">Bank Transfer</option>
                 </select>
               </div>
+
+              {advanceVouchers.length > 0 && (
+                <div className="p-4 bg-teal-50 dark:bg-teal-900/10 border border-teal-200 dark:border-teal-800 rounded-lg">
+                  <h3 className="font-semibold text-teal-800 dark:text-teal-300 mb-3 flex justify-between items-center">
+                    <span>Apply Supplier Advance</span>
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1 text-teal-700 dark:text-teal-400">Select Voucher</label>
+                      <select
+                        value={selectedVoucherId}
+                        onChange={(e) => handleSelectVoucher(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg border ${
+                          theme === "dark"
+                            ? "bg-gray-800 border-gray-700 text-white"
+                            : "bg-white border-gray-300 text-gray-900"
+                        }`}
+                      >
+                        <option value="">-- No Advance --</option>
+                        {advanceVouchers.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            Advance #{v.id.substring(v.id.length - 6)} (₹{(v.amount).toFixed(2)})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {selectedVoucherId && (
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-teal-700 dark:text-teal-400">Amount to Apply (Max: ₹{selectedVoucherBalance.toFixed(2)})</label>
+                        <input
+                          type="number"
+                          value={applyAdvanceAmount}
+                          onChange={(e) => {
+                            const max = Math.min(selectedVoucherBalance, totals.grandTotal);
+                            const val = parseFloat(e.target.value) || 0;
+                            setApplyAdvanceAmount(Math.min(val, max));
+                          }}
+                          className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-teal-500 outline-none ${
+                            theme === "dark"
+                              ? "bg-gray-800 border-teal-700 text-white"
+                              : "bg-white border-teal-300 text-gray-900"
+                          }`}
+                          min="0"
+                          max={Math.min(selectedVoucherBalance, totals.grandTotal * (formData.exchangeRate || 1))}
+                          step="0.01"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -468,30 +793,48 @@ export default function NewPurchasePage() {
             {/* Current Item Input */}
             <div className="mb-6 p-4 bg-gray-500/10 rounded-lg">
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
+                <div className="relative">
                   <label
                     className={`block text-sm font-medium mb-2 ${
                       theme === "dark" ? "text-gray-300" : "text-gray-700"
                     }`}
                   >
-                    Description
+                    Product / Description *
                   </label>
                   <input
                     type="text"
-                    value={currentItem.description}
-                    onChange={(e) =>
-                      setCurrentItem({
-                        ...currentItem,
-                        description: e.target.value,
-                      })
-                    }
+                    value={productSearch}
+                    onChange={(e) => {
+                      setProductSearch(e.target.value);
+                      setCurrentItem({ ...currentItem, description: e.target.value });
+                      setIsProductDropdownOpen(true);
+                    }}
+                    onFocus={() => setIsProductDropdownOpen(true)}
                     className={`w-full px-3 py-2 rounded-lg border ${
                       theme === "dark"
                         ? "bg-gray-800 border-gray-700 text-white"
                         : "bg-white border-gray-300 text-gray-900"
                     }`}
-                    placeholder="Item description"
+                    placeholder="Search product or enter description..."
                   />
+                  
+                  {isProductDropdownOpen && filteredProducts.length > 0 && (
+                    <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+                      {filteredProducts.map(p => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => selectProduct(p)}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                        >
+                          <div className="font-medium dark:text-white">{p.name}</div>
+                          <div className="text-xs text-gray-500">
+                            Type: {p.type} | Stock: {p.stockQty}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -575,6 +918,42 @@ export default function NewPurchasePage() {
                 </div>
               </div>
 
+              {/* Serialization Entry */}
+              {(() => {
+                const selectedProd = products.find(p => p.id === currentItem.shopProductId);
+                if (!selectedProd?.isSerialized) return null;
+
+                const isDevice = selectedProd.type === "DEVICE";
+                return (
+                  <div className="mb-4">
+                    <label
+                      className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
+                        theme === "dark" ? "text-gray-400" : "text-gray-500"
+                      }`}
+                    >
+                      {isDevice ? "IMEIs" : "Serial Numbers"} (Enter {currentItem.quantity})
+                    </label>
+                    <textarea
+                      value={isDevice ? imeisText : serialNumbersText}
+                      onChange={(e) => isDevice ? setImeisText(e.target.value) : setSerialNumbersText(e.target.value)}
+                      placeholder={`Enter ${isDevice ? "IMEIs" : "Serial Numbers"} separated by commas or new lines...`}
+                      className={`w-full p-3 text-sm rounded-lg border ${
+                        theme === "dark"
+                          ? "bg-gray-800 border-gray-700 text-white"
+                          : "bg-white border-gray-300 text-gray-900"
+                      } focus:ring-2 focus:ring-teal-500 outline-none`}
+                      rows={Math.min(currentItem.quantity, 5) || 2}
+                    />
+                    <div className="mt-1 text-[10px] text-gray-500 flex justify-between">
+                      <span>Separate each with a comma or new line</span>
+                      <span>
+                        Count: {(isDevice ? imeisText : serialNumbersText).split(/[\n,]/).filter(s => s.trim()).length} / {currentItem.quantity}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <button
                 type="button"
                 onClick={handleAddItem}
@@ -623,7 +1002,19 @@ export default function NewPurchasePage() {
                               : "border-gray-200"
                           }`}
                         >
-                          <td className="py-3 px-4">{item.description}</td>
+                          <td className="py-3 px-4">
+                            <div className="font-medium">{item.description}</div>
+                            {item.imeis && item.imeis.length > 0 && (
+                              <div className="text-[10px] text-gray-500 mt-1">
+                                IMEIs: {item.imeis.join(", ")}
+                              </div>
+                            )}
+                            {item.serialNumbers && item.serialNumbers.length > 0 && (
+                              <div className="text-[10px] text-gray-500 mt-1">
+                                Serials: {item.serialNumbers.join(", ")}
+                              </div>
+                            )}
+                          </td>
                           <td className="text-right py-3 px-4">
                             {item.quantity}
                           </td>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { type Shop } from "@/services/shops.api";
 import { listProducts, type ShopProduct } from "@/services/products.api";
@@ -31,26 +31,29 @@ export function CopyFromShopModal({
   // Filter out current shop
   const sourceShops = availableShops.filter((s) => s.id !== currentShopId);
 
-  useEffect(() => {
-    if (selectedShopId) {
-      loadSourceProducts();
-    }
-  }, [selectedShopId]);
-
-  const loadSourceProducts = async () => {
+  const loadSourceProducts = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       const data = await listProducts(selectedShopId);
-      setProducts(data);
+      // Handle both paginated and non-paginated responses
+      const productsList = Array.isArray(data) ? data : data.data;
+      setProducts(productsList);
       setSelectedProducts(new Set());
-    } catch (err: any) {
-      setError(err.message || "Failed to load products");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load products";
+      setError(message);
       setProducts([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedShopId]);
+
+  useEffect(() => {
+    if (selectedShopId) {
+      void loadSourceProducts();
+    }
+  }, [selectedShopId, loadSourceProducts]);
 
   const toggleProduct = (productId: string) => {
     const newSet = new Set(selectedProducts);
@@ -80,10 +83,11 @@ export function CopyFromShopModal({
       setIsSubmitting(true);
       setError(null);
 
-      // TODO: Call backend API to copy products
-      const response = await fetch("/api/products/copy-from-shop", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
+      const response = await fetch(`${apiUrl}/mobileshop/products/copy-from-shop`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           sourceShopId: selectedShopId,
           targetShopId: currentShopId,
@@ -98,8 +102,9 @@ export function CopyFromShopModal({
 
       onCopyComplete();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Failed to copy products");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to copy products";
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }

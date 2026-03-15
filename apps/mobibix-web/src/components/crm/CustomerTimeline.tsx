@@ -26,7 +26,9 @@ export function CustomerTimeline({
   );
 
   useEffect(() => {
-    loadTimeline();
+    if (customerId) {
+      loadTimeline();
+    }
   }, [customerId, selectedSource]);
 
   async function loadTimeline() {
@@ -36,8 +38,8 @@ export function CustomerTimeline({
       const source = selectedSource === "ALL" ? undefined : selectedSource;
       const response = await getCustomerTimeline(customerId, source);
       setItems(response.items);
-    } catch (err: any) {
-      setError(err.message || "Failed to load timeline");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load timeline");
     } finally {
       setLoading(false);
     }
@@ -65,8 +67,8 @@ export function CustomerTimeline({
           />
           <FilterButton
             label="Follow-ups"
-            active={selectedSource === "CRM"}
-            onClick={() => setSelectedSource("CRM")}
+            active={selectedSource === "FOLLOW_UP"}
+            onClick={() => setSelectedSource("FOLLOW_UP")}
           />
           <FilterButton
             label="WhatsApp"

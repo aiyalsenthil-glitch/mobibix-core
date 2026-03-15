@@ -8,7 +8,8 @@ import React, {
   useCallback,
 } from "react";
 import { listShops, type Shop } from "@/services/shops.api";
-import { getAccessToken } from "@/services/auth.api";
+import { useAuth } from "@/hooks/useAuth";
+import { hasSessionHint } from "@/services/auth.api";
 
 interface ShopContextType {
   shops: Shop[];
@@ -33,8 +34,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  const { authUser, isLoading: authLoading } = useAuth();
+
   // Fetch shops from API
   const fetchShops = useCallback(async () => {
+    if (!authUser?.tenantId) {
+      setShops([]);
+      setIsLoadingShops(false);
+      return null;
+    }
+
     try {
       setIsLoadingShops(true);
       setError(null);
@@ -43,8 +52,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // Cache shops in localStorage
       localStorage.setItem(SHOPS_CACHE_KEY, JSON.stringify(data));
       return data;
-    } catch (err: any) {
-      setError(err.message || "Failed to load shops");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to load shops");
       // Try to load from cache if API fails
       const cached = localStorage.getItem(SHOPS_CACHE_KEY);
       if (cached) {
@@ -58,34 +67,54 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoadingShops(false);
     }
-  }, []);
+  }, [authUser?.tenantId]);
 
   // Initialize shops after login (only once)
   useEffect(() => {
-    const token = getAccessToken();
-    if (token && !isInitialized) {
+    if (authLoading) return;
+
+    if (authUser?.tenantId && !isInitialized) {
       initializeShops();
+    } else if (!authLoading && !authUser?.tenantId) {
+      setShops([]);
+      setIsLoadingShops(false);
+      setIsInitialized(true);
     }
-  }, []);
+  }, [authUser?.tenantId, authLoading, isInitialized]);
 
   const initializeShops = async () => {
     const data = await fetchShops();
 
     if (data && data.length > 0) {
-      // Priority: localStorage > first shop (if only one)
       const storedShopId = localStorage.getItem(SELECTED_SHOP_KEY);
 
-      if (storedShopId && data.find((s) => s.id === storedShopId)) {
+      // Validate stored shopId
+      const isValidShopId =
+        storedShopId &&
+        /^[a-z0-9]{20,30}$/i.test(storedShopId) &&
+        data.find((s) => s.id === storedShopId);
+
+      if (isValidShopId) {
         setSelectedShopId(storedShopId);
-      } else if (data.length === 1) {
-        // Auto-select if only one shop
-        setSelectedShopId(data[0].id);
-        localStorage.setItem(SELECTED_SHOP_KEY, data[0].id);
+      } else {
+        // Auto-select first shop if none selected or invalid
+        const firstShopId = data[0].id;
+        setSelectedShopId(firstShopId);
+        localStorage.setItem(SELECTED_SHOP_KEY, firstShopId);
       }
     }
 
     setIsInitialized(true);
   };
+
+  // Watch shops and ensure one is selected if available
+  useEffect(() => {
+    if (isInitialized && shops.length > 0 && !selectedShopId) {
+      const firstShopId = shops[0].id;
+      setSelectedShopId(firstShopId);
+      localStorage.setItem(SELECTED_SHOP_KEY, firstShopId);
+    }
+  }, [shops, selectedShopId, isInitialized]);
 
   const selectShop = (shopId: string) => {
     setSelectedShopId(shopId);
@@ -94,9 +123,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     } else {
       localStorage.removeItem(SELECTED_SHOP_KEY);
     }
+    // Phase 5: Trigger rehydration of activePermissions globally
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event('branch_changed'));
+    }
   };
 
-  const refreshShops = async () => {
+  const refreshShops = useCallback(async () => {
     const data = await fetchShops();
 
     // Keep a valid selection after refresh
@@ -110,7 +143,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(SELECTED_SHOP_KEY, fallbackId);
       }
     }
-  };
+  }, [fetchShops, selectedShopId]);
 
   // Listen for shop updates (same tab + cross-tab)
   useEffect(() => {
@@ -133,8 +166,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refreshShops]);
 
-  const selectedShop = shops.find((s) => s.id === selectedShopId) || null;
-  const hasMultipleShops = shops.length > 1;
+  const selectedShop = React.useMemo(() => {
+    if (!isInitialized || !Array.isArray(shops)) return null;
+    return shops.find((s) => s.id === selectedShopId) || (shops.length > 0 ? shops[0] : null);
+  }, [shops, selectedShopId, isInitialized]);
+
+  const hasMultipleShops = React.useMemo(() => {
+    return Array.isArray(shops) && shops.length > 1;
+  }, [shops]);
 
   const value: ShopContextType = {
     shops,

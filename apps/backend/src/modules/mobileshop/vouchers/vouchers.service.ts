@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
-import { PaymentMode, VoucherStatus } from '@prisma/client';
+import { PaymentMode, VoucherStatus, FinanceType, FinanceRefType } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { CreateVoucherDto } from './dto/create-voucher.dto';
 import { VoucherEntity } from './entities/voucher.entity';
@@ -42,15 +42,15 @@ export class VouchersService {
 
     // ✅ VALIDATION: If linkedPurchaseId provided, verify it exists
     if (createVoucherDto.linkedPurchaseId) {
-      const purchase = await this.prisma.purchase.findUnique({
-        where: { id: createVoucherDto.linkedPurchaseId },
+      const purchase = await this.prisma.purchase.findFirst({
+        where: { id: createVoucherDto.linkedPurchaseId, tenantId },
       });
       if (!purchase) {
         throw new BadRequestException('Linked purchase does not exist');
       }
-      if (purchase.tenantId !== tenantId || purchase.shopId !== shopId) {
+      if (purchase.shopId !== shopId) {
         throw new BadRequestException(
-          'Linked purchase does not belong to this tenant/shop',
+          'Linked purchase does not belong to this shop',
         );
       }
     }
@@ -68,34 +68,53 @@ export class VouchersService {
     // ✅ TRANSACTION: Create voucher atomically
     try {
       // Use DocumentNumberService for sequential ID
-      const nextVoucherId = await this.documentNumberService.generateDocumentNumber(
-        shopId,
-        DocumentType.PAYMENT_VOUCHER,
-        new Date(),
-      );
-
-      const voucher = await this.prisma.paymentVoucher.create({
-        data: {
-          id: uuidv4(),
-          tenantId,
+      const nextVoucherId =
+        await this.documentNumberService.generateDocumentNumber(
           shopId,
-          voucherId: nextVoucherId,
-          voucherType: createVoucherDto.voucherType,
-          date: new Date(),
-          amount: this.toPaisa(createVoucherDto.amount),
-          paymentMethod: createVoucherDto.paymentMethod,
-          transactionRef: createVoucherDto.transactionRef,
-          narration: createVoucherDto.narration,
-          globalSupplierId: createVoucherDto.globalSupplierId || null,
-          expenseCategory: createVoucherDto.expenseCategory || null,
-          linkedPurchaseId: createVoucherDto.linkedPurchaseId || null,
-          status: VoucherStatus.ACTIVE,
-          createdBy: userId,
-        },
+          DocumentType.PAYMENT_VOUCHER,
+          new Date(),
+        );
+
+      const voucher = await this.prisma.$transaction(async (tx) => {
+        const v = await tx.paymentVoucher.create({
+          data: {
+            id: uuidv4(),
+            tenantId,
+            shopId,
+            voucherId: nextVoucherId,
+            voucherType: createVoucherDto.voucherType,
+            date: new Date(),
+            amount: this.toPaisa(createVoucherDto.amount),
+            paymentMethod: createVoucherDto.paymentMethod,
+            transactionRef: createVoucherDto.transactionRef,
+            narration: createVoucherDto.narration,
+            globalSupplierId: createVoucherDto.globalSupplierId || null,
+            expenseCategoryId: createVoucherDto.expenseCategoryId || null,
+            linkedPurchaseId: createVoucherDto.linkedPurchaseId || null,
+            status: VoucherStatus.ACTIVE,
+            createdBy: userId,
+          } as any,
+        });
+
+        // Add Financial Entry (Ledger Record)
+        await tx.financialEntry.create({
+          data: {
+            tenantId,
+            shopId,
+            type: FinanceType.OUT, // Vouchers are always payments/outflows
+            amount: v.amount,
+            mode: v.paymentMethod,
+            referenceType: v.voucherType === 'SUPPLIER' ? FinanceRefType.PURCHASE : FinanceRefType.EXPENSE,
+            referenceId: v.id,
+            note: v.narration,
+          }
+        });
+
+        return v;
       });
 
       // Convert back to Rupees for response
-      const response = {
+      const response: any = {
         ...voucher,
         amount: this.fromPaisa(voucher.amount),
       };
@@ -131,22 +150,30 @@ export class VouchersService {
       skip?: number;
       take?: number;
     },
-  ): Promise<{ data: VoucherEntity[]; total: number }> {
+  ): Promise<{ data: VoucherEntity[]; total: number; pagination: any }> {
     const skip = filters?.skip || 0;
     const take = filters?.take || 50;
 
     const where: any = {
       tenantId,
-      shopId,
+      isDeleted: false,
     };
+
+    if (shopId) {
+      where.shopId = shopId;
+    }
 
     if (filters?.startDate || filters?.endDate) {
       where.date = {};
       if (filters.startDate) {
-        where.date.gte = filters.startDate;
+        const start = new Date(filters.startDate);
+        start.setHours(0, 0, 0, 0);
+        where.date.gte = start;
       }
       if (filters.endDate) {
-        where.date.lte = filters.endDate;
+        const end = new Date(filters.endDate);
+        end.setHours(23, 59, 59, 999);
+        where.date.lte = end;
       }
     }
 
@@ -172,9 +199,20 @@ export class VouchersService {
       this.prisma.paymentVoucher.count({ where }),
     ]);
 
+    // Return standardized paginated format
+    const page = Math.floor(skip / take) + 1;
     return {
-      data: vouchers,
+      data: (vouchers as any[]).map((v) => ({ ...v, amount: this.fromPaisa(v.amount) })),
       total,
+      pagination: {
+        total,
+        page,
+        limit: take,
+        totalPages: Math.ceil(total / take),
+        hasNext: page < Math.ceil(total / take),
+        hasPrevious: page > 1,
+        offset: skip,
+      },
     };
   }
 
@@ -198,7 +236,7 @@ export class VouchersService {
       throw new BadRequestException('Voucher not found');
     }
 
-    return { ...voucher, amount: this.fromPaisa(voucher.amount) };
+    return { ...voucher, amount: this.fromPaisa(voucher.amount) } as any;
   }
 
   /**
@@ -211,18 +249,16 @@ export class VouchersService {
     voucherId: string,
     reason: string,
   ): Promise<VoucherEntity> {
-    const voucher = await this.prisma.paymentVoucher.findUnique({
-      where: { id: voucherId },
+    const voucher = await this.prisma.paymentVoucher.findFirst({
+      where: { id: voucherId, tenantId },
     });
 
     if (!voucher) {
       throw new BadRequestException('Voucher not found');
     }
 
-    if (voucher.tenantId !== tenantId || voucher.shopId !== shopId) {
-      throw new BadRequestException(
-        'Voucher does not belong to this tenant/shop',
-      );
+    if (voucher.shopId !== shopId) {
+      throw new BadRequestException('Voucher does not belong to this shop');
     }
 
     if (voucher.status === VoucherStatus.CANCELLED) {
@@ -230,18 +266,32 @@ export class VouchersService {
     }
 
     try {
-      const cancelled = await this.prisma.paymentVoucher.update({
-        where: { id: voucherId },
-        data: {
-          status: VoucherStatus.CANCELLED,
-          narration: `${voucher.narration || ''} [CANCELLED: ${reason}]`.trim(),
-        },
+      const cancelled = await this.prisma.$transaction(async (tx) => {
+        const v = await tx.paymentVoucher.update({
+          where: { id: voucherId },
+          data: {
+            status: VoucherStatus.CANCELLED,
+            narration: `${voucher.narration || ''} [CANCELLED: ${reason}]`.trim(),
+          },
+        });
+
+        // Delete associated Financial Entry to keep ledger accurate
+        await tx.financialEntry.deleteMany({
+          where: {
+            tenantId,
+            shopId,
+            referenceId: voucherId,
+            referenceType: { in: [FinanceRefType.EXPENSE, FinanceRefType.PURCHASE] }
+          }
+        });
+
+        return v;
       });
 
       this.logger.log(
         `Voucher cancelled: ${voucher.voucherId} - Reason: ${reason}`,
       );
-      return { ...cancelled, amount: this.fromPaisa(cancelled.amount) };
+      return { ...cancelled, amount: this.fromPaisa(cancelled.amount) } as any;
     } catch (error) {
       this.logger.error(
         `Failed to cancel voucher ${voucherId}`,
@@ -250,6 +300,85 @@ export class VouchersService {
       throw new BadRequestException('Failed to cancel voucher');
     }
   }
+
+  async updateVoucher(
+    tenantId: string,
+    shopId: string,
+    id: string,
+    data: {
+      amount?: number;
+      paymentMethod?: PaymentMode;
+      expenseCategoryId?: string;
+      narration?: string;
+    },
+    userId: string,
+  ) {
+    const voucher = await this.prisma.paymentVoucher.findFirst({
+      where: { id, tenantId, shopId, isDeleted: false } as any,
+    });
+
+    if (!voucher) throw new BadRequestException('Voucher not found');
+
+    return this.prisma.$transaction(async (tx) => {
+      const updatedAmount = data.amount !== undefined ? this.toPaisa(data.amount) : voucher.amount;
+
+      const updated = await tx.paymentVoucher.update({
+        where: { id },
+        data: {
+          amount: updatedAmount,
+          paymentMethod: data.paymentMethod ?? (voucher as any).paymentMethod,
+          expenseCategory: (data as any).expenseCategory ?? (voucher as any).expenseCategory,
+          expenseCategoryId: data.expenseCategoryId ?? (voucher as any).expenseCategoryId,
+          narration: data.narration ?? (voucher as any).narration,
+          updatedBy: userId,
+        } as any,
+      });
+
+      // Update associated Financial Entry
+      await tx.financialEntry.updateMany({
+        where: {
+          tenantId,
+          shopId,
+          referenceId: id,
+          referenceType: { in: [FinanceRefType.EXPENSE, FinanceRefType.PURCHASE] }
+        },
+        data: {
+          amount: updatedAmount,
+          mode: data.paymentMethod ?? voucher.paymentMethod,
+          note: data.narration ?? voucher.narration,
+        }
+      });
+
+      return { ...updated, amount: this.fromPaisa(updated.amount) };
+    });
+  }
+
+  async softDeleteVoucher(tenantId: string, shopId: string, id: string, userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.paymentVoucher.update({
+        where: { id, tenantId, shopId },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          status: VoucherStatus.CANCELLED,
+          updatedBy: userId,
+        } as any,
+      });
+
+      // Remove from Financial Ledger
+      await tx.financialEntry.deleteMany({
+        where: {
+          tenantId,
+          shopId,
+          referenceId: id,
+          referenceType: { in: [FinanceRefType.EXPENSE, FinanceRefType.PURCHASE] }
+        }
+      });
+
+      return updated;
+    });
+  }
+
 
   /**
    * Get voucher summary for audit/reporting
@@ -265,16 +394,21 @@ export class VouchersService {
     byVoucherType: Record<string, { count: number; amount: number }>;
     byPaymentMode: Record<string, { count: number; amount: number }>;
   }> {
-    const vouchers = await this.prisma.paymentVoucher.findMany({
-      where: {
-        tenantId,
-        shopId,
-        status: VoucherStatus.ACTIVE,
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
+    const where: any = {
+      tenantId,
+      status: VoucherStatus.ACTIVE,
+      date: {
+        gte: startDate,
+        lte: endDate,
       },
+    };
+
+    if (shopId) {
+      where.shopId = shopId;
+    }
+
+    const vouchers = await this.prisma.paymentVoucher.findMany({
+      where,
     });
 
     const byVoucherType: Record<string, { count: number; amount: number }> = {};
@@ -296,11 +430,11 @@ export class VouchersService {
       byPaymentMode[v.paymentMethod].amount += v.amount;
     });
 
-
-
     return {
       totalVouchers: vouchers.length,
-      totalAmount: this.fromPaisa(vouchers.reduce((sum, v) => sum + v.amount, 0)),
+      totalAmount: this.fromPaisa(
+        vouchers.reduce((sum, v) => sum + v.amount, 0),
+      ),
       byVoucherType: Object.fromEntries(
         Object.entries(byVoucherType).map(([type, data]) => [
           type,
@@ -316,6 +450,84 @@ export class VouchersService {
     };
   }
 
+  /**
+   * Create voucher with atomic Purchase.outstanding update (Tier-2 hardening)
+   */
+  async createVoucherWithPurchaseUpdate(
+    tenantId: string,
+    shopId: string,
+    createVoucherDto: CreateVoucherDto,
+    userId: string,
+  ): Promise<VoucherEntity> {
+    // First, create the voucher (existing logic)
+    const voucher = await this.createVoucher(
+      tenantId,
+      shopId,
+      createVoucherDto,
+      userId,
+    );
+
+    // If linked to purchase, update purchase outstanding atomically
+    if (createVoucherDto.linkedPurchaseId) {
+      await this.updatePurchaseOutstandingStatus(
+        tenantId,
+        createVoucherDto.linkedPurchaseId,
+        this.toPaisa(createVoucherDto.amount),
+        createVoucherDto.voucherSubType || 'SETTLEMENT',
+      );
+    }
+
+    return voucher;
+  }
+
+  /**
+   * Update purchase outstanding amount (over-payment prevention)
+   */
+  private async updatePurchaseOutstandingStatus(
+    tenantId: string,
+    purchaseId: string,
+    voucherAmount: number,
+    voucherSubType: 'ADVANCE' | 'SETTLEMENT',
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // Get current purchase
+      const purchase = await tx.purchase.findUnique({
+        where: { id: purchaseId },
+      });
+
+      if (!purchase || purchase.tenantId !== tenantId) {
+        throw new BadRequestException('Purchase not found');
+      }
+      if (voucherSubType !== 'SETTLEMENT') {
+        this.logger.debug(
+          `Purchase ${purchase.invoiceNumber}: ADVANCE voucher (not reducing outstanding)`,
+        );
+        return;
+      }
+
+      // Over-payment prevention: voucher <= (subTotal - paidAmount)
+      const outstanding = purchase.subTotal - purchase.paidAmount;
+      if (voucherAmount > outstanding) {
+        throw new BadRequestException(
+          `Over-payment prevented: voucher (${this.fromPaisa(voucherAmount)}) exceeds outstanding. Balance: ${this.fromPaisa(outstanding)}`,
+        );
+      }
+
+      // Update purchase paidAmount
+      const newPaidAmount = purchase.paidAmount + voucherAmount;
+      await tx.purchase.update({
+        where: { id: purchaseId },
+        data: {
+          paidAmount: newPaidAmount,
+        },
+      });
+
+      this.logger.debug(
+        `Purchase ${purchase.invoiceNumber}: paidAmount increased by ${this.fromPaisa(voucherAmount)}, new paid: ${this.fromPaisa(newPaidAmount)}/${this.fromPaisa(purchase.subTotal)}`,
+      );
+    });
+  }
+
   // ===== PRIVATE HELPERS =====
 
   private toPaisa(amount: number): number {
@@ -325,7 +537,6 @@ export class VouchersService {
   private fromPaisa(amount: number): number {
     return amount / 100;
   }
-
 
   private generateVoucherId(): string {
     const timestamp = Date.now();

@@ -12,14 +12,13 @@ export default function SettingsPage() {
         <p className="text-stone-400">Manage your business settings</p>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-4 mb-6 border-b border-white/10">
         <button
           onClick={() => setActiveTab("shops")}
           className={`px-4 py-3 font-semibold transition-all ${
             activeTab === "shops"
-              ? "text-teal-300 border-b-2 border-teal-500"
-              : "text-stone-400 hover:text-white"
+              ? "text-teal-400 border-b-2 border-teal-500"
+              : "text-stone-500 hover:text-stone-300"
           }`}
         >
           Shops Settings
@@ -28,8 +27,8 @@ export default function SettingsPage() {
           onClick={() => setActiveTab("jobcard")}
           className={`px-4 py-3 font-semibold transition-all ${
             activeTab === "jobcard"
-              ? "text-teal-300 border-b-2 border-teal-500"
-              : "text-stone-400 hover:text-white"
+              ? "text-teal-400 border-b-2 border-teal-500"
+              : "text-stone-500 hover:text-stone-300"
           }`}
         >
           Jobcard Settings
@@ -38,8 +37,8 @@ export default function SettingsPage() {
           onClick={() => setActiveTab("invoice")}
           className={`px-4 py-3 font-semibold transition-all ${
             activeTab === "invoice"
-              ? "text-teal-300 border-b-2 border-teal-500"
-              : "text-stone-400 hover:text-white"
+              ? "text-teal-400 border-b-2 border-teal-500"
+              : "text-stone-500 hover:text-stone-300"
           }`}
         >
           Invoice Settings

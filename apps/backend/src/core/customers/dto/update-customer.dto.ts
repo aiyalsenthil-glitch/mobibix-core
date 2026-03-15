@@ -1,4 +1,10 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  Matches,
+  IsEmail,
+} from 'class-validator';
 import { BusinessType, PartyType } from '@prisma/client';
 
 export class UpdateCustomerDto {
@@ -8,6 +14,18 @@ export class UpdateCustomerDto {
 
   @IsOptional()
   @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  countryCode?: string;
+
+  @IsOptional()
+  @IsString()
+  isoStateCode?: string;
+
+  @IsOptional()
+  @IsEmail({}, { message: 'Invalid email address' })
   email?: string;
 
   @IsOptional()

@@ -4,7 +4,7 @@ const store = new AsyncLocalStorage<Map<string, any>>();
 
 export function runWithAsyncContext<T>(fn: () => T) {
   const map = new Map<string, any>();
-  return store.run(map, fn as any) as T;
+  return store.run(map, fn as any);
 }
 
 export function setCtx(key: string, value: any) {

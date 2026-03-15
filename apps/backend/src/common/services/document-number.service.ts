@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import {
   PrismaClient,
   DocumentType,
@@ -93,7 +98,7 @@ export class DocumentNumberService {
     try {
       // 1. Fetch setting with row-level lock (FOR UPDATE)
       // This prevents concurrent transactions from reading the same currentNumber
-      const setting = await tx.$queryRaw<
+      let setting = await tx.$queryRaw<
         {
           id: string;
           prefix: string;
@@ -107,7 +112,7 @@ export class DocumentNumberService {
         }[]
       >`
         SELECT id, prefix, separator, "documentCode", "yearFormat", "numberLength", "resetPolicy", "currentNumber", "currentYear"
-        FROM "ShopDocumentSetting"
+        FROM "mb_shop_document_setting"
         WHERE "shopId" = ${shopId}
           AND "documentType" = ${documentType}::"DocumentType"
           AND "isActive" = true
@@ -115,10 +120,58 @@ export class DocumentNumberService {
       `;
 
       if (!setting || setting.length === 0) {
-        throw new NotFoundException(
-          `Document setting not found for shopId=${shopId}, documentType=${documentType}. ` +
-            `Please configure document numbering in shop settings.`,
+        this.logger.warn(
+          `Document setting missing for shopId=${shopId}, type=${documentType}. Auto-initializing defaults...`,
         );
+
+        // Fetch shop to get prefix
+        const shop = await (tx as any).shop.findUnique({
+          where: { id: shopId },
+          select: { invoicePrefix: true },
+        });
+
+        if (!shop) {
+          throw new NotFoundException(`Shop not found with ID ${shopId}`);
+        }
+
+        // Initialize defaults
+        await this.initializeShopDocumentSettings(
+          shopId,
+          shop.invoicePrefix || 'HP',
+          tx as any,
+        );
+
+        // Retry fetching setting (recursive call or just re-query?)
+        // Re-querying here to avoid recursion complexity with transaction passing
+        const retrySetting = await tx.$queryRaw<
+          {
+            id: string;
+            prefix: string;
+            separator: string;
+            documentCode: string;
+            yearFormat: YearFormat;
+            numberLength: number;
+            resetPolicy: ResetPolicy;
+            currentNumber: number;
+            currentYear: string | null;
+          }[]
+        >`
+        SELECT id, prefix, separator, "documentCode", "yearFormat", "numberLength", "resetPolicy", "currentNumber", "currentYear"
+        FROM "mb_shop_document_setting"
+        WHERE "shopId" = ${shopId}
+          AND "documentType" = ${documentType}::"DocumentType"
+          AND "isActive" = true
+        FOR UPDATE
+      `;
+
+        if (!retrySetting || retrySetting.length === 0) {
+          throw new InternalServerErrorException(
+            `Failed to auto-initialize document settings for ${shopId}`,
+          );
+        }
+
+        // Use the newly created setting
+        setting = retrySetting;
       }
 
       const config = setting[0];
@@ -268,6 +321,16 @@ export class DocumentNumberService {
         },
         {
           shopId,
+          documentType: DocumentType.REPAIR_INVOICE,
+          prefix: shopPrefix,
+          separator: '-',
+          documentCode: 'RI',
+          yearFormat: YearFormat.FY,
+          numberLength: 4,
+          resetPolicy: ResetPolicy.YEARLY,
+        },
+        {
+          shopId,
           documentType: DocumentType.PURCHASE_INVOICE,
           prefix: shopPrefix,
           separator: '-',
@@ -322,6 +385,16 @@ export class DocumentNumberService {
           prefix: shopPrefix,
           separator: '-',
           documentCode: 'V',
+          yearFormat: YearFormat.FY,
+          numberLength: 4,
+          resetPolicy: ResetPolicy.YEARLY,
+        },
+        {
+          shopId,
+          documentType: DocumentType.CREDIT_NOTE,
+          prefix: shopPrefix,
+          separator: '-',
+          documentCode: 'CN',
           yearFormat: YearFormat.FY,
           numberLength: 4,
           resetPolicy: ResetPolicy.YEARLY,

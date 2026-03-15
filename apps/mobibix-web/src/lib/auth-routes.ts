@@ -4,32 +4,31 @@ import type {
   ExchangeTokenResponse,
 } from "@/services/auth.api";
 
-// Compute post-login redirect path based on role and tenant assignment
+// Compute post-login redirect path based on user status
 export function getRoleRedirect(user: AuthUserPayload): string {
-  switch (user.role as AuthRole) {
-    case "owner":
-      return user.tenantId
-        ? `/dashboard/owner/${user.tenantId}`
-        : "/setup-business";
-    case "staff":
-      return user.tenantId
-        ? `/dashboard/staff/${user.tenantId}`
-        : "/setup-business";
-    case "member":
-      return "/dashboard/member";
-    case "admin":
-      return "/dashboard/admin";
-    default:
-      return "/dashboard";
+  // If user has a pending invite (from useAuth state), guide them to onboarding
+  if ((user as any)?.pendingInvite) {
+    return "/onboarding";
   }
+
+  // Owners without a tenant must complete setup
+  if (user.isSystemOwner && !user.tenantId) {
+    return "/onboarding";
+  }
+  
+  // Everyone else goes to dashboard if they have a tenant, or setup if they somehow don't
+  return user.tenantId ? "/dashboard" : "/onboarding";
 }
 
 // Post-login routing using backend response (tenant counts)
 export function getPostLoginRedirect(response: ExchangeTokenResponse): string {
-  const { user, tenant, tenants, tenantCount } = response;
+  const { user, tenant, tenants, tenantCount, pendingInvite } = response;
   const count = tenantCount ?? tenants?.length ?? (tenant ? 1 : 0);
 
-  // No tenants yet
+  // 1️⃣ Priority: Pending Invitation
+  if (pendingInvite) return "/onboarding";
+
+  // 2️⃣ No tenants yet
   if (!count || count === 0) return "/onboarding";
 
   // Multiple tenants → ask to select
@@ -37,12 +36,11 @@ export function getPostLoginRedirect(response: ExchangeTokenResponse): string {
 
   // Single tenant: prefer returned tenant, fallback to user.tenantId
   const tenantId = tenant?.id ?? tenants?.[0]?.id ?? user.tenantId;
+  // Owners without a tenant must complete setup
+  if (user.isSystemOwner && (!tenantId || tenantId === "")) {
+    return "/onboarding";
+  }
 
-  if (user.role === "owner")
-    return tenantId ? `/dashboard/owner/${tenantId}` : "/dashboard";
-  if (user.role === "staff")
-    return tenantId ? `/dashboard/staff/${tenantId}` : "/dashboard";
-  if (user.role === "member") return "/dashboard/member";
-  if (user.role === "admin") return "/dashboard/admin";
-  return "/dashboard";
+  // Everyone else goes to dashboard if they have a tenant, else onboarding
+  return tenantId ? "/dashboard" : "/onboarding";
 }

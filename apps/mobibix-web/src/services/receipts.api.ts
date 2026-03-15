@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -21,11 +21,19 @@ export interface Receipt {
   customerName: string;
   customerPhone?: string;
   linkedInvoiceId?: string;
-  linkedJobId?: string;
+  linkedJobId?: string; // ID for reference
   narration?: string;
   status: ReceiptStatus;
   createdAt: Date | string;
   createdBy?: string;
+  
+  // Relations (if populated)
+  jobCard?: {
+    jobNumber: string;
+  };
+  invoice?: {
+    invoiceNumber: string;
+  };
 }
 
 export interface CreateReceiptRequest {
@@ -33,6 +41,7 @@ export interface CreateReceiptRequest {
   amount: number;
   receiptType: ReceiptType;
   customerName: string;
+  customerId?: string; // Added field
   customerPhone?: string;
   linkedInvoiceId?: string;
   linkedJobId?: string;
@@ -65,17 +74,18 @@ export async function createReceipt(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to create receipt");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to create receipt");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
  * Get all receipts for the authenticated shop
  */
 export async function getReceipts(filters?: {
+  shopId?: string;
   startDate?: Date | string;
   endDate?: Date | string;
   paymentMethod?: PaymentMode;
@@ -94,6 +104,9 @@ export async function getReceipts(filters?: {
   if (filters?.paymentMethod) {
     params.append("paymentMethod", filters.paymentMethod);
   }
+  if (filters?.shopId) {
+    params.append("shopId", filters.shopId);
+  }
   if (filters?.status) {
     params.append("status", filters.status);
   }
@@ -111,7 +124,7 @@ export async function getReceipts(filters?: {
     throw new Error("Failed to fetch receipts");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -124,7 +137,7 @@ export async function getReceipt(receiptId: string): Promise<Receipt> {
     throw new Error("Receipt not found");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -141,21 +154,26 @@ export async function cancelReceipt(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to cancel receipt");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to cancel receipt");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
  * Get receipt summary by date range
  */
 export async function getReceiptSummary(
+  shopId?: string,
   startDate?: Date | string,
   endDate?: Date | string,
 ): Promise<ReceiptSummary> {
   const params = new URLSearchParams();
+
+  if (shopId) {
+    params.append("shopId", shopId);
+  }
 
   if (startDate) {
     params.append("startDate", new Date(startDate).toISOString());
@@ -171,5 +189,5 @@ export async function getReceiptSummary(
     throw new Error("Failed to fetch receipt summary");
   }
 
-  return response.json();
+  return extractData(response);
 }

@@ -4,12 +4,16 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { User, UserRole } from '@prisma/client';
+import { User, UserRole, StaffInviteStatus } from '@prisma/client';
 import { normalizePhone } from '../../common/utils/phone.util';
+import { PermissionService } from '../permissions/permissions.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly permissionService: PermissionService,
+  ) {}
 
   // 🔹 Get user by ID
   async findById(userId: string) {
@@ -86,19 +90,76 @@ export class UsersService {
             id: true,
             name: true,
             tenantType: true,
+            enabledModules: true,
+            businessType: true,
+            businessCategory: {
+              select: {
+                isComingSoon: true,
+              },
+            },
           },
         },
       },
     });
 
+    const isSystemOwner =
+      userTenant?.isSystemOwner || userTenant?.role === UserRole.OWNER;
+    let grantedPermissions: string[] = [];
+
+    if (isSystemOwner) {
+      grantedPermissions = ['*'];
+    } else if (userTenant) {
+      grantedPermissions = await this.permissionService.getConsolidatedPermissions(
+        userId,
+        userTenant.tenantId,
+      );
+    }
+
+    // Fetch active plan code for the tenant
+    let planCode: string | null = null;
+    if (userTenant?.tenantId) {
+      const sub = await this.prisma.tenantSubscription.findFirst({
+        where: { 
+          tenantId: userTenant.tenantId,
+          status: { in: ['ACTIVE', 'TRIAL'] }
+        },
+        include: { plan: true },
+        orderBy: { createdAt: 'desc' }
+      });
+      planCode = sub?.plan?.code ?? null;
+    }
+
+    // Check for pending invite
+    let invite: { id: string } | null = null;
+    if (user.email) {
+      invite = await this.prisma.staffInvite.findFirst({
+        where: {
+          email: user.email,
+          status: StaffInviteStatus.PENDING,
+          expiresAt: {
+            gt: new Date(),
+          },
+        },
+        select: { id: true },
+      });
+    }
+
     return {
       ...user,
+      name: user.fullName, // Map for frontend
 
-      // 🔥 EFFECTIVE CONTEXT
+      // EFFECTIVE CONTEXT
       role: userTenant?.role ?? UserRole.USER,
       tenantId: userTenant?.tenantId ?? null,
       tenantType: userTenant?.tenant?.tenantType ?? null,
       tenantName: userTenant?.tenant?.name ?? null,
+      businessType: userTenant?.tenant?.businessType ?? null,
+      isComingSoon: userTenant?.tenant?.businessCategory?.isComingSoon ?? false,
+      isSystemOwner,
+      planCode,
+      enabledModules: userTenant?.tenant?.enabledModules ?? [],
+      permissions: grantedPermissions, // Map for frontend
+      inviteToken: invite?.id ?? null,
     };
   }
 

@@ -2,16 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { getInvoice } from "@/services/sales.api";
+import { getInvoice, getPublicInvoice } from "@/services/sales.api";
 import { getReceipt } from "@/services/receipts.api"; // New
 import { getVoucher } from "@/services/vouchers.api"; // New
 import { getShop } from "@/services/shops.api";
 import { listProducts } from "@/services/products.api";
 import { getJobCard } from "@/services/jobcard.api";
+import { getQuotation } from "@/services/quotations.api";
 import { mapInvoiceToPrintData } from "@/lib/print/adapters/invoice.adapter";
 import { mapReceiptToPrintData } from "@/lib/print/adapters/receipt.adapter"; // New
 import { mapVoucherToPrintData } from "@/lib/print/adapters/voucher.adapter"; // New
 import { mapJobCardToPrintData } from "@/lib/print/adapters/jobcard.adapter";
+import { mapQuotationToPrintData } from "@/lib/print/adapters/quotation.adapter";
 import { resolveTemplate, registerTemplate } from "@/lib/print/registry";
 import { InvoiceClassic } from "@/components/print/templates/InvoiceClassic";
 import { InvoiceThermal } from "@/components/print/templates/InvoiceThermal";
@@ -36,6 +38,11 @@ registerTemplate("INVOICE", "CORPORATE", InvoiceCorporate); // New
 registerTemplate("INVOICE", "COMPACT", InvoiceCompact); // New
 registerTemplate("INVOICE", "SIMPLE", InvoiceSimple); // New
 registerTemplate("INVOICE", "THERMAL", InvoiceThermal);
+
+registerTemplate("QUOTATION", "CLASSIC", InvoiceClassic);
+registerTemplate("QUOTATION", "MODERN", InvoiceModern);
+registerTemplate("QUOTATION", "SIMPLE", InvoiceSimple);
+
 registerTemplate("JOBCARD", "THERMAL", JobCardThermal);
 registerTemplate("JOBCARD", "CLASSIC", JobCardClassic);
 registerTemplate("JOBCARD", "SIMPLE", JobCardSimple);
@@ -53,6 +60,7 @@ function GenericPrintContent() {
   const searchParams = useSearchParams();
   // Optional: Allow forcing a variant via ?variant=THERMAL
   const variantParam = searchParams.get("variant")?.toUpperCase();
+  const noQr = searchParams.get("noQr") === "true";
 
   const [data, setData] = useState<PrintDocumentData | null>(null);
   const [resolvedVariant, setResolvedVariant] = useState<string>("CLASSIC");
@@ -71,22 +79,22 @@ function GenericPrintContent() {
 
         // Routing logic based on type
         if (docType === "INVOICE") {
-          // 1. Fetch raw data
-          const invoice = await getInvoice(docId);
-          console.log("📄 Raw Invoice Data:", invoice);
-          if (!invoice) throw new Error("Invoice not found");
+          // 1. Fetch data (Public API returns invoice + shop + products)
+          const result: any = await getPublicInvoice(docId);
+          // Cast as any initially to handle the type change smoothly or import the type if exported
+          
+          if (!result || !result.invoice) throw new Error("Invoice not found");
 
-          // 2. Fetch Dependencies (Shop, Products)
-          if (!invoice.shopId) throw new Error("Invoice has no shop ID");
-          const [shop, products] = await Promise.all([
-            getShop(invoice.shopId),
-            listProducts(invoice.shopId), // Optimization: Should ideally fetch only used products if list is huge
-          ]);
+          const invoice = result.invoice;
+          const shop = result.shop;
+          const products = result.products || [];
+
+          if (!shop) throw new Error("Invoice shop details missing");
 
           // Resolve Invoice Variant
           defaultVariant = shop.invoiceTemplate || "CLASSIC";
 
-          const productsMap = products.reduce((acc, p) => {
+          const productsMap = products.reduce((acc: any, p: any) => {
             acc[p.id] = p;
             return acc;
           }, {} as any);
@@ -130,6 +138,20 @@ function GenericPrintContent() {
           const shop = await getShop(voucher.shopId);
           setData(mapVoucherToPrintData({ voucher, shop }));
           defaultVariant = "CLASSIC";
+        } else if (docType === "QUOTATION") {
+          const shopId = searchParams.get("shopId");
+          if (!shopId) throw new Error("Shop ID is required for Quotation printing");
+
+          const [quotation, shop] = await Promise.all([
+            getQuotation(shopId, docId),
+            getShop(shopId),
+          ]);
+
+          if (!quotation) throw new Error("Quotation not found");
+
+          const printData = mapQuotationToPrintData({ quotation, shop });
+          setData(printData);
+          defaultVariant = "CLASSIC";
         } else {
           throw new Error("Unknown document type");
         }
@@ -145,6 +167,13 @@ function GenericPrintContent() {
 
     loadData();
   }, [docType, docId, searchParams]);
+
+  // Effect to handle noQr logic cleanly after data load
+  useEffect(() => {
+    if (data && noQr) {
+      setData((prev) => (prev ? { ...prev, qrCode: undefined } : null));
+    }
+  }, [data?.id, noQr]); // Only run when data ID changes or noQr changes to avoid loops
 
   // Auto-print effect
   useEffect(() => {

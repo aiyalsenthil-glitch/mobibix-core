@@ -1,7 +1,9 @@
+import { normalizeStateCode } from './state-normalizer.util';
+
 export interface InvoiceLineInput {
   shopProductId: string;
   quantity: number;
-  rate: number; // what user entered / what should appear as Rate column
+  ratePaisa: number; // strictly Paise (Integer)
   gstRate: number; // percentage 0-100
   hsnCode?: string | null;
 }
@@ -9,35 +11,31 @@ export interface InvoiceLineInput {
 export interface InvoiceCalculationContext {
   isIndianGSTInvoice: boolean;
   pricesIncludeTax: boolean;
-  shopState?: string | null;
-  customerState?: string | null;
+  shopStateCode?: string | null; // e.g. "TN"
+  customerStateCode?: string | null; // e.g. "TN"
   customerGstin?: string | null;
 }
 
 export interface CalculatedInvoiceLine {
   shopProductId: string;
   quantity: number;
-  rate: number;
+  ratePaisa: number;
   hsnCode: string;
   gstRate: number;
-  taxableValue: number; // per-line taxable value (rate excl. GST × qty)
-  gstAmount: number; // per-line GST amount
-  lineTotal: number; // taxable + GST
+  taxableValuePaisa: number; // per-line taxable value in Paise
+  gstAmountPaisa: number; // per-line GST amount in Paise
+  lineTotalPaisa: number; // taxable + GST in Paise
 }
 
 export interface InvoiceCalculationResult {
   lines: CalculatedInvoiceLine[];
-  subTotal: number;
-  gstAmount: number;
-  cgst: number;
-  sgst: number;
-  igst: number;
+  subTotalPaisa: number;
+  gstAmountPaisa: number;
+  cgstPaisa: number;
+  sgstPaisa: number;
+  igstPaisa: number;
   isB2B: boolean;
 }
-
-const round2 = (value: number): number => {
-  return Math.round(value * 100) / 100;
-};
 
 export function calculateInvoiceTotals(
   inputs: InvoiceLineInput[],
@@ -46,84 +44,98 @@ export function calculateInvoiceTotals(
   const {
     isIndianGSTInvoice,
     pricesIncludeTax,
-    shopState,
-    customerState,
+    shopStateCode,
+    customerStateCode,
     customerGstin,
   } = context;
 
   const lines: CalculatedInvoiceLine[] = [];
 
-  let subTotal = 0;
-  let gstAmount = 0;
+  let subTotalPaisa = 0;
+  let gstAmountPaisa = 0;
 
   for (const input of inputs) {
     const gstRate = input.gstRate < 0 ? 0 : input.gstRate;
-    const hsnCode = input.hsnCode || '';
+    // hsnCode is validated upstream (billing.service) for GST invoices.
+    // We preserve whatever arrives; empty string is intentional for non-GST products.
+    const hsnCode = input.hsnCode ?? '';
 
     const effectiveGstRate =
       isIndianGSTInvoice && gstRate > 0 && gstRate <= 100 ? gstRate : 0;
 
     const qty = input.quantity;
-    const displayRate = input.rate;
+    const displayRatePaisa = Math.round(input.ratePaisa); // Ensure integer
 
-    let taxableValue = 0;
-    let lineGst = 0;
-    let lineTotal = 0;
+    let taxableValuePaisa = 0;
+    let lineGstPaisa = 0;
+    let lineTotalPaisa = 0;
 
     if (effectiveGstRate === 0) {
-      // No GST for this line
-      taxableValue = round2(displayRate * qty);
-      lineGst = 0;
-      lineTotal = taxableValue;
+      // No GST
+      taxableValuePaisa = displayRatePaisa * qty;
+      lineGstPaisa = 0;
+      lineTotalPaisa = taxableValuePaisa;
     } else if (pricesIncludeTax) {
-      // Rate is inclusive of GST: split into base + GST
-      const grossPerUnit = displayRate;
-      const divisor = 1 + effectiveGstRate / 100;
-      const basePerUnit = round2(grossPerUnit / divisor);
-      const gstPerUnit = round2(grossPerUnit - basePerUnit);
+      // Rate is inclusive of GST.
+      // Total gross line amount:
+      const grossLinePaisa = displayRatePaisa * qty;
 
-      // Work in two decimals per line
-      const grossLine = round2(grossPerUnit * qty);
-      taxableValue = round2(basePerUnit * qty);
-      // Reconcile GST so that taxable + GST = gross
-      lineGst = round2(grossLine - taxableValue);
-      lineTotal = round2(taxableValue + lineGst);
+      // Calculate Taxable Base = (Gross * 100) / (100 + GST Rate)
+      // Math.round applies nearest-integer standard accounting
+      taxableValuePaisa = Math.round(
+        (grossLinePaisa * 100) / (100 + effectiveGstRate),
+      );
+
+      // GST is simply the difference, guaranteeing no rounding drops
+      lineGstPaisa = grossLinePaisa - taxableValuePaisa;
+      lineTotalPaisa = grossLinePaisa;
     } else {
-      // Rate is exclusive of GST
-      const basePerUnit = displayRate;
-      taxableValue = round2(basePerUnit * qty);
-      lineGst = round2((taxableValue * effectiveGstRate) / 100);
-      lineTotal = round2(taxableValue + lineGst);
+      // Rate is exclusive of GST.
+      taxableValuePaisa = displayRatePaisa * qty;
+
+      // GST = (Taxable * Rate) / 100
+      lineGstPaisa = Math.round((taxableValuePaisa * effectiveGstRate) / 100);
+
+      lineTotalPaisa = taxableValuePaisa + lineGstPaisa;
     }
 
-    subTotal = round2(subTotal + taxableValue);
-    gstAmount = round2(gstAmount + lineGst);
+    subTotalPaisa += taxableValuePaisa;
+    gstAmountPaisa += lineGstPaisa;
 
     lines.push({
       shopProductId: input.shopProductId,
       quantity: qty,
-      rate: displayRate,
+      ratePaisa: displayRatePaisa,
       hsnCode,
       gstRate: effectiveGstRate,
-      taxableValue,
-      gstAmount: lineGst,
-      lineTotal,
+      taxableValuePaisa,
+      gstAmountPaisa: lineGstPaisa,
+      lineTotalPaisa,
     });
   }
 
-  // Determine intra/inter state for CGST/SGST/IGST only for Indian GST invoices
-  let cgst = 0;
-  let sgst = 0;
-  let igst = 0;
+  // Determine intra/inter state for CGST/SGST/IGST
+  let cgstPaisa = 0;
+  let sgstPaisa = 0;
+  let igstPaisa = 0;
 
-  if (isIndianGSTInvoice && gstAmount > 0) {
-    if (shopState && customerState && shopState !== customerState) {
-      igst = gstAmount;
+  if (isIndianGSTInvoice && gstAmountPaisa > 0) {
+    // Both state codes must be present, valid, and identical to be local.
+    // Normalize state codes to handle "Tamilnadu" == "Tamil Nadu" vs "TN"
+    const isInterState = Boolean(
+      shopStateCode &&
+      customerStateCode &&
+      normalizeStateCode(shopStateCode) !==
+        normalizeStateCode(customerStateCode),
+    );
+
+    if (isInterState) {
+      igstPaisa = gstAmountPaisa;
     } else {
-      // Default / same-state: split equally as CGST + SGST
-      const half = gstAmount / 2;
-      cgst = round2(half);
-      sgst = round2(gstAmount - cgst);
+      // If gstAmountPaisa is odd (e.g., 35 Paisa), CGST gets 18, SGST gets 17.
+      // This ensures CGST + SGST perfectly matches Total GST without decimal leakage.
+      cgstPaisa = Math.round(gstAmountPaisa / 2);
+      sgstPaisa = gstAmountPaisa - cgstPaisa;
     }
   }
 
@@ -131,11 +143,11 @@ export function calculateInvoiceTotals(
 
   return {
     lines,
-    subTotal: round2(subTotal),
-    gstAmount: round2(gstAmount),
-    cgst: round2(cgst),
-    sgst: round2(sgst),
-    igst: round2(igst),
+    subTotalPaisa,
+    gstAmountPaisa,
+    cgstPaisa,
+    sgstPaisa,
+    igstPaisa,
     isB2B,
   };
 }

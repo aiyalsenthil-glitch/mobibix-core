@@ -1,9 +1,11 @@
 import type { PrintDocumentData } from "@/lib/print/types";
 import { InvoiceHeader } from "@/components/print/headers/InvoiceHeader";
 import { QRCodeSVG } from "qrcode.react";
+import { formatCurrency } from "@/lib/gst.utils";
 
 export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
-  const { header, meta, customer, items, totals, footer, qrCode, config } = data;
+  const { header, meta, customer, items, totals, footer, qrCode, config, headerConfig } = data;
+  const accentColor = config.accentColor || headerConfig?.accentColor || "#000000";
   
   return (
     <div className="w-[210mm] min-h-[297mm] print:min-h-0 print:w-full mx-auto bg-white p-6 text-black">
@@ -11,12 +13,12 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
       <InvoiceHeader data={data} />
 
       {/* Inclusive/Exclusive Notices */}
-      {(config as any).isIndianGSTInvoice && config.pricesInclusive && (
+      {config.isIndianGSTInvoice && config.pricesInclusive && (
         <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-2 rounded text-sm print:bg-gray-100 print:text-black print:border-gray-300">
             <strong>Note:</strong> All prices are inclusive of GST
         </div>
       )}
-      {(config as any).isIndianGSTInvoice && !config.pricesInclusive && (
+      {config.isIndianGSTInvoice && !config.pricesInclusive && (
         <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded text-sm print:bg-gray-100 print:text-black print:border-gray-300">
             <strong>Note:</strong> GST will be added to the base price. Final amount may not be a round figure.
         </div>
@@ -26,7 +28,7 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
       <div className="flex justify-between mb-4 gap-8">
         <div className="flex-1">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Billed To</h3>
-            <div className="border-l-2 border-slate-200 pl-3">
+            <div className="border-l-2 pl-3" style={{ borderColor: accentColor }}>
                 <p className="font-bold text-lg text-slate-900">{customer.name}</p>
                 {customer.phone && <p className="text-sm text-slate-600">Phone: {customer.phone}</p>}
                 {customer.address && <p className="text-sm text-slate-600 max-w-[250px]">{customer.address}</p>}
@@ -60,16 +62,16 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
       <div className="mb-8 min-h-[300px] print:min-h-0">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="border-b-2 border-slate-800">
+            <tr className="border-b-2" style={{ borderColor: accentColor }}>
               <th className="py-2 text-left text-xs font-bold text-slate-500 uppercase w-12">#</th>
               <th className="py-2 text-left text-xs font-bold text-slate-500 uppercase">Item Description</th>
-              <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-24">HSN</th>
+              {config.isIndianGSTInvoice && <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-24">HSN</th>}
               <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-16">Qty</th>
               <th className="py-2 text-right text-xs font-bold text-slate-500 uppercase w-28">
                   Rate
-                  {config.pricesInclusive && <span className="block text-[8px] text-slate-400 font-normal">(Incl. Tax)</span>}
+                  {config.pricesInclusive && config.isIndianGSTInvoice && <span className="block text-[8px] text-slate-400 font-normal">(Incl. Tax)</span>}
               </th>
-              <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-20">Tax %</th>
+              {config.isIndianGSTInvoice && <th className="py-2 text-center text-xs font-bold text-slate-500 uppercase w-20">Tax %</th>}
               <th className="py-2 text-right text-xs font-bold text-slate-500 uppercase w-32">Total</th>
             </tr>
           </thead>
@@ -82,11 +84,11 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
                   {item.name}
                   {item.description && <div className="text-xs text-slate-400 font-normal">{item.description}</div>}
                 </td>
-                <td className="py-2 text-sm text-center text-slate-500">{item.hsn}</td>
+                {config.isIndianGSTInvoice && <td className="py-2 text-sm text-center text-slate-500">{item.hsn}</td>}
                 <td className="py-2 text-sm text-center text-slate-900">{item.qty}</td>
-                <td className="py-2 text-sm text-right text-slate-900">₹{item.rate.toFixed(2)}</td>
-                <td className="py-2 text-sm text-center text-slate-500">{item.taxRate}%</td>
-                <td className="py-2 text-sm text-right font-bold text-slate-900">₹{item.total.toFixed(2)}</td>
+                <td className="py-2 text-sm text-right text-slate-900">{formatCurrency(item.rate)}</td>
+                {config.isIndianGSTInvoice && <td className="py-2 text-sm text-center text-slate-500">{item.taxRate}%</td>}
+                <td className="py-2 text-sm text-right font-bold text-slate-900">{formatCurrency(item.total)}</td>
               </tr>
             ))
             ) : (
@@ -143,19 +145,19 @@ export function InvoiceClassic({ data }: { data: PrintDocumentData }) {
             <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm text-slate-600">
                    <span>Subtotal</span>
-                   <span>₹{totals?.subTotal?.toFixed(2)}</span>
+                   <span>{formatCurrency(totals?.subTotal || 0)}</span>
                 </div>
                 {totals?.taxLines?.map((tax, i) => (
                     <div key={i} className="flex justify-between text-sm text-slate-600">
                         <span>{tax.label} {tax.rate ? `(${tax.rate}%)` : ''}</span>
-                        <span>₹{tax.amount.toFixed(2)}</span>
+                        <span>{formatCurrency(tax.amount)}</span>
                     </div>
                 ))}
             </div>
             
             <div className="border-t-2 border-slate-800 pt-2 flex justify-between items-center text-slate-900">
                 <span className="text-base font-bold">Grand Total</span>
-                <span className="text-xl font-bold">₹{totals?.grandTotal.toFixed(2)}</span>
+                <span className="text-xl font-bold">{formatCurrency(totals?.grandTotal || 0)}</span>
             </div>
 
             <div className="mt-8 text-center">

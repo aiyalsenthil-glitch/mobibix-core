@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -22,6 +22,8 @@ export interface PurchaseItem {
   subTotal: number;
   gstAmount: number;
   total: number;
+  imeis?: string[];
+  serialNumbers?: string[];
 }
 
 export interface SupplierPayment {
@@ -38,6 +40,7 @@ export interface Purchase {
   shopId: string;
   globalSupplierId?: string;
   supplierName: string;
+  supplierGstin?: string;
   invoiceNumber: string;
   invoiceDate: string | Date;
   dueDate?: string | Date;
@@ -52,6 +55,11 @@ export interface Purchase {
   payments: SupplierPayment[];
   createdAt: string | Date;
   updatedAt: string | Date;
+
+  // Multi-currency & PO
+  currency: string;
+  exchangeRate: number;
+  poId?: string;
 }
 
 export interface PurchaseItemDto {
@@ -61,17 +69,27 @@ export interface PurchaseItemDto {
   quantity: number;
   purchasePrice: number;
   gstRate?: number;
+  imeis?: string[];
+  serialNumbers?: string[];
 }
 
 export interface CreatePurchaseDto {
   shopId: string;
   globalSupplierId?: string;
   supplierName: string;
+  supplierGstin?: string;
   invoiceNumber: string;
   invoiceDate?: string;
   dueDate?: string;
   paymentMethod: PaymentMode;
+  status?: PurchaseStatus;
   items: PurchaseItemDto[];
+
+  // Multi-currency & PO
+  currency?: string;
+  exchangeRate?: number;
+  poId?: string;
+  grnId?: string;
 }
 
 export interface UpdatePurchaseDto {
@@ -82,6 +100,12 @@ export interface UpdatePurchaseDto {
   status?: PurchaseStatus;
   paymentMethod?: PaymentMode;
   items?: PurchaseItemDto[];
+
+  // Multi-currency & PO
+  currency?: string;
+  exchangeRate?: number;
+  poId?: string;
+  grnId?: string;
 }
 
 export interface RecordPaymentDto {
@@ -127,8 +151,8 @@ export async function listPurchases(params?: {
     if (!response.ok) {
       let errorMessage = "Failed to fetch purchases";
       try {
-        const error = await response.json();
-        errorMessage = error.message || errorMessage;
+        const error = await extractData(response) as any;
+        errorMessage = error?.message || errorMessage;
         console.error("API Error:", {
           status: response.status,
           message: errorMessage,
@@ -140,11 +164,11 @@ export async function listPurchases(params?: {
       throw new Error(errorMessage);
     }
 
-    const result = await response.json();
+    const result = await extractData(response) as any;
     // Backend returns paginated response: { data: [], total: number }
     // Return just the data array for compatibility with existing code
-    return result.data || result;
-  } catch (error: any) {
+    return result?.data || result;
+  } catch (error: unknown) {
     console.error("List purchases error:", error);
     throw error;
   }
@@ -157,11 +181,11 @@ export async function getPurchase(purchaseId: string): Promise<Purchase> {
   const response = await authenticatedFetch(`/purchases/${purchaseId}`);
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch purchase");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch purchase");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -177,11 +201,11 @@ export async function createPurchase(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to create purchase");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to create purchase");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -198,11 +222,11 @@ export async function updatePurchase(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to update purchase");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to update purchase");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -214,8 +238,8 @@ export async function cancelPurchase(purchaseId: string): Promise<void> {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to cancel purchase");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to cancel purchase");
   }
 }
 
@@ -233,11 +257,11 @@ export async function recordPayment(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to record payment");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to record payment");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -251,11 +275,11 @@ export async function getPurchaseOutstanding(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch outstanding amount");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch outstanding amount");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -269,11 +293,11 @@ export async function getPurchasesBySupplier(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch supplier purchases");
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to fetch supplier purchases");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -287,11 +311,29 @@ export async function getSupplierOutstanding(
   );
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await extractData(response) as any;
     throw new Error(
-      error.message || "Failed to fetch supplier outstanding balance",
+      error?.message || "Failed to fetch supplier outstanding balance",
     );
   }
 
-  return response.json();
+  return extractData(response);
+}
+
+/**
+ * Submit a purchase for approval (Atomic Stock In & Cost Update)
+ */
+export async function submitPurchase(
+  purchaseId: string,
+): Promise<{ message: string; purchaseId: string }> {
+  const response = await authenticatedFetch(`/purchases/${purchaseId}/submit`, {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to submit purchase");
+  }
+
+  return extractData(response);
 }

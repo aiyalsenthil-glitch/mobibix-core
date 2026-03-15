@@ -5,6 +5,14 @@ import { RepairModule } from './repair/repair.module';
 import { ReceiptsModule } from './receipts/receipts.module';
 import { VouchersModule } from './vouchers/vouchers.module';
 import { CrmIntegrationModule } from './crm-integration.module';
+import { MobileShopReportsModule } from './reports/reports.module';
+import { B2BModule } from './b2b/b2b.module';
+import { QuotationsModule } from './quotations/quotations.module';
+import { CreditNotesModule } from './credit-notes/credit-notes.module';
+import { CompatibilityModule } from './compatibility/compatibility.module';
+import { OperationsModule } from './operations/operations.module';
+import { KnowledgeModule } from './knowledge/knowledge.module';
+import { RepairIntelligenceModule } from './repair-intelligence/repair-intelligence.module';
 
 @Module({
   imports: [
@@ -14,6 +22,14 @@ import { CrmIntegrationModule } from './crm-integration.module';
     ReceiptsModule,
     VouchersModule,
     CrmIntegrationModule,
+    MobileShopReportsModule,
+    B2BModule,
+    QuotationsModule,
+    CreditNotesModule,
+    CompatibilityModule,
+    OperationsModule,
+    KnowledgeModule,
+    RepairIntelligenceModule,
   ],
 })
 export class MobileShopModule {}

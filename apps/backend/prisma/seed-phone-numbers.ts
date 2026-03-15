@@ -12,11 +12,20 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
-const prisma = new PrismaClient();
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const adapter = new PrismaPg(pool);
+
+const prisma = new PrismaClient({ adapter });
 
 // ⚠️ TODO: Replace with your actual Meta WhatsApp Business credentials
-const DEFAULT_PHONE_NUMBER = process.env.WHATSAPP_PHONE_NUMBER || '+1234567890';
+const DEFAULT_PHONE_NUMBER =
+  process.env.WHATSAPP_PHONE_NUMBER || '++918667551566';
 const DEFAULT_PHONE_NUMBER_ID =
   process.env.WHATSAPP_PHONE_NUMBER_ID || 'YOUR_PHONE_NUMBER_ID';
 const DEFAULT_WABA_ID = process.env.WHATSAPP_WABA_ID || 'YOUR_WABA_ID';
@@ -36,7 +45,7 @@ async function seedPhoneNumbers() {
 
   for (const tenant of tenants) {
     // Check if tenant already has a default phone number
-    const existingPhone = await prisma.whatsAppPhoneNumber.findFirst({
+    const existingPhone = await prisma.whatsAppNumber.findFirst({
       where: { tenantId: tenant.id },
     });
 
@@ -47,7 +56,7 @@ async function seedPhoneNumbers() {
     }
 
     // Create default phone number
-    await prisma.whatsAppPhoneNumber.create({
+    await prisma.whatsAppNumber.create({
       data: {
         tenantId: tenant.id,
         phoneNumber: DEFAULT_PHONE_NUMBER,
@@ -55,7 +64,7 @@ async function seedPhoneNumbers() {
         wabaId: DEFAULT_WABA_ID,
         purpose: 'DEFAULT',
         isDefault: true,
-        isActive: true,
+        isEnabled: true,
       },
     });
 
@@ -90,4 +99,5 @@ seedPhoneNumbers()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

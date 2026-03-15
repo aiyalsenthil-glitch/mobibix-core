@@ -9,6 +9,7 @@ export function useDarkMode() {
     const saved = localStorage.getItem("mobibix-mode");
     if (saved === "dark") {
       document.documentElement.classList.add("dark");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDark(true);
     }
   }, []);

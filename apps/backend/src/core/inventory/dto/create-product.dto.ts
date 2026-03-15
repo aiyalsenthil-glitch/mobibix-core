@@ -16,18 +16,19 @@ export enum ProductType {
 }
 
 export class CreateProductDto {
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  name: string;
+  name?: string;
 
+  @IsOptional()
   @IsEnum(ProductType)
-  type: ProductType;
+  type?: ProductType;
 
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  @IsString()
-  @IsNotEmpty()
-  shopId: string;
+  shopId?: string;
 
   @IsOptional()
   @IsString()

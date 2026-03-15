@@ -1,0 +1,14 @@
+﻿
+> mobibix-web@0.1.0 lint
+> eslint --file src/services/global-suppliers.api.ts --file src/services/purchases.api.ts --file src/services/shops.api.ts --file src/services/suppliers.api.ts --file src/services/whatsapp.api.ts --file src/services/reports.api.ts --file src/services/products.api.ts --file src/hooks/useAuth.ts --file src/hooks/useProductCost.ts --file src/hooks/useRazorpay.ts --file src/hooks/useShopSelection.ts --file src/context/ShopContext.tsx --file src/context/WhatsAppNumberContext.tsx --file src/hooks/useDeferredAsyncData.ts --file src/services/auth.api.ts Check lint results in lint_batch2_check.txt.
+
+npm : Invalid option '--file' - perhaps you meant '--rule'?
+At line:1 char:1
++ npm run lint -- --file src/services/global-suppliers.api.ts --file sr ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Invalid option ...meant '--rule'?:String) 
+    [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+You're using eslint.config.js, some command line flags are no longer available. Please 
+see https://eslint.org/docs/latest/use/command-line-interface for details.

@@ -1,0 +1,222 @@
+/**
+ * Phase 1 Billing Migration Backfill Script
+ *
+ * This script migrates existing billing data to the new schema:
+ * 1. Create PlanPrice records from existing Plan data
+ * 2. Set billingCycle on TenantSubscriptions based on their plan's billingCycle
+ * 3. Set priceSnapshot on TenantSubscriptions based on their plan's price
+ * 4. Set autoRenew to true for ACTIVE subscriptions, false for others
+ *
+ * IMPORTANT: This is backward-compatible. All fields are nullable/optional.
+ * Old code continues to work; new code reads from new fields.
+ *
+ * Run: npx ts-node -r dotenv/config src/scripts/backfill-phase1-billing.ts
+ */
+
+import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+
+// Load .env file
+require('dotenv').config();
+
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error(
+    'DATABASE_URL environment variable is not set. Check .env file.',
+  );
+}
+
+const adapter = new PrismaPg({ connectionString });
+const prisma = new PrismaClient({ adapter });
+
+async function backfillPlanPrices() {
+  console.log('📝 Step 1: Backfill PlanPrice table from existing Plans...');
+
+  const plans = await prisma.plan.findMany({
+    where: { isActive: true },
+  });
+
+  console.log(`Found ${plans.length} active plans`);
+
+  let created = 0;
+  let skipped = 0;
+
+  for (const plan of plans) {
+    // Check if PlanPrice already exists for this plan + billingCycle combo
+    const existing = await prisma.planPrice.findUnique({
+      where: {
+        planId_billingCycle: {
+          planId: plan.id,
+          billingCycle: plan.billingCycle || 'MONTHLY',
+        },
+      },
+    });
+
+    if (existing) {
+      console.log(
+        `⏭️  PlanPrice already exists for ${plan.name} @ ${plan.billingCycle}`,
+      );
+      skipped++;
+      continue;
+    }
+
+    // Create PlanPrice from Plan's price and billingCycle
+    const planPrice = await prisma.planPrice.create({
+      data: {
+        planId: plan.id,
+        billingCycle: plan.billingCycle || 'MONTHLY',
+        price: plan.price,
+        isActive: true,
+      },
+    });
+
+    console.log(
+      `✅ Created PlanPrice: ${plan.name} @ ${planPrice.billingCycle} = ₹${planPrice.price / 100}`,
+    );
+    created++;
+  }
+
+  console.log(
+    `\n✨ PlanPrice backfill complete: ${created} created, ${skipped} skipped\n`,
+  );
+}
+
+async function backfillSubscriptionFields() {
+  console.log('📝 Step 2: Backfill TenantSubscription fields...');
+
+  const subscriptions = await prisma.tenantSubscription.findMany({
+    include: {
+      plan: true,
+      tenant: true,
+    },
+  });
+
+  console.log(`Found ${subscriptions.length} subscriptions`);
+
+  let updated = 0;
+
+  for (const sub of subscriptions) {
+    const updates: Record<string, any> = {};
+
+    // Set billingCycle from plan if not already set
+    if (!sub.billingCycle && sub.plan.billingCycle) {
+      updates.billingCycle = sub.plan.billingCycle;
+    }
+
+    // Set priceSnapshot from plan if not already set
+    if (sub.priceSnapshot === null) {
+      updates.priceSnapshot = sub.plan.price;
+    }
+
+    // Set autoRenew: true for ACTIVE, false for others
+    if (sub.autoRenew === undefined || sub.autoRenew === null) {
+      updates.autoRenew = sub.status === 'ACTIVE';
+    }
+
+    if (Object.keys(updates).length > 0) {
+      const updated_sub = await prisma.tenantSubscription.update({
+        where: { id: sub.id },
+        data: updates,
+      });
+
+      console.log(
+        `✅ Updated subscription ${sub.tenant.name}@${sub.module}: ` +
+          `billingCycle=${updated_sub.billingCycle}, ` +
+          `priceSnapshot=₹${(updated_sub.priceSnapshot ?? 0) / 100}, ` +
+          `autoRenew=${updated_sub.autoRenew}`,
+      );
+      updated++;
+    } else {
+      console.log(
+        `⏭️  Subscription ${sub.tenant.name}@${sub.module} already migrated`,
+      );
+    }
+  }
+
+  console.log(
+    `\n✨ TenantSubscription backfill complete: ${updated} updated\n`,
+  );
+}
+
+async function validateBackfill() {
+  console.log('📝 Step 3: Validate backfill...');
+
+  // Check that all active plans have at least one PlanPrice
+  const plansWithoutPrice = await prisma.plan.findMany({
+    where: {
+      isActive: true,
+      planPrices: {
+        none: {},
+      },
+    },
+  });
+
+  if (plansWithoutPrice.length > 0) {
+    console.warn(
+      `⚠️  WARNING: ${plansWithoutPrice.length} active plans have no PlanPrice records:`,
+      plansWithoutPrice.map((p) => p.name),
+    );
+  } else {
+    console.log('✅ All active plans have PlanPrice records');
+  }
+
+  // Check that all subscriptions have priceSnapshot set
+  const subsWithoutPrice = await prisma.tenantSubscription.findMany({
+    where: {
+      priceSnapshot: null,
+    },
+  });
+
+  if (subsWithoutPrice.length > 0) {
+    console.warn(
+      `⚠️  WARNING: ${subsWithoutPrice.length} subscriptions lack priceSnapshot`,
+    );
+  } else {
+    console.log('✅ All subscriptions have priceSnapshot set');
+  }
+
+  // Check that all subscriptions have billingCycle set
+  const subsWithoutCycle = await prisma.tenantSubscription.findMany({
+    where: {
+      billingCycle: null,
+    },
+  });
+
+  if (subsWithoutCycle.length > 0) {
+    console.warn(
+      `⚠️  WARNING: ${subsWithoutCycle.length} subscriptions lack billingCycle`,
+    );
+  } else {
+    console.log('✅ All subscriptions have billingCycle set');
+  }
+
+  console.log('\n✨ Validation complete\n');
+}
+
+async function main() {
+  try {
+    console.log('🚀 Starting Phase 1 Billing Migration Backfill\n');
+    console.log(
+      '⚠️  NOTE: This is backward-compatible. Old code continues to work.\n',
+    );
+
+    await backfillPlanPrices();
+    await backfillSubscriptionFields();
+    await validateBackfill();
+
+    console.log('✅ Phase 1 Backfill COMPLETE');
+    console.log('');
+    console.log('Next steps:');
+    console.log('  1. Run the backend: npm run start:dev');
+    console.log('  2. Test buyPlan() with new billingCycle parameter');
+    console.log('  3. Test upgrade/downgrade endpoints');
+    console.log('  4. Deploy auto-renew cron job');
+  } catch (err) {
+    console.error('❌ Backfill failed:', err);
+    process.exit(1);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main();

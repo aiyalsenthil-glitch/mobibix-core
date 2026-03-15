@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 export interface HSNCode {
   id: string;
@@ -15,9 +15,9 @@ export async function searchHsn(query: string): Promise<HSNCode[]> {
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to search HSN codes");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to search HSN codes");
   }
 
-  return response.json();
+  return extractData(response);
 }

@@ -6,7 +6,7 @@ import {
   listPurchases,
   createPurchase,
   recordPayment,
-  cancelPurchase,
+//   cancelPurchase,
   type Purchase,
   type CreatePurchaseDto,
   type PurchaseItemDto,
@@ -15,7 +15,7 @@ import {
   type RecordPaymentDto,
 } from "@/services/purchases.api";
 import { listSuppliers, type Supplier } from "@/services/suppliers.api";
-import { authenticatedFetch } from "@/services/auth.api";
+// import { authenticatedFetch } from "@/services/auth.api";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { NoShopsAlert } from "../components/NoShopsAlert";
@@ -35,13 +35,15 @@ const PAYMENT_BADGES: Record<PaymentMode, string> = {
   BANK: "bg-amber-500/15 text-amber-300",
 };
 
+import { CancelPurchaseModal } from "@/components/purchases/CancelPurchaseModal";
+
 export default function PurchasesPage() {
   const { theme } = useTheme();
   const router = useRouter();
   const {
     shops,
     selectedShopId: contextSelectedShopId,
-    selectShop,
+    selectShop: _selectShop,
     isLoadingShops,
   } = useShop();
   const [selectedShopId, setSelectedShopId] = useState("");
@@ -51,6 +53,8 @@ export default function PurchasesPage() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedPurchaseForCancel, setSelectedPurchaseForCancel] = useState<Purchase | null>(null);
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(
     null,
   );
@@ -87,14 +91,14 @@ export default function PurchasesPage() {
     const loadSuppliers = async () => {
       try {
         setError(null);
-        console.log("Loading suppliers...");
+        // console.log("Loading suppliers...");
 
         const suppliersData = await listSuppliers();
-        console.log("Suppliers loaded:", suppliersData);
+        // console.log("Suppliers loaded:", suppliersData);
         setSuppliers(suppliersData);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error loading suppliers:", err);
-        setError(err.message || "Failed to load suppliers");
+        setError(err instanceof Error ? err.message : "Failed to load suppliers");
         setSuppliers([]);
       }
     };
@@ -119,8 +123,8 @@ export default function PurchasesPage() {
       setError(null);
       const data = await listPurchases({ shopId: selectedShopId });
       setPurchases(data);
-    } catch (err: any) {
-      setError(err.message || "Failed to load purchases");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load purchases");
     } finally {
       setIsLoading(false);
     }
@@ -201,8 +205,8 @@ export default function PurchasesPage() {
       setShowForm(false);
       resetForm();
       loadPurchases();
-    } catch (err: any) {
-      alert(err.message || "Failed to create purchase");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to create purchase");
     }
   };
 
@@ -217,11 +221,14 @@ export default function PurchasesPage() {
       setSelectedPurchase(null);
       resetPaymentForm();
       loadPurchases();
-    } catch (err: any) {
-      alert(err.message || "Failed to record payment");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to record payment");
     }
   };
 
+  /* 
+   * Replaced by CancelPurchaseModal
+   * 
   const handleCancel = async (purchaseId: string) => {
     if (!confirm("Are you sure you want to cancel this purchase?")) return;
 
@@ -231,6 +238,12 @@ export default function PurchasesPage() {
     } catch (err: any) {
       alert(err.message || "Failed to cancel purchase");
     }
+  }; 
+  */
+ 
+  const openCancelModal = (purchase: Purchase) => {
+    setSelectedPurchaseForCancel(purchase);
+    setShowCancelModal(true);
   };
 
   const resetForm = () => {
@@ -294,22 +307,22 @@ export default function PurchasesPage() {
                 theme === "dark" ? "text-white" : "text-gray-900"
               }`}
             >
-              Purchase Management
+              Supplier Invoices
             </h1>
             <p
               className={`text-sm ${
                 theme === "dark" ? "text-stone-400" : "text-gray-600"
               }`}
             >
-              Track supplier invoices and payments
+              Manage financial records and payables
             </p>
           </div>
-          <button
-            onClick={() => router.push("/purchases/new")}
-            className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium"
-          >
-            + New Purchase
-          </button>
+            <button
+              onClick={() => router.push("/purchases/new")}
+              className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium"
+            >
+              + Record Invoice
+            </button>
         </div>
 
         {/* Shop Selector */}
@@ -1012,7 +1025,7 @@ export default function PurchasesPage() {
                 theme === "dark" ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              No purchases yet. Click "New Purchase" to get started.
+              No purchases yet. Click &quot;New Purchase&quot; to get started.
             </p>
           </div>
         ) : (
@@ -1126,9 +1139,9 @@ export default function PurchasesPage() {
                         Record Payment
                       </button>
                     )}
-                  {purchase.paidAmount === 0 && (
+                  {purchase.status !== "PAID" && purchase.status !== "CANCELLED" && (
                     <button
-                      onClick={() => handleCancel(purchase.id)}
+                      onClick={() => openCancelModal(purchase)}
                       className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded text-sm transition-colors"
                     >
                       Cancel
@@ -1138,6 +1151,21 @@ export default function PurchasesPage() {
               </div>
             ))}
           </div>
+        )}
+
+        {selectedPurchaseForCancel && (
+          <CancelPurchaseModal
+            purchaseId={selectedPurchaseForCancel.id}
+            invoiceNumber={selectedPurchaseForCancel.invoiceNumber}
+            isOpen={showCancelModal}
+            onClose={() => {
+              setShowCancelModal(false);
+              setSelectedPurchaseForCancel(null);
+            }}
+            onSuccess={() => {
+              loadPurchases();
+            }}
+          />
         )}
       </div>
     </div>

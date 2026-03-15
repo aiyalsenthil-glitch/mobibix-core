@@ -42,7 +42,7 @@ export default function StaffDashboard() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-            <p className="text-sm text-gray-400">Today's Sessions</p>
+            <p className="text-sm text-gray-400">Today&apos;s Sessions</p>
             <p className="text-2xl font-semibold">--</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-4">

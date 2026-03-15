@@ -17,20 +17,26 @@ import { CreateMemberDto } from '../../core/members/dto/create-member.dto';
 import { UpdateMemberDto } from '../../core/members/dto/update-member.dto';
 import { RenewMemberDto } from '../../core/members/dto/renew-member.dto';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../../core/auth/guards/permissions.guard';
-import { Permissions } from '../../core/auth/decorators/permissions.decorator';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
-import { Permission } from '../../core/auth/permissions.enum';
-import { UserRole } from '@prisma/client';
+import { UserRole, ModuleType } from '@prisma/client';
 import { TenantStatusGuard } from '../../core/tenant/guards/tenant-status.guard';
 import { TenantRequiredGuard } from '../../core/auth/guards/tenant.guard';
+import { ModuleScope } from '../../core/auth/decorators/module-scope.decorator';
+import { GranularPermissionGuard } from '../../core/permissions/guards/granular-permission.guard';
+import { RequirePermission, ModulePermission } from '../../core/permissions/decorators/require-permission.decorator';
+import { PERMISSIONS } from '../../security/permission-registry';
+import { RolesGuard } from '../../core/auth/guards/roles.guard';
 
 @Controller('gym/members')
+@ModuleScope(ModuleType.GYM)
+@ModulePermission('member')
+@Roles(UserRole.OWNER, UserRole.STAFF)
 @UseGuards(
   JwtAuthGuard,
-  PermissionsGuard,
-  TenantStatusGuard,
   TenantRequiredGuard,
+  RolesGuard,
+  GranularPermissionGuard,
+  TenantStatusGuard,
 )
 export class GymMembersController {
   constructor(private readonly membersService: MembersService) {}
@@ -39,27 +45,47 @@ export class GymMembersController {
   // CREATE / ADMISSION
   // OWNER + STAFF
   // ======================
-  @Permissions(Permission.MEMBER_CREATE)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.CREATE)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Post()
   create(@Req() req: any, @Body() dto: CreateMemberDto) {
-    return this.membersService.createMember(req.user.tenantId, dto);
+    return this.membersService.createMember(
+      req.user.tenantId,
+      dto,
+      req.user.sub,
+    );
   }
   // ======================
   // RENEWAL / EXPIRY LISTS
   // ======================
-  @Permissions(Permission.MEMBER_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('renewal-due')
-  listRenewalDue(@Req() req: any) {
-    return this.membersService.listMembershipsDue(req.user.tenantId);
+  listRenewalDue(
+    @Req() req: any,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
+    return this.membersService.listMembershipsDue(req.user.tenantId, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
   }
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('payment-due')
-  getPaymentDue(@Req() req) {
-    return this.membersService.getPaymentDueMembers(req.user.tenantId);
+  getPaymentDue(
+    @Req() req: any,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
+    return this.membersService.getPaymentDueMembers(req.user.tenantId, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
   }
 
-  @Permissions(Permission.MEMBER_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('expiring-soon')
   listExpiringSoon(@Req() req: any, @Query('days') days = '7') {
@@ -72,7 +98,7 @@ export class GymMembersController {
   // DELETE MEMBER
   // OWNER ONLY
   // ======================
-  @Permissions(Permission.MEMBER_EDIT)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.EDIT)
   @Roles(UserRole.OWNER)
   @Delete(':id')
   async delete(@Req() req: any, @Param('id') memberId: string) {
@@ -83,13 +109,24 @@ export class GymMembersController {
   // LIST ALL MEMBERS
   // OWNER + STAFF
   // ======================
-  @Permissions(Permission.MEMBER_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get()
-  list(@Req() req: any) {
-    return this.membersService.listMembers(req.user.tenantId);
+  list(
+    @Req() req: any,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.membersService.listMembers(req.user.tenantId, {
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+      search,
+    });
   }
 
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.EDIT)
+  @Roles(UserRole.OWNER)
   @Patch(':id/owner-edit')
   async updateMemberByOwner(
     @Req() req,
@@ -109,7 +146,7 @@ export class GymMembersController {
   // UPDATE MEMBER
   // OWNER + STAFF (admission fixes)
   // ======================
-  @Permissions(Permission.MEMBER_EDIT)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.EDIT)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Patch(':id')
   update(
@@ -117,13 +154,18 @@ export class GymMembersController {
     @Param('id') id: string,
     @Body() dto: UpdateMemberDto,
   ) {
-    return this.membersService.updateMember(req.user.tenantId, id, dto);
+    return this.membersService.updateMember(
+      req.user.tenantId,
+      id,
+      dto,
+      req.user.sub,
+    );
   }
 
   // ======================
   // RENEW MEMBERSHIP (🔥 FIXED)
   // ======================
-  @Permissions(Permission.MEMBER_EDIT)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.EDIT)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Post(':id/renew')
   renewMember(
@@ -141,6 +183,8 @@ export class GymMembersController {
     );
   }
   //Summary for Web View
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('summary')
   async listMembersSummary(@Req() req: any) {
     const tenantId = req.user.tenantId;
@@ -150,24 +194,24 @@ export class GymMembersController {
   // ======================
   // PAYMENT HISTORY
   // ======================
-  @Permissions(Permission.MEMBER_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get(':id/payments')
   getPayments(@Req() req: any, @Param('id') id: string) {
     return this.membersService.getMemberPayments(req.user.tenantId, id);
   }
 
-  // @Permissions(Permission.MEMBER_VIEW)
-  //@Roles(UserRole.OWNER, UserRole.STAFF)
-  //@Get('expired-today')
-  //expiredToday(@Req() req: any) {
-  //return this.membersService.findExpiredToday(req.user.tenantId);
-  //}
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Get('expired-today')
+  expiredToday(@Req() req: any) {
+    return this.membersService.countExpiredToday(req.user.tenantId);
+  }
 
   // ======================
   // PAYMENT PENDING
   // ======================
-  @Permissions(Permission.MEMBER_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('payment-pending')
   paymentPending(@Req() req: any) {
@@ -177,7 +221,7 @@ export class GymMembersController {
   // ======================
   // SEARCH BY PHONE
   // ======================
-  @Permissions(Permission.MEMBER_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('search')
   async searchByPhone(@Req() req: any, @Query('phone') phone: string) {
@@ -196,6 +240,8 @@ export class GymMembersController {
 
     return member;
   }
+  @RequirePermission(PERMISSIONS.GYM.PAYMENT.COLLECT)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Post('collect-payment')
   async collectPayment(
     @Req() req,
@@ -211,7 +257,7 @@ export class GymMembersController {
   // ======================
   // GET MEMBER BY ID
   // ======================
-  @Permissions(Permission.MEMBER_VIEW)
+  @RequirePermission(PERMISSIONS.GYM.MEMBER.VIEW)
   @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get(':id')
   getById(@Req() req: any, @Param('id') id: string) {

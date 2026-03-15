@@ -1,10 +1,17 @@
 import Razorpay from 'REMOVED_PAYMENT_INFRA';
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common';
 
 @Injectable()
 export class PaymentsService {
   private REMOVED_PAYMENT_INFRA: Razorpay | null = null;
   private logger = new Logger(PaymentsService.name);
+
+  // Payment expiry duration in minutes
+  private readonly PAYMENT_EXPIRY_MINUTES = 15;
 
   constructor() {
     const keyId = process.env.RAZORPAY_KEY_ID;
@@ -31,24 +38,45 @@ export class PaymentsService {
     amount: number;
     tenantId: string;
     planId: string;
-  }) {
+    module?: string;
+    billingCycle?: string;
+  }): Promise<{ order: any; expiresAt: Date }> {
     if (!this.REMOVED_PAYMENT_INFRA) {
-      throw new Error(
+      throw new InternalServerErrorException(
         'Razorpay is not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.',
       );
     }
 
+    // Calculate expiry time (15 minutes from now)
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + this.PAYMENT_EXPIRY_MINUTES);
+
     const order = await this.REMOVED_PAYMENT_INFRA.orders.create({
-      amount: params.amount * 100, // paise
+      amount: params.amount, // already in paise from DB
       currency: 'INR',
       receipt: `rcpt_${Date.now()}`,
       payment_capture: true, // ✅ BOOLEAN
       notes: {
         tenantId: params.tenantId,
         planId: params.planId,
+        module: params.module || '',
+        billingCycle: params.billingCycle || 'MONTHLY',
+        expiresAt: expiresAt.toISOString(),
       },
     });
 
-    return order; // ✅ must return
+    this.logger.log(
+      `Created Razorpay order ${order.id} expiring at ${expiresAt.toISOString()}`,
+    );
+
+    return { order, expiresAt };
+  }
+
+  /**
+   * Check if a payment order has expired
+   */
+  isOrderExpired(expiresAt: Date | null): boolean {
+    if (!expiresAt) return false;
+    return new Date() > expiresAt;
   }
 }

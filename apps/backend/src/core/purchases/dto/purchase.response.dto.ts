@@ -4,6 +4,7 @@ export class PurchaseResponseDto {
   shopId: string;
   invoiceNumber: string;
   globalSupplierId?: string;
+  supplierGstin?: string;
   supplierName: string;
   invoiceDate: Date;
   dueDate?: Date;
@@ -24,6 +25,11 @@ export class PurchaseResponseDto {
   payments?: SupplierPaymentResponseDto[];
   createdAt: Date;
   updatedAt: Date;
+
+  // Multi-currency
+  currency: string;
+  exchangeRate: number;
+  poId?: string;
 }
 
 export class PurchaseItemResponseDto {

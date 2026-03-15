@@ -1,0 +1,396 @@
+
+import { ModuleType } from '@prisma/client';
+
+export interface BasePermission {
+  module: ModuleType;
+  resource: string;
+  action: string;
+}
+
+// Base permissions are the simplified set that users manage in the UI
+export const BASE_PERMISSIONS: Record<string, string[]> = {
+  'mobile_shop.sale.manage': ['MOBILE_SHOP'],
+  'mobile_shop.sale.view': ['MOBILE_SHOP', 'CORE'],
+  'mobile_shop.inventory.manage': ['MOBILE_SHOP'],
+  'mobile_shop.inventory.view': ['MOBILE_SHOP'],
+  'mobile_shop.jobcard.manage': ['MOBILE_SHOP'],
+  'mobile_shop.jobcard.view': ['MOBILE_SHOP'],
+  'mobile_shop.purchase.manage': ['MOBILE_SHOP'],
+  'mobile_shop.purchase.view': ['MOBILE_SHOP'],
+  'mobile_shop.supplier.manage': ['MOBILE_SHOP'],
+  'mobile_shop.supplier.view': ['MOBILE_SHOP'],
+  'mobile_shop.customer.manage': ['MOBILE_SHOP', 'CORE'],
+  'mobile_shop.customer.view': ['MOBILE_SHOP', 'CORE'],
+  'core.report.view': ['MOBILE_SHOP', 'CORE', 'GYM'],
+  'core.staff.manage': ['MOBILE_SHOP', 'CORE', 'GYM'],
+  'core.staff.view': ['MOBILE_SHOP', 'CORE', 'GYM'],
+  'core.settings.manage': ['MOBILE_SHOP', 'CORE', 'GYM'],
+  'gym.membership_base.manage': ['GYM'],
+  'gym.membership_base.view': ['GYM'],
+  'gym.membership.manage': ['GYM'],
+  'gym.membership.view': ['GYM'],
+  'gym.member.manage': ['GYM'],
+  'gym.member.view': ['GYM'],
+  'gym.attendance.manage': ['GYM'],
+  'gym.attendance.view': ['GYM'],
+  'gym.payment.manage': ['GYM'],
+  'gym.payment.view': ['GYM'],
+  'mobile_shop.crm.manage': ['MOBILE_SHOP'],
+  'mobile_shop.crm.view': ['MOBILE_SHOP'],
+  'mobile_shop.whatsapp.manage': ['MOBILE_SHOP'],
+  'mobile_shop.whatsapp.view': ['MOBILE_SHOP'],
+  'core.ai.use': ['CORE'],
+  'core.audit.view': ['CORE'],
+  'core.system.manage': ['CORE'],
+  'core.system.view': ['CORE'],
+  'core.admin.manage': ['CORE'],
+  'core.dashboard.view': ['CORE', 'MOBILE_SHOP', 'GYM'],
+  'core.profile.view': ['CORE', 'MOBILE_SHOP', 'GYM'],
+  'core.notification.view': ['CORE', 'MOBILE_SHOP', 'GYM'],
+  'core.billing.manage': ['CORE'],
+  'core.billing.view': ['CORE'],
+  'mobile_shop.shop.manage': ['MOBILE_SHOP'],
+  'mobile_shop.shop.view': ['MOBILE_SHOP'],
+  'mobile_shop.ledger.manage': ['MOBILE_SHOP'],
+  'mobile_shop.receipt.manage': ['MOBILE_SHOP'],
+  'mobile_shop.receipt.view': ['MOBILE_SHOP'],
+  'mobile_shop.voucher.manage': ['MOBILE_SHOP', 'CORE'],
+  'mobile_shop.voucher.view': ['MOBILE_SHOP', 'CORE'],
+  'mobile_shop.compatibility.manage': ['MOBILE_SHOP'],
+  'mobile_shop.compatibility.view': ['MOBILE_SHOP'],
+  'mobile_shop.loyalty.manage': ['MOBILE_SHOP'],
+  'mobile_shop.loyalty.view': ['MOBILE_SHOP'],
+  'mobile_shop.repair_knowledge.manage': ['MOBILE_SHOP'],
+  'mobile_shop.repair_knowledge.contribute': ['MOBILE_SHOP'],
+  'mobile_shop.repair_knowledge.view': ['MOBILE_SHOP'],
+  'core.daily_closing.manage': ['MOBILE_SHOP', 'CORE'],
+  'core.daily_closing.view': ['MOBILE_SHOP', 'CORE'],
+  'core.stock_verification.manage': ['MOBILE_SHOP', 'CORE'],
+  'core.stock_verification.view': ['MOBILE_SHOP', 'CORE'],
+  'core.expense.manage': ['MOBILE_SHOP', 'CORE'],
+  'core.expense.view': ['MOBILE_SHOP', 'CORE'],
+  'core.monthly_report.view': ['MOBILE_SHOP', 'CORE'],
+  'core.shrinkage.view': ['MOBILE_SHOP', 'CORE'],
+  'mobile_shop.pipeline.manage': ['MOBILE_SHOP'],
+  'mobile_shop.pipeline.view': ['MOBILE_SHOP'],
+};
+
+// Permission expansion rules
+// Map a "base.action" to multiple "resource.action" pairs
+export const PERMISSION_INHERITANCE: Record<string, string[]> = {
+  'mobile_shop.sale.manage': [
+    'sale.create',
+    'sale.update',
+    'sale.delete',
+    'sale.edit',
+    'sale.refund',
+    'sale.view',
+    'sale.view_all',
+    'sale.view_financial',
+    'quotation.create',
+    'quotation.update',
+    'quotation.delete',
+    'quotation.convert',
+    'receipt.create',
+    'receipt.view',
+    'receipt.cancel',
+    'credit_note.view',
+    'credit_note.create',
+    'credit_note.issue',
+    'credit_note.apply',
+    'credit_note.refund',
+    'credit_note.void',
+  ],
+  'mobile_shop.sale.view': [
+    'sale.view',
+    'quotation.view',
+    'receipt.view',
+    'credit_note.view',
+  ],
+  'mobile_shop.inventory.manage': [
+    'inventory.create',
+    'inventory.update',
+    'inventory.edit',
+    'inventory.delete',
+    'inventory.adjust',
+    'inventory.view',
+    'stock.view',
+    'stock.adjust',
+  ],
+  'mobile_shop.inventory.view': [
+    'inventory.view',
+    'stock.view',
+  ],
+  'mobile_shop.jobcard.manage': [
+    'jobcard.create',
+    'jobcard.update',
+    'jobcard.delete',
+    'jobcard.update_status',
+    'jobcard.assign',
+    'jobcard.view',
+    'jobcard.view_all',
+    'jobcard.add_part',
+    'jobcard.remove_part',
+    'repair.bill',
+    'repair.stock_out',
+  ],
+  'mobile_shop.jobcard.view': [
+    'jobcard.view',
+    'jobcard.view_assigned',
+  ],
+  'mobile_shop.purchase.manage': [
+    'purchase.create',
+    'purchase.update',
+    'purchase.delete',
+    'purchase.view',
+  ],
+  'mobile_shop.purchase.view': [
+    'purchase.view',
+  ],
+  'mobile_shop.supplier.manage': [
+    'supplier.create',
+    'supplier.update',
+    'supplier.delete',
+    'supplier.view',
+  ],
+  'mobile_shop.supplier.view': [
+    'supplier.view',
+  ],
+  'mobile_shop.customer.manage': [
+    'customer.create',
+    'customer.update',
+    'customer.delete',
+    'customer.view',
+  ],
+  'mobile_shop.customer.view': [
+    'customer.view',
+  ],
+  'core.report.view': [
+    'core.report.view',
+    'core.report.sale.view',
+    'core.report.inventory.view',
+    'core.report.profit.view',
+  ],
+  'core.staff.manage': [
+    'staff.manage',
+    'staff.invite',
+    'staff.view',
+    'system.view',
+  ],
+  'core.staff.view': [
+    'staff.view',
+    'system.view',
+    'dashboard.view',
+    'notification.view',
+    'profile.view',
+  ],
+  'core.dashboard.view': [
+    'dashboard.view',
+  ],
+  'core.profile.view': [
+    'profile.view',
+  ],
+  'core.notification.view': [
+    'notification.view',
+  ],
+  'core.settings.manage': [
+    'settings.manage',
+    'settings.view',
+    'tenant.view',
+    'tenant.manage',
+    'billing.view',
+  ],
+  'core.settings.view': [
+    'settings.view',
+    'tenant.view',
+    'billing.view',
+  ],
+  'gym.membership_base.manage': [
+    'membership.create',
+    'membership.renew',
+    'membership.view',
+    'member.create',
+    'member.edit',
+    'member.delete',
+  ],
+  'gym.membership_base.view': [
+    'membership.view',
+    'member.view',
+    'member.view_assigned',
+  ],
+  'gym.membership.manage': [
+    'membership.create',
+    'membership.renew',
+    'membership.view',
+  ],
+  'gym.member.manage': [
+    'member.create',
+    'member.edit',
+    'member.delete',
+    'member.view',
+  ],
+  'gym.attendance.manage': [
+    'attendance.mark',
+    'attendance.view',
+  ],
+  'gym.attendance.view': [
+    'attendance.view',
+  ],
+  'gym.payment.manage': [
+    'payment.collect',
+    'payment.view',
+  ],
+  'gym.payment.view': [
+    'payment.view',
+  ],
+  'mobile_shop.crm.manage': [
+    'crm.manage',
+    'crm.view',
+    'crm.manage_followup',
+    'crm.view_timeline',
+    'crm.send_whatsapp',
+  ],
+  'mobile_shop.crm.view': [
+    'crm.view',
+    'crm.view_timeline',
+  ],
+  'mobile_shop.receipt.manage': [
+    'receipt.create',
+    'receipt.view',
+    'receipt.cancel',
+  ],
+  'mobile_shop.receipt.view': [
+    'receipt.view',
+  ],
+  'mobile_shop.voucher.manage': [
+    'voucher.create',
+    'voucher.view',
+    'voucher.cancel',
+  ],
+  'mobile_shop.voucher.view': [
+    'voucher.view',
+  ],
+  'mobile_shop.whatsapp.manage': [
+    'whatsapp.template_manage',
+    'whatsapp.automation_manage',
+    'whatsapp.settings_manage',
+    'whatsapp.settings_view',
+    'whatsapp.view_dashboard',
+    'whatsapp.view_numbers',
+    'whatsapp.view_logs',
+    'whatsapp.send',
+    'whatsapp.view',
+  ],
+  'mobile_shop.whatsapp.view': [
+    'whatsapp.view_dashboard',
+    'whatsapp.view_logs',
+    'whatsapp.settings_view',
+  ],
+  'core.system.manage': [
+    'system.manage',
+    'system.view',
+    'tenant.manage',
+    'tenant.view',
+  ],
+  'core.system.view': [
+    'system.view',
+    'tenant.view',
+  ],
+  'core.admin.manage': [
+     'system.view',
+     'system.manage',
+     'settings.manage',
+     'staff.manage',
+     'report.view'
+  ],
+  'core.billing.manage': [
+    'billing.manage',
+    'billing.view',
+  ],
+  'core.billing.view': [
+    'billing.view',
+  ],
+  'mobile_shop.shop.manage': [
+    'shop.manage',
+    'shop.view',
+  ],
+  'mobile_shop.shop.view': [
+    'shop.view',
+  ],
+  'mobile_shop.ledger.manage': [
+    'ledger.view',
+    'ledger.collect',
+    'ledger.manage',
+    'voucher.create',
+    'voucher.view',
+    'voucher.cancel',
+  ],
+  'mobile_shop.compatibility.manage': [
+    'compatibility.view',
+    'compatibility.manage',
+    'compatibility.autocomplete',
+  ],
+  'mobile_shop.compatibility.view': [
+    'compatibility.view',
+    'compatibility.autocomplete',
+  ],
+  'mobile_shop.loyalty.manage': [
+    'loyalty.view',
+    'loyalty.manage',
+  ],
+  'mobile_shop.loyalty.view': [
+    'loyalty.view',
+  ],
+  'core.daily_closing.manage': [
+    'daily_closing.view',
+    'daily_closing.manage',
+  ],
+  'core.daily_closing.view': [
+    'daily_closing.view',
+  ],
+  'core.stock_verification.manage': [
+    'stock_verification.view',
+    'stock_verification.manage',
+  ],
+  'core.stock_verification.view': [
+    'stock_verification.view',
+  ],
+  'core.expense.manage': [
+    'expense.view',
+    'expense.create',
+    'expense.manage',
+  ],
+  'core.expense.view': [
+    'expense.view',
+  ],
+  'core.monthly_report.view': [
+    'monthly_report.view',
+  ],
+  'core.shrinkage.view': [
+    'shrinkage.view',
+  ],
+  'mobile_shop.repair_knowledge.manage': [
+    'repair_knowledge.view',
+    'repair_knowledge.contribute',
+    'repair_knowledge.manage',
+  ],
+  'mobile_shop.repair_knowledge.contribute': [
+    'repair_knowledge.view',
+    'repair_knowledge.contribute',
+  ],
+  'mobile_shop.repair_knowledge.view': [
+    'repair_knowledge.view',
+  ],
+  'mobile_shop.pipeline.manage': [
+    'pipeline.view_monitor',
+    'pipeline.manage_qc',
+    'pipeline.view_qc',
+    'pipeline.suggest',
+    'pipeline.view_queue',
+  ],
+  'mobile_shop.pipeline.view': [
+    'pipeline.view_qc',
+    'pipeline.suggest',
+    'pipeline.view_queue',
+  ],
+};

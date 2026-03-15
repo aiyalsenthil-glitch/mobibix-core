@@ -3,6 +3,10 @@ import { HttpModule } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { CrmIntegrationService } from './services/crm-integration.service';
 import { MobileShopCrmController } from './crm-integration.controller';
+import { CrmEventListener } from './services/crm-event.listener';
+import { WhatsAppModule } from '../whatsapp/whatsapp.module';
+import { PrismaModule } from '../../core/prisma/prisma.module';
+import { FollowUpsModule } from '../../core/follow-ups/follow-ups.module';
 
 /**
  * MobileShop Integration Module
@@ -29,17 +33,24 @@ import { MobileShopCrmController } from './crm-integration.controller';
 @Module({
   imports: [
     HttpModule.registerAsync({
-      useFactory: (configService: ConfigService) => ({
-        baseURL:
+      useFactory: (configService: ConfigService) => {
+        const port = configService.get('PORT') || 3000;
+        const baseUrl =
           configService.get<string>('CORE_API_BASE_URL') ||
-          'http://localhost_REPLACED:3000',
-        timeout: 10000,
-      }),
+          `http://localhost_REPLACED:${port}`;
+        return {
+          baseURL: baseUrl,
+          timeout: 10000,
+        };
+      },
       inject: [ConfigService],
     }),
+    WhatsAppModule,
+    FollowUpsModule,
+    PrismaModule,
   ],
   controllers: [MobileShopCrmController],
-  providers: [CrmIntegrationService],
+  providers: [CrmIntegrationService, CrmEventListener],
   exports: [CrmIntegrationService],
 })
 export class CrmIntegrationModule {}

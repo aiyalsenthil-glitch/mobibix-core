@@ -15,8 +15,9 @@ export class StockInDto {
   @IsNotEmpty()
   productId: string;
 
+  @IsOptional()
   @IsEnum(ProductType)
-  type: ProductType;
+  type?: ProductType;
 
   @IsOptional()
   @IsArray()

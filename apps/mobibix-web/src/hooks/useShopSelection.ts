@@ -33,8 +33,8 @@ export function useShopSelection(initialShopId?: string) {
           localStorage.setItem(SELECTED_SHOP_KEY, data[0].id);
         }
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load shops");
+    } catch (err: unknown) {
+      setError((err as any)?.message || "Failed to load shops");
     } finally {
       setIsLoadingShops(false);
     }
@@ -75,8 +75,10 @@ export function useShopSelection(initialShopId?: string) {
     }
   };
 
-  const selectedShop = shops.find((s) => s.id === selectedShopId) || null;
-  const hasMultipleShops = shops.length > 1;
+  const selectedShop = Array.isArray(shops) 
+    ? shops.find((s) => s.id === selectedShopId) || null 
+    : null;
+  const hasMultipleShops = Array.isArray(shops) && shops.length > 1;
 
   const refreshShops = () => {
     setRefreshTrigger((prev) => prev + 1);

@@ -74,8 +74,12 @@ export class AutomationSafetyService {
   async validateFeatureSafety(
     tenantId: string,
     feature: WhatsAppFeature,
+    module: ModuleType, // 🔥 NOW REQUIRED
   ): Promise<{ allowed: boolean; reason?: string }> {
-    const rules = await this.planRulesService.getPlanRulesForTenant(tenantId);
+    const rules = await this.planRulesService.getPlanRulesForTenant(
+      tenantId,
+      module,
+    );
 
     if (!rules?.enabled) {
       return {
@@ -191,7 +195,11 @@ export class AutomationSafetyService {
     }
 
     // Check 2: Feature Safety
-    const featureCheck = await this.validateFeatureSafety(tenantId, feature);
+    const featureCheck = await this.validateFeatureSafety(
+      tenantId,
+      feature,
+      moduleType, // 🔥 Pass moduleType
+    );
     if (!featureCheck.allowed) {
       reasons.push(featureCheck.reason!);
     }
@@ -215,22 +223,35 @@ export class AutomationSafetyService {
   }
 
   /**
-   * Map template key to WhatsApp feature for enforcement
+   * Map template key to WhatsApp feature for enforcement.
+   *
+   * NOTE: Core notifications (welcome, payment due, reminders) are always-on.
+   * Only premium automation (scheduling, batching) requires WHATSAPP_ALERTS_AUTOMATION.
+   *
+   * This method now returns null for core events (not gated).
    */
   mapTemplateKeyToFeature(templateKey: string): WhatsAppFeature | null {
-    const mapping: Record<string, WhatsAppFeature> = {
-      WELCOME: WhatsAppFeature.WELCOME,
-      MEMBER_WELCOME: WhatsAppFeature.WELCOME,
-      PAYMENT_DUE: WhatsAppFeature.PAYMENT_DUE,
-      PAYMENT_REMINDER: WhatsAppFeature.PAYMENT_DUE,
-      EXPIRY: WhatsAppFeature.EXPIRY,
-      EXPIRY_REMINDER: WhatsAppFeature.EXPIRY,
-      MEMBERSHIP_EXPIRY: WhatsAppFeature.EXPIRY,
-      REMINDER: WhatsAppFeature.REMINDER,
-      FOLLOWUP: WhatsAppFeature.REMINDER,
-      JOB_COMPLETED: WhatsAppFeature.REMINDER,
-      INVOICE_CREATED: WhatsAppFeature.REMINDER,
-    };
-    return mapping[templateKey] || WhatsAppFeature.REMINDER;
+    // Core notifications: Always-on, never gated
+    const coreNotifications = [
+      'WELCOME',
+      'MEMBER_WELCOME',
+      'PAYMENT_DUE',
+      'PAYMENT_REMINDER',
+      'EXPIRY',
+      'EXPIRY_REMINDER',
+      'MEMBERSHIP_EXPIRY',
+      'REMINDER',
+      'FOLLOWUP',
+      'JOB_COMPLETED',
+      'INVOICE_CREATED',
+    ];
+
+    if (coreNotifications.includes(templateKey)) {
+      return null; // No feature gate required
+    }
+
+    // Advanced automation requires WHATSAPP_ALERTS_AUTOMATION
+    // (e.g., scheduled campaigns, batch sends)
+    return WhatsAppFeature.WHATSAPP_ALERTS_AUTOMATION;
   }
 }

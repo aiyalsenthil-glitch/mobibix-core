@@ -13,6 +13,7 @@
 
 export enum WhatsAppModule {
   GYM = 'GYM',
+  MOBILE_SHOP = 'MOBILE_SHOP',
   MOBILE_SALES = 'MOBILE_SALES',
   MOBILE_REPAIR = 'MOBILE_REPAIR',
   SUPPLIER = 'SUPPLIER',
@@ -54,442 +55,661 @@ export interface VariableDefinition {
  * VARIABLE REGISTRY
  * Add new variables here to extend system
  */
-export const VARIABLE_REGISTRY: Record<string, VariableDefinition> = {
-  // ═══════════════════════════════════════════════════════════
-  // GYM MODULE VARIABLES
-  // ═══════════════════════════════════════════════════════════
-  memberName: {
-    key: 'memberName',
-    label: 'Member Name',
-    module: WhatsAppModule.GYM,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Member.fullName',
-    dataType: VariableDataType.STRING,
-    required: true,
-    description: 'Full name of the gym member',
-  },
-  memberPhone: {
-    key: 'memberPhone',
-    label: 'Member Phone',
-    module: WhatsAppModule.GYM,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Member.phone',
-    dataType: VariableDataType.PHONE,
-    required: true,
-  },
-  membershipStartDate: {
-    key: 'membershipStartDate',
-    label: 'Membership Start Date',
-    module: WhatsAppModule.GYM,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Member.membershipStartAt',
-    dataType: VariableDataType.DATE,
-    required: true,
-  },
-  membershipEndDate: {
-    key: 'membershipEndDate',
-    label: 'Membership End Date',
-    module: WhatsAppModule.GYM,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Member.membershipEndAt',
-    dataType: VariableDataType.DATE,
-    required: true,
-  },
-  feeAmount: {
-    key: 'feeAmount',
-    label: 'Total Fee Amount',
-    module: WhatsAppModule.GYM,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Member.feeAmount',
-    dataType: VariableDataType.CURRENCY,
-    required: true,
-  },
-  paidAmount: {
-    key: 'paidAmount',
-    label: 'Amount Paid',
-    module: WhatsAppModule.GYM,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Member.paidAmount',
-    dataType: VariableDataType.CURRENCY,
-    required: true,
-  },
-  dueAmount: {
-    key: 'dueAmount',
-    label: 'Amount Due',
-    module: WhatsAppModule.GYM,
-    sourceType: VariableSourceType.COMPUTED,
-    sourcePath: 'Member.feeAmount - Member.paidAmount',
-    dataType: VariableDataType.CURRENCY,
-    required: true,
-    description: 'Calculated as Total Fee - Paid Amount',
-  },
-  monthlyFee: {
-    key: 'monthlyFee',
-    label: 'Monthly Fee',
-    module: WhatsAppModule.GYM,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Member.monthlyFee',
-    dataType: VariableDataType.CURRENCY,
-    required: false,
-  },
-  paymentDueDate: {
-    key: 'paymentDueDate',
-    label: 'Payment Due Date',
-    module: WhatsAppModule.GYM,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Member.paymentDueDate',
-    dataType: VariableDataType.DATE,
-    required: false,
-  },
-  gymName: {
-    key: 'gymName',
-    label: 'Gym Name',
-    module: WhatsAppModule.GYM,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Tenant.name',
-    dataType: VariableDataType.STRING,
-    required: true,
-  },
-  gymPhone: {
-    key: 'gymPhone',
-    label: 'Gym Phone',
-    module: WhatsAppModule.GYM,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Tenant.contactPhone',
-    dataType: VariableDataType.PHONE,
-    required: false,
-  },
-
-  // ═══════════════════════════════════════════════════════════
-  // MOBILE SALES MODULE VARIABLES
-  // ═══════════════════════════════════════════════════════════
-  customerName: {
-    key: 'customerName',
-    label: 'Customer Name',
-    module: WhatsAppModule.MOBILE_SALES,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Invoice.customerName',
-    dataType: VariableDataType.STRING,
-    required: true,
-  },
-  customerPhone: {
-    key: 'customerPhone',
-    label: 'Customer Phone',
-    module: WhatsAppModule.MOBILE_SALES,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Invoice.customerPhone',
-    dataType: VariableDataType.PHONE,
-    required: true,
-  },
-  invoiceNumber: {
-    key: 'invoiceNumber',
-    label: 'Invoice Number',
-    module: WhatsAppModule.MOBILE_SALES,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Invoice.invoiceNumber',
-    dataType: VariableDataType.STRING,
-    required: true,
-  },
-  invoiceDate: {
-    key: 'invoiceDate',
-    label: 'Invoice Date',
-    module: WhatsAppModule.MOBILE_SALES,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Invoice.invoiceDate',
-    dataType: VariableDataType.DATE,
-    required: true,
-  },
-  invoiceSubTotal: {
-    key: 'invoiceSubTotal',
-    label: 'Sub Total',
-    module: WhatsAppModule.MOBILE_SALES,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Invoice.subTotal',
-    dataType: VariableDataType.CURRENCY,
-    required: true,
-  },
-  invoiceGstAmount: {
-    key: 'invoiceGstAmount',
-    label: 'GST Amount',
-    module: WhatsAppModule.MOBILE_SALES,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Invoice.gstAmount',
-    dataType: VariableDataType.CURRENCY,
-    required: false,
-  },
-  invoiceTotalAmount: {
-    key: 'invoiceTotalAmount',
-    label: 'Total Amount',
-    module: WhatsAppModule.MOBILE_SALES,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Invoice.totalAmount',
-    dataType: VariableDataType.CURRENCY,
-    required: true,
-  },
-  invoicePaidAmount: {
-    key: 'invoicePaidAmount',
-    label: 'Amount Paid',
-    module: WhatsAppModule.MOBILE_SALES,
-    sourceType: VariableSourceType.COMPUTED,
-    sourcePath: 'sum(Receipt.amount) where linkedInvoiceId = Invoice.id',
-    dataType: VariableDataType.CURRENCY,
-    required: false,
-    description: 'Total of all linked receipt amounts',
-  },
-  invoicePendingAmount: {
-    key: 'invoicePendingAmount',
-    label: 'Pending Amount',
-    module: WhatsAppModule.MOBILE_SALES,
-    sourceType: VariableSourceType.COMPUTED,
-    sourcePath: 'Invoice.totalAmount - sum(Receipt.amount)',
-    dataType: VariableDataType.CURRENCY,
-    required: false,
-    description: 'Total - Paid (for credit invoices)',
-  },
-  paymentMode: {
-    key: 'paymentMode',
-    label: 'Payment Mode',
-    module: WhatsAppModule.MOBILE_SALES,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Invoice.paymentMode',
-    dataType: VariableDataType.STRING,
-    required: false,
-  },
-  shopName: {
-    key: 'shopName',
-    label: 'Shop Name',
-    module: WhatsAppModule.MOBILE_SALES,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Shop.name',
-    dataType: VariableDataType.STRING,
-    required: true,
-  },
-  shopPhone: {
-    key: 'shopPhone',
-    label: 'Shop Phone',
-    module: WhatsAppModule.MOBILE_SALES,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Shop.phone',
-    dataType: VariableDataType.PHONE,
-    required: false,
-  },
-  shopAddress: {
-    key: 'shopAddress',
-    label: 'Shop Address',
-    module: WhatsAppModule.MOBILE_SALES,
-    sourceType: VariableSourceType.COMPUTED,
-    sourcePath: 'Shop.addressLine1 + Shop.city',
-    dataType: VariableDataType.STRING,
-    required: false,
-  },
-
-  // ═══════════════════════════════════════════════════════════
-  // MOBILE REPAIR MODULE VARIABLES
-  // ═══════════════════════════════════════════════════════════
-  jobNumber: {
-    key: 'jobNumber',
-    label: 'Job Card Number',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.jobNumber',
-    dataType: VariableDataType.STRING,
-    required: true,
-  },
-  jobCustomerName: {
-    key: 'jobCustomerName',
-    label: 'Customer Name',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.customerName',
-    dataType: VariableDataType.STRING,
-    required: true,
-  },
-  jobCustomerPhone: {
-    key: 'jobCustomerPhone',
-    label: 'Customer Phone',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.customerPhone',
-    dataType: VariableDataType.PHONE,
-    required: true,
-  },
-  deviceType: {
-    key: 'deviceType',
-    label: 'Device Type',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.deviceType',
-    dataType: VariableDataType.STRING,
-    required: true,
-  },
-  deviceBrand: {
-    key: 'deviceBrand',
-    label: 'Device Brand',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.deviceBrand',
-    dataType: VariableDataType.STRING,
-    required: true,
-  },
-  deviceModel: {
-    key: 'deviceModel',
-    label: 'Device Model',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.deviceModel',
-    dataType: VariableDataType.STRING,
-    required: true,
-  },
-  deviceFullName: {
-    key: 'deviceFullName',
-    label: 'Full Device Name',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.COMPUTED,
-    sourcePath: 'JobCard.deviceBrand + " " + JobCard.deviceModel',
-    dataType: VariableDataType.STRING,
-    required: true,
-    description: 'Brand and Model combined (e.g., Samsung Galaxy S21)',
-  },
-  deviceSerial: {
-    key: 'deviceSerial',
-    label: 'Device Serial/IMEI',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.deviceSerial',
-    dataType: VariableDataType.STRING,
-    required: false,
-  },
-  customerComplaint: {
-    key: 'customerComplaint',
-    label: 'Customer Complaint',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.customerComplaint',
-    dataType: VariableDataType.STRING,
-    required: false,
-  },
-  jobStatus: {
-    key: 'jobStatus',
-    label: 'Job Status',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.status',
-    dataType: VariableDataType.STRING,
-    required: true,
-  },
-  estimatedCost: {
-    key: 'estimatedCost',
-    label: 'Estimated Cost',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.estimatedCost',
-    dataType: VariableDataType.CURRENCY,
-    required: false,
-  },
-  finalCost: {
-    key: 'finalCost',
-    label: 'Final Cost',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.finalCost',
-    dataType: VariableDataType.CURRENCY,
-    required: false,
-  },
-  advancePaid: {
-    key: 'advancePaid',
-    label: 'Advance Paid',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.advancePaid',
-    dataType: VariableDataType.CURRENCY,
-    required: false,
-  },
-  balanceAmount: {
-    key: 'balanceAmount',
-    label: 'Balance Amount',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.COMPUTED,
-    sourcePath:
-      '(JobCard.finalCost || JobCard.estimatedCost) - JobCard.advancePaid',
-    dataType: VariableDataType.CURRENCY,
-    required: false,
-    description: 'Final/Estimated Cost minus Advance',
-  },
-  expectedDelivery: {
-    key: 'expectedDelivery',
-    label: 'Expected Delivery Date',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.estimatedDelivery',
-    dataType: VariableDataType.DATE,
-    required: false,
-  },
-  repairShopName: {
-    key: 'repairShopName',
-    label: 'Shop Name',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Shop.name',
-    dataType: VariableDataType.STRING,
-    required: true,
-  },
-  repairShopPhone: {
-    key: 'repairShopPhone',
-    label: 'Shop Phone',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'Shop.phone',
-    dataType: VariableDataType.PHONE,
-    required: false,
-  },
-  warrantyDuration: {
-    key: 'warrantyDuration',
-    label: 'Warranty Duration (days)',
-    module: WhatsAppModule.MOBILE_REPAIR,
-    sourceType: VariableSourceType.ENTITY,
-    sourcePath: 'JobCard.warrantyDuration',
-    dataType: VariableDataType.NUMBER,
-    required: false,
-  },
-
-  // ═══════════════════════════════════════════════════════════
-  // MANUAL VARIABLES (For custom messages)
-  // ═══════════════════════════════════════════════════════════
-  customMessage: {
-    key: 'customMessage',
-    label: 'Custom Message',
-    module: WhatsAppModule.GYM, // Can be used across modules
-    sourceType: VariableSourceType.MANUAL,
-    sourcePath: 'user_input',
-    dataType: VariableDataType.STRING,
-    required: false,
-    description: 'Free text input by admin at send time',
-    validationRules: {
-      maxLength: 500,
+/**
+ * SCOPED VARIABLE REGISTRY
+ *
+ * Variables are now grouped by Module and then by Event.
+ * 'GLOBAL' event contains variables available for all events in that module.
+ */
+export const SCOPED_VARIABLE_REGISTRY: Record<
+  string, // WhatsAppModule
+  Record<
+    string, // EventType (e.g. 'FOLLOW_UP_SCHEDULED', 'MEMBERSHIP_EXPIRY') or 'GLOBAL'
+    Record<string, VariableDefinition> // Variable key -> Definition
+  >
+> = {
+  [WhatsAppModule.GYM]: {
+    GLOBAL: {
+      gymName: {
+        key: 'gymName',
+        label: 'Gym Name',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Tenant.name',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      gym_name: {
+        // Legacy snake_case alias
+        key: 'gym_name',
+        label: 'Gym Name',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Tenant.name',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      gymPhone: {
+        key: 'gymPhone',
+        label: 'Gym Phone',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Tenant.contactPhone',
+        dataType: VariableDataType.PHONE,
+        required: false,
+      },
+    },
+    MEMBER_CREATED: {
+      memberName: {
+        key: 'memberName',
+        label: 'Member Name',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Member.fullName',
+        dataType: VariableDataType.STRING,
+        required: true,
+        description: 'Full name of the gym member',
+      },
+      member_name: {
+        // Legacy snake_case alias
+        key: 'member_name',
+        label: 'Member Name',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Member.fullName',
+        dataType: VariableDataType.STRING,
+        required: true,
+        description: 'Full name of the gym member',
+      },
+      memberPhone: {
+        key: 'memberPhone',
+        label: 'Member Phone',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Member.phone',
+        dataType: VariableDataType.PHONE,
+        required: true,
+      },
+      membershipStartDate: {
+        key: 'membershipStartDate',
+        label: 'Membership Start Date',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Member.membershipStartAt',
+        dataType: VariableDataType.DATE,
+        required: true,
+      },
+      start_date: {
+        // Legacy snake_case alias
+        key: 'start_date',
+        label: 'Membership Start Date',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Member.membershipStartAt',
+        dataType: VariableDataType.DATE,
+        required: true,
+      },
+      membershipEndDate: {
+        key: 'membershipEndDate',
+        label: 'Membership End Date',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Member.membershipEndAt',
+        dataType: VariableDataType.DATE,
+        required: true,
+      },
+      end_date: {
+        // Legacy snake_case alias
+        key: 'end_date',
+        label: 'Membership End Date',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Member.membershipEndAt',
+        dataType: VariableDataType.DATE,
+        required: true,
+      },
+    },
+    PAYMENT_DUE: {
+      feeAmount: {
+        key: 'feeAmount',
+        label: 'Total Fee Amount',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Member.feeAmount',
+        dataType: VariableDataType.CURRENCY,
+        required: true,
+      },
+      paidAmount: {
+        key: 'paidAmount',
+        label: 'Amount Paid',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Member.paidAmount',
+        dataType: VariableDataType.CURRENCY,
+        required: true,
+      },
+      dueAmount: {
+        key: 'dueAmount',
+        label: 'Amount Due',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'Member.feeAmount - Member.paidAmount',
+        dataType: VariableDataType.CURRENCY,
+        required: true,
+        description: 'Calculated as Total Fee - Paid Amount',
+      },
+      paymentDueDate: {
+        key: 'paymentDueDate',
+        label: 'Payment Due Date',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Member.paymentDueDate',
+        dataType: VariableDataType.DATE,
+        required: false,
+      },
+    },
+    MEMBERSHIP_EXPIRY: {
+      membershipEndDate: {
+        key: 'membershipEndDate',
+        label: 'Membership End Date',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Member.membershipEndAt',
+        dataType: VariableDataType.DATE,
+        required: true,
+      },
     },
   },
-  customDate: {
-    key: 'customDate',
-    label: 'Custom Date',
-    module: WhatsAppModule.GYM,
-    sourceType: VariableSourceType.MANUAL,
-    sourcePath: 'user_input',
-    dataType: VariableDataType.DATE,
-    required: false,
+  [WhatsAppModule.MOBILE_SHOP]: {
+    // 🔔 GLOBAL variables available to all MobileShop events
+    GLOBAL: {
+      shopName: {
+        key: 'shopName',
+        label: 'Shop Name',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Shop.name',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+    },
+
+    // 🗓️ CRM / FOLLOW-UP Events
+    FOLLOW_UP_SCHEDULED: {
+      customerName: {
+        key: 'customerName',
+        label: 'Customer Name',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Party.name', // Fallback to Party if no specific context, or keep as is for FollowUp if it has customer
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      followUpPurpose: {
+        key: 'followUpPurpose',
+        label: 'Follow-up Purpose',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'CustomerFollowUp.purpose', // e.g. "Warranty Expiring"
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      followUpAt: {
+        key: 'followUpAt',
+        label: 'Follow-up Time',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'CustomerFollowUp.followUpAt',
+        dataType: VariableDataType.DATE,
+        required: true,
+      },
+    },
+
+    FOLLOW_UP_OVERDUE: {
+      customerName: {
+        key: 'customerName',
+        label: 'Customer Name',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Party.name',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      daysOverdue: {
+        key: 'daysOverdue',
+        label: 'Days Overdue',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'Date.now() - CustomerFollowUp.followUpAt', // Pseudo-code
+        dataType: VariableDataType.NUMBER,
+        required: true,
+      },
+    },
+
+    // 🧾 INVOICE Events
+    INVOICE_CREATED: {
+      customerName: {
+        key: 'customerName',
+        label: 'Customer Name',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Invoice.customerName',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      customer_name: {
+        key: 'customer_name',
+        label: 'Customer Name (Legacy)',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Invoice.customerName',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      invoiceNumber: {
+        key: 'invoiceNumber',
+        label: 'Invoice Number',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Invoice.invoiceNumber',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      invoice_number: {
+        key: 'invoice_number',
+        label: 'Invoice Number (Legacy)',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Invoice.invoiceNumber',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      invoiceTotalAmount: {
+        key: 'invoiceTotalAmount',
+        label: 'Total Amount',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Invoice.totalAmount',
+        dataType: VariableDataType.CURRENCY,
+        required: true,
+      },
+      invoiceLink: {
+        key: 'invoiceLink',
+        label: 'Invoice Link',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'Invoice.publicLink',
+        dataType: VariableDataType.STRING,
+        required: false,
+      },
+      invoice_link: {
+        key: 'invoice_link',
+        label: 'Invoice Link (Legacy)',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'Invoice.publicLink',
+        dataType: VariableDataType.STRING,
+        required: false,
+      },
+    },
+
+    PAYMENT_PENDING: {
+      customerName: {
+        key: 'customerName',
+        label: 'Customer Name',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Invoice.customerName', // FIX: Use Invoice field directly
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      invoiceNumber: {
+        key: 'invoiceNumber',
+        label: 'Invoice Number',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Invoice.invoiceNumber',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      invoicePendingAmount: {
+        key: 'invoicePendingAmount',
+        label: 'Pending Amount',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'Invoice.totalAmount - Receipts.sum',
+        dataType: VariableDataType.CURRENCY,
+        required: true,
+        description: 'Calculated as Total Amount - Total Paid Receipts',
+      },
+      invoiceLink: {
+        key: 'invoiceLink',
+        label: 'Invoice Link',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'Invoice.publicLink',
+        dataType: VariableDataType.STRING,
+        required: false,
+      },
+      invoice_link: {
+        key: 'invoice_link',
+        label: 'Invoice Link (Legacy)',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'Invoice.publicLink',
+        dataType: VariableDataType.STRING,
+        required: false,
+      },
+    },
+
+    // 🔧 JOB CARD Events
+    JOB_CREATED: {
+      customerName: {
+        key: 'customerName',
+        label: 'Customer Name',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.customerName', // FIX: Use JobCard field directly
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      jobNumber: {
+        key: 'jobNumber',
+        label: 'Job Number',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.jobNumber',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      deviceModel: {
+        key: 'deviceModel',
+        label: 'Device Model',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.deviceModel',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+    },
+
+    JOB_READY: {
+      customerName: {
+        key: 'customerName',
+        label: 'Customer Name',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.customerName',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      customer_name: {
+        key: 'customer_name',
+        label: 'Customer Name (Legacy)',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.customerName',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      shopName: {
+        key: 'shopName',
+        label: 'Shop Name',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Shop.name',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      jobNumber: {
+        key: 'jobNumber',
+        label: 'Job Number',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.jobNumber',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      job_number: {
+        key: 'job_number',
+        label: 'Job Number (Legacy)',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.jobNumber',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      jobCardNumber: {
+        key: 'jobCardNumber',
+        label: 'Job Card Number',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.jobNumber', // Alias for jobNumber
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      deviceModel: {
+        key: 'deviceModel',
+        label: 'Device Model',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.deviceModel',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      device_name: {
+        key: 'device_name',
+        label: 'Device Name (Legacy)',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.deviceModel',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      jobTrackingLink: {
+        key: 'jobTrackingLink',
+        label: 'Job Tracking Link',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'JobCard.publicTrackingLink',
+        dataType: VariableDataType.STRING,
+        required: false,
+      },
+      job_tracking_link: {
+        key: 'job_tracking_link',
+        label: 'Job Tracking Link (Legacy)',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'JobCard.publicTrackingLink',
+        dataType: VariableDataType.STRING,
+        required: false,
+      },
+    },
+
+    JOB_COMPLETED: {
+      shopName: {
+        key: 'shopName',
+        label: 'Shop Name',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Tenant.shopName',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      customerName: {
+        key: 'customerName',
+        label: 'Customer Name',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.customerName',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      customer_name: {
+        key: 'customer_name',
+        label: 'Customer Name (Legacy)',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.customerName',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      jobNumber: {
+        key: 'jobNumber',
+        label: 'Job Number',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.jobNumber',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      jobCardNumber: {
+        // ALIAS: Requested by user template
+        key: 'jobCardNumber',
+        label: 'Job Card Number',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.jobNumber',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      deviceModel: {
+        key: 'deviceModel',
+        label: 'Device Model',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.deviceModel', // Assumes deviceModel exists on JobCard
+        dataType: VariableDataType.STRING,
+        required: false,
+      },
+      job_number: {
+        key: 'job_number',
+        label: 'Job Number (Legacy)',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.jobNumber',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      finalCost: {
+        key: 'finalCost',
+        label: 'Final Cost',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.finalCost',
+        dataType: VariableDataType.CURRENCY,
+        required: true,
+      },
+      jobTrackingLink: {
+        key: 'jobTrackingLink',
+        label: 'Job Tracking Link',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'JobCard.publicTrackingLink',
+        dataType: VariableDataType.STRING,
+        required: false,
+      },
+      job_tracking_link: {
+        key: 'job_tracking_link',
+        label: 'Job Tracking Link (Legacy)',
+        module: WhatsAppModule.MOBILE_SHOP,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'JobCard.publicTrackingLink',
+        dataType: VariableDataType.STRING,
+        required: false,
+      },
+    },
   },
-  customAmount: {
-    key: 'customAmount',
-    label: 'Custom Amount',
-    module: WhatsAppModule.GYM,
-    sourceType: VariableSourceType.MANUAL,
-    sourcePath: 'user_input',
-    dataType: VariableDataType.CURRENCY,
-    required: false,
-    validationRules: {
-      min: 0,
+  [WhatsAppModule.MOBILE_REPAIR]: {
+    GLOBAL: {
+      repairShopName: {
+        key: 'repairShopName',
+        label: 'Shop Name',
+        module: WhatsAppModule.MOBILE_REPAIR,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'Shop.name',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+    },
+    JOB_CREATED: {
+      jobNumber: {
+        key: 'jobNumber',
+        label: 'Job Card Number',
+        module: WhatsAppModule.MOBILE_REPAIR,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.jobNumber',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      jobCustomerName: {
+        key: 'jobCustomerName',
+        label: 'Customer Name',
+        module: WhatsAppModule.MOBILE_REPAIR,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.customerName',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      deviceFullName: {
+        key: 'deviceFullName',
+        label: 'Full Device Name',
+        module: WhatsAppModule.MOBILE_REPAIR,
+        sourceType: VariableSourceType.COMPUTED,
+        sourcePath: 'JobCard.deviceBrand + " " + JobCard.deviceModel',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+    },
+    JOB_COMPLETED: {
+      jobNumber: {
+        key: 'jobNumber',
+        label: 'Job Card Number',
+        module: WhatsAppModule.MOBILE_REPAIR,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.jobNumber',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+      jobStatus: {
+        key: 'jobStatus',
+        label: 'Job Status',
+        module: WhatsAppModule.MOBILE_REPAIR,
+        sourceType: VariableSourceType.ENTITY,
+        sourcePath: 'JobCard.status',
+        dataType: VariableDataType.STRING,
+        required: true,
+      },
+    },
+  },
+  MANUAL: {
+    GLOBAL: {
+      customMessage: {
+        key: 'customMessage',
+        label: 'Custom Message',
+        module: WhatsAppModule.GYM,
+        sourceType: VariableSourceType.MANUAL,
+        sourcePath: 'user_input',
+        dataType: VariableDataType.STRING,
+        required: false,
+        validationRules: { maxLength: 500 },
+      },
     },
   },
 };
+
+/**
+ * FLAT REGISTRY (Backward Compatibility)
+ * A flattened view of all variables for quick lookup by key.
+ */
+export const VARIABLE_REGISTRY: Record<string, VariableDefinition> = {};
+
+// Auto-populate flat registry from scoped registry
+Object.values(SCOPED_VARIABLE_REGISTRY).forEach((events) => {
+  Object.values(events).forEach((vars) => {
+    Object.assign(VARIABLE_REGISTRY, vars);
+  });
+});
 
 /**
  * Get all variables for a specific module
@@ -497,9 +717,42 @@ export const VARIABLE_REGISTRY: Record<string, VariableDefinition> = {
 export function getVariablesByModule(
   module: WhatsAppModule,
 ): VariableDefinition[] {
-  return Object.values(VARIABLE_REGISTRY).filter(
-    (v) => v.module === module || v.sourceType === VariableSourceType.MANUAL,
-  );
+  const moduleScope = SCOPED_VARIABLE_REGISTRY[module] || {};
+  const globalManual = SCOPED_VARIABLE_REGISTRY.MANUAL?.GLOBAL || {};
+
+  const allVars: VariableDefinition[] = [];
+
+  // Add all variables from all events in this module
+  Object.values(moduleScope).forEach((eventVars) => {
+    allVars.push(...Object.values(eventVars));
+  });
+
+  // Add global manual variables
+  allVars.push(...Object.values(globalManual));
+
+  // Deduplicate by key
+  return Array.from(new Map(allVars.map((v) => [v.key, v])).values());
+}
+
+/**
+ * Get variables allowed for a specific context (Module + Event)
+ */
+export function getVariablesByContext(
+  module: WhatsAppModule,
+  eventType: string,
+): VariableDefinition[] {
+  const moduleScope = SCOPED_VARIABLE_REGISTRY[module] || {};
+  const globalVars = moduleScope.GLOBAL || {};
+  const eventVars = moduleScope[eventType] || {};
+  const globalManual = SCOPED_VARIABLE_REGISTRY.MANUAL?.GLOBAL || {};
+
+  const allowedVars = {
+    ...globalVars,
+    ...eventVars,
+    ...globalManual,
+  };
+
+  return Object.values(allowedVars);
 }
 
 /**
@@ -547,6 +800,11 @@ export function validateTemplateVariables(
   };
 }
 
+import {
+  formatAsINR,
+  paiseToRupees,
+} from '../../core/utils/currency.utils';
+
 /**
  * Format value based on data type
  */
@@ -558,7 +816,8 @@ export function formatVariableValue(
 
   switch (dataType) {
     case VariableDataType.CURRENCY:
-      return `₹${Number(value).toLocaleString('en-IN')}`;
+      // 🚨 CRITICAL FIX: Convert Paise (Int) to Rupees for display
+      return formatAsINR(paiseToRupees(Number(value)));
 
     case VariableDataType.DATE:
       const date = new Date(value);

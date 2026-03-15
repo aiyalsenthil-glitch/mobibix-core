@@ -5,13 +5,16 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
+import { getScheduledAtUTC } from '../../common/utils/date.util';
 import { AutomationSafetyService } from './automation-safety.service';
 import {
   CreateAutomationDto,
   UpdateAutomationDto,
   ValidateAutomationDto,
 } from './dto/automation.dto';
-import { ModuleType } from '@prisma/client';
+import { ModuleType, ReminderTriggerType } from '@prisma/client';
+
+// ... (existing code)
 
 /**
  * ────────────────────────────────────────────────
@@ -30,14 +33,22 @@ export class AutomationService {
       'MEMBER_CREATED',
       'TRAINER_ASSIGNED',
       'MEMBERSHIP_EXPIRY',
+      'MEMBERSHIP_EXPIRY_BEFORE',
+      'MEMBERSHIP_EXPIRY_AFTER',
       'PAYMENT_DUE',
+      'PAYMENT_DUE_BEFORE',
+      'PAYMENT_DUE_AFTER',
       'COACHING_FOLLOWUP',
     ],
     MOBILE_SHOP: [
-      'JOB_CREATED',
-      'JOB_COMPLETED',
+      'FOLLOW_UP_SCHEDULED',
+      'FOLLOW_UP_OVERDUE',
+      'FOLLOW_UP_COMPLETED',
       'INVOICE_CREATED',
       'PAYMENT_PENDING',
+      'JOB_CREATED',
+      'JOB_READY',
+      'JOB_COMPLETED',
     ],
   };
 
@@ -58,6 +69,42 @@ export class AutomationService {
    */
   getValidEventsForModule(moduleType: ModuleType): string[] {
     return this.eventRegistry[moduleType] || [];
+  }
+
+  /**
+   * Helper: Map generic event type to Schema Enum
+   */
+  private mapEventToReminderTrigger(eventType: string): ReminderTriggerType {
+    switch (eventType) {
+      case 'DATE':
+      case 'MEMBER_CREATED':
+      case 'MEMBERSHIP_EXPIRY':
+      case 'MEMBERSHIP_EXPIRY_BEFORE':
+      case 'MEMBERSHIP_EXPIRY_AFTER':
+      case 'PAYMENT_DUE':
+      case 'PAYMENT_DUE_BEFORE':
+      case 'PAYMENT_DUE_AFTER':
+      case 'MEMBERSHIP_EXPIRED':
+        return ReminderTriggerType.DATE;
+      case 'AFTER_JOB':
+        return ReminderTriggerType.AFTER_JOB;
+      case 'AFTER_INVOICE':
+        return ReminderTriggerType.AFTER_INVOICE;
+      // MobileShop Events -> EVENT_BASED
+      case 'FOLLOW_UP_SCHEDULED':
+      case 'FOLLOW_UP_OVERDUE':
+      case 'FOLLOW_UP_COMPLETED':
+      case 'INVOICE_CREATED':
+      case 'INVOICE_PAID':
+      case 'PAYMENT_PENDING':
+      case 'JOB_CREATED':
+      case 'JOB_READY':
+      case 'JOB_COMPLETED':
+      case 'JOB_DELIVERED':
+        return ReminderTriggerType.EVENT_BASED;
+      default:
+        return ReminderTriggerType.DATE; // Fallback
+    }
   }
 
   /**
@@ -143,8 +190,13 @@ export class AutomationService {
    * Create new automation with validation
    */
   async create(dto: CreateAutomationDto, userId?: string) {
+    // Normalize eventType: replace spaces with underscores
+    const normalizedEventType = dto.eventType
+      .replace(/\s+/g, '_')
+      .toUpperCase();
+
     // Validate event type
-    this.validateEventType(dto.moduleType, dto.eventType);
+    this.validateEventType(dto.moduleType, normalizedEventType);
 
     // Validate conditions
     this.validateConditions(dto.conditions);
@@ -153,7 +205,7 @@ export class AutomationService {
     const automation = await this.prisma.whatsAppAutomation.create({
       data: {
         moduleType: dto.moduleType,
-        eventType: dto.eventType,
+        eventType: normalizedEventType, // Use normalized version
         templateKey: dto.templateKey,
         offsetDays: dto.offsetDays,
         enabled: dto.enabled ?? true,
@@ -165,7 +217,7 @@ export class AutomationService {
     });
 
     this.logger.log(
-      `Created automation ${automation.id} for ${dto.moduleType}.${dto.eventType}`,
+      `Created automation ${automation.id} for ${dto.moduleType}.${normalizedEventType}`,
     );
 
     return automation;
@@ -243,6 +295,7 @@ export class AutomationService {
     const featureCheck = await this.safetyService.validateFeatureSafety(
       dto.tenantId,
       feature,
+      dto.moduleType, // 🔥 Pass moduleType
     );
 
     const errors: string[] = [];
@@ -288,5 +341,142 @@ export class AutomationService {
         return acc;
       }, {}),
     };
+  }
+
+  /**
+   * ────────────────────────────────────────────────
+   * ⚡ EVENT HANDLING (CORE ENGINE)
+   * ────────────────────────────────────────────────
+   */
+  async handleEvent(event: {
+    moduleType: ModuleType;
+    eventType: string;
+    tenantId: string;
+    entityId: string;
+    customerId?: string;
+    payload?: any;
+  }) {
+    const { moduleType, eventType, tenantId, entityId } = event;
+    let { customerId } = event;
+
+    this.logger.log(
+      `Handling event: ${moduleType}.${eventType} for ${tenantId}:${entityId}`,
+    );
+
+    // 1️⃣ Find matching automations
+    const automations = await this.prisma.whatsAppAutomation.findMany({
+      where: {
+        moduleType: moduleType as any,
+        eventType,
+        enabled: true,
+      },
+    });
+
+    if (automations.length === 0) {
+      this.logger.debug(`No automations found for ${eventType}`);
+      return; // Nothing to do
+    }
+
+    // 2️⃣ Resolve Customer ID based on Entity
+    // (For MEMBER_CREATED, entityId is memberId)
+    if (!customerId && moduleType === 'GYM' && eventType === 'MEMBER_CREATED') {
+      const member = await this.prisma.member.findUnique({
+        where: { id: entityId },
+      });
+      // Force cast to access customerId (recently added)
+      customerId = (member as any)?.customerId || undefined;
+    }
+
+    // fallback or other modules...
+    if (!customerId) {
+      this.logger.warn(`Could not resolve customer for event ${eventType}`);
+      return;
+    }
+
+    // 🔥 OPTIMIZATION: Fetch customer ONCE before loop (prevents N+1 query)
+    const customer = await this.prisma.party.findUnique({
+      where: { id: customerId },
+    });
+
+    if (!customer?.phone) {
+      this.logger.warn(
+        `Skipping automations: Customer ${customerId} has no phone`,
+      );
+      return;
+    }
+
+    // 3️⃣ EXECUTION STRATEGY: Transactional vs Scheduled
+    // Transactional events (Utility/Auth) must be sent IMMEDIATELY.
+    // Marketing/Reminders are scheduled.
+
+    const TRANSACTIONAL_EVENTS = [
+      'JOB_READY',
+      'INVOICE_CREATED',
+      'INVOICE_PAID',
+      'OTP',
+      'MEMBER_WELCOME', // Gym welcome
+    ];
+
+    const isTransactional = TRANSACTIONAL_EVENTS.includes(eventType);
+
+    for (const automation of automations) {
+      if (isTransactional) {
+        // 🚀 FIRE INSTANTLY
+        this.logger.log(
+          `[INSTANT] Firing transactional automation ${automation.templateKey} for ${customerId}`,
+        );
+
+        // BETTER APPROACH: scheduledAt = NOW
+        // If 'PENDING' is not in ReminderStatus enum, we might need to use 'SCHEDULED' with now().
+        // Let's assume 'SCHEDULED' is fine if date is now.
+
+        const scheduledAt = new Date(); // NOW
+
+        await this.prisma.customerReminder.create({
+          data: {
+            tenantId,
+            customerId,
+            triggerType: this.mapEventToReminderTrigger(automation.eventType),
+            triggerValue: entityId,
+            channel: 'WHATSAPP',
+            templateKey: automation.templateKey,
+            status: 'SCHEDULED', // Use SCHEDULED effectively as pending if time is past/now
+            scheduledAt,
+          },
+        });
+
+        this.logger.log(
+          `✅ Queued immediate automation ${automation.templateKey} for customer ${customerId}`,
+        );
+      } else {
+        // 🕒 SCHEDULED REMINDER
+        const scheduledAt = getScheduledAtUTC({
+          offsetDays: automation.offsetDays || 0,
+          localHour: 9, // Default to 9 AM
+          localMinute: 0,
+        });
+
+        this.logger.log(
+          `[REMINDER] ScheduledAt UTC=${scheduledAt.toISOString()}`,
+        );
+
+        await this.prisma.customerReminder.create({
+          data: {
+            tenantId,
+            customerId,
+            triggerType: this.mapEventToReminderTrigger(automation.eventType),
+            triggerValue: entityId,
+            channel: 'WHATSAPP',
+            templateKey: automation.templateKey,
+            status: 'SCHEDULED',
+            scheduledAt,
+          },
+        });
+
+        this.logger.log(
+          `✅ Scheduled automation ${automation.templateKey} for customer ${customerId} (At: ${scheduledAt.toISOString()})`,
+        );
+      }
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { authenticatedFetch } from "./auth.api";
+import { authenticatedFetch, extractData } from "./auth.api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
@@ -74,7 +74,7 @@ export interface TimelineItem {
   description: string;
   customerId: string;
   customerName?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt: string | Date;
 }
 
@@ -121,25 +121,84 @@ export async function getCrmDashboard(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch CRM dashboard");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to fetch CRM dashboard");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
- * Get follow-ups assigned to current user
+ * Get my follow-ups with optional pagination
  */
-export async function getMyFollowUps(): Promise<FollowUp[]> {
-  const response = await authenticatedFetch(`/mobileshop/crm/follow-ups`);
+export async function getMyFollowUps(options?: {
+  skip?: number;
+  take?: number;
+}): Promise<
+  FollowUp[] | { data: FollowUp[]; total: number; skip: number; take: number }
+> {
+  const params = new URLSearchParams();
+  if (options?.skip !== undefined)
+    params.append("skip", options.skip.toString());
+  if (options?.take !== undefined)
+    params.append("take", options.take.toString());
+
+  const url = `/mobileshop/crm/follow-ups${params.toString() ? "?" + params.toString() : ""}`;
+  const response = await authenticatedFetch(url);
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch follow-ups");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to fetch follow-ups");
   }
 
-  return response.json();
+  return extractData(response);
+}
+
+/**
+ * Get follow-up counts (pending + overdue) for the current user
+ */
+export async function getFollowUpCounts(): Promise<{
+  pending: number;
+  overdue: number;
+  total: number;
+}> {
+  const response = await authenticatedFetch(
+    `/mobileshop/crm/follow-ups/counts`,
+  );
+
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to fetch follow-up counts");
+  }
+
+  return extractData(response);
+}
+
+/**
+ * Get ALL follow-ups for tenant (OWNER only)
+ */
+export async function getAllFollowUps(options?: {
+  bucket?: string;
+  assignedToUserId?: string;
+  skip?: number;
+  take?: number;
+}): Promise<{ data: FollowUp[]; total: number; skip: number; take: number }> {
+  const params = new URLSearchParams();
+  if (options?.bucket) params.append("bucket", options.bucket);
+  if (options?.assignedToUserId)
+    params.append("assignedToUserId", options.assignedToUserId);
+  if (options?.skip !== undefined)
+    params.append("skip", options.skip.toString());
+  if (options?.take !== undefined)
+    params.append("take", options.take.toString());
+
+  const url = `/core/follow-ups/all${params.toString() ? "?" + params.toString() : ""}`;
+  const response = await authenticatedFetch(url);
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to fetch all follow-ups");
+  }
+  return extractData(response);
 }
 
 /**
@@ -162,11 +221,11 @@ export async function createFollowUp(data: {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to create follow-up");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to create follow-up");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -188,11 +247,11 @@ export async function updateFollowUpStatus(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to update follow-up status");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to update follow-up status");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -203,18 +262,18 @@ export async function getCustomerTimeline(
   customerId: string,
   source?: string, // Comma-separated: 'JOB,INVOICE,CRM,WHATSAPP'
 ): Promise<TimelineResponse> {
-  const params = source ? `?source=${source}` : "";
+  const params = source ? `?sources=${source}` : "";
 
   const response = await authenticatedFetch(
     `/mobileshop/crm/customer-timeline/${customerId}${params}`,
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch customer timeline");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to fetch customer timeline");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -232,11 +291,11 @@ export async function sendWhatsAppMessage(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to send WhatsApp message");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to send WhatsApp message");
   }
 
-  return response.json();
+  return extractData(response);
 }
 
 /**
@@ -254,9 +313,9 @@ export async function getWhatsAppLogs(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch WhatsApp logs");
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to fetch WhatsApp logs");
   }
 
-  return response.json();
+  return extractData(response);
 }
