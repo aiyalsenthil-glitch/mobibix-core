@@ -44,9 +44,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("mobibix-release.keystore")
-            storePassword = "Aiyal@143"
-            keyAlias = "mobibix"
-            keyPassword = "Aiyal@143"
+            storePassword = localProperties.getProperty("KEYSTORE_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = localProperties.getProperty("KEY_ALIAS") ?: System.getenv("KEY_ALIAS") ?: "mobibix"
+            keyPassword = localProperties.getProperty("KEY_PASSWORD") ?: System.getenv("KEY_PASSWORD") ?: ""
         }
     }
 

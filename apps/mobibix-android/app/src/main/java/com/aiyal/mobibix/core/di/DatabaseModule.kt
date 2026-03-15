@@ -2,6 +2,8 @@ package com.aiyal.mobibix.core.di
 
 import android.content.Context
 import androidx.room.Room
+import com.aiyal.mobibix.data.local.MIGRATION_1_2
+import com.aiyal.mobibix.data.local.MIGRATION_2_3
 import com.aiyal.mobibix.data.local.MobibixDatabase
 import com.aiyal.mobibix.data.local.dao.CachedCustomerDao
 import com.aiyal.mobibix.data.local.dao.CachedInvoiceDao
@@ -26,7 +28,9 @@ object DatabaseModule {
             context,
             MobibixDatabase::class.java,
             "mobibix_db"
-        ).fallbackToDestructiveMigration().build()
+        )
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .build()
     }
 
     @Provides
