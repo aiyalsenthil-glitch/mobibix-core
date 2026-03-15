@@ -30,6 +30,7 @@ accompanist = "0.34.0"
 REMOVED_PAYMENT_INFRA = "1.6.40"
 room = "2.6.1"
 securityCrypto = "1.1.0-alpha06"
+biometric = "1.1.0"
 
 
 
@@ -85,6 +86,8 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 REMOVED_PAYMENT_INFRA-checkout = { group = "com.REMOVED_PAYMENT_INFRA", name = "checkout", version.ref = "REMOVED_PAYMENT_INFRA" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+REMOVED_AUTH_PROVIDER-messaging = { group = "com.google.REMOVED_AUTH_PROVIDER", name = "REMOVED_AUTH_PROVIDER-messaging-ktx" }
 
 
 [plugins]

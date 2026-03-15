@@ -108,6 +108,8 @@ dependencies {
     // DataStore & Security
     implementation(libs.datastore.preferences)
     implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.biometric)
+    implementation(libs.REMOVED_AUTH_PROVIDER.messaging)
 
     // Firebase
     implementation(platform(libs.REMOVED_AUTH_PROVIDER.bom))

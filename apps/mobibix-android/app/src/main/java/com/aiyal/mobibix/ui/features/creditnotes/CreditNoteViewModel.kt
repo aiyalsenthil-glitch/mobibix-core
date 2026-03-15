@@ -14,6 +14,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class CreditNoteCreateState(
+    val loading: Boolean = false,
+    val success: Boolean = false,
+    val error: String? = null
+)
+
 data class CreditNoteListState(
     val loading: Boolean = true,
     val creditNotes: List<CreditNote> = emptyList(),
@@ -43,6 +49,39 @@ class CreditNoteViewModel @Inject constructor(
 
     private val _saving = MutableStateFlow(false)
     val saving = _saving.asStateFlow()
+
+    private val _createState = MutableStateFlow(CreditNoteCreateState())
+    val createState = _createState.asStateFlow()
+
+    fun clearCreateState() { _createState.value = CreditNoteCreateState() }
+
+    fun createSalesReturn(
+        shopId: String,
+        customerName: String,
+        customerPhone: String?,
+        originalInvoiceNo: String?,
+        notes: String?,
+        items: List<com.aiyal.mobibix.data.network.CreateCreditNoteItemDto>
+    ) {
+        viewModelScope.launch {
+            _createState.value = CreditNoteCreateState(loading = true)
+            try {
+                val dto = CreateCreditNoteDto(
+                    type = "CUSTOMER",
+                    reason = "SALES_RETURN",
+                    notes = buildString {
+                        if (originalInvoiceNo != null) append("Ref: $originalInvoiceNo. ")
+                        if (notes != null) append(notes)
+                    }.takeIf { it.isNotBlank() },
+                    items = items
+                )
+                creditNoteApi.createCreditNote(shopId, dto)
+                _createState.value = CreditNoteCreateState(success = true)
+            } catch (e: Exception) {
+                _createState.value = CreditNoteCreateState(error = MobiError.extractMessage(e))
+            }
+        }
+    }
 
     fun loadCreditNotes(shopId: String, typeFilter: String? = null) {
         viewModelScope.launch {
