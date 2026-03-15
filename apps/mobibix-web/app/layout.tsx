@@ -6,6 +6,9 @@ import { Providers } from "./providers";
 export const metadata = {
   title: "MobiBix – Digital Retail Platform",
   description: "Mobile shop ERP & repair management platform",
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 export const playfair = Playfair_Display({
   subsets: ["latin"],
