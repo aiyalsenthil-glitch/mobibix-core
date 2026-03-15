@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.REMOVED_PAYMENT_INFRA.com apis.google.com www.gstatic.com www.googletagmanager.com connect.facebook.net; style-src 'self' 'unsafe-inline'; connect-src 'self' *.REMOVED_AUTH_PROVIDERapp.com *.googleapis.com https://*.REMOVED_AUTH_PROVIDERio.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' https://*.REMOVED_AUTH_PROVIDERapp.com https://*.REMOVED_PAYMENT_INFRA.com; frame-ancestors 'none'",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.REMOVED_PAYMENT_INFRA.com apis.google.com www.gstatic.com www.googletagmanager.com connect.facebook.net; style-src 'self' 'unsafe-inline'; connect-src 'self' *.REMOVED_AUTH_PROVIDERapp.com *.googleapis.com https://*.REMOVED_AUTH_PROVIDERio.com www.google-analytics.com *.google-analytics.com REMOVED_ENDPOINT *.mobibix.in; img-src 'self' data: https://*.googleusercontent.com grainy-gradients.vercel.app; frame-src 'self' https://*.REMOVED_AUTH_PROVIDERapp.com https://*.REMOVED_PAYMENT_INFRA.com; frame-ancestors 'none'",
           },
           {
             key: "X-Frame-Options",
