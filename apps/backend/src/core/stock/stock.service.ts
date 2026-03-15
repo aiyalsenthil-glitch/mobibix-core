@@ -604,19 +604,22 @@ export class StockService {
 
     const updateData: any = { status, updatedAt: new Date() };
 
-    if ([IMEIStatus.RETURNED, IMEIStatus.RETURNED_GOOD, IMEIStatus.RETURNED_DAMAGED].includes(status)) {
+    const returnStatuses: IMEIStatus[] = [IMEIStatus.RETURNED, IMEIStatus.RETURNED_GOOD, IMEIStatus.RETURNED_DAMAGED];
+    if (returnStatuses.includes(status)) {
       updateData.returnedAt = new Date();
       updateData.invoiceId = null;
     }
     if (notes) {
-      if ([IMEIStatus.DAMAGED, IMEIStatus.RETURNED_DAMAGED].includes(status)) updateData.damageNotes = notes;
+      const damageStatuses: IMEIStatus[] = [IMEIStatus.DAMAGED, IMEIStatus.RETURNED_DAMAGED];
+      if (damageStatuses.includes(status)) updateData.damageNotes = notes;
       if (status === IMEIStatus.LOST) updateData.lostReason = notes;
     }
 
     // Returning to IN_STOCK from a return state — increment product stock
+    const backToStockStatuses: IMEIStatus[] = [IMEIStatus.RETURNED, IMEIStatus.RETURNED_GOOD];
     const returningToStock =
       status === IMEIStatus.IN_STOCK &&
-      [IMEIStatus.RETURNED, IMEIStatus.RETURNED_GOOD].includes(record.status);
+      backToStockStatuses.includes(record.status);
 
     if (returningToStock) {
       await this.prisma.$transaction([
@@ -643,7 +646,7 @@ export class StockService {
         `Only IN_STOCK or RESERVED IMEIs can be transferred. Current: ${record.status}`,
       );
     }
-    if (record.shopId === targetShopId) {
+    if (record.transferredToShopId === targetShopId) {
       throw new BadRequestException('IMEI is already in the target shop.');
     }
 
@@ -656,7 +659,6 @@ export class StockService {
     return this.prisma.iMEI.update({
       where: { tenantId_imei: { tenantId, imei } },
       data: {
-        shopId: targetShopId,
         transferredToShopId: targetShopId,
         status: IMEIStatus.IN_STOCK,
         updatedAt: new Date(),

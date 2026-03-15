@@ -1,12 +1,28 @@
 import { PrismaClient } from '@prisma/client';
+
 const prisma = new PrismaClient();
 
 async function main() {
   const plans = await prisma.plan.findMany({
-    where: { OR: [{ code: 'MOBIBIX_PRO' }, { code: 'GYM_PRO' }] },
-    select: { id: true, code: true, name: true, module: true }
+    include: {
+      planPrices: true,
+    },
   });
-  console.log('Plans found:', JSON.stringify(plans, null, 2));
+
+  console.log('--- Plan Mappings ---');
+  for (const plan of plans) {
+    console.log(`Plan: ${plan.name} (${plan.id}) [Code: ${plan.code}]`);
+    for (const price of plan.planPrices) {
+      console.log(`  Cycle: ${price.billingCycle}, Price: ${price.price}, RazorpayPlanId: ${price.REMOVED_PAYMENT_INFRAPlanId || 'MISSING'}`);
+    }
+  }
 }
 
-main().finally(() => prisma.$disconnect());
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

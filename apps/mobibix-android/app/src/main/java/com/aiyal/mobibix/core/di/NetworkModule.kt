@@ -7,6 +7,13 @@ import com.aiyal.mobibix.data.network.AuthInterceptor
 import com.aiyal.mobibix.data.network.DashboardApi
 import com.aiyal.mobibix.data.network.JobApi
 import com.aiyal.mobibix.data.network.MobiResponseInterceptor
+import com.aiyal.mobibix.data.network.CreditNoteApi
+import com.aiyal.mobibix.data.network.IntelligenceApi
+import com.aiyal.mobibix.data.network.KnowledgeApi
+import com.aiyal.mobibix.data.network.OperationsApi
+import com.aiyal.mobibix.data.network.PartnerApi
+import com.aiyal.mobibix.data.network.QuotationApi
+import com.aiyal.mobibix.data.network.StockLedgerApi
 import com.aiyal.mobibix.data.network.PermissionsApi
 import com.aiyal.mobibix.data.network.ProductApi
 import com.aiyal.mobibix.data.network.PurchaseApi
@@ -198,4 +205,39 @@ object NetworkModule {
     fun providePermissionsApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.PermissionsApi {
         return retrofit.create(com.aiyal.mobibix.data.network.PermissionsApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideCreditNoteApi(retrofit: Retrofit): CreditNoteApi =
+        retrofit.create(CreditNoteApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideQuotationApi(retrofit: Retrofit): QuotationApi =
+        retrofit.create(QuotationApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideOperationsApi(retrofit: Retrofit): OperationsApi =
+        retrofit.create(OperationsApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideKnowledgeApi(retrofit: Retrofit): KnowledgeApi =
+        retrofit.create(KnowledgeApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideIntelligenceApi(retrofit: Retrofit): IntelligenceApi =
+        retrofit.create(IntelligenceApi::class.java)
+
+    @Provides
+    @Singleton
+    fun providePartnerApi(retrofit: Retrofit): PartnerApi =
+        retrofit.create(PartnerApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideStockLedgerApi(retrofit: Retrofit): StockLedgerApi =
+        retrofit.create(StockLedgerApi::class.java)
 }

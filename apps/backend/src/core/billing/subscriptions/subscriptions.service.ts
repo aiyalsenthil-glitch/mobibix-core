@@ -215,7 +215,7 @@ export class SubscriptionsService {
             email: tenant.contactEmail || 'admin@mobibix.com',
             contact: tenant.contactPhone || '9999999999',
           },
-          `sub_${tenantId}_${module}_${billingCycle}`, // L-3: deterministic ref prevents duplicate links on retry
+          `sub_${tenantId.slice(-14)}_${module.slice(0, 10)}_${billingCycle.slice(0, 8)}`, // L-3: deterministic ref prevents duplicate links on retry
           module,                                       // M-1: correct callback URL per vertical
           { tenantId, planId, module, billingCycle },   // C-3: notes for orphan payment recovery
         );
@@ -457,7 +457,7 @@ export class SubscriptionsService {
           email: subscription.tenant.contactEmail || 'admin@mobibix.com',
           contact: subscription.tenant.contactPhone || '9999999999',
         },
-        `upgrade_${subscription.id}_${Date.now()}`,
+        `up_${subscriptionId.slice(-14)}_${Math.floor(Date.now() / 1000)}`,
         subscription.module, // M-1: correct callback URL per vertical
       );
       paymentLink = link.short_url;

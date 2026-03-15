@@ -60,7 +60,7 @@ export class StockController {
     return await this.service.getImeiDetails(req.user.tenantId, imei);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.EDIT)
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.UPDATE)
   @Patch('imei/:imei/status')
   async updateImeiStatus(
     @Req() req: any,
@@ -70,7 +70,7 @@ export class StockController {
     return await this.service.updateImeiStatus(req.user.tenantId, imei, body.status, body.notes);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.EDIT)
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.UPDATE)
   @Post('imei/:imei/transfer')
   async transferImei(
     @Req() req: any,
@@ -80,13 +80,13 @@ export class StockController {
     return await this.service.transferImei(req.user.tenantId, imei, body.targetShopId);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.EDIT)
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.UPDATE)
   @Post('imei/:imei/reserve')
   async reserveImei(@Req() req: any, @Param('imei') imei: string) {
     return await this.service.reserveImei(req.user.tenantId, imei);
   }
 
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.EDIT)
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.UPDATE)
   @Delete('imei/:imei/reserve')
   async releaseImeiReserve(@Req() req: any, @Param('imei') imei: string) {
     return await this.service.releaseImeiReserve(req.user.tenantId, imei);
