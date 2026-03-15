@@ -102,7 +102,7 @@ async function bootstrap() {
   server.use((req, res, next) => {
     res.setHeader(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.REMOVED_PAYMENT_INFRA.com apis.google.com www.gstatic.com www.googletagmanager.com connect.facebook.net; style-src 'self' 'unsafe-inline'; connect-src 'self' *.REMOVED_AUTH_PROVIDERapp.com *.googleapis.com https://*.REMOVED_AUTH_PROVIDERio.com www.google-analytics.com *.google-analytics.com REMOVED_ENDPOINT *.mobibix.in; img-src 'self' data: https://*.googleusercontent.com grainy-gradients.vercel.app; frame-src 'self' https://*.REMOVED_AUTH_PROVIDERapp.com https://*.REMOVED_PAYMENT_INFRA.com; frame-ancestors 'none'",
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.REMOVED_PAYMENT_INFRA.com apis.google.com www.gstatic.com www.googletagmanager.com connect.facebook.net; style-src 'self' 'unsafe-inline'; connect-src 'self' *.REMOVED_AUTH_PROVIDERapp.com *.googleapis.com https://*.REMOVED_AUTH_PROVIDERio.com www.google-analytics.com *.google-analytics.com REMOVED_ENDPOINT *.mobibix.in http://localhost_REPLACED:* ws://localhost_REPLACED:* http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: https://*.googleusercontent.com grainy-gradients.vercel.app; frame-src 'self' https://*.REMOVED_AUTH_PROVIDERapp.com https://*.REMOVED_PAYMENT_INFRA.com; frame-ancestors 'none'",
     );
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader(
