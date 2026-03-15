@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  productionBrowserSourceMaps: false,
   turbopack: {
     root: __dirname,
   },
@@ -21,7 +22,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Strict-Transport-Security",
-            value: "max-age=31536000; includeSubDomains",
+            value: "max-age=63072000; includeSubDomains; preload",
           },
           {
             key: "X-Content-Type-Options",
@@ -30,6 +31,10 @@ const nextConfig: NextConfig = {
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
           },
         ],
       },
@@ -64,8 +69,5 @@ export default withSentryConfig(nextConfig, {
   silent: true,
   org: "mobibix",
   project: "mobibix-web",
-
-  // In v8+, some SDK options can be passed here or are handled automatically
-  // tunnelRoute: "/monitoring",
-  // hideSourceMaps: true,
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
 });

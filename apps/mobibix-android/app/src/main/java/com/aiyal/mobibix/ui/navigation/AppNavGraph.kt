@@ -542,10 +542,6 @@ fun AppNavGraph(
                 navController = navController
             )
         }
-        composable("stock_adjustment/{productId}") { backStackEntry ->
-             val productId = backStackEntry.arguments?.getString("productId") ?: return@composable
-             com.aiyal.mobibix.ui.features.products.StockAdjustmentScreen(navController = navController, productId = productId)
-        }
         composable("import_products") {
              com.aiyal.mobibix.ui.features.products.ImportProductsScreen(navController = navController)
         }

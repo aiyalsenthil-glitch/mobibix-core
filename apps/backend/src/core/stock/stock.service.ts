@@ -547,7 +547,7 @@ export class StockService {
     const { status, shopId, productId, search, page = 1, limit = 50 } = filters;
     const where: any = { tenantId };
     if (status) where.status = status;
-    if (shopId) where.shopId = shopId;
+    if (shopId) where.product = { shopId };
     if (productId) where.shopProductId = productId;
     if (search) where.imei = { contains: search };
 

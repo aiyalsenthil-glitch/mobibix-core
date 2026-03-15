@@ -17,7 +17,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       ]),
       ignoreExpiration: false,
       secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
+      algorithms: ['HS256'],
       jsonWebTokenOptions: {
+        algorithms: ['HS256'],
         clockTolerance: 30,
       },
     });
