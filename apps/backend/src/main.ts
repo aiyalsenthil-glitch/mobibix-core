@@ -46,17 +46,21 @@ async function bootstrap() {
   /**
    * 3️⃣ Enable CORS at Express level
    */
+  const allowedOrigins = [
+    'http://localhost_REPLACED:3000',
+    'http://localhost_REPLACED:3001',
+    'http://localhost_REPLACED:3002',
+    'https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com',
+    'https://mobibix.in',
+    'https://www.mobibix.in',
+    'https://REMOVED_DOMAIN',
+    'https://www.REMOVED_DOMAIN',
+    'http://10.0.2.2:3000',
+  ];
+
   server.use(
     cors({
-      origin: [
-        'http://localhost_REPLACED:3000',
-        'http://localhost_REPLACED:3001',
-        'http://localhost_REPLACED:3002',
-        'https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com',
-        'https://mobibix.in',
-        'https://www.mobibix.in',
-        'http://10.0.2.2:3000',
-      ],
+      origin: allowedOrigins,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
     }),
@@ -97,7 +101,7 @@ async function bootstrap() {
    * 9️⃣ Enable Nest CORS (safe)
    */
   app.enableCors({
-    origin: true,
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Authorization',

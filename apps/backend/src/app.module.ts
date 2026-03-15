@@ -23,6 +23,7 @@ import { ShopProductsModule } from './core/shop-products/shop-products.module';
 import { CustomerTimelineModule } from './core/timeline/customer-timeline.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -55,6 +56,12 @@ import { AppService } from './app.service';
       ttl: 60,
       max: 1000,
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 30, // 30 requests per minute
+      },
+    ]),
   ],
   controllers: [AppController],
   providers: [
@@ -62,6 +69,10 @@ import { AppService } from './app.service';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })
