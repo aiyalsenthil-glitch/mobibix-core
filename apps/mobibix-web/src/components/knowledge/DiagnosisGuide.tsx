@@ -85,7 +85,7 @@ export function DiagnosisGuide({
 
       {/* Steps List */}
       <div className="space-y-2">
-        {checklist.steps.map((step, idx) => (
+        {checklist.steps?.map((step, idx) => (
           <div 
             key={step.id}
             onClick={() => toggleStep(step.id)}

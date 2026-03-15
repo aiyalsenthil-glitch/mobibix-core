@@ -172,7 +172,7 @@ export class SubscriptionsService {
       where: {
         tenantId,
         module,
-        status: { in: ['ACTIVE', 'TRIAL', 'PAST_DUE', 'PENDING'] },
+        status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE, SubscriptionStatus.PENDING] },
       },
       select: {
         id: true,
@@ -259,10 +259,21 @@ export class SubscriptionsService {
         }
       }
 
+      const nowUnix = Math.floor(Date.now() / 1000);
+      let startAtUnix: number | undefined = Math.floor(startDate.getTime() / 1000);
+
+      // 🛡️ RAZORPAY SAFETY: start_at must be in the future.
+      // If startDate is "now" or in the past, let Razorpay handle "immediate" start
+      // by not sending start_at (sending undefined). We add a safety buffer of 60s
+      // to account for server clock drift or network latency.
+      if (startAtUnix <= nowUnix + 60) {
+        startAtUnix = undefined;
+      }
+
       const sub = await this.REMOVED_PAYMENT_INFRAService.createSubscription(
         priceResponse.REMOVED_PAYMENT_INFRAPlanId,
         120, // 10 years default
-        Math.floor(startDate.getTime() / 1000), // Start At timestamp (optional)
+        startAtUnix,
       );
       providerSubscriptionId = sub.id;
       REMOVED_PAYMENT_INFRASubscriptionId = sub.id;
@@ -486,6 +497,23 @@ export class SubscriptionsService {
       `subscription:${subscription.tenantId}:${subscription.module}`,
     );
 
+    // ⚡ RAZORPAY AUTOPAY UPDATE: If this is an AutoPay subscription, update the plan on Razorpay
+    // so the NEXT cycle charges the correct amount.
+    if (subscription.billingType === BillingType.AUTOPAY && subscription.providerSubscriptionId) {
+      if (newPriceResponse.REMOVED_PAYMENT_INFRAPlanId) {
+        try {
+          await this.REMOVED_PAYMENT_INFRAService.updateSubscription(
+            subscription.providerSubscriptionId,
+            newPriceResponse.REMOVED_PAYMENT_INFRAPlanId,
+          );
+        } catch (rzErr: any) {
+          this.logger.error(`Failed to update Razorpay subscription: ${rzErr.message}`);
+          // Non-fatal, we'll rely on nextPriceSnapshot in DB at renewal if possible,
+          // though Razorpay would still charge old price.
+        }
+      }
+    }
+
     return {
       ...upgraded,
       paymentLink,
@@ -577,6 +605,16 @@ export class SubscriptionsService {
         },
       });
 
+      // ⚡ RAZORPAY AUTOPAY UPDATE
+      if (subscription.billingType === BillingType.AUTOPAY && subscription.providerSubscriptionId) {
+        if (nextPrice.REMOVED_PAYMENT_INFRAPlanId) {
+          await this.REMOVED_PAYMENT_INFRAService.updateSubscription(
+            subscription.providerSubscriptionId,
+            nextPrice.REMOVED_PAYMENT_INFRAPlanId,
+          ).catch(e => this.logger.error(`REMOVED_PAYMENT_INFRA update failed: ${e.message}`));
+        }
+      }
+
       this.logger.log(
         `📉 Downgraded ${subscription.tenant.name}@${subscription.module} IMMEDIATELY: ` +
           `${subscription.plan.name} → ${newPlan.name}. ` +
@@ -600,6 +638,16 @@ export class SubscriptionsService {
         updatedAt: new Date(),
       },
     });
+
+    // ⚡ RAZORPAY AUTOPAY UPDATE (Scheduled)
+    if (subscription.billingType === BillingType.AUTOPAY && subscription.providerSubscriptionId) {
+      if (nextPrice.REMOVED_PAYMENT_INFRAPlanId) {
+        await this.REMOVED_PAYMENT_INFRAService.updateSubscription(
+          subscription.providerSubscriptionId,
+          nextPrice.REMOVED_PAYMENT_INFRAPlanId,
+        ).catch(e => this.logger.error(`REMOVED_PAYMENT_INFRA update failed: ${e.message}`));
+      }
+    }
 
     this.logger.log(
       `📉 Scheduled downgrade ${subscription.tenant.name}@${subscription.module}: ` +

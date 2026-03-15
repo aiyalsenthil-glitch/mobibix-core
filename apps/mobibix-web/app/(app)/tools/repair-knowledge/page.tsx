@@ -137,7 +137,7 @@ export default function RepairKnowledgePortal() {
               {showSuggestions && suggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl z-50 overflow-hidden">
                   {suggestions.length > 0 ? (
-                    suggestions.map((s) => (
+                    suggestions?.map((s) => (
                       <button
                         key={s.id}
                         onClick={() => {
@@ -173,7 +173,7 @@ export default function RepairKnowledgePortal() {
               <AlertTriangle className="w-3 h-3" /> Common Faults
             </h3>
             <div className="space-y-1">
-              {faultTypes.map((ft) => (
+              {faultTypes?.map((ft) => (
                 <button
                   key={ft.id}
                   onClick={() => setSelectedFaultType(ft.id)}
@@ -237,7 +237,7 @@ export default function RepairKnowledgePortal() {
                    </div>
                    {searchStatus === "GENERAL" && (
                      <div className="ml-auto text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">
-                        Showing standard solutions for {faultTypes.find(f => f.id === selectedFaultType)?.name}
+                        Showing standard solutions for {faultTypes?.find(f => f.id === selectedFaultType)?.name}
                      </div>
                    )}
                    <button 

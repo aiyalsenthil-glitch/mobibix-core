@@ -29,7 +29,7 @@ export function RepairNotes({
   onNoteAdded 
 }: RepairNotesProps) {
   const [isAdding, setIsAdding] = useState(false);
-  const [localNotes, setLocalNotes] = useState(notes);
+  const [localNotes, setLocalNotes] = useState(notes || []);
   const [votedIds, setVotedIds] = useState<Set<string>>(new Set());
 
   const handleVote = async (noteId: string, vote: "helpful" | "notHelpful") => {
@@ -102,7 +102,7 @@ export function RepairNotes({
       )}
 
       <div className="space-y-3">
-        {localNotes.map(note => (
+        {localNotes?.map(note => (
           <div key={note.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-4 shadow-xs">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">

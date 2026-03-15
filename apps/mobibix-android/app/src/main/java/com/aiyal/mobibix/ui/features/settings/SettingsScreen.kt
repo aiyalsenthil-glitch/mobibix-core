@@ -173,6 +173,18 @@ fun SettingsScreen(
                     )
                 }
 
+                // ── Partner Portal ──
+                item {
+                    SettingsSectionHeader("Partner Program")
+                    SettingsOptionCard(
+                        title = "Partner Portal",
+                        subtitle = "Referral earnings and commissions",
+                        icon = Icons.Default.Stars,
+                        color = Color(0xFF8B5CF6),
+                        onClick = { navController.navigate("partner_login") }
+                    )
+                }
+
                 // ── Legal & Privacy Section ──
                 item {
                     val context = LocalContext.current

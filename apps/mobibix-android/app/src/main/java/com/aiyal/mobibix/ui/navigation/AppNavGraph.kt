@@ -552,5 +552,131 @@ fun AppNavGraph(
         composable("negative_stock") {
              com.aiyal.mobibix.ui.features.products.NegativeStockScreen(navController = navController)
         }
+
+        // ── Credit Notes ─────────────────────────────────────────────────────
+        composable("credit_notes") {
+            com.aiyal.mobibix.ui.features.creditnotes.CreditNoteListScreen(
+                navController = navController,
+                shopContextProvider = shopContextProvider
+            )
+        }
+        composable(
+            route = "credit_note_detail/{shopId}/{creditNoteId}",
+            arguments = listOf(
+                navArgument("shopId") { type = NavType.StringType },
+                navArgument("creditNoteId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val shopId = backStackEntry.arguments?.getString("shopId") ?: ""
+            val creditNoteId = backStackEntry.arguments?.getString("creditNoteId") ?: ""
+            com.aiyal.mobibix.ui.features.creditnotes.CreditNoteDetailScreen(
+                shopId = shopId, creditNoteId = creditNoteId, navController = navController
+            )
+        }
+        composable("create_credit_note") {
+            com.aiyal.mobibix.ui.features.creditnotes.CreateCreditNoteScreen(
+                navController = navController, shopContextProvider = shopContextProvider
+            )
+        }
+
+        // ── Quotations ───────────────────────────────────────────────────────
+        composable("quotations") {
+            com.aiyal.mobibix.ui.features.quotations.QuotationListScreen(
+                navController = navController, shopContextProvider = shopContextProvider
+            )
+        }
+        composable(
+            route = "quotation_detail/{shopId}/{quotationId}",
+            arguments = listOf(
+                navArgument("shopId") { type = NavType.StringType },
+                navArgument("quotationId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val shopId = backStackEntry.arguments?.getString("shopId") ?: ""
+            val quotationId = backStackEntry.arguments?.getString("quotationId") ?: ""
+            com.aiyal.mobibix.ui.features.quotations.QuotationDetailScreen(
+                shopId = shopId, quotationId = quotationId, navController = navController
+            )
+        }
+        composable("create_quotation") {
+            com.aiyal.mobibix.ui.features.quotations.CreateQuotationScreen(
+                navController = navController, shopContextProvider = shopContextProvider
+            )
+        }
+
+        // ── Intelligence ─────────────────────────────────────────────────────
+        composable("inventory_intelligence") {
+            com.aiyal.mobibix.ui.features.intelligence.InventoryIntelligenceScreen(
+                navController = navController, shopContextProvider = shopContextProvider
+            )
+        }
+        composable("compatibility") {
+            com.aiyal.mobibix.ui.features.intelligence.CompatibilityScreen(navController = navController)
+        }
+        composable("shrinkage_intelligence") {
+            com.aiyal.mobibix.ui.features.intelligence.ShrinkageScreen(
+                navController = navController, shopContextProvider = shopContextProvider
+            )
+        }
+        composable("expense_intelligence") {
+            com.aiyal.mobibix.ui.features.intelligence.ExpenseIntelligenceScreen(
+                navController = navController, shopContextProvider = shopContextProvider
+            )
+        }
+        composable("ai_chat") {
+            com.aiyal.mobibix.ui.features.intelligence.AiChatScreen(navController = navController)
+        }
+
+        // ── Repair Knowledge ─────────────────────────────────────────────────
+        composable("repair_knowledge") {
+            com.aiyal.mobibix.ui.features.knowledge.RepairKnowledgeScreen(navController = navController)
+        }
+
+        // ── Operations ───────────────────────────────────────────────────────
+        composable("expenses") {
+            com.aiyal.mobibix.ui.features.operations.ExpenseScreen(
+                navController = navController, shopContextProvider = shopContextProvider
+            )
+        }
+        composable("daily_closing") {
+            com.aiyal.mobibix.ui.features.operations.DailyClosingScreen(
+                navController = navController, shopContextProvider = shopContextProvider
+            )
+        }
+        composable("stock_verification") {
+            com.aiyal.mobibix.ui.features.operations.StockVerificationScreen(
+                navController = navController, shopContextProvider = shopContextProvider
+            )
+        }
+        composable("monthly_report") {
+            com.aiyal.mobibix.ui.features.operations.MonthlyReportScreen(
+                navController = navController, shopContextProvider = shopContextProvider
+            )
+        }
+
+        // ── Reports ──────────────────────────────────────────────────────────
+        composable("gstr1_report") {
+            com.aiyal.mobibix.ui.features.reports.Gstr1ReportScreen(
+                navController = navController, shopContextProvider = shopContextProvider
+            )
+        }
+        composable("stock_ledger") {
+            com.aiyal.mobibix.ui.features.reports.StockLedgerScreen(
+                navController = navController, shopContextProvider = shopContextProvider
+            )
+        }
+
+        // ── Partner Portal ────────────────────────────────────────────────────
+        composable("partner_login") {
+            com.aiyal.mobibix.ui.features.partner.PartnerLoginScreen(navController = navController)
+        }
+        composable("partner_dashboard") {
+            com.aiyal.mobibix.ui.features.partner.PartnerDashboardScreen(navController = navController)
+        }
+
+        // ── Approvals ────────────────────────────────────────────────────────
+        composable("approvals") {
+            com.aiyal.mobibix.ui.features.approvals.ApprovalInboxScreen(navController = navController)
+        }
     }
 }

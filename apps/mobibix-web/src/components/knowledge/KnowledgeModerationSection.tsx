@@ -86,7 +86,7 @@ export function KnowledgeModerationSection() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {pendingNotes.map(note => (
+          {pendingNotes?.map(note => (
             <div key={note.id} className="flex flex-col bg-gray-50/50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
               <div className="p-5 flex-1">
                 <div className="flex justify-between items-start mb-4">

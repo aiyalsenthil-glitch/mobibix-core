@@ -214,4 +214,32 @@ export class RazorpayService {
       );
     }
   }
+
+  /**
+   * Update a Subscription (AutoPay)
+   * Used for upgrading/downgrading an existing Razorpay subscription.
+   * Changes take effect from the NEXT billing cycle.
+   */
+  async updateSubscription(subscriptionId: string, planId: string) {
+    try {
+      this.logger.log(
+        `Updating Razorpay Subscription ${subscriptionId} to Plan: ${planId}`,
+      );
+      const response = await this.REMOVED_PAYMENT_INFRA.subscriptions.update(
+        subscriptionId,
+        {
+          plan_id: planId,
+        },
+      );
+      return response;
+    } catch (error: any) {
+      this.logger.error(
+        `Razorpay Subscription Update Failed: ${error.message}`,
+        error,
+      );
+      throw new BadRequestException(
+        `Failed to update subscription: ${error.error?.description || error.message}`,
+      );
+    }
+  }
 }
