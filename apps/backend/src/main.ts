@@ -11,6 +11,25 @@ async function bootstrap() {
    * 1️⃣ Create raw Express server
    */
   const server = express();
+  server.disable('x-powered-by');
+
+  /**
+   * 🛡️ Security Headers
+   */
+  server.use((req, res, next) => {
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.REMOVED_PAYMENT_INFRA.com; frame-ancestors 'none'",
+    );
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains',
+    );
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+  });
 
   /**
    * 🔥 2️⃣ Enable raw body for Razorpay webhook
