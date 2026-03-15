@@ -240,4 +240,9 @@ object NetworkModule {
     @Singleton
     fun provideStockLedgerApi(retrofit: Retrofit): StockLedgerApi =
         retrofit.create(StockLedgerApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideB2bApi(retrofit: Retrofit): com.aiyal.mobibix.data.network.B2bApi =
+        retrofit.create(com.aiyal.mobibix.data.network.B2bApi::class.java)
 }

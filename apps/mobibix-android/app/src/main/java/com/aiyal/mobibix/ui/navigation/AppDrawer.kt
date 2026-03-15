@@ -50,9 +50,12 @@ private fun buildDrawerSections(): List<DrawerSection> = listOf(
         items = listOf(
             DrawerItem("Customers", Icons.Default.People, "customers", "MEMBER_VIEW"),
             DrawerItem("Credit Notes", Icons.Default.Receipt, "credit_notes", "SALES_VIEW"),
+            DrawerItem("Sales Return", Icons.Default.AssignmentReturn, "sales_return", "SALES_VIEW"),
             DrawerItem("Quotations", Icons.Default.Description, "quotations", "SALES_VIEW"),
             DrawerItem("Loyalty", Icons.Default.Stars, "loyalty", "SALES_VIEW"),
             DrawerItem("CRM", Icons.Default.AssignmentInd, "crm_dashboard", "MEMBER_VIEW"),
+            DrawerItem("B2B", Icons.Default.Business, "b2b", "SALES_VIEW",
+                allowedRoles = listOf(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER)),
         )
     ),
     DrawerSection(
@@ -62,6 +65,7 @@ private fun buildDrawerSections(): List<DrawerSection> = listOf(
             DrawerItem("Suppliers", Icons.Default.LocalShipping, "suppliers", "INVENTORY_VIEW"),
             DrawerItem("Purchases", Icons.Default.ShoppingCart, "purchases", "INVENTORY_MANAGE"),
             DrawerItem("Stock Ledger", Icons.Default.Inventory2, "stock_ledger", "INVENTORY_VIEW"),
+            DrawerItem("Barcode Labels", Icons.Default.QrCode, "barcode_labels", "INVENTORY_VIEW"),
         )
     ),
     DrawerSection(
@@ -77,6 +81,8 @@ private fun buildDrawerSections(): List<DrawerSection> = listOf(
         title = "Reports",
         items = listOf(
             DrawerItem("Reports", Icons.Default.Assessment, "reports", "DASHBOARD_VIEW"),
+            DrawerItem("Purchase Report", Icons.Default.ShoppingCart, "purchase_report", "DASHBOARD_VIEW",
+                allowedRoles = listOf(UserRole.OWNER, UserRole.ADMIN, UserRole.ACCOUNTANT, UserRole.MANAGER)),
             DrawerItem("GSTR-1", Icons.Default.AccountBalance, "gstr1_report", "DASHBOARD_VIEW",
                 allowedRoles = listOf(UserRole.OWNER, UserRole.ADMIN, UserRole.ACCOUNTANT)),
             DrawerItem("Monthly Report", Icons.Default.CalendarMonth, "monthly_report", "DASHBOARD_VIEW"),

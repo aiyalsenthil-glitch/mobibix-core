@@ -678,5 +678,46 @@ fun AppNavGraph(
         composable("approvals") {
             com.aiyal.mobibix.ui.features.approvals.ApprovalInboxScreen(navController = navController)
         }
+
+        // ── Purchase Report ───────────────────────────────────────────────────
+        composable("purchase_report") {
+            com.aiyal.mobibix.ui.features.reports.PurchaseReportScreen(
+                navController = navController,
+                shopContextProvider = shopContextProvider
+            )
+        }
+
+        // ── Sales Return ──────────────────────────────────────────────────────
+        composable("sales_return") {
+            com.aiyal.mobibix.ui.features.creditnotes.SalesReturnScreen(
+                navController = navController,
+                shopContextProvider = shopContextProvider
+            )
+        }
+
+        // ── B2B Module ────────────────────────────────────────────────────────
+        composable("b2b") {
+            com.aiyal.mobibix.ui.features.b2b.B2bScreen(
+                navController = navController,
+                shopContextProvider = shopContextProvider
+            )
+        }
+
+        // ── Barcode Labels ────────────────────────────────────────────────────
+        composable("barcode_labels") {
+            com.aiyal.mobibix.ui.features.products.BarcodeLabelScreen(
+                navController = navController
+            )
+        }
+        composable(
+            route = "barcode_label/{productId}",
+            arguments = listOf(navArgument("productId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val productId = backStackEntry.arguments?.getString("productId") ?: ""
+            com.aiyal.mobibix.ui.features.products.BarcodeLabelScreen(
+                navController = navController,
+                productId = productId
+            )
+        }
     }
 }

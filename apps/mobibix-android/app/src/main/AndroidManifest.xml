@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-feature android:name="android.hardware.camera" />
 
     <application
@@ -28,6 +32,23 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Firebase Cloud Messaging -->
+        <service
+            android:name=".service.MobiFcmService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.REMOVED_AUTH_PROVIDER.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Default FCM notification channel metadata -->
+        <meta-data
+            android:name="com.google.REMOVED_AUTH_PROVIDER.messaging.default_notification_channel_id"
+            android:value="channel_general" />
+        <meta-data
+            android:name="com.google.REMOVED_AUTH_PROVIDER.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

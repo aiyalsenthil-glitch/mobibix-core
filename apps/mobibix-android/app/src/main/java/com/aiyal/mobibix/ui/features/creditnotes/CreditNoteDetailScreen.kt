@@ -4,14 +4,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.content.Intent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,6 +30,7 @@ fun CreditNoteDetailScreen(
     viewModel: CreditNoteViewModel = hiltViewModel()
 ) {
     val state by viewModel.detailState.collectAsState()
+    val context = LocalContext.current
     var showVoidDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -72,6 +76,37 @@ fun CreditNoteDetailScreen(
                     }
                 },
                 actions = {
+                    state.creditNote?.let { note ->
+                        IconButton(onClick = {
+                            val text = buildString {
+                                appendLine("CREDIT NOTE: ${note.creditNoteNo}")
+                                appendLine("Type: ${note.type}  |  Reason: ${note.reason.replace("_", " ")}")
+                                note.customerName?.let { appendLine("Customer: $it") }
+                                note.supplierName?.let { appendLine("Supplier: $it") }
+                                note.invoiceNumber?.let { appendLine("Ref Invoice: $it") }
+                                appendLine("Date: ${note.date.take(10)}")
+                                appendLine("Status: ${note.status}")
+                                appendLine("─────────────────")
+                                note.items?.forEach { item ->
+                                    appendLine("${item.description}")
+                                    appendLine("  ${item.quantity} × ₹${String.format("%.2f", item.rate)} = ₹${String.format("%.2f", item.lineTotal)}")
+                                }
+                                appendLine("─────────────────")
+                                appendLine("Subtotal: ₹${String.format("%.2f", note.subTotal)}")
+                                if (note.gstAmount > 0) appendLine("GST: ₹${String.format("%.2f", note.gstAmount)}")
+                                appendLine("TOTAL: ₹${String.format("%.2f", note.totalAmount)}")
+                                note.notes?.let { appendLine("\nNotes: $it") }
+                            }
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, text)
+                                putExtra(Intent.EXTRA_SUBJECT, "Credit Note ${note.creditNoteNo}")
+                            }
+                            context.startActivity(Intent.createChooser(intent, "Print / Share Credit Note"))
+                        }) {
+                            Icon(Icons.Default.Share, contentDescription = "Share credit note")
+                        }
+                    }
                     state.creditNote?.let { note ->
                         if (note.status == "DRAFT" || note.status == "ISSUED") {
                             Box {

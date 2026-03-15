@@ -4,14 +4,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.content.Intent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,6 +30,7 @@ fun QuotationDetailScreen(
     viewModel: QuotationViewModel = hiltViewModel()
 ) {
     val state by viewModel.detailState.collectAsState()
+    val context = LocalContext.current
     var menuExpanded by remember { mutableStateOf(false) }
     var showConvertDialog by remember { mutableStateOf(false) }
 
@@ -70,6 +74,36 @@ fun QuotationDetailScreen(
                     }
                 },
                 actions = {
+                    // PDF Share button
+                    state.quotation?.let { q ->
+                        IconButton(onClick = {
+                            try {
+                                val text = buildString {
+                                    appendLine("QUOTATION: ${q.quotationNumber}")
+                                    appendLine("Customer: ${q.customerName}")
+                                    appendLine("Date: ${q.quotationDate.take(10)}")
+                                    q.expiryDate?.let { appendLine("Valid Until: ${it.take(10)}") }
+                                    appendLine("─────────────────")
+                                    q.items?.forEach { item ->
+                                        appendLine("${item.description}")
+                                        appendLine("  ${item.quantity} × ₹${String.format("%.2f", item.price)} = ₹${String.format("%.2f", item.totalAmount)}")
+                                    }
+                                    appendLine("─────────────────")
+                                    appendLine("Subtotal: ₹${String.format("%.2f", q.subTotal)}")
+                                    if (q.gstAmount > 0) appendLine("GST: ₹${String.format("%.2f", q.gstAmount)}")
+                                    appendLine("TOTAL: ₹${String.format("%.2f", q.totalAmount)}")
+                                }
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, text)
+                                    putExtra(Intent.EXTRA_SUBJECT, "Quotation ${q.quotationNumber}")
+                                }
+                                context.startActivity(Intent.createChooser(intent, "Share Quotation"))
+                            } catch (_: Exception) {}
+                        }) {
+                            Icon(Icons.Default.Share, contentDescription = "Share quotation")
+                        }
+                    }
                     state.quotation?.let { q ->
                         if (q.status == "DRAFT" || q.status == "SENT") {
                             Box {

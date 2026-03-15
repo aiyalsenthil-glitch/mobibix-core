@@ -1,3 +1,92 @@
 <resources>
     <string name="app_name">MobiBix</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_sales">Sales</string>
+    <string name="nav_inventory">Inventory</string>
+    <string name="nav_jobs">Job Cards</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Common actions -->
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_back">Back</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_share">Share</string>
+    <string name="action_print">Print</string>
+    <string name="action_add">Add</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_apply_filter">Apply Filter</string>
+
+    <!-- Common labels -->
+    <string name="label_loading">Loading…</string>
+    <string name="label_no_data">No data available</string>
+    <string name="label_total">Total</string>
+    <string name="label_subtotal">Subtotal</string>
+    <string name="label_gst">GST</string>
+    <string name="label_date">Date</string>
+    <string name="label_status">Status</string>
+    <string name="label_customer">Customer</string>
+    <string name="label_phone">Phone</string>
+    <string name="label_amount">Amount</string>
+    <string name="label_quantity">Quantity</string>
+    <string name="label_price">Price</string>
+    <string name="label_notes">Notes</string>
+    <string name="label_from">From</string>
+    <string name="label_to">To</string>
+    <string name="label_search">Search</string>
+
+    <!-- Sales -->
+    <string name="screen_new_sale">New Sale</string>
+    <string name="screen_invoices">Invoices</string>
+    <string name="screen_credit_notes">Credit Notes</string>
+    <string name="screen_quotations">Quotations</string>
+    <string name="screen_sales_return">Sales Return</string>
+    <string name="label_convert_to_invoice">Convert to Invoice</string>
+    <string name="label_invoice_number">Invoice Number</string>
+
+    <!-- Inventory -->
+    <string name="screen_products">Products</string>
+    <string name="screen_barcode_labels">Barcode Labels</string>
+    <string name="screen_stock_verification">Stock Verification</string>
+    <string name="label_hsn_code">HSN/SAC Code</string>
+    <string name="label_gst_rate">GST Rate (%)</string>
+    <string name="label_selling_price">Selling Price</string>
+    <string name="label_cost_price">Cost Price</string>
+    <string name="label_stock_qty">Stock Quantity</string>
+
+    <!-- Finance -->
+    <string name="screen_expenses">Expenses</string>
+    <string name="screen_daily_closing">Daily Closing</string>
+    <string name="screen_purchase_report">Purchase Report</string>
+    <string name="label_outstanding">Outstanding</string>
+    <string name="label_paid">Paid</string>
+    <string name="label_pending">Pending</string>
+
+    <!-- Reports -->
+    <string name="screen_gstr1">GSTR-1 Report</string>
+    <string name="screen_stock_ledger">Stock Ledger</string>
+    <string name="screen_monthly_report">Monthly Report</string>
+
+    <!-- Intelligence -->
+    <string name="screen_inventory_intelligence">Inventory Intelligence</string>
+    <string name="screen_compatibility">Compatibility Finder</string>
+    <string name="screen_expense_intelligence">Expense Intelligence</string>
+    <string name="screen_shrinkage">Shrinkage Analysis</string>
+
+    <!-- Operations -->
+    <string name="screen_repair_knowledge">Repair Knowledge</string>
+    <string name="screen_b2b">B2B Module</string>
+
+    <!-- Partner -->
+    <string name="screen_partner_portal">Partner Portal</string>
+    <string name="screen_partner_login">Partner Login</string>
+
+    <!-- Biometric -->
+    <string name="biometric_lock_title">Unlock MobiBix</string>
+    <string name="biometric_lock_subtitle">Confirm your identity to continue</string>
+    <string name="biometric_not_supported">Biometric not supported on this device</string>
 </resources>

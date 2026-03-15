@@ -3,6 +3,8 @@ package com.aiyal.mobibix.core.di
 import android.content.Context
 import androidx.room.Room
 import com.aiyal.mobibix.data.local.MobibixDatabase
+import com.aiyal.mobibix.data.local.dao.CachedCustomerDao
+import com.aiyal.mobibix.data.local.dao.CachedInvoiceDao
 import com.aiyal.mobibix.data.local.dao.ProductDao
 import dagger.Module
 import dagger.Provides
@@ -29,7 +31,13 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideProductDao(db: MobibixDatabase): ProductDao {
-        return db.productDao()
-    }
+    fun provideProductDao(db: MobibixDatabase): ProductDao = db.productDao()
+
+    @Provides
+    @Singleton
+    fun provideCachedInvoiceDao(db: MobibixDatabase): CachedInvoiceDao = db.cachedInvoiceDao()
+
+    @Provides
+    @Singleton
+    fun provideCachedCustomerDao(db: MobibixDatabase): CachedCustomerDao = db.cachedCustomerDao()
 }

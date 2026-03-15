@@ -173,6 +173,69 @@ fun SettingsScreen(
                     )
                 }
 
+                // ── Security Section ──
+                item {
+                    val securityContext = LocalContext.current
+                    val isBiometricAvailable = remember {
+                        com.aiyal.mobibix.core.security.MobiBiometricManager.isAvailable(securityContext)
+                    }
+                    SettingsSectionHeader("Security")
+                    GlassCard {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFF10B981).copy(alpha = 0.12f),
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.Fingerprint,
+                                        contentDescription = null,
+                                        tint = Color(0xFF10B981),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Biometric Lock",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isBiometricAvailable) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
+                                Text(
+                                    if (isBiometricAvailable) "Lock app with fingerprint / face ID" else "Not supported on this device",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            val biometricDataStore = androidx.compose.runtime.remember {
+                                securityContext.applicationContext
+                                    .getSystemService(android.content.Context.MODE_PRIVATE.toString())
+                            }
+                            // Simple SharedPreferences-based toggle (DataStore DI not available here)
+                            val prefs = remember { securityContext.getSharedPreferences("mobi_security", android.content.Context.MODE_PRIVATE) }
+                            var biometricEnabled by remember { mutableStateOf(prefs.getBoolean("biometric_lock", false)) }
+                            Switch(
+                                checked = biometricEnabled,
+                                onCheckedChange = { enabled ->
+                                    if (isBiometricAvailable) {
+                                        biometricEnabled = enabled
+                                        prefs.edit().putBoolean("biometric_lock", enabled).apply()
+                                    }
+                                },
+                                enabled = isBiometricAvailable
+                            )
+                        }
+                    }
+                }
+
                 // ── Partner Portal ──
                 item {
                     SettingsSectionHeader("Partner Program")

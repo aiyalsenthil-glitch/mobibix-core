@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">मोबीबिक्स</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">होम</string>
+    <string name="nav_sales">बिक्री</string>
+    <string name="nav_inventory">इन्वेंटरी</string>
+    <string name="nav_jobs">जॉब कार्ड</string>
+    <string name="nav_settings">सेटिंग्स</string>
+
+    <!-- Common actions -->
+    <string name="action_save">सहेजें</string>
+    <string name="action_cancel">रद्द करें</string>
+    <string name="action_delete">हटाएं</string>
+    <string name="action_edit">संपादित करें</string>
+    <string name="action_back">वापस</string>
+    <string name="action_retry">पुनः प्रयास</string>
+    <string name="action_share">साझा करें</string>
+    <string name="action_print">प्रिंट</string>
+    <string name="action_add">जोड़ें</string>
+    <string name="action_confirm">पुष्टि करें</string>
+    <string name="action_apply_filter">फ़िल्टर लागू करें</string>
+
+    <!-- Common labels -->
+    <string name="label_loading">लोड हो रहा है…</string>
+    <string name="label_no_data">कोई डेटा उपलब्ध नहीं</string>
+    <string name="label_total">कुल</string>
+    <string name="label_subtotal">उप-कुल</string>
+    <string name="label_gst">जीएसटी</string>
+    <string name="label_date">तारीख</string>
+    <string name="label_status">स्थिति</string>
+    <string name="label_customer">ग्राहक</string>
+    <string name="label_phone">फोन</string>
+    <string name="label_amount">राशि</string>
+    <string name="label_quantity">मात्रा</string>
+    <string name="label_price">मूल्य</string>
+    <string name="label_notes">नोट्स</string>
+    <string name="label_from">से</string>
+    <string name="label_to">तक</string>
+    <string name="label_search">खोजें</string>
+
+    <!-- Sales -->
+    <string name="screen_new_sale">नई बिक्री</string>
+    <string name="screen_invoices">बिल</string>
+    <string name="screen_credit_notes">क्रेडिट नोट</string>
+    <string name="screen_quotations">कोटेशन</string>
+    <string name="screen_sales_return">बिक्री वापसी</string>
+    <string name="label_convert_to_invoice">बिल में बदलें</string>
+    <string name="label_invoice_number">बिल नंबर</string>
+
+    <!-- Inventory -->
+    <string name="screen_products">उत्पाद</string>
+    <string name="screen_barcode_labels">बारकोड लेबल</string>
+    <string name="screen_stock_verification">स्टॉक सत्यापन</string>
+    <string name="label_hsn_code">HSN/SAC कोड</string>
+    <string name="label_gst_rate">जीएसटी दर (%)</string>
+    <string name="label_selling_price">बिक्री मूल्य</string>
+    <string name="label_cost_price">लागत मूल्य</string>
+    <string name="label_stock_qty">स्टॉक मात्रा</string>
+
+    <!-- Finance -->
+    <string name="screen_expenses">खर्च</string>
+    <string name="screen_daily_closing">दैनिक क्लोजिंग</string>
+    <string name="screen_purchase_report">खरीद रिपोर्ट</string>
+    <string name="label_outstanding">बकाया</string>
+    <string name="label_paid">भुगतान किया</string>
+    <string name="label_pending">लंबित</string>
+
+    <!-- Reports -->
+    <string name="screen_gstr1">जीएसटीआर-1 रिपोर्ट</string>
+    <string name="screen_stock_ledger">स्टॉक बही</string>
+    <string name="screen_monthly_report">मासिक रिपोर्ट</string>
+
+    <!-- Intelligence -->
+    <string name="screen_inventory_intelligence">इन्वेंटरी विश्लेषण</string>
+    <string name="screen_compatibility">संगतता खोज</string>
+    <string name="screen_expense_intelligence">खर्च विश्लेषण</string>
+    <string name="screen_shrinkage">संकोचन विश्लेषण</string>
+
+    <!-- Operations -->
+    <string name="screen_repair_knowledge">मरम्मत ज्ञानकोश</string>
+    <string name="screen_b2b">बी2बी मॉड्यूल</string>
+
+    <!-- Partner -->
+    <string name="screen_partner_portal">पार्टनर पोर्टल</string>
+    <string name="screen_partner_login">पार्टनर लॉगिन</string>
+
+    <!-- Biometric -->
+    <string name="biometric_lock_title">मोबीबिक्स अनलॉक करें</string>
+    <string name="biometric_lock_subtitle">जारी रखने के लिए अपनी पहचान सत्यापित करें</string>
+    <string name="biometric_not_supported">इस डिवाइस पर बायोमेट्रिक समर्थित नहीं है</string>
+</resources>
