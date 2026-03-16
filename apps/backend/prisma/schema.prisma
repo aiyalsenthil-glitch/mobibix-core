@@ -988,6 +988,7 @@ model WhatsAppNumber {
   metadata           Json?
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
+  lastProviderSwitchAt DateTime?
 
   // Relations
   tenant             Tenant?                    @relation("TenantWhatsAppNumbers", fields: [tenantId], references: [id])

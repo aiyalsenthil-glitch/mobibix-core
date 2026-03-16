@@ -345,6 +345,51 @@ export class WhatsAppOnboardingService {
     this.logger.log(`WhatsApp integration disconnected for tenant ${tenantId}`);
     return { success: true };
   }
+
+  /**
+   * Switches the WhatsApp provider engine
+   */
+  async switchProvider(tenantId: string, provider: 'META_CLOUD' | 'WEB_SOCKET') {
+    // 1. Find existing number
+    const activeNumber = await this.prisma.whatsAppNumber.findFirst({
+      where: { tenantId },
+    });
+
+    if (!activeNumber) {
+      // If no number exists, we just record the preference for when they start onboarding
+      // But usually, we create a placeholder or just return success and let the frontend 
+      // handle the next step (QR vs Meta login).
+      // For now, let's allow "switching" even if no number, by creating a default entry if needed 
+      // or just returning the choice.
+      return { success: true, provider };
+    }
+
+    // 2. Enforce 24h rule (except in dev)
+    const isProd = this.configService.get<string>('NODE_ENV') === 'production';
+    if (isProd && (activeNumber as any).lastProviderSwitchAt) {
+      const lastSwitch = new Date((activeNumber as any).lastProviderSwitchAt).getTime();
+      const hoursSince = (Date.now() - lastSwitch) / (1000 * 60 * 60);
+      if (hoursSince < 24) {
+        const remaining = Math.ceil(24 - hoursSince);
+        throw new BadRequestException(`Provider switching is restricted to once every 24 hours. Please try again in ${remaining} hours.`);
+      }
+    }
+
+    // 3. Update Provider
+    await this.prisma.whatsAppNumber.update({
+      where: { id: activeNumber.id },
+      data: {
+        provider: provider as any,
+        lastProviderSwitchAt: new Date(),
+        // If switching engines, we reset setup status to DISCONNECTED or SCAN_REQUIRED 
+        // to force a fresh connection on the new logic
+        setupStatus: provider === 'WEB_SOCKET' ? 'SCAN_REQUIRED' : 'PENDING'
+      } as any,
+    });
+
+    this.logger.log(`Tenant ${tenantId} switched to ${provider} engine`);
+    return { success: true, provider };
+  }
   /**
    * Manually syncs WhatsApp configuration (for existing/manual setups)
    */
@@ -435,6 +480,7 @@ export class WhatsAppOnboardingService {
       wabaId: config.wabaId,
       phoneNumberId: config.phoneNumberId,
       phoneNumber: config.phoneNumber,
+      provider: (config as any).provider,
     };
   }
 }

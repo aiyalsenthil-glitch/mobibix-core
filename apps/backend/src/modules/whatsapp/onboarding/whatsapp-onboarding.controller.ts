@@ -120,6 +120,18 @@ export class WhatsAppOnboardingController {
     }
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.ONBOARD_CONNECT)
+  @Post('switch-provider')
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
+  @Roles(UserRole.ADMIN, UserRole.OWNER)
+  async switchProvider(
+    @Req() req,
+    @Body() body: { provider: 'META_CLOUD' | 'WEB_SOCKET' },
+  ) {
+    const tenantId = req.user.tenantId;
+    return this.onboardingService.switchProvider(tenantId, body.provider);
+  }
+
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.DISCONNECT)
   @Post('disconnect')
   @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)

@@ -32,10 +32,22 @@ export interface WhatsAppDashboard {
 }
 
 export interface WhatsAppStatus {
-  status: "ACTIVE" | "PENDING" | "FAILED" | "DISCONNECTED";
+  status: "ACTIVE" | "PENDING" | "FAILED" | "DISCONNECTED" | "SCAN_REQUIRED";
   wabaId: string | null;
   phoneNumberId: string | null;
   phoneNumber: string | null;
+  provider: "META_CLOUD" | "WEB_SOCKET";
+}
+
+export async function switchWhatsAppProvider(provider: 'META_CLOUD' | 'WEB_SOCKET'): Promise<void> {
+  const response = await authenticatedFetch("/integrations/whatsapp/switch-provider", {
+    method: "POST",
+    body: JSON.stringify({ provider }),
+  });
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to switch provider");
+  }
 }
 
 export interface ManualSyncRequest {
@@ -245,7 +257,7 @@ export async function connectWhatsAppWeb(tenantId: string): Promise<{ qr: string
   return response.json();
 }
 
-export async function getWhatsAppWebStatus(tenantId: string): Promise<{ status: string; qr?: string; phoneNumber?: string }> {
+export async function getWhatsAppWebStatus(tenantId: string): Promise<{ status: string; qr?: string; phoneNumber?: string; provider?: string }> {
   const response = await fetch(`${WA_WEB_URL}/whatsapp/status/${tenantId}`);
   if (!response.ok) throw new Error("Failed to fetch WA Web status");
   return response.json();
