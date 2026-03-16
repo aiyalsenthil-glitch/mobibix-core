@@ -3,6 +3,8 @@ package com.aiyal.mobibix.ui.features.finance.purchases
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aiyal.mobibix.core.shop.ShopContextProvider
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.CreatePurchaseDto
 import com.aiyal.mobibix.data.network.Purchase
 import com.aiyal.mobibix.data.network.PurchaseStatus
@@ -35,7 +37,8 @@ data class PurchaseUiState(
 class PurchaseViewModel @Inject constructor(
     private val purchaseRepository: PurchaseRepository,
     private val supplierRepository: SupplierRepository,
-    private val shopContextProvider: ShopContextProvider
+    private val shopContextProvider: ShopContextProvider,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PurchaseUiState())
@@ -49,7 +52,9 @@ class PurchaseViewModel @Inject constructor(
                 val list = purchaseRepository.listPurchases(shopId)
                 _uiState.value = _uiState.value.copy(isLoading = false, purchases = list)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -61,7 +66,9 @@ class PurchaseViewModel @Inject constructor(
                 val purchase = purchaseRepository.getPurchase(id)
                 _uiState.value = _uiState.value.copy(isLoading = false, selectedPurchase = purchase)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -71,10 +78,12 @@ class PurchaseViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 purchaseRepository.submitPurchase(id)
-                loadPurchaseDetail(id) // Refresh
+                loadPurchaseDetail(id)
                 _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -84,15 +93,16 @@ class PurchaseViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 purchaseRepository.recordPayment(id, amount, method, reference, notes)
-                loadPurchaseDetail(id) // Refresh
+                loadPurchaseDetail(id)
                 _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
 
-    // Purchase Orders
     fun loadPurchaseOrders() {
         val shopId = shopContextProvider.getActiveShopId() ?: ""
         viewModelScope.launch {
@@ -101,7 +111,9 @@ class PurchaseViewModel @Inject constructor(
                 val list = purchaseRepository.listPurchaseOrders(shopId)
                 _uiState.value = _uiState.value.copy(isLoading = false, purchaseOrders = list)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -113,7 +125,9 @@ class PurchaseViewModel @Inject constructor(
                 val po = purchaseRepository.getPurchaseOrder(id)
                 _uiState.value = _uiState.value.copy(isLoading = false, selectedPO = po)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -126,12 +140,13 @@ class PurchaseViewModel @Inject constructor(
                 loadPODetail(id)
                 _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
 
-    // GRNs
     fun createGrn(data: CreateGRNDto) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -139,7 +154,9 @@ class PurchaseViewModel @Inject constructor(
                 purchaseRepository.createGrn(data)
                 _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -149,14 +166,16 @@ class PurchaseViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 purchaseRepository.confirmGrn(id)
-                loadPODetail(poId) // Refresh PO to see updated received quantities
+                loadPODetail(poId)
                 _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
-    
+
     fun resetActionSuccess() {
         _uiState.value = _uiState.value.copy(actionSuccess = false)
     }

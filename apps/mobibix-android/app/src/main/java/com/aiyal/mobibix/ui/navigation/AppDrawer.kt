@@ -2,15 +2,20 @@ package com.aiyal.mobibix.ui.navigation
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.AssignmentReturn
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.FactCheck
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -36,7 +41,7 @@ data class DrawerItem(
     val icon: ImageVector,
     val route: String,
     val requiredPermission: String? = null,
-    val allowedRoles: List<String>? = null // null = all roles
+    val allowedRoles: List<String>? = null
 )
 
 data class DrawerSection(
@@ -50,7 +55,7 @@ private fun buildDrawerSections(): List<DrawerSection> = listOf(
         items = listOf(
             DrawerItem("Customers", Icons.Default.People, "customers", "MEMBER_VIEW"),
             DrawerItem("Credit Notes", Icons.Default.Receipt, "credit_notes", "SALES_VIEW"),
-            DrawerItem("Sales Return", Icons.Default.AssignmentReturn, "sales_return", "SALES_VIEW"),
+            DrawerItem("Sales Return", Icons.AutoMirrored.Filled.AssignmentReturn, "sales_return", "SALES_VIEW"),
             DrawerItem("Quotations", Icons.Default.Description, "quotations", "SALES_VIEW"),
             DrawerItem("Loyalty", Icons.Default.Stars, "loyalty", "SALES_VIEW"),
             DrawerItem("CRM", Icons.Default.AssignmentInd, "crm_dashboard", "MEMBER_VIEW"),
@@ -93,7 +98,7 @@ private fun buildDrawerSections(): List<DrawerSection> = listOf(
         items = listOf(
             DrawerItem("AI Assistant", Icons.AutoMirrored.Filled.Chat, "ai_chat"),
             DrawerItem("Inventory Intelligence", Icons.Default.Psychology, "inventory_intelligence", "INVENTORY_VIEW"),
-            DrawerItem("Shrinkage Analysis", Icons.Default.TrendingDown, "shrinkage_intelligence", "INVENTORY_VIEW",
+            DrawerItem("Shrinkage Analysis", Icons.AutoMirrored.Filled.TrendingDown, "shrinkage_intelligence", "INVENTORY_VIEW",
                 allowedRoles = listOf(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER)),
             DrawerItem("Expense Intelligence", Icons.Default.Analytics, "expense_intelligence", "DASHBOARD_VIEW"),
             DrawerItem("Compatibility", Icons.Default.DevicesOther, "compatibility"),
@@ -103,7 +108,7 @@ private fun buildDrawerSections(): List<DrawerSection> = listOf(
         title = "Operations",
         items = listOf(
             DrawerItem("Repair Knowledge", Icons.Default.Build, "repair_knowledge"),
-            DrawerItem("Stock Verification", Icons.Default.FactCheck, "stock_verification", "INVENTORY_MANAGE",
+            DrawerItem("Stock Verification", Icons.AutoMirrored.Filled.FactCheck, "stock_verification", "INVENTORY_MANAGE",
                 allowedRoles = listOf(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.SUPERVISOR)),
             DrawerItem("WhatsApp", Icons.AutoMirrored.Filled.Chat, "whatsapp_dashboard", "REPAIR_MANAGE"),
         )
@@ -121,6 +126,13 @@ private fun buildDrawerSections(): List<DrawerSection> = listOf(
         )
     )
 )
+
+// Premium accent colors for glass morphism
+private val GlassAccent = Color(0xFF6366F1)       // Indigo
+private val GlassAccentAlt = Color(0xFF8B5CF6)    // Violet
+private val GlassSurface = Color(0xFF1E1E2E)
+private val GlassBorder = Color(0x33FFFFFF)
+private val GlassSelected = Color(0xFF6366F1)
 
 @Composable
 fun AppDrawerContent(
@@ -156,150 +168,390 @@ fun AppDrawerContent(
         }
     }
 
+    // Drawer background: glass-style gradient
+    val drawerBg = if (isDark) {
+        Brush.verticalGradient(
+            listOf(
+                Color(0xFF0F0F1A),
+                Color(0xFF141428),
+                Color(0xFF0A0A15)
+            )
+        )
+    } else {
+        Brush.verticalGradient(
+            listOf(
+                Color(0xFFF8F9FF),
+                Color(0xFFEEF0FF),
+                Color(0xFFF4F5FF)
+            )
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .width(280.dp)
-            .background(colorScheme.surface)
+            .width(288.dp)
+            .background(drawerBg)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    listOf(
+                        if (isDark) Color(0x40FFFFFF) else Color(0x20000000),
+                        Color.Transparent
+                    )
+                ),
+                shape = RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp)
+            )
     ) {
-        // ── Logo Header ──
-        Column(
+        // ── Header ──────────────────────────────────────────────────────────
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    Brush.verticalGradient(
-                        listOf(colorScheme.primary.copy(alpha = 0.08f), Color.Transparent)
+                    Brush.linearGradient(
+                        listOf(
+                            GlassAccent.copy(alpha = if (isDark) 0.25f else 0.12f),
+                            GlassAccentAlt.copy(alpha = if (isDark) 0.15f else 0.08f),
+                            Color.Transparent
+                        )
                     )
                 )
-                .padding(top = 48.dp, bottom = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(top = 52.dp, bottom = 20.dp, start = 16.dp, end = 16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (isDark) Icons.Default.DarkMode else Icons.Default.LightMode,
-                        contentDescription = "Theme",
-                        tint = colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Switch(
-                        checked = isDark,
-                        onCheckedChange = { ThemeState.isDarkMode = it },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = colorScheme.primary,
-                            checkedTrackColor = colorScheme.primary.copy(alpha = 0.3f),
-                            uncheckedThumbColor = colorScheme.outline,
-                            uncheckedTrackColor = colorScheme.outlineVariant
-                        ),
-                        modifier = Modifier.height(28.dp)
-                    )
-                }
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = colorScheme.onSurfaceVariant)
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Image(
-                painter = painterResource(id = R.drawable.mobibix_logo),
-                contentDescription = "MobiBix Logo",
-                modifier = Modifier.size(56.dp),
-                contentScale = ContentScale.Fit
-            )
-            Spacer(Modifier.height(4.dp))
-            Text("MOBIBIX", color = colorScheme.primary, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
-
-            // Role badge
-            if (currentRole != null) {
-                Spacer(Modifier.height(4.dp))
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = colorScheme.primary.copy(alpha = 0.12f)
+            Column {
+                // Theme toggle + close row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        currentRole,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colorScheme.primary
-                    )
+                    // Theme toggle
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                if (isDark) Color(0x26FFFFFF) else Color(0x14000000)
+                            )
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            if (isDark) Icons.Default.DarkMode else Icons.Default.LightMode,
+                            contentDescription = null,
+                            tint = if (isDark) Color(0xFFB0B0FF) else GlassAccent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Switch(
+                            checked = isDark,
+                            onCheckedChange = { ThemeState.isDarkMode = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = GlassAccent,
+                                uncheckedThumbColor = GlassAccent,
+                                uncheckedTrackColor = GlassAccent.copy(alpha = 0.25f)
+                            ),
+                            modifier = Modifier.height(24.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = onClose,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(if (isDark) Color(0x26FFFFFF) else Color(0x14000000))
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = if (isDark) Color(0xCCFFFFFF) else Color(0x99000000),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Logo + App name
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(GlassAccent, GlassAccentAlt)
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.mobibix_logo),
+                            contentDescription = "MobiBix Logo",
+                            modifier = Modifier.size(32.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                    Column {
+                        Text(
+                            "MOBIBIX",
+                            color = if (isDark) Color.White else Color(0xFF1A1A3E),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 2.sp
+                        )
+                        Text(
+                            "Mobile Repair Suite",
+                            color = if (isDark) Color(0x99FFFFFF) else Color(0x99000000),
+                            fontSize = 11.sp,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                }
+
+                // Role badge
+                if (currentRole != null) {
+                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        GlassAccent.copy(alpha = 0.3f),
+                                        GlassAccentAlt.copy(alpha = 0.2f)
+                                    )
+                                )
+                            )
+                            .border(
+                                1.dp,
+                                GlassAccent.copy(alpha = 0.4f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            currentRole,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) Color(0xFFB0B0FF) else GlassAccent,
+                            letterSpacing = 1.sp
+                        )
+                    }
                 }
             }
         }
 
-        HorizontalDivider(color = colorScheme.outlineVariant, thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+        // Subtle separator
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color.Transparent,
+                            GlassAccent.copy(alpha = 0.4f),
+                            GlassAccentAlt.copy(alpha = 0.3f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
 
-        // ── Sectioned Nav Items ──
+        // ── Nav Items ────────────────────────────────────────────────────────
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
         ) {
             sections.forEach { section ->
                 item {
-                    Text(
-                        section.title.uppercase(),
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        letterSpacing = 1.5.sp
-                    )
+                    Row(
+                        modifier = Modifier.padding(start = 8.dp, top = 16.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(16.dp)
+                                .height(1.5.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(GlassAccent.copy(alpha = 0.7f), Color.Transparent)
+                                    ),
+                                    RoundedCornerShape(2.dp)
+                                )
+                        )
+                        Text(
+                            section.title.uppercase(),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) Color(0x80B0B0FF) else GlassAccent.copy(alpha = 0.6f),
+                            letterSpacing = 1.5.sp
+                        )
+                    }
                 }
                 items(section.items) { item ->
-                    DrawerNavItem(
+                    GlassDrawerNavItem(
                         item = item,
                         isSelected = currentRoute == item.route,
+                        isDark = isDark,
                         onClick = {
                             onItemClick(item.route)
                             onClose()
                         }
                     )
                 }
-                item { Spacer(Modifier.height(4.dp)) }
             }
+            item { Spacer(Modifier.height(8.dp)) }
         }
 
-        // ── Logout ──
-        HorizontalDivider(color = colorScheme.outlineVariant, thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+        // ── Logout ──────────────────────────────────────────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color.Transparent,
+                            Color(0xFFEF4444).copy(alpha = 0.3f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onLogout() }
-                .padding(horizontal = 24.dp, vertical = 16.dp),
+                .padding(horizontal = 24.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout", tint = colorScheme.error, modifier = Modifier.size(22.dp))
-            Text("Logout", color = colorScheme.error, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFFEF4444).copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Logout,
+                    contentDescription = "Logout",
+                    tint = Color(0xFFEF4444),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Text(
+                "Logout",
+                color = Color(0xFFEF4444),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
         Spacer(Modifier.height(16.dp))
     }
 }
 
 @Composable
-private fun DrawerNavItem(item: DrawerItem, isSelected: Boolean, onClick: () -> Unit) {
-    val colorScheme = MaterialTheme.colorScheme
-    val bgColor = if (isSelected) colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent
-    val textColor = if (isSelected) colorScheme.primary else colorScheme.onSurface
-    val iconColor = if (isSelected) colorScheme.primary else colorScheme.onSurfaceVariant
+private fun GlassDrawerNavItem(
+    item: DrawerItem,
+    isSelected: Boolean,
+    isDark: Boolean,
+    onClick: () -> Unit
+) {
+    val selectedBg = if (isDark) {
+        Brush.horizontalGradient(
+            listOf(
+                GlassAccent.copy(alpha = 0.25f),
+                GlassAccentAlt.copy(alpha = 0.15f),
+                Color.Transparent
+            )
+        )
+    } else {
+        Brush.horizontalGradient(
+            listOf(
+                GlassAccent.copy(alpha = 0.12f),
+                GlassAccentAlt.copy(alpha = 0.06f),
+                Color.Transparent
+            )
+        )
+    }
+
+    val textColor = when {
+        isSelected -> if (isDark) Color(0xFFB0B0FF) else GlassAccent
+        isDark -> Color(0xCCFFFFFF)
+        else -> Color(0xCC1A1A3E)
+    }
+
+    val iconBg = when {
+        isSelected -> Brush.linearGradient(listOf(GlassAccent, GlassAccentAlt))
+        isDark -> Brush.linearGradient(listOf(Color(0x26FFFFFF), Color(0x1AFFFFFF)))
+        else -> Brush.linearGradient(listOf(Color(0x14000000), Color(0x0A000000)))
+    }
+
+    val iconTint = when {
+        isSelected -> Color.White
+        isDark -> Color(0x99FFFFFF)
+        else -> Color(0x99000000)
+    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(bgColor)
+            .then(
+                if (isSelected) Modifier.background(selectedBg) else Modifier
+            )
+            .then(
+                if (isSelected) Modifier.border(
+                    1.dp,
+                    GlassAccent.copy(alpha = if (isDark) 0.3f else 0.2f),
+                    RoundedCornerShape(12.dp)
+                ) else Modifier
+            )
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Icon(item.icon, contentDescription = item.label, tint = iconColor, modifier = Modifier.size(20.dp))
-        Text(item.label, color = textColor, fontSize = 14.sp, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
+        // Icon container
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(iconBg),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                item.icon,
+                contentDescription = item.label,
+                tint = iconTint,
+                modifier = Modifier.size(17.dp)
+            )
+        }
+
+        Text(
+            item.label,
+            color = textColor,
+            fontSize = 14.sp,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.weight(1f)
+        )
+
+        // Selected indicator dot
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(GlassAccent)
+            )
+        }
     }
 }

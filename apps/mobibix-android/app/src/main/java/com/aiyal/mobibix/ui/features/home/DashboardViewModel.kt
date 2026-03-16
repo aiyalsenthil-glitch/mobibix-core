@@ -3,8 +3,9 @@ package com.aiyal.mobibix.ui.features.home
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.domain.DashboardRepository
-import com.aiyal.mobibix.ui.features.home.OwnerDashboardState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -12,7 +13,8 @@ import javax.inject.Inject
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val repository: DashboardRepository,
-    private val shopRepository: com.aiyal.mobibix.domain.ShopRepository
+    private val shopRepository: com.aiyal.mobibix.domain.ShopRepository,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     var ownerState = mutableStateOf(OwnerDashboardState())
@@ -44,6 +46,7 @@ class DashboardViewModel @Inject constructor(
                     salesTrend = res.salesTrend.map { DashboardTrendItem(it.date, it.sales) }
                 )
             } catch (e: Exception) {
+                uiMessageBus.showError(MobiError.extractMessage(e))
                 ownerState.value = ownerState.value.copy(loading = false)
             }
         }
@@ -62,8 +65,8 @@ class DashboardViewModel @Inject constructor(
             try {
                 val shops = shopRepository.getMyShops()
                 ownerState.value = ownerState.value.copy(shops = shops)
-            } catch (e: Exception) {
-                // Ignore shops load error for now
+            } catch (_: Exception) {
+                // shops load failure is non-critical
             }
         }
     }
@@ -83,7 +86,7 @@ class DashboardViewModel @Inject constructor(
                     zeroStock = res.stockAlerts.zeroStockCount
                 )
             } catch (e: Exception) {
-                // Handle error state if necessary
+                uiMessageBus.showError(MobiError.extractMessage(e))
                 staffState.value = staffState.value.copy(loading = false)
             }
         }

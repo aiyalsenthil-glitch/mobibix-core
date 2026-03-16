@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
@@ -30,6 +31,7 @@ private val TealAccent = Color(0xFF00C896)
 fun CustomerListScreen(
     onNavigateToAddCustomer: () -> Unit,
     onCustomerClick: (String) -> Unit,
+    onNavigateBack: (() -> Unit)? = null,
     viewModel: CustomerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -39,6 +41,26 @@ fun CustomerListScreen(
     }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("Customers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text("Manage your customer base", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                },
+                navigationIcon = {
+                    if (onNavigateBack != null) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNavigateToAddCustomer,
@@ -50,21 +72,12 @@ fun CustomerListScreen(
             }
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // ── Premium Header ──
-            Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                    Text("Customers", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text("Manage your customer base", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-
-            Box(modifier = Modifier.fillMaxSize()) {
                 if (uiState.loading) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = TealAccent)
                 } else if (uiState.error != null) {
@@ -85,7 +98,6 @@ fun CustomerListScreen(
                         }
                     }
                 }
-            }
         }
     }
 }

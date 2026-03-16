@@ -12,6 +12,7 @@ import { PurchaseAuditService } from './purchase-audit.service';
 import { StockModule } from '../stock/stock.module';
 import { PartiesModule } from '../parties/parties.module';
 import { PurchasePaymentService } from '../../modules/mobileshop/services/purchase-payment.service';
+import { PriceAlertController } from './price-alert.controller';
 
 @Module({
   imports: [PrismaModule, StockModule, PartiesModule],
@@ -28,6 +29,7 @@ import { PurchasePaymentService } from '../../modules/mobileshop/services/purcha
     PurchaseOrderController,
     GRNController,
     PurchasesHardeningController,
+    PriceAlertController,
   ],
   exports: [PurchasesService, PurchaseOrderService, GRNService],
 })

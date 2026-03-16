@@ -2,6 +2,8 @@ package com.aiyal.mobibix.ui.features.jobs
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.JobCardResponse
 import com.aiyal.mobibix.domain.JobRepository
 import com.aiyal.mobibix.model.JobStatus
@@ -14,13 +16,13 @@ import javax.inject.Inject
 
 @HiltViewModel
 class JobViewModel @Inject constructor(
-    private val repository: JobRepository
+    private val repository: JobRepository,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(JobListUiState())
     val uiState: StateFlow<JobListUiState> = _uiState.asStateFlow()
 
-    // Holds the complete un-filtered list for accurate count badges
     private var allJobs: List<JobCardResponse> = emptyList()
 
     fun loadJobs(shopId: String) {
@@ -31,10 +33,9 @@ class JobViewModel @Inject constructor(
                 allJobs = jobs
                 applyFilters()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    error = e.message ?: "Failed to load jobs"
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(loading = false, error = msg)
             }
         }
     }
@@ -67,8 +68,8 @@ class JobViewModel @Inject constructor(
 
         _uiState.value = _uiState.value.copy(
             loading = false,
-            jobs = allJobs,           // full list — used for count badges per status
-            filteredJobs = filtered,  // filtered list — displayed in the LazyColumn
+            jobs = allJobs,
+            filteredJobs = filtered,
             error = null
         )
     }
@@ -76,8 +77,8 @@ class JobViewModel @Inject constructor(
 
 data class JobListUiState(
     val loading: Boolean = false,
-    val jobs: List<JobCardResponse> = emptyList(),          // All jobs (for count badges)
-    val filteredJobs: List<JobCardResponse> = emptyList(),  // Filtered for display
+    val jobs: List<JobCardResponse> = emptyList(),
+    val filteredJobs: List<JobCardResponse> = emptyList(),
     val error: String? = null,
     val searchQuery: String = "",
     val statusFilter: JobStatus? = null

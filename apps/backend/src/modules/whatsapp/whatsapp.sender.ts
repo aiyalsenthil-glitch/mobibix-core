@@ -9,6 +9,7 @@ import { WhatsAppPhoneNumberPurpose, ModuleType } from '@prisma/client';
 import { PlanRulesService } from '../../core/billing/plan-rules.service';
 import { WhatsAppTokenService } from './whatsapp-token.service';
 import { WhatsAppRoutingService } from './whatsapp-routing.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class WhatsAppSender {
@@ -21,6 +22,7 @@ export class WhatsAppSender {
     private readonly planRulesService: PlanRulesService,
     private readonly tokenService: WhatsAppTokenService,
     private readonly routingService: WhatsAppRoutingService,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -567,7 +569,6 @@ export class WhatsAppSender {
       return { success: false, error: 'Phone number inactive/disabled' };
     }
 
-    // 3. Prepare & Send
     const normalizedPhone = normalizePhone(phone);
     let whatsappFormattedPhone: string;
     try {
@@ -576,9 +577,49 @@ export class WhatsAppSender {
       return { success: false, error: 'Invalid phone format' };
     }
 
+    // 💡 NEW: Handle WEB_SOCKET provider via local service
+    if (phoneNumberConfig.provider === 'WEB_SOCKET') {
+      try {
+        const waWebUrl = this.configService.get<string>('WA_WEB_URL') || 'http://localhost_REPLACED:3005';
+        const { data } = await axios.post(`${waWebUrl}/whatsapp/send`, {
+          tenantId,
+          to: whatsappFormattedPhone,
+          text: text,
+        });
+
+        const messageId = data?.messageId;
+
+        // Log Success
+        await this.prisma.whatsAppLog.create({
+          data: {
+            tenantId,
+            whatsAppNumberId: phoneNumberConfig.id,
+            phone: whatsappFormattedPhone,
+            type: 'MANUAL',
+            status: 'SENT',
+            messageId,
+            metadata: { text_snippet: text.substring(0, 50), provider: 'WEB_SOCKET' },
+          },
+        });
+
+        return { success: true, messageId };
+      } catch (err: any) {
+        const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+        await this.logger.log({
+          tenantId,
+          memberId: null,
+          phone: whatsappFormattedPhone,
+          type: 'MANUAL',
+          status: 'FAILED',
+          error: `Web service: ${errMsg}`,
+          whatsAppNumberId: phoneNumberConfig.id,
+        });
+        return { success: false, error: `Web service: ${errMsg}` };
+      }
+    }
+
     const url = `https://graph.facebook.com/${this.apiVersion}/${phoneNumberConfig.phoneNumberId}/messages`;
-    const resolvedToken =
-      await this.tokenService.resolveToken(phoneNumberConfig);
+    const resolvedToken = await this.tokenService.resolveToken(phoneNumberConfig);
 
     try {
       const response = await axios.post(

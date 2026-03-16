@@ -30,8 +30,9 @@ data class PaymentVoucher(
 
 data class CreateVoucherRequest(
     val paymentMethod: String,
-    val amount: Double,
+    val amount: Int, // integer Rupees — backend converts to Paisa
     val voucherType: VoucherType,
+    val shopId: String? = null,
     val globalSupplierId: String? = null,
     val expenseCategory: String? = null,
     val linkedPurchaseId: String? = null,

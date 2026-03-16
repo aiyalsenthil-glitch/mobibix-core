@@ -2,6 +2,8 @@ package com.aiyal.mobibix.ui.features.roles
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.domain.model.Role
 import com.aiyal.mobibix.domain.repository.RolesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,7 +21,8 @@ sealed class RolesUiState {
 
 @HiltViewModel
 class RolesViewModel @Inject constructor(
-    private val repository: RolesRepository
+    private val repository: RolesRepository,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<RolesUiState>(RolesUiState.Loading)
@@ -36,7 +39,9 @@ class RolesViewModel @Inject constructor(
                 val roles = repository.listRoles()
                 _uiState.value = RolesUiState.Success(roles)
             } catch (e: Exception) {
-                _uiState.value = RolesUiState.Error(e.message ?: "Failed to load roles")
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = RolesUiState.Error(msg)
             }
         }
     }
@@ -47,7 +52,9 @@ class RolesViewModel @Inject constructor(
                 repository.deleteRole(id)
                 loadRoles()
             } catch (e: Exception) {
-                _uiState.value = RolesUiState.Error(e.message ?: "Failed to delete role")
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = RolesUiState.Error(msg)
             }
         }
     }

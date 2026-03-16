@@ -153,7 +153,7 @@ export function mapInvoiceToPrintData(ctx: AdapterContext): PrintDocumentData {
       authorizedSignatory: true,
       text: shop.invoiceFooter,
     },
-    qrCode: `/verify/${invoice.id}`,
+    qrCode: invoice.upiQrCode || `/verify/${invoice.id}`,
     config: {
       printDate: new Date().toISOString(),
       pricesInclusive: pricesIncludeTax,

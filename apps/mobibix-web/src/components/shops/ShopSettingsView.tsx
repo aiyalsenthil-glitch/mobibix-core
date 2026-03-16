@@ -335,6 +335,19 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
                       className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                      UPI ID <span className="text-xs text-teal-500">(for invoice QR payments)</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="upiId"
+                      value={(formData as any).upiId || ""}
+                      onChange={handleChange}
+                      placeholder="e.g. shopname@ybl"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

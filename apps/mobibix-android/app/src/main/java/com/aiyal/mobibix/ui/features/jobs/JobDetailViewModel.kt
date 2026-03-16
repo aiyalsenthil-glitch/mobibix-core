@@ -2,6 +2,8 @@ package com.aiyal.mobibix.ui.features.jobs
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.AddAdvanceRequest
 import com.aiyal.mobibix.data.network.AddPartRequest
 import com.aiyal.mobibix.data.network.JobCardResponse
@@ -11,7 +13,6 @@ import com.aiyal.mobibix.data.network.dto.UpdateJobRequest
 import com.aiyal.mobibix.domain.JobRepository
 import com.aiyal.mobibix.domain.ShopRepository
 import com.aiyal.mobibix.model.JobStatus
-import com.aiyal.mobibix.core.util.MobiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +23,8 @@ import javax.inject.Inject
 @HiltViewModel
 class JobDetailViewModel @Inject constructor(
     private val jobRepository: JobRepository,
-    private val shopRepository: ShopRepository
+    private val shopRepository: ShopRepository,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(JobDetailUiState())
@@ -34,46 +36,26 @@ class JobDetailViewModel @Inject constructor(
             try {
                 val job = jobRepository.getJobDetails(shopId, jobId)
                 val shop = shopRepository.getShop(shopId)
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    job = job,
-                    shop = shop,
-                    error = null
-                )
+                _uiState.value = _uiState.value.copy(loading = false, job = job, shop = shop, error = null)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    error = MobiError.extractMessage(e)
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(loading = false, error = msg)
             }
         }
     }
 
-    /**
-     * Update job status. If the job has an active advance (advancePaid > 0) and the
-     * new status is terminal (CANCELLED / RETURNED / SCRAPPED), caller must provide
-     * [refundDetails] — this matches the backend requirement.
-     */
-    fun updateStatus(
-        shopId: String,
-        jobId: String,
-        status: JobStatus,
-        refundDetails: RefundDetails? = null,
-        reason: String? = null
-    ) {
+    fun updateStatus(shopId: String, jobId: String, status: JobStatus, refundDetails: RefundDetails? = null, reason: String? = null) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(loading = true, error = null)
             try {
                 jobRepository.updateStatus(shopId, jobId, status.name, refundDetails, reason)
                 loadJobDetails(shopId, jobId)
-                _uiState.value = _uiState.value.copy(
-                    successMessage = "Status updated to ${status.name.replace("_", " ")}"
-                )
+                _uiState.value = _uiState.value.copy(successMessage = "Status updated to ${status.name.replace("_", " ")}")
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    error = e.message ?: "Failed to update status"
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(loading = false, error = msg)
             }
         }
     }
@@ -86,10 +68,9 @@ class JobDetailViewModel @Inject constructor(
                 loadJobDetails(shopId, jobId)
                 _uiState.value = _uiState.value.copy(successMessage = "Job details saved")
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    error = e.message ?: "Failed to update job"
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(loading = false, error = msg)
             }
         }
     }
@@ -99,16 +80,11 @@ class JobDetailViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(partsLoading = true, error = null)
             try {
                 val updated = jobRepository.addPart(shopId, jobId, AddPartRequest(shopProductId, quantity))
-                _uiState.value = _uiState.value.copy(
-                    partsLoading = false,
-                    job = updated,
-                    successMessage = "Part added"
-                )
+                _uiState.value = _uiState.value.copy(partsLoading = false, job = updated, successMessage = "Part added")
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    partsLoading = false,
-                    error = e.message ?: "Failed to add part"
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(partsLoading = false, error = msg)
             }
         }
     }
@@ -118,16 +94,11 @@ class JobDetailViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(partsLoading = true, error = null)
             try {
                 val updated = jobRepository.removePart(shopId, jobId, partId)
-                _uiState.value = _uiState.value.copy(
-                    partsLoading = false,
-                    job = updated,
-                    successMessage = "Part removed, stock restored"
-                )
+                _uiState.value = _uiState.value.copy(partsLoading = false, job = updated, successMessage = "Part removed, stock restored")
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    partsLoading = false,
-                    error = e.message ?: "Failed to remove part"
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(partsLoading = false, error = msg)
             }
         }
     }
@@ -137,16 +108,11 @@ class JobDetailViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(partsLoading = true, error = null)
             try {
                 val updated = jobRepository.addAdvance(shopId, jobId, AddAdvanceRequest(amount, mode))
-                _uiState.value = _uiState.value.copy(
-                    partsLoading = false,
-                    job = updated,
-                    successMessage = "Advance of ₹$amount recorded"
-                )
+                _uiState.value = _uiState.value.copy(partsLoading = false, job = updated, successMessage = "Advance of ₹$amount recorded")
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    partsLoading = false,
-                    error = e.message ?: "Failed to record advance"
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(partsLoading = false, error = msg)
             }
         }
     }
@@ -156,15 +122,11 @@ class JobDetailViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(loading = true, error = null)
             try {
                 jobRepository.createWarrantyJob(shopId, jobId)
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    successMessage = "Warranty job created successfully"
-                )
+                _uiState.value = _uiState.value.copy(loading = false, successMessage = "Warranty job created successfully")
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    error = MobiError.extractMessage(e)
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(loading = false, error = msg)
             }
         }
     }
@@ -177,10 +139,9 @@ class JobDetailViewModel @Inject constructor(
                 loadJobDetails(shopId, jobId)
                 onSuccess()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    error = MobiError.extractMessage(e)
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(loading = false, error = msg)
             }
         }
     }

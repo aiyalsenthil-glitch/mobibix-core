@@ -54,6 +54,7 @@ export interface Shop {
   accountNumber?: string;
   ifscCode?: string;
   branchName?: string;
+  upiId?: string;
   repairInvoiceNumberingMode?: RepairInvoiceNumberingMode;
   repairGstDefault?: boolean;
 }
@@ -137,6 +138,7 @@ export interface UpdateShopSettingsDto {
   accountNumber?: string;
   ifscCode?: string;
   branchName?: string;
+  upiId?: string;
 
   repairInvoiceNumberingMode?: RepairInvoiceNumberingMode;
   repairGstDefault?: boolean;

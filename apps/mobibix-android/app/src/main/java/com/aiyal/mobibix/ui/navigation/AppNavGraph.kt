@@ -1,10 +1,21 @@
 package com.aiyal.mobibix.ui.navigation
 
 import android.content.Intent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -13,7 +24,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.collectAsState
+import com.aiyal.mobibix.core.ui.UiMessageType
 import kotlinx.coroutines.launch
 import com.aiyal.mobibix.core.app.AppState
 import com.aiyal.mobibix.core.auth.AuthEntryPoint
@@ -53,14 +69,50 @@ fun AppNavGraph(
     val shopEntryPoint = EntryPointAccessors.fromApplication(context, ShopEntryPoint::class.java)
     val staffEntryPoint = EntryPointAccessors.fromApplication(context, StaffEntryPoint::class.java)
     val appStateResolver = authEntryPoint.appStateResolver()
+    val authEventBus = authEntryPoint.authEventBus()
+    val uiMessageBus = authEntryPoint.uiMessageBus()
     val shopApi = shopEntryPoint.shopApi()
     val shopContextStore = shopEntryPoint.shopContextStore()
     val shopContextProvider = shopEntryPoint.shopContextProvider()
     val staffApi = staffEntryPoint.staffApi()
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Global 401 handler
+    LaunchedEffect(Unit) {
+        authEventBus.unauthorizedEvent.collect {
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
+    // Global error/success snackbar
+    LaunchedEffect(Unit) {
+        uiMessageBus.messages.collect { msg ->
+            snackbarHostState.showSnackbar(msg.text, duration = SnackbarDuration.Short)
+        }
+    }
+
+    Scaffold(
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = Color(0xFF1E1E2E),
+                    contentColor = Color.White
+                )
+            }
+        }
+    ) { innerPadding ->
+    Box(Modifier.fillMaxSize().padding(innerPadding)) {
     NavHost(
         navController = navController,
-        startDestination = "login"
+        startDestination = "login",
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn() },
+        exitTransition = { slideOutHorizontally(targetOffsetX = { -it / 3 }) + fadeOut() },
+        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it / 3 }) + fadeIn() },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut() }
     ) {
 
         composable("login") {
@@ -398,7 +450,8 @@ fun AppNavGraph(
         composable("customers") {
             com.aiyal.mobibix.ui.features.customers.CustomerListScreen(
                 onNavigateToAddCustomer = { navController.navigate("add_customer") },
-                onCustomerClick = { customerId -> navController.navigate("customer_detail/$customerId") }
+                onCustomerClick = { customerId -> navController.navigate("customer_detail/$customerId") },
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(
@@ -471,7 +524,7 @@ fun AppNavGraph(
             VoucherListScreen(navController = navController)
         }
         composable("create_voucher") {
-            CreateVoucherScreen(navController = navController)
+            CreateVoucherScreen(navController = navController, shopContextProvider = shopContextProvider)
         }
 
         // WhatsApp CRM Routes
@@ -660,9 +713,15 @@ fun AppNavGraph(
                 navController = navController, shopContextProvider = shopContextProvider
             )
         }
-        composable("stock_ledger") {
+        composable(
+            route = "stock_ledger?productId={productId}",
+            arguments = listOf(navArgument("productId") { type = NavType.StringType; nullable = true; defaultValue = null })
+        ) { backStackEntry ->
+            val productId = backStackEntry.arguments?.getString("productId")
             com.aiyal.mobibix.ui.features.reports.StockLedgerScreen(
-                navController = navController, shopContextProvider = shopContextProvider
+                navController = navController,
+                shopContextProvider = shopContextProvider,
+                filterProductId = productId
             )
         }
 
@@ -719,5 +778,7 @@ fun AppNavGraph(
                 productId = productId
             )
         }
-    }
+    } // NavHost
+    } // Box
+    } // Scaffold
 }

@@ -191,6 +191,7 @@ export class ShopService {
         accountNumber: true,
         ifscCode: true,
         branchName: true,
+        upiId: true,
 
         repairInvoiceNumberingMode: true,
         repairGstDefault: true,
@@ -269,6 +270,7 @@ export class ShopService {
         ifscCode: dto.ifscCode,
 
         branchName: dto.branchName,
+        upiId: dto.upiId,
 
         repairInvoiceNumberingMode: dto.repairInvoiceNumberingMode,
         repairGstDefault: dto.repairGstDefault,

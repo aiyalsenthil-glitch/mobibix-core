@@ -199,7 +199,10 @@ fun ProductListScreen(
                     ListItem(
                         headlineContent = { Text("Stock History", fontWeight = FontWeight.Bold) },
                         leadingContent = { Icon(Icons.Default.History, contentDescription = null, tint = Color(0xFF3B82F6)) },
-                        modifier = Modifier.clickable { showBottomSheet = false /* TODO */ }
+                        modifier = Modifier.clickable {
+                            showBottomSheet = false
+                            navController.navigate("stock_ledger?productId=${selectedProduct!!.id}")
+                        }
                     )
                 }
             }

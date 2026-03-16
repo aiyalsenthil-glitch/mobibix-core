@@ -72,6 +72,12 @@ export class SalesController {
     return this.service.cancelInvoice(tenantId, invoiceId);
   }
 
+  @Post('invoice/:invoiceId/share/whatsapp')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.SALE.VIEW)
+  async shareWhatsApp(@Req() req: any, @Param('invoiceId') invoiceId: string) {
+    return this.service.shareInvoiceViaWhatsApp(req.user.tenantId, invoiceId);
+  }
+
   @Get('invoices')
   @RequirePermission([PERMISSIONS.MOBILE_SHOP.SALE.VIEW, PERMISSIONS.MOBILE_SHOP.JOBCARD.VIEW])
   async list(

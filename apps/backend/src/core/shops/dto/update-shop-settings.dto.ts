@@ -117,6 +117,10 @@ export class UpdateShopSettingsDto {
   @IsString()
   branchName?: string;
 
+  @IsOptional()
+  @IsString()
+  upiId?: string;
+
   // Repair Module
   @IsOptional()
   @IsEnum(RepairInvoiceNumberingMode)

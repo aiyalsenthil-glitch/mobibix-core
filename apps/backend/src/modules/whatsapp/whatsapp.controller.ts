@@ -18,6 +18,7 @@ import { ModuleType, UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
+import { Public } from '../../core/auth/decorators/public.decorator';
 import { WhatsAppSender } from './whatsapp.sender';
 import { WhatsAppUserService } from './whatsapp-user.service';
 import { VirtualTenantGuard } from './guards/virtual-tenant.guard';
@@ -209,6 +210,75 @@ export class WhatsAppController {
         return timeB - timeA;
       })
       .slice(0, 200); // Return top 200 combined
+  }
+
+  /**
+   * GET /whatsapp/status/:tenantId
+   */
+  @Public()
+  @Get('status/:tenantId')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.VIEW_DASHBOARD)
+  async getStatus(@Param('tenantId') tenantId: string) {
+    const number = await this.prisma.whatsAppNumber.findFirst({
+      where: { tenantId, isDefault: true },
+    });
+
+    if (!number) return { status: 'DISCONNECTED', message: 'No number configured' };
+    
+    return {
+      status: number.setupStatus,
+      phoneNumber: number.phoneNumber,
+    };
+  }
+
+  /**
+   * GET /whatsapp/conversations/:tenantId
+   */
+  @Public()
+  @Get('conversations/:tenantId')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
+  async getConversations(@Param('tenantId') tenantId: string, @Req() req: any) {
+    this.validateAccess(req, tenantId);
+
+    const logs = await this.prisma.whatsAppMessageLog.findMany({
+      where: { tenantId },
+      distinct: ['phoneNumber'],
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    return Promise.all(logs.map(async (log) => {
+        const lastMsg = await this.prisma.whatsAppMessageLog.findFirst({
+            where: { tenantId, phoneNumber: log.phoneNumber },
+            orderBy: { createdAt: 'desc' }
+        });
+        return {
+            phoneNumber: log.phoneNumber,
+            lastMessage: lastMsg?.body || '',
+            lastTimestamp: lastMsg?.createdAt || new Date(),
+            unreadCount: 0
+        };
+    }));
+  }
+
+  /**
+   * GET /whatsapp/messages/:tenantId/:phoneNumber
+   */
+  @Public()
+  @Get('messages/:tenantId/:phoneNumber')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
+  async getMessages(
+    @Param('tenantId') tenantId: string,
+    @Param('phoneNumber') phoneNumber: string,
+    @Req() req: any
+  ) {
+    this.validateAccess(req, tenantId);
+
+    return this.prisma.whatsAppMessageLog.findMany({
+      where: { tenantId, phoneNumber },
+      orderBy: { createdAt: 'asc' },
+      take: 100
+    });
   }
 
   /**
@@ -521,8 +591,9 @@ export class WhatsAppController {
    * POST /whatsapp/send
    * Send a WhatsApp message (Template OR Text)
    */
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
+  @Public()
   @Post('send')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
   async sendMessage(
     @Body()
     dto: {
@@ -562,13 +633,23 @@ export class WhatsAppController {
       if (!textBody) return { success: true, skipped: true }; // Empty text check
 
       // Get default WhatsAppNumber for tenant
-      const defaultNumber = await this.prisma.whatsAppNumber.findFirst({
-        where: { tenantId: dto.tenantId, isDefault: true },
+      let defaultNumber = await this.prisma.whatsAppNumber.findFirst({
+        where: { tenantId: dto.tenantId, isDefault: true, isEnabled: true },
         select: { id: true },
       });
 
+      // Fallback: If no default marked, take the first available enabled number
       if (!defaultNumber) {
-        throw new BadRequestException('No default WhatsApp number configured');
+        defaultNumber = await this.prisma.whatsAppNumber.findFirst({
+          where: { tenantId: dto.tenantId, isEnabled: true },
+          select: { id: true },
+        });
+      }
+
+      if (!defaultNumber) {
+        throw new BadRequestException(
+          'No active WhatsApp configuration found for this tenant. Please connect your number first.',
+        );
       }
 
       // Create log entry
@@ -626,13 +707,23 @@ export class WhatsAppController {
       }
 
       // Get default WhatsAppNumber for tenant
-      const defaultNumber = await this.prisma.whatsAppNumber.findFirst({
-        where: { tenantId: dto.tenantId, isDefault: true },
+      let defaultNumber = await this.prisma.whatsAppNumber.findFirst({
+        where: { tenantId: dto.tenantId, isDefault: true, isEnabled: true },
         select: { id: true },
       });
 
+      // Fallback: If no default marked, take the first available enabled number
       if (!defaultNumber) {
-        throw new BadRequestException('No default WhatsApp number configured');
+        defaultNumber = await this.prisma.whatsAppNumber.findFirst({
+          where: { tenantId: dto.tenantId, isEnabled: true },
+          select: { id: true },
+        });
+      }
+
+      if (!defaultNumber) {
+        throw new BadRequestException(
+          'No active WhatsApp configuration found for this tenant. Please connect your number first.',
+        );
       }
 
       // Create log entry with PENDING status first
@@ -669,6 +760,11 @@ export class WhatsAppController {
    * Helper: Validate tenant access
    */
   private validateAccess(req: any, tenantId: string) {
+    // Development Bypass for standalone tools
+    if (process.env.NODE_ENV !== 'production' && !req.user) {
+      return;
+    }
+
     // Admin can access everything, including "all"
     const userRole = req.user?.role as string;
     if (

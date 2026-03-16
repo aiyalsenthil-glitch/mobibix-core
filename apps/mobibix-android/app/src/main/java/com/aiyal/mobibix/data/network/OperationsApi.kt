@@ -33,9 +33,9 @@ data class ExpenseCategoryBreakdown(
 data class CreateExpenseDto(
     val shopId: String,
     val categoryId: String? = null,
-    val amount: Double,
-    val description: String,
-    val paymentMode: String = "CASH",
+    val amount: Int, // integer Rupees — backend converts to Paisa
+    val paymentMethod: String = "CASH",
+    val note: String? = null,
     val date: String? = null
 )
 
@@ -53,6 +53,8 @@ data class DailySummary(
     val salesUpi: Double = 0.0,
     val salesCard: Double = 0.0,
     val salesBank: Double = 0.0,
+    val cashWithdrawFromBank: Double = 0.0,
+    val cashDepositToBank: Double = 0.0,
     val otherCashIn: Double = 0.0,
     val otherCashOut: Double = 0.0,
     val totalIn: Double = 0.0,
@@ -69,16 +71,41 @@ data class DailyClosing(
     val shopId: String,
     val date: String,
     val status: String,
-    val openingCash: Double,
-    val reportedClosingCash: Double,
-    val cashDifference: Double,
-    val notes: String? = null
+    val openingCash: Double = 0.0,
+    val salesCash: Double = 0.0,
+    val salesUpi: Double = 0.0,
+    val salesCard: Double = 0.0,
+    val salesBank: Double = 0.0,
+    val expectedClosingCash: Double = 0.0,
+    val reportedClosingCash: Double = 0.0,
+    val cashDifference: Double = 0.0,
+    val varianceReason: String? = null,
+    val varianceNote: String? = null,
+    val closedAt: String? = null,
+    val createdAt: String? = null
+)
+
+data class DailyClosingManualEntries(
+    val salesCash: Double? = null,
+    val salesUpi: Double? = null,
+    val salesCard: Double? = null,
+    val salesBank: Double? = null,
+    val otherCashIn: Double? = null,
+    val cashWithdrawFromBank: Double? = null,
+    val expenseCash: Double? = null,
+    val supplierPaymentsCash: Double? = null,
+    val otherCashOut: Double? = null,
+    val cashDepositToBank: Double? = null
 )
 
 data class SubmitDailyClosingDto(
     val shopId: String,
+    val date: String,
+    val mode: String = "SYSTEM", // SYSTEM or MANUAL
     val reportedClosingCash: Double,
-    val notes: String? = null
+    val manualEntries: DailyClosingManualEntries? = null,
+    val varianceReason: String? = null,
+    val varianceNote: String? = null
 )
 
 // ─── Stock Verification Models ────────────────────────────────────────────────
@@ -186,7 +213,7 @@ interface OperationsApi {
     @POST("api/cash/daily-close")
     suspend fun submitDailyClosing(@Body dto: SubmitDailyClosingDto): DailyClosing
 
-    @GET("api/cash/daily-history")
+    @GET("api/mobileshop/reports/daily-summary")
     suspend fun getDailySummary(@Query("shopId") shopId: String, @Query("date") date: String): DailySummary
 
     // Stock Verification

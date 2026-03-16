@@ -81,6 +81,7 @@ export class PrismaService
       'DeletionRequest',
       'EmailLog',
       'WhatsAppLog',
+      'WhatsAppMessageLog',
       'WhatsAppCampaign',
       'WhatsAppDailyUsage',
       'AuditLog', // FIXED: Was missing!

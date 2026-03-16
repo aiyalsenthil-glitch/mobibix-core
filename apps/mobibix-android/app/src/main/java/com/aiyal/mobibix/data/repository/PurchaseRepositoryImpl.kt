@@ -30,7 +30,7 @@ class PurchaseRepositoryImpl @Inject constructor(
     }
 
     override suspend fun listPurchaseOrders(shopId: String?, status: PurchaseOrderStatus?): List<PurchaseOrder> {
-        return purchaseApi.listPurchaseOrders(shopId, status)
+        return purchaseApi.listPurchaseOrders(shopId, status).data
     }
 
     override suspend fun getPurchaseOrder(id: String): PurchaseOrder {

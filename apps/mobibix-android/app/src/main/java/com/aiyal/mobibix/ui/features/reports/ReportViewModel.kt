@@ -3,6 +3,8 @@ package com.aiyal.mobibix.ui.features.reports
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aiyal.mobibix.core.shop.ShopContextProvider
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.InventoryReportItem
 import com.aiyal.mobibix.data.network.ProfitSummaryMetrics
 import com.aiyal.mobibix.data.network.SalesReportItem
@@ -35,7 +37,8 @@ data class ReportsUiState(
 @HiltViewModel
 class ReportViewModel @Inject constructor(
     private val reportRepository: ReportRepository,
-    private val shopContextProvider: ShopContextProvider
+    private val shopContextProvider: ShopContextProvider,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReportsUiState())
@@ -53,7 +56,9 @@ class ReportViewModel @Inject constructor(
                 val report = reportRepository.getSalesReport(shopId, _uiState.value.startDate, _uiState.value.endDate)
                 _uiState.value = _uiState.value.copy(isLoading = false, salesReport = report)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -66,7 +71,9 @@ class ReportViewModel @Inject constructor(
                 val report = reportRepository.getRepairReport(shopId, _uiState.value.startDate, _uiState.value.endDate)
                 _uiState.value = _uiState.value.copy(isLoading = false, repairReport = report)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -79,7 +86,9 @@ class ReportViewModel @Inject constructor(
                 val report = reportRepository.getInventoryReport(shopId)
                 _uiState.value = _uiState.value.copy(isLoading = false, inventoryReport = report)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -92,7 +101,9 @@ class ReportViewModel @Inject constructor(
                 val response = reportRepository.getProfitSummary(shopId, _uiState.value.startDate, _uiState.value.endDate)
                 _uiState.value = _uiState.value.copy(isLoading = false, profitMetrics = response.metrics)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -105,7 +116,9 @@ class ReportViewModel @Inject constructor(
                 val report = reportRepository.getTaxReport(shopId, _uiState.value.startDate, _uiState.value.endDate)
                 _uiState.value = _uiState.value.copy(isLoading = false, taxReport = report)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -118,7 +131,9 @@ class ReportViewModel @Inject constructor(
                 val report = reportRepository.getGstr2Report(shopId, _uiState.value.startDate, _uiState.value.endDate)
                 _uiState.value = _uiState.value.copy(isLoading = false, gstr2Report = report)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -131,7 +146,9 @@ class ReportViewModel @Inject constructor(
                 val report = reportRepository.getReceivables(shopId)
                 _uiState.value = _uiState.value.copy(isLoading = false, receivables = report)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -144,7 +161,9 @@ class ReportViewModel @Inject constructor(
                 val report = reportRepository.getPayables(shopId)
                 _uiState.value = _uiState.value.copy(isLoading = false, payables = report)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -157,7 +176,9 @@ class ReportViewModel @Inject constructor(
                 val report = reportRepository.getDailySales(shopId, _uiState.value.startDate, _uiState.value.endDate)
                 _uiState.value = _uiState.value.copy(isLoading = false, dailySales = report)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }

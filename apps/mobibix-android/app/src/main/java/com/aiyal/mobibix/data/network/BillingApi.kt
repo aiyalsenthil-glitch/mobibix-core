@@ -8,19 +8,19 @@ import retrofit2.http.Query
 
 // Enriched Models matching Web
 data class SubscriptionDetails(
-    val plan: String,
-    val planCode: String,
-    val level: Int,
-    val memberLimit: Int?,
-    val maxStaff: Int?,
-    val maxShops: Int?,
-    val whatsappAllowed: Boolean,
-    val daysLeft: Int,
-    val isTrial: Boolean,
-    val subscriptionStatus: String, // ACTIVE, TRIAL, PAST_DUE, EXPIRED
-    val autoRenew: Boolean,
-    val subscriptionId: String,
-    val price: Double?
+    val plan: String = "",
+    val planCode: String = "",
+    val level: Int = 0,
+    val memberLimit: Int? = null,
+    val maxStaff: Int? = null,
+    val maxShops: Int? = null,
+    val whatsappAllowed: Boolean = false,
+    val daysLeft: Int = 0,
+    val isTrial: Boolean = false,
+    val subscriptionStatus: String = "ACTIVE", // ACTIVE, TRIAL, PAST_DUE, EXPIRED
+    val autoRenew: Boolean = false,
+    val subscriptionId: String = "",
+    val price: Double? = null
 )
 
 data class BillingCycle(
@@ -30,25 +30,34 @@ data class BillingCycle(
 
 data class Plan(
     val id: String,
-    val code: String,
+    val code: String? = null,
     val name: String,
     val displayName: String,
-    val tagline: String?,
-    val description: String?,
-    val level: Int,
-    val billingCycles: List<BillingCycle>,
-    val features: List<String>,
-    val isCurrent: Boolean,
-    val canUpgrade: Boolean,
-    val canDowngrade: Boolean
+    val tagline: String? = null,
+    val description: String? = null,
+    val level: Int = 0,
+    val billingCycles: List<BillingCycle> = emptyList(),
+    val features: List<String> = emptyList(),
+    val isCurrent: Boolean = false,
+    val canUpgrade: Boolean = false,
+    val canDowngrade: Boolean = false
 )
 
 data class BillingInvoice(
     val id: String,
-    val date: String,
-    val amount: Double,
-    val status: String, // PAID, PENDING, FAILED
-    val pdfUrl: String?
+    val invoiceDate: String? = null,
+    val date: String? = null,
+    val amount: Double = 0.0,
+    val status: String = "PENDING",
+    val pdfUrl: String? = null,
+    val invoiceNumber: String? = null
+)
+
+data class PaginatedBillingInvoicesResponse(
+    val items: List<BillingInvoice> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val totalPages: Int = 0
 )
 
 data class CreateOrderResponse(
@@ -93,7 +102,7 @@ interface BillingApi {
     suspend fun getAvailablePlans(@Query("module") module: String? = null): List<Plan>
 
     @GET("api/billing/invoices")
-    suspend fun getInvoices(@Query("shopId") shopId: String): List<BillingInvoice>
+    suspend fun getInvoices(@Query("shopId") shopId: String? = null): PaginatedBillingInvoicesResponse
 
     @PATCH("api/billing/subscription/auto-renew")
     suspend fun toggleAutoRenew(@Body body: Map<String, Boolean>): Map<String, Any>

@@ -16,13 +16,7 @@ fun HomeScreen(
     onNavigateToNegativeStock: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
-    val isSystemOwner = when(appState) {
-        is AppState.Owner -> appState.isSystemOwner
-        is AppState.Staff -> appState.isSystemOwner
-        else -> false
-    }
-
-    if (isSystemOwner) {
+    if (appState is AppState.Owner) {
         LaunchedEffect(Unit) {
             viewModel.loadShops()
             viewModel.loadOwnerDashboard(shopId = null)
@@ -46,7 +40,5 @@ fun HomeScreen(
             state = viewModel.staffState.value,
             onOpenDrawer = onOpenDrawer
         )
-    } else {
-        /* Handle other states */
     }
 }

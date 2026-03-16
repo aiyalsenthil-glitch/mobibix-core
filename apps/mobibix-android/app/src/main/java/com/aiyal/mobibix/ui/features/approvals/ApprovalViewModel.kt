@@ -2,6 +2,8 @@ package com.aiyal.mobibix.ui.features.approvals
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.domain.model.ApprovalRequest
 import com.aiyal.mobibix.domain.repository.ApprovalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,7 +21,8 @@ sealed class ApprovalUiState {
 
 @HiltViewModel
 class ApprovalViewModel @Inject constructor(
-    private val repository: ApprovalRepository
+    private val repository: ApprovalRepository,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ApprovalUiState>(ApprovalUiState.Loading)
@@ -39,7 +42,9 @@ class ApprovalViewModel @Inject constructor(
                 val requests = repository.listPendingApprovals()
                 _uiState.value = ApprovalUiState.Success(requests)
             } catch (e: Exception) {
-                _uiState.value = ApprovalUiState.Error(e.message ?: "Failed to load approvals")
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = ApprovalUiState.Error(msg)
             }
         }
     }
@@ -49,11 +54,11 @@ class ApprovalViewModel @Inject constructor(
             _processingIds.value = _processingIds.value + id
             try {
                 repository.resolveApproval(id, approved, comment)
-                // Refresh list on success
                 loadPendingApprovals()
             } catch (e: Exception) {
-                // In a real app we might show a Toast or Snackbar here
-                _uiState.value = ApprovalUiState.Error(e.message ?: "Failed to resolve approval")
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = ApprovalUiState.Error(msg)
             } finally {
                 _processingIds.value = _processingIds.value - id
             }

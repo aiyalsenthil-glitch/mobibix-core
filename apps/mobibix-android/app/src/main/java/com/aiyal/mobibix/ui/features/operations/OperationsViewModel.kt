@@ -2,6 +2,7 @@ package com.aiyal.mobibix.ui.features.operations
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.core.ui.UiMessageBus
 import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,6 +28,8 @@ data class ExpenseState(
 data class DailyClosingState(
     val loading: Boolean = true,
     val history: List<DailyClosing> = emptyList(),
+    val summary: DailySummary? = null,
+    val summaryLoading: Boolean = false,
     val error: String? = null,
     val submitting: Boolean = false,
     val submitSuccess: Boolean = false
@@ -53,7 +56,8 @@ data class MonthlyReportState(
 
 @HiltViewModel
 class OperationsViewModel @Inject constructor(
-    private val operationsApi: OperationsApi
+    private val operationsApi: OperationsApi,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _expenseState = MutableStateFlow(ExpenseState())
@@ -85,7 +89,9 @@ class OperationsViewModel @Inject constructor(
                     categoryBreakdown = breakdown
                 )
             } catch (e: Exception) {
-                _expenseState.value = ExpenseState(loading = false, error = MobiError.extractMessage(e))
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _expenseState.value = ExpenseState(loading = false, error = msg)
             }
         }
     }
@@ -113,20 +119,55 @@ class OperationsViewModel @Inject constructor(
                 val history = operationsApi.getDailyHistory(shopId)
                 _dailyClosingState.value = DailyClosingState(loading = false, history = history)
             } catch (e: Exception) {
-                _dailyClosingState.value = DailyClosingState(loading = false, error = MobiError.extractMessage(e))
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _dailyClosingState.value = DailyClosingState(loading = false, error = msg)
             }
         }
     }
 
-    fun submitDailyClosing(shopId: String, reportedCash: Double, notes: String?, onSuccess: () -> Unit) {
+    fun loadDailySummary(shopId: String, date: String) {
         viewModelScope.launch {
-            _dailyClosingState.value = _dailyClosingState.value.copy(submitting = true)
+            _dailyClosingState.value = _dailyClosingState.value.copy(summaryLoading = true, summary = null)
             try {
-                operationsApi.submitDailyClosing(SubmitDailyClosingDto(shopId, reportedCash, notes))
+                val summary = operationsApi.getDailySummary(shopId, date)
+                _dailyClosingState.value = _dailyClosingState.value.copy(summaryLoading = false, summary = summary)
+            } catch (e: Exception) {
+                _dailyClosingState.value = _dailyClosingState.value.copy(summaryLoading = false)
+            }
+        }
+    }
+
+    fun submitDailyClosing(
+        shopId: String,
+        date: String,
+        mode: String,
+        reportedCash: Double,
+        manualEntries: DailyClosingManualEntries? = null,
+        varianceReason: String? = null,
+        varianceNote: String? = null,
+        onSuccess: () -> Unit
+    ) {
+        viewModelScope.launch {
+            _dailyClosingState.value = _dailyClosingState.value.copy(submitting = true, error = null)
+            try {
+                operationsApi.submitDailyClosing(
+                    SubmitDailyClosingDto(
+                        shopId = shopId,
+                        date = date,
+                        mode = mode,
+                        reportedClosingCash = reportedCash,
+                        manualEntries = manualEntries,
+                        varianceReason = varianceReason,
+                        varianceNote = varianceNote
+                    )
+                )
                 _dailyClosingState.value = _dailyClosingState.value.copy(submitting = false, submitSuccess = true)
                 onSuccess()
             } catch (e: Exception) {
-                _dailyClosingState.value = _dailyClosingState.value.copy(submitting = false, error = MobiError.extractMessage(e))
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _dailyClosingState.value = _dailyClosingState.value.copy(submitting = false, error = msg)
             }
         }
     }
@@ -141,7 +182,9 @@ class OperationsViewModel @Inject constructor(
                 val active = sessions.firstOrNull { it.status == "DRAFT" }
                 _stockVerificationState.value = StockVerificationState(loading = false, sessions = sessions, activeSession = active)
             } catch (e: Exception) {
-                _stockVerificationState.value = StockVerificationState(loading = false, error = MobiError.extractMessage(e))
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _stockVerificationState.value = StockVerificationState(loading = false, error = msg)
             }
         }
     }
@@ -157,7 +200,9 @@ class OperationsViewModel @Inject constructor(
                     sessions = listOf(session) + _stockVerificationState.value.sessions
                 )
             } catch (e: Exception) {
-                _stockVerificationState.value = _stockVerificationState.value.copy(saving = false, error = MobiError.extractMessage(e))
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _stockVerificationState.value = _stockVerificationState.value.copy(saving = false, error = msg)
             }
         }
     }
@@ -169,7 +214,9 @@ class OperationsViewModel @Inject constructor(
                 _stockVerificationState.value = _stockVerificationState.value.copy(activeSession = null)
                 onDone()
             } catch (e: Exception) {
-                _stockVerificationState.value = _stockVerificationState.value.copy(error = MobiError.extractMessage(e))
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _stockVerificationState.value = _stockVerificationState.value.copy(error = msg)
             }
         }
     }
@@ -184,7 +231,9 @@ class OperationsViewModel @Inject constructor(
                 val trend = try { operationsApi.getMonthlyTrend(shopId) } catch (_: Exception) { emptyList() }
                 _monthlyReportState.value = MonthlyReportState(loading = false, report = report, trend = trend)
             } catch (e: Exception) {
-                _monthlyReportState.value = MonthlyReportState(loading = false, error = MobiError.extractMessage(e))
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _monthlyReportState.value = MonthlyReportState(loading = false, error = msg)
             }
         }
     }

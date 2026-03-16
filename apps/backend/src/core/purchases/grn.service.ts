@@ -1,18 +1,22 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { GRNStatus, POStatus, UserRole, Prisma } from '@prisma/client';
+import { GRNStatus, POStatus, PriceAlertStatus, Prisma } from '@prisma/client';
 import { CreateGRNDto } from './dto/grn/create-grn.dto';
 import { GRNResponseDto } from './dto/grn/grn.response.dto';
 import { StockService } from '../stock/stock.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class GRNService {
+  private readonly logger = new Logger(GRNService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly stockService: StockService,
@@ -145,6 +149,7 @@ export class GRNService {
         }
 
         // 5. Update ShopProduct
+        const previousPrice = Number(product.lastPurchasePrice) || 0;
         await tx.shopProduct.update({
           where: { id: item.shopProductId },
           data: {
@@ -152,8 +157,41 @@ export class GRNService {
             totalValue: newTotalValue,
             lastPurchasePrice: confirmedPrice,
             avgCost: newAvgCost,
+            lastPurchaseSupplierId: grn.po?.globalSupplierId ?? null,
           },
         });
+
+        // 5a. Price Drop Detection: if new price < previous price, create alert
+        if (previousPrice > 0 && confirmedPrice < previousPrice) {
+          try {
+            const priceDrop = previousPrice - confirmedPrice;
+            // quantityAtRisk = current stock before this receipt (at higher price)
+            const quantityAtRisk = currentQuantity;
+            if (quantityAtRisk > 0) {
+              await tx.supplierPriceAlert.create({
+                data: {
+                  id: uuidv4(),
+                  tenantId,
+                  shopId: grn.shopId,
+                  shopProductId: item.shopProductId,
+                  supplierId: grn.po?.globalSupplierId || 'UNKNOWN',
+                  affectedPurchaseId: grn.poId,
+                  newGrnId: grn.id,
+                  previousPrice,
+                  newPrice: confirmedPrice,
+                  priceDrop,
+                  quantityAtRisk,
+                  potentialCredit: priceDrop * quantityAtRisk,
+                  status: PriceAlertStatus.PENDING,
+                },
+              });
+              this.logger.log(`Price drop alert created for product ${item.shopProductId}: ₹${previousPrice / 100} → ₹${confirmedPrice / 100}`);
+            }
+          } catch (alertErr) {
+            // Non-fatal: alert creation failure should not block GRN confirmation
+            this.logger.error(`Failed to create price alert: ${alertErr.message}`);
+          }
+        }
 
         // 6. Record Stock Ledger
         await tx.stockLedger.create({

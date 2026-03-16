@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import type { ReactNode } from "react";
 import {
@@ -26,11 +27,13 @@ import {
   DollarSign, 
   Plus, 
   Store,
-  Box
+  Box,
+  Printer
 } from "lucide-react";
 import { TriggerAiButton } from "@/components/ai/TriggerAiButton";
 
 export default function InventoryPage() {
+  const router = useRouter();
   const { theme } = useTheme();
   const {
     shops,
@@ -128,13 +131,24 @@ export default function InventoryPage() {
         </div>
         
         {shops.length > 0 && selectedShopId && (
-           <button
-            onClick={() => setShowAddStockModal(true)}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-medium shadow-md transition-all hover:shadow-lg active:scale-95"
-          >
-            <Plus size={18} />
-            <span>Add Stock</span>
-          </button>
+          <div className="flex gap-3">
+             <button
+              onClick={() => router.push("/tools/barcode-labels")}
+              className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border transition-all hover:shadow-lg active:scale-95 font-bold text-sm ${
+                isDark ? "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700" : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm"
+              }`}
+            >
+              <Printer size={18} />
+              <span>Barcode Labels</span>
+            </button>
+            <button
+              onClick={() => setShowAddStockModal(true)}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md transition-all hover:shadow-lg active:scale-95"
+            >
+              <Plus size={18} />
+              <span>Add Stock</span>
+            </button>
+          </div>
         )}
       </div>
 

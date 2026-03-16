@@ -695,4 +695,61 @@ export class StockService {
       data: { status: IMEIStatus.IN_STOCK, updatedAt: new Date() },
     });
   }
+
+  async getStockLedger(
+    tenantId: string,
+    shopId: string,
+    shopProductId?: string,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    const where: any = { tenantId, shopId };
+    if (shopProductId) where.shopProductId = shopProductId;
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+
+    const entries = await this.prisma.stockLedger.findMany({
+      where,
+      orderBy: { createdAt: 'asc' },
+      include: { product: { select: { name: true } } },
+      take: 500,
+    });
+
+    let balance = 0;
+    const openingBalance = 0;
+    let totalIn = 0;
+    let totalOut = 0;
+
+    const mapped = entries.map((e) => {
+      const qIn = e.type === 'IN' ? e.quantity : 0;
+      const qOut = e.type === 'OUT' ? e.quantity : 0;
+      totalIn += qIn;
+      totalOut += qOut;
+      balance += qIn - qOut;
+      return {
+        id: e.id,
+        productId: e.shopProductId,
+        productName: e.product?.name ?? '',
+        txnType: e.referenceType ?? e.type,
+        txnDate: e.createdAt.toISOString(),
+        quantityIn: qIn,
+        quantityOut: qOut,
+        balanceQty: balance,
+        costPrice: e.costPerUnit ? e.costPerUnit / 100 : null,
+        referenceNo: e.referenceId,
+        notes: e.note,
+      };
+    });
+
+    return {
+      entries: mapped,
+      openingBalance,
+      closingBalance: balance,
+      totalIn,
+      totalOut,
+    };
+  }
 }

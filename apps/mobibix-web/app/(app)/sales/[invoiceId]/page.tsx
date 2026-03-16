@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
-import { getInvoice, type SalesInvoice } from "@/services/sales.api";
+import { getInvoice, shareInvoiceWhatsApp, type SalesInvoice } from "@/services/sales.api";
 import { useTheme } from "@/context/ThemeContext";
 import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
 import { CancelInvoiceModal } from "@/components/sales/CancelInvoiceModal";
@@ -32,6 +32,8 @@ export default function InvoiceDetailPage() {
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [waSending, setWaSending] = useState(false);
+  const [waToast, setWaToast] = useState<string | null>(null);
 
   const {
     data: invoice,
@@ -186,6 +188,31 @@ export default function InvoiceDetailPage() {
           >
             📋 Follow-up
           </button>
+          {invoice.customerPhone && invoice.status !== "VOIDED" && (
+            <button
+              disabled={waSending}
+              onClick={async () => {
+                setWaSending(true);
+                try {
+                  const res = await shareInvoiceWhatsApp(invoice.id);
+                  setWaToast(`Sent to ${res.phone}`);
+                  setTimeout(() => setWaToast(null), 3000);
+                } catch (e: any) {
+                  setWaToast(e.message || "Failed to send");
+                  setTimeout(() => setWaToast(null), 3000);
+                } finally {
+                  setWaSending(false);
+                }
+              }}
+              className={`px-4 py-2 border rounded-lg font-medium transition flex items-center gap-1 ${
+                theme === "dark"
+                  ? "border-green-500/40 hover:bg-green-500/10 text-green-400"
+                  : "border-green-500 hover:bg-green-50 text-green-700"
+              } disabled:opacity-50`}
+            >
+              {waSending ? "Sending..." : "WhatsApp"}
+            </button>
+          )}
           <button
             onClick={() => router.push(`/print/invoice/${invoice.id}`)}
             className={`px-4 py-2 border rounded-lg font-medium transition ${
@@ -196,6 +223,11 @@ export default function InvoiceDetailPage() {
           >
             Print
           </button>
+          {waToast && (
+            <div className="absolute top-2 right-2 bg-green-600 text-white text-sm px-3 py-1.5 rounded-lg shadow z-50">
+              {waToast}
+            </div>
+          )}
         </div>
       </div>
 

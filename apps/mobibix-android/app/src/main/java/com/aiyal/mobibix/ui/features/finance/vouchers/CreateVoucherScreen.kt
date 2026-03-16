@@ -10,14 +10,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.aiyal.mobibix.core.shop.ShopContextProvider
 import com.aiyal.mobibix.data.network.VoucherType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateVoucherScreen(
     navController: NavController,
+    shopContextProvider: ShopContextProvider,
     viewModel: VoucherViewModel = hiltViewModel()
 ) {
+    val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
     var amount by remember { mutableStateOf("") }
     var method by remember { mutableStateOf("CASH") }
     var type by remember { mutableStateOf(VoucherType.EXPENSE) }
@@ -101,7 +104,7 @@ fun CreateVoucherScreen(
             
             Button(
                 onClick = { 
-                    viewModel.createVoucher(amount.toDoubleOrNull() ?: 0.0, method, type, narration, category)
+                    viewModel.createVoucher(amount.toDoubleOrNull() ?: 0.0, method, type, narration, category, activeShopId)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = amount.isNotBlank() && !uiState.isLoading

@@ -139,6 +139,9 @@ services:
       # AI integration
       AI_CORE_INTERNAL_URL: http://ai-core:3010
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      # Redis for Docker Network
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - "3000:3000"
     volumes:
@@ -152,11 +155,40 @@ services:
       - ai_net
     depends_on:
       - ai-core
+      - redis
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost_REPLACED:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # WhatsApp Web Automation Service
+  whatsapp-web-service:
+    build:
+      context: .
+      dockerfile: apps/whatsapp-web-service/Dockerfile
+      target: development
+    container_name: mobibix-whatsapp-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/mobibix}
+      NEXT_PUBLIC_API_URL: http://backend:3000
+      STORAGE_PATH: /app/leveldb_data
+    ports:
+      - "3005:3001"
+    volumes:
+      - ./apps/whatsapp-web-service/src:/app/src:cached
+      - ./apps/whatsapp-web-service/leveldb_data:/app/leveldb_data
+    networks:
+      - public_net
+      - ai_net
+    depends_on:
+      - redis
+      - postgres
 
   # Next.js Frontend
   mobibix-web:

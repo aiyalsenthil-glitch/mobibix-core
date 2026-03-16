@@ -3,6 +3,8 @@ package com.aiyal.mobibix.ui.features.billing
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aiyal.mobibix.core.shop.ShopContextProvider
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.BillingInvoice
 import com.aiyal.mobibix.data.network.SubscriptionDetails
 import com.aiyal.mobibix.data.network.Plan
@@ -46,7 +48,8 @@ sealed class BillingEvent {
 @HiltViewModel
 class BillingViewModel @Inject constructor(
     private val repository: BillingRepository,
-    private val shopContextProvider: ShopContextProvider
+    private val shopContextProvider: ShopContextProvider,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BillingUiState())
@@ -70,7 +73,9 @@ class BillingViewModel @Inject constructor(
                     invoices = invoices
                 )
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -80,21 +85,18 @@ class BillingViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null, upgradeSuccess = false)
             try {
                 val response = repository.upgradeSubscription(planId, cycle, billingType)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    createOrderResponse = response
-                )
-                
-                // Trigger Payment Event
+                _uiState.value = _uiState.value.copy(isLoading = false, createOrderResponse = response)
                 _events.emit(BillingEvent.StartPayment(
                     key = response.key,
                     orderId = response.orderId,
                     amount = response.amount,
                     planId = planId,
-                    cycle = cycle ?: "MONTHLY"
+                    cycle = cycle
                 ))
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -110,10 +112,14 @@ class BillingViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(isLoading = false, upgradeSuccess = true)
                     loadData()
                 } else {
-                    _uiState.value = _uiState.value.copy(isLoading = false, error = response.message ?: "Verification failed")
+                    val msg = response.message ?: "Payment verification failed."
+                    uiMessageBus.showError(msg)
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
                 }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -129,7 +135,9 @@ class BillingViewModel @Inject constructor(
                     currentPlan = _uiState.value.currentPlan?.copy(autoRenew = success)
                 )
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(autoRenewLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(autoRenewLoading = false, error = msg)
             }
         }
     }

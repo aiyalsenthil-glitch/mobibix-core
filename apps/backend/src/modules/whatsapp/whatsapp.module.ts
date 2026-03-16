@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
+import { BullModule } from '@nestjs/bullmq';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { WhatsAppSender } from './whatsapp.sender';
 import { WhatsAppCron } from './whatsapp.cron';
@@ -35,6 +36,9 @@ import { WhatsAppRoutingService } from './whatsapp-routing.service';
 
 import { WhatsAppOnboardingController } from './onboarding/whatsapp-onboarding.controller';
 import { WhatsAppOnboardingService } from './onboarding/whatsapp-onboarding.service';
+import { WhatsAppInboxGateway } from './inbox/whatsapp-inbox.gateway';
+import { WhatsAppInboxService } from './inbox/whatsapp-inbox.service';
+import { ConversationEngineService } from './automation/conversation-engine.service';
 
 @Module({
   controllers: [
@@ -48,7 +52,12 @@ import { WhatsAppOnboardingService } from './onboarding/whatsapp-onboarding.serv
     WhatsAppCrmController,
     WhatsAppOnboardingController, // ✅ Added
   ],
-  imports: [ScheduleModule.forRoot(), BillingModule, ShopProductsModule],
+  imports: [
+    ScheduleModule.forRoot(), 
+    BillingModule, 
+    ShopProductsModule,
+    BullModule.registerQueue({ name: 'whatsapp-send' }),
+  ],
   providers: [
     PrismaService,
     WhatsAppSender,
@@ -73,6 +82,9 @@ import { WhatsAppOnboardingService } from './onboarding/whatsapp-onboarding.serv
     WhatsAppTokenService,
     WhatsAppRoutingService,
     WhatsAppOnboardingService, // ✅ Added
+    ConversationEngineService,
+    WhatsAppInboxGateway,
+    WhatsAppInboxService,
   ],
   exports: [
     WhatsAppSender,

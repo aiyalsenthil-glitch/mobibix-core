@@ -18,6 +18,18 @@ export class StockController {
   constructor(private readonly service: StockService) {}
 
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.VIEW)
+  @Get('ledger')
+  async getLedger(
+    @Req() req: any,
+    @Query('shopId') shopId: string,
+    @Query('shopProductId') shopProductId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return await this.service.getStockLedger(req.user.tenantId, shopId, shopProductId, startDate, endDate);
+  }
+
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.INVENTORY.VIEW)
   @Get('summary')
   async getSummary(@Req() req: any, @Query('shopId') shopId?: string) {
     const tenantId = req.user.tenantId;

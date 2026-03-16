@@ -2,20 +2,22 @@ package com.aiyal.mobibix.ui.features.staff
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.InviteResponse
+import com.aiyal.mobibix.data.network.Shop
 import com.aiyal.mobibix.data.network.StaffResponse
+import com.aiyal.mobibix.domain.ShopRepository
 import com.aiyal.mobibix.domain.StaffRepository
+import com.aiyal.mobibix.domain.model.Role
+import com.aiyal.mobibix.domain.repository.RolesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.aiyal.mobibix.domain.ShopRepository
-import com.aiyal.mobibix.domain.model.Role
-import com.aiyal.mobibix.domain.repository.RolesRepository
-import com.aiyal.mobibix.data.network.Shop
-import kotlinx.coroutines.async
 
 data class StaffUiState(
     val isLoading: Boolean = false,
@@ -30,7 +32,8 @@ data class StaffUiState(
 class StaffViewModel @Inject constructor(
     private val staffRepository: StaffRepository,
     private val rolesRepository: RolesRepository,
-    private val shopRepository: ShopRepository
+    private val shopRepository: ShopRepository,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StaffUiState())
@@ -57,10 +60,9 @@ class StaffViewModel @Inject constructor(
                     shops = shopsDeferred.await()
                 )
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = e.message ?: "Failed to load staff data"
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -71,7 +73,9 @@ class StaffViewModel @Inject constructor(
                 staffRepository.removeStaff(id)
                 loadInitialData()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(error = msg)
             }
         }
     }
@@ -82,7 +86,9 @@ class StaffViewModel @Inject constructor(
                 staffRepository.revokeInvite(id)
                 loadInitialData()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(error = msg)
             }
         }
     }

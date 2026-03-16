@@ -79,6 +79,9 @@ model Tenant {
   userTenants              UserTenant[]
   whatsAppCampaigns        WhatsAppCampaign[]
   whatsAppUsage            WhatsAppDailyUsage[]
+  whatsAppNumbers          WhatsAppNumber[]        @relation("TenantWhatsAppNumbers")
+  whatsAppMessageLogs      WhatsAppMessageLog[]
+  whatsAppConversationStates WhatsAppConversationState[]
   healthScore              TenantHealthScore?
   aiUsageLogs              AiUsageLog[]
   members                  Member[]                @relation("TenantMembers")
@@ -120,6 +123,12 @@ model Tenant {
   stockVerifications       StockVerification[]
   supplierPayments         SupplierPayment[]       @relation("TenantSupplierPayments")
   promoUsages              PromoUsage[]
+  commissionRules          CommissionRule[]
+  staffEarnings            StaffEarning[]
+  tradeIns                 TradeIn[]
+  priceAlerts              SupplierPriceAlert[]
+  emiApplications          EmiApplication[]
+  installmentPlans         InstallmentPlan[]
 }
 
 model DeletionRequest {
@@ -368,6 +377,8 @@ model Party {
   receipts            Receipt[]
   supplierPayments    SupplierPayment[]
   supplierProfile     SupplierProfile?
+  tradeIns            TradeIn[]
+  installmentPlans    InstallmentPlan[]
 
   @@unique([tenantId, phone])
   @@unique([tenantId, normalizedPhone])
@@ -964,16 +975,63 @@ model WhatsAppNumber {
   purpose            WhatsAppPhoneNumberPurpose @default(DEFAULT)
   qualityRating      String?
   accessToken        String?                    @map("encryptedAccessToken")
+
+  // WhatsApp Engine Provider Support
+  provider           WhatsAppProviderType       @default(META_CLOUD)
   setupStatus        WhatsAppSetupStatus        @default(ACTIVE)
+
+  // Web-specific (Baileys) fields
+  shardId            Int                        @default(0)
+  webSessionId       String?                    @unique
+  webSessionData     String?                    @db.Text
+
   metadata           Json?
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
+
+  // Relations
+  tenant             Tenant?                    @relation("TenantWhatsAppNumbers", fields: [tenantId], references: [id])
   reminderForTenants Tenant[]                   @relation("TenantReminderNumber")
   logs               WhatsAppLog[]
+  messageLogs        WhatsAppMessageLog[]
 
   @@index([tenantId, isEnabled])
   @@index([phoneNumberId])
+  @@index([phoneNumber])
+  @@index([provider])
   @@map("WhatsAppPhoneNumber")
+}
+
+model WhatsAppConversationState {
+  id          String   @id @default(uuid())
+  tenantId    String
+  phoneNumber String
+  step        String
+  metadata    Json?
+  expiresAt   DateTime
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, phoneNumber])
+  @@index([tenantId])
+}
+
+model WhatsAppMessageLog {
+  id               String               @id @default(uuid())
+  tenantId         String
+  phoneNumber      String
+  direction        String // "INCOMING" | "OUTGOING"
+  body             String               @db.Text
+  status           String
+  provider         WhatsAppProviderType
+  whatsAppNumberId String?
+  createdAt        DateTime             @default(now())
+  tenant           Tenant               @relation(fields: [tenantId], references: [id])
+  whatsAppNumber   WhatsAppNumber?      @relation(fields: [whatsAppNumberId], references: [id])
+
+  @@index([tenantId])
+  @@index([phoneNumber])
+  @@index([provider])
 }
 
 model WhatsAppLog {
@@ -1157,6 +1215,7 @@ model Shop {
   accountNumber              String?
   ifscCode                   String?
   branchName                 String?
+  upiId                      String?
   isActive                   Boolean                    @default(true)
   createdAt                  DateTime                   @default(now())
   createdBy                  String?
@@ -1167,6 +1226,12 @@ model Shop {
   receiptPrintCounter        Int                        @default(0)
   cashClosingMode            CashClosingMode            @default(DAILY_ONLY)
   approvalRequests           ApprovalRequest[]
+  commissionRules            CommissionRule[]
+  staffEarnings              StaffEarning[]
+  tradeIns                   TradeIn[]
+  priceAlerts                SupplierPriceAlert[]
+  emiApplications            EmiApplication[]
+  installmentPlans           InstallmentPlan[]
   featureFlags               FeatureFlag[]              @relation("ShopFeatureFlags")
   cashVariances              CashVariance[]
   creditNotes                CreditNote[]
@@ -1464,9 +1529,10 @@ model ShopProduct {
   warrantyDays           Int?
   quantity               Int                     @default(0)
   totalValue             BigInt                  @default(0)
-  lastPurchasePrice      Int                     @default(0)
-  compatibilityGroupId   String?
-  creditNoteItems        CreditNoteItem[]
+  lastPurchasePrice          Int                     @default(0)
+  lastPurchaseSupplierId     String?
+  compatibilityGroupId       String?
+  creditNoteItems            CreditNoteItem[]
   grnItems               GRNItem[]
   imeis                  IMEI[]
   invoiceItems           InvoiceItem[]
@@ -1480,6 +1546,7 @@ model ShopProduct {
   stockCorrections       StockCorrection[]
   stockEntries           StockLedger[]
   stockVerificationItems StockVerificationItem[]
+  priceAlerts            SupplierPriceAlert[]
 
   @@unique([shopId, name])
   @@unique([tenantId, shopId, sku])
@@ -1600,6 +1667,8 @@ model Invoice {
   updatedBy              String?
   deletedAt              DateTime?
   deletedBy              String?
+  tradeInId              String?
+  tradeInCredit          Int                     @default(0)
   creditNotes            CreditNote[]            @relation("InvoiceCreditNotes")
   creditNoteApplications CreditNoteApplication[] @relation("InvoiceCNApplications")
   imeis                  IMEI[]
@@ -1610,6 +1679,8 @@ model Invoice {
   items                  InvoiceItem[]
   quotations             Quotation[]             @relation("QuotationToInvoice")
   receipts               Receipt[]
+  emiApplication         EmiApplication?
+  installmentPlan        InstallmentPlan?
 
   @@unique([tenantId, invoiceNumber])
   @@index([tenantId])
@@ -2894,12 +2965,18 @@ enum SubscriptionInvoiceStatus {
   CANCELLED
 }
 
+enum WhatsAppProviderType {
+  META_CLOUD
+  WEB_SOCKET
+}
+
 enum WhatsAppSetupStatus {
   PENDING
   IN_PROGRESS
   ACTIVE
   FAILED
   DISCONNECTED
+  SCAN_REQUIRED
 }
 
 enum RepairKnowledgeStatus {
@@ -2997,6 +3074,9 @@ enum PaymentMode {
   UPI
   BANK
   CREDIT
+  CARD_EMI
+  NBFC_EMI
+  SHOP_EMI
 }
 
 enum StockEntryType {
@@ -3509,4 +3589,334 @@ enum ChurnRisk {
   MEDIUM
   HIGH
   CRITICAL
+}
+
+// ─── Feature: Staff Commission Tracking ───────────────────────────────────────
+
+enum CommissionScope {
+  ALL_STAFF
+  SPECIFIC_STAFF
+  SPECIFIC_ROLE
+}
+
+enum CommissionType {
+  PERCENTAGE_OF_SALE
+  PERCENTAGE_OF_PROFIT
+  FIXED_PER_ITEM
+}
+
+enum EarningStatus {
+  PENDING
+  APPROVED
+  PAID
+}
+
+model CommissionRule {
+  id        String          @id @default(cuid())
+  tenantId  String
+  shopId    String
+  name      String
+  applyTo   CommissionScope @default(ALL_STAFF)
+  staffId   String?
+  staffRole UserRole?
+  category  String?
+  type      CommissionType
+  value     Decimal
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  shop      Shop            @relation(fields: [shopId], references: [id])
+  tenant    Tenant          @relation(fields: [tenantId], references: [id])
+  earnings  StaffEarning[]
+
+  @@index([tenantId, shopId])
+  @@map("mb_commission_rule")
+}
+
+model StaffEarning {
+  id           String         @id @default(cuid())
+  tenantId     String
+  shopId       String
+  staffId      String
+  invoiceId    String
+  ruleId       String
+  saleAmount   Int
+  profitAmount Int?
+  earned       Int
+  status       EarningStatus  @default(PENDING)
+  paidAt       DateTime?
+  createdAt    DateTime       @default(now())
+  rule         CommissionRule @relation(fields: [ruleId], references: [id])
+  shop         Shop           @relation(fields: [shopId], references: [id])
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, shopId, staffId])
+  @@index([invoiceId])
+  @@map("mb_staff_earning")
+}
+
+// ─── Feature: Trade-in / Buyback ─────────────────────────────────────────────
+
+enum TradeInGrade {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+}
+
+enum TradeInStatus {
+  DRAFT
+  OFFERED
+  ACCEPTED
+  REJECTED
+  COMPLETED
+}
+
+model TradeIn {
+  id              String        @id @default(cuid())
+  tenantId        String
+  shopId          String
+  tradeInNumber   String
+  customerId      String?
+  customerName    String
+  customerPhone   String
+  deviceBrand     String
+  deviceModel     String
+  deviceImei      String?
+  deviceStorage   String?
+  deviceColor     String?
+  conditionChecks Json          @default("{}")
+  conditionGrade  TradeInGrade  @default(FAIR)
+  marketValue     Int           @default(0)
+  offeredValue    Int           @default(0)
+  status          TradeInStatus @default(DRAFT)
+  linkedInvoiceId      String?
+  notes                String?
+  postCompletionAction String?   // ADDED_TO_INVENTORY | VOUCHER_ISSUED | CASH_PAYOUT | BOTH
+  inventoryProductId   String?
+  creditVoucherId      String?
+  payoutMode           String?   // CASH | UPI | BANK — set when customer is paid directly
+  payoutAt             DateTime?
+  createdBy            String
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  customer             Party?        @relation(fields: [customerId], references: [id])
+  shop                 Shop          @relation(fields: [shopId], references: [id])
+  tenant               Tenant        @relation(fields: [tenantId], references: [id])
+  creditVoucher        TradeInVoucher?
+
+  @@unique([shopId, tradeInNumber])
+  @@index([tenantId, shopId])
+  @@map("mb_trade_in")
+}
+
+// ─── Feature: Trade-in Post-Completion ────────────────────────────────────────
+
+enum TradeInVoucherStatus {
+  ACTIVE
+  REDEEMED
+  EXPIRED
+  CANCELLED
+}
+
+model TradeInVoucher {
+  id                  String                @id @default(cuid())
+  tenantId            String
+  shopId              String
+  voucherCode         String                @unique
+  tradeInId           String                @unique
+  customerId          String?
+  customerName        String
+  customerPhone       String
+  amount              Int                   // paisa
+  status              TradeInVoucherStatus  @default(ACTIVE)
+  expiresAt           DateTime
+  redeemedAt          DateTime?
+  redeemedByInvoiceId String?
+  createdAt           DateTime              @default(now())
+  createdBy           String
+  tradeIn             TradeIn               @relation(fields: [tradeInId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([customerId])
+  @@index([voucherCode])
+  @@map("mb_tradein_voucher")
+}
+
+// ─── Feature: Supplier Price Drop Protection ──────────────────────────────────
+
+enum PriceAlertStatus {
+  PENDING
+  CLAIMED
+  DISMISSED
+}
+
+model SupplierPriceAlert {
+  id                 String           @id @default(cuid())
+  tenantId           String
+  shopId             String
+  shopProductId      String
+  supplierId         String
+  affectedPurchaseId String
+  newGrnId           String
+  previousPrice      Int
+  newPrice           Int
+  priceDrop          Int
+  quantityAtRisk     Int
+  potentialCredit    Int
+  status             PriceAlertStatus @default(PENDING)
+  creditNoteId       String?
+  dismissedAt        DateTime?
+  createdAt          DateTime         @default(now())
+  shop               Shop             @relation(fields: [shopId], references: [id])
+  tenant             Tenant           @relation(fields: [tenantId], references: [id])
+  product            ShopProduct      @relation(fields: [shopProductId], references: [id])
+
+  @@index([tenantId, shopId, status])
+  @@map("mb_supplier_price_alert")
+}
+
+// ─── Feature: Consumer Finance (EMI Tracking) ─────────────────────────────────
+
+enum EmiStatus {
+  APPLIED
+  APPROVED
+  SETTLED
+  REJECTED
+  CANCELLED
+}
+
+enum InstallmentStatus {
+  ACTIVE
+  COMPLETED
+  DEFAULTED
+  CANCELLED
+}
+
+enum SlotStatus {
+  PENDING
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  WAIVED
+}
+
+model EmiApplication {
+  id               String    @id @default(cuid())
+  tenantId         String
+  shopId           String
+  invoiceId        String?   @unique
+  customerId       String?
+  emiNumber        String
+  financeProvider  String
+  applicationRef   String?
+  loanAmount       Int
+  downPayment      Int       @default(0)
+  tenureMonths     Int
+  monthlyEmi       Int
+  interestRate     Decimal?
+  subventionAmount Int       @default(0)
+  status           EmiStatus @default(APPLIED)
+  settlementAmount Int?
+  settledAt        DateTime?
+  rejectedReason   String?
+  notes            String?
+  createdBy        String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  invoice          Invoice?  @relation(fields: [invoiceId], references: [id])
+  shop             Shop      @relation(fields: [shopId], references: [id])
+  tenant           Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, shopId, status])
+  @@index([invoiceId])
+  @@map("mb_emi_application")
+}
+
+model InstallmentPlan {
+  id              String            @id @default(cuid())
+  tenantId        String
+  shopId          String
+  invoiceId       String?           @unique
+  customerId      String
+  planNumber      String
+  totalAmount     Int
+  downPayment     Int               @default(0)
+  remainingAmount Int
+  tenureMonths    Int
+  monthlyAmount   Int
+  startDate       DateTime
+  notes           String?
+  status          InstallmentStatus @default(ACTIVE)
+  createdBy       String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  invoice         Invoice?          @relation(fields: [invoiceId], references: [id])
+  shop            Shop              @relation(fields: [shopId], references: [id])
+  tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  customer        Party             @relation(fields: [customerId], references: [id])
+  slots           InstallmentSlot[]
+
+  @@unique([shopId, planNumber])
+  @@index([tenantId, shopId, status])
+  @@index([customerId])
+  @@map("mb_installment_plan")
+}
+
+model InstallmentSlot {
+  id             String          @id @default(cuid())
+  planId         String
+  tenantId       String
+  slotNumber     Int
+  dueDate        DateTime
+  amount         Int
+  paidAmount     Int             @default(0)
+  paidAt         DateTime?
+  receiptId      String?
+  status         SlotStatus      @default(PENDING)
+  reminderSentAt DateTime?
+  createdAt      DateTime        @default(now())
+  plan           InstallmentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@index([tenantId, dueDate])
+  @@index([tenantId, status])
+  @@map("mb_installment_slot")
+}
+
+// Device model requests — shop staff can request unlisted models; admin approves → added to DB
+model DeviceModelRequest {
+  id           String    @id @default(cuid())
+  rawInput     String
+  parsedBrand  String
+  parsedModel  String
+  tenantId     String
+  requestedBy  String
+  status       String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  count        Int       @default(1)
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+  resolvedBy   String?
+
+  @@index([status])
+  @@index([parsedBrand, parsedModel])
+  @@map("mb_device_model_request")
+}
+
+// Market price intelligence — scraped baseline + crowd-sourced from real trade-ins
+model MarketPriceIntel {
+  id             String   @id @default(cuid())
+  brand          String
+  model          String
+  storage        String?
+  avgMarketValue Int      // in paisa
+  minMarketValue Int?     // in paisa
+  maxMarketValue Int?     // in paisa
+  avgOffer       Int?     // in paisa
+  sampleCount    Int      @default(1)
+  dataSource     String   @default("CASHIFY") // CASHIFY | CROWD
+  lastUpdated    DateTime @default(now())
+
+  @@unique([brand, model, storage])
+  @@index([brand, model])
+  @@map("mb_market_price_intel")
 }

@@ -43,7 +43,7 @@ data class JobCardResponse(
     val deliveredAt: String? = null,
     val scrappedAt: String? = null,
     val warrantyDuration: Int? = null,
-    val status: JobStatus,
+    val status: JobStatus? = null,
     val publicToken: String?,
     val shop: ShopInfo,
     val createdByName: String,

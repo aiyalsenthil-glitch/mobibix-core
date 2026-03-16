@@ -17,6 +17,7 @@ import {
   getFinancialYear,
 } from '../../common/utils/invoice-number.util';
 import { calculateInvoiceTotals } from './invoice-calculator.util';
+import { buildUpiUri } from './upi-qr.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InvoiceCreatedEvent, InvoicePaidEvent } from '../events/crm.events';
 import { DocumentNumberService } from '../../common/services/document-number.service';
@@ -25,6 +26,7 @@ import { assertShopAccess } from '../../common/guards/shop-access.guard';
 
 import { BillingService, CreateInvoiceOptions } from './billing.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
+import { WhatsAppSender } from '../../modules/whatsapp/whatsapp.sender';
 
 @Injectable()
 export class SalesService {
@@ -37,6 +39,7 @@ export class SalesService {
     private documentNumberService: DocumentNumberService,
     private billingService: BillingService,
     private loyaltyService: LoyaltyService,
+    private whatsAppSender: WhatsAppSender,
   ) {}
 
   // ============================================
@@ -1299,6 +1302,9 @@ export class SalesService {
             printNumber: true,
           },
         },
+        shop: {
+          select: { upiId: true },
+        },
         items: {
           select: {
             id: true, // Needed for updates?? Not yet exposed but good to have
@@ -1320,6 +1326,16 @@ export class SalesService {
 
     if (!invoice) {
       throw new BadRequestException('Invoice not found');
+    }
+
+    // Build UPI payment URI if shop has upiId (frontend renders as QR via QRCodeSVG)
+    let upiQrCode: string | undefined;
+    if ((invoice as any).shop?.upiId && invoice.status !== 'VOIDED') {
+      upiQrCode = buildUpiUri(
+        (invoice as any).shop.upiId,
+        invoice.totalAmount,
+        invoice.invoiceNumber,
+      );
     }
 
     // Calculate payment summary
@@ -1384,6 +1400,8 @@ export class SalesService {
         receiptNumber: receipt.printNumber,
       })),
 
+      upiQrCode,
+
       items: invoice.items.map((item) => {
         // Calculate accurate taxableValue
         // item.lineTotal is in Paisa. item.gstAmount is in Paisa.
@@ -1412,6 +1430,46 @@ export class SalesService {
         };
       }),
     };
+  }
+
+  /**
+   * Share invoice link to customer via WhatsApp
+   */
+  async shareInvoiceViaWhatsApp(tenantId: string, invoiceId: string) {
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, tenantId },
+      select: {
+        invoiceNumber: true,
+        customerName: true,
+        customerPhone: true,
+        totalAmount: true,
+        status: true,
+      },
+    });
+
+    if (!invoice) throw new BadRequestException('Invoice not found');
+    if (!invoice.customerPhone)
+      throw new BadRequestException('Customer phone number not set');
+    if (invoice.status === 'VOIDED')
+      throw new BadRequestException('Cannot share a voided invoice');
+
+    const amount = this.fromPaisa(invoice.totalAmount).toFixed(2);
+    const publicLink = `https://REMOVED_DOMAIN/i/${invoiceId}`;
+
+    await this.whatsAppSender.sendTemplateMessage(
+      tenantId,
+      'BILLING',
+      invoice.customerPhone,
+      'invoice_ready',
+      [
+        invoice.customerName || 'Customer',
+        invoice.invoiceNumber,
+        amount,
+        publicLink,
+      ],
+    );
+
+    return { success: true, phone: invoice.customerPhone };
   }
 
   /**

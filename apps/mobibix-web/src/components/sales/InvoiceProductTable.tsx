@@ -18,6 +18,7 @@ interface InvoiceProductTableProps {
   onAddItem: () => void;
   onRemoveItem: (id: string) => void;
   onNewProduct: () => void;
+  onUpdateProductCost?: (productId: string, cost: number) => Promise<void>;
   imeiHighlight?: boolean;
 }
 
@@ -30,6 +31,7 @@ export function InvoiceProductTable({
   onAddItem,
   onRemoveItem,
   onNewProduct,
+  onUpdateProductCost,
   imeiHighlight = false,
 }: InvoiceProductTableProps) {
   const { selectedShop } = useShop();
@@ -47,6 +49,8 @@ export function InvoiceProductTable({
   const productInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>(
     {},
   );
+  const [manualCosts, setManualCosts] = useState<{ [key: string]: string }>({});
+  const [isUpdatingCost, setIsUpdatingCost] = useState<{ [key: string]: boolean }>({});
 
   const updateDropdownPosition = (itemId: string) => {
     const inputElement = productInputRefs.current[itemId];
@@ -298,14 +302,63 @@ export function InvoiceProductTable({
                       </div>
                     )}
 
-                    {/* Cost Warning */}
-                    {item.costPrice === null || item.costPrice <= 0
-                      ? product?.id && (
-                          <div className="text-[10px] text-red-500 mt-1">
-                            ⚠️ Missing cost price
+                    {/* Modern Inline Cost Fixer */}
+                    {product?.id && (item.costPrice === null || item.costPrice <= 0) && (
+                      <div className="mt-3 overflow-hidden rounded-2xl border border-rose-200 dark:border-rose-500/30 bg-white dark:bg-rose-500/5 shadow-sm animate-in fade-in slide-in-from-top-3 duration-500">
+                        <div className="bg-rose-500/5 px-3 py-2 border-b border-rose-100 dark:border-rose-500/20 flex items-center justify-between">
+                          <span className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                            </span>
+                            Missing Cost
+                          </span>
+                          <span className="text-[9px] text-rose-400 font-medium">Action Required</span>
+                        </div>
+                        <div className="p-3">
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2.5 leading-relaxed">
+                            To calculate profit accurately, please enter the purchase cost for this product.
+                          </p>
+                          <div className="flex gap-2">
+                            <div className="relative flex-1 group">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 group-focus-within:text-rose-500 transition-colors font-bold">₹</span>
+                              <input 
+                                type="number"
+                                placeholder="0.00"
+                                value={manualCosts[item.id] || ""}
+                                onChange={(e) => setManualCosts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                className="w-full pl-6 pr-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 focus:border-rose-500 focus:outline-none focus:ring-4 focus:ring-rose-500/5 bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white transition-all font-bold"
+                              />
+                            </div>
+                            <button 
+                              disabled={!manualCosts[item.id] || isUpdatingCost[item.id]}
+                              onClick={async () => {
+                                const costRaw = parseFloat(manualCosts[item.id]);
+                                if (!isNaN(costRaw) && costRaw > 0 && onUpdateProductCost && product.id) {
+                                  setIsUpdatingCost(prev => ({ ...prev, [item.id]: true }));
+                                  try {
+                                    const costInPaise = Math.round(costRaw * 100);
+                                    await onUpdateProductCost(product.id, costInPaise);
+                                    // Update the item costPrice locally too (keep it in Rupees for UI state if that's what useInvoiceForm expects, but hooks usually use paise? let's check)
+                                    // UseInvoiceForm uses product.costPrice ?? null where product is ShopProduct.
+                                    // ShopProduct.costPrice is in Paise? No, usually Rupees in web and converted? 
+                                    // Let's check services/products.api.ts
+                                    onUpdateItem(item.id, "costPrice", costRaw, products);
+                                  } finally {
+                                    setIsUpdatingCost(prev => ({ ...prev, [item.id]: false }));
+                                  }
+                                }
+                              }}
+                              className="px-4 py-2 bg-rose-600 text-white text-xs font-black rounded-xl hover:bg-rose-700 active:scale-95 transition-all shadow-lg shadow-rose-600/20 disabled:opacity-40 flex items-center justify-center min-w-[70px]"
+                            >
+                              {isUpdatingCost[item.id] ? (
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              ) : "UPDATE"}
+                            </button>
                           </div>
-                        )
-                      : null}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Tracking Input for Serialized Products */}
                     {isSerialized && (

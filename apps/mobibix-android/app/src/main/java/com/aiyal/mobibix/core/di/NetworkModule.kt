@@ -3,7 +3,9 @@ package com.aiyal.mobibix.core.di
 import com.aiyal.mobibix.BuildConfig
 import com.aiyal.mobibix.core.shop.ShopContextProvider
 import com.aiyal.mobibix.core.shop.ShopInterceptor
+import com.aiyal.mobibix.core.auth.AuthEventBus
 import com.aiyal.mobibix.data.network.AuthInterceptor
+import com.aiyal.mobibix.data.network.UnauthorizedInterceptor
 import com.aiyal.mobibix.data.network.DashboardApi
 import com.aiyal.mobibix.data.network.JobApi
 import com.aiyal.mobibix.data.network.MobiResponseInterceptor
@@ -55,10 +57,16 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideUnauthorizedInterceptor(authEventBus: AuthEventBus): UnauthorizedInterceptor =
+        UnauthorizedInterceptor(authEventBus)
+
+    @Provides
+    @Singleton
     fun provideOkHttpClient(
-        authInterceptor: AuthInterceptor, 
+        authInterceptor: AuthInterceptor,
         shopInterceptor: ShopInterceptor,
-        mobiResponseInterceptor: MobiResponseInterceptor
+        mobiResponseInterceptor: MobiResponseInterceptor,
+        unauthorizedInterceptor: UnauthorizedInterceptor
     ): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) {
@@ -69,6 +77,7 @@ object NetworkModule {
         }
 
         return OkHttpClient.Builder()
+            .addInterceptor(unauthorizedInterceptor) // Must be first to catch 401 before processing
             .addInterceptor(authInterceptor)
             .addInterceptor(shopInterceptor)
             .addInterceptor(mobiResponseInterceptor) // Unwrap {success, data}

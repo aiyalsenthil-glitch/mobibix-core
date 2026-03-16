@@ -45,7 +45,7 @@ export class VouchersController extends TenantScopedController {
   ): Promise<VoucherEntity> {
     return this.vouchersService.createVoucher(
       user.tenantId,
-      user.shopId,
+      createVoucherDto.shopId || user.shopId,
       createVoucherDto,
       user.sub,
     );

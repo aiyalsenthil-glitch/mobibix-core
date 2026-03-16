@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createJobCard, type CreateJobCardDto, suggestFault } from "@/services/jobcard.api";
 import { useShop } from "@/context/ShopContext";
 import { PartySelector } from "@/components/common/PartySelector";
+import { DeviceModelSelector } from "@/components/common/DeviceModelSelector";
 import { type Party } from "@/services/parties.api";
 import { CustomerModal } from "../../customers/CustomerModal";
 
@@ -170,6 +171,12 @@ export default function CreateJobCardPage() {
   ];
 
   const nextStep = () => {
+    // Step 1 has Device Info — require brand+model selected from DB
+    if (currentStep === 1 && (!formData.deviceBrand || !formData.deviceModel)) {
+      setError("Please select a device from the database before proceeding.");
+      return;
+    }
+    setError(null);
     if (currentStep < 4) setCurrentStep((c) => c + 1);
   };
 
@@ -287,31 +294,17 @@ export default function CreateJobCardPage() {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">
-                      Brand <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      name="deviceBrand"
-                      value={formData.deviceBrand}
-                      onChange={handleChange}
-                      placeholder="e.g. Apple"
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition text-sm shadow-sm"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">
-                      Model <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      name="deviceModel"
-                      value={formData.deviceModel}
-                      onChange={handleChange}
-                      placeholder="e.g. iPhone 14 Pro"
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition text-sm shadow-sm"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">
+                    Device Brand & Model <span className="text-red-500">*</span>
+                  </label>
+                  <DeviceModelSelector
+                    value={{ brand: formData.deviceBrand, model: formData.deviceModel }}
+                    onChange={(brand, model) =>
+                      setFormData((prev) => ({ ...prev, deviceBrand: brand, deviceModel: model }))
+                    }
+                    required
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

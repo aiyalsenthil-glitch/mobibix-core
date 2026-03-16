@@ -8,9 +8,13 @@ import {
 } from "@/services/inventory-intelligence.api";
 import {
   BarChart2, PackageX, Loader2, AlertTriangle, RefreshCw,
-  TrendingDown, Layers, ClipboardCheck, Lightbulb, ChevronRight,
+  TrendingDown, Layers, ClipboardCheck, Lightbulb, ChevronRight, TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
+import {
+  getDemandForecast,
+  type DemandForecastItem,
+} from "@/services/demand-forecast.api";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -104,6 +108,8 @@ export default function InventoryIntelligencePage() {
   const [data, setData]           = useState<InventoryIntelligence | null>(null);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState("");
+  const [forecast, setForecast]   = useState<DemandForecastItem[]>([]);
+  const [forecastLoading, setForecastLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!shopId) return;
@@ -119,6 +125,15 @@ export default function InventoryIntelligencePage() {
   }, [shopId, startDate, endDate]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!shopId) return;
+    setForecastLoading(true);
+    getDemandForecast(shopId)
+      .then(setForecast)
+      .catch(() => {})
+      .finally(() => setForecastLoading(false));
+  }, [shopId]);
 
   if (!shopId) return (
     <div className="p-8 text-center text-gray-500 dark:text-slate-400">Select a shop first.</div>
@@ -279,6 +294,60 @@ export default function InventoryIntelligencePage() {
                     <p className="text-sm font-black text-rose-600 dark:text-rose-400 flex-shrink-0">{fmt(p.lossValueRupees)}</p>
                   </div>
                 ))}
+              </div>
+            )}
+          </SectionCard>
+
+          {/* Demand Forecast */}
+          <SectionCard title="Demand Forecast — Reorder Planning (90-day)" icon={TrendingUp}>
+            {forecastLoading ? (
+              <div className="flex justify-center py-6"><Loader2 size={20} className="animate-spin text-gray-400" /></div>
+            ) : forecast.length === 0 ? (
+              <p className="text-sm text-gray-400 dark:text-slate-500 text-center py-4">No sales data in last 90 days.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b dark:border-slate-700 text-left text-xs text-gray-400 dark:text-slate-500">
+                      <th className="pb-2 pr-3">Product</th>
+                      <th className="pb-2 pr-3 text-right">Stock</th>
+                      <th className="pb-2 pr-3 text-right">Avg/day</th>
+                      <th className="pb-2 pr-3 text-right">Days Left</th>
+                      <th className="pb-2 pr-3 text-right">Reorder Qty</th>
+                      <th className="pb-2 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {forecast.slice(0, 20).map((item) => (
+                      <tr key={item.shopProductId} className="border-b dark:border-slate-800">
+                        <td className="py-2 pr-3">
+                          <p className="font-medium text-gray-800 dark:text-slate-200 truncate max-w-[180px]">{item.name}</p>
+                          {item.category && <p className="text-xs text-gray-400">{item.category}</p>}
+                        </td>
+                        <td className="py-2 pr-3 text-right text-gray-600 dark:text-slate-400">{item.currentStock}</td>
+                        <td className="py-2 pr-3 text-right text-gray-600 dark:text-slate-400">{item.avgDailyDemand}</td>
+                        <td className="py-2 pr-3 text-right font-medium">
+                          {item.daysOfStock >= 9999 ? "∞" : item.daysOfStock}
+                        </td>
+                        <td className="py-2 pr-3 text-right text-blue-700 dark:text-blue-400 font-medium">{item.suggestedReorder}</td>
+                        <td className="py-2 text-center">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            item.urgency === "CRITICAL"
+                              ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                              : item.urgency === "LOW"
+                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+                              : "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
+                          }`}>
+                            {item.urgency === "CRITICAL" ? "Critical" : item.urgency === "LOW" ? "Low Stock" : "OK"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {forecast.length > 20 && (
+                  <p className="text-xs text-gray-400 mt-2 text-center">{forecast.length - 20} more products...</p>
+                )}
               </div>
             )}
           </SectionCard>
