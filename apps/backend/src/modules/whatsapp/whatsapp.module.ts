@@ -33,6 +33,10 @@ import { WhatsAppCrmEnabledGuard } from './guards/whatsapp-crm-enabled.guard';
 import { WhatsAppCrmPhoneNumberGuard } from './guards/whatsapp-crm-phone-number.guard';
 import { WhatsAppTokenService } from './whatsapp-token.service';
 import { WhatsAppRoutingService } from './whatsapp-routing.service';
+import { MetaProvider } from './providers/meta.provider';
+import { BaileysProvider } from './providers/baileys.provider';
+import { AuthkeyProvider } from './providers/REMOVED_TOKEN.provider';
+import { ProviderManager } from './providers/provider-manager.service';
 
 import { WhatsAppOnboardingController } from './onboarding/whatsapp-onboarding.controller';
 import { WhatsAppOnboardingService } from './onboarding/whatsapp-onboarding.service';
@@ -81,6 +85,11 @@ import { ConversationEngineService } from './automation/conversation-engine.serv
     WhatsAppCrmPhoneNumberGuard,
     WhatsAppTokenService,
     WhatsAppRoutingService,
+    // Provider Adapter Architecture
+    MetaProvider,
+    BaileysProvider,
+    AuthkeyProvider,
+    ProviderManager,
     WhatsAppOnboardingService, // ✅ Added
     ConversationEngineService,
     WhatsAppInboxGateway,

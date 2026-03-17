@@ -33,7 +33,7 @@ export class ProductsService {
           isActive: true,
         },
         skip: options?.skip ?? 0,
-        take: options?.take ?? 50,
+        take: Math.min(options?.take ?? 50, 500),
         select: {
           id: true,
           name: true,

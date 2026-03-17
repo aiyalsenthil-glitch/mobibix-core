@@ -2,12 +2,16 @@ import {
   Injectable,
   Logger,
   BadRequestException,
+  ForbiddenException,
   UnauthorizedException,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { encrypt, decrypt } from '../../../common/utils/crypto.util';
+import { PlanRulesService } from '../../../core/billing/plan-rules.service';
+import { WhatsAppFeature } from '../../../core/billing/whatsapp-rules';
+import { ModuleType } from '@prisma/client';
 import axios from 'axios';
 
 @Injectable()
@@ -21,6 +25,7 @@ export class WhatsAppOnboardingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly planRulesService: PlanRulesService,
   ) {
     this.appId = this.configService.get<string>('WHATSAPP_APP_ID') || '';
     this.appSecret =
@@ -347,48 +352,197 @@ export class WhatsAppOnboardingService {
   }
 
   /**
-   * Switches the WhatsApp provider engine
+   * Switches the WhatsApp provider engine.
+   * Supports: META_CLOUD | WEB_SOCKET | AUTHKEY
+   *
+   * WEB_SOCKET → sets SCAN_REQUIRED (user must scan QR code)
+   * META_CLOUD → sets PENDING (user must complete Meta OAuth)
+   * AUTHKEY    → sets PENDING (user must supply API key via configureAuthkey)
    */
-  async switchProvider(tenantId: string, provider: 'META_CLOUD' | 'WEB_SOCKET') {
-    // 1. Find existing number
+  async switchProvider(
+    tenantId: string,
+    provider: 'META_CLOUD' | 'WEB_SOCKET' | 'AUTHKEY',
+  ) {
     const activeNumber = await this.prisma.whatsAppNumber.findFirst({
       where: { tenantId },
     });
 
     if (!activeNumber) {
-      // If no number exists, we just record the preference for when they start onboarding
-      // But usually, we create a placeholder or just return success and let the frontend 
-      // handle the next step (QR vs Meta login).
-      // For now, let's allow "switching" even if no number, by creating a default entry if needed 
-      // or just returning the choice.
-      return { success: true, provider };
+      return { success: true, provider, requiresSetup: true };
     }
 
-    // 2. Enforce 24h rule (except in dev)
+    // Enforce 24h cooldown in production
     const isProd = this.configService.get<string>('NODE_ENV') === 'production';
     if (isProd && (activeNumber as any).lastProviderSwitchAt) {
       const lastSwitch = new Date((activeNumber as any).lastProviderSwitchAt).getTime();
       const hoursSince = (Date.now() - lastSwitch) / (1000 * 60 * 60);
       if (hoursSince < 24) {
         const remaining = Math.ceil(24 - hoursSince);
-        throw new BadRequestException(`Provider switching is restricted to once every 24 hours. Please try again in ${remaining} hours.`);
+        throw new BadRequestException(
+          `Provider switching is limited to once per 24 hours. Try again in ${remaining}h.`,
+        );
       }
     }
 
-    // 3. Update Provider
+    const statusMap: Record<string, string> = {
+      WEB_SOCKET: 'SCAN_REQUIRED',
+      META_CLOUD: 'PENDING',
+      AUTHKEY: 'PENDING',
+    };
+
     await this.prisma.whatsAppNumber.update({
       where: { id: activeNumber.id },
       data: {
         provider: provider as any,
         lastProviderSwitchAt: new Date(),
-        // If switching engines, we reset setup status to DISCONNECTED or SCAN_REQUIRED 
-        // to force a fresh connection on the new logic
-        setupStatus: (provider === 'WEB_SOCKET' ? 'SCAN_REQUIRED' : 'PENDING') as any,
+        setupStatus: statusMap[provider] as any,
+        // Clear credentials of the OLD provider on switch for security
+        ...(provider !== 'AUTHKEY' && {
+          REMOVED_TOKENApiKey: null,
+          REMOVED_TOKENSenderId: null,
+        }),
+        ...(provider !== 'META_CLOUD' && {
+          accessToken: null,
+        }),
       } as any,
     });
 
-    this.logger.log(`Tenant ${tenantId} switched to ${provider} engine`);
-    return { success: true, provider };
+    this.logger.log(`Tenant ${tenantId} switched to ${provider}`);
+    return { success: true, provider, requiresSetup: provider !== 'META_CLOUD' };
+  }
+
+  /**
+   * Configure Authkey credentials for a tenant.
+   * Called after the user chooses "Official Mode" and enters their Authkey API key.
+   *
+   * The REMOVED_TOKENApiKey is stored encrypted (AES-256-GCM).
+   * If no WhatsAppNumber record exists yet, one is created as a placeholder.
+   */
+  async configureAuthkey(
+    tenantId: string,
+    apiKey: string,
+    senderId: string,
+    phoneNumber: string,
+  ): Promise<{ success: boolean; numberId: string }> {
+    if (!apiKey || !senderId || !phoneNumber) {
+      throw new BadRequestException('apiKey, senderId, and phoneNumber are required for Authkey setup.');
+    }
+
+    // Gate: Tenant must have an Official API addon plan
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { tenantType: true },
+    });
+    const moduleType =
+      tenant?.tenantType?.toUpperCase() === 'GYM'
+        ? ModuleType.GYM
+        : ModuleType.MOBILE_SHOP;
+
+    const planRules = await this.planRulesService.getPlanRulesForTenant(tenantId, moduleType);
+    const hasOfficialApi =
+      !planRules ||
+      planRules.features.length === 0 ||
+      planRules.features.includes(WhatsAppFeature.WHATSAPP_OFFICIAL_API);
+
+    if (!hasOfficialApi) {
+      throw new ForbiddenException(
+        'Official WhatsApp API requires a WA Official addon plan. ' +
+        'Upgrade to WA Official Starter, Pro, or Business to use Authkey.',
+      );
+    }
+
+    const encryptedApiKey = encrypt(apiKey);
+
+    // Authkey numbers don't have a Meta phoneNumberId — use phone as unique key
+    const placeholderPhoneNumberId = `REMOVED_TOKEN:${tenantId}:${phoneNumber.replace(/\D/g, '')}`;
+
+    const record = await this.prisma.whatsAppNumber.upsert({
+      where: { phoneNumberId: placeholderPhoneNumberId },
+      update: {
+        REMOVED_TOKENApiKey: encryptedApiKey,
+        REMOVED_TOKENSenderId: senderId,
+        phoneNumber: phoneNumber.replace(/\D/g, ''),
+        provider: 'AUTHKEY' as any,
+        setupStatus: 'ACTIVE' as any,
+        isEnabled: true,
+        lastProviderSwitchAt: new Date(),
+      } as any,
+      create: {
+        tenantId,
+        phoneNumberId: placeholderPhoneNumberId,
+        wabaId: `REMOVED_TOKEN:${tenantId}`,
+        phoneNumber: phoneNumber.replace(/\D/g, ''),
+        REMOVED_TOKENApiKey: encryptedApiKey,
+        REMOVED_TOKENSenderId: senderId,
+        provider: 'AUTHKEY' as any,
+        setupStatus: 'ACTIVE' as any,
+        purpose: 'DEFAULT' as any,
+        isDefault: true,
+        isEnabled: true,
+      } as any,
+    });
+
+    // Enable WhatsApp CRM for this tenant
+    await this.prisma.$transaction([
+      this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: { whatsappCrmEnabled: true },
+      }),
+      this.prisma.whatsAppSetting.upsert({
+        where: { tenantId },
+        update: { enabled: true },
+        create: { tenantId, enabled: true },
+      }),
+    ]);
+
+    this.logger.log(`Authkey configured for tenant ${tenantId}, number: ${phoneNumber}`);
+    return { success: true, numberId: record.id };
+  }
+
+  /**
+   * Returns status + mode info for the tenant's WhatsApp setup.
+   * Used by the frontend to render the correct connection UI.
+   */
+  async getStatus(tenantId: string) {
+    const config = await this.prisma.whatsAppNumber.findFirst({
+      where: { tenantId, isEnabled: true },
+      select: {
+        setupStatus: true,
+        wabaId: true,
+        phoneNumberId: true,
+        phoneNumber: true,
+        provider: true,
+        REMOVED_TOKENSenderId: true,
+      },
+    });
+
+    if (!config) {
+      return {
+        status: 'DISCONNECTED',
+        mode: null,
+        wabaId: null,
+        phoneNumberId: null,
+        phoneNumber: null,
+        provider: null,
+      };
+    }
+
+    const modeMap: Record<string, 'WEB' | 'OFFICIAL'> = {
+      WEB_SOCKET: 'WEB',
+      META_CLOUD: 'OFFICIAL',
+      AUTHKEY: 'OFFICIAL',
+    };
+
+    return {
+      status: config.setupStatus,
+      mode: modeMap[config.provider] || null,
+      provider: config.provider,
+      wabaId: config.wabaId,
+      phoneNumberId: config.phoneNumberId,
+      phoneNumber: config.phoneNumber,
+      // Authkey: expose sender ID (not the API key)
+      REMOVED_TOKENSenderId: config.provider === 'AUTHKEY' ? config.REMOVED_TOKENSenderId : undefined,
+    };
   }
   /**
    * Manually syncs WhatsApp configuration (for existing/manual setups)
@@ -458,29 +612,4 @@ export class WhatsAppOnboardingService {
     }
   }
 
-  /**
-   * Gets the current WhatsApp integration status for a tenant
-   */
-  async getStatus(tenantId: string) {
-    const config = await this.prisma.whatsAppNumber.findFirst({
-      where: { tenantId, isEnabled: true },
-    });
-
-    if (!config) {
-      return {
-        status: 'DISCONNECTED',
-        wabaId: null,
-        phoneNumberId: null,
-        phoneNumber: null,
-      };
-    }
-
-    return {
-      status: config.setupStatus,
-      wabaId: config.wabaId,
-      phoneNumberId: config.phoneNumberId,
-      phoneNumber: config.phoneNumber,
-      provider: (config as any).provider,
-    };
-  }
 }

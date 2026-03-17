@@ -57,6 +57,8 @@ export interface Shop {
   upiId?: string;
   repairInvoiceNumberingMode?: RepairInvoiceNumberingMode;
   repairGstDefault?: boolean;
+  autoGenerateEwayBill?: boolean;
+  nicUsername?: string;
 }
 
 export interface CreateShopDto {
@@ -142,6 +144,7 @@ export interface UpdateShopSettingsDto {
 
   repairInvoiceNumberingMode?: RepairInvoiceNumberingMode;
   repairGstDefault?: boolean;
+  autoGenerateEwayBill?: boolean;
 }
 
 /**

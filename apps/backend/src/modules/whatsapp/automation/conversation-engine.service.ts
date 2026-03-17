@@ -20,6 +20,17 @@ export class ConversationEngineService {
 
   async processMessage(tenantId: string, senderPhone: string, text: string) {
     this.logger.log(`Processing automation for ${tenantId}:${senderPhone} -> ${text}`);
+    
+    // Global filter for status/broadcast/groups/newsletters to prevent noise
+    const lowerPhone = senderPhone.toLowerCase();
+    if (
+      lowerPhone.includes('status') || 
+      lowerPhone.includes('broadcast') || 
+      lowerPhone.endsWith('@g.us') || 
+      lowerPhone.endsWith('@newsletter')
+    ) {
+      return;
+    }
 
     // 1. Manage State (Load or Init)
     const state = await this.getOrInitState(tenantId, senderPhone);

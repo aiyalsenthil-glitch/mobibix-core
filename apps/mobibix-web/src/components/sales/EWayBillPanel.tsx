@@ -3,9 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   EWayBill,
-  EWayBillStatus,
-  GenerateEWBDto,
-  generateEWayBill,
   getEWayBill,
   cancelEWayBill,
 } from "@/services/ewaybill.api";
@@ -25,18 +22,12 @@ const CANCEL_REASONS = [
   { value: 3, label: "Data Entry Mistake" },
 ] as const;
 
-export function EWayBillPanel({ invoiceId, totalAmount, customerGstin, customerDistanceKm }: Props) {
+export function EWayBillPanel({ invoiceId, totalAmount, customerGstin }: Props) {
   const [ewb, setEwb] = useState<EWayBill | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCancelForm, setShowCancelForm] = useState(false);
-
-  // Generate form state
-  const [transMode, setTransMode] = useState<"ROAD" | "RAIL" | "AIR" | "SHIP">("ROAD");
-  const [vehicleNumber, setVehicleNumber] = useState("");
-  const [distance, setDistance] = useState(customerDistanceKm ? String(customerDistanceKm) : "");
-  const [transporterName, setTransporterName] = useState("");
 
   // Cancel form state
   const [cancelRsn, setCancelRsn] = useState<1 | 2 | 3>(2);
@@ -49,6 +40,7 @@ export function EWayBillPanel({ invoiceId, totalAmount, customerGstin, customerD
     if (!isEligible) return;
     getEWayBill(invoiceId)
       .then(setEwb)
+      .catch(() => setEwb(null))
       .finally(() => setLoading(false));
   }, [invoiceId, isEligible]);
 
@@ -66,35 +58,6 @@ export function EWayBillPanel({ invoiceId, totalAmount, customerGstin, customerD
     ewb?.status === "GENERATED" &&
     ewb.generatedAt &&
     Date.now() - new Date(ewb.generatedAt).getTime() < 24 * 60 * 60 * 1000;
-
-  async function handleGenerate(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    const dist = parseInt(distance, 10);
-    if (!dist || dist < 1 || dist > 3000) {
-      setError("Distance must be between 1 and 3000 km");
-      return;
-    }
-    if (transMode === "ROAD" && !vehicleNumber.trim()) {
-      setError("Vehicle number is required for ROAD transport");
-      return;
-    }
-    const dto: GenerateEWBDto = {
-      transMode,
-      distance: dist,
-      ...(vehicleNumber.trim() && { vehicleNumber: vehicleNumber.trim() }),
-      ...(transporterName.trim() && { transporterName: transporterName.trim() }),
-    };
-    try {
-      setSubmitting(true);
-      const result = await generateEWayBill(invoiceId, dto);
-      setEwb(result);
-    } catch (err: any) {
-      setError(err.message ?? "Generation failed");
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   async function handleCancel(e: React.FormEvent) {
     e.preventDefault();
@@ -210,110 +173,46 @@ export function EWayBillPanel({ invoiceId, totalAmount, customerGstin, customerD
         </div>
       )}
 
-      {/* ── GENERATING ── */}
-      {ewb?.status === "GENERATING" && (
-        <div className="flex items-center gap-2 text-sm text-sky-700 dark:text-sky-300">
-          <div className="h-4 w-4 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
-          Generating with NIC portal…
-        </div>
-      )}
-
-      {/* ── FAILED ── */}
-      {ewb?.status === "FAILED" && (
-        <div className="space-y-2">
-          <div className="rounded-xl border border-rose-300 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-900/10 px-4 py-3">
-            <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">
-              Generation failed
-            </p>
-            {ewb.rawResponse?.error != null && (
-              <p className="text-xs text-rose-600 dark:text-rose-400 mt-0.5">
-                {String(ewb.rawResponse.error)}
+      {/* ── NOT YET ELIGIBLE / BETA NOTICE (shown when no active EWB) ── */}
+      {(!ewb?.status || ewb.status === "DRAFT" || ewb.status === "FAILED" || ewb.status === "GENERATING") && (
+        <div className="space-y-3 mt-1">
+          <div className="flex items-start gap-3 rounded-xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-900/10 px-4 py-3">
+            <span className="text-lg shrink-0">🚧</span>
+            <div>
+              <p className="text-xs font-bold text-amber-800 dark:text-amber-200 mb-1">
+                E-Way Bill — Beta (Not Yet Available)
               </p>
-            )}
+              <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                Sorry, you have not been shortlisted as one of the taxpayers generating more than{" "}
+                <strong>25,000 invoices per month</strong>. NIC is rolling out direct API access in batches —
+                you will be considered in the next batch.
+              </p>
+            </div>
           </div>
-          {/* Fall through to show form for retry */}
-        </div>
-      )}
 
-      {/* ── FORM (DRAFT / FAILED / null) ── */}
-      {(!ewb || ewb.status === "DRAFT" || ewb.status === "FAILED") && (
-        <form onSubmit={handleGenerate} className="space-y-3 mt-2">
-          <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-            ⚠ E-Way Bill required — invoice exceeds ₹50,000
+          <div className="rounded-xl border border-sky-200 dark:border-sky-500/20 bg-sky-50/50 dark:bg-sky-900/10 px-4 py-3 space-y-1.5">
+            <p className="text-xs font-semibold text-sky-800 dark:text-sky-200">
+              What you can do right now
+            </p>
+            <ul className="text-xs text-sky-700 dark:text-sky-300 space-y-1 list-disc list-inside leading-relaxed">
+              <li>
+                Log in to{" "}
+                <span className="font-mono font-medium">ewaybillgst.gov.in</span>{" "}
+                with your GSTIN and generate the E-Way Bill manually.
+              </li>
+              <li>
+                Note the EWB number and attach it to this invoice for your records.
+              </li>
+              <li>
+                Once NIC grants API access to your GSTIN, generation will work directly from here.
+              </li>
+            </ul>
+          </div>
+
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center">
+            🔬 This feature is in beta — NIC E-Way Bill API access is being expanded in phases.
           </p>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
-                Transport Mode
-              </label>
-              <select
-                value={transMode}
-                onChange={(e) => setTransMode(e.target.value as typeof transMode)}
-                className={inputCls}
-              >
-                <option value="ROAD">Road</option>
-                <option value="RAIL">Rail</option>
-                <option value="AIR">Air</option>
-                <option value="SHIP">Ship</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
-                Distance (km)
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={3000}
-                placeholder="e.g. 250"
-                value={distance}
-                onChange={(e) => setDistance(e.target.value)}
-                className={inputCls}
-                required
-              />
-            </div>
-          </div>
-
-          {transMode === "ROAD" && (
-            <div>
-              <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
-                Vehicle Number <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. KA01AB1234"
-                value={vehicleNumber}
-                onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
-                className={inputCls}
-                required={transMode === "ROAD"}
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
-              Transporter Name (optional)
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Delhivery"
-              value={transporterName}
-              onChange={(e) => setTransporterName(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-
-          {error && <p className="text-xs text-rose-500">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold py-2.5 disabled:opacity-50 transition"
-          >
-            {submitting ? "Generating…" : "Generate E-Way Bill"}
-          </button>
-        </form>
+        </div>
       )}
     </div>
   );

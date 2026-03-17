@@ -10,13 +10,14 @@ import {
   User,
   Check,
   CheckCheck,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, Avatar, AvatarFallback } from '@/components/ui/stubs';
-import axios from 'axios';
+import { authenticatedFetch, extractData } from '@/services/auth.api';
 
 interface Message {
   id: string;
@@ -24,7 +25,7 @@ interface Message {
   senderPhone: string;
   direction: 'INCOMING' | 'OUTGOING';
   timestamp: string;
-  status: 'SENT' | 'DELIVERED' | 'READ';
+  status: 'SENT' | 'DELIVERED' | 'READ' | 'RECEIVED';
 }
 
 interface Conversation {
@@ -45,6 +46,7 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
 
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost_REPLACED:3000';
@@ -78,40 +80,89 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
   };
 
   const fetchConversations = useCallback(async () => {
+    if (!tenantId) return;
+    console.log("🔍 Fetching conversations for tenant:", tenantId);
     setLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/whatsapp/conversations/${tenantId}`);
-      setConversations(res.data);
+      const response = await authenticatedFetch(`/whatsapp/conversations/${tenantId}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
+      const data = await extractData(response);
+      console.log("✅ Fetched raw conversations:", data?.length || 0);
+      
+      const filtered = (data || []).filter((chat: any) => 
+        !chat.phoneNumber.toLowerCase().includes('status') && 
+        !chat.phoneNumber.toLowerCase().includes('broadcast') &&
+        !chat.phoneNumber.toLowerCase().includes('@g.us') &&
+        !chat.phoneNumber.toLowerCase().includes('@newsletter')
+      );
+      
+      console.log("✅ After filtering:", filtered.length);
+      if (data?.length > 0 && filtered.length === 0) {
+        console.warn("⚠️ All conversations were filtered out!");
+      }
+      setConversations(filtered);
+      if (filtered.length > 0 && !activeChat) {
+        console.log("🎯 Auto-selecting first conversation:", filtered[0].phoneNumber);
+        setActiveChat(filtered[0].phoneNumber);
+      }
     } catch (err) {
-      console.error("Failed to fetch conversations:", err);
+      console.error("❌ Failed to fetch conversations:", err);
     } finally {
       setLoading(false);
     }
-  }, [tenantId, API_URL]);
+  }, [tenantId]);
 
   useEffect(() => {
+    if (!tenantId) {
+      console.warn("⚠️ WhatsAppInbox mounted without tenantId");
+      return;
+    }
+    console.log("🚀 WhatsAppInbox initialized for tenant:", tenantId);
     fetchConversations();
-  }, [fetchConversations]);
+  }, [tenantId, fetchConversations]);
+
+  const fetchMessages = useCallback(async () => {
+    if (!activeChat) return;
+    console.log("🔍 Fetching messages for chat:", activeChat);
+    setMessagesLoading(true);
+    try {
+      const response = await authenticatedFetch(`/whatsapp/messages/${tenantId}/${activeChat}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
+      const data = await extractData(response);
+      console.log("✅ Fetched messages:", data?.length || 0);
+      setMessages((data || []).map((m: any) => ({
+        ...m,
+        timestamp: m.createdAt,
+        direction: m.direction as any
+      })));
+    } catch (err) {
+      console.error("❌ Failed to fetch messages:", err);
+    } finally {
+      setMessagesLoading(false);
+    }
+  }, [tenantId, activeChat]);
+
+  const triggerSync = async () => {
+    if (!tenantId || !activeChat || syncing) return;
+    setSyncing(true);
+    try {
+      await authenticatedFetch(`/whatsapp/sync/${tenantId}/${activeChat}`, { method: 'POST' });
+      // Give it a few seconds to sync then refresh
+      setTimeout(() => fetchMessages(), 4000);
+    } catch (err) {
+      console.error("❌ Sync failed:", err);
+    } finally {
+      setTimeout(() => setSyncing(false), 6000);
+    }
+  };
 
   useEffect(() => {
-    if (!activeChat) return;
-    const fetchMessages = async () => {
-      setMessagesLoading(true);
-      try {
-        const res = await axios.get(`${API_URL}/whatsapp/messages/${tenantId}/${activeChat}`);
-        setMessages(res.data.map((m: any) => ({
-          ...m,
-          timestamp: m.createdAt,
-          direction: m.direction as any
-        })));
-      } catch (err) {
-        console.error("Failed to fetch messages:", err);
-      } finally {
-        setMessagesLoading(false);
-      }
-    };
-    fetchMessages();
-  }, [tenantId, activeChat]);
+    if (activeChat) {
+      fetchMessages();
+    }
+  }, [activeChat, fetchMessages]);
 
   useEffect(() => {
     console.log('Connecting to Inbox WebSocket at:', `${API_URL}/inbox`);
@@ -137,14 +188,21 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
         return;
       }
 
-      if (data.senderPhone === activeChat) {
+      const isValid = (phone: string) => /^\d+$/.test(phone) && phone.length >= 8 && phone.length <= 14;
+
+      if (!isValid(data.phoneNumber)) {
+        console.warn('⚠️ Skipping invalid phone data from WS:', data.phoneNumber);
+        return;
+      }
+
+      if (data.phoneNumber === activeChat) {
         setMessages(prev => [...prev, {
           id: data.messageId,
           body: data.body,
-          senderPhone: data.senderPhone,
+          senderPhone: data.phoneNumber,
           direction: 'INCOMING',
-          timestamp: data.timestamp,
-          status: 'READ'
+          timestamp: data.timestamp || new Date().toISOString(),
+          status: 'RECEIVED'
         }]);
       }
       updateConversationList(data);
@@ -156,25 +214,28 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
 
   const updateConversationList = (msg: any) => {
     setConversations(prev => {
-      const existing = prev.find(c => c.phoneNumber === msg.senderPhone);
+      const convId = msg.phoneNumber || msg.senderPhone || msg.jid;
+      if (!convId) return prev;
+      
+      const existing = prev.find(c => c.phoneNumber === convId);
       if (existing) {
         return [
           { 
             ...existing, 
             lastMessage: msg.body, 
-            lastTimestamp: msg.timestamp, 
-            unreadCount: activeChat === msg.senderPhone ? 0 : existing.unreadCount + 1,
+            lastTimestamp: msg.timestamp || new Date().toISOString(), 
+            unreadCount: activeChat === convId ? 0 : (existing.unreadCount || 0) + 1,
             pushName: msg.pushName || existing.pushName
           },
-          ...prev.filter(c => c.phoneNumber !== msg.senderPhone)
+          ...prev.filter(c => c.phoneNumber !== convId)
         ];
       }
       return [{ 
-        phoneNumber: msg.senderPhone, 
+        phoneNumber: convId, 
         pushName: msg.pushName,
         lastMessage: msg.body, 
-        lastTimestamp: msg.timestamp, 
-        unreadCount: activeChat === msg.senderPhone ? 0 : 1 
+        lastTimestamp: msg.timestamp || new Date().toISOString(), 
+        unreadCount: activeChat === convId ? 0 : 1 
       }, ...prev];
     });
   };
@@ -186,11 +247,16 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
   const sendMessage = async () => {
     if (!newMessage.trim() || !activeChat) return;
     try {
-      await axios.post(`${API_URL}/whatsapp/send`, { 
-        tenantId, 
-        phone: activeChat, 
-        text: newMessage 
+      const response = await authenticatedFetch(`/whatsapp/send`, { 
+        method: 'POST',
+        body: JSON.stringify({
+          tenantId, 
+          phone: activeChat, 
+          text: newMessage 
+        })
       });
+      if (!response.ok) throw new Error("Failed to send");
+
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         body: newMessage,
@@ -276,14 +342,49 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
                  <div className="flex justify-center items-center h-full">
                    <Loader2 className="w-8 h-8 animate-spin text-teal-500 opacity-50" />
                  </div>
-               ) : messages.map((msg, idx) => (
-                 <div key={msg.id || idx} className={`flex ${msg.direction === 'OUTGOING' ? 'justify-end' : 'justify-start'}`}>
-                   <div className={`max-w-[75%] p-3 rounded-xl shadow-sm ${msg.direction === 'OUTGOING' ? 'bg-teal-600 text-white rounded-tr-none' : 'bg-white border text-gray-800 rounded-tl-none'}`}>
-                     <p className="text-[13px] leading-relaxed">{msg.body}</p>
-                     <div className="flex justify-end gap-1 mt-1 opacity-60"><span className="text-[9px]">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>{msg.direction === 'OUTGOING' && (msg.status === 'READ' ? <CheckCheck className="w-3 h-3 text-white" /> : <Check className="w-3 h-3" />)}</div>
-                   </div>
-                 </div>
-               ))}
+               ) : messages.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
+                  <div className="p-4 bg-teal-50 rounded-full text-teal-600">
+                    <RefreshCw className={`w-8 h-8 ${syncing ? 'animate-spin' : ''}`} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-gray-900 font-medium">No messages yet</p>
+                    <p className="text-gray-500 text-xs px-8">We haven't recorded history for this chat yet.</p>
+                  </div>
+                  <Button 
+                   variant="outline" 
+                   size="sm" 
+                   onClick={triggerSync}
+                   disabled={syncing}
+                   className="mt-2 border-teal-200 text-teal-700 hover:bg-teal-50"
+                 >
+                   {syncing ? 'Syncing...' : 'Sync History'}
+                 </Button>
+                </div>
+               ) : (
+                <>
+                  <div className="flex justify-center p-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-[10px] text-gray-400 hover:text-teal-600 h-6"
+                      onClick={triggerSync}
+                      disabled={syncing}
+                    >
+                      {syncing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                      Fetch older messages
+                    </Button>
+                  </div>
+                  {messages.map((msg, idx) => (
+                    <div key={msg.id || idx} className={`flex ${msg.direction === 'OUTGOING' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[75%] p-3 rounded-xl shadow-sm ${msg.direction === 'OUTGOING' ? 'bg-teal-600 text-white rounded-tr-none' : 'bg-white border text-gray-800 rounded-tl-none'}`}>
+                        <p className="text-[13px] leading-relaxed">{msg.body}</p>
+                        <div className="flex justify-end gap-1 mt-1 opacity-60"><span className="text-[9px]">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>{msg.direction === 'OUTGOING' && (msg.status === 'READ' ? <CheckCheck className="w-3 h-3 text-white" /> : <Check className="w-3 h-3" />)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+               )}
             </div>
             <div className="p-4 bg-white border-t">
               <div className="flex gap-2 items-center bg-gray-50 p-1.5 rounded-xl border">

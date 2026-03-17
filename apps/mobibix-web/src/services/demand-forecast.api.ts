@@ -1,8 +1,5 @@
 import { authenticatedFetch, extractData } from "./auth.api";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost_REPLACED:3000/api";
-
 export type ForecastUrgency = "CRITICAL" | "LOW" | "OK";
 
 export interface DemandForecastItem {
@@ -22,7 +19,8 @@ export async function getDemandForecast(
   shopId: string
 ): Promise<DemandForecastItem[]> {
   const res = await authenticatedFetch(
-    `${API_BASE_URL}/reports/demand-forecast?shopId=${shopId}`
+    `/reports/demand-forecast?shopId=${shopId}`
   );
-  return extractData<DemandForecastItem[]>(res);
+  const data = extractData<DemandForecastItem[] | { data?: DemandForecastItem[] }>(res);
+  return Array.isArray(data) ? data : ((data as any)?.data ?? []);
 }

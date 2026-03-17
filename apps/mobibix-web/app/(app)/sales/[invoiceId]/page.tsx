@@ -13,11 +13,46 @@ import { type FollowUpType } from "@/services/crm.api";
 import { InvoiceItemModal } from "@/components/sales/InvoiceItemModal";
 import { addItemToInvoice, InvoiceItem } from "@/services/sales.api";
 import { EWayBillPanel } from "@/components/sales/EWayBillPanel";
-import { useShop } from "@/context/ShopContext"; // Assuming ShopContext exists, or we fetch shop details?
-// Invoice data has shopId, but we need shop GST settings for Modal.
-// Ideally we fetch shop or assume GST based on something.
-// For now, I'll assume selectedShop from context if available, or fetch it.
-// Checking imports again... useShop is standard.
+import { useShop } from "@/context/ShopContext";
+import { type Shop } from "@/services/shops.api";
+
+const EWB_THRESHOLD_RUPEES = 50_000; // API returns totalAmount in rupees
+
+function EWayBillSection({ invoice, selectedShop }: { invoice: SalesInvoice; selectedShop: Shop | null }) {
+  const [showPanel, setShowPanel] = useState(false);
+  const isEligible = !!invoice.customerGstin && invoice.totalAmount > EWB_THRESHOLD_RUPEES;
+  if (!isEligible) return null;
+
+  const autoGenerate = selectedShop?.autoGenerateEwayBill ?? false;
+
+  if (!autoGenerate && !showPanel) {
+    return (
+      <div className="mb-6">
+        <button
+          onClick={() => {
+            setShowPanel(true);
+            setTimeout(() => document.getElementById('ewb-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+          }}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-900/10 text-sky-700 dark:text-sky-300 text-sm font-medium hover:bg-sky-100 dark:hover:bg-sky-900/20 transition"
+        >
+          <span>E-Way Bill</span>
+          <span className="text-xs bg-sky-200 dark:bg-sky-500/30 px-2 py-0.5 rounded-full">Generate</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div id="ewb-panel" className="mb-6">
+      <EWayBillPanel
+        invoiceId={invoice.id}
+        totalAmount={invoice.totalAmount}
+        customerGstin={invoice.customerGstin}
+        customerDistanceKm={invoice.customerDistanceKm ?? null}
+      />
+    </div>
+  );
+}
 
 export default function InvoiceDetailPage() {
   const router = useRouter();
@@ -356,6 +391,11 @@ export default function InvoiceDetailPage() {
                 {invoice.customerPhone}
               </div>
             )}
+            {invoice.customerGstin && (
+              <div className="text-xs font-mono mt-1 text-teal-600 dark:text-teal-400">
+                GSTIN: {invoice.customerGstin}
+              </div>
+            )}
           </div>
 
           {/* Payment Summary */}
@@ -562,16 +602,7 @@ export default function InvoiceDetailPage() {
       </div>
 
       {/* E-Way Bill */}
-      {invoice && (
-        <div className="mb-6">
-          <EWayBillPanel
-            invoiceId={invoice.id}
-            totalAmount={invoice.totalAmount}
-            customerGstin={invoice.customerGstin}
-            customerDistanceKm={(invoice as any).customer?.distanceFromShop ?? null}
-          />
-        </div>
-      )}
+      {invoice && <EWayBillSection invoice={invoice} selectedShop={selectedShop} />}
 
       {/* Payment History */}
       <h2

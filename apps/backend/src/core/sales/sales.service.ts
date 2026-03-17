@@ -1055,6 +1055,17 @@ export class SalesService {
 
       if (ledgerEntries.length > 0) {
         await tx.stockLedger.createMany({ data: ledgerEntries });
+
+        // Also revert ShopProduct.quantity (the denormalized field used for stock checks)
+        for (const item of invoice.items) {
+          const prod = prodMap.get(item.shopProductId);
+          if (prod && prod.type !== 'SERVICE' && !prod.isSerialized) {
+            await tx.shopProduct.update({
+              where: { id: item.shopProductId },
+              data: { quantity: { increment: item.quantity } },
+            });
+          }
+        }
       }
 
       // 4. Cancel Receipts
@@ -1404,6 +1415,7 @@ export class SalesService {
       })),
 
       upiQrCode,
+      customerDistanceKm: (invoice as any).customer?.distanceFromShop ?? null,
 
       items: invoice.items.map((item) => {
         // Calculate accurate taxableValue

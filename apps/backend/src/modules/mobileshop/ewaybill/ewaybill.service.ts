@@ -123,9 +123,8 @@ export class EWayBillService {
       );
     }
     if (existing?.status === EWayBillStatus.GENERATING) {
-      throw new ConflictException(
-        'E-Way Bill generation is already in progress',
-      );
+      // Allow retry for stuck GENERATING records (e.g. server crash mid-generation)
+      this.logger.warn(`Re-attempting generation for invoice ${invoiceId} stuck in GENERATING state`);
     }
 
     // 8. Normalize vehicle number (strip non-alphanumeric)

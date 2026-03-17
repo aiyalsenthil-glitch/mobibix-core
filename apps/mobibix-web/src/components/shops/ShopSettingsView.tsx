@@ -14,11 +14,36 @@ import { ShopPrintSettings } from "@/components/shops/ShopPrintSettings";
 import { StaffList } from "@/components/staff/StaffList";
 import { useRouter } from "next/navigation";
 
-function NicCredentialsTab({ shopId }: { shopId: string }) {
-  const [nicUsername, setNicUsername] = useState("");
+function NicCredentialsTab({
+  shopId,
+  initialAutoGenerate,
+  initialNicUsername,
+  onAutoGenerateChange,
+}: {
+  shopId: string;
+  initialAutoGenerate: boolean;
+  initialNicUsername?: string;
+  onAutoGenerateChange: (val: boolean) => void;
+}) {
+  const [nicUsername, setNicUsername] = useState(initialNicUsername || "");
   const [nicPassword, setNicPassword] = useState("");
+  const [autoGenerate, setAutoGenerate] = useState(initialAutoGenerate);
   const [saving, setSaving] = useState(false);
+  const [savingToggle, setSavingToggle] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const handleToggle = async (val: boolean) => {
+    setAutoGenerate(val);
+    setSavingToggle(true);
+    try {
+      await updateShopSettings(shopId, { autoGenerateEwayBill: val });
+      onAutoGenerateChange(val);
+    } catch {
+      setAutoGenerate(!val); // revert on failure
+    } finally {
+      setSavingToggle(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +62,32 @@ function NicCredentialsTab({ shopId }: { shopId: string }) {
   };
 
   return (
-    <div className="bg-white dark:bg-stone-900/50 border border-gray-200 dark:border-white/5 rounded-xl p-8 animate-fade-in shadow-sm">
+    <div className="space-y-6 animate-fade-in">
+      {/* Auto-generate toggle */}
+      <div className="bg-white dark:bg-stone-900/50 border border-gray-200 dark:border-white/5 rounded-xl p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Auto-Generate E-Way Bill</h3>
+            <p className="text-sm text-gray-500 dark:text-stone-400 mt-0.5">
+              When enabled, the E-Way Bill form will be shown automatically on qualifying B2B invoices (above ₹50,000).
+              When disabled, you can generate it manually from the invoice detail page.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={savingToggle}
+            onClick={() => handleToggle(!autoGenerate)}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
+              autoGenerate ? "bg-teal-500" : "bg-gray-300 dark:bg-white/10"
+            }`}
+          >
+            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${autoGenerate ? "translate-x-5" : "translate-x-0"}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* NIC Credentials */}
+    <div className="bg-white dark:bg-stone-900/50 border border-gray-200 dark:border-white/5 rounded-xl p-8 shadow-sm">
       <form onSubmit={handleSave} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-1">
@@ -107,6 +157,7 @@ function NicCredentialsTab({ shopId }: { shopId: string }) {
           </button>
         </div>
       </form>
+    </div>
     </div>
   );
 }
@@ -359,7 +410,12 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
 
       {/* Content Area */}
       {activeTab === "EWAYBILL" ? (
-        <NicCredentialsTab shopId={shopId} />
+        <NicCredentialsTab
+          shopId={shopId}
+          initialAutoGenerate={shop?.autoGenerateEwayBill ?? false}
+          initialNicUsername={shop?.nicUsername ?? ""}
+          onAutoGenerateChange={(val) => setShop((s) => s ? { ...s, autoGenerateEwayBill: val } : s)}
+        />
       ) : activeTab === "PRINT" ? (
         <div className="animate-fade-in">
           <ShopPrintSettings

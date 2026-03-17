@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
+import { createHash } from 'crypto';
 import { CacheService } from '../../../core/cache/cache.service';
 
 const NIC_SANDBOX_URL =
@@ -55,13 +56,15 @@ export class NicApiService {
     if (cached) return cached;
 
     try {
+      // NIC EWB API v1.03 requires MD5-hashed password in the auth header
+      const passwordMd5 = createHash('md5').update(credentials.password).digest('hex');
       const res = await this.http.axiosRef.post(
         `${this.baseUrl}?action=ACCESSTOKEN`,
         {},
         {
           headers: {
             username: credentials.username,
-            password: credentials.password,
+            password: passwordMd5,
             gstin,
           },
           timeout: AXIOS_TIMEOUT_MS,
@@ -79,7 +82,13 @@ export class NicApiService {
       return token;
     } catch (err) {
       if (err instanceof BadRequestException) throw err;
-      this.logger.error(`NIC auth request failed: ${err.message}`);
+      const status = err?.response?.status;
+      this.logger.error(`NIC auth request failed [HTTP ${status ?? 'N/A'}]: ${err.message}`);
+      if (status === 404) {
+        throw new BadRequestException(
+          'NIC E-Way Bill API returned 404. Ensure GSTIN is registered for API access on ewaybillgst.gov.in (Registration → For GSPs / API Access).',
+        );
+      }
       throw new ServiceUnavailableException(
         'NIC E-Way Bill portal unavailable. Please try again.',
       );

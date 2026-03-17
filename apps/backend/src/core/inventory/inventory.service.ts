@@ -25,10 +25,10 @@ export class InventoryService {
   }
 
   private fromPaisa(
-    amount: number | undefined | null,
+    amount: bigint | number | undefined | null,
   ): number | undefined | null {
     if (amount === undefined || amount === null) return amount;
-    return amount / 100;
+    return Number(amount) / 100;
   }
 
   private mapProduct(product: any) {
@@ -37,6 +37,8 @@ export class InventoryService {
       ...product,
       salePrice: this.fromPaisa(product.salePrice),
       costPrice: this.fromPaisa(product.costPrice),
+      avgCost: this.fromPaisa(product.avgCost),
+      totalValue: product.totalValue !== undefined ? Number(product.totalValue) : undefined,
     };
   }
 

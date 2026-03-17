@@ -116,6 +116,8 @@ export class CustomersService {
           businessType: true,
           partyType: true,
           gstNumber: true,
+          pincode: true,
+          distanceFromShop: true,
           isActive: true,
           tags: true,
           customerLifecycle: true,

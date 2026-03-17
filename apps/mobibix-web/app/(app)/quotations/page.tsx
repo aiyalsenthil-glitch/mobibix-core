@@ -15,6 +15,8 @@ import {
 } from "@/services/quotations.api";
 import {
   listProducts,
+  createProduct,
+  ProductType,
   type ShopProduct,
 } from "@/services/products.api";
 import { PartySelector } from "@/components/common/PartySelector";
@@ -107,6 +109,8 @@ function calcItemTotals(
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
+const today = new Date().toISOString().slice(0, 10);
+
 export default function QuotationsPage() {
   const { theme } = useTheme();
   const router = useRouter();
@@ -134,9 +138,19 @@ export default function QuotationsPage() {
     customerPhone: "",
     validityDays: 30,
     notes: "",
+    quotationDate: today,
     items: [{ ...EMPTY_ITEM }],
   });
   const [saving, setSaving] = useState(false);
+
+  // Product search per item row: itemIdx → search string
+  const [productSearch, setProductSearch] = useState<Record<number, string>>({});
+  const [productDropOpen, setProductDropOpen] = useState<number | null>(null);
+
+  // Quick product creation
+  const [quickProduct, setQuickProduct] = useState<{ itemIdx: number } | null>(null);
+  const [qpForm, setQpForm] = useState({ name: "", type: ProductType.GOODS, salePrice: 0, gstRate: 0 });
+  const [qpSaving, setQpSaving] = useState(false);
 
   // Convert form
   const [convertType, setConvertType] = useState<"INVOICE" | "JOB_CARD">("INVOICE");
@@ -231,13 +245,39 @@ export default function QuotationsPage() {
         customerPhone: selectedCustomer?.phone || form.customerPhone,
       });
       setShowCreate(false);
-      setForm({ customerName: "", customerPhone: "", validityDays: 30, notes: "", items: [{ ...EMPTY_ITEM }] });
+      setForm({ customerName: "", customerPhone: "", validityDays: 30, notes: "", quotationDate: new Date().toISOString().slice(0, 10), items: [{ ...EMPTY_ITEM }] });
       setSelectedCustomer(null);
+      setProductSearch({});
       load();
     } catch (e: any) {
       alert(e.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleQuickProduct(e: React.FormEvent) {
+    e.preventDefault();
+    if (!shopId || quickProduct === null) return;
+    setQpSaving(true);
+    try {
+      const prod = await createProduct(shopId, {
+        name: qpForm.name,
+        type: qpForm.type,
+        salePrice: qpForm.salePrice, // products.api sends rupees; backend converts to paise
+        gstRate: qpForm.gstRate,
+      });
+      // createProduct returns salePrice in rupees; normalize to paise to match listProducts
+      const prodNorm = { ...prod, salePrice: prod.salePrice != null ? Math.round(prod.salePrice * 100) : null };
+      setProducts((prev) => [...prev, prodNorm]);
+      pickProduct(quickProduct.itemIdx, prodNorm);
+      setProductSearch((s) => ({ ...s, [quickProduct.itemIdx]: prodNorm.name }));
+      setQuickProduct(null);
+      setQpForm({ name: "", type: ProductType.GOODS, salePrice: 0, gstRate: 0 });
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setQpSaving(false);
     }
   }
 
@@ -561,7 +601,16 @@ export default function QuotationsPage() {
                   </div>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Date</label>
+                  <input
+                    type="date"
+                    value={form.quotationDate ?? today}
+                    onChange={(e) => setForm((f) => ({ ...f, quotationDate: e.target.value }))}
+                    className={input}
+                  />
+                </div>
                 <div>
                   <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Validity (days)</label>
                   <input
@@ -597,19 +646,67 @@ export default function QuotationsPage() {
                     <div key={idx} className={`p-3 rounded-xl border ${isDark ? "bg-gray-800/50 border-gray-700" : "bg-gray-50 border-gray-200"}`}>
                       <div className="grid grid-cols-12 gap-2 items-start">
                         <div className="col-span-5">
-                          <select
-                            className={`${input} text-xs mb-1`}
-                            value={item.shopProductId ?? ""}
-                            onChange={(e) => {
-                              const prod = products.find((p) => p.id === e.target.value);
-                              if (prod) pickProduct(idx, prod);
-                            }}
-                          >
-                            <option value="">— Select product —</option>
-                            {products.map((p) => (
-                              <option key={p.id} value={p.id}>{p.name}</option>
-                            ))}
-                          </select>
+                          {/* Searchable product combobox */}
+                          <div className="flex gap-1 mb-1 relative">
+                            <div className="relative flex-1">
+                              <input
+                                type="text"
+                                className={`${input} text-xs pr-6`}
+                                placeholder="Search product…"
+                                value={productSearch[idx] ?? (item.shopProductId ? products.find(p => p.id === item.shopProductId)?.name ?? "" : "")}
+                                onChange={(e) => {
+                                  setProductSearch((s) => ({ ...s, [idx]: e.target.value }));
+                                  setProductDropOpen(idx);
+                                  if (!e.target.value) updateItem(idx, { shopProductId: undefined });
+                                }}
+                                onFocus={() => setProductDropOpen(idx)}
+                                onBlur={() => setTimeout(() => setProductDropOpen(null), 150)}
+                                autoComplete="off"
+                              />
+                              {productSearch[idx] && (
+                                <button
+                                  type="button"
+                                  onClick={() => { setProductSearch((s) => ({ ...s, [idx]: "" })); updateItem(idx, { shopProductId: undefined }); }}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                ><X size={10} /></button>
+                              )}
+                              {productDropOpen === idx && (
+                                <div className={`absolute z-50 top-full left-0 right-0 mt-0.5 rounded-xl border shadow-lg max-h-48 overflow-y-auto ${isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                                  {products
+                                    .filter(p => !productSearch[idx] || p.name.toLowerCase().includes((productSearch[idx] ?? "").toLowerCase()))
+                                    .slice(0, 50)
+                                    .map(p => (
+                                      <button
+                                        key={p.id}
+                                        type="button"
+                                        onMouseDown={() => {
+                                          pickProduct(idx, p);
+                                          setProductSearch((s) => ({ ...s, [idx]: p.name }));
+                                          setProductDropOpen(null);
+                                        }}
+                                        className={`w-full text-left px-3 py-2 text-xs hover:bg-teal-500/10 ${isDark ? "text-white" : "text-gray-900"}`}
+                                      >
+                                        <span className="font-medium">{p.name}</span>
+                                        {p.salePrice != null && (
+                                          <span className={`ml-2 ${isDark ? "text-gray-400" : "text-gray-500"}`}>₹{(p.salePrice / 100).toFixed(0)}</span>
+                                        )}
+                                      </button>
+                                    ))}
+                                  {products.filter(p => !productSearch[idx] || p.name.toLowerCase().includes((productSearch[idx] ?? "").toLowerCase())).length === 0 && (
+                                    <p className={`px-3 py-2 text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>No products found</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              title="Create new product"
+                              onClick={() => setQuickProduct({ itemIdx: idx })}
+                              className={`px-2 rounded-lg border text-teal-500 hover:bg-teal-500/10 transition-colors shrink-0 ${isDark ? "border-gray-700 bg-gray-800" : "border-gray-300 bg-white"}`}
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
                           <input
                             value={item.description}
                             onChange={(e) => updateItem(idx, { description: e.target.value })}
@@ -886,6 +983,84 @@ export default function QuotationsPage() {
             setIsCustomerModalOpen(false);
           }}
         />
+      )}
+
+      {/* ─── Quick Product Modal ───────────────────────────────────────────── */}
+      {quickProduct !== null && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className={`w-full max-w-sm rounded-2xl border shadow-2xl ${card}`}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-700/30">
+              <h3 className="text-base font-semibold">New Product</h3>
+              <button onClick={() => setQuickProduct(null)} className="p-1 rounded-lg hover:bg-gray-700/30">
+                <X size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleQuickProduct} className="p-4 space-y-3">
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Name *</label>
+                <input
+                  required
+                  autoFocus
+                  value={qpForm.name}
+                  onChange={(e) => setQpForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Product name"
+                  className={input}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Type</label>
+                  <select
+                    value={qpForm.type}
+                    onChange={(e) => setQpForm((f) => ({ ...f, type: e.target.value as ProductType }))}
+                    className={input}
+                  >
+                    <option value={ProductType.GOODS}>Goods</option>
+                    <option value={ProductType.SPARE}>Spare Part</option>
+                    <option value={ProductType.SERVICE}>Service</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>GST %</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={qpForm.gstRate}
+                    onChange={(e) => setQpForm((f) => ({ ...f, gstRate: Number(e.target.value) }))}
+                    className={input}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}>Sale Price (₹) *</label>
+                <input
+                  type="number"
+                  min={0}
+                  required
+                  value={qpForm.salePrice}
+                  onChange={(e) => setQpForm((f) => ({ ...f, salePrice: Number(e.target.value) }))}
+                  className={input}
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setQuickProduct(null)}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-colors ${isDark ? "border-gray-700 hover:bg-gray-800" : "border-gray-300 hover:bg-gray-50"}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={qpSaving}
+                  className="flex-1 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {qpSaving ? "Creating…" : "Create & Add"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

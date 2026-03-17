@@ -45,6 +45,7 @@ export class ShopService {
           phone: true,
           gstNumber: true,
           gstEnabled: true,
+          autoGenerateEwayBill: true,
           isActive: true,
           createdAt: true,
         },
@@ -199,6 +200,8 @@ export class ShopService {
 
         repairInvoiceNumberingMode: true,
         repairGstDefault: true,
+        autoGenerateEwayBill: true,
+        nicUsername: true,
 
         isActive: true,
         tenantId: true,
@@ -278,6 +281,7 @@ export class ShopService {
 
         repairInvoiceNumberingMode: dto.repairInvoiceNumberingMode,
         repairGstDefault: dto.repairGstDefault,
+        ...(dto.autoGenerateEwayBill !== undefined && { autoGenerateEwayBill: dto.autoGenerateEwayBill }),
       },
     });
   }

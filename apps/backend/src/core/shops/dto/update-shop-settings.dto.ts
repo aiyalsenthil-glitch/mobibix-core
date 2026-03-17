@@ -129,4 +129,8 @@ export class UpdateShopSettingsDto {
   @IsOptional()
   @IsBoolean()
   repairGstDefault?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  autoGenerateEwayBill?: boolean;
 }

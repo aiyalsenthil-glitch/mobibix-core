@@ -52,7 +52,7 @@ export function ValueSnapshotWidget({ data, isLoading }: ValueSnapshotWidgetProp
             <span>Monthly Revenue</span>
           </div>
           <div className="text-2xl font-bold flex items-baseline gap-2">
-            <CurrencyText amount={data.monthRevenue} />
+            <CurrencyText amount={data.monthRevenue} isPaise={false} />
             {data.lastMonthRevenue > 0 && (
               <span className={`text-xs flex items-center ${isRevenueUp ? 'text-emerald-600' : 'text-red-500'}`}>
                 {isRevenueUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -61,7 +61,7 @@ export function ValueSnapshotWidget({ data, isLoading }: ValueSnapshotWidgetProp
             )}
           </div>
           <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-            vs last mo (<CurrencyText amount={data.lastMonthRevenue} />)
+            vs last mo (<CurrencyText amount={data.lastMonthRevenue} isPaise={false} />)
           </p>
         </div>
 
@@ -83,7 +83,7 @@ export function ValueSnapshotWidget({ data, isLoading }: ValueSnapshotWidgetProp
           </div>
           <div className="text-2xl font-bold">{data.whatsappStats.sent < 10 && data.whatsappStats.sent > 0 ? `0${data.whatsappStats.sent}` : data.whatsappStats.sent}</div>
           <p className="text-[10px] text-emerald-600 font-bold">
-            <CurrencyText amount={data.whatsappStats.recoveredAmount} /> recovered
+            <CurrencyText amount={data.whatsappStats.recoveredAmount} isPaise={false} /> recovered
           </p>
         </div>
 

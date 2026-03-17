@@ -988,6 +988,10 @@ model WhatsAppNumber {
   webSessionId       String?                    @unique
   webSessionData     String?                    @db.Text
 
+  // Authkey CPaaS fields
+  REMOVED_TOKENApiKey      String?                    // Encrypted API key for Authkey
+  REMOVED_TOKENSenderId    String?                    // Authkey sender ID / SID
+
   metadata           Json?
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
@@ -1023,7 +1027,8 @@ model WhatsAppConversationState {
 model WhatsAppMessageLog {
   id               String               @id @default(uuid())
   tenantId         String
-  phoneNumber      String
+  phoneNumber      String?              // Optional E.164 phone
+  jid              String?              // Original JID (e.g. 919876543210@s.whatsapp.net or @lid)
   direction        String // "INCOMING" | "OUTGOING"
   body             String               @db.Text
   status           String
@@ -1037,6 +1042,7 @@ model WhatsAppMessageLog {
   @@index([tenantId])
   @@index([phoneNumber])
   @@index([provider])
+  @@index([jid])
 }
 
 model WhatsAppLog {
@@ -1055,6 +1061,10 @@ model WhatsAppLog {
   deliveredAt      DateTime?
   readAt           DateTime?
   whatsAppNumberId String?
+  // Cost & provider tracking
+  channel          MessageChannel  @default(WHATSAPP)
+  providerUsed     String?         // Actual provider name that sent the message
+  messageCost      Float?          // Per-message cost in INR for billing analytics
   customer         Party?          @relation(fields: [customerId], references: [id])
   whatsAppNumber   WhatsAppNumber? @relation(fields: [whatsAppNumberId], references: [id], onDelete: Cascade)
 
@@ -1062,6 +1072,8 @@ model WhatsAppLog {
   @@index([tenantId, status])
   @@index([messageId])
   @@index([whatsAppNumberId])
+  @@index([channel])
+  @@index([providerUsed])
 }
 
 model WhatsAppTemplate {
@@ -1203,6 +1215,7 @@ model Shop {
   gstNumber                  String?
   nicUsername                String?        // NIC e-waybill portal username
   nicPassword                String?        // AES-256-GCM encrypted NIC password
+  autoGenerateEwayBill       Boolean        @default(false) // auto-generate EWB on qualifying invoices
   gstEnabled                 Boolean                    @default(false)
   currency                   String                     @default("INR")
   invoicePrefix              String
@@ -3023,6 +3036,13 @@ enum SubscriptionInvoiceStatus {
 enum WhatsAppProviderType {
   META_CLOUD
   WEB_SOCKET
+  AUTHKEY
+}
+
+enum MessageChannel {
+  WHATSAPP
+  SMS
+  EMAIL
 }
 
 enum WhatsAppSetupStatus {

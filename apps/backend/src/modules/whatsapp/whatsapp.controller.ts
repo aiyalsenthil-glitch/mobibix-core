@@ -25,6 +25,7 @@ import { VirtualTenantGuard } from './guards/virtual-tenant.guard';
 import { GranularPermissionGuard } from '../../core/permissions/guards/granular-permission.guard';
 import { RequirePermission, ModulePermission } from '../../core/permissions/decorators/require-permission.decorator';
 import { PERMISSIONS } from '../../security/permission-registry';
+import { WhatsAppInboxService } from './inbox/whatsapp-inbox.service';
 
 import {
   WhatsAppModule,
@@ -41,6 +42,7 @@ export class WhatsAppController {
     private readonly prisma: PrismaService,
     @Inject(WhatsAppSender) private readonly sender: WhatsAppSender,
     private readonly userService: WhatsAppUserService,
+    private readonly inboxService: WhatsAppInboxService,
   ) {}
 
   /**
@@ -253,29 +255,53 @@ export class WhatsAppController {
     this.validateAccess(req, tenantId);
 
     const logs = await (this.prisma as any).whatsAppMessageLog.findMany({
-      where: { tenantId },
+      where: { 
+        tenantId,
+        NOT: [
+          { phoneNumber: { contains: 'status' } },
+          { phoneNumber: { contains: 'broadcast' } },
+          { phoneNumber: { contains: '@g.us' } },
+          { phoneNumber: { contains: '@newsletter' } }
+        ]
+      },
       distinct: ['phoneNumber'],
-      orderBy: { createdAt: 'desc' },
-      take: 50,
+      orderBy: [
+        { phoneNumber: 'asc' },
+        { createdAt: 'desc' }
+      ],
+      take: 100,
     });
 
-    return Promise.all(logs.map(async (log) => {
+    const results = await Promise.all(logs.map(async (log) => {
         const lastMsg = await (this.prisma as any).whatsAppMessageLog.findFirst({
             where: { tenantId, phoneNumber: log.phoneNumber },
             orderBy: { createdAt: 'desc' }
         });
         
-        // Extract pushName from metadata if available
-        const pushName = (lastMsg?.metadata as any)?.pushName;
-
         return {
             phoneNumber: log.phoneNumber,
-            pushName: pushName,
+            pushName: (lastMsg?.metadata as any)?.pushName || null,
             lastMessage: lastMsg?.body || '',
             lastTimestamp: lastMsg?.createdAt || new Date(),
             unreadCount: 0
         };
     }));
+
+    return results.sort((a, b) => 
+      new Date(b.lastTimestamp).getTime() - new Date(a.lastTimestamp).getTime()
+    );
+  }
+
+  @Post('sync/:tenantId/:phoneNumber')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
+  async syncConversation(
+    @Param('tenantId') tenantId: string,
+    @Param('phoneNumber') phoneNumber: string,
+    @Req() req: any
+  ) {
+    this.validateAccess(req, tenantId);
+    await this.inboxService.requestSync(tenantId, phoneNumber);
+    return { status: 'SYNC_REQUESTED' };
   }
 
   /**

@@ -12,7 +12,7 @@ async function main() {
     });
     
     logs.forEach(log => {
-      console.log(`ID: ${log.id}, Phone: ${log.phoneNumber}, Direction: ${log.direction}, Body: ${log.body.substring(0, 20)}...`);
+      console.log(`ID: ${log.id}, Tenant: ${log.tenantId}, Phone: ${log.phoneNumber}, Direction: ${log.direction}, Body: ${log.body.substring(0, 20)}...`);
     });
   } catch (err) {
     console.error(err);

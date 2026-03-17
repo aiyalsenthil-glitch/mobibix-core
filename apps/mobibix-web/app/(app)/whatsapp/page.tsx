@@ -80,7 +80,7 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
       const backendStatus = await getWhatsAppStatus();
       
       if (!backendStatus?.provider) {
-        setWaStatus({ status: 'SELECT_SERVICE' });
+        setWaStatus({ status: 'SELECT_SERVICE', provider: undefined });
         return;
       }
 
@@ -91,7 +91,8 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
         setWaStatus(backendStatus);
       }
     } catch (err) {
-      setWaStatus({ status: 'SELECT_SERVICE' });
+      console.error("Failed to fetch WhatsApp status", err);
+      setWaStatus({ status: 'SELECT_SERVICE', provider: undefined });
     } finally {
       setLoading(false);
     }

@@ -130,8 +130,8 @@ export default function InventoryIntelligencePage() {
     if (!shopId) return;
     setForecastLoading(true);
     getDemandForecast(shopId)
-      .then(setForecast)
-      .catch(() => {})
+      .then((data) => setForecast(Array.isArray(data) ? data : (data as any)?.data ?? (data as any)?.items ?? []))
+      .catch(() => setForecast([]))
       .finally(() => setForecastLoading(false));
   }, [shopId]);
 

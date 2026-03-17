@@ -49,6 +49,32 @@ const FEATURES_WHATSAPP_GROWTH = [
   'WHATSAPP_WEBHOOKS',
 ];
 
+// Official API (Authkey) addon plan features
+// WEB mode (Baileys) is free in Pro. Official API requires these addon plans.
+const FEATURES_WA_OFFICIAL_STARTER = [
+  'WHATSAPP_UTILITY',
+  'WHATSAPP_ALERTS_AUTOMATION',
+  'WHATSAPP_OFFICIAL_API', // Gates AUTHKEY/META_CLOUD provider access
+];
+const FEATURES_WA_OFFICIAL_PRO = [
+  'WHATSAPP_UTILITY',
+  'WHATSAPP_MARKETING',
+  'WHATSAPP_ALERTS_AUTOMATION',
+  'WHATSAPP_OFFICIAL_API',
+  'WHATSAPP_SMS',
+  'WHATSAPP_TEAM_INBOX',
+];
+const FEATURES_WA_OFFICIAL_BUSINESS = [
+  'WHATSAPP_UTILITY',
+  'WHATSAPP_MARKETING',
+  'WHATSAPP_ALERTS_AUTOMATION',
+  'WHATSAPP_OFFICIAL_API',
+  'WHATSAPP_SMS',
+  'WHATSAPP_TEAM_INBOX',
+  'WHATSAPP_WEBHOOKS',
+  'WHATSAPP_API_ACCESS',
+];
+
 const ADDON_PACKS = [
   {
     code: 'WA_ADDON_500',
@@ -219,24 +245,122 @@ const V1_PLANS = [
       'Webhooks Integration',
     ],
   },
+  // ─────────────────────────────────────────────────────────────────────
+  // OFFICIAL API ADDON PLANS (Authkey CPaaS)
+  // Authkey wholesale rates: Utility ₹0.18 | Marketing ₹0.95 | Auth ₹0.18
+  // Our rate: ~2.5× wholesale. Margin: 40-65%.
+  // Web Mode (Baileys QR) is FREE in PRO plans — no addon required.
+  // ─────────────────────────────────────────────────────────────────────
   {
-    code: 'WA_ADDON_500',
-    name: 'WhatsApp Pack 500 (Utility)',
-    level: 0,
-    module: 'GYM' as ModuleType,
+    // Authkey wholesale cost at full utilization: 1000×0.18 = ₹180
+    // Our revenue: ₹499 | Gross margin: ₹319 (64%)
+    code: 'WA_OFFICIAL_STARTER',
+    name: 'WhatsApp Official – Starter',
+    level: 12,
+    module: 'WHATSAPP_CRM' as ModuleType,
     isAddon: true,
-    meta: { quota: { utility: 500, marketing: 0 } },
-    price: 19900,
+    isPublic: true,
+    features: FEATURES_WA_OFFICIAL_STARTER,
+    maxStaff: null,
+    maxMembers: null,
+    whatsappUtilityQuota: 1000,
+    whatsappMarketingQuota: 0,
+    analyticsHistoryDays: 90,
+    tagline: 'Official WhatsApp delivery for growing shops.',
+    description:
+      'Upgrade to the Authkey Official API. Send 1,000 utility messages/month with guaranteed delivery. No ban risk.',
+    featuresJson: [
+      '1,000 Utility Messages/mo',
+      'Official API (No ban risk)',
+      'Delivery Reports',
+      'SMS Access Included',
+      'Automations & Reminders',
+    ],
   },
   {
-    code: 'WA_ADDON_200',
-    name: 'WhatsApp Pack 200 (Marketing)',
-    level: 0,
-    module: 'GYM' as ModuleType,
+    // Authkey cost: 3000×0.18 + 150×0.95 = ₹540+142 = ₹682
+    // Revenue: ₹1,199 | Margin: ₹517 (43%)
+    code: 'WA_OFFICIAL_PRO',
+    name: 'WhatsApp Official – Pro',
+    level: 13,
+    module: 'WHATSAPP_CRM' as ModuleType,
     isAddon: true,
-    meta: { quota: { utility: 0, marketing: 200 } },
-    price: 19900,
+    isPublic: true,
+    features: FEATURES_WA_OFFICIAL_PRO,
+    maxStaff: null,
+    maxMembers: null,
+    whatsappUtilityQuota: 3000,
+    whatsappMarketingQuota: 150,
+    analyticsHistoryDays: 180,
+    tagline: 'Marketing + support at scale.',
+    description:
+      'Full Official API access with marketing campaigns, SMS, and team inbox for growing businesses.',
+    featuresJson: [
+      '3,000 Utility + 150 Marketing Messages/mo',
+      'SMS Sending (same number)',
+      'Team Inbox (5 agents)',
+      'Bulk Campaigns',
+      'All Automations',
+    ],
   },
+  {
+    // Authkey cost: 8000×0.18 + 400×0.95 = ₹1440+380 = ₹1820
+    // Revenue: ₹2,499 | Margin: ₹679 (27%)
+    code: 'WA_OFFICIAL_BUSINESS',
+    name: 'WhatsApp Official – Business',
+    level: 14,
+    module: 'WHATSAPP_CRM' as ModuleType,
+    isAddon: true,
+    isPublic: true,
+    features: FEATURES_WA_OFFICIAL_BUSINESS,
+    maxStaff: null,
+    maxMembers: null,
+    whatsappUtilityQuota: 8000,
+    whatsappMarketingQuota: 400,
+    analyticsHistoryDays: 365,
+    tagline: 'Enterprise-grade messaging for high-volume businesses.',
+    description:
+      'Full Official API with webhooks, API access, and priority support for chains and franchises.',
+    featuresJson: [
+      '8,000 Utility + 400 Marketing/mo',
+      'Webhooks & API Access',
+      'Unlimited Agents',
+      'Priority Support',
+      'Full Analytics',
+    ],
+  },
+  // ─────────────────────────────────────────────────────────────────────
+  // UTILITY TOP-UP PACKS (overage credit packs for Official API plans)
+  // ─────────────────────────────────────────────────────────────────────
+  {
+    code: 'WA_UTIL_PACK_1000',
+    name: 'WhatsApp Utility Pack – 1,000',
+    level: 0,
+    module: 'WHATSAPP_CRM' as ModuleType,
+    isAddon: true,
+    isPublic: true,
+    whatsappUtilityQuota: 1000,
+    whatsappMarketingQuota: 0,
+    analyticsHistoryDays: 0,
+    tagline: 'Top up your utility messages.',
+    description: 'Add 1,000 utility messages to your current Official plan.',
+    featuresJson: ['+1,000 Utility Messages', 'Compatible with Official plans'],
+  },
+  {
+    code: 'WA_MKTG_PACK_100',
+    name: 'WhatsApp Marketing Pack – 100',
+    level: 0,
+    module: 'WHATSAPP_CRM' as ModuleType,
+    isAddon: true,
+    isPublic: true,
+    whatsappUtilityQuota: 0,
+    whatsappMarketingQuota: 100,
+    analyticsHistoryDays: 0,
+    tagline: 'Top up your marketing campaigns.',
+    description: 'Add 100 marketing conversations to your current Official plan.',
+    featuresJson: ['+100 Marketing Conversations', 'Compatible with Official plans'],
+  },
+  // WA_ADDON_500 and WA_ADDON_200 are seeded by seedAddonPacks() via ADDON_PACKS — not duplicated here.
 ];
 
 const V1_PRICING = {
@@ -267,6 +391,30 @@ const V1_PRICING = {
     MONTHLY: 149900,
     QUARTERLY: 449700,
     YEARLY: 1499900,
+  },
+  // Official API (Authkey) addon plans
+  // Authkey costs × 2.5 + infra/support buffer. 40-65% gross margins.
+  WA_OFFICIAL_STARTER: {
+    MONTHLY: 49900,    // ₹499/mo  | cost ₹180 | margin 64%
+    QUARTERLY: 134900, // ₹1,349 (10% off)
+    YEARLY: 479900,    // ₹4,799 (20% off)
+  },
+  WA_OFFICIAL_PRO: {
+    MONTHLY: 119900,   // ₹1,199/mo | cost ₹682 | margin 43%
+    QUARTERLY: 323900, // ₹3,239 (10% off)
+    YEARLY: 1151900,   // ₹11,519 (20% off)
+  },
+  WA_OFFICIAL_BUSINESS: {
+    MONTHLY: 249900,   // ₹2,499/mo | cost ₹1,820 | margin 27%
+    QUARTERLY: 674900, // ₹6,749 (10% off)
+    YEARLY: 2399900,   // ₹23,999 (20% off)
+  },
+  // Top-up packs (fixed monthly, no quarterly/yearly)
+  WA_UTIL_PACK_1000: {
+    MONTHLY: 39900,    // ₹399 for 1,000 utility msgs (₹0.40/msg vs ₹0.45 PAYG)
+  },
+  WA_MKTG_PACK_100: {
+    MONTHLY: 29900,    // ₹299 for 100 marketing convs (₹2.99/conv vs ₹3.50 PAYG)
   },
 };
 

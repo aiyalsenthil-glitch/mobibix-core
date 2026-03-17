@@ -67,6 +67,7 @@ export interface SalesInvoice {
   };
   whatsappSent?: boolean;
   upiQrCode?: string;
+  customerDistanceKm?: number | null;
 }
 
 export interface InvoiceItemDetail {
