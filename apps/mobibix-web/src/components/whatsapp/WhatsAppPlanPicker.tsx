@@ -185,13 +185,13 @@ export default function WhatsAppPlanPicker({ onSuccess }: WhatsAppPlanPickerProp
     <div className="space-y-6">
       {/* Billing cycle toggle */}
       <div className="flex items-center justify-center">
-        <div className="bg-gray-100 rounded-2xl p-1 flex gap-1">
+        <div className="bg-gray-100 dark:bg-slate-800 rounded-2xl p-1 flex gap-1">
           <button
             onClick={() => setCycle('MONTHLY')}
             className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
               cycle === 'MONTHLY'
-                ? 'bg-white shadow text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-white dark:bg-slate-700 shadow text-gray-900 dark:text-white'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
             }`}
           >
             Monthly
@@ -200,12 +200,12 @@ export default function WhatsAppPlanPicker({ onSuccess }: WhatsAppPlanPickerProp
             onClick={() => setCycle('YEARLY')}
             className={`px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${
               cycle === 'YEARLY'
-                ? 'bg-white shadow text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-white dark:bg-slate-700 shadow text-gray-900 dark:text-white'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
             }`}
           >
             Yearly
-            <span className="text-[10px] font-black bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+            <span className="text-[10px] font-black bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded-full">
               SAVE 20%
             </span>
           </button>
@@ -238,10 +238,10 @@ export default function WhatsAppPlanPicker({ onSuccess }: WhatsAppPlanPickerProp
           return (
             <Card
               key={plan.code}
-              className={`rounded-3xl border-2 overflow-hidden transition-all ${
+              className={`rounded-3xl border-2 overflow-hidden transition-all bg-white dark:bg-slate-900 ${
                 meta.highlight
-                  ? `border-violet-500 shadow-lg shadow-violet-100 ring-2 ${colors.ring}`
-                  : 'border-gray-100 shadow-sm'
+                  ? `border-violet-500 shadow-lg shadow-violet-100 dark:shadow-none ring-2 ${colors.ring}`
+                  : 'border-gray-100 dark:border-slate-800 shadow-sm'
               }`}
             >
               {meta.badge && (
@@ -254,14 +254,14 @@ export default function WhatsAppPlanPicker({ onSuccess }: WhatsAppPlanPickerProp
               <CardContent className="p-6 space-y-4">
                 {/* Price */}
                 <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
+                  <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">
                     {plan.name.replace('WhatsApp Official – ', '')}
                   </p>
                   <div className="flex items-end gap-1">
-                    <span className="text-3xl font-black text-gray-900">
+                    <span className="text-3xl font-black text-gray-900 dark:text-white">
                       ₹{(monthlyEquiv! / 100).toLocaleString('en-IN')}
                     </span>
-                    <span className="text-sm text-gray-400 font-medium pb-0.5">/mo</span>
+                    <span className="text-sm text-gray-400 dark:text-gray-500 font-medium pb-0.5">/mo</span>
                   </div>
                   {cycle === 'YEARLY' && price && (
                     <p className="text-xs text-green-600 font-bold mt-0.5">
@@ -274,7 +274,7 @@ export default function WhatsAppPlanPicker({ onSuccess }: WhatsAppPlanPickerProp
                 {/* Features */}
                 <ul className="space-y-2">
                   {(plan.featuresJson || []).map((feat, i) => (
-                    <li key={i} className={`flex items-start gap-2 text-xs font-semibold text-gray-700`}>
+                    <li key={i} className={`flex items-start gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300`}>
                       <Check className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${colors.check}`} />
                       {feat}
                     </li>
@@ -282,11 +282,11 @@ export default function WhatsAppPlanPicker({ onSuccess }: WhatsAppPlanPickerProp
                 </ul>
 
                 {/* Pay mode selector */}
-                <div className="bg-gray-50 rounded-2xl p-1 flex gap-1">
+                <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl p-1 flex gap-1">
                   <button
                     onClick={() => setPayModes((p) => ({ ...p, [plan.code]: 'SINGLE' }))}
                     className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      mode === 'SINGLE' ? 'bg-white shadow text-gray-900' : 'text-gray-400'
+                      mode === 'SINGLE' ? 'bg-white dark:bg-slate-700 shadow text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
                     }`}
                   >
                     Pay Once
@@ -294,7 +294,7 @@ export default function WhatsAppPlanPicker({ onSuccess }: WhatsAppPlanPickerProp
                   <button
                     onClick={() => canAutoPay && setPayModes((p) => ({ ...p, [plan.code]: 'AUTOPAY' }))}
                     className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-                      mode === 'AUTOPAY' ? 'bg-white shadow text-gray-900' : 'text-gray-400'
+                      mode === 'AUTOPAY' ? 'bg-white dark:bg-slate-700 shadow text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
                     } ${!canAutoPay ? 'opacity-40 cursor-not-allowed' : ''}`}
                     title={!canAutoPay ? 'AutoPay not available for this cycle' : undefined}
                   >

@@ -28,7 +28,7 @@ export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupForm
       await configureAuthkey(form);
       onSuccess();
     } catch (err: any) {
-      if (err.errorCode === 'WA_PLAN_REQUIRED') {
+      if (err.errorCode === 'WA_PLAN_REQUIRED' || err.message?.includes('WHATSAPP_CRM_SUBSCRIPTION_REQUIRED')) {
         setNeedsUpgrade(true);
       } else {
         setError(err.message || 'Failed to configure Authkey. Please check your credentials.');
@@ -46,8 +46,8 @@ export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupForm
           <div className="inline-flex items-center gap-2 bg-violet-100 text-violet-700 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
             <Star className="w-3.5 h-3.5" /> Addon Required
           </div>
-          <h2 className="text-3xl font-black text-gray-900">Activate Official WhatsApp</h2>
-          <p className="text-gray-500 max-w-lg mx-auto font-medium">
+          <h2 className="text-3xl font-black text-gray-900 dark:text-white">Activate Official WhatsApp</h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto font-medium">
             Official API access requires a WA Official plan addon. Choose the plan that fits your
             volume, pay now, and continue setup.
           </p>
@@ -62,7 +62,7 @@ export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupForm
         />
 
         <div className="text-center">
-          <Button variant="ghost" className="font-bold text-gray-500 gap-2" onClick={onBack}>
+          <Button variant="ghost" className="font-bold text-gray-500 dark:text-gray-400 gap-2" onClick={onBack}>
             <ArrowLeft className="w-4 h-4" /> Go back
           </Button>
         </div>
@@ -74,24 +74,24 @@ export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupForm
   return (
     <div className="max-w-lg mx-auto py-12 space-y-6">
       <div className="space-y-2">
-        <Button variant="ghost" size="sm" className="font-bold text-gray-500 gap-2 -ml-2" onClick={onBack}>
+        <Button variant="ghost" size="sm" className="font-bold text-gray-500 dark:text-gray-400 gap-2 -ml-2" onClick={onBack}>
           <ArrowLeft className="w-4 h-4" /> Back
         </Button>
-        <h2 className="text-3xl font-black text-gray-900">Configure Authkey</h2>
-        <p className="text-gray-500 font-medium text-sm">
+        <h2 className="text-3xl font-black text-gray-900 dark:text-white">Configure Authkey</h2>
+        <p className="text-gray-500 dark:text-gray-400 font-medium text-sm">
           Enter your Authkey credentials to activate Official WhatsApp.{' '}
           <a
             href="https://console.REMOVED_TOKEN.io"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-violet-600 font-bold inline-flex items-center gap-0.5 hover:underline"
+            className="text-violet-600 dark:text-violet-400 font-bold inline-flex items-center gap-0.5 hover:underline"
           >
             Open Authkey portal <ExternalLink className="w-3 h-3" />
           </a>
         </p>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800 font-medium leading-relaxed">
+      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-4 text-sm text-amber-800 dark:text-amber-200 font-medium leading-relaxed">
         <strong>Important:</strong> The phone number you enter here must be a{' '}
         <strong>new dedicated number</strong> registered with Authkey — not the same number linked
         to your personal WhatsApp.
@@ -106,7 +106,7 @@ export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupForm
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-1.5">
-          <label className="block text-xs font-black text-gray-500 uppercase tracking-wider ml-1">
+          <label className="block text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
             Authkey API Key
           </label>
           <div className="relative">
@@ -114,7 +114,7 @@ export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupForm
               required
               type={showKey ? 'text' : 'password'}
               placeholder="Paste your Authkey API key"
-              className="w-full px-4 py-3 pr-12 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-mono text-sm"
+              className="w-full px-4 py-3 pr-12 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-mono text-sm dark:text-white"
               value={form.apiKey}
               onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
             />
@@ -127,31 +127,31 @@ export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupForm
               {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-          <p className="text-[11px] text-gray-400 ml-1">
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 ml-1">
             Found at{' '}
-            <span className="font-mono bg-gray-100 px-1 rounded">
+            <span className="font-mono bg-gray-100 dark:bg-slate-800 px-1 rounded">
               console.REMOVED_TOKEN.io → My Account → Profile
             </span>
           </p>
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-black text-gray-500 uppercase tracking-wider ml-1">
+          <label className="block text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
             Sender ID (SID)
           </label>
           <input
             required
             type="text"
             placeholder="e.g. MOBIBX"
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all text-sm"
+            className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all text-sm dark:text-white"
             value={form.senderId}
             onChange={(e) => setForm({ ...form, senderId: e.target.value })}
           />
-          <p className="text-[11px] text-gray-400 ml-1">From Authkey portal → Sender List</p>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 ml-1">From Authkey portal → Sender List</p>
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-black text-gray-500 uppercase tracking-wider ml-1">
+          <label className="block text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
             Dedicated Phone Number
           </label>
           <input
@@ -160,11 +160,11 @@ export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupForm
             placeholder="e.g. 919876543210"
             pattern="[0-9]{10,15}"
             title="Enter digits only, including country code (e.g. 919876543210)"
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-mono text-sm"
+            className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-mono text-sm dark:text-white"
             value={form.phoneNumber}
             onChange={(e) => setForm({ ...form, phoneNumber: e.target.value.replace(/\D/g, '') })}
           />
-          <p className="text-[11px] text-gray-400 ml-1">
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 ml-1">
             Include country code — digits only (e.g.{' '}
             <span className="font-mono">919876543210</span>)
           </p>

@@ -139,7 +139,7 @@ export class WhatsAppOnboardingController {
    */
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.ONBOARD_CONNECT)
   @Post('configure-REMOVED_TOKEN')
-  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard, WhatsAppCrmSubscriptionGuard)
   @Roles(UserRole.ADMIN, UserRole.OWNER)
   async configureAuthkey(
     @Req() req,

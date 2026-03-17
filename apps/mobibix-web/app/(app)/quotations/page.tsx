@@ -249,6 +249,7 @@ export default function QuotationsPage() {
           quantity: it.quantity,
           price: it.price,
           gstRate: it.gstRate,
+          totalAmount: it.quantity * it.price,
         })),
       });
       setShowCreate(false);

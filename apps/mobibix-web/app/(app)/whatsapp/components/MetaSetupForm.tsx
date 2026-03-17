@@ -63,6 +63,12 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
       return;
     }
 
+    // FB.login requires HTTPS — guard early for local dev
+    if (window.location.protocol !== "https:") {
+      setError("Facebook login requires HTTPS. Please use an HTTPS URL (e.g. ngrok) for local testing.");
+      return;
+    }
+
     setState("connecting");
     setError(null);
 
@@ -100,7 +106,8 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
       },
     };
 
-    window.FB.login(async (response: any) => {
+    // FB.login callback must be synchronous — run async logic inside an IIFE
+    window.FB.login((response: any) => {
       window.removeEventListener("message", sessionListener);
 
       if (response.status !== "connected") {
@@ -109,7 +116,6 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
         return;
       }
 
-      // Check granted permissions — FB SDK returns grantedScopes on the response
       const grantedScopes: string[] = response.authResponse?.grantedScopes?.split(",") ?? [];
       if (grantedScopes.length > 0) {
         const missing = REQUIRED_SCOPES.filter((s) => !grantedScopes.includes(s));
@@ -129,18 +135,21 @@ export default function MetaSetupForm({ onSuccess, onBack }: Props) {
         return;
       }
 
-      try {
-        const res = await metaExchange({
-          code: response.authResponse.code,
-          wabaId: embeddedData.waba_id,
-          phoneNumberId: embeddedData.phone_number_id,
-        });
-        setResult({ phoneNumber: res.phoneNumber, wabaId: res.wabaId, tokenType: res.tokenType });
-        setState("success");
-      } catch (err: any) {
-        setState("ready");
-        setError(err.message || "Failed to connect Meta WhatsApp. Please try again.");
-      }
+      // Async exchange inside IIFE — FB callback itself stays sync
+      void (async () => {
+        try {
+          const res = await metaExchange({
+            code: response.authResponse.code,
+            wabaId: embeddedData.waba_id,
+            phoneNumberId: embeddedData.phone_number_id,
+          });
+          setResult({ phoneNumber: res.phoneNumber, wabaId: res.wabaId, tokenType: res.tokenType });
+          setState("success");
+        } catch (err: any) {
+          setState("ready");
+          setError(err.message || "Failed to connect Meta WhatsApp. Please try again.");
+        }
+      })();
     }, loginParams);
   }
 

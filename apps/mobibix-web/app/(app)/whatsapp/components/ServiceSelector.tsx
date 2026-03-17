@@ -14,8 +14,8 @@ export function ServiceSelector({ onSelect, loading }: ServiceSelectorProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-8 py-12">
       <div className="text-center space-y-3">
-        <h2 className="text-4xl font-black text-gray-900">Connect WhatsApp</h2>
-        <p className="text-gray-500 max-w-xl mx-auto font-medium">
+        <h2 className="text-4xl font-black text-gray-900 dark:text-white">Connect WhatsApp</h2>
+        <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto font-medium">
           Choose how to connect your number. You can switch modes once every 24 hours.
         </p>
       </div>
@@ -23,32 +23,32 @@ export function ServiceSelector({ onSelect, loading }: ServiceSelectorProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Web Mode — Free */}
         <Card
-          className="rounded-[2.5rem] border-2 border-transparent hover:border-teal-500 transition-all cursor-pointer group shadow-sm hover:shadow-xl bg-white overflow-hidden"
+          className="rounded-[2.5rem] border-2 border-transparent hover:border-teal-500 transition-all cursor-pointer group shadow-sm hover:shadow-xl bg-white dark:bg-slate-900 dark:border-slate-800 overflow-hidden"
           onClick={() => !loading && onSelect('WEB_SOCKET')}
         >
           <CardHeader className="p-8 pb-4">
             <div className="flex items-start justify-between mb-4">
-              <div className="h-14 w-14 rounded-2xl bg-teal-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Zap className="h-7 w-7 text-teal-600" />
+              <div className="h-14 w-14 rounded-2xl bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Zap className="h-7 w-7 text-teal-600 dark:text-teal-400" />
               </div>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
                 FREE with Pro
               </span>
             </div>
-            <CardTitle className="text-2xl font-black">Web Mode</CardTitle>
-            <p className="text-sm text-gray-500 font-medium">Use your existing WhatsApp number. Scan QR to connect.</p>
+            <CardTitle className="text-2xl font-black dark:text-white">Web Mode</CardTitle>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Use your existing WhatsApp number. Scan QR to connect.</p>
           </CardHeader>
           <CardContent className="p-8 pt-0 space-y-4">
             <ul className="space-y-3">
-              <li className="flex items-center text-sm font-semibold text-gray-700 gap-2">
+              <li className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300 gap-2">
                 <ShieldCheck className="h-4 w-4 text-green-500 flex-shrink-0" />
                 500 utility messages / month included
               </li>
-              <li className="flex items-center text-sm font-semibold text-gray-700 gap-2">
+              <li className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300 gap-2">
                 <ShieldCheck className="h-4 w-4 text-green-500 flex-shrink-0" />
                 100 marketing conversations / month
               </li>
-              <li className="flex items-center text-sm font-semibold text-gray-700 gap-2">
+              <li className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300 gap-2">
                 <ShieldCheck className="h-4 w-4 text-green-500 flex-shrink-0" />
                 Full inbox, CRM & automations
               </li>
@@ -68,39 +68,39 @@ export function ServiceSelector({ onSelect, loading }: ServiceSelectorProps) {
 
         {/* Official Mode — Paid Addon */}
         <Card
-          className="rounded-[2.5rem] border-2 border-transparent hover:border-violet-500 transition-all cursor-pointer group shadow-sm hover:shadow-xl bg-white overflow-hidden relative"
+          className="rounded-[2.5rem] border-2 border-transparent hover:border-violet-500 transition-all cursor-pointer group shadow-sm hover:shadow-xl bg-white dark:bg-slate-900 dark:border-slate-800 overflow-hidden relative"
           onClick={() => !loading && onSelect('AUTHKEY')}
         >
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 to-indigo-500 rounded-t-[2.5rem]" />
           <CardHeader className="p-8 pb-4">
             <div className="flex items-start justify-between mb-4">
-              <div className="h-14 w-14 rounded-2xl bg-violet-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Star className="h-7 w-7 text-violet-600" />
+              <div className="h-14 w-14 rounded-2xl bg-violet-50 dark:bg-violet-900/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Star className="h-7 w-7 text-violet-600 dark:text-violet-400" />
               </div>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-violet-100 text-violet-700">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400">
                 Addon — from ₹499/mo
               </span>
             </div>
-            <CardTitle className="text-2xl font-black">Official WhatsApp</CardTitle>
-            <p className="text-sm text-gray-500 font-medium">
+            <CardTitle className="text-2xl font-black dark:text-white">Official WhatsApp</CardTitle>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
               Dedicated number via Authkey. Reliable delivery, templates & SMS.
             </p>
           </CardHeader>
           <CardContent className="p-8 pt-0 space-y-4">
             <ul className="space-y-3">
-              <li className="flex items-center text-sm font-semibold text-gray-700 gap-2">
+              <li className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300 gap-2">
                 <ShieldCheck className="h-4 w-4 text-violet-500 flex-shrink-0" />
                 1,000–8,000 utility messages / month
               </li>
-              <li className="flex items-center text-sm font-semibold text-gray-700 gap-2">
+              <li className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300 gap-2">
                 <ShieldCheck className="h-4 w-4 text-violet-500 flex-shrink-0" />
                 Official API — no ban risk
               </li>
-              <li className="flex items-center text-sm font-semibold text-gray-700 gap-2">
+              <li className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300 gap-2">
                 <ShieldCheck className="h-4 w-4 text-violet-500 flex-shrink-0" />
                 SMS included (Pro plan+)
               </li>
-              <li className="flex items-center text-sm font-semibold text-gray-700 gap-2">
+              <li className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300 gap-2">
                 <ShieldCheck className="h-4 w-4 text-violet-500 flex-shrink-0" />
                 Team inbox & bulk campaigns
               </li>

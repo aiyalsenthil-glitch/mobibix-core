@@ -27,6 +27,8 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   WhatsAppNumberProvider,
 } from "@/context/WhatsAppNumberContext";
+import WhatsAppPlanPicker from "@/components/whatsapp/WhatsAppPlanPicker";
+import { getWaOfficialPlans } from "@/services/payments.api";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -52,6 +54,7 @@ export default function WhatsAppPage() {
 type PageState =
   | "loading"
   | "select_mode"
+  | "plan_required"
   | "REMOVED_TOKEN_setup"
   | "meta_setup"
   | "web_active"
@@ -108,16 +111,44 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
       setPageState("meta_setup");
       return;
     }
+    if (provider === "AUTHKEY") {
+      // Check if tenant has an active WA Official plan before proceeding
+      setSwitching(true);
+      try {
+        const plans = await getWaOfficialPlans();
+        setSwitching(false);
+        if (!plans || plans.length === 0) {
+          setPageState("plan_required");
+          return;
+        }
+        // Plans exist — proceed to switch + configure
+        await switchWhatsAppProvider("AUTHKEY");
+        setPageState("REMOVED_TOKEN_setup");
+      } catch {
+        setSwitching(false);
+        setPageState("plan_required");
+      }
+      return;
+    }
     setSwitching(true);
     try {
-      await switchWhatsAppProvider(provider as "WEB_SOCKET" | "AUTHKEY");
-      if (provider === "WEB_SOCKET") {
-        window.location.reload();
-      } else {
-        setPageState("REMOVED_TOKEN_setup");
-      }
+      await switchWhatsAppProvider("WEB_SOCKET");
+      window.location.reload();
     } catch (err: any) {
       alert(err.message || "Failed to switch provider");
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  const handlePlanPurchased = async (planCode: string) => {
+    // Plan purchased — now switch to AUTHKEY and proceed to config
+    setSwitching(true);
+    try {
+      await switchWhatsAppProvider("AUTHKEY");
+      setPageState("REMOVED_TOKEN_setup");
+    } catch (err: any) {
+      alert(err.message || "Failed to activate provider");
     } finally {
       setSwitching(false);
     }
@@ -171,6 +202,33 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
     return (
       <div className="p-8">
         <ServiceSelector onSelect={handleModeSelect} loading={switching} />
+      </div>
+    );
+  }
+
+  // ── Plan required (no active WA addon) ───────────────────────────────────────
+  if (pageState === "plan_required") {
+    return (
+      <div className="p-8 max-w-4xl mx-auto">
+        <div className="mb-6">
+          <button
+            onClick={() => setPageState("select_mode")}
+            className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+          >
+            ← Back to mode selection
+          </button>
+        </div>
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 bg-violet-50 text-violet-700 text-xs font-bold px-3 py-1.5 rounded-full mb-4">
+            <Zap className="w-3.5 h-3.5" /> ADDON REQUIRED
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">Activate Official WhatsApp</h2>
+          <p className="text-gray-500 mt-2 text-sm">
+            Official API access requires a WA Official plan addon. Choose the plan
+            that fits your volume, pay now, and continue setup.
+          </p>
+        </div>
+        <WhatsAppPlanPicker onSuccess={handlePlanPurchased} />
       </div>
     );
   }

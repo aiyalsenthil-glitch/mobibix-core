@@ -80,7 +80,7 @@ export async function metaExchange(data: {
   code: string;
   wabaId?: string;
   phoneNumberId?: string;
-}): Promise<{ success: boolean; phoneNumber: string; wabaId: string }> {
+}): Promise<{ success: boolean; phoneNumber: string; wabaId: string; tokenType: 'user' | 'system' }> {
   const response = await authenticatedFetch("/integrations/whatsapp/meta-exchange", {
     method: "POST",
     body: JSON.stringify(data),

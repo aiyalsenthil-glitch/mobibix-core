@@ -1,6 +1,6 @@
 export default function WhatsAppCrmPromo() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="max-w-6xl mx-auto px-4 py-16">
         {/* Hero Section */}
         <div className="text-center mb-16">
@@ -20,12 +20,12 @@ export default function WhatsAppCrmPromo() {
             </svg>
             PREMIUM ADD-ON
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
             WhatsApp CRM for
             <br />
-            <span className="text-green-600">Growing Businesses</span>
+            <span className="text-green-600 dark:text-green-500">Growing Businesses</span>
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
             Transform WhatsApp into your most powerful sales channel. Manage
             conversations, nurture leads, and close deals faster.
           </p>
@@ -34,10 +34,10 @@ export default function WhatsAppCrmPromo() {
         {/* Features Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
           {/* Feature 1 */}
-          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-green-200 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border-2 border-gray-100 dark:border-slate-800 hover:border-green-200 dark:hover:border-green-900 hover:shadow-lg transition-all">
+            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mb-4">
               <svg
-                className="w-6 h-6 text-green-600"
+                className="w-6 h-6 text-green-600 dark:text-green-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -50,20 +50,20 @@ export default function WhatsAppCrmPromo() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Dedicated WhatsApp Number
             </h3>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-600 dark:text-gray-400 text-sm">
               Get a verified business WhatsApp number exclusively for customer
               interactions and campaigns.
             </p>
           </div>
 
           {/* Feature 2 */}
-          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-green-200 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border-2 border-gray-100 dark:border-slate-800 hover:border-green-200 dark:hover:border-green-900 hover:shadow-lg transition-all">
+            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mb-4">
               <svg
-                className="w-6 h-6 text-green-600"
+                className="w-6 h-6 text-green-600 dark:text-green-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -76,20 +76,20 @@ export default function WhatsAppCrmPromo() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Inbox & Replies
             </h3>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-600 dark:text-gray-400 text-sm">
               Unified inbox to manage all customer conversations with quick
               replies, templates, and tags.
             </p>
           </div>
 
           {/* Feature 3 */}
-          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-green-200 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border-2 border-gray-100 dark:border-slate-800 hover:border-green-200 dark:hover:border-green-900 hover:shadow-lg transition-all">
+            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mb-4">
               <svg
-                className="w-6 h-6 text-green-600"
+                className="w-6 h-6 text-green-600 dark:text-green-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -102,20 +102,20 @@ export default function WhatsAppCrmPromo() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Bulk Campaigns
             </h3>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-600 dark:text-gray-400 text-sm">
               Send targeted promotional messages to customer segments with
               compliance and delivery tracking.
             </p>
           </div>
 
           {/* Feature 4 */}
-          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-green-200 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border-2 border-gray-100 dark:border-slate-800 hover:border-green-200 dark:hover:border-green-900 hover:shadow-lg transition-all">
+            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mb-4">
               <svg
-                className="w-6 h-6 text-green-600"
+                className="w-6 h-6 text-green-600 dark:text-green-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -134,20 +134,20 @@ export default function WhatsAppCrmPromo() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Automation
             </h3>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-600 dark:text-gray-400 text-sm">
               Auto-assign conversations, trigger workflows, and send follow-ups
               based on customer behavior.
             </p>
           </div>
 
           {/* Feature 5 */}
-          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-green-200 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border-2 border-gray-100 dark:border-slate-800 hover:border-green-200 dark:hover:border-green-900 hover:shadow-lg transition-all">
+            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mb-4">
               <svg
-                className="w-6 h-6 text-green-600"
+                className="w-6 h-6 text-green-600 dark:text-green-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -160,20 +160,20 @@ export default function WhatsAppCrmPromo() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Analytics
             </h3>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-600 dark:text-gray-400 text-sm">
               Track message delivery, response rates, conversion metrics, and
               team performance in real-time.
             </p>
           </div>
 
           {/* Feature 6 - Lead Management */}
-          <div className="bg-white p-6 rounded-xl border-2 border-gray-100 hover:border-green-200 hover:shadow-lg transition-all">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border-2 border-gray-100 dark:border-slate-800 hover:border-green-200 dark:hover:border-green-900 hover:shadow-lg transition-all">
+            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mb-4">
               <svg
-                className="w-6 h-6 text-green-600"
+                className="w-6 h-6 text-green-600 dark:text-green-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -186,10 +186,10 @@ export default function WhatsAppCrmPromo() {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Lead Management
             </h3>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-600 dark:text-gray-400 text-sm">
               Capture, qualify, and nurture leads through customizable pipelines
               and follow-up reminders.
             </p>
@@ -363,11 +363,11 @@ export default function WhatsAppCrmPromo() {
 
         {/* Contact Info */}
         <div className="text-center">
-          <div className="bg-white rounded-xl p-8 max-w-2xl mx-auto shadow-sm border border-gray-100">
-            <h3 className="text-xl font-semibold text-gray-900 mb-3">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-8 max-w-2xl mx-auto shadow-sm border border-gray-100 dark:border-slate-800">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
               Ready to Transform Your Customer Engagement?
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               Get in touch with our sales team for a personalized demo and
               custom setup assistance.
             </p>

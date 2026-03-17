@@ -2071,6 +2071,7 @@ model Quotation {
   shop            Shop                     @relation(fields: [shopId], references: [id])
   tenant          Tenant                   @relation("TenantQuotations", fields: [tenantId], references: [id])
   items           QuotationItem[]
+  followUps       CustomerFollowUp[]
 
   @@unique([shopId, quotationNumber])
   @@index([tenantId])
