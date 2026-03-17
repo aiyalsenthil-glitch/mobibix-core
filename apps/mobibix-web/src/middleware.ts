@@ -33,6 +33,20 @@ const protectedRoutes = [
 const publicRoutes = ["/signin", "/signup", "/", "/onboarding"];
 
 export function middleware(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  const host = request.headers.get("host");
+
+  // 1. Force Non-WWW and HTTPS Redirect (SEO Normalization)
+  // Check if it's production and not localhost
+  const isWww = host?.startsWith("www.");
+  const isHttp = request.headers.get("x-forwarded-proto") === "http";
+
+  if ((isWww || isHttp) && process.env.NODE_ENV === "production" && !host?.includes("localhost")) {
+    const newHost = host?.replace("www.", "");
+    const protocol = "https";
+    return NextResponse.redirect(`${protocol}://${newHost}${url.pathname}${url.search}`, 301);
+  }
+
   // 2. Check if the current route is protected or public
   const path = request.nextUrl.pathname;
   const isProtectedRoute = protectedRoutes.some((route) =>

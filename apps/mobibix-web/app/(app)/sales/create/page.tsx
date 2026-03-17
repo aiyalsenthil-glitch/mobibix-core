@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { listProducts, type ShopProduct } from "@/services/products.api";
+import { listProducts, updateProduct, type ShopProduct } from "@/services/products.api";
 import { getStockBalances, getImeiDetails } from "@/services/stock.api";
-import { createInvoice, type CreateInvoiceDto, type PaymentMode } from "@/services/sales.api";
+import { createInvoice, type CreateInvoiceDto } from "@/services/sales.api";
+import { type PaymentMode } from "@/hooks/useInvoiceForm";
+import { validateVoucher, redeemVoucher, type TradeInVoucher } from "@/services/tradein.api";
 import { useShop } from "@/context/ShopContext";
 import { CustomerModal } from "../../customers/CustomerModal";
 import { ProductModal } from "../../products/ProductModal";
@@ -112,13 +114,20 @@ export default function CreateInvoicePage() {
     }
   }, [quotationId, selectedShopId]);
 
-  const [products, setProducts] = useState<ShopProduct[]>([]);
+  const [shopProducts, setShopProducts] = useState<ShopProduct[]>([]);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imeiHighlight, setImeiHighlight] = useState(false);
+
+  // Trade-in credit voucher (TCV payment mode)
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucherLookupLoading, setVoucherLookupLoading] = useState(false);
+  const [appliedVoucher, setAppliedVoucher] = useState<TradeInVoucher | null>(null);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [tcvBalanceMode, setTcvBalanceMode] = useState<PaymentMode>("CASH"); // payment mode for remaining balance
   const [globalScan, setGlobalScan] = useState("");
   const [isScanning, setIsScanning] = useState(false);
 
@@ -162,7 +171,7 @@ export default function CreateInvoicePage() {
         const isNegative = b?.isNegative ?? stockQty < 0;
         return { ...p, stockQty, isNegative };
       });
-      setProducts(merged);
+      setShopProducts(merged);
     } catch (err: unknown) {
       console.error("Failed to load products:", err);
     }
@@ -191,17 +200,41 @@ export default function CreateInvoicePage() {
   };
 
   const handleProductCreated = (product: ShopProduct) => {
-    setProducts([...products, product]);
+    setShopProducts([...shopProducts, product]);
     setIsProductModalOpen(false);
     if (selectedShopId) loadProducts(selectedShopId);
   };
 
+  const handleVoucherLookup = async () => {
+    if (!voucherCode.trim() || !selectedShopId) return;
+    setVoucherLookupLoading(true);
+    setVoucherError(null);
+    setAppliedVoucher(null);
+    try {
+      const v = await validateVoucher(voucherCode.trim(), selectedShopId);
+      setAppliedVoucher(v);
+    } catch (err: any) {
+      setVoucherError(err?.message || "Invalid or expired voucher");
+    } finally {
+      setVoucherLookupLoading(false);
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherCode("");
+    setVoucherError(null);
+  };
+
   const handleSubmit = async () => {
-    if (!selectedShop) {
+    const shop = selectedShop;
+    const customer = selectedCustomer;
+
+    if (!shop) {
       setError("Please select a shop");
       return;
     }
-    if (!selectedCustomer) {
+    if (!customer) {
       setError("Please select a customer");
       return;
     }
@@ -215,7 +248,7 @@ export default function CreateInvoicePage() {
     }
 
     // HSN validation for GST invoices
-    if (selectedShop?.gstEnabled) {
+    if (shop?.gstEnabled) {
       if (items.some((i) => !i.hsnSac || i.hsnSac.trim() === "")) {
         setError("HSN/SAC code is mandatory for all items in a GST invoice.");
         return;
@@ -224,26 +257,33 @@ export default function CreateInvoicePage() {
 
     // Serialized validation: IMEIs required and must match quantity
     const serializedMissing = items.some((i) => {
-      const p = products.find((pp) => pp.id === i.shopProductId);
+      const p = shopProducts.find((pp) => pp.id === i.shopProductId);
       return p?.isSerialized && (!i.imeis || i.imeis.length === 0);
     });
     if (serializedMissing) {
       setError(
-        "Missing IMEIs: Please enter IMEI numbers for all serialized products",
+        "Missing Tracking: Please enter IMEI/Serial numbers for all serialized products",
       );
       setImeiHighlight(true);
       return;
     }
 
     const serializedCountMismatch = items.some((i) => {
-      const p = products.find((pp) => pp.id === i.shopProductId);
+      const p = shopProducts.find((pp) => pp.id === i.shopProductId);
       return p?.isSerialized && i.imeis && i.imeis.length !== i.quantity;
     });
     if (serializedCountMismatch) {
       setError(
-        "IMEI count mismatch: Each product quantity must have matching IMEIs",
+        "Tracking mismatch: Quantity must match the number of IMEIs/Serials entered.",
       );
       setImeiHighlight(true);
+      return;
+    }
+
+    // Proactive cost validation
+    const itemsMissingCost = items.filter(i => i.shopProductId && (i.costPrice === null || i.costPrice <= 0));
+    if (itemsMissingCost.length > 0) {
+      setError(`Action Required: ${itemsMissingCost[0].productName} is missing a purchase cost. Please set it in the product table below to continue.`);
       return;
     }
 
@@ -275,12 +315,12 @@ export default function CreateInvoicePage() {
 
       // Prepare payload
       const payload: CreateInvoiceDto = {
-        shopId: selectedShop.id,
-        customerId: selectedCustomer.id,
-        customerName: selectedCustomer.name,
-        customerPhone: selectedCustomer.phone,
-        customerState: selectedCustomer.state,
-        customerGstin: selectedCustomer.gstNumber,
+        shopId: shop.id,
+        customerId: customer.id,
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        customerState: customer.state,
+        customerGstin: customer.gstNumber,
         invoiceDate,
         pricesIncludeTax,
         items: items.map((item) => ({
@@ -299,19 +339,45 @@ export default function CreateInvoicePage() {
       };
 
       // Handle Payment Modes
-      if (paymentMode === "MIXED") {
-        // Atomic creation with mixed payments
-        payload.paymentMode = splitPayments[0].mode; // Default primary to first mode
+      // Cast helpers: our local PaymentMode is wider than the API's narrow type
+      type ApiMode = import("@/services/sales.api").PaymentMode;
+      if (paymentMode === "TCV" && appliedVoucher) {
+        // Trade-in Credit Voucher payment
+        // GST is on full invoice value — TCV is a payment instrument, not a discount (CBIC Circular 243/2024)
+        const voucherCredit = Math.min(appliedVoucher.amount, grandTotal);
+        const cashBalance = Math.max(0, grandTotal - voucherCredit);
+        if (cashBalance === 0) {
+          // Full payment via voucher → record as CREDIT (store credit used)
+          payload.paymentMode = "CREDIT";
+          payload.paymentMethods = [{ mode: "CREDIT", amount: grandTotal }];
+        } else {
+          // Partial voucher + cash balance
+          payload.paymentMode = tcvBalanceMode as ApiMode;
+          payload.paymentMethods = [
+            { mode: tcvBalanceMode as ApiMode, amount: cashBalance },
+            { mode: "CREDIT", amount: voucherCredit },
+          ];
+        }
+      } else if (paymentMode === "MIXED") {
+        payload.paymentMode = splitPayments[0].mode as ApiMode;
         payload.paymentMethods = splitPayments.map((p) => ({
-          mode: p.mode,
+          mode: p.mode as ApiMode,
           amount: parseFloat(p.amount),
         }));
       } else {
-        // Single mode
-        payload.paymentMode = paymentMode;
+        payload.paymentMode = paymentMode as ApiMode;
       }
 
-      await createInvoice(payload);
+      const invoice = await createInvoice(payload);
+
+      // Redeem trade-in voucher after invoice creation
+      if (paymentMode === "TCV" && appliedVoucher && invoice?.id) {
+        try {
+          await redeemVoucher(appliedVoucher.voucherCode, selectedShopId!, invoice.id);
+        } catch {
+          console.warn("Voucher redemption failed after invoice creation");
+        }
+      }
 
       // Navigate on success
       router.push(`/sales?shopId=${selectedShopId}`);
@@ -327,8 +393,8 @@ export default function CreateInvoicePage() {
         const match = msg.match(/Cannot sell product "([^"]+)"/);
         const productName = match ? match[1] : "One or more products";
         setError(
-          `${productName} cannot be sold because cost is missing. ` +
-            `Please add a purchase or set the cost manually before selling.`,
+          `Action Required: ${productName} is missing a cost price. ` +
+            `Please set the cost manually in the table below before confirming the invoice.`,
         );
       } else if (msg.includes("Insufficient stock")) {
         setImeiHighlight(false); // reset stale IMEI highlight — this is a stock problem
@@ -348,6 +414,23 @@ export default function CreateInvoicePage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateProductCost = async (productId: string, cost: number) => {
+    if (!selectedShopId) return;
+    try {
+      await updateProduct(selectedShopId, productId, { costPrice: cost });
+      // Update local products list so the warning disappears and other items with same product are updated
+      setShopProducts(prev => prev.map(p => p.id === productId ? { ...p, costPrice: cost } : p));
+      
+      // Clear error if it was about this product
+      if (error?.includes("missing a purchase cost") || error?.includes("missing a cost price")) {
+        setError(null);
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to update product cost");
+      throw err; // Propagate to component for loading state
     }
   };
 
@@ -414,63 +497,33 @@ export default function CreateInvoicePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0b0f14] text-slate-900 dark:text-slate-100">
-      <div className="max-w-[1400px] mx-auto py-6 px-6">
-        <div className="relative overflow-hidden rounded-[24px] border border-slate-200 dark:border-white/10 bg-gradient-to-br from-slate-100 via-white to-slate-50 dark:from-white/10 dark:via-white/5 dark:to-transparent p-6 shadow-xl dark:shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
-          <div className="absolute -top-40 -right-24 h-72 w-72 rounded-full bg-teal-500/10 dark:bg-teal-500/20 blur-[120px]"></div>
-          <div className="absolute -bottom-32 -left-20 h-72 w-72 rounded-full bg-amber-400/5 dark:bg-amber-400/10 blur-[120px]"></div>
-          <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.4em] text-teal-600 dark:text-teal-300/70">
-                Sales Workspace
-              </p>
-              <h1 className="mt-2 text-2xl md:text-3xl font-[var(--font-playfair)] text-slate-900 dark:text-white">
-                New Sales Invoice
-              </h1>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 max-w-xl">
-                Build a clean, GST-ready invoice with live stock, customer, and
-                payment visibility in one pass.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2.5">
-              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Active shop
-                </p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {selectedShop?.name ?? "Selected shop"}
-                </p>
-              </div>
-            </div>
+      <div className="max-w-[1400px] mx-auto py-4 px-4">
+        {/* Compact header */}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-lg font-bold text-slate-900 dark:text-white">New Invoice</h1>
+          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            {selectedShop?.name ?? "No shop selected"}
           </div>
         </div>
 
         {shopError && (
-          <div className="mt-4 rounded-2xl border border-rose-400 dark:border-rose-500/30 bg-rose-100 dark:bg-rose-500/10 px-4 py-2.5 text-rose-800 dark:text-rose-200">
-            <span className="mr-2">⚠️</span>
-            {shopError}
+          <div className="mb-3 rounded-xl border border-rose-400 dark:border-rose-500/30 bg-rose-100 dark:bg-rose-500/10 px-4 py-2 text-sm text-rose-800 dark:text-rose-200">
+            ⚠️ {shopError}
           </div>
         )}
 
         {error && (
-          <div className="mt-4 rounded-2xl border border-rose-400 dark:border-rose-500/30 bg-rose-100 dark:bg-rose-500/10 px-4 py-2.5 text-rose-800 dark:text-rose-200">
-            <span className="mr-2">⚠️</span>
-            {error}
+          <div className="mb-3 rounded-xl border border-rose-400 dark:border-rose-500/30 bg-rose-100 dark:bg-rose-500/10 px-4 py-2 text-sm text-rose-800 dark:text-rose-200">
+            ⚠️ {error}
           </div>
         )}
 
-        <div className="mt-6 space-y-5">
+        <div className="space-y-3">
           {/* Combined Customer & Invoice Details Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-5">
-            <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                  Customer Details
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Search or add a new customer.
-                </p>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-3">
+            <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-4 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Customer Details</h2>
               <InvoiceCustomerSelector
                 selectedCustomer={selectedCustomer}
                 onSelectCustomer={setSelectedCustomer}
@@ -479,15 +532,8 @@ export default function CreateInvoicePage() {
               />
             </div>
 
-            <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                  Invoice Details
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Confirm timing and tax handling.
-                </p>
-              </div>
+            <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-4 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Invoice Details</h2>
               <div>
                 <label className="block text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400 mb-2">
                   Invoice Date
@@ -509,15 +555,8 @@ export default function CreateInvoicePage() {
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Product Items
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Add products, quantities, and GST.
-              </p>
-            </div>
+          <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-4 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Product Items</h2>
             
             {/* Global Scan Bar */}
             <div className="mb-6">
@@ -543,27 +582,21 @@ export default function CreateInvoicePage() {
 
             <InvoiceProductTable
               items={items}
-              products={products}
+              products={shopProducts}
               pricesIncludeTax={pricesIncludeTax}
               onPricesIncludeTaxChange={setPricesIncludeTax}
               onUpdateItem={updateItem}
               onAddItem={addItem}
               onRemoveItem={removeItem}
               onNewProduct={() => setIsProductModalOpen(true)}
+              onUpdateProductCost={handleUpdateProductCost}
               imeiHighlight={imeiHighlight}
             />
           </div>
 
           {/* Loyalty Redemption */}
-          <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Loyalty Rewards
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Redeem customer loyalty points for an instant discount.
-              </p>
-            </div>
+          <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-4 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Loyalty Rewards</h2>
             <LoyaltyRedemptionInput
               customerId={selectedCustomer?.id}
               balance={loyalty.balance}
@@ -572,29 +605,23 @@ export default function CreateInvoicePage() {
               onDiscountChange={(discountPaise) => loyalty.setDiscount(discountPaise / 100)}
             />
           </div>
+
         </div>
 
         {/* Payment & Totals */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_0.7fr] gap-5 mb-6">
-          <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                  Payment Mode
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Choose how the invoice is paid.
-                </p>
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_0.7fr] gap-3 mb-4">
+          <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-4 shadow-lg dark:shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Payment Mode</h2>
               <span className="rounded-full border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.3em] text-slate-600 dark:text-slate-300">
                 {paymentMode}
               </span>
             </div>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+            <div className="grid grid-cols-3 md:grid-cols-7 gap-3">
               {["CASH", "UPI", "CARD", "BANK", "CREDIT"].map((mode) => (
                 <button
                   key={mode}
-                  onClick={() => setPaymentMode(mode as PaymentMode)}
+                  onClick={() => { setPaymentMode(mode as PaymentMode); handleRemoveVoucher(); }}
                   className={`px-4 py-3 rounded-2xl text-xs font-semibold tracking-[0.2em] transition border ${
                     paymentMode === mode
                       ? "bg-teal-400 text-white dark:text-slate-900 border-teal-300 shadow-[0_10px_30px_rgba(13,148,136,0.35)]"
@@ -614,7 +641,93 @@ export default function CreateInvoicePage() {
               >
                 SPLIT
               </button>
+              <button
+                onClick={() => setPaymentMode("TCV")}
+                className={`px-4 py-3 rounded-2xl text-xs font-semibold tracking-[0.2em] transition border ${
+                  paymentMode === "TCV"
+                    ? "bg-amber-500 text-white border-amber-400 shadow-[0_10px_30px_rgba(245,158,11,0.35)]"
+                    : "bg-slate-100 dark:bg-black/40 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10"
+                }`}
+              >
+                🎟 TCV
+              </button>
             </div>
+
+            {/* TCV: Trade-in Credit Voucher inline panel */}
+            {paymentMode === "TCV" && (
+              <div className="mt-5 rounded-2xl border border-amber-400/40 bg-amber-50 dark:bg-amber-900/20 p-4 space-y-3">
+                <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                  🎟 Trade-in Credit Voucher — GST on full invoice value (CBIC Circular 243/2024). Voucher reduces cash to collect only.
+                </p>
+
+                {/* Voucher code entry */}
+                {!appliedVoucher ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Enter code e.g. TCV-0001"
+                        value={voucherCode}
+                        onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => e.key === "Enter" && handleVoucherLookup()}
+                        className="flex-1 rounded-xl border border-amber-300 dark:border-amber-600 bg-white dark:bg-black/40 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400/70"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVoucherLookup}
+                        disabled={voucherLookupLoading || !voucherCode.trim()}
+                        className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold disabled:opacity-50 transition"
+                      >
+                        {voucherLookupLoading ? "Checking..." : "Validate"}
+                      </button>
+                    </div>
+                    {voucherError && (
+                      <p className="text-xs text-rose-600 dark:text-rose-400">{voucherError}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Validated voucher info */}
+                    <div className="flex items-center justify-between rounded-xl border border-amber-300 dark:border-amber-600 bg-amber-100 dark:bg-amber-900/40 px-3 py-2.5">
+                      <div>
+                        <p className="text-sm font-bold text-amber-900 dark:text-amber-100">
+                          {appliedVoucher.voucherCode} — ₹{appliedVoucher.amount.toLocaleString("en-IN")} credit
+                        </p>
+                        <p className="text-xs text-amber-700 dark:text-amber-300">
+                          {appliedVoucher.customerName} · Expires {new Date(appliedVoucher.expiresAt).toLocaleDateString("en-IN")}
+                        </p>
+                      </div>
+                      <button type="button" onClick={handleRemoveVoucher} className="text-xs text-rose-500 hover:underline ml-3">Remove</button>
+                    </div>
+
+                    {/* Balance payment mode — only shown if voucher doesn't cover full amount */}
+                    {appliedVoucher.amount < grandTotal && (
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                          Balance ₹{(grandTotal - appliedVoucher.amount).toLocaleString("en-IN")} — collect via:
+                        </p>
+                        <div className="flex gap-2">
+                          {(["CASH", "UPI", "BANK", "CARD"] as PaymentMode[]).map((m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => setTcvBalanceMode(m)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                                tcvBalanceMode === m
+                                  ? "bg-teal-500 text-white border-teal-400"
+                                  : "bg-white dark:bg-black/40 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-white/10 hover:bg-slate-100"
+                              }`}
+                            >
+                              {m}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {paymentMode === "MIXED" && (
               <div className="mt-5 rounded-2xl border border-amber-400/30 bg-amber-100 dark:bg-amber-400/10 p-4">
@@ -631,7 +744,7 @@ export default function CreateInvoicePage() {
                         value={payment.mode}
                         onChange={(e) => {
                           const newSplits = [...splitPayments];
-                          newSplits[idx].mode = e.target.value as PaymentMode;
+                          newSplits[idx].mode = e.target.value as Exclude<PaymentMode, "MIXED" | "TCV">;
                           setSplitPayments(newSplits);
                         }}
                         className="px-3 py-2 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-black/40 text-xs text-slate-900 dark:text-white"
@@ -711,7 +824,8 @@ export default function CreateInvoicePage() {
             )}
           </div>
 
-          <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-gradient-to-br from-slate-100 via-white to-slate-50 dark:from-white/10 dark:via-white/5 dark:to-transparent p-5 shadow-lg dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] h-fit">
+          <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-gradient-to-br from-slate-100 via-white to-slate-50 dark:from-white/10 dark:via-white/5 dark:to-transparent p-4 shadow-lg dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] h-fit">
+            {/* Invoice Totals — GST on FULL price always (voucher is payment, not discount) */}
             <div className="space-y-2.5">
               <div className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
                 <span>Subtotal</span>
@@ -724,12 +838,35 @@ export default function CreateInvoicePage() {
                 </div>
               )}
             </div>
+
             <div className="mt-5 flex justify-between items-center text-2xl font-semibold text-slate-900 dark:text-white border-t border-slate-300 dark:border-white/10 pt-4">
               <span>Grand Total</span>
-              <span className="text-teal-600 dark:text-teal-300">
-                ₹{grandTotal.toFixed(2)}
-              </span>
+              <span className="text-teal-600 dark:text-teal-300">₹{grandTotal.toFixed(2)}</span>
             </div>
+
+            {/* Payment Breakdown — voucher is a payment mode, not a deduction */}
+            {appliedVoucher && (() => {
+              const voucherCredit = Math.min(appliedVoucher.amount, grandTotal);
+              const cashDue = Math.max(0, grandTotal - voucherCredit);
+              return (
+                <div className="mt-4 rounded-xl border border-amber-300 dark:border-amber-600/50 bg-amber-50 dark:bg-amber-900/20 p-3 space-y-2 text-sm">
+                  <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-wide">
+                    Payment Breakdown
+                  </p>
+                  <div className="flex justify-between text-amber-900 dark:text-amber-200">
+                    <span>🎟 Trade Credit ({appliedVoucher.voucherCode})</span>
+                    <span className="font-semibold">₹{voucherCredit.toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-700 dark:text-slate-300 border-t border-amber-200 dark:border-amber-700/40 pt-2">
+                    <span>Cash / UPI to collect</span>
+                    <span className="font-bold text-teal-700 dark:text-teal-300">₹{cashDue.toLocaleString("en-IN")}</span>
+                  </div>
+                  <p className="text-[10px] text-amber-600 dark:text-amber-500 leading-tight pt-1">
+                    GST is charged on full invoice value (₹{grandTotal.toFixed(2)}). Trade-in credit is a payment instrument, not a discount — per CBIC Circular 243/2024.
+                  </p>
+                </div>
+              );
+            })()}
 
             <button
               onClick={handleSubmit}
@@ -757,7 +894,7 @@ export default function CreateInvoicePage() {
           />
         )}
 
-        {isProductModalOpen && (
+        {isProductModalOpen && selectedShop && (
           <ProductModal
             onClose={handleProductModalClose}
             onProductCreated={handleProductCreated}

@@ -2,6 +2,8 @@ package com.aiyal.mobibix.ui.features.customers
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.dto.CreateCustomerRequest
 import com.aiyal.mobibix.data.network.dto.CustomerResponse
 import com.aiyal.mobibix.domain.CustomerRepository
@@ -17,7 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class CustomerViewModel @Inject constructor(
     private val repository: CustomerRepository,
-    private val crmRepository: CrmRepository
+    private val crmRepository: CrmRepository,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CustomerUiState())
@@ -28,15 +31,11 @@ class CustomerViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(loading = true, error = null)
             try {
                 val response = repository.listCustomers(skip = 0, take = 50, search = search)
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    customers = response.data
-                )
+                _uiState.value = _uiState.value.copy(loading = false, customers = response.data)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    error = e.message ?: "Failed to load customers"
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(loading = false, error = msg)
             }
         }
     }
@@ -46,15 +45,11 @@ class CustomerViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(loading = true, error = null)
             try {
                 val customer = repository.getCustomer(id)
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    selectedCustomer = customer
-                )
+                _uiState.value = _uiState.value.copy(loading = false, selectedCustomer = customer)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    error = e.message ?: "Failed to load customer details"
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(loading = false, error = msg)
             }
         }
     }
@@ -63,28 +58,19 @@ class CustomerViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(operationLoading = true)
             try {
-                val request = CreateCustomerRequest(
-                    name = name,
-                    phone = phone,
-                    email = email,
-                    state = address, // Mapping address to state for now, assuming state field is used for address/state
-                    businessType = businessType,
-                    partyType = partyType,
-                    gstNumber = gst
+                repository.createCustomer(
+                    CreateCustomerRequest(
+                        name = name, phone = phone, email = email,
+                        state = address, businessType = businessType,
+                        partyType = partyType, gstNumber = gst
+                    )
                 )
-                repository.createCustomer(request)
-                _uiState.value = _uiState.value.copy(
-                    operationLoading = false,
-                    operationSuccess = true,
-                    error = null
-                )
-                loadCustomers() // Refresh list
+                _uiState.value = _uiState.value.copy(operationLoading = false, operationSuccess = true, error = null)
+                loadCustomers()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    operationLoading = false,
-                    operationSuccess = false,
-                    error = e.message ?: "Failed to create customer"
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(operationLoading = false, operationSuccess = false, error = msg)
             }
         }
     }
@@ -94,21 +80,17 @@ class CustomerViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(loading = true, error = null)
             try {
                 val timeline = crmRepository.getCustomerTimeline(customerId)
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    timelineEvents = timeline
-                )
+                _uiState.value = _uiState.value.copy(loading = false, timelineEvents = timeline)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    error = e.message ?: "Failed to load timeline"
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(loading = false, error = msg)
             }
         }
     }
-    
+
     fun resetOperationState() {
-         _uiState.value = _uiState.value.copy(operationSuccess = false, error = null)
+        _uiState.value = _uiState.value.copy(operationSuccess = false, error = null)
     }
 }
 

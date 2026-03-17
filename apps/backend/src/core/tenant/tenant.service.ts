@@ -801,6 +801,9 @@ export class TenantService {
     return tenants.map((t) => ({
       id: t.id,
       name: t.name,
+      code: t.code,
+      tenantType: t.tenantType,
+      status: t.status,
       ownerEmail: t.userTenants[0]?.user.email ?? null,
       ownerName: t.userTenants[0]?.user.fullName ?? null,
 

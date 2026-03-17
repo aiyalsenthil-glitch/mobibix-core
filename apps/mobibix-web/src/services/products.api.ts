@@ -60,12 +60,13 @@ export interface ShopProduct {
  */
 export async function listProducts(
   shopId: string,
+  take = 500,
 ): Promise<
   | ShopProduct[]
   | { data: ShopProduct[]; total: number; skip: number; take: number }
 > {
   const response = await authenticatedFetch(
-    `/mobileshop/products?shopId=${shopId}`,
+    `/mobileshop/products?shopId=${shopId}&take=${take}`,
   );
 
   if (!response.ok) {
@@ -124,7 +125,9 @@ export async function createProduct(
     throw new Error(error?.message || "Failed to create product");
   }
 
-  return extractData(response) as Promise<ShopProduct>;
+  const raw = await extractData(response) as any;
+  // TransformInterceptor wraps response: { success, data, timestamp, path }
+  return (raw?.data ?? raw) as ShopProduct;
 }
 
 /**

@@ -22,8 +22,8 @@ fun AppBottomNavigationBar(navController: NavController) {
     )
 
     NavigationBar(
-        containerColor = Color.White,
-        tonalElevation = 8.dp,
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
         modifier = Modifier.height(72.dp)
     ) {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -41,8 +41,8 @@ fun AppBottomNavigationBar(navController: NavController) {
                 label = {
                     Text(
                         item.label,
-                        fontSize = 12.sp,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                        fontSize = 11.sp,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                     )
                 },
                 selected = selected,
@@ -58,11 +58,11 @@ fun AppBottomNavigationBar(navController: NavController) {
                     }
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = Color(0xFF00C896), // Brand Primary
-                    selectedTextColor = Color(0xFF00C896),
-                    unselectedIconColor = Color(0xFF9CA3AF), // Tailwind Gray-400
-                    unselectedTextColor = Color(0xFF9CA3AF),
-                    indicatorColor = Color(0xFF00C896).copy(alpha = 0.15f)
+                    selectedIconColor = Color(0xFF6366F1),
+                    selectedTextColor = Color(0xFF6366F1),
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    indicatorColor = Color(0xFF6366F1).copy(alpha = 0.12f)
                 )
             )
         }

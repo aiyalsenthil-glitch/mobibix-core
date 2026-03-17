@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Param, Query, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CompatibilityService } from './compatibility.service';
 import { CreatePhoneModelDto, SmartLinkModelsDto, UnlinkModelDto } from './dto/compatibility.dto';
@@ -91,5 +91,36 @@ export class CompatibilityAdminController {
   @ApiOperation({ summary: 'Merge all identified duplicates automatically' })
   async bulkMerge() {
     return this.compatibilityService.bulkMergeDuplicates();
+  }
+
+  // ─── Device Model Requests ───────────────────────────────────────────────
+
+  @Get('model-requests')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.COMPATIBILITY.VIEW)
+  @ApiOperation({ summary: 'List device model requests from shops' })
+  async listModelRequests(@Query('status') status?: string) {
+    return this.compatibilityService.listModelRequests(status ?? 'PENDING');
+  }
+
+  @Get('model-requests/count')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.COMPATIBILITY.VIEW)
+  @ApiOperation({ summary: 'Count pending model requests' })
+  async pendingCount() {
+    const count = await this.compatibilityService.getPendingModelRequestCount();
+    return { count };
+  }
+
+  @Post('model-requests/:id/approve')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.COMPATIBILITY.MANAGE)
+  @ApiOperation({ summary: 'Approve a model request and add to DB' })
+  async approveRequest(@Param('id') id: string, @Req() req: any) {
+    return this.compatibilityService.approveModelRequest(id, req.user?.userId ?? 'admin');
+  }
+
+  @Post('model-requests/:id/reject')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.COMPATIBILITY.MANAGE)
+  @ApiOperation({ summary: 'Reject a model request' })
+  async rejectRequest(@Param('id') id: string, @Req() req: any) {
+    return this.compatibilityService.rejectModelRequest(id, req.user?.userId ?? 'admin');
   }
 }

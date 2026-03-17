@@ -186,6 +186,11 @@ const envSchema = z.object({
   REDIS_HOST: z.string().optional().describe('Redis host'),
   REDIS_PORT: z.string().optional().describe('Redis port'),
   REDIS_PASSWORD: z.string().optional().describe('Redis password'),
+
+  // E-Way Bill (NIC API)
+  NIC_EWB_SANDBOX: z.string().optional().describe('true = use NIC sandbox URL'),
+  NIC_CREDENTIAL_SECRET: z.string().optional().describe('32-byte hex key for AES-256-GCM encryption of per-shop NIC passwords'),
+  GOOGLE_MAPS_API_KEY: z.string().optional().describe('Google Maps Distance Matrix API key for E-Way Bill distance auto-fill'),
 });
 
 /**

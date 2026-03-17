@@ -5,7 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -58,18 +58,19 @@ class StockLedgerViewModel @Inject constructor(private val stockLedgerApi: Stock
 fun StockLedgerScreen(
     navController: NavController,
     shopContextProvider: ShopContextProvider,
+    filterProductId: String? = null,
     viewModel: StockLedgerViewModel = hiltViewModel()
 ) {
     val activeShopId by shopContextProvider.activeShopIdFlow.collectAsState()
     val state by viewModel.state.collectAsState()
 
-    LaunchedEffect(activeShopId) { activeShopId?.let { viewModel.load(it) } }
+    LaunchedEffect(activeShopId, filterProductId) { activeShopId?.let { viewModel.load(it, filterProductId) } }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Stock Ledger", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") } },
+                navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }

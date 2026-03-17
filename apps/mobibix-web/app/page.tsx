@@ -21,14 +21,29 @@ export const metadata: Metadata = {
     "mobile shop inventory management",
     "billing app for mobile shop",
   ],
+  alternates: { canonical: "/" },
   openGraph: {
     title: "MobiBix — The Retail OS for Indian Mobile Shops",
     description:
       "Track IMEI, manage repairs, generate GST bills and run your mobile shop from anywhere. Start 14-day free trial.",
     url: "https://REMOVED_DOMAIN",
     siteName: "MobiBix",
+    images: [
+      {
+        url: "/assets/og-banner.png",
+        width: 1200,
+        height: 630,
+        alt: "MobiBix — The Modern OS for Mobile Retailers",
+      }
+    ],
     locale: "en_IN",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MobiBix — The Retail OS for Indian Mobile Shops",
+    description: "WhatsApp notifications, GST billing, and IMEI tracking for modern mobile shops.",
+    images: ["/assets/og-banner.png"],
   },
 };
 
@@ -50,6 +65,20 @@ export default function HomePage() {
       name: "MobiBix",
       url: "https://REMOVED_DOMAIN",
     },
+  };
+
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "url": "https://REMOVED_DOMAIN",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://REMOVED_DOMAIN/search?q={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    }
   };
 
   const faqSchema = {
@@ -96,6 +125,10 @@ export default function HomePage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
       />
       <script
         type="application/ld+json"

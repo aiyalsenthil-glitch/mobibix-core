@@ -547,6 +547,80 @@ export class CompatibilityService {
     return { success: true };
   }
 
+  // ─── Device Model Requests ───────────────────────────────────────────────
+
+  async requestDeviceModel(tenantId: string, requestedBy: string, rawInput: string) {
+    const parts = rawInput.trim().split(/\s+/);
+    const parsedBrand = parts[0] ?? rawInput;
+    const parsedModel = parts.slice(1).join(' ') || rawInput;
+
+    // Upsert: if same brand+model was already requested, just increment count
+    const existing = await this.prisma.deviceModelRequest.findFirst({
+      where: {
+        parsedBrand: { equals: parsedBrand, mode: 'insensitive' },
+        parsedModel: { equals: parsedModel, mode: 'insensitive' },
+        status: 'PENDING',
+      },
+    });
+
+    if (existing) {
+      return this.prisma.deviceModelRequest.update({
+        where: { id: existing.id },
+        data: { count: { increment: 1 } },
+      });
+    }
+
+    return this.prisma.deviceModelRequest.create({
+      data: {
+        rawInput,
+        parsedBrand,
+        parsedModel,
+        tenantId,
+        requestedBy,
+        status: 'PENDING',
+      },
+    });
+  }
+
+  async listModelRequests(status = 'PENDING') {
+    return this.prisma.deviceModelRequest.findMany({
+      where: status !== 'ALL' ? { status } : undefined,
+      orderBy: [{ count: 'desc' }, { createdAt: 'desc' }],
+    });
+  }
+
+  async approveModelRequest(id: string, resolvedBy: string) {
+    const req = await this.prisma.deviceModelRequest.findUnique({ where: { id } });
+    if (!req) throw new Error('Request not found');
+
+    // Create the phone model
+    const phoneModel = await this.createPhoneModel({
+      brandName: req.parsedBrand,
+      modelName: req.parsedModel,
+    });
+
+    await this.prisma.deviceModelRequest.update({
+      where: { id },
+      data: { status: 'APPROVED', resolvedAt: new Date(), resolvedBy },
+    });
+
+    return phoneModel;
+  }
+
+  async rejectModelRequest(id: string, resolvedBy: string) {
+    const req = await this.prisma.deviceModelRequest.findUnique({ where: { id } });
+    if (!req) throw new Error('Request not found');
+
+    return this.prisma.deviceModelRequest.update({
+      where: { id },
+      data: { status: 'REJECTED', resolvedAt: new Date(), resolvedBy },
+    });
+  }
+
+  async getPendingModelRequestCount() {
+    return this.prisma.deviceModelRequest.count({ where: { status: 'PENDING' } });
+  }
+
   async submitFeedback(dto: CreateFeedbackDto) {
     return this.prisma.compatibilityFeedback.create({
       data: {

@@ -3,6 +3,8 @@ package com.aiyal.mobibix.ui.features.crm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aiyal.mobibix.core.shop.ShopContextProvider
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.CreateFollowUpRequest
 import com.aiyal.mobibix.data.network.CrmDashboardStats
 import com.aiyal.mobibix.data.network.FollowUp
@@ -25,7 +27,8 @@ data class CrmUiState(
 @HiltViewModel
 class CrmViewModel @Inject constructor(
     private val repository: CrmRepository,
-    private val shopContextProvider: ShopContextProvider
+    private val shopContextProvider: ShopContextProvider,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CrmUiState())
@@ -36,20 +39,13 @@ class CrmViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                // Parallel fetch
                 val stats = repository.getStats(shopId)
                 val followUps = repository.getFollowUps(shopId, status = "PENDING")
-                
-                _uiState.value = _uiState.value.copy(
-                    stats = stats,
-                    followUps = followUps,
-                    isLoading = false
-                )
+                _uiState.value = _uiState.value.copy(stats = stats, followUps = followUps, isLoading = false)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = e.message ?: "Failed to load CRM data"
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -58,9 +54,11 @@ class CrmViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 repository.completeFollowUp(id)
-                loadData() // Refresh
+                loadData()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = "Failed to complete task")
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(error = msg)
             }
         }
     }
@@ -69,13 +67,13 @@ class CrmViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSaving = true)
             try {
-                repository.createFollowUp(
-                    CreateFollowUpRequest(customerId, type, dueDate, note, priority)
-                )
+                repository.createFollowUp(CreateFollowUpRequest(customerId, type, dueDate, note, priority))
                 onSuccess()
                 loadData()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = "Failed to create follow-up", isSaving = false)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(error = msg, isSaving = false)
             }
         }
     }

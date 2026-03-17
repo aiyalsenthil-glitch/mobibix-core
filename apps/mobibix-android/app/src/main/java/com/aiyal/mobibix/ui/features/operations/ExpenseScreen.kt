@@ -9,7 +9,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -60,7 +60,7 @@ fun ExpenseScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Expenses", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") } },
+                navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
@@ -172,7 +172,7 @@ private fun AddExpenseDialog(
                             onValueChange = {}, readOnly = true,
                             label = { Text("Category") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                         )
                         ExposedDropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }) {
                             categories.forEach { cat ->
@@ -192,8 +192,8 @@ private fun AddExpenseDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val amt = amount.toDoubleOrNull() ?: return@Button
-                    onSave(CreateExpenseDto(shopId = shopId, categoryId = selectedCategoryId, amount = amt, description = description, paymentMode = paymentMode))
+                    val amt = amount.toIntOrNull() ?: amount.toDoubleOrNull()?.toInt() ?: return@Button
+                    onSave(CreateExpenseDto(shopId = shopId, categoryId = selectedCategoryId, amount = amt, paymentMethod = paymentMode, note = description.takeIf { it.isNotBlank() }))
                 },
                 enabled = description.isNotBlank() && amount.isNotBlank() && !saving
             ) { if (saving) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp) else Text("Save") }

@@ -1,4 +1,10 @@
 import { NestFactory } from '@nestjs/core';
+
+// Handle BigInt serialization for JSON.stringify (used by Express/NestJS)
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { AppModule } from './app.module';
@@ -220,7 +226,6 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   WhatsAppConfigValidator.validateOrExit();
 
-  console.log(`📡 Attempting to listen on port ${port}...`);
   await app.listen(port);
 
   const logger = new Logger('Bootstrap');

@@ -1,22 +1,16 @@
+
 import { PrismaClient } from '@prisma/client';
-
 const prisma = new PrismaClient();
-
 async function main() {
-  const plans = await prisma.plan.findMany({
-    include: {
-      planPrices: true,
-    },
+  const plan = await prisma.plan.findFirst({
+    where: { code: 'WA_OFFICIAL_BUSINESS' },
   });
+  console.log('PLAN ID:', plan?.id);
+  console.log('PLAN MODULE:', plan?.module);
 
-  console.log(JSON.stringify(plans, null, 2));
+  const user = await prisma.user.findFirst({
+    where: { email: 'senthilsfour@gmail.com' },
+  });
+  console.log('USER TENANT ID:', user?.tenantId);
 }
-
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main().finally(() => prisma.$disconnect());

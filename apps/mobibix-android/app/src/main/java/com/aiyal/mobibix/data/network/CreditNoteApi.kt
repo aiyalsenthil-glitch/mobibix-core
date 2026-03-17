@@ -73,7 +73,12 @@ data class ApplyCreditNoteDto(
 
 data class VoidCreditNoteDto(val reason: String)
 
-data class CreditNoteListResponse(val data: List<CreditNote> = emptyList())
+data class CreditNoteListResponse(
+    val data: List<CreditNote> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val totalPages: Int = 1
+)
 
 // ─── API ─────────────────────────────────────────────────────────────────────
 
@@ -87,7 +92,7 @@ interface CreditNoteApi {
         @Query("search") search: String? = null,
         @Query("page") page: Int? = null,
         @Query("limit") limit: Int? = null
-    ): List<CreditNote>
+    ): CreditNoteListResponse
 
     @GET("api/mobileshop/shops/{shopId}/credit-notes/{id}")
     suspend fun getCreditNote(

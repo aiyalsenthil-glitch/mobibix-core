@@ -157,7 +157,7 @@ fun JobDetailScreen(
     // ── Dialogs & Bottom Sheets ──
     if (showStatusSheet && job != null) {
         StatusTransitionBottomSheet(
-            currentStatus = job.status,
+            currentStatus = job.status ?: JobStatus.RECEIVED,
             advancePaid = job.advancePaid,
             onDismiss = { showStatusSheet = false },
             onStatusSelected = { status ->
@@ -214,7 +214,7 @@ fun JobDetailScreen(
                     IconButton(onClick = { showShareDialog = true }) {
                         Icon(Icons.Outlined.Share, "Share")
                     }
-                    job?.let { Box(Modifier.padding(end = 8.dp)) { JobStatusChip(it.status) } }
+                    job?.let { Box(Modifier.padding(end = 8.dp)) { JobStatusChip(it.status ?: JobStatus.UNKNOWN) } }
                 },
                 scrollBehavior = scrollBehavior
             )

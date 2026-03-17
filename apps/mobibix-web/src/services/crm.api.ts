@@ -54,7 +54,9 @@ export interface FollowUp {
   shopId?: string;
   customerId: string;
   customerName?: string;
+  customerPhone?: string;
   type: FollowUpType;
+
   purpose: string;
   status: FollowUpStatus;
   followUpAt: string | Date;

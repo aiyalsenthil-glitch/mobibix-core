@@ -120,6 +120,40 @@ export class WhatsAppOnboardingController {
     }
   }
 
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.ONBOARD_CONNECT)
+  @Post('switch-provider')
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
+  @Roles(UserRole.ADMIN, UserRole.OWNER)
+  async switchProvider(
+    @Req() req,
+    @Body() body: { provider: 'META_CLOUD' | 'WEB_SOCKET' | 'AUTHKEY' },
+  ) {
+    const tenantId = req.user.tenantId;
+    return this.onboardingService.switchProvider(tenantId, body.provider);
+  }
+
+  /**
+   * Configure Authkey credentials for Official WhatsApp mode.
+   * POST /integrations/whatsapp/configure-REMOVED_TOKEN
+   * Body: { apiKey, senderId, phoneNumber }
+   */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.ONBOARD_CONNECT)
+  @Post('configure-REMOVED_TOKEN')
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard, WhatsAppCrmSubscriptionGuard)
+  @Roles(UserRole.ADMIN, UserRole.OWNER)
+  async configureAuthkey(
+    @Req() req,
+    @Body() body: { apiKey: string; senderId: string; phoneNumber: string },
+  ) {
+    const tenantId = req.user.tenantId;
+    return this.onboardingService.configureAuthkey(
+      tenantId,
+      body.apiKey,
+      body.senderId,
+      body.phoneNumber,
+    );
+  }
+
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.DISCONNECT)
   @Post('disconnect')
   @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
@@ -128,5 +162,28 @@ export class WhatsAppOnboardingController {
     const tenantId = req.user.tenantId;
     await this.onboardingService.disconnect(tenantId);
     return { success: true, message: 'Disconnected successfully' };
+  }
+
+  /**
+   * Meta Embedded Signup — called from frontend after FB.login() succeeds.
+   * Accepts the authorization code returned by the FB SDK popup.
+   * POST /integrations/whatsapp/meta-exchange
+   * Body: { code, wabaId?, phoneNumberId? }
+   */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.ONBOARD_CONNECT)
+  @Post('meta-exchange')
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
+  @Roles(UserRole.ADMIN, UserRole.OWNER)
+  async metaExchange(
+    @Req() req,
+    @Body() body: { code: string; wabaId?: string; phoneNumberId?: string },
+  ) {
+    const tenantId = req.user.tenantId;
+    return this.onboardingService.metaExchange(
+      tenantId,
+      body.code,
+      body.wabaId,
+      body.phoneNumberId,
+    );
   }
 }

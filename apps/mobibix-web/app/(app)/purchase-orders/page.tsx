@@ -30,6 +30,7 @@ import {
   XCircle
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { PriceAlertsBanner } from "@/components/inventory/PriceAlertsBanner";
 
 const STATUS_CONFIG: Record<POStatus, { label: string; color: string; icon: any }> = {
   DRAFT: { label: "Draft", color: "bg-gray-500/15 text-gray-400 border-gray-500/20", icon: FileText },
@@ -111,6 +112,9 @@ export default function PurchaseOrdersPage() {
             <span>Create PO</span>
           </button>
         </div>
+
+        {/* Price Drop Alerts */}
+        {selectedShopId && <PriceAlertsBanner shopId={selectedShopId} />}
 
         {/* Toolbar */}
         <div className={`mb-6 p-4 rounded-xl border flex flex-col md:flex-row gap-4 justify-between items-center ${

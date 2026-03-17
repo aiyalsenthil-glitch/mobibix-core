@@ -246,7 +246,7 @@ fun PremiumJobCard(job: JobCardResponse, onClick: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                JobStatusChip(job.status)
+                JobStatusChip(job.status ?: JobStatus.UNKNOWN)
             }
 
             // ── Customer & device ──

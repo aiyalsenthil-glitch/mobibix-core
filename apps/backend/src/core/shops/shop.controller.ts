@@ -11,6 +11,15 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
+import { IsOptional, IsString } from 'class-validator';
+
+class UpdateNicCredentialsDto {
+  @IsString()
+  nicUsername: string;
+
+  @IsString()
+  nicPassword: string; // plain text — will be encrypted in service
+}
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ShopService } from './shop.service';
 import { CreateShopDto } from './dto/create-shop.dto';
@@ -138,6 +147,26 @@ export class ShopController {
       shopId,
       documentType,
       dto,
+    );
+  }
+
+  /**
+   * PATCH /mobileshop/shops/:shopId/nic-credentials
+   * Save NIC e-waybill username + password (encrypted) for this shop.
+   * Only OWNER role.
+   */
+  @Patch(':shopId/nic-credentials')
+  @Roles(UserRole.OWNER)
+  updateNicCredentials(
+    @Req() req: any,
+    @Param('shopId') shopId: string,
+    @Body() dto: UpdateNicCredentialsDto,
+  ) {
+    return this.shopService.updateNicCredentials(
+      req.user.tenantId,
+      shopId,
+      dto.nicUsername,
+      dto.nicPassword,
     );
   }
 }

@@ -32,9 +32,10 @@ data class Receipt(
 
 data class CreateReceiptRequest(
     val paymentMethod: String,
-    val amount: Double,
+    val amount: Int, // integer Rupees — backend converts to Paisa
     val receiptType: ReceiptType,
     val customerName: String,
+    val shopId: String? = null,
     val customerId: String? = null,
     val customerPhone: String? = null,
     val linkedInvoiceId: String? = null,
@@ -49,7 +50,7 @@ data class ReceiptsListResponse(
 )
 
 interface ReceiptApi {
-    @GET("api/mobileshop/receipts")
+    @GET("api/receipts")
     suspend fun getReceipts(
         @Query("startDate") startDate: String? = null,
         @Query("endDate") endDate: String? = null,
@@ -59,9 +60,9 @@ interface ReceiptApi {
         @Query("take") take: Int? = null
     ): ReceiptsListResponse
 
-    @POST("api/mobileshop/receipts")
+    @POST("api/receipts")
     suspend fun createReceipt(@Body request: CreateReceiptRequest): Receipt
 
-    @POST("api/mobileshop/receipts/{id}/cancel")
+    @POST("api/receipts/{id}/cancel")
     suspend fun cancelReceipt(@Path("id") id: String, @Body body: Map<String, String>): Receipt
 }

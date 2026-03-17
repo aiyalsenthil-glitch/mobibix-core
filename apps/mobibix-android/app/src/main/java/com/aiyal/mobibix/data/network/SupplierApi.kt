@@ -33,7 +33,7 @@ data class SupplierListResponse(
 
 interface SupplierApi {
     @GET("api/suppliers")
-    suspend fun listSuppliers(): List<Supplier> // Backend sometimes returns array directly
+    suspend fun listSuppliers(): SupplierListResponse
 
     @POST("api/suppliers")
     suspend fun createSupplier(@Body data: CreateSupplierDto): Supplier

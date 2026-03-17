@@ -35,6 +35,13 @@ fun AddEditProductScreen(
     var hsnCode by remember { mutableStateOf("") }
     var isSerialized by remember { mutableStateOf(false) }
 
+    // Load products if navigated directly to edit without going through list first
+    LaunchedEffect(isEdit) {
+        if (isEdit && uiState.products.isEmpty()) {
+            viewModel.loadProducts()
+        }
+    }
+
     LaunchedEffect(productId, uiState.products) {
         if (isEdit && uiState.products.isNotEmpty()) {
             uiState.products.find { it.id == productId }?.let {
@@ -42,7 +49,9 @@ fun AddEditProductScreen(
                 category = it.category ?: ""
                 salePrice = (it.salePrice?.div(100.0))?.toString() ?: ""
                 costPrice = (it.costPrice?.div(100.0))?.toString() ?: ""
-                // TODO: Populate gstRate, hsnCode, etc. from DTO
+                gstRate = it.gstRate?.toString() ?: "18.0"
+                hsnCode = it.hsnCode ?: ""
+                isSerialized = it.isSerialized
             }
         }
     }

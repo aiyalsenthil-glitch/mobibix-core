@@ -13,7 +13,6 @@ export const metadata: Metadata = {
   description:
     "Run your mobile shop smarter. IMEI tracking, repair management, GST billing and customer records — all in one platform built for Indian mobile retailers.",
   metadataBase: new URL("https://REMOVED_DOMAIN"),
-  alternates: { canonical: "/" },
   applicationName: "MobiBix",
   manifest: "/manifest.json",
   icons: { 
@@ -27,10 +26,10 @@ export const metadata: Metadata = {
     siteName: "MobiBix",
     images: [
       {
-        url: "/assets/mobibix-app-icon.png",
-        width: 800,
-        height: 600,
-        alt: "MobiBix POS Dashboard Preview",
+        url: "/assets/og-banner.png",
+        width: 1200,
+        height: 630,
+        alt: "MobiBix — The Modern OS for Mobile Retailers",
       }
     ],
     locale: "en_IN",
@@ -38,9 +37,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "MobiBix — Mobile Shop POS & Retail OS",
-    description: "Complete OS for mobile retailers. Manage IMEI, repairs, and GST billing.",
-    images: ["/assets/mobibix-app-icon.png"],
+    title: "MobiBix — The Retail OS for Indian Mobile Shops",
+    description: "WhatsApp notifications, GST billing, and IMEI tracking for modern mobile shops.",
+    images: ["/assets/og-banner.png"],
     creator: "@mobibix",
   },
   robots: {

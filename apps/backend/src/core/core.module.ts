@@ -28,6 +28,7 @@ import { SystemModule } from './system/system.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { AppConfigModule } from './config/config.module';
 import { AiModule } from './ai/ai.module';
+import { CommissionModule } from './commission/commission.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { AiModule } from './ai/ai.module';
     PermissionsModule,
     AppConfigModule,
     AiModule,
+    CommissionModule,
   ],
   exports: [
     AuthModule,

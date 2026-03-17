@@ -1,6 +1,7 @@
 package com.aiyal.mobibix.ui.features.jobs
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -11,12 +12,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,6 +31,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.aiyal.mobibix.ui.features.customers.CustomerViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -39,16 +45,31 @@ private fun isValidIndianPhoneNumber(phone: String): Boolean {
 fun CreateJobScreen(
     shopId: String,
     navController: NavController,
-    viewModel: CreateJobViewModel = hiltViewModel()
+    viewModel: CreateJobViewModel = hiltViewModel(),
+    customerViewModel: CustomerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var currentStep by remember { mutableStateOf(1) }
+    var showCustomerPicker by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) { customerViewModel.loadCustomers() }
 
     LaunchedEffect(uiState.success) {
         if (uiState.success) {
             viewModel.resetState()
             navController.popBackStack()
         }
+    }
+
+    if (showCustomerPicker) {
+        JobCustomerPickerDialog(
+            customerViewModel = customerViewModel,
+            onDismiss = { showCustomerPicker = false },
+            onCustomerSelected = { name, phone ->
+                viewModel.updateFormData(uiState.formData.copy(customerName = name, customerPhone = phone))
+                showCustomerPicker = false
+            }
+        )
     }
 
     fun isStep1Valid() = uiState.formData.customerName.isNotBlank() && isValidIndianPhoneNumber(uiState.formData.customerPhone)
@@ -125,7 +146,7 @@ fun CreateJobScreen(
             Crossfade(targetState = currentStep, label = "job_creation_steps") { step ->
                 Column(modifier = Modifier.padding(vertical = 16.dp)) {
                     when (step) {
-                        1 -> Step1CustomerInfo(uiState.formData, viewModel::updateFormData)
+                        1 -> Step1CustomerInfo(uiState.formData, viewModel::updateFormData, onSearchCustomer = { showCustomerPicker = true })
                         2 -> Step2DeviceDetails(uiState.formData, viewModel::updateFormData)
                         3 -> Step3JobSpecifics(uiState.formData, viewModel::updateFormData)
                     }
@@ -148,13 +169,28 @@ private fun FormStep(title: String, content: @Composable () -> Unit) {
 @Composable
 private fun Step1CustomerInfo(
     formData: CreateJobFormData,
-    onFormDataChange: (CreateJobFormData) -> Unit
+    onFormDataChange: (CreateJobFormData) -> Unit,
+    onSearchCustomer: () -> Unit = {}
 ) {
     val showPhoneError = formData.customerPhone.isNotBlank() && !isValidIndianPhoneNumber(formData.customerPhone)
     val showAltPhoneError = formData.customerAltPhone.isNotBlank() && !isValidIndianPhoneNumber(formData.customerAltPhone)
 
     FormStep(title = "Customer Information") {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedButton(onClick = onSearchCustomer, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.size(6.dp))
+                Text("Search Existing Customer")
+            }
+            if (formData.customerName.isNotBlank()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Person, contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.size(4.dp))
+                    Text("Selected: ${formData.customerName}", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary)
+                }
+            }
             OutlinedTextField(
                 value = formData.customerName,
                 onValueChange = { onFormDataChange(formData.copy(customerName = it)) },
@@ -342,3 +378,64 @@ private fun Step3JobSpecifics(
 }
 
 private val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+
+@Composable
+private fun JobCustomerPickerDialog(
+    customerViewModel: CustomerViewModel,
+    onDismiss: () -> Unit,
+    onCustomerSelected: (name: String, phone: String) -> Unit
+) {
+    val uiState by customerViewModel.uiState.collectAsState()
+    var query by remember { mutableStateOf("") }
+
+    val filtered by remember(query, uiState.customers) {
+        derivedStateOf {
+            if (query.isBlank()) uiState.customers
+            else uiState.customers.filter {
+                it.name.contains(query, ignoreCase = true) ||
+                it.phone.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select Customer") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = query, onValueChange = { query = it },
+                    placeholder = { Text("Search by name or phone") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true
+                )
+                Spacer(Modifier.height(8.dp))
+                if (uiState.loading) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally).padding(16.dp))
+                } else if (filtered.isEmpty()) {
+                    Text(
+                        if (query.isBlank()) "No customers found" else "No match for \"$query\"",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                } else {
+                    LazyColumn(modifier = Modifier.height(300.dp)) {
+                        items(filtered.take(50)) { customer ->
+                            ListItem(
+                                headlineContent = { Text(customer.name) },
+                                supportingContent = { Text(customer.phone) },
+                                modifier = Modifier.clickable {
+                                    onCustomerSelected(customer.name, customer.phone)
+                                }
+                            )
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}

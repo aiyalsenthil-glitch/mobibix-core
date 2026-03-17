@@ -47,8 +47,8 @@ class QuotationViewModel @Inject constructor(
         viewModelScope.launch {
             _listState.value = QuotationListState(loading = true)
             try {
-                val list = quotationApi.listQuotations(shopId, status = statusFilter)
-                _listState.value = QuotationListState(loading = false, quotations = list)
+                val response = quotationApi.listQuotations(shopId, status = statusFilter)
+                _listState.value = QuotationListState(loading = false, quotations = response.data)
             } catch (e: Exception) {
                 _listState.value = QuotationListState(loading = false, error = MobiError.extractMessage(e))
             }

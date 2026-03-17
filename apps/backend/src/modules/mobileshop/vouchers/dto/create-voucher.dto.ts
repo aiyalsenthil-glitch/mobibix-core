@@ -9,6 +9,10 @@ import {
 import { PaymentMode, VoucherType, VoucherSubType } from '@prisma/client';
 
 export class CreateVoucherDto {
+  @IsOptional()
+  @IsString()
+  shopId?: string;
+
   @IsEnum(PaymentMode)
   paymentMethod: PaymentMode;
 

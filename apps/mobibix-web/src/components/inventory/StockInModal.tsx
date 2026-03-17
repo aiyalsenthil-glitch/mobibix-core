@@ -110,7 +110,7 @@ export function StockInModal({
                       >
                         <div className="font-medium">{product.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          Stock: {product.stockQty || 0} | Price: ₹{(product.salePrice / 100).toFixed(2)}
+                          Stock: {product.stockQty || 0} | Price: ₹{product.salePrice.toFixed(2)}
                         </div>
                       </button>
                     ))

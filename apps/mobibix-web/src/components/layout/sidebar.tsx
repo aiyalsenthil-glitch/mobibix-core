@@ -34,6 +34,8 @@ import {
   CalendarDays,
   Activity,
   BarChart2,
+  Printer,
+  ArrowLeftRight,
 } from "lucide-react";
 import { AiQuotaBadge } from "@/components/common/AiQuotaBadge";
 
@@ -51,6 +53,8 @@ const navItems: NavItem[] = [
   { label: "Job Cards", href: "/jobcards", icon: Wrench, requiredPermission: "mobile_shop.jobcard.view", category: "Transactions" },
   { label: "Quotations", href: "/quotations", icon: ClipboardList, requiredPermission: "mobile_shop.quotation.view", category: "Transactions" },
   { label: "Credit Notes", href: "/credit-notes", icon: FileMinus, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
+  { label: "Trade-in / Buyback", href: "/trade-in", icon: ArrowLeftRight, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
+  { label: "Consumer Finance", href: "/finance", icon: WalletCards, requiredPermission: "mobile_shop.sale.view", category: "Transactions" },
   { label: "Sales Receipts", href: "/receipts", icon: CreditCard, requiredPermission: "mobile_shop.receipt.view", category: "Transactions" },
   { label: "Payment Vouchers", href: "/vouchers", icon: Receipt, requiredPermission: "mobile_shop.voucher.view", category: "Transactions" },
   { label: "Customers", href: "/customers", icon: Users, requiredPermission: "mobile_shop.customer.view", category: "CRM & Marketing" },
@@ -68,6 +72,7 @@ const navItems: NavItem[] = [
   { label: "Shops", href: "/shops", icon: Store, requiredPermission: "core.settings.manage", category: "Management" },
   { label: "Staff Management", href: "/staff-management", icon: ShieldCheck, requiredPermission: "core.staff.manage", category: "Management" },
   { label: "Settings", href: "/settings", icon: Settings, requiredPermission: "core.settings.manage", category: "Management" },
+  { label: "Barcode Labels",       href: "/tools/barcode-labels",       icon: Printer,          requiredPermission: "mobile_shop.inventory.view",      category: "Tools" },
   { label: "Compatibility Finder", href: "/tools/compatibility-finder", icon: Sparkles,       requiredPermission: "mobile_shop.compatibility.view", category: "Tools" },
   { label: "Daily Closing",        href: "/tools/daily-closing",        icon: Lock,            requiredPermission: "core.daily_closing.view",         category: "Tools" },
   { label: "Expense Manager",      href: "/tools/expenses",             icon: WalletCards,     requiredPermission: "core.expense.view",               category: "Tools" },
@@ -134,9 +139,17 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     }
 
     loadCounts();
+    
+    const handleRefresh = () => loadCounts();
+    window.addEventListener("refresh-followup-counts", handleRefresh);
+
     const interval = setInterval(loadCounts, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("refresh-followup-counts", handleRefresh);
+    };
   }, [mounted, authUser]);
+
 
   useEffect(() => {
     setMounted(true);

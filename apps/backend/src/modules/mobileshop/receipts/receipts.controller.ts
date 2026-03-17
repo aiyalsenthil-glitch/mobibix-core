@@ -50,7 +50,7 @@ export class ReceiptsController extends TenantScopedController {
   ): Promise<ReceiptEntity> {
     return this.receiptsService.createReceipt(
       user.tenantId,
-      user.shopId,
+      (createReceiptDto as any).shopId || user.shopId,
       createReceiptDto,
       user.sub,
     );

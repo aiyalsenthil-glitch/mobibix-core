@@ -3,6 +3,7 @@ import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { GSTR1Service } from './gstr1.service';
 import { GSTR2Service } from './gstr2.service';
 import { AgingReportsService } from './aging-reports.service';
+import { DemandForecastService } from './demand-forecast.service';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
@@ -22,7 +23,20 @@ export class ReportsHardeningController {
     private readonly gstr1Service: GSTR1Service,
     private readonly gstr2Service: GSTR2Service,
     private readonly agingReportsService: AgingReportsService,
+    private readonly demandForecastService: DemandForecastService,
   ) {}
+
+  /**
+   * GET /reports/demand-forecast - Demand forecasting for inventory reorder planning
+   */
+  @RequirePermission(PERMISSIONS.CORE.REPORT.VIEW)
+  @Get('demand-forecast')
+  async getDemandForecast(
+    @Query('shopId') shopId: string,
+    @Request() req: any,
+  ) {
+    return this.demandForecastService.forecast(req.user.tenantId, shopId);
+  }
 
   /**
    * GET /gstr1 - Generate GSTR-1 sales register

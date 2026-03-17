@@ -32,10 +32,66 @@ export interface WhatsAppDashboard {
 }
 
 export interface WhatsAppStatus {
-  status: "ACTIVE" | "PENDING" | "FAILED" | "DISCONNECTED";
+  status: "ACTIVE" | "PENDING" | "FAILED" | "DISCONNECTED" | "SCAN_REQUIRED";
+  mode?: "WEB" | "OFFICIAL";
   wabaId: string | null;
   phoneNumberId: string | null;
   phoneNumber: string | null;
+  provider: "META_CLOUD" | "WEB_SOCKET" | "AUTHKEY";
+  REMOVED_TOKENSenderId?: string | null;
+}
+
+export async function switchWhatsAppProvider(provider: 'META_CLOUD' | 'WEB_SOCKET' | 'AUTHKEY'): Promise<{ requiresSetup?: boolean }> {
+  const response = await authenticatedFetch("/integrations/whatsapp/switch-provider", {
+    method: "POST",
+    body: JSON.stringify({ provider }),
+  });
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    const err: any = new Error(error?.message || "Failed to switch provider");
+    err.status = response.status;
+    throw err;
+  }
+  return extractData(response);
+}
+
+export interface ConfigureAuthkeyRequest {
+  apiKey: string;
+  senderId: string;
+  phoneNumber: string;
+}
+
+export async function configureAuthkey(data: ConfigureAuthkeyRequest): Promise<{ success: boolean; numberId: string }> {
+  const response = await authenticatedFetch("/integrations/whatsapp/configure-REMOVED_TOKEN", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    const err: any = new Error(error?.message || "Failed to configure Authkey");
+    err.status = response.status;
+    err.errorCode = error?.errorCode;
+    throw err;
+  }
+  return extractData(response);
+}
+
+export async function metaExchange(data: {
+  code: string;
+  wabaId?: string;
+  phoneNumberId?: string;
+}): Promise<{ success: boolean; phoneNumber: string; wabaId: string; tokenType: 'user' | 'system' }> {
+  const response = await authenticatedFetch("/integrations/whatsapp/meta-exchange", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    const err: any = new Error(error?.message || "Failed to connect Meta WhatsApp");
+    err.status = response.status;
+    throw err;
+  }
+  return extractData(response);
 }
 
 export interface ManualSyncRequest {
@@ -232,4 +288,39 @@ export async function connectWhatsApp(): Promise<{ url: string }> {
     throw new Error(error?.message || "Failed to initiate WhatsApp connection");
   }
   return extractData(response);
+}
+const WA_WEB_URL = process.env.NEXT_PUBLIC_WA_WEB_URL || 'http://localhost_REPLACED:3001';
+
+export async function connectWhatsAppWeb(tenantId: string): Promise<{ qr: string }> {
+  const response = await fetch(`${WA_WEB_URL}/whatsapp/connect`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tenantId }),
+  });
+  if (!response.ok) throw new Error("Failed to initialize WA Web");
+  return response.json();
+}
+
+export async function getWhatsAppWebStatus(tenantId: string): Promise<{ status: string; qr?: string; phoneNumber?: string; provider?: string }> {
+  const response = await fetch(`${WA_WEB_URL}/whatsapp/status/${tenantId}`);
+  if (!response.ok) throw new Error("Failed to fetch WA Web status");
+  return response.json();
+}
+
+export async function disconnectWhatsAppWeb(tenantId: string): Promise<void> {
+  await fetch(`${WA_WEB_URL}/whatsapp/disconnect`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tenantId }),
+  });
+}
+
+export async function clearWhatsAppInbox(tenantId: string): Promise<void> {
+  const response = await authenticatedFetch(`/whatsapp/logs/${tenantId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to clear inbox");
+  }
 }

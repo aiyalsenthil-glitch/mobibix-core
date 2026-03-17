@@ -5,6 +5,13 @@ export interface CreateOrderResponse {
   amount: number;
   currency: string;
   key: string;
+  expiresAt?: string;
+  idempotent?: boolean;
+}
+
+export interface CreateSubscriptionResponse {
+  subscriptionId: string;
+  key: string;
 }
 
 export interface VerifyPaymentResponse {
@@ -51,6 +58,52 @@ export async function verifyPayment(data: {
   }
 
   return extractData(response);
+}
+
+/**
+ * Create Razorpay AutoPay Subscription (recurring).
+ * Only MONTHLY and YEARLY are supported.
+ * Returns subscriptionId — pass to Razorpay checkout (not order_id).
+ */
+export async function createSubscriptionOrder(
+  planId: string,
+  billingCycle: 'MONTHLY' | 'YEARLY',
+): Promise<CreateSubscriptionResponse> {
+  const response = await authenticatedFetch('/payments/create-subscription', {
+    method: 'POST',
+    body: JSON.stringify({ planId, billingCycle }),
+  });
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error((error as any).message || 'Failed to create subscription');
+  }
+  return extractData(response);
+}
+
+/**
+ * Fetch available WhatsApp Official plans (WHATSAPP_CRM module addon plans).
+ */
+export interface WaPlanOption {
+  id: string;
+  code: string;
+  name: string;
+  tagline: string;
+  featuresJson: string[];
+  prices: {
+    billingCycle: string;
+    price: number;
+    REMOVED_PAYMENT_INFRAPlanId: string | null;
+  }[];
+}
+
+export async function getWaOfficialPlans(): Promise<WaPlanOption[]> {
+  const response = await authenticatedFetch('/plans/wa-addons');
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error((error as any).message || 'Failed to fetch WhatsApp plans');
+  }
+  const data: any = await extractData(response);
+  return Array.isArray(data) ? data : data?.data || [];
 }
 
 /**

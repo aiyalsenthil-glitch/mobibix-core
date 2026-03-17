@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
+import { BullModule } from '@nestjs/bullmq';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { WhatsAppSender } from './whatsapp.sender';
 import { WhatsAppCron } from './whatsapp.cron';
@@ -15,6 +16,8 @@ import { WhatsAppPhoneNumbersController } from './phone-numbers/whatsapp-phone-n
 import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
 import { WhatsAppVariableResolver } from './variable-resolver.service';
 import { BillingModule } from '../../core/billing/billing.module';
+import { EmailModule } from '../../common/email/email.module';
+import { MetaTokenExpiryCron } from './meta-token-expiry.cron';
 import { AutomationController } from './automation.controller';
 import { AutomationService } from './automation.service';
 import { AutomationSafetyService } from './automation-safety.service';
@@ -32,9 +35,17 @@ import { WhatsAppCrmEnabledGuard } from './guards/whatsapp-crm-enabled.guard';
 import { WhatsAppCrmPhoneNumberGuard } from './guards/whatsapp-crm-phone-number.guard';
 import { WhatsAppTokenService } from './whatsapp-token.service';
 import { WhatsAppRoutingService } from './whatsapp-routing.service';
+import { MetaProvider } from './providers/meta.provider';
+import { BaileysProvider } from './providers/baileys.provider';
+import { AuthkeyProvider } from './providers/REMOVED_TOKEN.provider';
+import { ProviderManager } from './providers/provider-manager.service';
 
 import { WhatsAppOnboardingController } from './onboarding/whatsapp-onboarding.controller';
 import { WhatsAppOnboardingService } from './onboarding/whatsapp-onboarding.service';
+import { FacebookDeletionController } from './facebook-deletion.controller';
+import { WhatsAppInboxGateway } from './inbox/whatsapp-inbox.gateway';
+import { WhatsAppInboxService } from './inbox/whatsapp-inbox.service';
+import { ConversationEngineService } from './automation/conversation-engine.service';
 
 @Module({
   controllers: [
@@ -47,8 +58,15 @@ import { WhatsAppOnboardingService } from './onboarding/whatsapp-onboarding.serv
     WhatsAppUserController,
     WhatsAppCrmController,
     WhatsAppOnboardingController, // ✅ Added
+    FacebookDeletionController,   // Meta Data Deletion Callback
   ],
-  imports: [ScheduleModule.forRoot(), BillingModule, ShopProductsModule],
+  imports: [
+    ScheduleModule.forRoot(), 
+    BillingModule,
+    EmailModule,
+    ShopProductsModule,
+    BullModule.registerQueue({ name: 'whatsapp-send' }),
+  ],
   providers: [
     PrismaService,
     WhatsAppSender,
@@ -72,7 +90,16 @@ import { WhatsAppOnboardingService } from './onboarding/whatsapp-onboarding.serv
     WhatsAppCrmPhoneNumberGuard,
     WhatsAppTokenService,
     WhatsAppRoutingService,
+    // Provider Adapter Architecture
+    MetaProvider,
+    BaileysProvider,
+    AuthkeyProvider,
+    ProviderManager,
     WhatsAppOnboardingService, // ✅ Added
+    MetaTokenExpiryCron,
+    ConversationEngineService,
+    WhatsAppInboxGateway,
+    WhatsAppInboxService,
   ],
   exports: [
     WhatsAppSender,

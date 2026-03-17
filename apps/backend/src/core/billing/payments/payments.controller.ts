@@ -13,6 +13,8 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { PaymentsService } from './payments.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { BillingType } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../../auth/guards/tenant.guard';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -34,6 +36,7 @@ export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly prisma: PrismaService,
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   // 🔒 CREATE RAZORPAY ORDER (JWT REQUIRED)
@@ -254,5 +257,77 @@ export class PaymentsController {
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
     }));
+  }
+
+  // ─────────────────────────────────────────────
+  // 🔒 CREATE AUTOPAY SUBSCRIPTION (RAZORPAY)
+  // Returns Razorpay subscriptionId so the frontend can open the checkout.
+  // Webhook subscription.activated → activates the TenantSubscription.
+  // Only MONTHLY and YEARLY are supported (QUARTERLY has no Razorpay plan).
+  // ─────────────────────────────────────────────
+  @RequirePermission(PERMISSIONS.CORE.BILLING.MANAGE)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('create-subscription')
+  async createAutoPaySubscription(
+    @Req() req: any,
+    @Body() body: { planId: string; billingCycle: 'MONTHLY' | 'YEARLY' },
+  ) {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) throw new BadRequestException('Tenant not found');
+
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new BadRequestException('Tenant does not exist');
+
+    const normalizedType = (tenant.tenantType || '').toUpperCase().replace(/[\s_-]/g, '');
+    const tenantModule =
+      normalizedType === 'MOBILESHOP'
+        ? ModuleType.MOBILE_SHOP
+        : normalizedType === 'GYM'
+          ? ModuleType.GYM
+          : undefined;
+
+    if (!tenantModule) throw new BadRequestException('Unsupported tenant module');
+
+    const plan = await this.prisma.plan.findUnique({ where: { id: body.planId } });
+    if (!plan || !plan.isActive || !plan.isPublic) {
+      throw new BadRequestException('Plan not available for purchase');
+    }
+    if (plan.module !== tenantModule && plan.module !== ModuleType.WHATSAPP_CRM) {
+      throw new ForbiddenException('Plan module does not match tenant');
+    }
+
+    // Ensure PlanPrice has REMOVED_PAYMENT_INFRAPlanId (set by init-wa-REMOVED_PAYMENT_INFRA-plans script)
+    const planPrice = await this.prisma.planPrice.findUnique({
+      where: {
+        planId_billingCycle_currency: {
+          planId: body.planId,
+          billingCycle: body.billingCycle,
+          currency: tenant.currency || 'INR',
+        },
+      },
+    });
+    if (!planPrice?.REMOVED_PAYMENT_INFRAPlanId) {
+      throw new BadRequestException(
+        `AutoPay is not configured for this plan/cycle. Run the Razorpay plan init script first, or use single payment instead.`,
+      );
+    }
+
+    try {
+      const result = await this.subscriptionsService.buyPlanPhase1({
+        tenantId,
+        planId: body.planId,
+        module: tenantModule,
+        billingCycle: body.billingCycle,
+        billingType: BillingType.AUTOPAY,
+      });
+
+      return {
+        subscriptionId: result.subscriptionId,
+        key: process.env.RAZORPAY_KEY_ID,
+      };
+    } catch (err: any) {
+      if (err?.status) throw err;
+      throw new InternalServerErrorException(err?.message || 'Failed to create subscription');
+    }
   }
 }

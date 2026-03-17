@@ -2,6 +2,8 @@ package com.aiyal.mobibix.ui.features.finance.vouchers
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.CreateVoucherRequest
 import com.aiyal.mobibix.data.network.PaymentVoucher
 import com.aiyal.mobibix.data.network.VoucherType
@@ -22,7 +24,8 @@ data class VoucherUiState(
 
 @HiltViewModel
 class VoucherViewModel @Inject constructor(
-    private val voucherRepository: VoucherRepository
+    private val voucherRepository: VoucherRepository,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VoucherUiState())
@@ -35,20 +38,23 @@ class VoucherViewModel @Inject constructor(
                 val list = voucherRepository.getVouchers()
                 _uiState.value = _uiState.value.copy(isLoading = false, vouchers = list)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
 
-    fun createVoucher(amount: Double, method: String, type: VoucherType, narration: String?, category: String?) {
+    fun createVoucher(amount: Double, method: String, type: VoucherType, narration: String?, category: String?, shopId: String?) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 voucherRepository.createVoucher(
                     CreateVoucherRequest(
                         paymentMethod = method,
-                        amount = amount,
+                        amount = amount.toInt(),
                         voucherType = type,
+                        shopId = shopId,
                         narration = narration,
                         expenseCategory = category
                     )
@@ -56,7 +62,9 @@ class VoucherViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
                 loadVouchers()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }

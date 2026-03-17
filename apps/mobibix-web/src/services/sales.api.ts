@@ -66,6 +66,8 @@ export interface SalesInvoice {
     problem: string;
   };
   whatsappSent?: boolean;
+  upiQrCode?: string;
+  customerDistanceKm?: number | null;
 }
 
 export interface InvoiceItemDetail {
@@ -299,6 +301,20 @@ export async function cancelInvoice(invoiceId: string): Promise<SalesInvoice> {
     throw new Error((error as any).message || "Failed to cancel invoice");
   }
 
+  return extractData(response);
+}
+
+export async function shareInvoiceWhatsApp(
+  invoiceId: string
+): Promise<{ success: boolean; phone: string }> {
+  const response = await authenticatedFetch(
+    `/mobileshop/sales/invoice/${invoiceId}/share/whatsapp`,
+    { method: "POST" }
+  );
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to send WhatsApp");
+  }
   return extractData(response);
 }
 

@@ -12,7 +12,7 @@ class SupplierRepositoryImpl @Inject constructor(
     private val supplierApi: SupplierApi
 ) : SupplierRepository {
     override suspend fun listSuppliers(): List<Supplier> {
-        return supplierApi.listSuppliers()
+        return supplierApi.listSuppliers().data
     }
 
     override suspend fun createSupplier(data: CreateSupplierDto): Supplier {

@@ -34,6 +34,11 @@ export enum WhatsAppFeature {
   WHATSAPP_AUTOMATION = 'WHATSAPP_AUTOMATION',
   WHATSAPP_TEAM_INBOX = 'WHATSAPP_TEAM_INBOX',
   WHATSAPP_WEBHOOKS = 'WHATSAPP_WEBHOOKS',
+  /**
+   * Gates access to the Official WhatsApp API (Authkey / Meta Cloud).
+   * Without this feature, tenants can only use Web Mode (Baileys QR).
+   * Included in: WA_OFFICIAL_STARTER, WA_OFFICIAL_PRO, WA_OFFICIAL_BUSINESS addon plans.
+   */
   WHATSAPP_API_ACCESS = 'WHATSAPP_API_ACCESS',
   WHATSAPP_CRM = 'WHATSAPP_CRM',
 }

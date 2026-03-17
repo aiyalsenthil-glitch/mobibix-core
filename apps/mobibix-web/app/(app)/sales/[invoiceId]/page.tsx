@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useDeferredAsyncData } from "@/hooks/useDeferredAsyncData";
-import { getInvoice, type SalesInvoice } from "@/services/sales.api";
+import { getInvoice, shareInvoiceWhatsApp, type SalesInvoice } from "@/services/sales.api";
 import { useTheme } from "@/context/ThemeContext";
 import { CollectPaymentModal } from "@/components/sales/CollectPaymentModal";
 import { CancelInvoiceModal } from "@/components/sales/CancelInvoiceModal";
@@ -12,11 +12,47 @@ import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
 import { type FollowUpType } from "@/services/crm.api";
 import { InvoiceItemModal } from "@/components/sales/InvoiceItemModal";
 import { addItemToInvoice, InvoiceItem } from "@/services/sales.api";
-import { useShop } from "@/context/ShopContext"; // Assuming ShopContext exists, or we fetch shop details?
-// Invoice data has shopId, but we need shop GST settings for Modal.
-// Ideally we fetch shop or assume GST based on something.
-// For now, I'll assume selectedShop from context if available, or fetch it.
-// Checking imports again... useShop is standard.
+import { EWayBillPanel } from "@/components/sales/EWayBillPanel";
+import { useShop } from "@/context/ShopContext";
+import { type Shop } from "@/services/shops.api";
+
+const EWB_THRESHOLD_RUPEES = 50_000; // API returns totalAmount in rupees
+
+function EWayBillSection({ invoice, selectedShop }: { invoice: SalesInvoice; selectedShop: Shop | null }) {
+  const [showPanel, setShowPanel] = useState(false);
+  const isEligible = !!invoice.customerGstin && invoice.totalAmount > EWB_THRESHOLD_RUPEES;
+  if (!isEligible) return null;
+
+  const autoGenerate = selectedShop?.autoGenerateEwayBill ?? false;
+
+  if (!autoGenerate && !showPanel) {
+    return (
+      <div className="mb-6">
+        <button
+          onClick={() => {
+            setShowPanel(true);
+            setTimeout(() => document.getElementById('ewb-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+          }}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-900/10 text-sky-700 dark:text-sky-300 text-sm font-medium hover:bg-sky-100 dark:hover:bg-sky-900/20 transition"
+        >
+          <span>E-Way Bill</span>
+          <span className="text-xs bg-sky-200 dark:bg-sky-500/30 px-2 py-0.5 rounded-full">Generate</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div id="ewb-panel" className="mb-6">
+      <EWayBillPanel
+        invoiceId={invoice.id}
+        totalAmount={invoice.totalAmount}
+        customerGstin={invoice.customerGstin}
+        customerDistanceKm={invoice.customerDistanceKm ?? null}
+      />
+    </div>
+  );
+}
 
 export default function InvoiceDetailPage() {
   const router = useRouter();
@@ -32,6 +68,8 @@ export default function InvoiceDetailPage() {
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [waSending, setWaSending] = useState(false);
+  const [waToast, setWaToast] = useState<string | null>(null);
 
   const {
     data: invoice,
@@ -186,6 +224,31 @@ export default function InvoiceDetailPage() {
           >
             📋 Follow-up
           </button>
+          {invoice.customerPhone && invoice.status !== "VOIDED" && (
+            <button
+              disabled={waSending}
+              onClick={async () => {
+                setWaSending(true);
+                try {
+                  const res = await shareInvoiceWhatsApp(invoice.id);
+                  setWaToast(`Sent to ${res.phone}`);
+                  setTimeout(() => setWaToast(null), 3000);
+                } catch (e: any) {
+                  setWaToast(e.message || "Failed to send");
+                  setTimeout(() => setWaToast(null), 3000);
+                } finally {
+                  setWaSending(false);
+                }
+              }}
+              className={`px-4 py-2 border rounded-lg font-medium transition flex items-center gap-1 ${
+                theme === "dark"
+                  ? "border-green-500/40 hover:bg-green-500/10 text-green-400"
+                  : "border-green-500 hover:bg-green-50 text-green-700"
+              } disabled:opacity-50`}
+            >
+              {waSending ? "Sending..." : "WhatsApp"}
+            </button>
+          )}
           <button
             onClick={() => router.push(`/print/invoice/${invoice.id}`)}
             className={`px-4 py-2 border rounded-lg font-medium transition ${
@@ -196,6 +259,11 @@ export default function InvoiceDetailPage() {
           >
             Print
           </button>
+          {waToast && (
+            <div className="absolute top-2 right-2 bg-green-600 text-white text-sm px-3 py-1.5 rounded-lg shadow z-50">
+              {waToast}
+            </div>
+          )}
         </div>
       </div>
 
@@ -321,6 +389,11 @@ export default function InvoiceDetailPage() {
                 }
               >
                 {invoice.customerPhone}
+              </div>
+            )}
+            {invoice.customerGstin && (
+              <div className="text-xs font-mono mt-1 text-teal-600 dark:text-teal-400">
+                GSTIN: {invoice.customerGstin}
               </div>
             )}
           </div>
@@ -527,6 +600,9 @@ export default function InvoiceDetailPage() {
           </tbody>
         </table>
       </div>
+
+      {/* E-Way Bill */}
+      {invoice && <EWayBillSection invoice={invoice} selectedShop={selectedShop} />}
 
       {/* Payment History */}
       <h2

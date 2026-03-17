@@ -3,6 +3,8 @@ package com.aiyal.mobibix.ui.features.loyalty
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aiyal.mobibix.core.shop.ShopContextProvider
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.AddPointsRequest
 import com.aiyal.mobibix.data.network.LoyaltyHistoryItem
 import com.aiyal.mobibix.data.network.LoyaltySummary
@@ -29,7 +31,8 @@ data class LoyaltyUiState(
 @HiltViewModel
 class LoyaltyViewModel @Inject constructor(
     private val repository: LoyaltyRepository,
-    private val shopContextProvider: ShopContextProvider
+    private val shopContextProvider: ShopContextProvider,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoyaltyUiState())
@@ -44,7 +47,9 @@ class LoyaltyViewModel @Inject constructor(
                 val history = repository.getLoyaltyHistory(shopId)
                 _uiState.value = _uiState.value.copy(isLoading = false, summary = summary, history = history)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -59,10 +64,14 @@ class LoyaltyViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = "Points added successfully")
                     loadData()
                 } else {
-                    _uiState.value = _uiState.value.copy(isLoading = false, error = response.message ?: "Failed to add points")
+                    val msg = response.message ?: "Failed to add points."
+                    uiMessageBus.showError(msg)
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
                 }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -77,10 +86,14 @@ class LoyaltyViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = "Points redeemed successfully")
                     loadData()
                 } else {
-                    _uiState.value = _uiState.value.copy(isLoading = false, error = response.message ?: "Failed to redeem points")
+                    val msg = response.message ?: "Failed to redeem points."
+                    uiMessageBus.showError(msg)
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
                 }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -92,7 +105,9 @@ class LoyaltyViewModel @Inject constructor(
                 val config = repository.getLoyaltyConfig()
                 _uiState.value = _uiState.value.copy(isLoading = false, config = config)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -105,10 +120,14 @@ class LoyaltyViewModel @Inject constructor(
                 if (response.success) {
                     _uiState.value = _uiState.value.copy(isSavingConfig = false, config = response.config, actionSuccess = "Loyalty settings saved")
                 } else {
-                    _uiState.value = _uiState.value.copy(isSavingConfig = false, error = "Failed to save loyalty settings")
+                    val msg = "Failed to save loyalty settings."
+                    uiMessageBus.showError(msg)
+                    _uiState.value = _uiState.value.copy(isSavingConfig = false, error = msg)
                 }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isSavingConfig = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isSavingConfig = false, error = msg)
             }
         }
     }

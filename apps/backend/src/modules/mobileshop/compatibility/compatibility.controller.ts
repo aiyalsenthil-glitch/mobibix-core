@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { CompatibilityService } from './compatibility.service';
 import { CreateCompatibilityGroupDto, AddPhoneToGroupDto, LinkPartToGroupDto, CreateFeedbackDto } from './dto/compatibility.dto';
@@ -72,5 +72,15 @@ export class CompatibilityController {
   @ApiOperation({ summary: 'Submit feedback for compatibility (report error or suggest link)' })
   async submitFeedback(@Body() dto: CreateFeedbackDto) {
     return this.compatibilityService.submitFeedback(dto);
+  }
+
+  @Post('request-model')
+  @ApiOperation({ summary: 'Request a new device model to be added to the database' })
+  async requestModel(@Req() req: any, @Body('rawInput') rawInput: string) {
+    return this.compatibilityService.requestDeviceModel(
+      req.user.tenantId,
+      req.user.userId,
+      rawInput,
+    );
   }
 }

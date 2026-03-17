@@ -2,7 +2,9 @@ import {
   IsEnum,
   IsOptional,
   IsString,
-  Matches,
+  IsInt,
+  Min,
+  Max,
   IsEmail,
 } from 'class-validator';
 import { BusinessType, PartyType } from '@prisma/client';
@@ -35,6 +37,16 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsString()
   gstNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  pincode?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(3000)
+  distanceFromShop?: number;
 
   @IsOptional()
   @IsEnum(BusinessType)

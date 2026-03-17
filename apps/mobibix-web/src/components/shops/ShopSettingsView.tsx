@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import {
   getShopSettings,
   updateShopSettings,
+  updateNicCredentials,
   type Shop,
   type UpdateShopSettingsDto,
   RepairInvoiceNumberingMode,
@@ -13,6 +14,154 @@ import { ShopPrintSettings } from "@/components/shops/ShopPrintSettings";
 import { StaffList } from "@/components/staff/StaffList";
 import { useRouter } from "next/navigation";
 
+function NicCredentialsTab({
+  shopId,
+  initialAutoGenerate,
+  initialNicUsername,
+  onAutoGenerateChange,
+}: {
+  shopId: string;
+  initialAutoGenerate: boolean;
+  initialNicUsername?: string;
+  onAutoGenerateChange: (val: boolean) => void;
+}) {
+  const [nicUsername, setNicUsername] = useState(initialNicUsername || "");
+  const [nicPassword, setNicPassword] = useState("");
+  const [autoGenerate, setAutoGenerate] = useState(initialAutoGenerate);
+  const [saving, setSaving] = useState(false);
+  const [savingToggle, setSavingToggle] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const handleToggle = async (val: boolean) => {
+    setAutoGenerate(val);
+    setSavingToggle(true);
+    try {
+      await updateShopSettings(shopId, { autoGenerateEwayBill: val });
+      onAutoGenerateChange(val);
+    } catch {
+      setAutoGenerate(!val); // revert on failure
+    } finally {
+      setSavingToggle(false);
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nicUsername.trim() || !nicPassword.trim()) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      await updateNicCredentials(shopId, nicUsername.trim(), nicPassword.trim());
+      setMessage({ type: "success", text: "NIC credentials saved successfully." });
+      setNicPassword(""); // clear password field after save
+    } catch (err: unknown) {
+      setMessage({ type: "error", text: (err as any)?.message || "Failed to save credentials" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Auto-generate toggle */}
+      <div className="bg-white dark:bg-stone-900/50 border border-gray-200 dark:border-white/5 rounded-xl p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Auto-Generate E-Way Bill</h3>
+            <p className="text-sm text-gray-500 dark:text-stone-400 mt-0.5">
+              When enabled, the E-Way Bill form will be shown automatically on qualifying B2B invoices (above ₹50,000).
+              When disabled, you can generate it manually from the invoice detail page.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={savingToggle}
+            onClick={() => handleToggle(!autoGenerate)}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
+              autoGenerate ? "bg-teal-500" : "bg-gray-300 dark:bg-white/10"
+            }`}
+          >
+            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${autoGenerate ? "translate-x-5" : "translate-x-0"}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* NIC Credentials */}
+    <div className="bg-white dark:bg-stone-900/50 border border-gray-200 dark:border-white/5 rounded-xl p-8 shadow-sm">
+      <form onSubmit={handleSave} className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-1">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              NIC E-Way Bill Credentials
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-stone-400">
+              Your credentials for the GST E-Way Bill portal. Required to generate e-way bills for
+              invoices above ₹50,000.
+            </p>
+            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg">
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1">Where to get these?</p>
+              <p className="text-xs text-amber-600 dark:text-amber-500">
+                Register at <span className="font-mono">ewaybillgst.gov.in</span> using your GSTIN.
+                Username = your GSTIN. Password = the one you set on the NIC portal.
+              </p>
+            </div>
+          </div>
+          <div className="md:col-span-2 space-y-4">
+            {message && (
+              <div className={`px-4 py-3 rounded-lg text-sm ${
+                message.type === "success"
+                  ? "bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400"
+                  : "bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400"
+              }`}>
+                {message.text}
+              </div>
+            )}
+            <div>
+              <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                NIC Username <span className="text-xs text-gray-400">(your GSTIN)</span>
+              </label>
+              <input
+                type="text"
+                value={nicUsername}
+                onChange={(e) => setNicUsername(e.target.value.toUpperCase())}
+                placeholder="e.g. 29ABCDE1234F1Z5"
+                maxLength={15}
+                className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white font-mono focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                NIC Password <span className="text-xs text-gray-400">(stored encrypted)</span>
+              </label>
+              <input
+                type="password"
+                value={nicPassword}
+                onChange={(e) => setNicPassword(e.target.value)}
+                placeholder="Enter your NIC portal password"
+                className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+              />
+            </div>
+            <p className="text-xs text-gray-400 dark:text-stone-500">
+              Password is encrypted with AES-256 before storage. It is never shown again after saving.
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-4 flex justify-end">
+          <button
+            type="submit"
+            disabled={saving || !nicUsername.trim() || !nicPassword.trim()}
+            className="px-8 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition shadow-lg shadow-teal-500/20"
+          >
+            {saving ? "Saving..." : "Save Credentials"}
+          </button>
+        </div>
+      </form>
+    </div>
+    </div>
+  );
+}
+
 interface ShopSettingsViewProps {
   shopId: string;
 }
@@ -20,7 +169,7 @@ interface ShopSettingsViewProps {
 export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<
-    "GENERAL" | "PRINT" | "BANK" | "DOCUMENT" | "STAFF"
+    "GENERAL" | "PRINT" | "BANK" | "DOCUMENT" | "STAFF" | "EWAYBILL"
   >("GENERAL");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -247,10 +396,27 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
         >
           Staff Management
         </button>
+        <button
+          onClick={() => setActiveTab("EWAYBILL")}
+          className={`py-3 px-6 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+            activeTab === "EWAYBILL"
+              ? "border-teal-500 text-teal-600 dark:text-teal-400"
+              : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+          }`}
+        >
+          E-Way Bill
+        </button>
       </div>
 
       {/* Content Area */}
-      {activeTab === "PRINT" ? (
+      {activeTab === "EWAYBILL" ? (
+        <NicCredentialsTab
+          shopId={shopId}
+          initialAutoGenerate={shop?.autoGenerateEwayBill ?? false}
+          initialNicUsername={shop?.nicUsername ?? ""}
+          onAutoGenerateChange={(val) => setShop((s) => s ? { ...s, autoGenerateEwayBill: val } : s)}
+        />
+      ) : activeTab === "PRINT" ? (
         <div className="animate-fade-in">
           <ShopPrintSettings
             shop={shop}
@@ -332,6 +498,19 @@ export function ShopSettingsView({ shopId }: ShopSettingsViewProps) {
                       value={formData.branchName}
                       onChange={handleChange}
                       placeholder="e.g. Koramangala"
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-stone-400 mb-1">
+                      UPI ID <span className="text-xs text-teal-500">(for invoice QR payments)</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="upiId"
+                      value={(formData as any).upiId || ""}
+                      onChange={handleChange}
+                      placeholder="e.g. shopname@ybl"
                       className="w-full px-4 py-2 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
                     />
                   </div>

@@ -21,11 +21,11 @@ export interface ProductItem {
   costPrice: number | null;
 }
 
-export type PaymentMode = "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT" | "MIXED";
+export type PaymentMode = "CASH" | "UPI" | "CARD" | "BANK" | "CREDIT" | "MIXED" | "TCV";
 
 export interface SplitPayment {
   id: string;
-  mode: Exclude<PaymentMode, "MIXED">;
+  mode: Exclude<PaymentMode, "MIXED" | "TCV">;
   amount: string;
 }
 
@@ -143,7 +143,7 @@ export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoice
           total,
           imeis: imei ? [imei] : [],
           serialNumbers: [],
-          costPrice: product.costPrice ?? null,
+          costPrice: product.costPrice ? product.costPrice / 100 : null,
           warrantyDays: product.warrantyDays,
         },
       ];
@@ -173,6 +173,7 @@ export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoice
             if (field === "gstRate") updated.gstRate = value as number;
             if (field === "shopProductId") updated.shopProductId = value as string;
             if (field === "warrantyDays") updated.warrantyDays = value as number;
+            if (field === "costPrice") updated.costPrice = value as number;
 
             // Logic when product is selected
             if (field === "shopProductId") {
@@ -182,7 +183,7 @@ export function useInvoiceForm({ shopGstEnabled = false, shopState }: UseInvoice
                 updated.rate = (product.salePrice || 0) / 100;
                 updated.hsnSac = product.hsnCode || "";
                 updated.gstRate = shopGstEnabled ? product.gstRate || 18 : 0;
-                updated.costPrice = product.costPrice ?? null;
+                updated.costPrice = product.costPrice ? product.costPrice / 100 : null;
                 updated.warrantyDays = product.warrantyDays ?? undefined;
                 updated.imeis = []; // Reset IMEIs
                 updated.serialNumbers = []; // Reset Serials

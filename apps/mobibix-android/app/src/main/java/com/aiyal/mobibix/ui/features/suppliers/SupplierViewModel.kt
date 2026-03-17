@@ -2,6 +2,8 @@ package com.aiyal.mobibix.ui.features.suppliers
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.CreateSupplierDto
 import com.aiyal.mobibix.data.network.Supplier
 import com.aiyal.mobibix.domain.SupplierRepository
@@ -24,7 +26,8 @@ data class SupplierUiState(
 
 @HiltViewModel
 class SupplierViewModel @Inject constructor(
-    private val repository: SupplierRepository
+    private val repository: SupplierRepository,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SupplierUiState())
@@ -41,7 +44,9 @@ class SupplierViewModel @Inject constructor(
                 val suppliers = repository.listSuppliers()
                 _uiState.value = _uiState.value.copy(suppliers = suppliers, isLoading = false)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message ?: "Failed to load suppliers", isLoading = false)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(error = msg, isLoading = false)
             }
         }
     }
@@ -67,8 +72,6 @@ class SupplierViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSaving = true, saveError = null)
             try {
-                // Currently API only supports create based on provided interface
-                // TODO: Add update endpoint support when available
                 val dto = CreateSupplierDto(
                     name = name,
                     phone = phone.takeIf { it.isNotBlank() },
@@ -76,12 +79,13 @@ class SupplierViewModel @Inject constructor(
                     address = address.takeIf { it.isNotBlank() },
                     gstNumber = gstNumber.takeIf { it.isNotBlank() }
                 )
-                
                 repository.createSupplier(dto)
-                loadSuppliers() // Refresh list
+                loadSuppliers()
                 closeSheet()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(saveError = e.message ?: "Failed to save supplier", isSaving = false)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(saveError = msg, isSaving = false)
             }
         }
     }

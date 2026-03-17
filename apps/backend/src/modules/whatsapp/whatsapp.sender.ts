@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { WhatsAppFeature } from '../../core/billing/whatsapp-rules';
@@ -7,47 +6,31 @@ import { WhatsAppLogger } from './whatsapp.logger';
 import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
 import { WhatsAppPhoneNumberPurpose, ModuleType } from '@prisma/client';
 import { PlanRulesService } from '../../core/billing/plan-rules.service';
-import { WhatsAppTokenService } from './whatsapp-token.service';
 import { WhatsAppRoutingService } from './whatsapp-routing.service';
+import { ProviderManager } from './providers/provider-manager.service';
 
 @Injectable()
 export class WhatsAppSender {
-  private readonly apiVersion = process.env.WHATSAPP_API_VERSION || 'v22.0';
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly logger: WhatsAppLogger,
     private readonly phoneNumbersService: WhatsAppPhoneNumbersService,
     private readonly planRulesService: PlanRulesService,
-    private readonly tokenService: WhatsAppTokenService,
     private readonly routingService: WhatsAppRoutingService,
+    private readonly providerManager: ProviderManager,
   ) {}
 
-  /**
-   * Resolve tenant's module type (GYM or MOBILE_SHOP)
-   */
   private async resolveTenantModule(tenantId: string): Promise<ModuleType> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { tenantType: true },
     });
-
-    if (!tenant?.tenantType) {
-      // Default to MOBILE_SHOP if not found
-      return ModuleType.MOBILE_SHOP;
-    }
-
-    const normalized = tenant.tenantType.toUpperCase();
-    if (normalized === 'GYM') return ModuleType.GYM;
-    return ModuleType.MOBILE_SHOP;
+    if (!tenant?.tenantType) return ModuleType.MOBILE_SHOP;
+    return tenant.tenantType.toUpperCase() === 'GYM'
+      ? ModuleType.GYM
+      : ModuleType.MOBILE_SHOP;
   }
 
-  /**
-   * Map notification type to phone number purpose
-   *
-   * NOTE: Core notifications (WELCOME, REMINDER, BILLING) are always-on.
-   * Only premium automation (WHATSAPP_ALERTS_AUTOMATION) requires feature gating.
-   */
   private mapFeatureToPurpose(
     notificationType: string,
   ): WhatsAppPhoneNumberPurpose {
@@ -62,7 +45,7 @@ export class WhatsAppSender {
 
   async sendTemplateMessage(
     tenantId: string,
-    notificationType: string, // Core notifications (WELCOME, REMINDER, BILLING) or premium feature
+    notificationType: string,
     phone: string,
     templateName: string,
     parameters: string[],
@@ -84,37 +67,29 @@ export class WhatsAppSender {
     const metadata = options?.metadata ?? undefined;
     const forceWhatsAppNumberId = options?.whatsAppNumberId;
 
-    // 🛡️ SANITIZE FEATURE:
-    // If 'notificationType' is just a random string (like a template name 'invoice_created...'),
-    // it won't match any enum. We must map it to a valid Feature or Core Type.
     let feature = notificationType as WhatsAppFeature;
-
     const validFeatures = Object.values(WhatsAppFeature);
     const coreTypes = ['WELCOME', 'BILLING', 'REMINDER', 'PAYMENT_DUE', 'OTP'];
 
-    if (
-      !validFeatures.includes(feature) &&
-      !coreTypes.includes(notificationType)
-    ) {
-      // Fallback: If it looks like a template key (not a feature), treat as UTILITY
+    if (!validFeatures.includes(feature) && !coreTypes.includes(notificationType)) {
       feature = WhatsAppFeature.WHATSAPP_UTILITY;
     }
 
-    // Declare early for closure access in logFailure
     let phoneNumberConfig: any;
 
     const updateLogStatus = async (
       status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'SKIPPED',
-      data?: { error?: string | null; messageId?: string | null },
+      data?: { error?: string | null; messageId?: string | null; providerUsed?: string; messageCost?: number },
     ) => {
       if (!logId) return;
-
       await this.prisma.whatsAppLog.update({
         where: { id: logId, tenantId },
         data: {
           status,
           error: data?.error ?? undefined,
           messageId: data?.messageId ?? undefined,
+          providerUsed: data?.providerUsed ?? undefined,
+          messageCost: data?.messageCost ?? undefined,
           metadata: metadata ?? undefined,
         },
       });
@@ -139,108 +114,48 @@ export class WhatsAppSender {
           metadata,
         });
       }
-
-      return {
-        success: false,
-        skipped,
-        reason,
-        error: errorMessage,
-      };
+      return { success: false, skipped, reason, error: errorMessage };
     };
-    // 🔍 GUARDRAIL 1: Backward Compatibility & Empty Features
-    // Fetch rules specifically for this check
+
+    // ── GUARDRAIL 1: Plan / Feature gate ─────────────────────────────────────
     const module = await this.resolveTenantModule(tenantId);
-    const planRules = await this.planRulesService.getPlanRulesForTenant(
-      tenantId,
-      module,
-    );
-
-    // If no rules (no plan?) or NO features defined (Trial/Legacy), ALLOW ALL.
-    const isLegacyOrTrial =
-      !planRules || !planRules.features || planRules.features.length === 0;
-
-    // List of Core Notifications that are ALWAYS allowed (subject to quotas)
-    // regardless of strict feature gating.
-    const CORE_NOTIFICATIONS = [
-      'WELCOME',
-      'BILLING',
-      'REMINDER',
-      'PAYMENT_DUE',
-    ];
+    const planRules = await this.planRulesService.getPlanRulesForTenant(tenantId, module);
+    const isLegacyOrTrial = !planRules || !planRules.features || planRules.features.length === 0;
+    const CORE_NOTIFICATIONS = ['WELCOME', 'BILLING', 'REMINDER', 'PAYMENT_DUE'];
 
     if (!isLegacyOrTrial && !skipPlanCheck) {
-      // 🔒 GATE: Check if tenant has the specific feature entitlement
-      // EXCEPTION: Core notifications remain available to all active plans
-      // Check both original notificationType AND sanitized feature
-      if (
-        CORE_NOTIFICATIONS.includes(notificationType) ||
-        CORE_NOTIFICATIONS.includes(feature)
-      ) {
-        // Allow core notification to proceed to quota checks
-      } else {
-        const hasEntitlement = planRules.features.includes(feature);
-
-        if (!hasEntitlement) {
-          return logFailure(
-            `Plan missing feature: ${feature}`,
-            true,
-            'Plan missing feature',
-          );
+      if (!CORE_NOTIFICATIONS.includes(notificationType) && !CORE_NOTIFICATIONS.includes(feature)) {
+        if (!planRules.features.includes(feature)) {
+          return logFailure(`Plan missing feature: ${feature}`, true, 'Plan missing feature');
         }
       }
     }
 
-    // 🔍 GUARDRAIL 2: QUOTA ENFORCEMENT (Generic)
-    // Supports Daily (Trial) and Monthly (Pro/Standard) limits
-    // Supports separated Utility vs Marketing quotas
-
-    // Determine category and relevant quota
+    // ── GUARDRAIL 2: Quota enforcement ────────────────────────────────────────
     let categoryLimit = 0;
-    let categoryName = 'utility'; // Default for counting
+    let categoryName = 'utility';
 
     if (notificationType === 'WHATSAPP_CAMPAIGN_MARKETING') {
       categoryLimit = planRules?.whatsapp?.marketingQuota ?? 0;
       categoryName = 'marketing';
     } else {
-      // All other types (REMINDER, OTP, BILLING, WELCOME) count as UTILITY
       categoryLimit = planRules?.whatsapp?.utilityQuota ?? 0;
-      categoryName = 'utility';
     }
 
-    // fallback: if specific quotas are 0/undefined but total > 0, use total (legacy/fallback)
-    if (
-      categoryLimit === 0 &&
-      (planRules?.whatsapp?.messageQuota ?? 0) > 0 &&
-      categoryName === 'utility'
-    ) {
+    if (categoryLimit === 0 && (planRules?.whatsapp?.messageQuota ?? 0) > 0 && categoryName === 'utility') {
       categoryLimit = planRules!.whatsapp!.messageQuota;
     }
 
     if (categoryLimit > 0) {
       const isDaily = planRules?.whatsapp?.isDaily ?? false;
-      const now = new Date();
-      const periodStart = new Date(now);
+      const periodStart = new Date();
+      periodStart.setHours(0, 0, 0, 0);
+      if (!isDaily) periodStart.setDate(1);
 
-      if (isDaily) {
-        periodStart.setHours(0, 0, 0, 0); // Start of today
-      } else {
-        periodStart.setDate(1); // Start of this month
-        periodStart.setHours(0, 0, 0, 0);
-      }
-
-      // Count usage for this category in the period
-      // We need to query WhatsAppDailyUsage table for aggregated stats
-      // OR WhatsAppLog for granular count. DailyUsage is better for performance.
       const aggregate = await this.prisma.whatsAppDailyUsage.aggregate({
-        where: {
-          tenantId,
-          date: { gte: periodStart },
-        },
-        _sum: {
-          [categoryName]: true,
-        },
+        where: { tenantId, date: { gte: periodStart } },
+        _sum: { [categoryName]: true },
       });
-
       const used = aggregate._sum[categoryName] ?? 0;
 
       if (used >= categoryLimit) {
@@ -252,8 +167,6 @@ export class WhatsAppSender {
         );
       }
     } else if (planRules && !skipPlanCheck && !isLegacyOrTrial) {
-      // If quota is 0 and it's a restricted plan, block.
-      // (Trial/Legacy are handled by isLegacyOrTrial check above, but here we cover explicit 0 limits)
       return logFailure(
         `No ${categoryName} quota available for this plan`,
         true,
@@ -261,44 +174,25 @@ export class WhatsAppSender {
       );
     }
 
-    // ✅ NORMALIZE PHONE: Convert any format to 10 digits, then to 91XXXXXXXXXX
+    // ── Phone normalization ───────────────────────────────────────────────────
     const normalizedPhone = normalizePhone(phone);
     let whatsappFormattedPhone: string;
-
     try {
       whatsappFormattedPhone = toWhatsAppPhone(normalizedPhone);
     } catch (error: any) {
-      return logFailure(
-        `Invalid phone format: ${error?.message || 'Unknown error'}`,
-      );
+      return logFailure(`Invalid phone format: ${error?.message || 'Unknown error'}`);
     }
 
-    // ─────────────────────────────
-    // 2️⃣ Get Dynamic Phone Number from DB
-    // ─────────────────────────────
-
-    // 2a. Resolve phone number
-    // PRIORITY: Use forced ID if provided (e.g. reply to specific number)
+    // ── Resolve phone number config ───────────────────────────────────────────
     try {
       if (forceWhatsAppNumberId) {
-        phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberById(
-          forceWhatsAppNumberId,
-        );
+        phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberById(forceWhatsAppNumberId);
         if (!phoneNumberConfig) {
-          return logFailure(
-            `Provided WhatsApp Number ID ${forceWhatsAppNumberId} not found or disabled.`,
-          );
+          return logFailure(`WhatsApp Number ID ${forceWhatsAppNumberId} not found.`);
         }
       } else {
-        // FALLBACK: Use Purpose & Routing Logic
         const purpose = this.mapFeatureToPurpose(feature);
-
-        // 2b. Dual-Track Routing Check (Only relevant if not forcing ID)
-        // Use the actual notification type for routing, not hardcoded 'MANUAL'
-        const routing = await this.routingService.resolveTrack(
-          tenantId,
-          notificationType,
-        );
+        const routing = await this.routingService.resolveTrack(tenantId, notificationType);
 
         if (!routing.allowed) {
           return logFailure(
@@ -308,151 +202,76 @@ export class WhatsAppSender {
           );
         }
 
-        // Pass routing track to ensure we don't fallback to system default if on Track B
-        phoneNumberConfig =
-          await this.phoneNumbersService.getPhoneNumberForPurpose(
-            tenantId,
-            purpose,
-            routing.track,
-          );
+        phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberForPurpose(
+          tenantId,
+          purpose,
+          routing.track,
+        );
       }
     } catch (error) {
-      return logFailure(
-        `No active phone number found: ${error.message}`,
-        true,
-        `No active phone number: ${error.message}`,
-      );
+      return logFailure(`No active phone number found: ${error.message}`, true, `No active phone number`);
     }
 
     if (!phoneNumberConfig.isEnabled) {
-      return logFailure(
-        'Phone number is disabled',
-        true,
-        'Phone number disabled',
-      );
+      return logFailure('Phone number is disabled', true, 'Phone number disabled');
     }
 
-    // 🔒 GUARDRAIL 3: Setup Status Check (Must be ACTIVE)
     if (phoneNumberConfig.setupStatus !== 'ACTIVE') {
       return logFailure(
-        `WhatsApp setup is pending or failed (Status: ${phoneNumberConfig.setupStatus})`,
+        `WhatsApp setup not active (Status: ${phoneNumberConfig.setupStatus})`,
         true,
         'Setup not active',
       );
     }
 
-    // ─────────────────────────────
-    // 3️⃣ Plan rules (DB-driven)
-    // ─────────────────────────────
-    // Reuse planRules fetched above
-
     if (planRules && !planRules.enabled) {
-      return logFailure(
-        'Subscription plan disabled',
-        true,
-        'Subscription plan disabled',
-      );
+      return logFailure('Subscription plan disabled', true, 'Subscription plan disabled');
     }
 
-    // Feature check already done above for strict cases.
-    // Legacy/Trial skipped the check, so we don't block them here.
-
-    // ─────────────────────────────
-    // 4️⃣ Member limit check
-    // ─────────────────────────────
-    const memberCount = await this.prisma.member.count({
-      where: { tenantId },
-    });
-
-    if (
-      planRules &&
-      planRules.maxMembers !== null &&
-      planRules.maxMembers > 0 &&
-      memberCount > planRules.maxMembers
-    ) {
-      return logFailure(
-        'Plan member limit exceeded',
-        true,
-        'Plan member limit exceeded',
-      );
+    // ── Member limit ──────────────────────────────────────────────────────────
+    const memberCount = await this.prisma.member.count({ where: { tenantId } });
+    if (planRules?.maxMembers && planRules.maxMembers > 0 && memberCount > planRules.maxMembers) {
+      return logFailure('Plan member limit exceeded', true, 'Plan member limit exceeded');
     }
 
-    // ─────────────────────────────
-    // 7️⃣ SEND WHATSAPP (Cloud API) - Using Dynamic Phone Number ID + Isolated Token
-    // ─────────────────────────────
-    const url = `https://graph.facebook.com/${this.apiVersion}/${phoneNumberConfig.phoneNumberId}/messages`;
-    const resolvedToken =
-      await this.tokenService.resolveToken(phoneNumberConfig);
+    // ── SEND via ProviderManager ──────────────────────────────────────────────
+    const result = await this.providerManager.sendTemplate(
+      phoneNumberConfig,
+      whatsappFormattedPhone,
+      templateName,
+      parameters,
+      tenantId,
+      { allowFallback: false },
+    );
 
-    try {
-      const response = await axios.post(
-        url,
-        {
-          messaging_product: 'whatsapp',
-          to: whatsappFormattedPhone,
-          type: 'template',
-          template: {
-            name: templateName,
-            language: { code: 'en' },
-            components: [
-              {
-                type: 'body',
-                parameters: parameters.map((text) => ({
-                  type: 'text',
-                  text,
-                })),
-              },
-            ],
-          },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${resolvedToken}`,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
+    // Determine usage category
+    let category: 'authentication' | 'marketing' | 'utility' | 'service' = 'utility';
+    if (notificationType === 'WHATSAPP_CAMPAIGN_MARKETING') category = 'marketing';
+    else if (notificationType === 'OTP') category = 'authentication';
 
-      const messageId = response.data?.messages?.[0]?.id;
-
-      // ✅ LOG SUCCESS
+    if (result.success) {
       if (logId) {
-        await updateLogStatus('SENT', { messageId: messageId ?? null });
+        await updateLogStatus('SENT', {
+          messageId: result.messageId ?? null,
+          providerUsed: result.providerName,
+          messageCost: result.cost,
+        });
       } else {
         await this.logger.log({
           tenantId,
           whatsAppNumberId: phoneNumberConfig.id,
-          memberId: null, // pass memberId later if needed
+          memberId: null,
           phone: whatsappFormattedPhone,
           type: feature,
           status: 'SENT',
-          messageId,
-          metadata,
+          messageId: result.messageId,
+          metadata: { ...(metadata || {}), providerUsed: result.providerName },
         });
       }
-
-      // ✅ TRACK USAGE
-      // Determine category based on notificationType / Feature
-      let category: 'authentication' | 'marketing' | 'utility' | 'service' =
-        'utility';
-
-      if (notificationType === 'WHATSAPP_CAMPAIGN_MARKETING') {
-        category = 'marketing';
-      } else if (notificationType === 'OTP') {
-        category = 'authentication';
-      } else {
-        category = 'utility';
-      }
-
-      await this.incrementUsage(tenantId, category);
-
-      return { success: true, messageId };
-    } catch (error) {
-      const errMsg = error.response?.data
-        ? JSON.stringify(error.response.data)
-        : error.message;
-
-      // ❌ LOG FAILURE
+      await this.incrementUsage(tenantId, category, result.cost);
+      return { success: true, messageId: result.messageId };
+    } else {
+      const errMsg = result.error || 'Unknown provider error';
       if (logId) {
         await updateLogStatus('FAILED', { error: errMsg });
       } else {
@@ -467,90 +286,31 @@ export class WhatsAppSender {
           metadata,
         });
       }
-
-      console.error('[WA META ERROR]', errMsg);
-
       return { success: false, error: errMsg };
     }
   }
 
-  /**
-   * Helper to increment usage stats
-   */
-  private async incrementUsage(
-    tenantId: string,
-    category: 'marketing' | 'utility' | 'service' | 'authentication',
-  ) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    try {
-      await this.prisma.whatsAppDailyUsage.upsert({
-        where: {
-          tenantId_date: {
-            tenantId,
-            date: today,
-          },
-        },
-        create: {
-          tenantId,
-          date: today,
-          [category]: 1,
-        },
-        update: {
-          [category]: { increment: 1 },
-        },
-      });
-    } catch (error) {
-      console.error(
-        `[WhatsAppSender] Failed to track usage for tenant ${tenantId}:`,
-        error,
-      );
-      // Don't block sending if tracking fails, but log it.
-    }
-  }
-
-  /**
-   * Send a FREE TEXT message (Session Message)
-   * Intended for MANUAL staff replies or session-based interactions.
-   * Skips strict feature entitlement checks (assumes basic manual reply capability).
-   */
   async sendTextMessage(
     tenantId: string,
     phone: string,
     text: string,
     whatsAppNumberId?: string,
   ): Promise<{ success: boolean; messageId?: string; error?: any }> {
-    // 1. Basic Plan/Settings Check (Minimal)
     const module = await this.resolveTenantModule(tenantId);
-    const planRules = await this.planRulesService.getPlanRulesForTenant(
-      tenantId,
-      module,
-    );
-    // If plan is strictly disabled, block. But if trial/legacy, allow.
+    const planRules = await this.planRulesService.getPlanRulesForTenant(tenantId, module);
     if (planRules && !planRules.enabled) {
       return { success: false, error: 'Subscription plan disabled' };
     }
 
-    // 2. Resolve Phone Number (DEFAULT purpose for manual replies)
-    let phoneNumberConfig;
+    let phoneNumberConfig: any;
     try {
       if (whatsAppNumberId) {
-        phoneNumberConfig =
-          await this.phoneNumbersService.getPhoneNumberById(whatsAppNumberId);
-        if (!phoneNumberConfig) {
-          throw new Error(
-            `Provided WhatsApp Number ID ${whatsAppNumberId} not found or disabled.`,
-          );
-        }
+        phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberById(whatsAppNumberId);
+        if (!phoneNumberConfig) throw new Error(`WhatsApp Number ID ${whatsAppNumberId} not found.`);
       } else {
-        phoneNumberConfig =
-          await this.phoneNumbersService.getPhoneNumberForPurpose(
-            tenantId,
-            'DEFAULT',
-          );
+        phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberForPurpose(tenantId, 'DEFAULT');
       }
-    } catch (e) {
+    } catch (e: any) {
       this.logger.log({
         tenantId,
         memberId: null,
@@ -558,7 +318,7 @@ export class WhatsAppSender {
         type: 'MANUAL',
         status: 'FAILED',
         error: 'No phone number config',
-        whatsAppNumberId, // Log the requested ID if any
+        whatsAppNumberId,
       });
       return { success: false, error: 'No phone number provided' };
     }
@@ -567,61 +327,43 @@ export class WhatsAppSender {
       return { success: false, error: 'Phone number inactive/disabled' };
     }
 
-    // 3. Prepare & Send
     const normalizedPhone = normalizePhone(phone);
     let whatsappFormattedPhone: string;
     try {
       whatsappFormattedPhone = toWhatsAppPhone(normalizedPhone);
-    } catch (e) {
+    } catch {
       return { success: false, error: 'Invalid phone format' };
     }
 
-    const url = `https://graph.facebook.com/${this.apiVersion}/${phoneNumberConfig.phoneNumberId}/messages`;
-    const resolvedToken =
-      await this.tokenService.resolveToken(phoneNumberConfig);
+    const result = await this.providerManager.sendMessage(
+      phoneNumberConfig,
+      whatsappFormattedPhone,
+      text,
+      tenantId,
+      { channel: 'WHATSAPP', allowFallback: false },
+    );
 
-    try {
-      const response = await axios.post(
-        url,
-        {
-          messaging_product: 'whatsapp',
-          recipient_type: 'individual',
-          to: whatsappFormattedPhone,
-          type: 'text',
-          text: { preview_url: false, body: text },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${resolvedToken}`,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      const messageId = response.data?.messages?.[0]?.id;
-
-      // 4. Log Success
+    if (result.success) {
       await this.prisma.whatsAppLog.create({
         data: {
           tenantId,
           whatsAppNumberId: phoneNumberConfig.id,
           phone: whatsappFormattedPhone,
-          type: 'MANUAL', // Explicit type for staff replies
+          type: 'MANUAL',
           status: 'SENT',
-          messageId,
-          metadata: { text_snippet: text.substring(0, 50) },
+          messageId: result.messageId,
+          providerUsed: result.providerName,
+          messageCost: result.cost,
+          metadata: {
+            text_snippet: text.substring(0, 50),
+            provider: result.providerName,
+          },
         },
       });
-
-      // 5. Track Usage (Service)
-      await this.incrementUsage(tenantId, 'service');
-
-      return { success: true, messageId };
-    } catch (error) {
-      const errMsg = error.response?.data
-        ? JSON.stringify(error.response.data)
-        : error.message;
-
+      await this.incrementUsage(tenantId, 'service', result.cost);
+      return { success: true, messageId: result.messageId };
+    } else {
+      const errMsg = result.error || 'Unknown provider error';
       await this.prisma.whatsAppLog.create({
         data: {
           tenantId,
@@ -632,9 +374,89 @@ export class WhatsAppSender {
           error: errMsg,
         },
       });
-
-      console.error('[WA TEXT ERROR]', errMsg);
       return { success: false, error: errMsg };
+    }
+  }
+
+  /**
+   * Send a WhatsApp or SMS message via Authkey.
+   * Use this for direct SMS sends (not WhatsApp).
+   */
+  async sendSms(
+    tenantId: string,
+    phone: string,
+    text: string,
+    whatsAppNumberId?: string,
+  ): Promise<{ success: boolean; messageId?: string; error?: any }> {
+    let phoneNumberConfig: any;
+    try {
+      if (whatsAppNumberId) {
+        phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberById(whatsAppNumberId);
+        if (!phoneNumberConfig) throw new Error('Phone number not found');
+      } else {
+        phoneNumberConfig = await this.phoneNumbersService.getPhoneNumberForPurpose(tenantId, 'DEFAULT');
+      }
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+
+    if (phoneNumberConfig.provider !== 'AUTHKEY') {
+      return { success: false, error: 'SMS only supported for AUTHKEY provider numbers' };
+    }
+
+    const normalizedPhone = normalizePhone(phone);
+
+    const result = await this.providerManager.sendMessage(
+      phoneNumberConfig,
+      normalizedPhone,
+      text,
+      tenantId,
+      { channel: 'SMS', allowFallback: false },
+    );
+
+    if (result.success) {
+      await this.prisma.whatsAppLog.create({
+        data: {
+          tenantId,
+          whatsAppNumberId: phoneNumberConfig.id,
+          phone: normalizedPhone,
+          type: 'SMS',
+          status: 'SENT',
+          channel: 'SMS',
+          messageId: result.messageId,
+          providerUsed: result.providerName,
+          messageCost: result.cost,
+        },
+      });
+    }
+
+    return { success: result.success, messageId: result.messageId, error: result.error };
+  }
+
+  private async incrementUsage(
+    tenantId: string,
+    category: 'marketing' | 'utility' | 'service' | 'authentication',
+    cost?: number,
+  ) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    try {
+      await this.prisma.whatsAppDailyUsage.upsert({
+        where: { tenantId_date: { tenantId, date: today } },
+        create: {
+          tenantId,
+          date: today,
+          [category]: 1,
+          totalCost: cost ?? 0,
+        },
+        update: {
+          [category]: { increment: 1 },
+          totalCost: { increment: cost ?? 0 },
+        },
+      });
+    } catch (error) {
+      console.error(`[WhatsAppSender] Usage tracking failed for tenant ${tenantId}:`, error);
     }
   }
 }

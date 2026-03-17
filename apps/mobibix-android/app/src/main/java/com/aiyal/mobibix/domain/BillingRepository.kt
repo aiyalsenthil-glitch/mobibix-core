@@ -28,7 +28,7 @@ class BillingRepositoryImpl @Inject constructor(
         api.getAvailablePlans(module)
 
     override suspend fun getInvoices(shopId: String): List<BillingInvoice> =
-        api.getInvoices(shopId)
+        api.getInvoices(shopId).items
 
     override suspend fun toggleAutoRenew(enabled: Boolean): Boolean {
         val response = api.toggleAutoRenew(mapOf("enabled" to enabled))

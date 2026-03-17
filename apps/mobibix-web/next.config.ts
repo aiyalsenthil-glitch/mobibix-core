@@ -3,7 +3,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  productionBrowserSourceMaps: false,
   turbopack: {
     root: __dirname,
   },
@@ -14,7 +13,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.REMOVED_PAYMENT_INFRA.com apis.google.com www.gstatic.com www.googletagmanager.com connect.facebook.net; style-src 'self' 'unsafe-inline'; connect-src 'self' *.REMOVED_AUTH_PROVIDERapp.com *.googleapis.com https://*.REMOVED_AUTH_PROVIDERio.com www.google-analytics.com *.google-analytics.com REMOVED_ENDPOINT *.mobibix.in http://localhost_REPLACED:* ws://localhost_REPLACED:* http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: https://*.googleusercontent.com grainy-gradients.vercel.app; frame-src 'self' https://*.REMOVED_AUTH_PROVIDERapp.com https://*.REMOVED_PAYMENT_INFRA.com; frame-ancestors 'none'",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.REMOVED_PAYMENT_INFRA.com checkout.REMOVED_PAYMENT_INFRA.com apis.google.com www.gstatic.com www.googletagmanager.com connect.facebook.net; script-src-elem 'self' 'unsafe-inline' cdn.REMOVED_PAYMENT_INFRA.com checkout.REMOVED_PAYMENT_INFRA.com apis.google.com www.gstatic.com www.googletagmanager.com connect.facebook.net; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss: *.REMOVED_AUTH_PROVIDERapp.com *.googleapis.com https://*.REMOVED_AUTH_PROVIDERio.com localhost_REPLACED:3000 localhost_REPLACED:3001 localhost_REPLACED:3005 www.google-analytics.com; img-src 'self' data: https://*.googleusercontent.com www.googletagmanager.com grainy-gradients.vercel.app; frame-src 'self' https://*.REMOVED_AUTH_PROVIDERapp.com https://*.REMOVED_PAYMENT_INFRA.com; frame-ancestors 'none'",
           },
           {
             key: "X-Frame-Options",
@@ -22,7 +21,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Strict-Transport-Security",
-            value: "max-age=63072000; includeSubDomains; preload",
+            value: "max-age=31536000; includeSubDomains",
           },
           {
             key: "X-Content-Type-Options",
@@ -31,10 +30,6 @@ const nextConfig: NextConfig = {
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
-          },
-          {
-            key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
           },
         ],
       },
@@ -69,5 +64,8 @@ export default withSentryConfig(nextConfig, {
   silent: true,
   org: "mobibix",
   project: "mobibix-web",
-  sourcemaps: { deleteSourcemapsAfterUpload: true },
+
+  // In v8+, some SDK options can be passed here or are handled automatically
+  // tunnelRoute: "/monitoring",
+  // hideSourceMaps: true,
 });

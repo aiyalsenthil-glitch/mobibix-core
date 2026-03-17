@@ -73,6 +73,13 @@ data class ConvertQuotationResponse(
     val jobCardId: String? = null
 )
 
+data class QuotationListResponse(
+    val data: List<Quotation> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val totalPages: Int = 1
+)
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 
 interface QuotationApi {
@@ -84,7 +91,7 @@ interface QuotationApi {
         @Query("search") search: String? = null,
         @Query("page") page: Int? = null,
         @Query("limit") limit: Int? = null
-    ): List<Quotation>
+    ): QuotationListResponse
 
     @GET("api/mobileshop/shops/{shopId}/quotations/{id}")
     suspend fun getQuotation(

@@ -87,8 +87,8 @@ class CreditNoteViewModel @Inject constructor(
         viewModelScope.launch {
             _listState.value = CreditNoteListState(loading = true)
             try {
-                val notes = creditNoteApi.listCreditNotes(shopId, type = typeFilter)
-                _listState.value = CreditNoteListState(loading = false, creditNotes = notes)
+                val response = creditNoteApi.listCreditNotes(shopId, type = typeFilter)
+                _listState.value = CreditNoteListState(loading = false, creditNotes = response.data)
             } catch (e: Exception) {
                 _listState.value = CreditNoteListState(loading = false, error = MobiError.extractMessage(e))
             }

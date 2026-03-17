@@ -2,6 +2,8 @@ package com.aiyal.mobibix.ui.features.jobs
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.dto.CreateJobRequest
 import com.aiyal.mobibix.domain.JobRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -13,7 +15,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CreateJobViewModel @Inject constructor(
-    private val repository: JobRepository
+    private val repository: JobRepository,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateJobUiState())
@@ -39,20 +42,19 @@ class CreateJobViewModel @Inject constructor(
                     customerComplaint = formData.customerComplaint,
                     physicalCondition = formData.physicalCondition.takeIf { it.isNotBlank() },
                     estimatedCost = formData.estimatedCost.toDoubleOrNull(),
-                    advancePaid = formData.advancePaid.toDoubleOrNull() ?: 0.0, 
+                    advancePaid = formData.advancePaid.toDoubleOrNull() ?: 0.0,
                     estimatedDelivery = formData.estimatedDelivery.takeIf { it.isNotBlank() }
                 )
                 repository.createJob(shopId, request)
                 _uiState.value = _uiState.value.copy(loading = false, success = true)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    loading = false,
-                    error = e.message ?: "Failed to create job"
-                )
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(loading = false, error = msg)
             }
         }
     }
-    
+
     fun resetState() {
         _uiState.value = CreateJobUiState()
     }

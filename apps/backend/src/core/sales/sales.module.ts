@@ -10,9 +10,10 @@ import { StockModule } from '../stock/stock.module';
 import { BillingService } from './billing.service';
 import { ReceiptsModule } from '../receipts/receipts.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
+import { WhatsAppModule } from '../../modules/whatsapp/whatsapp.module';
 
 @Module({
-  imports: [CommonModule, ReceiptsModule, LoyaltyModule, StockModule],
+  imports: [CommonModule, ReceiptsModule, LoyaltyModule, StockModule, WhatsAppModule],
   controllers: [SalesController, SalesPublicController],
   providers: [
     SalesService,

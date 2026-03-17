@@ -3,6 +3,8 @@ package com.aiyal.mobibix.ui.features.finance.receipts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aiyal.mobibix.core.shop.ShopContextProvider
+import com.aiyal.mobibix.core.ui.UiMessageBus
+import com.aiyal.mobibix.core.util.MobiError
 import com.aiyal.mobibix.data.network.CreateReceiptRequest
 import com.aiyal.mobibix.data.network.Receipt
 import com.aiyal.mobibix.data.network.ReceiptType
@@ -24,7 +26,8 @@ data class ReceiptUiState(
 @HiltViewModel
 class ReceiptViewModel @Inject constructor(
     private val receiptRepository: ReceiptRepository,
-    private val shopContextProvider: ShopContextProvider
+    private val shopContextProvider: ShopContextProvider,
+    private val uiMessageBus: UiMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReceiptUiState())
@@ -37,7 +40,9 @@ class ReceiptViewModel @Inject constructor(
                 val list = receiptRepository.getReceipts()
                 _uiState.value = _uiState.value.copy(isLoading = false, receipts = list)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }
@@ -46,12 +51,14 @@ class ReceiptViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
+                val shopId = shopContextProvider.activeShopIdFlow.value
                 receiptRepository.createReceipt(
                     CreateReceiptRequest(
                         paymentMethod = method,
-                        amount = amount,
+                        amount = amount.toInt(),
                         receiptType = type,
                         customerName = name,
+                        shopId = shopId,
                         customerPhone = phone,
                         narration = narration
                     )
@@ -59,7 +66,9 @@ class ReceiptViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(isLoading = false, actionSuccess = true)
                 loadReceipts()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                val msg = MobiError.extractMessage(e)
+                uiMessageBus.showError(msg)
+                _uiState.value = _uiState.value.copy(isLoading = false, error = msg)
             }
         }
     }

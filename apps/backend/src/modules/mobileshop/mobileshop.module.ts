@@ -13,6 +13,9 @@ import { CompatibilityModule } from './compatibility/compatibility.module';
 import { OperationsModule } from './operations/operations.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { RepairIntelligenceModule } from './repair-intelligence/repair-intelligence.module';
+import { TradeInModule } from './tradein/tradein.module';
+import { FinanceModule } from './finance/finance.module';
+import { EWayBillModule } from './ewaybill/ewaybill.module';
 
 @Module({
   imports: [
@@ -30,6 +33,9 @@ import { RepairIntelligenceModule } from './repair-intelligence/repair-intellige
     OperationsModule,
     KnowledgeModule,
     RepairIntelligenceModule,
+    TradeInModule,
+    FinanceModule,
+    EWayBillModule,
   ],
 })
 export class MobileShopModule {}

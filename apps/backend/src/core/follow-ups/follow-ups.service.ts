@@ -24,6 +24,17 @@ export class FollowUpsService {
     private readonly automationService: AutomationService,
   ) {}
 
+  private mapFollowUp(item: any) {
+    if (!item) return null;
+    return {
+      ...item,
+      customerName: item.customer?.name,
+      customerPhone: item.customer?.phone,
+      assignedToUserName: item.assignedToUser?.fullName,
+
+    };
+  }
+
   async createFollowUp(
     tenantId: string,
     userId: string,
@@ -35,7 +46,7 @@ export class FollowUpsService {
       role,
       dto.assignedToUserId,
     );
-
+ 
     const followUp = await this.prisma.customerFollowUp.create({
       data: {
         tenantId,
@@ -70,8 +81,9 @@ export class FollowUpsService {
       console.error('Failed to trigger WhatsApp automation:', err.message);
     }
 
-    return followUp;
+    return this.mapFollowUp(followUp);
   }
+
 
   async updateFollowUp(
     tenantId: string,
@@ -135,8 +147,9 @@ export class FollowUpsService {
       }
     }
 
-    return updated;
+    return this.mapFollowUp(updated);
   }
+
 
   async listMyFollowUps(
     tenantId: string,
@@ -167,12 +180,14 @@ export class FollowUpsService {
     }
 
     return {
-      data: items,
+      data: items.map((item) => this.mapFollowUp(item)),
+
       total,
       skip: options?.skip ?? 0,
       take: options?.take ?? 50,
     };
   }
+
 
   async getMyFollowUpCounts(tenantId: string, userId: string) {
     const now = new Date();
@@ -226,12 +241,13 @@ export class FollowUpsService {
     ]);
 
     return {
-      data: items,
+      data: items.map((item) => this.mapFollowUp(item)),
       total,
       skip: options?.skip ?? 0,
       take: options?.take ?? 50,
     };
   }
+
 
   async updateStatus(
     tenantId: string,
@@ -254,6 +270,11 @@ export class FollowUpsService {
     const updated = await this.prisma.customerFollowUp.update({
       where: { id: followUpId },
       data: { status },
+      include: {
+        assignedToUser: { select: { id: true, fullName: true } },
+        shop: { select: { id: true, name: true } },
+        customer: { select: { id: true, name: true, phone: true } },
+      },
     });
 
     // ─────────────────────────────
@@ -273,8 +294,9 @@ export class FollowUpsService {
       }
     }
 
-    return updated;
+    return this.mapFollowUp(updated);
   }
+
 
   private buildFollowUpWhere(
     tenantId: string,

@@ -187,6 +187,18 @@ data class PurchaseListResponse(
     val total: Int
 )
 
+data class PurchaseOrderListResponse(
+    val data: List<PurchaseOrder> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val limit: Int = 50
+)
+
+data class GrnListResponse(
+    val data: List<GRN> = emptyList(),
+    val total: Int = 0
+)
+
 interface PurchaseApi {
     // Purchase Invoices
     @GET("api/purchases")
@@ -215,7 +227,7 @@ interface PurchaseApi {
     suspend fun listPurchaseOrders(
         @Query("shopId") shopId: String?,
         @Query("status") status: PurchaseOrderStatus? = null
-    ): List<PurchaseOrder>
+    ): PurchaseOrderListResponse
 
     @GET("api/purchase-orders/{id}")
     suspend fun getPurchaseOrder(@Path("id") id: String): PurchaseOrder

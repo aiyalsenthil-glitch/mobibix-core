@@ -54,8 +54,11 @@ export interface Shop {
   accountNumber?: string;
   ifscCode?: string;
   branchName?: string;
+  upiId?: string;
   repairInvoiceNumberingMode?: RepairInvoiceNumberingMode;
   repairGstDefault?: boolean;
+  autoGenerateEwayBill?: boolean;
+  nicUsername?: string;
 }
 
 export interface CreateShopDto {
@@ -137,9 +140,11 @@ export interface UpdateShopSettingsDto {
   accountNumber?: string;
   ifscCode?: string;
   branchName?: string;
+  upiId?: string;
 
   repairInvoiceNumberingMode?: RepairInvoiceNumberingMode;
   repairGstDefault?: boolean;
+  autoGenerateEwayBill?: boolean;
 }
 
 /**
@@ -361,4 +366,23 @@ export async function updateShopDocumentSetting(
   }
 
   return extractData(response);
+}
+
+export async function updateNicCredentials(
+  shopId: string,
+  nicUsername: string,
+  nicPassword: string,
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `/mobileshop/shops/${shopId}/nic-credentials`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ nicUsername, nicPassword }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to update NIC credentials");
+  }
 }
