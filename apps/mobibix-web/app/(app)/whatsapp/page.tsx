@@ -1,37 +1,43 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   createWhatsAppCampaign,
   getWhatsAppDashboard,
   getWhatsAppLogs,
   scheduleWhatsAppCampaign,
   sendWhatsAppMessage,
+  switchWhatsAppProvider,
+  disconnectWhatsApp,
+  clearWhatsAppInbox,
+  getWhatsAppStatus,
+  getWhatsAppWebStatus,
+  disconnectWhatsAppWeb,
   WhatsAppDashboard,
   WhatsAppLog,
 } from "@/services/whatsapp.api";
-import { authenticatedFetch } from "@/services/auth.api";
-import WhatsAppCrmPromo from "../whatsapp-crm/components/WhatsAppCrmPromo";
-import WhatsAppCrmContactSupport from "../whatsapp-crm/components/WhatsAppCrmContactSupport";
 import WhatsAppCrmDashboard from "../whatsapp-crm/components/WhatsAppCrmDashboard";
-import WhatsAppRetailInbox from "../whatsapp-crm/components/WhatsAppRetailInbox";
 import WhatsAppDashboardView from "./components/WhatsAppDashboardView";
-import { NumberSelector } from "./components/NumberSelector";
+import { ServiceSelector } from "./components/ServiceSelector";
+import AuthkeySetupForm from "./components/AuthkeySetupForm";
+import QRScanner from "@/components/whatsapp/QRScanner";
+import WhatsAppInbox from "@/components/whatsapp/WhatsAppInbox";
 import { useAuth } from "@/hooks/useAuth";
 import {
   WhatsAppNumberProvider,
-  useWhatsAppNumber,
 } from "@/context/WhatsAppNumberContext";
-
-interface CrmStatus {
-  hasSubscription: boolean;
-  isEnabled: boolean;
-  hasPhoneNumber: boolean;
-  phoneNumber?: string | null; // ✅ Added
-  moduleType?: string;
-  whatsappAllowed?: boolean;
-}
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import {
+  Loader2,
+  Settings2,
+  LayoutDashboard,
+  Inbox,
+  Megaphone,
+  Zap,
+  RefreshCw,
+} from "lucide-react";
 
 export default function WhatsAppPage() {
   const { authUser } = useAuth();
@@ -42,59 +48,52 @@ export default function WhatsAppPage() {
   );
 }
 
-import QRScanner from "@/components/whatsapp/QRScanner";
-import WhatsAppInbox from "@/components/whatsapp/WhatsAppInbox";
-import { getWhatsAppWebStatus, disconnectWhatsAppWeb, switchWhatsAppProvider, disconnectWhatsApp, clearWhatsAppInbox } from "@/services/whatsapp.api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { ServiceSelector } from "./components/ServiceSelector";
-import { Loader2, Settings2, MessageSquare, LayoutDashboard, Inbox, Megaphone, Zap, RefreshCw } from "lucide-react";
+type PageState =
+  | "loading"
+  | "select_mode"
+  | "REMOVED_TOKEN_setup"
+  | "web_active"
+  | "REMOVED_TOKEN_active"
+  | "meta_active";
 
 function WhatsAppPageContent({ authUser }: { authUser: any }) {
   const [waStatus, setWaStatus] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [pageState, setPageState] = useState<PageState>("loading");
   const [switching, setSwitching] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const tenantId = authUser?.tenantId;
 
-  const handleClearInbox = async () => {
-    if (!confirm("Are you sure you want to clear the synchronized inbox? This will delete previous message history but won't affect messages on your phone.")) return;
-    setClearing(true);
-    try {
-      await clearWhatsAppInbox(tenantId);
-      window.location.reload(); 
-    } catch (err) {
-      alert("Failed to clear inbox");
-    } finally {
-      setClearing(false);
-    }
-  };
-
   const fetchStatus = async () => {
     if (!tenantId) return;
-    setLoading(true);
+    setPageState("loading");
     try {
-      const { getWhatsAppStatus, getWhatsAppWebStatus } = await import("@/services/whatsapp.api");
       const backendStatus = await getWhatsAppStatus();
-      
+
       if (!backendStatus?.provider) {
-        setWaStatus({ status: 'SELECT_SERVICE', provider: undefined });
+        setPageState("select_mode");
         return;
       }
 
-      if (backendStatus.provider === 'WEB_SOCKET') {
+      setWaStatus(backendStatus);
+
+      if (backendStatus.provider === "WEB_SOCKET") {
         const webStatus = await getWhatsAppWebStatus(tenantId);
-        setWaStatus({ ...webStatus, provider: 'WEB_SOCKET' });
+        setWaStatus({ ...webStatus, provider: "WEB_SOCKET" });
+        setPageState("web_active");
+      } else if (backendStatus.provider === "AUTHKEY") {
+        if (backendStatus.status === "PENDING" || backendStatus.status === "DISCONNECTED") {
+          setPageState("REMOVED_TOKEN_setup");
+        } else {
+          setPageState("REMOVED_TOKEN_active");
+        }
+      } else if (backendStatus.provider === "META_CLOUD") {
+        setPageState("meta_active");
       } else {
-        setWaStatus(backendStatus);
+        setPageState("select_mode");
       }
-    } catch (err) {
-      console.error("Failed to fetch WhatsApp status", err);
-      setWaStatus({ status: 'SELECT_SERVICE', provider: undefined });
-    } finally {
-      setLoading(false);
+    } catch {
+      setPageState("select_mode");
     }
   };
 
@@ -102,11 +101,16 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
     fetchStatus();
   }, [tenantId]);
 
-  const handleProviderSelect = async (provider: 'META_CLOUD' | 'WEB_SOCKET') => {
+  const handleModeSelect = async (provider: "WEB_SOCKET" | "AUTHKEY") => {
     setSwitching(true);
     try {
       await switchWhatsAppProvider(provider);
-      window.location.reload();
+      if (provider === "WEB_SOCKET") {
+        // Reload to trigger QR flow
+        window.location.reload();
+      } else {
+        setPageState("REMOVED_TOKEN_setup");
+      }
     } catch (err: any) {
       alert(err.message || "Failed to switch provider");
     } finally {
@@ -114,7 +118,38 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
     }
   };
 
-  if (loading) {
+  const handleAuthkeySuccess = () => {
+    window.location.reload();
+  };
+
+  const handleClearInbox = async () => {
+    if (!confirm("Clear synchronized inbox? This deletes message history but won't affect your phone.")) return;
+    setClearing(true);
+    try {
+      await clearWhatsAppInbox(tenantId);
+      window.location.reload();
+    } catch {
+      alert("Failed to clear inbox");
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const handleSwitchMode = async () => {
+    setSwitching(true);
+    try {
+      // Reset to mode selection
+      await switchWhatsAppProvider("WEB_SOCKET"); // just to reset, user will re-pick
+      setPageState("select_mode");
+    } catch (err: any) {
+      alert(err.message || "Failed to switch mode");
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  // ── Loading ─────────────────────────────────────────────────────────────────
+  if (pageState === "loading") {
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
@@ -122,58 +157,107 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
     );
   }
 
-  if (!waStatus?.provider || waStatus?.status === 'SELECT_SERVICE') {
+  // ── Mode selection ───────────────────────────────────────────────────────────
+  if (pageState === "select_mode") {
     return (
       <div className="p-8">
-        <ServiceSelector onSelect={handleProviderSelect} loading={switching} />
+        <ServiceSelector onSelect={handleModeSelect} loading={switching} />
       </div>
     );
   }
 
+  // ── Authkey credentials form ─────────────────────────────────────────────────
+  if (pageState === "REMOVED_TOKEN_setup") {
+    return (
+      <div className="p-8">
+        <AuthkeySetupForm
+          onSuccess={handleAuthkeySuccess}
+          onBack={() => setPageState("select_mode")}
+        />
+      </div>
+    );
+  }
+
+  // ── Active dashboard ─────────────────────────────────────────────────────────
+  const isAuthkey = pageState === "REMOVED_TOKEN_active";
+  const isMeta = pageState === "meta_active";
+  const isWeb = pageState === "web_active";
+
+  const providerLabel = isAuthkey
+    ? "Official (Authkey)"
+    : isMeta
+    ? "Official Meta API"
+    : "WhatsApp Web";
+
+  const providerBadgeClass = isAuthkey
+    ? "bg-violet-100 text-violet-700"
+    : isMeta
+    ? "bg-blue-100 text-blue-700"
+    : "bg-emerald-100 text-emerald-700";
+
   return (
     <div className="p-4 lg:p-8 space-y-6">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">WhatsApp CRM</h1>
           <div className="flex items-center gap-2 mt-1">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${waStatus.provider === 'META_CLOUD' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
-              {waStatus.provider === 'META_CLOUD' ? 'Official Meta API' : 'WhatsApp Web Service'}
+            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${providerBadgeClass}`}>
+              {providerLabel}
             </span>
-            <span className="text-xs text-gray-400 font-medium">Synced for {authUser?.email}</span>
+            {waStatus?.phoneNumber && (
+              <span className="text-xs text-gray-400 font-mono">{waStatus.phoneNumber}</span>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-           <Button variant="outline" size="sm" className="rounded-xl h-9 font-bold text-teal-600 border-teal-100 hover:bg-teal-50" onClick={handleClearInbox} disabled={clearing || switching}>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {isWeb && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl h-9 font-bold text-teal-600 border-teal-100 hover:bg-teal-50"
+              onClick={handleClearInbox}
+              disabled={clearing || switching}
+            >
               {clearing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
               Clear Sync
-           </Button>
-           <Button variant="outline" size="sm" className="rounded-xl h-9 font-bold text-gray-600" onClick={() => handleProviderSelect(waStatus.provider === 'META_CLOUD' ? 'WEB_SOCKET' : 'META_CLOUD')} disabled={switching || clearing}>
-              {switching ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Settings2 className="w-4 h-4 mr-2" />}
-              Switch Provider
-           </Button>
-           {waStatus.provider === 'WEB_SOCKET' && waStatus.status === 'CONNECTED' && (
-             <Button 
-               variant="outline" 
-               size="sm" 
-               className="rounded-xl h-9 font-bold text-red-600 border-red-100 hover:bg-red-50" 
-               onClick={async () => {
-                 if (confirm("Logout from WhatsApp?")) {
-                   try {
-                     await disconnectWhatsAppWeb(tenantId);
-                     await disconnectWhatsApp();
-                     window.location.reload();
-                   } catch (err) {
-                     window.location.reload();
-                   }
-                 }
-               }}
-             >
-                Logout
-             </Button>
-           )}
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl h-9 font-bold text-gray-600"
+            onClick={handleSwitchMode}
+            disabled={switching || clearing}
+          >
+            {switching ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Settings2 className="w-4 h-4 mr-2" />}
+            Switch Mode
+          </Button>
+
+          {isWeb && waStatus?.status === "CONNECTED" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl h-9 font-bold text-red-600 border-red-100 hover:bg-red-50"
+              onClick={async () => {
+                if (!confirm("Logout from WhatsApp Web?")) return;
+                try {
+                  await disconnectWhatsAppWeb(tenantId);
+                  await disconnectWhatsApp();
+                } finally {
+                  window.location.reload();
+                }
+              }}
+            >
+              Logout
+            </Button>
+          )}
         </div>
       </div>
 
+      {/* Tabs */}
       <Tabs defaultValue="dashboard" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-gray-100/80 p-1 rounded-2xl h-12 w-full md:w-auto justify-start border border-gray-200/50 mb-4 overflow-x-auto no-scrollbar">
           <TabsTrigger value="dashboard" className="rounded-xl px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
@@ -190,68 +274,135 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
           </TabsTrigger>
         </TabsList>
 
+        {/* Dashboard Tab */}
         <TabsContent value="dashboard" className="focus-visible:ring-0">
-          {waStatus.provider === 'WEB_SOCKET' && waStatus.status !== 'CONNECTED' ? (
-             <QRScanner tenantId={tenantId} onConnected={fetchStatus} />
-          ) : waStatus.provider === 'META_CLOUD' ? (
-             <MetaDashboardContent tenantId={tenantId} />
+          {isWeb && waStatus?.status !== "CONNECTED" ? (
+            <QRScanner tenantId={tenantId} onConnected={fetchStatus} />
+          ) : isWeb ? (
+            <WebModeConnectedCard waStatus={waStatus} />
+          ) : isAuthkey ? (
+            <AuthkeyConnectedCard waStatus={waStatus} />
           ) : (
-            <div className="grid gap-6">
-                <Card className="rounded-[2rem] border-none shadow-sm bg-gradient-to-br from-emerald-500 to-teal-600 p-8 text-white">
-                  <h3 className="text-2xl font-black mb-2">Web Service Connected</h3>
-                  <p className="opacity-80 font-medium">Real-time automation is active via your linked browser session.</p>
-                </Card>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                   <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Link Status</p>
-                      <p className="text-xl font-black text-emerald-600">CONNECTED</p>
-                   </Card>
-                   <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Phone Number</p>
-                      <p className="text-xl font-black text-gray-900">{waStatus.phoneNumber || 'N/A'}</p>
-                   </Card>
-                   <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Provider</p>
-                      <p className="text-xl font-black text-teal-600">WHATSAPP WEB</p>
-                   </Card>
-                </div>
-            </div>
+            <MetaDashboardContent tenantId={tenantId} />
           )}
         </TabsContent>
 
+        {/* Inbox Tab */}
         <TabsContent value="inbox" className="focus-visible:ring-0">
-           <WhatsAppInbox tenantId={tenantId} />
+          {isWeb || isAuthkey ? (
+            <WhatsAppInbox tenantId={tenantId} />
+          ) : (
+            <MetaDashboardContent tenantId={tenantId} />
+          )}
         </TabsContent>
 
+        {/* Automations Tab */}
         <TabsContent value="automation" className="focus-visible:ring-0">
-           <Card className="rounded-[2.5rem] border-none shadow-sm bg-white p-20 text-center">
-              <Zap className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-black text-gray-900 mb-2">Smart Automations</h3>
-              <p className="text-gray-500 max-w-sm mx-auto">Auto-replies, keyword triggers, and AI flows are coming soon to this unified dashboard.</p>
-           </Card>
+          <Card className="rounded-[2.5rem] border-none shadow-sm bg-white p-20 text-center">
+            <Zap className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+            <h3 className="text-2xl font-black text-gray-900 mb-2">Smart Automations</h3>
+            <p className="text-gray-500 max-w-sm mx-auto">
+              Auto-replies, keyword triggers, and AI flows are coming soon to this unified dashboard.
+            </p>
+          </Card>
         </TabsContent>
 
+        {/* Broadcasts Tab */}
         <TabsContent value="broadcasts" className="focus-visible:ring-0">
-           {waStatus.provider === 'META_CLOUD' ? (
-             <MetaDashboardContent tenantId={tenantId} /> 
-           ) : (
-             <Card className="rounded-[2.5rem] border-none shadow-sm bg-white p-20 text-center">
-               <Megaphone className="w-12 h-12 text-indigo-500 mx-auto mb-4" />
-               <h3 className="text-2xl font-black text-gray-900 mb-2">Meta Broadcasts</h3>
-               <p className="text-gray-500 max-w-sm mx-auto">Bulk campaigns are exclusively available on the Official Meta Engine for maximum compliance and delivery rates.</p>
-               <Button variant="outline" className="mt-6 rounded-xl font-bold bg-indigo-50 border-indigo-100 text-indigo-700" onClick={() => handleProviderSelect('META_CLOUD')}>Switch to Meta Engine</Button>
-             </Card>
-           )}
+          {isMeta ? (
+            <MetaDashboardContent tenantId={tenantId} />
+          ) : isAuthkey ? (
+            <AuthkeyBroadcastsCard />
+          ) : (
+            <Card className="rounded-[2.5rem] border-none shadow-sm bg-white p-20 text-center">
+              <Megaphone className="w-12 h-12 text-indigo-500 mx-auto mb-4" />
+              <h3 className="text-2xl font-black text-gray-900 mb-2">Broadcasts</h3>
+              <p className="text-gray-500 max-w-sm mx-auto">
+                Bulk campaigns require Official WhatsApp (Authkey) for maximum compliance and delivery.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-6 rounded-xl font-bold bg-violet-50 border-violet-100 text-violet-700"
+                onClick={() => handleModeSelect("AUTHKEY")}
+              >
+                Upgrade to Official API
+              </Button>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+function WebModeConnectedCard({ waStatus }: { waStatus: any }) {
+  return (
+    <div className="grid gap-6">
+      <Card className="rounded-[2rem] border-none shadow-sm bg-gradient-to-br from-emerald-500 to-teal-600 p-8 text-white">
+        <h3 className="text-2xl font-black mb-2">Web Mode Active</h3>
+        <p className="opacity-80 font-medium">Real-time automation is active via your linked WhatsApp session.</p>
+      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
+          <p className="text-xl font-black text-emerald-600">{waStatus?.status || "CONNECTED"}</p>
+        </Card>
+        <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Phone Number</p>
+          <p className="text-xl font-black text-gray-900">{waStatus?.phoneNumber || "—"}</p>
+        </Card>
+        <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Mode</p>
+          <p className="text-xl font-black text-teal-600">WhatsApp Web</p>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function AuthkeyConnectedCard({ waStatus }: { waStatus: any }) {
+  return (
+    <div className="grid gap-6">
+      <Card className="rounded-[2rem] border-none shadow-sm bg-gradient-to-br from-violet-600 to-indigo-600 p-8 text-white">
+        <h3 className="text-2xl font-black mb-2">Official WhatsApp Active</h3>
+        <p className="opacity-80 font-medium">Powered by Authkey — official API with reliable delivery.</p>
+      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
+          <p className="text-xl font-black text-violet-600">{waStatus?.status || "ACTIVE"}</p>
+        </Card>
+        <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Phone Number</p>
+          <p className="text-xl font-black text-gray-900">{waStatus?.phoneNumber || "—"}</p>
+        </Card>
+        <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Sender ID</p>
+          <p className="text-xl font-black text-indigo-600">{waStatus?.REMOVED_TOKENSenderId || "—"}</p>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function AuthkeyBroadcastsCard() {
+  return (
+    <Card className="rounded-[2.5rem] border-none shadow-sm bg-white p-20 text-center">
+      <Megaphone className="w-12 h-12 text-violet-500 mx-auto mb-4" />
+      <h3 className="text-2xl font-black text-gray-900 mb-2">Bulk Campaigns</h3>
+      <p className="text-gray-500 max-w-sm mx-auto">
+        Bulk campaign builder for Authkey (up to 200 recipients per batch) is coming soon.
+      </p>
+    </Card>
+  );
+}
+
 function MetaDashboardContent({ tenantId }: { tenantId: string }) {
   const [data, setData] = useState<{ dashboard: WhatsAppDashboard | null; logs: WhatsAppLog[] }>({
     dashboard: null,
-    logs: []
+    logs: [],
   });
   const [loading, setLoading] = useState(true);
 
@@ -260,14 +411,14 @@ function MetaDashboardContent({ tenantId }: { tenantId: string }) {
     try {
       const [dashboard, logs] = await Promise.all([
         getWhatsAppDashboard(),
-        getWhatsAppLogs()
+        getWhatsAppLogs(),
       ]);
-      setData({ 
-        dashboard, 
-        logs: Array.isArray(logs) ? logs : (logs as any)?.data || [] 
+      setData({
+        dashboard,
+        logs: Array.isArray(logs) ? logs : (logs as any)?.data || [],
       });
-    } catch (err) {
-      console.error("Failed to load Meta dashboard data", err);
+    } catch {
+      // silent
     } finally {
       setLoading(false);
     }
@@ -278,7 +429,7 @@ function MetaDashboardContent({ tenantId }: { tenantId: string }) {
   }, [tenantId]);
 
   if (loading) {
-     return (
+    return (
       <div className="flex h-[40vh] items-center justify-center bg-white rounded-[2rem]">
         <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
         <span className="font-bold text-gray-500">Syncing Meta Assets...</span>
@@ -289,33 +440,35 @@ function MetaDashboardContent({ tenantId }: { tenantId: string }) {
   if (!data.dashboard) {
     return (
       <Card className="rounded-[2.5rem] border-none shadow-sm bg-white p-20 text-center">
-          <h3 className="text-2xl font-black text-gray-900 mb-2">Connect Meta Assets</h3>
-          <p className="text-gray-500 mb-8 max-w-sm mx-auto">Your engine is set to Official API, but assets are not yet synced. Please connect your Facebook account.</p>
-          <Button 
-            className="bg-blue-600 hover:bg-blue-700 rounded-xl px-12 h-12 font-bold shadow-lg shadow-blue-100"
-            onClick={async () => {
-              const { connectWhatsApp } = await import("@/services/whatsapp.api");
-              const { url } = await connectWhatsApp();
-              window.location.href = url;
-            }}
-          >
-            Connect Facebook
-          </Button>
+        <h3 className="text-2xl font-black text-gray-900 mb-2">Connect Meta Assets</h3>
+        <p className="text-gray-500 mb-8 max-w-sm mx-auto">
+          Connect your Facebook account to sync Meta API assets.
+        </p>
+        <Button
+          className="bg-blue-600 hover:bg-blue-700 rounded-xl px-12 h-12 font-bold shadow-lg shadow-blue-100"
+          onClick={async () => {
+            const { connectWhatsApp } = await import("@/services/whatsapp.api");
+            const { url } = await connectWhatsApp();
+            window.location.href = url;
+          }}
+        >
+          Connect Facebook
+        </Button>
       </Card>
     );
   }
 
   return (
-    <WhatsAppDashboardView 
+    <WhatsAppDashboardView
       dashboard={data.dashboard}
       logs={data.logs}
       onRefresh={loadData}
       featureFlags={{ manualMessaging: true, bulkCampaign: true, reports: true }}
       quotaExhausted={false}
-      quotaPercent={data.dashboard.usedQuota / (data.dashboard.monthlyQuota || 1) * 100}
-      sendForm={{ phone: '', templateId: '', parameters: '' }}
+      quotaPercent={(data.dashboard.usedQuota / (data.dashboard.monthlyQuota || 1)) * 100}
+      sendForm={{ phone: "", templateId: "", parameters: "" }}
       setSendForm={() => {}}
-      campaignForm={{ name: '', templateId: '', scheduledAt: '' }}
+      campaignForm={{ name: "", templateId: "", scheduledAt: "" }}
       setCampaignForm={() => {}}
       sending={false}
       campaigning={false}

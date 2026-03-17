@@ -33,21 +33,46 @@ export interface WhatsAppDashboard {
 
 export interface WhatsAppStatus {
   status: "ACTIVE" | "PENDING" | "FAILED" | "DISCONNECTED" | "SCAN_REQUIRED";
+  mode?: "WEB" | "OFFICIAL";
   wabaId: string | null;
   phoneNumberId: string | null;
   phoneNumber: string | null;
-  provider: "META_CLOUD" | "WEB_SOCKET";
+  provider: "META_CLOUD" | "WEB_SOCKET" | "AUTHKEY";
+  REMOVED_TOKENSenderId?: string | null;
 }
 
-export async function switchWhatsAppProvider(provider: 'META_CLOUD' | 'WEB_SOCKET'): Promise<void> {
+export async function switchWhatsAppProvider(provider: 'META_CLOUD' | 'WEB_SOCKET' | 'AUTHKEY'): Promise<{ requiresSetup?: boolean }> {
   const response = await authenticatedFetch("/integrations/whatsapp/switch-provider", {
     method: "POST",
     body: JSON.stringify({ provider }),
   });
   if (!response.ok) {
     const error = await extractData(response) as any;
-    throw new Error(error?.message || "Failed to switch provider");
+    const err: any = new Error(error?.message || "Failed to switch provider");
+    err.status = response.status;
+    throw err;
   }
+  return extractData(response);
+}
+
+export interface ConfigureAuthkeyRequest {
+  apiKey: string;
+  senderId: string;
+  phoneNumber: string;
+}
+
+export async function configureAuthkey(data: ConfigureAuthkeyRequest): Promise<{ success: boolean; numberId: string }> {
+  const response = await authenticatedFetch("/integrations/whatsapp/configure-REMOVED_TOKEN", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    const err: any = new Error(error?.message || "Failed to configure Authkey");
+    err.status = response.status;
+    throw err;
+  }
+  return extractData(response);
 }
 
 export interface ManualSyncRequest {
