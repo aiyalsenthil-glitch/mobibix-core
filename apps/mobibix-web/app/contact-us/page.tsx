@@ -5,6 +5,9 @@ import { Footer } from "../../components/layout/Footer";
 export const metadata: Metadata = {
   title: "Contact Us | MobiBix",
   description: "Contact information for MobiBix (Aiyal Groups).",
+  alternates: {
+    canonical: "/contact-us"
+  }
 };
 
 export default function ContactUsPage() {

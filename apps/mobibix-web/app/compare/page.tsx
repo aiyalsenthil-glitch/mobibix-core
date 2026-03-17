@@ -1,6 +1,15 @@
 import { Header } from "../../components/layout/Header";
 import { Footer } from "../../components/layout/Footer";
 import Link from "next/link";
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: "Compare MobiBix — Best Mobile Repair Software Comparison",
+  description: "See how MobiBix compares against RepairDesk, RepairShopr, Vyapar, and Tally. Choose the best POS and Billing software for your mobile shop.",
+  alternates: {
+    canonical: "https://REMOVED_DOMAIN/compare"
+  }
+};
 
 export default function CompareIndexPage() {
   const competitors = [

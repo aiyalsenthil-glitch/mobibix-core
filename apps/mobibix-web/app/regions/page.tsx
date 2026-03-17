@@ -1,6 +1,15 @@
 import { Header } from "../../components/layout/Header";
 import { Footer } from "../../components/layout/Footer";
 import Link from "next/link";
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: "MobiBix Regions — Global Mobile Retail OS",
+  description: "Explore MobiBix's presence across India, UAE, Saudi Arabia, Malaysia, and Indonesia. Localized mobile shop management software for the world.",
+  alternates: {
+    canonical: "https://REMOVED_DOMAIN/regions"
+  }
+};
 
 export default function RegionsIndexPage() {
   const regions = [

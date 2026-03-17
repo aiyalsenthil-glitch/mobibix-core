@@ -126,6 +126,7 @@ model Tenant {
   commissionRules          CommissionRule[]
   staffEarnings            StaffEarning[]
   tradeIns                 TradeIn[]
+  eWayBills                EWayBill[]
   priceAlerts              SupplierPriceAlert[]
   emiApplications          EmiApplication[]
   installmentPlans         InstallmentPlan[]
@@ -348,6 +349,8 @@ model Party {
   normalizedPhone     String               @default("")
   countryCode         String               @default("IN")
   isoStateCode        String?
+  pincode             String?
+  distanceFromShop    Int?
   currentOutstanding  Int                  @default(0)
   mergedIntoId        String?
   contactId           String?
@@ -1026,6 +1029,7 @@ model WhatsAppMessageLog {
   status           String
   provider         WhatsAppProviderType
   whatsAppNumberId String?
+  metadata         Json?
   createdAt        DateTime             @default(now())
   tenant           Tenant               @relation(fields: [tenantId], references: [id])
   whatsAppNumber   WhatsAppNumber?      @relation(fields: [whatsAppNumberId], references: [id])
@@ -1197,6 +1201,8 @@ model Shop {
   pincode                    String
   stateCode                  String?
   gstNumber                  String?
+  nicUsername                String?        // NIC e-waybill portal username
+  nicPassword                String?        // AES-256-GCM encrypted NIC password
   gstEnabled                 Boolean                    @default(false)
   currency                   String                     @default("INR")
   invoicePrefix              String
@@ -1230,6 +1236,7 @@ model Shop {
   commissionRules            CommissionRule[]
   staffEarnings              StaffEarning[]
   tradeIns                   TradeIn[]
+  eWayBills                  EWayBill[]
   priceAlerts                SupplierPriceAlert[]
   emiApplications            EmiApplication[]
   installmentPlans           InstallmentPlan[]
@@ -1682,6 +1689,7 @@ model Invoice {
   receipts               Receipt[]
   emiApplication         EmiApplication?
   installmentPlan        InstallmentPlan?
+  eWayBill               EWayBill?
 
   @@unique([tenantId, invoiceNumber])
   @@index([tenantId])
@@ -1697,6 +1705,52 @@ model Invoice {
   @@index([tenantId, deletedAt, invoiceDate])
   @@index([tenantId, shopId, status, invoiceDate])
   @@map("mb_invoice")
+}
+
+model EWayBill {
+  id              String         @id @default(cuid())
+  tenantId        String
+  shopId          String
+  invoiceId       String         @unique
+
+  ewbNumber       String?        @unique
+  ewbDate         DateTime?
+  validUpto       DateTime?
+
+  transMode       String         @default("ROAD")
+  vehicleNumber   String?
+  transporterId   String?
+  transporterName String?
+  distance        Int?
+
+  nicRequestId    String?        @unique
+  requestPayload  Json?
+  rawResponse     Json?
+
+  status          EWayBillStatus @default(DRAFT)
+  cancelReason    String?
+  generatedAt     DateTime?
+  cancelledAt     DateTime?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  createdBy       String?
+
+  invoice         Invoice        @relation(fields: [invoiceId], references: [id])
+  shop            Shop           @relation(fields: [shopId], references: [id])
+  tenant          Tenant         @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, shopId])
+  @@index([tenantId, status])
+  @@map("mb_eway_bill")
+}
+
+enum EWayBillStatus {
+  DRAFT
+  GENERATING
+  GENERATED
+  FAILED
+  CANCELLED
 }
 
 model InvoiceItem {

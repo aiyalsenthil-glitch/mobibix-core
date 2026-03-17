@@ -35,7 +35,7 @@ import {
 @Controller('whatsapp')
 @ModulePermission('whatsapp')
 @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
-@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
+@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF, UserRole.USER)
 export class WhatsAppController {
   constructor(
     private readonly prisma: PrismaService,
@@ -213,8 +213,20 @@ export class WhatsAppController {
   }
 
   /**
-   * GET /whatsapp/status/:tenantId
+   * DELETE /whatsapp/logs/:tenantId
+   * Clear all message logs for a tenant (Inbox Reset)
    */
+  @Delete('logs/:tenantId')
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
+  async deleteLogs(@Param('tenantId') tenantId: string, @Req() req: any) {
+    this.validateAccess(req, tenantId);
+    
+    await (this.prisma as any).whatsAppMessageLog.deleteMany({
+      where: { tenantId }
+    });
+
+    return { success: true, message: 'Inbox cleared' };
+  }
   @Public()
   @Get('status/:tenantId')
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.VIEW_DASHBOARD)
@@ -240,7 +252,7 @@ export class WhatsAppController {
   async getConversations(@Param('tenantId') tenantId: string, @Req() req: any) {
     this.validateAccess(req, tenantId);
 
-    const logs = await this.prisma.whatsAppMessageLog.findMany({
+    const logs = await (this.prisma as any).whatsAppMessageLog.findMany({
       where: { tenantId },
       distinct: ['phoneNumber'],
       orderBy: { createdAt: 'desc' },
@@ -248,12 +260,17 @@ export class WhatsAppController {
     });
 
     return Promise.all(logs.map(async (log) => {
-        const lastMsg = await this.prisma.whatsAppMessageLog.findFirst({
+        const lastMsg = await (this.prisma as any).whatsAppMessageLog.findFirst({
             where: { tenantId, phoneNumber: log.phoneNumber },
             orderBy: { createdAt: 'desc' }
         });
+        
+        // Extract pushName from metadata if available
+        const pushName = (lastMsg?.metadata as any)?.pushName;
+
         return {
             phoneNumber: log.phoneNumber,
+            pushName: pushName,
             lastMessage: lastMsg?.body || '',
             lastTimestamp: lastMsg?.createdAt || new Date(),
             unreadCount: 0
@@ -274,7 +291,7 @@ export class WhatsAppController {
   ) {
     this.validateAccess(req, tenantId);
 
-    return this.prisma.whatsAppMessageLog.findMany({
+    return (this.prisma as any).whatsAppMessageLog.findMany({
       where: { tenantId, phoneNumber },
       orderBy: { createdAt: 'asc' },
       take: 100
@@ -607,37 +624,42 @@ export class WhatsAppController {
   ) {
     this.validateAccess(req, dto.tenantId);
 
-    if (!dto.phone) {
+    // Normalize parameters if frontend uses different names
+    const phone = dto.phone || (dto as any).phoneNumber;
+    const text = dto.text || (dto as any).body;
+
+    if (!phone) {
       throw new BadRequestException('Phone number is required');
     }
 
-    if (!dto.templateId && !dto.text) {
+    if (!dto.templateId && !text) {
       throw new BadRequestException(
         'Either templateId or text must be provided',
       );
     }
 
-    // Validate phone format (accept: +919876543210 or 919876543210)
-    const cleanPhone = dto.phone.replace(/\s/g, '');
-    if (!/^(\+91|91)?[0-9]{10,15}$/.test(cleanPhone)) {
+    // Validate phone format - loosened for Group JIDs, LIDs, and standard phones
+    // Allows digits, @, ., -, and alphabets (for LIDs)
+    const cleanPhone = phone.replace(/\s/g, '');
+    if (!/^[a-zA-Z0-9@.\-]+$/.test(cleanPhone) && cleanPhone !== 'status') {
       throw new BadRequestException(
-        'Invalid phone format. Use +91XXXXXXXXXX or 91XXXXXXXXXX (10 digit number required)',
+        'Invalid phone format. Must be a valid phone number or WhatsApp JID.',
       );
     }
 
     // ---------------------------------------------------------
     // A. FREE TEXT FLOW (Manual Reply / Staff)
     // ---------------------------------------------------------
-    if (dto.text) {
-      const textBody = dto.text.trim();
+    if (text) {
+      const textBody = text.trim();
       if (!textBody) return { success: true, skipped: true }; // Empty text check
-
+ 
       // Get default WhatsAppNumber for tenant
       let defaultNumber = await this.prisma.whatsAppNumber.findFirst({
         where: { tenantId: dto.tenantId, isDefault: true, isEnabled: true },
         select: { id: true },
       });
-
+ 
       // Fallback: If no default marked, take the first available enabled number
       if (!defaultNumber) {
         defaultNumber = await this.prisma.whatsAppNumber.findFirst({
@@ -645,32 +667,32 @@ export class WhatsAppController {
           select: { id: true },
         });
       }
-
+ 
       if (!defaultNumber) {
         throw new BadRequestException(
           'No active WhatsApp configuration found for this tenant. Please connect your number first.',
         );
       }
-
+ 
       // Create log entry
       const log = await this.prisma.whatsAppLog.create({
         data: {
           tenantId: dto.tenantId,
           whatsAppNumberId: defaultNumber.id,
-          phone: dto.phone,
+          phone: phone,
           type: 'MANUAL',
           status: 'PENDING',
           metadata: { text_snippet: textBody.substring(0, 50) },
         },
       });
-
+ 
       // Send Text
       const result = await this.sender.sendTextMessage(
         dto.tenantId,
-        dto.phone,
+        phone,
         textBody,
       );
-
+ 
       // Update Log
       if (result.success && result.messageId) {
         await this.prisma.whatsAppLog.update({

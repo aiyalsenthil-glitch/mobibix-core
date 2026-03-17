@@ -216,7 +216,7 @@ export class WhatsAppOnboardingService {
     // 5. Update DB (Atomic Transaction)
     await this.prisma.$transaction([
       // A. Upsert Phone Number
-      (this.prisma.whatsAppNumber as any).upsert({
+      this.prisma.whatsAppNumber.upsert({
         where: {
           phoneNumberId,
         },
@@ -227,7 +227,7 @@ export class WhatsAppOnboardingService {
           wabaId,
           phoneNumber,
           updatedAt: new Date(),
-        } as any,
+        },
         create: {
           tenantId,
           phoneNumberId,
@@ -238,7 +238,7 @@ export class WhatsAppOnboardingService {
           purpose: 'DEFAULT',
           isDefault: true,
           isEnabled: true,
-        } as any,
+        },
       }),
       // B. Enable WhatsApp CRM on Tenant
       this.prisma.tenant.update({
@@ -383,7 +383,7 @@ export class WhatsAppOnboardingService {
         lastProviderSwitchAt: new Date(),
         // If switching engines, we reset setup status to DISCONNECTED or SCAN_REQUIRED 
         // to force a fresh connection on the new logic
-        setupStatus: provider === 'WEB_SOCKET' ? 'SCAN_REQUIRED' : 'PENDING'
+        setupStatus: (provider === 'WEB_SOCKET' ? 'SCAN_REQUIRED' : 'PENDING') as any,
       } as any,
     });
 

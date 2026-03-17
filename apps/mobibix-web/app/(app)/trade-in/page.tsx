@@ -716,7 +716,7 @@ export default function TradeInPage() {
           shopId={selectedShopId}
           onDone={() => {
             setShowWizard(false);
-            load();
+            load(page, search);
           }}
           onCancel={() => setShowWizard(false)}
         />

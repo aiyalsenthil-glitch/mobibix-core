@@ -1,33 +1,44 @@
 import { MetadataRoute } from 'next';
+import { getAllPosts } from '../lib/blog';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://REMOVED_DOMAIN';
   const now = new Date();
 
-  const routes: MetadataRoute.Sitemap = [
-    // ── Core Public Pages ──────────────────────────────
+  // 1. Core Pages
+  const coreRoutes: MetadataRoute.Sitemap = [
     { url: baseUrl, lastModified: now, changeFrequency: 'weekly', priority: 1.0 },
     { url: `${baseUrl}/features`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${baseUrl}/pricing`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${baseUrl}/blog`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
     { url: `${baseUrl}/support`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${baseUrl}/contact-us`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${baseUrl}/partner`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+  ];
 
-    // ── Feature Deep-Dives ─────────────────────────────
+  // 2. Feature Deep-Dives
+  const featureRoutes: MetadataRoute.Sitemap = [
     { url: `${baseUrl}/features/job-cards`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${baseUrl}/features/whatsapp-notifications`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${baseUrl}/features/inventory`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${baseUrl}/features/gst-billing`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${baseUrl}/features/multi-shop`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
     { url: `${baseUrl}/features/crm`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
+  ];
 
-    // ── Regional Landing Pages ─────────────────────────
+  // 3. Regional Landing Pages
+  const regionRoutes: MetadataRoute.Sitemap = [
+    { url: `${baseUrl}/regions`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
     { url: `${baseUrl}/regions/india`, lastModified: now, changeFrequency: 'monthly', priority: 0.90 },
     { url: `${baseUrl}/regions/uae`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${baseUrl}/regions/saudi-arabia`, lastModified: now, changeFrequency: 'monthly', priority: 0.82 },
     { url: `${baseUrl}/regions/malaysia`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
     { url: `${baseUrl}/regions/indonesia`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
+  ];
 
-    // ── Comparison Pages ───────────────────────────────
+  // 4. Comparison Pages
+  const comparisonRoutes: MetadataRoute.Sitemap = [
+    { url: `${baseUrl}/compare`, lastModified: now, changeFrequency: 'monthly', priority: 0.70 },
     { url: `${baseUrl}/compare/repairdesk`, lastModified: now, changeFrequency: 'monthly', priority: 0.88 },
     { url: `${baseUrl}/compare/repairshopr`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${baseUrl}/compare/fixably`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
@@ -35,48 +46,46 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/compare/khatabook`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
     { url: `${baseUrl}/compare/tally`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
     { url: `${baseUrl}/compare/busy`, lastModified: now, changeFrequency: 'monthly', priority: 0.75 },
+  ];
 
-    // ── Legal & Auth ───────────────────────────────────
+  // 5. City Landing Pages (Dynamic/Bulk generation)
+  const cities = [
+    'mumbai', 'delhi', 'bangalore', 'hyderabad', 'chennai', 'kolkata', 'pune', 'ahmedabad',
+    'jaipur', 'surat', 'lucknow', 'nagpur', 'indore', 'bhopal', 'visakhapatnam', 'patna',
+    'vadodara', 'ludhiana', 'nashik', 'coimbatore', 'kochi', 'chandigarh'
+  ];
+  const cityRoutes: MetadataRoute.Sitemap = cities.map(city => ({
+    url: `${baseUrl}/locations/${city}`,
+    lastModified: now,
+    changeFrequency: 'monthly',
+    priority: 0.8
+  }));
+
+  // 6. Blog Posts (Dynamic)
+  const posts = getAllPosts();
+  const blogRoutes: MetadataRoute.Sitemap = posts.map((post) => ({
+    url: `${baseUrl}/blog/${post.slug}`,
+    lastModified: new Date(post.date),
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  }));
+
+  // 7. Legal & Auth
+  const legalRoutes: MetadataRoute.Sitemap = [
     { url: `${baseUrl}/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${baseUrl}/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${baseUrl}/cancellation-and-refund`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
-    { url: `${baseUrl}/contact-us`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${baseUrl}/shipping-and-exchange`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
-    { url: `${baseUrl}/support/kb`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
-
-    // ── Partner Pages ──────────────────────────────────
-    { url: `${baseUrl}/partner`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
-    { url: `${baseUrl}/partner/tiers`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
-    { url: `${baseUrl}/partner/apply`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
-
-    // ── City Landing Pages (Tier 1) ────────────────────
-    { url: `${baseUrl}/locations/mumbai`, lastModified: now, changeFrequency: 'monthly', priority: 0.88 },
-    { url: `${baseUrl}/locations/delhi`, lastModified: now, changeFrequency: 'monthly', priority: 0.88 },
-    { url: `${baseUrl}/locations/bangalore`, lastModified: now, changeFrequency: 'monthly', priority: 0.88 },
-    { url: `${baseUrl}/locations/hyderabad`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
-    { url: `${baseUrl}/locations/chennai`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
-    { url: `${baseUrl}/locations/kolkata`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
-    { url: `${baseUrl}/locations/pune`, lastModified: now, changeFrequency: 'monthly', priority: 0.83 },
-    { url: `${baseUrl}/locations/ahmedabad`, lastModified: now, changeFrequency: 'monthly', priority: 0.83 },
-
-    // ── City Landing Pages (Tier 2) ────────────────────
-    { url: `${baseUrl}/locations/jaipur`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
-    { url: `${baseUrl}/locations/surat`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
-    { url: `${baseUrl}/locations/lucknow`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
-    { url: `${baseUrl}/locations/nagpur`, lastModified: now, changeFrequency: 'monthly', priority: 0.75 },
-    { url: `${baseUrl}/locations/indore`, lastModified: now, changeFrequency: 'monthly', priority: 0.75 },
-    { url: `${baseUrl}/locations/bhopal`, lastModified: now, changeFrequency: 'monthly', priority: 0.75 },
-    { url: `${baseUrl}/locations/visakhapatnam`, lastModified: now, changeFrequency: 'monthly', priority: 0.75 },
-    { url: `${baseUrl}/locations/patna`, lastModified: now, changeFrequency: 'monthly', priority: 0.72 },
-    { url: `${baseUrl}/locations/vadodara`, lastModified: now, changeFrequency: 'monthly', priority: 0.72 },
-    { url: `${baseUrl}/locations/ludhiana`, lastModified: now, changeFrequency: 'monthly', priority: 0.72 },
-    { url: `${baseUrl}/locations/nashik`, lastModified: now, changeFrequency: 'monthly', priority: 0.70 },
-    { url: `${baseUrl}/locations/coimbatore`, lastModified: now, changeFrequency: 'monthly', priority: 0.70 },
-    { url: `${baseUrl}/locations/kochi`, lastModified: now, changeFrequency: 'monthly', priority: 0.70 },
-    { url: `${baseUrl}/locations/chandigarh`, lastModified: now, changeFrequency: 'monthly', priority: 0.70 },
-    { url: `${baseUrl}/locations/agra`, lastModified: now, changeFrequency: 'monthly', priority: 0.68 },
-    { url: `${baseUrl}/locations/varanasi`, lastModified: now, changeFrequency: 'monthly', priority: 0.68 },
+    { url: `${baseUrl}/data-deletion`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
   ];
 
-  return routes;
+  return [
+    ...coreRoutes,
+    ...featureRoutes,
+    ...regionRoutes,
+    ...comparisonRoutes,
+    ...cityRoutes,
+    ...blogRoutes,
+    ...legalRoutes
+  ];
 }

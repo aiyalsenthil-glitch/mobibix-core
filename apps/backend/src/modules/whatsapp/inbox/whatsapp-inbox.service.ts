@@ -16,7 +16,6 @@ export class WhatsAppInboxService implements OnModuleInit, OnModuleDestroy {
     private conversationEngine: ConversationEngineService,
     private prisma: PrismaService,
   ) {}
-
   onModuleInit() {
     const url = this.configService.get<string>('REDIS_URL');
     if (url) {
@@ -38,6 +37,7 @@ export class WhatsAppInboxService implements OnModuleInit, OnModuleDestroy {
 
     this.subscriber.on('message', (channel, message) => {
       if (channel === 'whatsapp-incoming') {
+        this.logger.debug(`Received message from Redis: ${message.substring(0, 100)}...`);
         this.handleIncomingMessage(message);
       }
     });
@@ -50,15 +50,32 @@ export class WhatsAppInboxService implements OnModuleInit, OnModuleDestroy {
   private async handleIncomingMessage(message: string) {
     try {
       const payload = JSON.parse(message);
-      const { tenantId, senderPhone, body, jid, pushName } = payload;
+      const { tenantId, senderPhone, body, jid, pushName, isHistory, syncStatus, progress } = payload;
 
-      this.logger.log(`Incoming message for tenant ${tenantId} from ${senderPhone} (${pushName || 'No Name'})`);
+      // Handle Sync Status instead of Message if present
+      if (syncStatus) {
+        this.inboxGateway.broadcastNewMessage(tenantId, { 
+          syncStatus, 
+          progress, 
+          isSystem: true 
+        });
+        return;
+      }
+
+      const conversationId = jid || senderPhone || 'unknown';
+
+      if (conversationId === 'status@broadcast') {
+        this.logger.debug(`Skipping status update for tenant ${tenantId}`);
+        return;
+      }
+
+      this.logger.log(`Incoming message for tenant ${tenantId} from ${conversationId} (${pushName || 'No Name'})`);
 
       // 1. Persist to DB
       const savedMsg = await (this.prisma as any).whatsAppMessageLog.create({
         data: {
           tenantId,
-          phoneNumber: senderPhone || 'unknown',
+          phoneNumber: conversationId,
           direction: 'INCOMING',
           body: body || '',
           status: 'RECEIVED',
@@ -77,8 +94,10 @@ export class WhatsAppInboxService implements OnModuleInit, OnModuleDestroy {
         pushName: pushName, // Pass to frontend for display
       });
 
-      // 3. Trigger Conversation Engine (Automation)
-      await this.conversationEngine.processMessage(tenantId, senderPhone, body);
+      // 3. Trigger Conversation Engine (Automation) - ONLY for live messages
+      if (!isHistory) {
+        await this.conversationEngine.processMessage(tenantId, conversationId, body);
+      }
     } catch (err) {
       this.logger.error(`Error processing incoming message from Redis: ${err.message}`);
     }

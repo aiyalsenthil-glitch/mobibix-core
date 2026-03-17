@@ -12,6 +12,11 @@
 export function normalizePhone(phone: string): string {
   if (!phone) return phone;
 
+  // If it looks like a JID (contains @) or has no digits (like 'status'), return as is
+  if (phone.includes('@') || !/[0-9]/.test(phone)) {
+    return phone;
+  }
+
   const digits = phone.replace(/\D/g, '');
 
   // If it's an Indian number in common formats, keep the last 10 digits
@@ -33,6 +38,11 @@ export function normalizePhone(phone: string): string {
 export function toWhatsAppPhone(phone: string): string {
   if (!phone) {
     throw new Error('Invalid phone for WhatsApp');
+  }
+
+  // If it's already a JID or contains non-digits, return as is
+  if (phone.includes('@') || !/^[0-9]+$/.test(phone)) {
+    return phone;
   }
 
   const cleaned = phone.replace(/\D/g, '');

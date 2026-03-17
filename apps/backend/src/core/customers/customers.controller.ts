@@ -11,7 +11,13 @@ import {
   Put,
   Delete,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
+import { IsString } from 'class-validator';
+import { ConfigService } from '@nestjs/config';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantRequiredGuard } from '../auth/guards/tenant.guard';
 import { CustomersService } from './customers.service';
@@ -25,13 +31,25 @@ import { ModulePermission, RequirePermission } from '../permissions/decorators/r
 import { GranularPermissionGuard } from '../permissions/guards/granular-permission.guard';
 import { PERMISSIONS } from '../../security/permission-registry';
 
+class CalculateDistanceDto {
+  @IsString()
+  shopPincode: string;
+
+  @IsString()
+  customerPincode: string;
+}
+
 @UseGuards(JwtAuthGuard, TenantRequiredGuard, GranularPermissionGuard)
 @ModuleScope(ModuleType.CORE)
 @ModulePermission('core')
 @Roles(UserRole.OWNER, UserRole.STAFF)
 @Controller('core/customers')
 export class CustomersController {
-  constructor(private readonly service: CustomersService) {}
+  constructor(
+    private readonly service: CustomersService,
+    private readonly config: ConfigService,
+    private readonly http: HttpService,
+  ) {}
 
   @RequirePermission(PERMISSIONS.CORE.CUSTOMER.CREATE)
   @Post()
@@ -154,5 +172,38 @@ export class CustomersController {
     const tenantId = req.user.tenantId;
 
     return this.service.getCustomer(tenantId, customerId);
+  }
+
+  @RequirePermission(PERMISSIONS.CORE.CUSTOMER.VIEW)
+  @Post('calculate-distance')
+  @HttpCode(HttpStatus.OK)
+  async calculateDistance(@Body() dto: CalculateDistanceDto) {
+    const apiKey = this.config.get<string>('GOOGLE_MAPS_API_KEY');
+    if (!apiKey) {
+      throw new BadRequestException('Google Maps API key not configured');
+    }
+
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json`;
+    const response = await firstValueFrom(
+      this.http.get(url, {
+        params: {
+          origins: dto.shopPincode,
+          destinations: dto.customerPincode,
+          mode: 'driving',
+          key: apiKey,
+        },
+        timeout: 10000,
+      }),
+    );
+
+    const element = response.data?.rows?.[0]?.elements?.[0];
+    if (!element || element.status !== 'OK') {
+      throw new BadRequestException(
+        'Could not calculate distance. Please verify both pincodes.',
+      );
+    }
+
+    const distanceKm = Math.round(element.distance.value / 1000);
+    return { distanceKm };
   }
 }

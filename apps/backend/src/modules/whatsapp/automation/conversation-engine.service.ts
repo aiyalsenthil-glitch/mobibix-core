@@ -76,9 +76,10 @@ export class ConversationEngineService {
   }
 
   private async sendReply(tenantId: string, to: string, body: string) {
+    const fullJid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
     await this.waQueue.add('send-message', {
       tenantId,
-      to: `${to}@s.whatsapp.net`,
+      to: fullJid,
       body,
     });
   }

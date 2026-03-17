@@ -65,6 +65,8 @@ export class CustomersService {
         businessType: dto.businessType,
         partyType: 'CUSTOMER',
         gstNumber: dto.gstNumber,
+        pincode: dto.pincode,
+        distanceFromShop: dto.distanceFromShop,
       },
     });
   }
@@ -243,6 +245,8 @@ export class CustomersService {
         state: dto.state,
         businessType: dto.businessType,
         gstNumber: dto.gstNumber,
+        pincode: dto.pincode,
+        distanceFromShop: dto.distanceFromShop,
       },
     });
   }

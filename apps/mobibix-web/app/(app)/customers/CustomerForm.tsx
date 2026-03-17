@@ -5,10 +5,12 @@ import {
   createCustomer,
   updateCustomer,
   getCustomerByPhone,
+  calculateDistance,
   type Customer,
   type BusinessType,
   type PartyType,
 } from "@/services/customers.api";
+import { useShop } from "@/context/ShopContext";
 import { useTheme } from "@/context/ThemeContext";
 
 interface CustomerFormProps {
@@ -63,17 +65,22 @@ function validateGSTIN(gstin: string): boolean {
 
 export function CustomerForm({ customer, onClose }: CustomerFormProps) {
   const { theme } = useTheme();
+  const { selectedShop } = useShop();
   const isEditing = !!customer;
   const [formData, setFormData] = useState({
     name: customer?.name || "",
     phone: customer?.phone || "",
     email: customer?.email || "",
     state: customer?.state || "",
+    pincode: customer?.pincode || "",
+    distanceFromShop: customer?.distanceFromShop ?? undefined as number | undefined,
     businessType: (customer?.businessType || "B2C") as BusinessType,
     partyType: (customer?.partyType || "CUSTOMER") as PartyType,
     gstNumber: customer?.gstNumber || "",
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [isFetchingDistance, setIsFetchingDistance] = useState(false);
+  const [distanceError, setDistanceError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gstinError, setGstinError] = useState<string | null>(null);
   const [phoneExistingCustomer, setPhoneExistingCustomer] =
@@ -119,6 +126,23 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
       setGstinError(null);
     }
   }, [formData.gstNumber, formData.businessType]);
+
+  const handleFetchDistance = async () => {
+    const shopPincode = (selectedShop as any)?.pincode;
+    const customerPincode = formData.pincode.trim();
+    if (!shopPincode || !customerPincode) return;
+
+    setIsFetchingDistance(true);
+    setDistanceError(null);
+    try {
+      const result = await calculateDistance(shopPincode, customerPincode);
+      setFormData((prev) => ({ ...prev, distanceFromShop: result.distanceKm }));
+    } catch (err: unknown) {
+      setDistanceError((err as any)?.message || "Failed to fetch distance");
+    } finally {
+      setIsFetchingDistance(false);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -182,6 +206,8 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
           name: formData.name.trim(),
           email: formData.email.trim() || undefined,
           state: formData.state.trim(),
+          pincode: formData.pincode.trim() || undefined,
+          distanceFromShop: formData.distanceFromShop,
           businessType: formData.businessType,
           partyType: formData.partyType,
           gstNumber: formData.gstNumber.trim().toUpperCase() || undefined,
@@ -193,6 +219,8 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
           phone: formData.phone.trim(),
           email: formData.email.trim() || undefined,
           state: formData.state.trim(),
+          pincode: formData.pincode.trim() || undefined,
+          distanceFromShop: formData.distanceFromShop,
           businessType: formData.businessType,
           partyType: formData.partyType,
           gstNumber: formData.gstNumber.trim().toUpperCase() || undefined,
@@ -371,6 +399,84 @@ export function CustomerForm({ customer, onClose }: CustomerFormProps) {
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Pincode + Distance */}
+            <div>
+              <label className={`block text-sm mb-2 ${
+                theme === "dark" ? "text-stone-300" : "text-gray-700"
+              }`}>
+                Pincode
+              </label>
+              <input
+                type="text"
+                name="pincode"
+                value={formData.pincode}
+                onChange={handleChange}
+                placeholder="e.g. 560001"
+                maxLength={6}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-teal-500 ${
+                  theme === "dark"
+                    ? "bg-white/10 border-white/20 text-white placeholder-stone-400"
+                    : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className={`block text-sm mb-2 ${
+                theme === "dark" ? "text-stone-300" : "text-gray-700"
+              }`}>
+                Distance from Shop (km)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  name="distanceFromShop"
+                  value={formData.distanceFromShop ?? ""}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      distanceFromShop: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                    }))
+                  }
+                  placeholder="km"
+                  min={1}
+                  max={3000}
+                  className={`flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:border-teal-500 ${
+                    theme === "dark"
+                      ? "bg-white/10 border-white/20 text-white placeholder-stone-400"
+                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={handleFetchDistance}
+                  disabled={
+                    isFetchingDistance ||
+                    !formData.pincode.trim() ||
+                    !(selectedShop as any)?.pincode
+                  }
+                  title={
+                    !(selectedShop as any)?.pincode
+                      ? "Add shop pincode in Shop Settings first"
+                      : !formData.pincode.trim()
+                        ? "Enter customer pincode first"
+                        : "Fetch road distance"
+                  }
+                  className="px-3 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition whitespace-nowrap"
+                >
+                  {isFetchingDistance ? "..." : "Fetch"}
+                </button>
+              </div>
+              {distanceError && (
+                <p className="text-xs mt-1 text-red-400">{distanceError}</p>
+              )}
+              {!(selectedShop as any)?.pincode && (
+                <p className={`text-xs mt-1 ${theme === "dark" ? "text-stone-500" : "text-gray-400"}`}>
+                  Set shop pincode in Shop Settings to enable auto-fetch.
+                </p>
+              )}
             </div>
 
             {/* Business Type */}

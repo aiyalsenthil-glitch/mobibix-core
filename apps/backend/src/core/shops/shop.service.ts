@@ -1,5 +1,7 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, Injectable, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { encrypt } from '../utils/crypto.utils';
 import { YearFormat, ResetPolicy, ModuleType } from '@prisma/client';
 import { PlanRulesService } from '../billing/plan-rules.service';
 import { CreateShopDto } from './dto/create-shop.dto';
@@ -20,6 +22,7 @@ export class ShopService {
     private readonly prisma: PrismaService,
     private readonly docNumberService: DocumentNumberService,
     private readonly planRulesService: PlanRulesService,
+    private readonly config: ConfigService,
   ) {}
 
   async listShops(
@@ -38,6 +41,7 @@ export class ShopService {
           name: true,
           addressLine1: true,
           city: true,
+          pincode: true,
           phone: true,
           gstNumber: true,
           gstEnabled: true,
@@ -516,5 +520,23 @@ export class ShopService {
         resetPolicy: dto.resetPolicy ?? 'YEARLY',
       },
     });
+  }
+
+  async updateNicCredentials(
+    tenantId: string,
+    shopId: string,
+    nicUsername: string,
+    nicPasswordPlain: string,
+  ) {
+    const secret = this.config.get<string>('NIC_CREDENTIAL_SECRET');
+    if (!secret) {
+      throw new BadRequestException('NIC credential encryption not configured on server');
+    }
+    const encryptedPassword = encrypt(nicPasswordPlain, secret);
+    await this.prisma.shop.update({
+      where: { id: shopId, tenantId },
+      data: { nicUsername, nicPassword: encryptedPassword },
+    });
+    return { success: true, message: 'NIC credentials saved successfully' };
   }
 }

@@ -216,7 +216,6 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   WhatsAppConfigValidator.validateOrExit();
 
-  console.log(`📡 Attempting to listen on port ${port}...`);
   await app.listen(port);
 
   const logger = new Logger('Bootstrap');

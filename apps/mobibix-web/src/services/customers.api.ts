@@ -15,6 +15,8 @@ export interface Customer {
   altPhone?: string;
   address?: string;
   state: string;
+  pincode?: string;
+  distanceFromShop?: number;
   businessType: BusinessType;
   partyType: PartyType;
   gstNumber?: string;
@@ -58,6 +60,8 @@ export interface CreateCustomerDto {
   phone: string;
   email?: string;
   state: string;
+  pincode?: string;
+  distanceFromShop?: number;
   businessType: BusinessType;
   partyType: PartyType;
   gstNumber?: string;
@@ -67,9 +71,28 @@ export interface UpdateCustomerDto {
   name: string;
   email?: string;
   state: string;
+  pincode?: string;
+  distanceFromShop?: number;
   businessType: BusinessType;
   partyType: PartyType;
   gstNumber?: string;
+}
+
+export async function calculateDistance(
+  shopPincode: string,
+  customerPincode: string,
+): Promise<{ distanceKm: number }> {
+  const response = await authenticatedFetch(`/core/customers/calculate-distance`, {
+    method: "POST",
+    body: JSON.stringify({ shopPincode, customerPincode }),
+  });
+
+  if (!response.ok) {
+    const error = await extractData(response);
+    throw new Error((error as any).message || "Failed to calculate distance");
+  }
+
+  return extractData(response);
 }
 
 /**

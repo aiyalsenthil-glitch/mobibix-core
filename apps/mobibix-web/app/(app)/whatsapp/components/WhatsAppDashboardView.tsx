@@ -341,7 +341,7 @@ export default function WhatsAppDashboardView({
                 </tr>
               </thead>
               <tbody>
-                {logs.map((log) => (
+                {logs?.map((log) => (
                   <tr key={log.id} className="border-t">
                     <td className="py-2">{log.phone}</td>
                     <td className="py-2">{log.status}</td>

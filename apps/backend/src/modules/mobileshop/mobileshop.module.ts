@@ -15,6 +15,7 @@ import { KnowledgeModule } from './knowledge/knowledge.module';
 import { RepairIntelligenceModule } from './repair-intelligence/repair-intelligence.module';
 import { TradeInModule } from './tradein/tradein.module';
 import { FinanceModule } from './finance/finance.module';
+import { EWayBillModule } from './ewaybill/ewaybill.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { FinanceModule } from './finance/finance.module';
     RepairIntelligenceModule,
     TradeInModule,
     FinanceModule,
+    EWayBillModule,
   ],
 })
 export class MobileShopModule {}

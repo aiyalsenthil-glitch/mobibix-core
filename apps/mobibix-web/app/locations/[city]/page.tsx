@@ -1,5 +1,6 @@
 import { Header } from "../../../components/layout/Header";
 import { Footer } from "../../../components/layout/Footer";
+import { Breadcrumbs } from "../../../components/layout/Breadcrumbs";
 import Link from "next/link";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -84,8 +85,17 @@ export default async function LocationPage({ params }: { params: Promise<{ city:
       <section className="relative pt-40 pb-24 px-6 text-center overflow-hidden">
         <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/8 rounded-full blur-[130px] pointer-events-none" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/8 rounded-full blur-[130px] pointer-events-none" />
-        <div className="container mx-auto max-w-4xl relative z-10">
-          <span className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full border border-primary/20 bg-primary/5 text-xs font-black uppercase tracking-widest text-primary mb-8">
+        <div className="container mx-auto max-w-4xl relative z-10 flex flex-col items-center">
+          
+          <Breadcrumbs 
+            items={[
+              { name: "Home", item: "https://REMOVED_DOMAIN/" },
+              { name: "Locations", item: "https://REMOVED_DOMAIN/locations" },
+              { name: displayName, item: `https://REMOVED_DOMAIN/locations/${city.toLowerCase()}` }
+            ]}
+          />
+
+          <span className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full border border-primary/20 bg-primary/5 text-xs font-black uppercase tracking-widest text-primary mb-8 mt-4">
             {state} · Tier {tier} City
           </span>
           <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter leading-[0.9] uppercase italic">

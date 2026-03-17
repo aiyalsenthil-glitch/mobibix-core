@@ -1305,6 +1305,9 @@ export class SalesService {
         shop: {
           select: { upiId: true },
         },
+        customer: {
+          select: { distanceFromShop: true },
+        },
         items: {
           select: {
             id: true, // Needed for updates?? Not yet exposed but good to have

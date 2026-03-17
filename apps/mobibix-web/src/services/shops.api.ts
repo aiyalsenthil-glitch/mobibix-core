@@ -364,3 +364,22 @@ export async function updateShopDocumentSetting(
 
   return extractData(response);
 }
+
+export async function updateNicCredentials(
+  shopId: string,
+  nicUsername: string,
+  nicPassword: string,
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `/mobileshop/shops/${shopId}/nic-credentials`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ nicUsername, nicPassword }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to update NIC credentials");
+  }
+}

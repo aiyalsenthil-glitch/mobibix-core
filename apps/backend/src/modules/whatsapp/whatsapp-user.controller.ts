@@ -34,7 +34,7 @@ import { ModuleType, UserRole } from '@prisma/client';
 @ModuleScope(ModuleType.WHATSAPP_CRM)
 @ModulePermission('whatsapp')
 @UseGuards(JwtAuthGuard, TenantRequiredGuard, RolesGuard, GranularPermissionGuard, PlanFeatureGuard)
-@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF)
+@Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.STAFF, UserRole.USER)
 export class WhatsAppUserController {
   constructor(private readonly whatsappUserService: WhatsAppUserService) {}
 

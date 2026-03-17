@@ -12,6 +12,7 @@ import { AddFollowUpModal } from "@/components/crm/AddFollowUpModal";
 import { type FollowUpType } from "@/services/crm.api";
 import { InvoiceItemModal } from "@/components/sales/InvoiceItemModal";
 import { addItemToInvoice, InvoiceItem } from "@/services/sales.api";
+import { EWayBillPanel } from "@/components/sales/EWayBillPanel";
 import { useShop } from "@/context/ShopContext"; // Assuming ShopContext exists, or we fetch shop details?
 // Invoice data has shopId, but we need shop GST settings for Modal.
 // Ideally we fetch shop or assume GST based on something.
@@ -559,6 +560,18 @@ export default function InvoiceDetailPage() {
           </tbody>
         </table>
       </div>
+
+      {/* E-Way Bill */}
+      {invoice && (
+        <div className="mb-6">
+          <EWayBillPanel
+            invoiceId={invoice.id}
+            totalAmount={invoice.totalAmount}
+            customerGstin={invoice.customerGstin}
+            customerDistanceKm={(invoice as any).customer?.distanceFromShop ?? null}
+          />
+        </div>
+      )}
 
       {/* Payment History */}
       <h2

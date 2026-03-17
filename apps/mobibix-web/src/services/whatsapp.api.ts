@@ -270,3 +270,13 @@ export async function disconnectWhatsAppWeb(tenantId: string): Promise<void> {
     body: JSON.stringify({ tenantId }),
   });
 }
+
+export async function clearWhatsAppInbox(tenantId: string): Promise<void> {
+  const response = await authenticatedFetch(`/whatsapp/logs/${tenantId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    throw new Error(error?.message || "Failed to clear inbox");
+  }
+}
