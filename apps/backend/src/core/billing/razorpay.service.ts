@@ -216,6 +216,44 @@ export class RazorpayService {
   }
 
   /**
+   * Create a Razorpay Plan (used for subscription AutoPay).
+   * Call once per plan/cycle during initialization or seed.
+   * period: 'monthly' | 'yearly'
+   * interval: 1 (1 month / 1 year), 3 (quarterly via 3-month interval)
+   */
+  async createRazorpayPlan(params: {
+    period: 'daily' | 'weekly' | 'monthly' | 'yearly';
+    interval: number;
+    item: {
+      name: string;
+      amount: number; // paise
+      currency: string;
+      description: string;
+    };
+  }) {
+    try {
+      this.logger.log(
+        `Creating Razorpay Plan: ${params.item.name} (${params.period}×${params.interval})`,
+      );
+      const plan = await (this.REMOVED_PAYMENT_INFRA.plans as any).create({
+        period: params.period,
+        interval: params.interval,
+        item: params.item,
+      });
+      this.logger.log(`Created Razorpay Plan: ${plan.id}`);
+      return plan as { id: string; [key: string]: any };
+    } catch (error: any) {
+      this.logger.error(
+        `Razorpay Plan Creation Failed: ${error.message}`,
+        error,
+      );
+      throw new BadRequestException(
+        `Failed to create plan: ${error.error?.description || error.message}`,
+      );
+    }
+  }
+
+  /**
    * Update a Subscription (AutoPay)
    * Used for upgrading/downgrading an existing Razorpay subscription.
    * Changes take effect from the NEXT billing cycle.

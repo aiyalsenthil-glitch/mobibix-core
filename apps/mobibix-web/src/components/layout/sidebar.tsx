@@ -139,9 +139,17 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     }
 
     loadCounts();
+    
+    const handleRefresh = () => loadCounts();
+    window.addEventListener("refresh-followup-counts", handleRefresh);
+
     const interval = setInterval(loadCounts, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("refresh-followup-counts", handleRefresh);
+    };
   }, [mounted, authUser]);
+
 
   useEffect(() => {
     setMounted(true);

@@ -20,6 +20,7 @@ import WhatsAppCrmDashboard from "../whatsapp-crm/components/WhatsAppCrmDashboar
 import WhatsAppDashboardView from "./components/WhatsAppDashboardView";
 import { ServiceSelector } from "./components/ServiceSelector";
 import AuthkeySetupForm from "./components/AuthkeySetupForm";
+import MetaSetupForm from "./components/MetaSetupForm";
 import QRScanner from "@/components/whatsapp/QRScanner";
 import WhatsAppInbox from "@/components/whatsapp/WhatsAppInbox";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,6 +53,7 @@ type PageState =
   | "loading"
   | "select_mode"
   | "REMOVED_TOKEN_setup"
+  | "meta_setup"
   | "web_active"
   | "REMOVED_TOKEN_active"
   | "meta_active";
@@ -101,12 +103,15 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
     fetchStatus();
   }, [tenantId]);
 
-  const handleModeSelect = async (provider: "WEB_SOCKET" | "AUTHKEY") => {
+  const handleModeSelect = async (provider: "WEB_SOCKET" | "AUTHKEY" | "META_CLOUD") => {
+    if (provider === "META_CLOUD") {
+      setPageState("meta_setup");
+      return;
+    }
     setSwitching(true);
     try {
-      await switchWhatsAppProvider(provider);
+      await switchWhatsAppProvider(provider as "WEB_SOCKET" | "AUTHKEY");
       if (provider === "WEB_SOCKET") {
-        // Reload to trigger QR flow
         window.location.reload();
       } else {
         setPageState("REMOVED_TOKEN_setup");
@@ -119,6 +124,10 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
   };
 
   const handleAuthkeySuccess = () => {
+    window.location.reload();
+  };
+
+  const handleMetaSuccess = () => {
     window.location.reload();
   };
 
@@ -172,6 +181,18 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
       <div className="p-8">
         <AuthkeySetupForm
           onSuccess={handleAuthkeySuccess}
+          onBack={() => setPageState("select_mode")}
+        />
+      </div>
+    );
+  }
+
+  // ── Meta Embedded Signup ─────────────────────────────────────────────────────
+  if (pageState === "meta_setup") {
+    return (
+      <div className="p-8">
+        <MetaSetupForm
+          onSuccess={handleMetaSuccess}
           onBack={() => setPageState("select_mode")}
         />
       </div>

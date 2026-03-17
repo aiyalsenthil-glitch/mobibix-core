@@ -289,6 +289,175 @@ export class WhatsAppOnboardingService {
   }
 
   /**
+   * Embedded Signup exchange — called directly from frontend after FB.login().
+   * Skips state validation; tenantId comes from the authenticated JWT.
+   */
+  async metaExchange(
+    tenantId: string,
+    code: string,
+    selectedWabaId?: string,
+    selectedPhoneNumberId?: string,
+  ): Promise<{ success: boolean; phoneNumber: string; wabaId: string; tokenType: 'user' | 'system' }> {
+    // 1. Exchange code for short-lived user token (no redirect_uri for embedded signup)
+    let shortLivedToken: string;
+    try {
+      const { data } = await axios.get(
+        `https://graph.facebook.com/v22.0/oauth/access_token`,
+        { params: { client_id: this.appId, client_secret: this.appSecret, code } },
+      );
+      shortLivedToken = data.access_token;
+    } catch (error) {
+      this.logger.error(`Meta token exchange failed: ${error.response?.data?.error?.message || error.message}`);
+      throw new BadRequestException('Failed to exchange Meta token. The code may have expired — please try again.');
+    }
+
+    // 2. Verify required permissions were actually granted
+    const REQUIRED_SCOPES = ['whatsapp_business_management', 'whatsapp_business_messaging'];
+    try {
+      const { data: debugData } = await axios.get(
+        `https://graph.facebook.com/v22.0/debug_token`,
+        { params: { input_token: shortLivedToken, access_token: `${this.appId}|${this.appSecret}` } },
+      );
+      const grantedScopes: string[] = debugData?.data?.scopes ?? [];
+      const missingScopes = REQUIRED_SCOPES.filter((s) => !grantedScopes.includes(s));
+      if (missingScopes.length > 0) {
+        throw new BadRequestException(
+          `Missing required permissions: ${missingScopes.join(', ')}. ` +
+          'Please re-connect and allow all requested permissions.',
+        );
+      }
+      this.logger.log(`Meta scopes verified for tenant ${tenantId}: ${grantedScopes.join(', ')}`);
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      this.logger.warn(`Scope debug check failed (non-fatal): ${error.message}`);
+    }
+
+    // 3. Get FB user_id for Data Deletion Callback tracking
+    let fbUserId: string | null = null;
+    try {
+      const { data: meData } = await axios.get(
+        `https://graph.facebook.com/v22.0/me`,
+        { params: { access_token: shortLivedToken, fields: 'id' } },
+      );
+      fbUserId = meData.id ?? null;
+    } catch { /* non-fatal */ }
+
+    // 4. Exchange for long-lived user token (60-day expiry)
+    //    Production systems should use System User tokens instead — no expiry, no user dependency.
+    //    Set tokenExpiresAt so we can warn before expiry.
+    let accessToken = shortLivedToken;
+    let tokenExpiresAt: Date | null = null;
+    try {
+      const { data: llData } = await axios.get(
+        `https://graph.facebook.com/v22.0/oauth/access_token`,
+        {
+          params: {
+            grant_type: 'fb_exchange_token',
+            client_id: this.appId,
+            client_secret: this.appSecret,
+            fb_exchange_token: shortLivedToken,
+          },
+        },
+      );
+      accessToken = llData.access_token;
+      // expires_in is seconds from now
+      if (llData.expires_in) {
+        tokenExpiresAt = new Date(Date.now() + llData.expires_in * 1000);
+      }
+      this.logger.log(`Long-lived token obtained for tenant ${tenantId}, expires: ${tokenExpiresAt?.toISOString() ?? 'never'}`);
+    } catch (error) {
+      this.logger.warn(`Long-lived token exchange failed, using short-lived token: ${error.message}`);
+      // Short-lived tokens expire in ~1h — set expiry so the UI warns
+      tokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    }
+
+    // 5. Fetch WABA + phone
+    let wabaId: string;
+    let phoneNumberId: string;
+    let phoneNumber: string;
+    try {
+      const { data: wabaData } = await axios.get(
+        `https://graph.facebook.com/v22.0/me/whatsapp_business_accounts`,
+        { params: { access_token: accessToken, fields: 'id,name,currency,timezone' } },
+      );
+      if (!wabaData.data?.length) throw new NotFoundException('No WhatsApp Business Account found.');
+      let selectedWaba = wabaData.data[0];
+      if (selectedWabaId) {
+        const found = wabaData.data.find((w: any) => w.id === selectedWabaId);
+        if (found) selectedWaba = found;
+      }
+      wabaId = selectedWaba.id;
+
+      const { data: phoneData } = await axios.get(
+        `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers`,
+        { params: { access_token: accessToken, fields: 'id,display_phone_number,name_status,quality_rating' } },
+      );
+      if (!phoneData.data?.length) throw new NotFoundException('No phone numbers found in WABA.');
+      let phone = phoneData.data[0];
+      if (selectedPhoneNumberId) {
+        const found = phoneData.data.find((p: any) => p.id === selectedPhoneNumberId);
+        if (found) phone = found;
+      }
+      phoneNumberId = phone.id;
+      phoneNumber = phone.display_phone_number.replace(/\D/g, '');
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      this.logger.error(`Failed to fetch Meta assets: ${error.message}`);
+      throw new BadRequestException('Failed to retrieve WhatsApp Business Account details.');
+    }
+
+    // 6. Persist + enable
+    const encryptedToken = encrypt(accessToken);
+    const isSystemToken = tokenExpiresAt === null;
+    await this.prisma.$transaction([
+      this.prisma.whatsAppNumber.upsert({
+        where: { phoneNumberId },
+        update: {
+          accessToken: encryptedToken,
+          setupStatus: 'ACTIVE' as any,
+          isEnabled: true,
+          wabaId,
+          phoneNumber,
+          metaUserId: fbUserId,
+          tokenExpiresAt,
+          updatedAt: new Date(),
+        } as any,
+        create: {
+          tenantId,
+          phoneNumberId,
+          wabaId,
+          phoneNumber,
+          accessToken: encryptedToken,
+          setupStatus: 'ACTIVE' as any,
+          purpose: 'DEFAULT',
+          isDefault: true,
+          isEnabled: true,
+          metaUserId: fbUserId,
+          tokenExpiresAt,
+        } as any,
+      }),
+      this.prisma.tenant.update({ where: { id: tenantId }, data: { whatsappCrmEnabled: true } }),
+      this.prisma.whatsAppSetting.upsert({ where: { tenantId }, update: { enabled: true }, create: { tenantId, enabled: true } }),
+    ]);
+
+    // 7. Register phone + subscribe webhooks (best-effort)
+    try { await this.registerPhoneNumber(phoneNumberId, accessToken); } catch (e) {
+      this.logger.warn(`Auto-register phone failed: ${e.message}`);
+    }
+    try { await this.subscribeApp(wabaId, accessToken); } catch (e) {
+      this.logger.warn(`Subscribe WABA webhook failed: ${e.message}`);
+    }
+
+    this.logger.log(`Meta embedded signup complete for tenant ${tenantId} — WABA ${wabaId}`);
+    return {
+      success: true,
+      phoneNumber,
+      wabaId,
+      tokenType: (tokenExpiresAt === null ? 'system' : 'user') as 'user' | 'system',
+    };
+  }
+
+  /**
    * Registers the phone number with a PIN to enable messaging.
    */
   private async registerPhoneNumber(phoneId: string, token: string) {
@@ -442,13 +611,13 @@ export class WhatsAppOnboardingService {
     const hasOfficialApi =
       !planRules ||
       planRules.features.length === 0 ||
-      planRules.features.includes(WhatsAppFeature.WHATSAPP_OFFICIAL_API);
+      planRules.features.includes(WhatsAppFeature.WHATSAPP_API_ACCESS);
 
     if (!hasOfficialApi) {
-      throw new ForbiddenException(
-        'Official WhatsApp API requires a WA Official addon plan. ' +
-        'Upgrade to WA Official Starter, Pro, or Business to use Authkey.',
-      );
+      throw new ForbiddenException({
+        message: 'Official WhatsApp API requires a WA Official addon plan. Upgrade to WA Official Starter, Pro, or Business to use Authkey.',
+        errorCode: 'WA_PLAN_REQUIRED',
+      });
     }
 
     const encryptedApiKey = encrypt(apiKey);

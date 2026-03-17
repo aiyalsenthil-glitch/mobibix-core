@@ -1,39 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { configureAuthkey } from '@/services/whatsapp.api';
+import WhatsAppPlanPicker from '@/components/whatsapp/WhatsAppPlanPicker';
 import { AlertCircle, Eye, EyeOff, ExternalLink, Star, ArrowLeft } from 'lucide-react';
 
 interface AuthkeySetupFormProps {
   onSuccess: () => void;
   onBack: () => void;
 }
-
-const PLAN_TIERS = [
-  {
-    code: 'WA_OFFICIAL_STARTER',
-    name: 'Starter',
-    price: '₹499/mo',
-    messages: '1,000 utility/mo',
-    highlight: false,
-  },
-  {
-    code: 'WA_OFFICIAL_PRO',
-    name: 'Pro',
-    price: '₹1,199/mo',
-    messages: '3,000 utility + 150 marketing',
-    highlight: true,
-  },
-  {
-    code: 'WA_OFFICIAL_BUSINESS',
-    name: 'Business',
-    price: '₹2,499/mo',
-    messages: '8,000 utility + 400 marketing',
-    highlight: false,
-  },
-];
 
 export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupFormProps) {
   const [form, setForm] = useState({ apiKey: '', senderId: '', phoneNumber: '' });
@@ -52,7 +28,7 @@ export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupForm
       await configureAuthkey(form);
       onSuccess();
     } catch (err: any) {
-      if (err.status === 403) {
+      if (err.errorCode === 'WA_PLAN_REQUIRED') {
         setNeedsUpgrade(true);
       } else {
         setError(err.message || 'Failed to configure Authkey. Please check your credentials.');
@@ -62,56 +38,28 @@ export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupForm
     }
   };
 
+  // ── Plan upgrade wall (403) ──────────────────────────────────────────────────
   if (needsUpgrade) {
     return (
-      <div className="max-w-3xl mx-auto py-12 space-y-8">
+      <div className="max-w-4xl mx-auto py-10 space-y-8">
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 bg-violet-100 text-violet-700 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
             <Star className="w-3.5 h-3.5" /> Addon Required
           </div>
-          <h2 className="text-3xl font-black text-gray-900">Upgrade to Official WhatsApp</h2>
+          <h2 className="text-3xl font-black text-gray-900">Activate Official WhatsApp</h2>
           <p className="text-gray-500 max-w-lg mx-auto font-medium">
-            Official API access requires a WA Official plan addon. Choose the plan that fits your volume.
+            Official API access requires a WA Official plan addon. Choose the plan that fits your
+            volume, pay now, and continue setup.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {PLAN_TIERS.map((plan) => (
-            <Card
-              key={plan.code}
-              className={`rounded-3xl border-2 overflow-hidden ${
-                plan.highlight
-                  ? 'border-violet-500 shadow-lg shadow-violet-100'
-                  : 'border-gray-100 shadow-sm'
-              }`}
-            >
-              {plan.highlight && (
-                <div className="bg-violet-600 text-white text-[10px] font-black uppercase tracking-widest text-center py-1.5">
-                  Most Popular
-                </div>
-              )}
-              <CardContent className="p-6 space-y-4">
-                <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
-                    {plan.name}
-                  </p>
-                  <p className="text-2xl font-black text-gray-900">{plan.price}</p>
-                  <p className="text-sm text-gray-500 font-medium mt-1">{plan.messages}</p>
-                </div>
-                <Button
-                  className={`w-full rounded-2xl h-11 font-bold ${
-                    plan.highlight
-                      ? 'bg-violet-600 hover:bg-violet-700'
-                      : 'bg-gray-900 hover:bg-gray-800'
-                  }`}
-                  onClick={() => window.open('/settings/billing', '_self')}
-                >
-                  Choose {plan.name}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {/* Full plan picker with Razorpay payment */}
+        <WhatsAppPlanPicker
+          onSuccess={() => {
+            // After payment succeeds, dismiss the upgrade wall and re-show the form
+            setNeedsUpgrade(false);
+          }}
+        />
 
         <div className="text-center">
           <Button variant="ghost" className="font-bold text-gray-500 gap-2" onClick={onBack}>
@@ -122,6 +70,7 @@ export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupForm
     );
   }
 
+  // ── Credentials form ─────────────────────────────────────────────────────────
   return (
     <div className="max-w-lg mx-auto py-12 space-y-6">
       <div className="space-y-2">
@@ -198,9 +147,7 @@ export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupForm
             value={form.senderId}
             onChange={(e) => setForm({ ...form, senderId: e.target.value })}
           />
-          <p className="text-[11px] text-gray-400 ml-1">
-            From Authkey portal → Sender List
-          </p>
+          <p className="text-[11px] text-gray-400 ml-1">From Authkey portal → Sender List</p>
         </div>
 
         <div className="space-y-1.5">
@@ -218,7 +165,8 @@ export default function AuthkeySetupForm({ onSuccess, onBack }: AuthkeySetupForm
             onChange={(e) => setForm({ ...form, phoneNumber: e.target.value.replace(/\D/g, '') })}
           />
           <p className="text-[11px] text-gray-400 ml-1">
-            Include country code — digits only (e.g. <span className="font-mono">919876543210</span>)
+            Include country code — digits only (e.g.{' '}
+            <span className="font-mono">919876543210</span>)
           </p>
         </div>
 

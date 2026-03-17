@@ -70,6 +70,25 @@ export async function configureAuthkey(data: ConfigureAuthkeyRequest): Promise<{
     const error = await extractData(response) as any;
     const err: any = new Error(error?.message || "Failed to configure Authkey");
     err.status = response.status;
+    err.errorCode = error?.errorCode;
+    throw err;
+  }
+  return extractData(response);
+}
+
+export async function metaExchange(data: {
+  code: string;
+  wabaId?: string;
+  phoneNumberId?: string;
+}): Promise<{ success: boolean; phoneNumber: string; wabaId: string }> {
+  const response = await authenticatedFetch("/integrations/whatsapp/meta-exchange", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await extractData(response) as any;
+    const err: any = new Error(error?.message || "Failed to connect Meta WhatsApp");
+    err.status = response.status;
     throw err;
   }
   return extractData(response);

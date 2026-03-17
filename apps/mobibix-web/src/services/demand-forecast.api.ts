@@ -21,6 +21,6 @@ export async function getDemandForecast(
   const res = await authenticatedFetch(
     `/reports/demand-forecast?shopId=${shopId}`
   );
-  const data = extractData<DemandForecastItem[] | { data?: DemandForecastItem[] }>(res);
+  const data = await extractData<DemandForecastItem[] | { data?: DemandForecastItem[] }>(res);
   return Array.isArray(data) ? data : ((data as any)?.data ?? []);
 }

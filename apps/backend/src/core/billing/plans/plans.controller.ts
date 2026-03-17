@@ -50,6 +50,14 @@ export class PlansController {
   @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
+  @Get('wa-addons')
+  async getWaAddonPlans() {
+    return this.plansService.getWaAddonPlans();
+  }
+
+  @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
+  @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
+  @Roles(UserRole.OWNER, UserRole.STAFF)
   @Get('available')
   async getAvailablePlans(
     @Req() req: any,

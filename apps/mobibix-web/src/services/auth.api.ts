@@ -434,7 +434,7 @@ export async function authenticatedFetch(
     credentials: "include",
   });
 
-  if ((response.status === 401 || response.status === 403) && allowRetry && !endpoint.startsWith("/auth/")) {
+  if (response.status === 401 && allowRetry && !endpoint.startsWith("/auth/")) {
     const refreshed = await refreshAccessToken();
     if (refreshed) {
       const retryHeaders = {

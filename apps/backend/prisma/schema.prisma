@@ -437,11 +437,14 @@ model CustomerFollowUp {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   sourceJobId      String?
+  sourceQuotationId String?
   purpose          String
   assignedToUser   User?          @relation(fields: [assignedToUserId], references: [id])
   customer         Party          @relation(fields: [customerId], references: [id], onDelete: Cascade)
   shop             Shop?          @relation(fields: [shopId], references: [id])
+  sourceQuotation   Quotation?      @relation(fields: [sourceQuotationId], references: [id])
   tenant           Tenant         @relation("TenantCustomerFollowUps", fields: [tenantId], references: [id])
+
 
   @@index([tenantId])
   @@index([tenantId, customerId])
@@ -991,6 +994,10 @@ model WhatsAppNumber {
   // Authkey CPaaS fields
   REMOVED_TOKENApiKey      String?                    // Encrypted API key for Authkey
   REMOVED_TOKENSenderId    String?                    // Authkey sender ID / SID
+
+  // Meta-specific fields
+  metaUserId         String?                    // FB user_id who connected — required for Data Deletion Callback
+  tokenExpiresAt     DateTime?                  // For user tokens; null = system user (no expiry)
 
   metadata           Json?
   createdAt          DateTime                   @default(now())

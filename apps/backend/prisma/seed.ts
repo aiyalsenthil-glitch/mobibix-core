@@ -54,25 +54,22 @@ const FEATURES_WHATSAPP_GROWTH = [
 const FEATURES_WA_OFFICIAL_STARTER = [
   'WHATSAPP_UTILITY',
   'WHATSAPP_ALERTS_AUTOMATION',
-  'WHATSAPP_OFFICIAL_API', // Gates AUTHKEY/META_CLOUD provider access
+  'WHATSAPP_API_ACCESS', // Gates AUTHKEY/META_CLOUD provider access
 ];
 const FEATURES_WA_OFFICIAL_PRO = [
   'WHATSAPP_UTILITY',
   'WHATSAPP_MARKETING',
   'WHATSAPP_ALERTS_AUTOMATION',
-  'WHATSAPP_OFFICIAL_API',
-  'WHATSAPP_SMS',
+  'WHATSAPP_API_ACCESS',
   'WHATSAPP_TEAM_INBOX',
 ];
 const FEATURES_WA_OFFICIAL_BUSINESS = [
   'WHATSAPP_UTILITY',
   'WHATSAPP_MARKETING',
   'WHATSAPP_ALERTS_AUTOMATION',
-  'WHATSAPP_OFFICIAL_API',
-  'WHATSAPP_SMS',
+  'WHATSAPP_API_ACCESS',
   'WHATSAPP_TEAM_INBOX',
   'WHATSAPP_WEBHOOKS',
-  'WHATSAPP_API_ACCESS',
 ];
 
 const ADDON_PACKS = [
@@ -88,7 +85,7 @@ const ADDON_PACKS = [
         marketing: 0,
       },
     },
-    price: 19900,
+    price: 24900, // ₹249 — 500 utility msgs @ ₹0.45/msg (2.5× Authkey ₹0.18)
   },
   {
     code: 'WA_ADDON_200',
@@ -102,7 +99,7 @@ const ADDON_PACKS = [
         marketing: 200,
       },
     },
-    price: 19900,
+    price: 49900, // ₹499 — 200 marketing msgs @ ₹2.50/conv (2.5× Authkey ₹0.95)
   },
 ];
 
@@ -247,13 +244,13 @@ const V1_PLANS = [
   },
   // ─────────────────────────────────────────────────────────────────────
   // OFFICIAL API ADDON PLANS (Authkey CPaaS)
-  // Authkey wholesale rates: Utility ₹0.18 | Marketing ₹0.95 | Auth ₹0.18
-  // Our rate: ~2.5× wholesale. Margin: 40-65%.
+  // Authkey wholesale: Utility ₹0.18/msg | Marketing ₹0.95/conv
+  // Our rate: 2.5× wholesale → Utility ₹0.45/msg | Marketing ₹2.375/conv
+  // Consistent 60-64% gross margins across all tiers.
   // Web Mode (Baileys QR) is FREE in PRO plans — no addon required.
   // ─────────────────────────────────────────────────────────────────────
   {
-    // Authkey wholesale cost at full utilization: 1000×0.18 = ₹180
-    // Our revenue: ₹499 | Gross margin: ₹319 (64%)
+    // Cost: 1000×₹0.18 = ₹180 | Revenue: ₹499 | Margin: 64%
     code: 'WA_OFFICIAL_STARTER',
     name: 'WhatsApp Official – Starter',
     level: 12,
@@ -278,8 +275,7 @@ const V1_PLANS = [
     ],
   },
   {
-    // Authkey cost: 3000×0.18 + 150×0.95 = ₹540+142 = ₹682
-    // Revenue: ₹1,199 | Margin: ₹517 (43%)
+    // Cost: 3000×₹0.18 + 150×₹0.95 = ₹540+₹143 = ₹683 | Revenue: ₹1,799 | Margin: 62%
     code: 'WA_OFFICIAL_PRO',
     name: 'WhatsApp Official – Pro',
     level: 13,
@@ -304,8 +300,7 @@ const V1_PLANS = [
     ],
   },
   {
-    // Authkey cost: 8000×0.18 + 400×0.95 = ₹1440+380 = ₹1820
-    // Revenue: ₹2,499 | Margin: ₹679 (27%)
+    // Cost: 8000×₹0.18 + 400×₹0.95 = ₹1440+₹380 = ₹1820 | Revenue: ₹4,599 | Margin: 60%
     code: 'WA_OFFICIAL_BUSINESS',
     name: 'WhatsApp Official – Business',
     level: 14,
@@ -392,29 +387,35 @@ const V1_PRICING = {
     QUARTERLY: 449700,
     YEARLY: 1499900,
   },
-  // Official API (Authkey) addon plans
-  // Authkey costs × 2.5 + infra/support buffer. 40-65% gross margins.
+  // Official API (Authkey) addon plans — 2.5× Authkey wholesale
+  // Utility ₹0.18 × 2.5 = ₹0.45/msg | Marketing ₹0.95 × 2.5 = ₹2.375/conv
   WA_OFFICIAL_STARTER: {
-    MONTHLY: 49900,    // ₹499/mo  | cost ₹180 | margin 64%
-    QUARTERLY: 134900, // ₹1,349 (10% off)
-    YEARLY: 479900,    // ₹4,799 (20% off)
+    MONTHLY: 49900,    // ₹499/mo  | 1k util (₹0.45×1000=₹450) | cost ₹180 | margin 64%
+    QUARTERLY: 134900, // ₹1,349 (10% off monthly × 3)
+    YEARLY: 479900,    // ₹4,799 (20% off monthly × 12)
+    RAZORPAY_MONTHLY: 'plan_SSHXveFBG7mfeA',
+    RAZORPAY_YEARLY:  'plan_SSHXwcKSrIEHUB',
   },
   WA_OFFICIAL_PRO: {
-    MONTHLY: 119900,   // ₹1,199/mo | cost ₹682 | margin 43%
-    QUARTERLY: 323900, // ₹3,239 (10% off)
-    YEARLY: 1151900,   // ₹11,519 (20% off)
+    MONTHLY: 179900,   // ₹1,799/mo | 3k util+150 mktg (₹1350+₹356=₹1706) | cost ₹682 | margin 62%
+    QUARTERLY: 489900, // ₹4,899 (10% off)
+    YEARLY: 1729900,   // ₹17,299 (20% off)
+    RAZORPAY_MONTHLY: 'plan_SSHXxfvmXO9Kdd',
+    RAZORPAY_YEARLY:  'plan_SSHXyilNyVFJh1',
   },
   WA_OFFICIAL_BUSINESS: {
-    MONTHLY: 249900,   // ₹2,499/mo | cost ₹1,820 | margin 27%
-    QUARTERLY: 674900, // ₹6,749 (10% off)
-    YEARLY: 2399900,   // ₹23,999 (20% off)
+    MONTHLY: 459900,   // ₹4,599/mo | 8k util+400 mktg (₹3600+₹950=₹4550) | cost ₹1820 | margin 60%
+    QUARTERLY: 1249900, // ₹12,499 (10% off)
+    YEARLY: 4419900,   // ₹44,199 (20% off)
+    RAZORPAY_MONTHLY: 'plan_SSHXzY6NOGyEag',
+    RAZORPAY_YEARLY:  'plan_SSHY0SRWBybe1x',
   },
-  // Top-up packs (fixed monthly, no quarterly/yearly)
+  // Top-up packs — 2.5× Authkey wholesale (one-time monthly, no quarterly/yearly)
   WA_UTIL_PACK_1000: {
-    MONTHLY: 39900,    // ₹399 for 1,000 utility msgs (₹0.40/msg vs ₹0.45 PAYG)
+    MONTHLY: 44900,    // ₹449 — 1k utility × ₹0.45/msg
   },
   WA_MKTG_PACK_100: {
-    MONTHLY: 29900,    // ₹299 for 100 marketing convs (₹2.99/conv vs ₹3.50 PAYG)
+    MONTHLY: 24900,    // ₹249 — 100 marketing × ₹2.375/conv
   },
 };
 

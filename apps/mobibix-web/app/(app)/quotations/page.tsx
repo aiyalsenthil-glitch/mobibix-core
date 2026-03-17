@@ -222,7 +222,7 @@ export default function QuotationsPage() {
     updateItem(idx, {
       shopProductId: prod.id,
       description: prod.name,
-      price: prod.salePrice != null ? Math.round(prod.salePrice / 100) : 0,
+      price: prod.salePrice != null ? Math.round(prod.salePrice) : 0,
       gstRate: prod.gstRate ?? 0,
     });
   }
@@ -243,6 +243,13 @@ export default function QuotationsPage() {
         customerId: selectedCustomer?.id,
         customerName: selectedCustomer?.name || form.customerName,
         customerPhone: selectedCustomer?.phone || form.customerPhone,
+        items: form.items.map(it => ({
+          shopProductId: it.shopProductId,
+          description: it.description,
+          quantity: it.quantity,
+          price: it.price,
+          gstRate: it.gstRate,
+        })),
       });
       setShowCreate(false);
       setForm({ customerName: "", customerPhone: "", validityDays: 30, notes: "", quotationDate: new Date().toISOString().slice(0, 10), items: [{ ...EMPTY_ITEM }] });
@@ -267,8 +274,8 @@ export default function QuotationsPage() {
         salePrice: qpForm.salePrice, // products.api sends rupees; backend converts to paise
         gstRate: qpForm.gstRate,
       });
-      // createProduct returns salePrice in rupees; normalize to paise to match listProducts
-      const prodNorm = { ...prod, salePrice: prod.salePrice != null ? Math.round(prod.salePrice * 100) : null };
+      // createProduct returns salePrice in rupees
+      const prodNorm: ShopProduct = { ...prod, salePrice: prod.salePrice ?? 0 };
       setProducts((prev) => [...prev, prodNorm]);
       pickProduct(quickProduct.itemIdx, prodNorm);
       setProductSearch((s) => ({ ...s, [quickProduct.itemIdx]: prodNorm.name }));
@@ -688,7 +695,7 @@ export default function QuotationsPage() {
                                       >
                                         <span className="font-medium">{p.name}</span>
                                         {p.salePrice != null && (
-                                          <span className={`ml-2 ${isDark ? "text-gray-400" : "text-gray-500"}`}>₹{(p.salePrice / 100).toFixed(0)}</span>
+                                          <span className={`ml-2 ${isDark ? "text-gray-400" : "text-gray-500"}`}>₹{p.salePrice.toFixed(0)}</span>
                                         )}
                                       </button>
                                     ))}

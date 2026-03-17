@@ -101,6 +101,46 @@ export class PlansService {
   }
 
   /**
+   * Get WA Official addon plans with REMOVED_PAYMENT_INFRAPlanId — for WhatsAppPlanPicker.
+   * Returns the WaPlanOption shape the frontend expects.
+   */
+  async getWaAddonPlans() {
+    const plans = await this.prisma.plan.findMany({
+      where: {
+        isActive: true,
+        isPublic: true,
+        isAddon: true,
+        module: ModuleType.WHATSAPP_CRM,
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        tagline: true,
+        featuresJson: true,
+        planPrices: {
+          where: { isActive: true },
+          select: { billingCycle: true, price: true, REMOVED_PAYMENT_INFRAPlanId: true },
+        },
+      },
+      orderBy: { level: 'asc' },
+    });
+
+    return plans.map((p) => ({
+      id: p.id,
+      code: p.code,
+      name: p.name,
+      tagline: (p as any).tagline ?? '',
+      featuresJson: ((p as any).featuresJson as string[]) ?? [],
+      prices: p.planPrices.map((pp) => ({
+        billingCycle: pp.billingCycle,
+        price: pp.price,
+        REMOVED_PAYMENT_INFRAPlanId: (pp as any).REMOVED_PAYMENT_INFRAPlanId ?? null,
+      })),
+    }));
+  }
+
+  /**
    * Get all active public plans
    */
   async getActivePlans() {

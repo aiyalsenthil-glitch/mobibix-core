@@ -16,6 +16,8 @@ import { WhatsAppPhoneNumbersController } from './phone-numbers/whatsapp-phone-n
 import { WhatsAppPhoneNumbersService } from './phone-numbers/whatsapp-phone-numbers.service';
 import { WhatsAppVariableResolver } from './variable-resolver.service';
 import { BillingModule } from '../../core/billing/billing.module';
+import { EmailModule } from '../../common/email/email.module';
+import { MetaTokenExpiryCron } from './meta-token-expiry.cron';
 import { AutomationController } from './automation.controller';
 import { AutomationService } from './automation.service';
 import { AutomationSafetyService } from './automation-safety.service';
@@ -40,6 +42,7 @@ import { ProviderManager } from './providers/provider-manager.service';
 
 import { WhatsAppOnboardingController } from './onboarding/whatsapp-onboarding.controller';
 import { WhatsAppOnboardingService } from './onboarding/whatsapp-onboarding.service';
+import { FacebookDeletionController } from './facebook-deletion.controller';
 import { WhatsAppInboxGateway } from './inbox/whatsapp-inbox.gateway';
 import { WhatsAppInboxService } from './inbox/whatsapp-inbox.service';
 import { ConversationEngineService } from './automation/conversation-engine.service';
@@ -55,10 +58,12 @@ import { ConversationEngineService } from './automation/conversation-engine.serv
     WhatsAppUserController,
     WhatsAppCrmController,
     WhatsAppOnboardingController, // ✅ Added
+    FacebookDeletionController,   // Meta Data Deletion Callback
   ],
   imports: [
     ScheduleModule.forRoot(), 
-    BillingModule, 
+    BillingModule,
+    EmailModule,
     ShopProductsModule,
     BullModule.registerQueue({ name: 'whatsapp-send' }),
   ],
@@ -91,6 +96,7 @@ import { ConversationEngineService } from './automation/conversation-engine.serv
     AuthkeyProvider,
     ProviderManager,
     WhatsAppOnboardingService, // ✅ Added
+    MetaTokenExpiryCron,
     ConversationEngineService,
     WhatsAppInboxGateway,
     WhatsAppInboxService,

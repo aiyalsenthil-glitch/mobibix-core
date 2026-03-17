@@ -163,4 +163,27 @@ export class WhatsAppOnboardingController {
     await this.onboardingService.disconnect(tenantId);
     return { success: true, message: 'Disconnected successfully' };
   }
+
+  /**
+   * Meta Embedded Signup — called from frontend after FB.login() succeeds.
+   * Accepts the authorization code returned by the FB SDK popup.
+   * POST /integrations/whatsapp/meta-exchange
+   * Body: { code, wabaId?, phoneNumberId? }
+   */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.ONBOARD_CONNECT)
+  @Post('meta-exchange')
+  @UseGuards(JwtAuthGuard, RolesGuard, GranularPermissionGuard)
+  @Roles(UserRole.ADMIN, UserRole.OWNER)
+  async metaExchange(
+    @Req() req,
+    @Body() body: { code: string; wabaId?: string; phoneNumberId?: string },
+  ) {
+    const tenantId = req.user.tenantId;
+    return this.onboardingService.metaExchange(
+      tenantId,
+      body.code,
+      body.wabaId,
+      body.phoneNumberId,
+    );
+  }
 }

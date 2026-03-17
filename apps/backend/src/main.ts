@@ -1,4 +1,10 @@
 import { NestFactory } from '@nestjs/core';
+
+// Handle BigInt serialization for JSON.stringify (used by Express/NestJS)
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { AppModule } from './app.module';

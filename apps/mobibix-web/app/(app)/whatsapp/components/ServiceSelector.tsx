@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Zap, ShieldCheck, Star, MessageSquare } from 'lucide-react';
 
 interface ServiceSelectorProps {
-  onSelect: (provider: 'WEB_SOCKET' | 'AUTHKEY') => void;
+  onSelect: (provider: 'WEB_SOCKET' | 'AUTHKEY' | 'META_CLOUD') => void;
   loading?: boolean;
 }
 
@@ -115,18 +115,15 @@ export function ServiceSelector({ onSelect, loading }: ServiceSelectorProps) {
         </Card>
       </div>
 
-      {/* Legacy Meta option — advanced */}
+      {/* Meta Cloud API option */}
       <p className="text-center text-xs text-gray-400 font-medium">
-        Already on Meta Cloud API?{' '}
+        Have a Meta Business Account?{' '}
         <button
           className="underline hover:text-gray-600 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            // No-op: META_CLOUD is legacy; user can contact support or use manual sync
-            alert('Please contact support to migrate your Meta Cloud API setup.');
-          }}
+          onClick={() => onSelect('META_CLOUD')}
+          disabled={loading}
         >
-          Contact support
+          Connect via Meta (Official API)
         </button>
       </p>
     </div>

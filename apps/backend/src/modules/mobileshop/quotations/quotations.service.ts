@@ -92,8 +92,23 @@ export class QuotationsService {
   async getQuotation(tenantId: string, shopId: string, id: string) {
     const quotation = await this.prisma.quotation.findFirst({
       where: { id, tenantId, shopId },
-      include: { items: { include: { product: true } } },
+      include: { 
+        items: { 
+          include: { 
+            product: {
+              select: {
+                id: true,
+                name: true,
+                salePrice: true,
+                hsnCode: true,
+                gstRate: true,
+              }
+            } 
+          } 
+        } 
+      },
     });
+
 
     if (!quotation) {
       throw new NotFoundException('Quotation not found');
