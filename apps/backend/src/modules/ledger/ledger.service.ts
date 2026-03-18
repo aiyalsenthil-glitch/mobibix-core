@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { addDays, addWeeks, addMonths, differenceInDays } from 'date-fns';
 
@@ -437,6 +441,287 @@ export class LedgerService {
 
       activeLoans: detailedLedgers.filter((l) => l.status === 'ACTIVE'),
       closedLoans: detailedLedgers.filter((l) => l.status !== 'ACTIVE'),
+    };
+  }
+
+  // ─── LIST ENDPOINTS (FROZEN CONTRACT) ────────────────────────────────────
+
+  async listCustomers(tenantId: string, page: number, limit: number) {
+    const skip = (page - 1) * limit;
+
+    const [total, customers] = await Promise.all([
+      this.prisma.ledgerCustomer.count({ where: { tenantId, isActive: true } }),
+      this.prisma.ledgerCustomer.findMany({
+        where: { tenantId, isActive: true },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    if (customers.length === 0) {
+      return { customers: [], total, page, limit };
+    }
+
+    const customerIds = customers.map((c) => c.id);
+
+    // Batch: active loan counts per customer
+    const activeLoansData = await this.prisma.ledgerAccount.groupBy({
+      by: ['customerId'],
+      where: { tenantId, customerId: { in: customerIds }, status: 'ACTIVE' },
+      _count: { id: true },
+    });
+
+    // Batch: outstanding amounts — get active ledger IDs first, then aggregate
+    const activeLedgers = await this.prisma.ledgerAccount.findMany({
+      where: { tenantId, customerId: { in: customerIds }, status: 'ACTIVE' },
+      select: { id: true, customerId: true },
+    });
+
+    const ledgerToCustomer: Record<string, string> = {};
+    for (const l of activeLedgers) {
+      ledgerToCustomer[l.id] = l.customerId;
+    }
+
+    const activeLedgerIds = activeLedgers.map((l) => l.id);
+    const outstandingByLedger =
+      activeLedgerIds.length > 0
+        ? await this.prisma.ledgerCollection.groupBy({
+            by: ['ledgerId'],
+            where: {
+              tenantId,
+              ledgerId: { in: activeLedgerIds },
+              paid: false,
+            },
+            _sum: { amount: true, paidAmount: true },
+          })
+        : [];
+
+    const outstandingByCustomer: Record<string, number> = {};
+    for (const row of outstandingByLedger) {
+      const cId = ledgerToCustomer[row.ledgerId];
+      const remaining =
+        (row._sum.amount ?? 0) - (row._sum.paidAmount ?? 0);
+      outstandingByCustomer[cId] =
+        (outstandingByCustomer[cId] ?? 0) + remaining;
+    }
+
+    const activeLoansMap: Record<string, number> = {};
+    for (const row of activeLoansData) {
+      activeLoansMap[row.customerId] = row._count.id;
+    }
+
+    return {
+      customers: customers.map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        address: c.address ?? null,
+        activeLoans: activeLoansMap[c.id] ?? 0,
+        totalOutstanding: outstandingByCustomer[c.id] ?? 0,
+        createdAt: c.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async listAccounts(
+    tenantId: string,
+    page: number,
+    limit: number,
+    status?: string,
+    customerId?: string,
+  ) {
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, any> = { tenantId };
+    if (status) where.status = status;
+    if (customerId) where.customerId = customerId;
+
+    const [total, accounts] = await Promise.all([
+      this.prisma.ledgerAccount.count({ where }),
+      this.prisma.ledgerAccount.findMany({
+        where,
+        include: { customer: { select: { name: true, phone: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    if (accounts.length === 0) {
+      return { accounts: [], total, page, limit };
+    }
+
+    const accountIds = accounts.map((a) => a.id);
+    const now = new Date();
+
+    const [paidStats, unpaidStats, overdueStats] = await Promise.all([
+      this.prisma.ledgerCollection.groupBy({
+        by: ['ledgerId'],
+        where: { tenantId, ledgerId: { in: accountIds }, paid: true },
+        _count: { id: true },
+        _sum: { paidAmount: true },
+      }),
+      this.prisma.ledgerCollection.groupBy({
+        by: ['ledgerId'],
+        where: { tenantId, ledgerId: { in: accountIds }, paid: false },
+        _count: { id: true },
+      }),
+      this.prisma.ledgerCollection.groupBy({
+        by: ['ledgerId'],
+        where: {
+          tenantId,
+          ledgerId: { in: accountIds },
+          paid: false,
+          dueDate: { lt: now },
+        },
+        _count: { id: true },
+        _min: { dueDate: true },
+      }),
+    ]);
+
+    const paidMap = Object.fromEntries(
+      paidStats.map((r) => [
+        r.ledgerId,
+        { count: r._count.id, sum: r._sum.paidAmount ?? 0 },
+      ]),
+    );
+    const unpaidMap = Object.fromEntries(
+      unpaidStats.map((r) => [r.ledgerId, r._count.id]),
+    );
+    const overdueMap = Object.fromEntries(
+      overdueStats.map((r) => [
+        r.ledgerId,
+        { count: r._count.id, oldest: r._min.dueDate },
+      ]),
+    );
+
+    return {
+      accounts: accounts.map((a) => {
+        const paidPeriods = paidMap[a.id]?.count ?? 0;
+        const collectedAmount = paidMap[a.id]?.sum ?? 0;
+        const unpaidCount = unpaidMap[a.id] ?? 0;
+        const overdueInfo = overdueMap[a.id];
+
+        let health: 'OK' | 'DUE' | 'OVERDUE' | 'CRITICAL' | 'CLOSED';
+        if (a.status !== 'ACTIVE') {
+          health = 'CLOSED';
+        } else if (unpaidCount === 0) {
+          health = 'OK';
+        } else if (!overdueInfo || overdueInfo.count === 0) {
+          health = 'DUE';
+        } else {
+          const maxOverdueDays = differenceInDays(now, overdueInfo.oldest!);
+          health = maxOverdueDays >= 30 ? 'CRITICAL' : 'OVERDUE';
+        }
+
+        return {
+          id: a.id,
+          customerId: a.customerId,
+          customerName: a.customer.name,
+          customerPhone: a.customer.phone,
+          principalAmount: a.principalAmount,
+          expectedTotal: a.expectedTotal,
+          installmentType: a.installmentType,
+          installmentAmount: a.installmentAmount,
+          totalPeriods: a.totalPeriods,
+          paidPeriods,
+          collectedAmount,
+          startDate: a.startDate,
+          status: a.status,
+          health,
+          createdAt: a.createdAt,
+        };
+      }),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getAccountDetail(tenantId: string, accountId: string) {
+    const account = await this.prisma.ledgerAccount.findFirst({
+      where: { id: accountId, tenantId },
+      include: {
+        customer: { select: { name: true, phone: true } },
+        collections: { orderBy: { periodNo: 'asc' } },
+        payments: {
+          orderBy: { collectedAt: 'desc' },
+          take: 20,
+          include: {
+            collectedByUser: { select: { id: true, fullName: true } },
+            collection: { select: { periodNo: true } },
+          },
+        },
+      },
+    });
+
+    if (!account) {
+      throw new NotFoundException('Account not found');
+    }
+
+    const now = new Date();
+    const paidPeriods = account.collections.filter((c) => c.paid).length;
+    const collectedAmount = account.collections.reduce(
+      (sum, c) => sum + c.paidAmount,
+      0,
+    );
+    const unpaid = account.collections.filter((c) => !c.paid);
+    const overdue = unpaid.filter((c) => c.dueDate < now);
+
+    let health: 'OK' | 'DUE' | 'OVERDUE' | 'CRITICAL' | 'CLOSED';
+    if (account.status !== 'ACTIVE') {
+      health = 'CLOSED';
+    } else if (unpaid.length === 0) {
+      health = 'OK';
+    } else if (overdue.length === 0) {
+      health = 'DUE';
+    } else {
+      const maxOverdueDays = Math.max(
+        ...overdue.map((c) => differenceInDays(now, c.dueDate)),
+      );
+      health = maxOverdueDays >= 30 ? 'CRITICAL' : 'OVERDUE';
+    }
+
+    return {
+      id: account.id,
+      customerId: account.customerId,
+      customerName: account.customer.name,
+      customerPhone: account.customer.phone,
+      principalAmount: account.principalAmount,
+      expectedTotal: account.expectedTotal,
+      installmentType: account.installmentType,
+      installmentAmount: account.installmentAmount,
+      totalPeriods: account.totalPeriods,
+      paidPeriods,
+      collectedAmount,
+      startDate: account.startDate,
+      status: account.status,
+      health,
+      createdAt: account.createdAt,
+      collections: account.collections.map((c) => ({
+        id: c.id,
+        periodNo: c.periodNo,
+        dueDate: c.dueDate,
+        amount: c.amount,
+        paidAmount: c.paidAmount,
+        paid: c.paid,
+        paidAt: c.paidAt ?? null,
+      })),
+      recentPayments: account.payments.map((p) => ({
+        id: p.id,
+        collectionId: p.collectionId,
+        periodNo: p.collection.periodNo,
+        amount: p.amount,
+        method: p.method,
+        collectedBy: p.collectedBy,
+        collectedByName: p.collectedByUser.fullName ?? null,
+        note: p.note ?? null,
+        collectedAt: p.collectedAt,
+      })),
     };
   }
 }

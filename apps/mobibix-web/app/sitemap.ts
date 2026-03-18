@@ -16,16 +16,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/partner`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
   ];
 
-  // 2. Feature Deep-Dives
-  const featureRoutes: MetadataRoute.Sitemap = [
-    { url: `${baseUrl}/features/job-cards`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
-    { url: `${baseUrl}/features/whatsapp-notifications`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
-    { url: `${baseUrl}/features/inventory`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
-    { url: `${baseUrl}/features/gst-billing`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
-    { url: `${baseUrl}/features/multi-shop`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
-    { url: `${baseUrl}/features/crm`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
-  ];
-
   // 3. Regional Landing Pages
   const regionRoutes: MetadataRoute.Sitemap = [
     { url: `${baseUrl}/regions`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
@@ -81,7 +71,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     ...coreRoutes,
-    ...featureRoutes,
     ...regionRoutes,
     ...comparisonRoutes,
     ...cityRoutes,
