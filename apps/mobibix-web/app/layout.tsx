@@ -7,6 +7,8 @@ import ReferralTracker from "../components/ReferralTracker";
 import { Suspense } from "react";
 import Script from "next/script";
 import { Metadata } from 'next';
+import { SpeedInsights } from "@vercel/speed-insights/next"
+
 
 export const metadata: Metadata = {
   title: "MobiBix — Mobile Shop POS & Management Platform",
@@ -133,8 +135,10 @@ export default function RootLayout({
           </Suspense>
           {children}
           <FacebookSDK />
+          <SpeedInsights />
         </Providers>
       </body>
+
     </html>
   );
 }

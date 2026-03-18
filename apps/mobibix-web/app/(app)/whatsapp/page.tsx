@@ -16,7 +16,6 @@ import {
   WhatsAppDashboard,
   WhatsAppLog,
 } from "@/services/whatsapp.api";
-import WhatsAppCrmDashboard from "../whatsapp-crm/components/WhatsAppCrmDashboard";
 import WhatsAppDashboardView from "./components/WhatsAppDashboardView";
 import { ServiceSelector } from "./components/ServiceSelector";
 import AuthkeySetupForm from "./components/AuthkeySetupForm";
@@ -141,7 +140,7 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
     }
   };
 
-  const handlePlanPurchased = async (planCode: string) => {
+  const handlePlanPurchased = async (_planCode: string) => {
     // Plan purchased — now switch to AUTHKEY and proceed to config
     setSwitching(true);
     try {
@@ -213,7 +212,7 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
         <div className="mb-6">
           <button
             onClick={() => setPageState("select_mode")}
-            className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
           >
             ← Back to mode selection
           </button>
@@ -222,8 +221,8 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
           <div className="inline-flex items-center gap-2 bg-violet-50 text-violet-700 text-xs font-bold px-3 py-1.5 rounded-full mb-4">
             <Zap className="w-3.5 h-3.5" /> ADDON REQUIRED
           </div>
-          <h2 className="text-2xl font-bold text-gray-900">Activate Official WhatsApp</h2>
-          <p className="text-gray-500 mt-2 text-sm">
+          <h2 className="text-2xl font-bold text-foreground">Activate Official WhatsApp</h2>
+          <p className="text-muted-foreground mt-2 text-sm">
             Official API access requires a WA Official plan addon. Choose the plan
             that fits your volume, pay now, and continue setup.
           </p>
@@ -279,13 +278,13 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">WhatsApp CRM</h1>
+          <h1 className="text-3xl font-black text-foreground tracking-tight">WhatsApp CRM</h1>
           <div className="flex items-center gap-2 mt-1">
             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${providerBadgeClass}`}>
               {providerLabel}
             </span>
             {waStatus?.phoneNumber && (
-              <span className="text-xs text-gray-400 font-mono">{waStatus.phoneNumber}</span>
+              <span className="text-xs text-muted-foreground font-mono">{waStatus.phoneNumber}</span>
             )}
           </div>
         </div>
@@ -307,7 +306,7 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
           <Button
             variant="outline"
             size="sm"
-            className="rounded-xl h-9 font-bold text-gray-600"
+            className="rounded-xl h-9 font-bold text-foreground"
             onClick={handleSwitchMode}
             disabled={switching || clearing}
           >
@@ -338,17 +337,17 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
 
       {/* Tabs */}
       <Tabs defaultValue="dashboard" value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="bg-gray-100/80 p-1 rounded-2xl h-12 w-full md:w-auto justify-start border border-gray-200/50 mb-4 overflow-x-auto no-scrollbar">
-          <TabsTrigger value="dashboard" className="rounded-xl px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
+        <TabsList className="bg-muted p-1 rounded-2xl h-12 w-full md:w-auto justify-start border mb-4 overflow-x-auto no-scrollbar">
+          <TabsTrigger value="dashboard" className="rounded-xl px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
             <LayoutDashboard className="w-4 h-4" /> Dashboard
           </TabsTrigger>
-          <TabsTrigger value="inbox" className="rounded-xl px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
+          <TabsTrigger value="inbox" className="rounded-xl px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
             <Inbox className="w-4 h-4" /> Inbox
           </TabsTrigger>
-          <TabsTrigger value="automation" className="rounded-xl px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
+          <TabsTrigger value="automation" className="rounded-xl px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
             <Zap className="w-4 h-4" /> Automations
           </TabsTrigger>
-          <TabsTrigger value="broadcasts" className="rounded-xl px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
+          <TabsTrigger value="broadcasts" className="rounded-xl px-6 font-bold data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
             <Megaphone className="w-4 h-4" /> Broadcasts
           </TabsTrigger>
         </TabsList>
@@ -368,19 +367,15 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
 
         {/* Inbox Tab */}
         <TabsContent value="inbox" className="focus-visible:ring-0">
-          {isWeb || isAuthkey ? (
-            <WhatsAppInbox tenantId={tenantId} />
-          ) : (
-            <MetaDashboardContent tenantId={tenantId} />
-          )}
+          <WhatsAppInbox tenantId={tenantId} />
         </TabsContent>
 
         {/* Automations Tab */}
         <TabsContent value="automation" className="focus-visible:ring-0">
-          <Card className="rounded-[2.5rem] border-none shadow-sm bg-white p-20 text-center">
+          <Card className="rounded-[2.5rem] border-none shadow-sm bg-card p-20 text-center">
             <Zap className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-            <h3 className="text-2xl font-black text-gray-900 mb-2">Smart Automations</h3>
-            <p className="text-gray-500 max-w-sm mx-auto">
+            <h3 className="text-2xl font-black text-foreground mb-2">Smart Automations</h3>
+            <p className="text-muted-foreground max-w-sm mx-auto">
               Auto-replies, keyword triggers, and AI flows are coming soon to this unified dashboard.
             </p>
           </Card>
@@ -389,14 +384,14 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
         {/* Broadcasts Tab */}
         <TabsContent value="broadcasts" className="focus-visible:ring-0">
           {isMeta ? (
-            <MetaDashboardContent tenantId={tenantId} />
+            <MetaBroadcastsContent tenantId={tenantId} />
           ) : isAuthkey ? (
             <AuthkeyBroadcastsCard />
           ) : (
-            <Card className="rounded-[2.5rem] border-none shadow-sm bg-white p-20 text-center">
+            <Card className="rounded-[2.5rem] border-none shadow-sm bg-card p-20 text-center">
               <Megaphone className="w-12 h-12 text-indigo-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-black text-gray-900 mb-2">Broadcasts</h3>
-              <p className="text-gray-500 max-w-sm mx-auto">
+              <h3 className="text-2xl font-black text-foreground mb-2">Broadcasts</h3>
+              <p className="text-muted-foreground max-w-sm mx-auto">
                 Bulk campaigns require Official WhatsApp (Authkey) for maximum compliance and delivery.
               </p>
               <Button
@@ -424,16 +419,16 @@ function WebModeConnectedCard({ waStatus }: { waStatus: any }) {
         <p className="opacity-80 font-medium">Real-time automation is active via your linked WhatsApp session.</p>
       </Card>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
+        <Card className="rounded-3xl border-none shadow-sm p-6 bg-card">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Status</p>
           <p className="text-xl font-black text-emerald-600">{waStatus?.status || "CONNECTED"}</p>
         </Card>
-        <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Phone Number</p>
-          <p className="text-xl font-black text-gray-900">{waStatus?.phoneNumber || "—"}</p>
+        <Card className="rounded-3xl border-none shadow-sm p-6 bg-card">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Phone Number</p>
+          <p className="text-xl font-black text-foreground">{waStatus?.phoneNumber || "—"}</p>
         </Card>
-        <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Mode</p>
+        <Card className="rounded-3xl border-none shadow-sm p-6 bg-card">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Mode</p>
           <p className="text-xl font-black text-teal-600">WhatsApp Web</p>
         </Card>
       </div>
@@ -449,16 +444,16 @@ function AuthkeyConnectedCard({ waStatus }: { waStatus: any }) {
         <p className="opacity-80 font-medium">Powered by Authkey — official API with reliable delivery.</p>
       </Card>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
+        <Card className="rounded-3xl border-none shadow-sm p-6 bg-card">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Status</p>
           <p className="text-xl font-black text-violet-600">{waStatus?.status || "ACTIVE"}</p>
         </Card>
-        <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Phone Number</p>
-          <p className="text-xl font-black text-gray-900">{waStatus?.phoneNumber || "—"}</p>
+        <Card className="rounded-3xl border-none shadow-sm p-6 bg-card">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Phone Number</p>
+          <p className="text-xl font-black text-foreground">{waStatus?.phoneNumber || "—"}</p>
         </Card>
-        <Card className="rounded-3xl border-none shadow-sm p-6 bg-white">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Sender ID</p>
+        <Card className="rounded-3xl border-none shadow-sm p-6 bg-card">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Sender ID</p>
           <p className="text-xl font-black text-indigo-600">{waStatus?.REMOVED_TOKENSenderId || "—"}</p>
         </Card>
       </div>
@@ -468,13 +463,88 @@ function AuthkeyConnectedCard({ waStatus }: { waStatus: any }) {
 
 function AuthkeyBroadcastsCard() {
   return (
-    <Card className="rounded-[2.5rem] border-none shadow-sm bg-white p-20 text-center">
+    <Card className="rounded-[2.5rem] border-none shadow-sm bg-card p-20 text-center">
       <Megaphone className="w-12 h-12 text-violet-500 mx-auto mb-4" />
-      <h3 className="text-2xl font-black text-gray-900 mb-2">Bulk Campaigns</h3>
-      <p className="text-gray-500 max-w-sm mx-auto">
+      <h3 className="text-2xl font-black text-foreground mb-2">Bulk Campaigns</h3>
+      <p className="text-muted-foreground max-w-sm mx-auto">
         Bulk campaign builder for Authkey (up to 200 recipients per batch) is coming soon.
       </p>
     </Card>
+  );
+}
+
+function MetaBroadcastsContent({ tenantId: _tenantId }: { tenantId: string }) {
+  const [sendForm, setSendForm] = useState({ phone: "", templateId: "", parameters: "" });
+  const [campaignForm, setCampaignForm] = useState({ name: "", templateId: "", scheduledAt: "" });
+  const [sending, setSending] = useState(false);
+  const [campaigning, setCampaigning] = useState(false);
+
+  const handleSend = async () => {
+    setSending(true);
+    try {
+      await sendWhatsAppMessage({
+        phone: sendForm.phone,
+        templateId: sendForm.templateId,
+        parameters: sendForm.parameters ? sendForm.parameters.split(",").map((p) => p.trim()) : [],
+      });
+      setSendForm({ phone: "", templateId: "", parameters: "" });
+    } catch (err: any) {
+      alert(err.message || "Failed to send message");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleCreateCampaign = async () => {
+    setCampaigning(true);
+    try {
+      const campaign = await createWhatsAppCampaign({
+        name: campaignForm.name,
+        templateId: campaignForm.templateId,
+      });
+      if (campaignForm.scheduledAt && (campaign as any)?.id) {
+        await scheduleWhatsAppCampaign((campaign as any).id, { scheduledAt: campaignForm.scheduledAt });
+      }
+      setCampaignForm({ name: "", templateId: "", scheduledAt: "" });
+    } catch (err: any) {
+      alert(err.message || "Failed to create campaign");
+    } finally {
+      setCampaigning(false);
+    }
+  };
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Manual Message</h2>
+          <p className="text-sm text-muted-foreground">Send a one-off approved template message.</p>
+        </div>
+        <div className="grid gap-3">
+          <input className="w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground" placeholder="Phone (e.g., 9876543210)" value={sendForm.phone} onChange={(e) => setSendForm((p) => ({ ...p, phone: e.target.value }))} />
+          <input className="w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground" placeholder="Template ID" value={sendForm.templateId} onChange={(e) => setSendForm((p) => ({ ...p, templateId: e.target.value }))} />
+          <input className="w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground" placeholder="Parameters (comma separated)" value={sendForm.parameters} onChange={(e) => setSendForm((p) => ({ ...p, parameters: e.target.value }))} />
+          <button onClick={handleSend} disabled={sending} className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">
+            {sending ? "Sending..." : "Send Message"}
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Campaigns</h2>
+          <p className="text-sm text-muted-foreground">Create and schedule bulk campaigns.</p>
+        </div>
+        <div className="grid gap-3">
+          <input className="w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground" placeholder="Campaign name" value={campaignForm.name} onChange={(e) => setCampaignForm((p) => ({ ...p, name: e.target.value }))} />
+          <input className="w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground" placeholder="Template ID" value={campaignForm.templateId} onChange={(e) => setCampaignForm((p) => ({ ...p, templateId: e.target.value }))} />
+          <input className="w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground" type="datetime-local" value={campaignForm.scheduledAt} onChange={(e) => setCampaignForm((p) => ({ ...p, scheduledAt: e.target.value }))} />
+          <button onClick={handleCreateCampaign} disabled={campaigning} className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
+            {campaigning ? "Saving..." : "Create Campaign"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -509,18 +579,18 @@ function MetaDashboardContent({ tenantId }: { tenantId: string }) {
 
   if (loading) {
     return (
-      <div className="flex h-[40vh] items-center justify-center bg-white rounded-[2rem]">
+      <div className="flex h-[40vh] items-center justify-center bg-card rounded-[2rem]">
         <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
-        <span className="font-bold text-gray-500">Syncing Meta Assets...</span>
+        <span className="font-bold text-muted-foreground">Syncing Meta Assets...</span>
       </div>
     );
   }
 
   if (!data.dashboard) {
     return (
-      <Card className="rounded-[2.5rem] border-none shadow-sm bg-white p-20 text-center">
-        <h3 className="text-2xl font-black text-gray-900 mb-2">Connect Meta Assets</h3>
-        <p className="text-gray-500 mb-8 max-w-sm mx-auto">
+      <Card className="rounded-[2.5rem] border-none shadow-sm bg-card p-20 text-center">
+        <h3 className="text-2xl font-black text-foreground mb-2">Connect Meta Assets</h3>
+        <p className="text-muted-foreground mb-8 max-w-sm mx-auto">
           Connect your Facebook account to sync Meta API assets.
         </p>
         <Button
