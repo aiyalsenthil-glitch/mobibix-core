@@ -27,7 +27,10 @@ export class WhatsAppInboxService implements OnModuleInit, OnModuleDestroy {
 
     this.subscriber = new Redis(options as any);
     this.publisher = new Redis(options as any);
-    
+
+    this.subscriber.on('error', (err) => this.logger.warn(`Redis subscriber error: ${err.message}`));
+    this.publisher.on('error', (err) => this.logger.warn(`Redis publisher error: ${err.message}`));
+
     this.subscriber.subscribe('whatsapp-incoming', (err) => {
       if (err) {
         this.logger.error(`Failed to subscribe to whatsapp-incoming: ${err.message}`);
