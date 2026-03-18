@@ -23,6 +23,8 @@ export class WhatsAppInboxService implements OnModuleInit, OnModuleDestroy {
     const options = url ? url : {
       host: this.configService.get<string>('REDIS_HOST', 'localhost'),
       port: parseInt(this.configService.get<string>('REDIS_PORT', '6379')),
+      password: this.configService.get<string>('REDIS_PASSWORD') || undefined,
+      tls: this.configService.get<string>('REDIS_TLS') === 'true' ? {} : undefined,
     };
 
     this.subscriber = new Redis(options as any);
