@@ -227,33 +227,41 @@ export class WhatsAppWebhookController {
         // REMOVED: console.log message text for security
         this.logger.debug(`[Webhook] Extracted text from ${senderPhone}`);
 
-        if (text) {
-          this.logger.log(
-            `📨 Received message from ${senderPhone} (Tenant: ${tenantId})`,
-          );
+        // Extract text for all message types
+        const bodyText = text || message.type || '[media]';
 
-          // 4. Log Incoming Message (Optional but good for history)
-          // We create a log entry so next time it's caught by idempotency
-          await this.prisma.whatsAppLog.create({
-            data: {
-              tenantId,
-              whatsAppNumberId: waNumber.id,
-              phone: senderPhone,
-              type: 'INCOMING',
-              status: 'RECEIVED',
-              messageId: messageId,
-              metadata: message,
-            },
-          });
+        this.logger.log(`📨 Received ${message.type} from ${senderPhone} (Tenant: ${tenantId})`);
 
-          // 5. Route to Automation
-          await this.router.routeMessage(
+        // 4. Log to WhatsAppLog (idempotency / status tracking)
+        await this.prisma.whatsAppLog.create({
+          data: {
             tenantId,
-            waNumber.id,
-            senderPhone,
-            text,
-          );
-        } else {
+            whatsAppNumberId: waNumber.id,
+            phone: senderPhone,
+            type: 'INCOMING',
+            status: 'RECEIVED',
+            messageId,
+            metadata: message,
+          },
+        });
+
+        // 5. Write to WhatsAppMessageLog (inbox conversations view)
+        await (this.prisma as any).whatsAppMessageLog.create({
+          data: {
+            tenantId,
+            phoneNumber: senderPhone,
+            direction: 'INCOMING',
+            body: bodyText,
+            status: 'RECEIVED',
+            provider: 'META_CLOUD',
+            whatsAppNumberId: waNumber.id,
+            metadata: message,
+          },
+        });
+
+        // 6. Route to Automation (text only)
+        if (text) {
+          await this.router.routeMessage(tenantId, waNumber.id, senderPhone, text);
         }
       }
     } catch (err) {
