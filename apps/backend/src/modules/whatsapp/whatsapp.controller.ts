@@ -229,7 +229,6 @@ export class WhatsAppController {
 
     return { success: true, message: 'Inbox cleared' };
   }
-  @Public()
   @Get('status/:tenantId')
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.VIEW_DASHBOARD)
   async getStatus(@Param('tenantId') tenantId: string) {
@@ -248,7 +247,6 @@ export class WhatsAppController {
   /**
    * GET /whatsapp/conversations/:tenantId
    */
-  @Public()
   @Get('conversations/:tenantId')
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
   async getConversations(@Param('tenantId') tenantId: string, @Req() req: any) {
@@ -307,7 +305,6 @@ export class WhatsAppController {
   /**
    * GET /whatsapp/messages/:tenantId/:phoneNumber
    */
-  @Public()
   @Get('messages/:tenantId/:phoneNumber')
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
   async getMessages(
@@ -634,7 +631,6 @@ export class WhatsAppController {
    * POST /whatsapp/send
    * Send a WhatsApp message (Template OR Text)
    */
-  @Public()
   @Post('send')
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
   async sendMessage(
