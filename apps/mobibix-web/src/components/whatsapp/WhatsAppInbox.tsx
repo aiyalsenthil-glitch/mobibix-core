@@ -186,13 +186,13 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
   };
 
   return (
-    <div className="flex h-[600px] w-full border rounded-2xl bg-white shadow-sm overflow-hidden font-sans">
-      <div className="w-80 border-r bg-gray-50 flex flex-col">
-        <div className="p-4 border-b space-y-4">
-          <h2 className="font-bold">Inbox</h2>
+    <div className="flex [height:calc(100vh-280px)] min-h-[500px] w-full border border-border rounded-3xl bg-card shadow-xl shadow-black/5 overflow-hidden font-sans transition-colors duration-200">
+      <div className="w-80 border-r border-border bg-muted/30 flex flex-col">
+        <div className="p-4 border-b border-border space-y-4">
+          <h2 className="font-black text-foreground uppercase tracking-wider text-xs">Inbox</h2>
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-            <Input placeholder="Search..." className="pl-9 bg-white" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search..." className="pl-9 bg-background border-none shadow-inner" />
           </div>
         </div>
         <ScrollArea className="flex-1">
@@ -200,13 +200,13 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
             <div
               key={chat.phoneNumber}
               onClick={() => setActiveChat(chat.phoneNumber)}
-              className={`p-4 cursor-pointer transition-all ${activeChat === chat.phoneNumber ? 'bg-teal-50 border-l-4 border-teal-500' : 'hover:bg-gray-100'}`}
+              className={`p-4 cursor-pointer transition-all border-l-4 ${activeChat === chat.phoneNumber ? 'bg-teal-500/10 border-teal-500 dark:bg-teal-500/20' : 'border-transparent hover:bg-muted/50'}`}
             >
               <div className="flex justify-between items-start">
-                <span className="font-bold text-sm">+{chat.phoneNumber}</span>
-                <span className="text-[10px] text-gray-400">{new Date(chat.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="font-black text-sm text-foreground">+{chat.phoneNumber}</span>
+                <span className="text-[10px] text-muted-foreground font-medium">{new Date(chat.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
-              <p className="text-xs text-gray-500 truncate mt-1 italic">{chat.lastMessage}</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-1 italic leading-tight">{chat.lastMessage}</p>
             </div>
           ))}
         </ScrollArea>
@@ -215,38 +215,65 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
       <div className="flex-1 flex flex-col">
         {activeChat ? (
           <>
-            <div className="p-4 border-b flex justify-between items-center bg-white shadow-sm z-10">
+            <div className="p-5 border-b border-border flex justify-between items-center bg-card/80 backdrop-blur-md sticky top-0 z-20">
               <div className="flex items-center gap-3">
-                 <Avatar className="h-10 w-10"><AvatarFallback className="bg-teal-100 text-teal-700">{activeChat[0]}</AvatarFallback></Avatar>
-                 <div><h3 className="font-bold">+{activeChat}</h3><span className="text-[10px] text-green-500">Active</span></div>
+                 <Avatar className="h-10 w-10 border-2 border-teal-100 dark:border-teal-900 shadow-sm">
+                   <AvatarFallback className="bg-teal-500/10 text-teal-600 dark:text-teal-400 font-bold">
+                     {activeChat[0]}
+                   </AvatarFallback>
+                 </Avatar>
+                 <div>
+                   <h3 className="font-black text-foreground">+{activeChat}</h3>
+                   <span className="flex items-center gap-1 text-[10px] text-teal-500 font-bold uppercase tracking-wider">
+                     <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" /> Connected
+                   </span>
+                 </div>
               </div>
             </div>
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/30">
-               <div className="flex justify-center mb-6"><Badge variant="outline" className="text-gray-400 text-[10px] px-3 py-1 uppercase"><ShieldCheck className="w-3 h-3 mr-1 text-teal-600" /> Secure Encryption</Badge></div>
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6 bg-muted/5 relative">
+               <div className="flex justify-center mb-8 sticky top-0 z-10">
+                 <Badge variant="outline" className="bg-background/80 backdrop-blur-md border-border text-muted-foreground text-[9px] px-4 py-1.5 rounded-full uppercase font-bold tracking-widest">
+                   <ShieldCheck className="w-3 h-3 mr-1.5 text-teal-500" /> End-to-End Encrypted
+                 </Badge>
+               </div>
                {messages.map((msg, idx) => (
                  <div key={msg.id || idx} className={`flex ${msg.direction === 'OUTGOING' ? 'justify-end' : 'justify-start'}`}>
-                   <div className={`max-w-[80%] p-3 rounded-xl shadow-sm ${msg.direction === 'OUTGOING' ? 'bg-teal-600 text-white' : 'bg-white border'}`}>
+                   <div className={`max-w-[85%] px-4 py-3 shadow-sm ${msg.direction === 'OUTGOING' ? 'bg-teal-600 text-white rounded-2xl rounded-tr-none shadow-lg shadow-teal-500/10' : 'bg-card border border-border text-foreground rounded-2xl rounded-tl-none'}`}>
                      <p className="text-xs">{msg.body}</p>
-                     <div className="flex justify-end gap-1 mt-1 opacity-50"><span className="text-[9px]">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>{msg.direction === 'OUTGOING' && (msg.status === 'READ' ? <CheckCheck className="w-3 h-3 text-teal-200" /> : <Check className="w-3 h-3" />)}</div>
+                     <div className={`flex justify-end items-center gap-1 mt-1.5 ${msg.direction === 'OUTGOING' ? 'text-teal-50/50' : 'text-muted-foreground/50'}`}>
+                       <span className="text-[8px] font-medium tracking-tighter uppercase">
+                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                       </span>
+                       {msg.direction === 'OUTGOING' && (msg.status === 'READ' ? <CheckCheck className="w-3 h-3 text-teal-200" /> : <Check className="w-3 h-3" />)}
+                     </div>
                    </div>
                  </div>
                ))}
             </div>
-            <div className="p-4 bg-white border-t">
-              <div className="flex gap-2 items-center bg-gray-50 p-2 rounded-xl border">
-                <Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendMessage()} placeholder="Type..." className="border-none focus-visible:ring-0 bg-transparent" />
-                <Button onClick={sendMessage} className="rounded-lg h-10 w-10 p-0 bg-teal-600 hover:bg-teal-700 shadow-lg shadow-teal-500/20"><Send className="w-4 h-4" /></Button>
+            <div className="p-5 bg-card/50 backdrop-blur-md border-t border-border">
+              <div className="flex gap-2 items-center bg-muted/50 p-1.5 px-3 rounded-2xl border border-border transition-all focus-within:ring-2 focus-within:ring-teal-500/20 focus-within:border-teal-500/50">
+                <Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendMessage()} placeholder="Type a message..." className="border-none focus-visible:ring-0 bg-transparent text-sm" />
+                <Button onClick={sendMessage} className="rounded-xl h-10 w-10 p-0 bg-teal-600 hover:bg-teal-500 shadow-xl shadow-teal-500/20 active:scale-95 transition-all">
+                  <Send className="w-4 h-4" />
+                </Button>
               </div>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-4">
-             <MessageSquare className="w-16 h-16 text-teal-100" />
-             <h3 className="text-xl font-bold">Your Inbox</h3>
-             <p className="text-gray-400 max-w-xs text-sm">Select a conversation to start chatting.</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-6">
+             <div className="p-8 rounded-full bg-teal-500/5">
+               <MessageSquare className="w-16 h-16 text-teal-500/20" />
+             </div>
+             <div className="space-y-2">
+               <h3 className="text-2xl font-black text-foreground">Conversations</h3>
+               <p className="text-muted-foreground max-w-xs text-sm font-medium">
+                 Synced in real-time with Meta Cloud API. Select a thread to continue.
+               </p>
+             </div>
           </div>
         )}
       </div>
     </div>
+
   );
 }

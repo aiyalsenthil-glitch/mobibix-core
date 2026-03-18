@@ -219,7 +219,7 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
           </button>
         </div>
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 bg-violet-50 text-violet-700 text-xs font-bold px-3 py-1.5 rounded-full mb-4">
+          <div className="inline-flex items-center gap-2 bg-violet-500/10 text-violet-600 dark:text-violet-400 text-xs font-bold px-3 py-1.5 rounded-full mb-4">
             <Zap className="w-3.5 h-3.5" /> ADDON REQUIRED
           </div>
           <h2 className="text-2xl font-bold text-foreground">Activate Official WhatsApp</h2>
@@ -269,10 +269,10 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
     : "WhatsApp Web";
 
   const providerBadgeClass = isAuthkey
-    ? "bg-violet-100 text-violet-700"
+    ? "bg-violet-500/10 text-violet-600 dark:text-violet-400"
     : isMeta
-    ? "bg-blue-100 text-blue-700"
-    : "bg-emerald-100 text-emerald-700";
+    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
 
   return (
     <div className="p-4 lg:p-8 space-y-6">
@@ -295,7 +295,7 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-xl h-9 font-bold text-teal-600 border-teal-100 hover:bg-teal-50"
+              className="rounded-xl h-9 font-bold text-teal-600 border-teal-500/20 hover:bg-teal-500/10"
               onClick={handleClearInbox}
               disabled={clearing || switching}
             >
@@ -319,7 +319,7 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-xl h-9 font-bold text-red-600 border-red-100 hover:bg-red-50"
+              className="rounded-xl h-9 font-bold text-red-600 border-red-500/20 hover:bg-red-500/10"
               onClick={async () => {
                 if (!confirm("Logout from WhatsApp Web?")) return;
                 try {
@@ -397,7 +397,7 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
               </p>
               <Button
                 variant="outline"
-                className="mt-6 rounded-xl font-bold bg-violet-50 border-violet-100 text-violet-700"
+                className="mt-6 rounded-xl font-bold bg-violet-600 text-white hover:bg-violet-700 shadow-lg shadow-violet-500/20"
                 onClick={() => handleModeSelect("AUTHKEY")}
               >
                 Upgrade to Official API
