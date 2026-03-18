@@ -2,9 +2,6 @@ import {
   Controller,
   Get,
   Post,
-  Query,
-  Body,
-  ForbiddenException,
   Logger,
   Inject,
   Req,
@@ -15,6 +12,7 @@ import { Public } from '../../core/auth/decorators/public.decorator';
 import { SkipSubscriptionCheck } from '../../core/auth/decorators/skip-subscription-check.decorator';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { WhatsAppCapabilityRouter } from './router/whatsapp-capability.router';
+import { WhatsAppInboxGateway } from './inbox/whatsapp-inbox.gateway';
 
 @Public()
 @SkipSubscriptionCheck()
@@ -26,6 +24,7 @@ export class WhatsAppWebhookController {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     private readonly router: WhatsAppCapabilityRouter,
+    private readonly inboxGateway: WhatsAppInboxGateway,
   ) {}
 
   @Get()
@@ -259,7 +258,16 @@ export class WhatsAppWebhookController {
           },
         });
 
-        // 6. Route to Automation (text only)
+        // 6. Broadcast to WebSocket (real-time inbox update)
+        this.inboxGateway.broadcastNewMessage(tenantId, {
+          messageId,
+          senderPhone,
+          body: bodyText,
+          direction: 'INCOMING',
+          timestamp: new Date().toISOString(),
+        });
+
+        // 7. Route to Automation (text only)
         if (text) {
           await this.router.routeMessage(tenantId, waNumber.id, senderPhone, text);
         }

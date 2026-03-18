@@ -97,6 +97,9 @@ export default function WhatsAppInbox({ tenantId }: { tenantId: string }) {
 
   useEffect(() => {
     fetchConversations();
+    // Poll every 15 seconds as fallback for WebSocket gaps
+    const interval = setInterval(fetchConversations, 15000);
+    return () => clearInterval(interval);
   }, [tenantId]);
 
   useEffect(() => {
