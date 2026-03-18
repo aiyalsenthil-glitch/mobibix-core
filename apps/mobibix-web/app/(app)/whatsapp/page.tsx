@@ -27,6 +27,7 @@ import {
   WhatsAppNumberProvider,
 } from "@/context/WhatsAppNumberContext";
 import WhatsAppPlanPicker from "@/components/whatsapp/WhatsAppPlanPicker";
+import MetaTemplateManager from "@/components/whatsapp/MetaTemplateManager";
 import { getWaOfficialPlans } from "@/services/payments.api";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -384,7 +385,7 @@ function WhatsAppPageContent({ authUser }: { authUser: any }) {
         {/* Broadcasts Tab */}
         <TabsContent value="broadcasts" className="focus-visible:ring-0">
           {isMeta ? (
-            <MetaBroadcastsContent tenantId={tenantId} />
+            <MetaTemplateManager />
           ) : isAuthkey ? (
             <AuthkeyBroadcastsCard />
           ) : (

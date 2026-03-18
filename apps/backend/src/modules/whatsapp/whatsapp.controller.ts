@@ -26,6 +26,7 @@ import { GranularPermissionGuard } from '../../core/permissions/guards/granular-
 import { RequirePermission, ModulePermission } from '../../core/permissions/decorators/require-permission.decorator';
 import { PERMISSIONS } from '../../security/permission-registry';
 import { WhatsAppInboxService } from './inbox/whatsapp-inbox.service';
+import { WhatsAppTokenService } from './whatsapp-token.service';
 
 import {
   WhatsAppModule,
@@ -43,6 +44,7 @@ export class WhatsAppController {
     @Inject(WhatsAppSender) private readonly sender: WhatsAppSender,
     private readonly userService: WhatsAppUserService,
     private readonly inboxService: WhatsAppInboxService,
+    private readonly tokenService: WhatsAppTokenService,
   ) {}
 
   /**
@@ -854,5 +856,53 @@ export class WhatsAppController {
       throw new BadRequestException('Tenant ID required');
     }
     return this.userService.getUsageSummary(tenantId);
+  }
+
+  /**
+   * GET /whatsapp/meta-templates
+   * List message templates from Meta WhatsApp Business API (whatsapp_business_management)
+   */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
+  @Get('meta-templates')
+  async listMetaTemplates(@Req() req: any) {
+    const tenantId = req.user?.tenantId;
+    const number = await this.prisma.whatsAppNumber.findFirst({
+      where: { tenantId, isDefault: true, provider: 'META_CLOUD' as any },
+    });
+    if (!number) throw new BadRequestException('No Meta Cloud number configured');
+    const token = await this.tokenService.resolveToken(number as any);
+    if (!token) throw new BadRequestException('No access token');
+    const axios = (await import('axios')).default;
+    const resp = await axios.get(
+      `https://graph.facebook.com/v19.0/${(number as any).wabaId}/message_templates`,
+      {
+        params: { fields: 'id,name,status,category,language,components', limit: 20 },
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+    return resp.data;
+  }
+
+  /**
+   * POST /whatsapp/meta-templates
+   * Create a message template via Meta WhatsApp Business API (whatsapp_business_management)
+   */
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.WHATSAPP.SEND)
+  @Post('meta-templates')
+  async createMetaTemplate(@Req() req: any, @Body() dto: any) {
+    const tenantId = req.user?.tenantId;
+    const number = await this.prisma.whatsAppNumber.findFirst({
+      where: { tenantId, isDefault: true, provider: 'META_CLOUD' as any },
+    });
+    if (!number) throw new BadRequestException('No Meta Cloud number configured');
+    const token = await this.tokenService.resolveToken(number as any);
+    if (!token) throw new BadRequestException('No access token');
+    const axios = (await import('axios')).default;
+    const resp = await axios.post(
+      `https://graph.facebook.com/v19.0/${(number as any).wabaId}/message_templates`,
+      dto,
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } },
+    );
+    return resp.data;
   }
 }
