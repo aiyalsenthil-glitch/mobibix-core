@@ -136,7 +136,7 @@ async function bootstrap() {
   );
 
   server.use(
-    /^\/(api\/)?(billing\/webhook\/REMOVED_PAYMENT_INFRA|payments\/webhook)$/,
+    /^\/(api\/)?(billing\/webhook\/REMOVED_PAYMENT_INFRA|payments\/webhook|webhook\/whatsapp)$/,
     bodyParser.json({
       verify: (req: any, _res, buf) => {
         req.rawBody = buf;
