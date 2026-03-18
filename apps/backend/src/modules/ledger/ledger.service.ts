@@ -439,4 +439,92 @@ export class LedgerService {
       closedLoans: detailedLedgers.filter((l) => l.status !== 'ACTIVE'),
     };
   }
+
+  async getDashboardStats(tenantId: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [totalCustomers, activeLoans, todayPayments, outstandingData] =
+      await Promise.all([
+        this.prisma.ledgerCustomer.count({ where: { tenantId } }),
+        this.prisma.ledgerAccount.count({ where: { tenantId, status: 'ACTIVE' } }),
+        this.prisma.ledgerPayment.aggregate({
+          where: { tenantId, createdAt: { gte: today } },
+          _sum: { amount: true },
+        }),
+        this.prisma.ledgerAccount.findMany({
+          where: { tenantId, status: 'ACTIVE' },
+          select: { expectedTotal: true, id: true },
+        }),
+      ]);
+
+    const collectedByAccount = await this.prisma.ledgerCollection.groupBy({
+      by: ['ledgerId'],
+      where: {
+        tenantId,
+        paid: true,
+        ledgerId: { in: outstandingData.map((a) => a.id) },
+      },
+      _sum: { amount: true },
+    });
+
+    const collectedMap = new Map(
+      collectedByAccount.map((r) => [r.ledgerId, r._sum.amount ?? 0]),
+    );
+
+    const totalOutstanding = outstandingData.reduce((sum, account) => {
+      const collected = collectedMap.get(account.id) ?? 0;
+      return sum + Math.max(0, account.expectedTotal - collected);
+    }, 0);
+
+    return {
+      totalCustomers,
+      activeLoans,
+      totalOutstanding,
+      todayCollections: todayPayments._sum.amount ?? 0,
+    };
+  }
+
+  async listCustomers(tenantId: string, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const [customers, total] = await Promise.all([
+      this.prisma.ledgerCustomer.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.ledgerCustomer.count({ where: { tenantId } }),
+    ]);
+
+    const result = await Promise.all(
+      customers.map(async (c) => {
+        const activeLoans = await this.prisma.ledgerAccount.count({
+          where: { tenantId, customerId: c.id, status: 'ACTIVE' },
+        });
+        return { id: c.id, name: c.name, phone: c.phone, address: c.address, activeLoans };
+      }),
+    );
+
+    return { data: result, total, page, limit };
+  }
+
+  async listAccounts(tenantId: string, status?: string, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const where: any = { tenantId };
+    if (status) where.status = status;
+
+    const [accounts, total] = await Promise.all([
+      this.prisma.ledgerAccount.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: { customer: { select: { name: true, phone: true } } },
+      }),
+      this.prisma.ledgerAccount.count({ where }),
+    ]);
+
+    return { data: accounts, total, page, limit };
+  }
 }

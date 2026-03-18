@@ -85,11 +85,14 @@ export class TenantService {
       };
     }
 
-    const trialPlan = await this.plansService.getOrCreateTrialPlan(
+    const trialPlanModule =
       effectiveTenantType === 'MOBILE_SHOP'
         ? ModuleType.MOBILE_SHOP
-        : ModuleType.GYM,
-    );
+        : effectiveTenantType === 'DIGITAL_LEDGER'
+          ? ModuleType.DIGITAL_LEDGER
+          : ModuleType.GYM;
+
+    const trialPlan = await this.plansService.getOrCreateTrialPlan(trialPlanModule);
 
     // Generate guaranteed unique tenant code: timestamp (base36) + random (4 hex chars)
     // Example: K3F2A1B4 (8 chars total, always unique)
@@ -108,11 +111,7 @@ export class TenantService {
         timezone: dto.timezone || 'Asia/Kolkata',
         businessType: dto.businessType,
         businessCategoryId: dto.businessCategoryId,
-        enabledModules: [
-          effectiveTenantType === 'MOBILE_SHOP'
-            ? ModuleType.MOBILE_SHOP
-            : ModuleType.GYM,
-        ],
+        enabledModules: [trialPlanModule],
 
         contactPhone: dto.contactPhone
           ? normalizePhone(dto.contactPhone)
@@ -132,15 +131,40 @@ export class TenantService {
         consentUserAgent: audit?.userAgent,
       },
     });
-    // Module 1: Apply Promo Code Logic
+    // Module 1: Apply Promo Code / Distributor Referral Logic
     let promoDescription: string | undefined;
     if (dto.promoCode) {
-      try {
-        await this.partnersService.applyPromoToTenant(
-          dto.promoCode,
-          tenant.id,
-          userId,
-        );
+      const codeUpper = dto.promoCode.toUpperCase();
+      if (codeUpper.startsWith('DIST-')) {
+        // Distributor Referral Linkage
+        try {
+          const dist = await this.prisma.distDistributor.findUnique({
+            where: { referralCode: codeUpper },
+          });
+          if (dist) {
+            await this.prisma.distDistributorRetailer.create({
+              data: {
+                distributorId: dist.id,
+                retailerId: tenant.id,
+                status: 'ACTIVE',
+                linkedVia: 'REFERRAL_CODE',
+              },
+            });
+            this.logger.log(
+              `🔗 Tenant ${tenant.id} automatically linked to Distributor ${dist.id} vis code ${codeUpper}`,
+            );
+          }
+        } catch (e: any) {
+          this.logger.error(`Failed to link distributor code: ${e.message}`);
+        }
+      } else {
+        // Standard Partner Promo Code Logic
+        try {
+          await this.partnersService.applyPromoToTenant(
+            dto.promoCode,
+            tenant.id,
+            userId,
+          );
 
         const promo = await this.prisma.promoCode.findUnique({
           where: { code: dto.promoCode },
@@ -275,19 +299,19 @@ export class TenantService {
             }
           }
         }
-      } catch (err: any) {
-        this.logger.error(
-          `Failed to apply promo ${dto.promoCode}: ${err.message}`,
-        );
-        // Don't fail the whole onboarding if promo fails
+        } catch (err: any) {
+          this.logger.error(
+            `Failed to apply promo ${dto.promoCode}: ${err.message}`,
+          );
+          // Don't fail the whole onboarding if promo fails
+        }
       }
     }
 
     // Send welcome email (Event Driven) - MOVED DOWN to include promo info
     if (!user.welcomeEmailSent && user.email) {
       try {
-        const module =
-          effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM';
+        const module = trialPlanModule;
 
         await this.eventEmitter.emitAsync('tenant.welcome', {
           tenantId: tenant.id,
@@ -327,7 +351,7 @@ export class TenantService {
       await this.subscriptionsService.assignTrialSubscription(
         tenant.id,
         trialPlan.id,
-        effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
+        trialPlanModule,
       );
     }
 

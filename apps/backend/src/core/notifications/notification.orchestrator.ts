@@ -26,8 +26,8 @@ export class NotificationOrchestrator implements OnModuleInit {
     this.registerStrategy('subscription.expired', [this.emailStrategy, this.whatsappStrategy, this.inAppStrategy]);
     this.registerStrategy('subscription.suspended', [this.emailStrategy, this.whatsappStrategy, this.inAppStrategy]);
     
-    // NEW: Welcome notifications with In-App support
-    this.registerStrategy('tenant.welcome', [this.emailStrategy, this.inAppStrategy]);
+    // Welcome: email handled by EmailListener (has full user/tenant context), orchestrator handles in-app only
+    this.registerStrategy('tenant.welcome', [this.inAppStrategy]);
 
     // NEW: Admin broadcast notifications
     this.registerStrategy('admin.broadcast', [this.inAppStrategy]);

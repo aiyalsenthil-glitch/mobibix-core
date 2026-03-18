@@ -584,6 +584,8 @@ model LedgerCustomer {
   name       String
   phone      String
   address    String?
+  email      String?
+  notes      String?
   isActive   Boolean         @default(true)
   createdAt  DateTime        @default(now())
   ledgers    LedgerAccount[]
@@ -602,6 +604,9 @@ model LedgerAccount {
   tenantId          String
   customerId        String
   principalAmount   Int
+  interestRate      Int                   @default(0)
+  interestRateType  String                @default("RUPEES")
+  interestAmount    Int                   @default(0)
   expectedTotal     Int
   installmentType   LedgerInstallmentType
   installmentAmount Int
@@ -620,16 +625,18 @@ model LedgerAccount {
 }
 
 model LedgerCollection {
-  id         String          @id @default(cuid())
-  tenantId   String
-  ledgerId   String
-  periodNo   Int
-  dueDate    DateTime
-  amount     Int
-  paidAmount Int             @default(0)
-  paid       Boolean         @default(false)
-  paidAt     DateTime?
-  createdAt  DateTime        @default(now())
+  id               String          @id @default(cuid())
+  tenantId         String
+  ledgerId         String
+  periodNo         Int
+  dueDate          DateTime
+  amount           Int
+  paidAmount       Int             @default(0)
+  paid             Boolean         @default(false)
+  paidAt           DateTime?
+  isInterestOnly   Boolean         @default(false)
+  collectionNote   String?
+  createdAt        DateTime        @default(now())
   ledger     LedgerAccount   @relation(fields: [ledgerId], references: [id])
   payments   LedgerPayment[]
 
@@ -647,6 +654,7 @@ model LedgerPayment {
   collectedBy     String
   amount          Int
   method          LedgerPaymentMethod
+  paymentType     String              @default("FULL")
   note            String?
   collectedAt     DateTime            @default(now())
   createdAt       DateTime            @default(now())
@@ -3402,6 +3410,7 @@ enum ModuleType {
   MOBILE_SHOP
   MOBILE_REPAIR
   WHATSAPP_CRM
+  DIGITAL_LEDGER
   CORE
 }
 
@@ -4003,3 +4012,187 @@ model MarketPriceIntel {
   @@index([brand, model])
   @@map("mb_market_price_intel")
 }
+
+// --- DISTRIBUTOR NETWORK ENUMS & TYPES ---
+
+enum DistributorLinkStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum DistOrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REJECTED
+}
+
+enum DistPaymentType {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CREDIT
+}
+
+// --- DISTRIBUTOR NETWORK MODELS ---
+
+model DistDistributor {
+  id              String   @id @default(cuid())
+  name            String
+  referralCode    String   @unique
+  contactPerson   String?
+  phone           String?
+  email           String?  @unique
+  address         String?
+  logoUrl         String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  retailerLinks   DistDistributorRetailer[]
+  catalogItems    DistCatalogItem[]
+  purchaseOrders  DistPurchaseOrder[]
+  creditLedger    DistCreditLedger[]
+  salesLogs       DistSaleAttributionLog[]
+
+  @@map("dist_distributors")
+}
+
+model DistDistributorRetailer {
+  id             String                 @id @default(cuid())
+  distributorId  String
+  retailerId     String                 // Refers to Tenant.id
+  status         DistributorLinkStatus  @default(PENDING)
+  linkedVia      String                 // 'REFERRAL_CODE' or 'MANUAL'
+  linkedAt       DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  distributor    DistDistributor        @relation(fields: [distributorId], references: [id])
+
+  @@unique([distributorId, retailerId])
+  @@index([retailerId])
+  @@map("dist_distributor_retailers")
+}
+
+model DistCatalogItem {
+  id             String   @id @default(cuid())
+  distributorId  String
+  sku            String?
+  name           String
+  description    String?
+  brand          String?
+  category       String?
+  unitPrice      Decimal  @db.Decimal(12, 2)
+  stockQuantity  Int      @default(0)
+  images         String[] @default([])
+  compatibility  Json?    
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  distributor    DistDistributor @relation(fields: [distributorId], references: [id])
+  mappings       DistProductMapping[]
+  orderItems     DistPurchaseOrderItem[]
+  salesLogs      DistSaleAttributionLog[]
+
+  @@index([distributorId])
+  @@index([brand, category])
+  @@map("dist_catalog_items")
+}
+
+model DistPurchaseOrder {
+  id             String          @id @default(cuid())
+  distributorId  String
+  retailerId     String          
+  orderNumber    String          @unique 
+  status         DistOrderStatus @default(PENDING)
+  totalAmount    Decimal         @db.Decimal(12, 2)
+  paymentType    DistPaymentType @default(CASH)
+  notes          String?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  distributor    DistDistributor @relation(fields: [distributorId], references: [id])
+  items          DistPurchaseOrderItem[]
+
+  @@index([distributorId, status])
+  @@index([retailerId])
+  @@map("dist_purchase_orders")
+}
+
+model DistPurchaseOrderItem {
+  id                String   @id @default(cuid())
+  purchaseOrderId   String
+  catalogItemId     String
+  quantityOrdered   Int
+  quantityReceived  Int      @default(0)
+  unitPriceAtOrder  Decimal  @db.Decimal(12, 2)
+  
+  purchaseOrder     DistPurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  catalogItem       DistCatalogItem   @relation(fields: [catalogItemId], references: [id])
+
+  @@map("dist_purchase_order_items")
+}
+
+model DistProductMapping {
+  id                String   @id @default(cuid())
+  retailerId        String   
+  catalogItemId     String
+  retailerProductId String   
+  createdAt         DateTime @default(now())
+
+  catalogItem       DistCatalogItem @relation(fields: [catalogItemId], references: [id])
+
+  @@unique([retailerId, catalogItemId])
+  @@unique([retailerId, retailerProductId]) 
+  @@map("dist_product_mapping")
+}
+
+model DistCreditLedger {
+  id              String   @id @default(cuid())
+  distributorId   String
+  retailerId      String
+  entryType       String   
+  amount          Decimal  @db.Decimal(12, 2)
+  referenceType   String?
+  referenceId     String?
+  description     String?
+  runningBalance  Decimal  @db.Decimal(12, 2)
+  entryDate       DateTime @db.Date
+  createdAt       DateTime @default(now())
+
+  distributor     DistDistributor @relation(fields: [distributorId], references: [id])
+  
+  @@index([distributorId])
+  @@index([retailerId])
+  @@map("dist_credit_ledger")
+}
+
+model DistSaleAttributionLog {
+  id              String   @id @default(cuid())
+  distributorId   String
+  retailerId      String
+  catalogItemId   String?
+  saleItemRef     String?
+  quantitySold    Int
+  revenueAmount   Decimal? @db.Decimal(12, 2)
+  saleDate        DateTime @db.Date
+  weekBucket      String?  @db.VarChar(7)
+  monthBucket     String?  @db.VarChar(7)
+  createdAt       DateTime @default(now())
+
+  distributor     DistDistributor @relation(fields: [distributorId], references: [id])
+  catalogItem     DistCatalogItem? @relation(fields: [catalogItemId], references: [id])
+  
+  @@index([distributorId])
+  @@index([distributorId, monthBucket])
+  @@index([distributorId, retailerId])
+  @@map("dist_sale_attribution_log")
+}
+

@@ -27,7 +27,7 @@ import {
 } from './dto';
 
 @Controller('ledger')
-@ModuleScope(ModuleType.MOBILE_SHOP)
+@ModuleScope(ModuleType.DIGITAL_LEDGER)
 @ModulePermission('ledger')
 @UseGuards(
   JwtAuthGuard,
@@ -57,6 +57,42 @@ export class LedgerController {
   ) {
     return this.ledgerService.createAccount(req.user.tenantId, body);
   }
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.VIEW)
+  @Get('dashboard/stats')
+  getDashboardStats(@Req() req: any) {
+    return this.ledgerService.getDashboardStats(req.user.tenantId);
+  }
+
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.VIEW)
+  @Get('customers')
+  listCustomers(
+    @Req() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.ledgerService.listCustomers(
+      req.user.tenantId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
+  }
+
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
+  @Get('accounts')
+  listAccounts(
+    @Req() req: any,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.ledgerService.listAccounts(
+      req.user.tenantId,
+      status,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
+  }
+
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.VIEW)
   @Get('customers/search')
   searchCustomers(@Req() req: any, @Query('q') q: string) {
