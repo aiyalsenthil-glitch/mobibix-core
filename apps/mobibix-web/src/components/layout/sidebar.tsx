@@ -120,9 +120,11 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       }
 
       // 2. Distributor Mode override
-      if (authUser.isDistributor) {
-        // Distributors ONLY see the Distributor Network Hub, Catalog, Orders, and Procurement
-        return item.category === "Distributor Network" || item.label === "Wholesale Network";
+      // Pure distributors (no active ERP plan) see only the distributor hub.
+      // Distributors who also have an active ERP subscription fall through to normal RBAC
+      // and see both the full ERP sidebar AND the Distributor Network section.
+      if (authUser.isDistributor && !authUser.hasActiveERP) {
+        return item.category === "Distributor Network";
       }
 
       // 3. Standard RBAC check

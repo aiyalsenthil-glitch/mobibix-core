@@ -156,7 +156,33 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             </div>
       </div>
 
+      {/* Recent Articles Section (Improved internal linking) */}
+      <div className="container mx-auto max-w-4xl pb-32 px-6 relative z-10">
+          <div className="flex items-center justify-between mb-12 border-b border-border pb-6">
+              <h2 className="text-2xl font-black uppercase tracking-tight">Recent Articles</h2>
+              <Link href="/blog" className="text-xs font-black uppercase tracking-widest text-primary hover:underline">View All</Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {getAllPosts().filter(p => p.slug !== post.slug).slice(0, 4).map((related) => (
+                  <Link key={related.slug} href={`/blog/${related.slug}`} className="group block space-y-4">
+                      <div className="space-y-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors">
+                              {new Date(related.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                          <h3 className="text-xl font-black uppercase tracking-tighter leading-tight group-hover:text-primary transition-colors line-clamp-2">
+                              {related.title}
+                          </h3>
+                          <p className="text-sm text-muted-foreground font-bold line-clamp-2 leading-relaxed">
+                              {related.excerpt}
+                          </p>
+                      </div>
+                  </Link>
+              ))}
+          </div>
+      </div>
+
       <Footer compact={false} />
+
     </div>
   );
 }
