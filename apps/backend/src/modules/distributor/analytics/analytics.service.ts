@@ -14,12 +14,17 @@ export class AnalyticsService {
   async getOverview(distributorId: string) {
     const currentMonth = this.currentMonthBucket();
 
+    const distributor = await (this.prisma as any).distDistributor.findUnique({
+      where: { id: distributorId }
+    });
+
     const [
       totalRetailers,
       totalOrders,
       monthlyRevenue,
       topProducts,
       recentLogs,
+      partnerStats
     ] = await Promise.all([
       // Total active linked retailers
       this.prisma.distDistributorRetailer.count({
@@ -61,6 +66,14 @@ export class AnalyticsService {
           monthBucket: true,
         },
       }),
+
+      // Partner Commissions (from the core Partner model)
+      distributor?.partnerId 
+        ? this.prisma.partner.findUnique({
+            where: { id: distributor.partnerId },
+            select: { totalEarned: true, totalPaid: true, referralCode: true, referredTenants: { take: 0 } } // we only need sums
+          })
+        : null
     ]);
 
     // Enrich top products with catalog item names
@@ -87,6 +100,12 @@ export class AnalyticsService {
       },
       topProducts: enrichedTopProducts,
       recentAttributions: recentLogs,
+      partnerEarnings: partnerStats ? {
+        total: partnerStats.totalEarned,
+        paid: partnerStats.totalPaid,
+        pending: partnerStats.totalEarned - partnerStats.totalPaid,
+        code: partnerStats.referralCode
+      } : null
     };
   }
 

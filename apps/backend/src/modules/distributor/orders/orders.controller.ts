@@ -5,8 +5,10 @@ import { OrdersService } from './orders.service';
 import { OrderStatusUpdateDto, ReceiveOrderDto } from './dto/orders.dto';
 import { PlaceOrderDto } from './dto/retailer-orders.dto';
 import { DistributorScopeGuard } from '../guards/distributor-scope.guard';
+import { SkipSubscriptionCheck } from '../../../core/auth/decorators/skip-subscription-check.decorator';
 
 /** /distributor/orders — distributor managing inbound orders from retailers */
+@SkipSubscriptionCheck()
 @Controller('distributor/orders')
 @UseGuards(DistributorScopeGuard)
 export class OrdersController {

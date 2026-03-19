@@ -7,22 +7,36 @@ export class DistributorScopeGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    
-    // In actual implementation, Extract distributorId from JWT
-    // For now, assuming request.user has distributorId populated by an AuthGuard
-    const distributorId = request.user?.distributorId;
+    const user = request.user;
 
-    if (!distributorId) {
-      throw new ForbiddenException('Distributor context is required.');
+    // Look up DistDistributor by userId first (pure distributor, no ERP tenant),
+    // then fall back to tenantId (ERP user who activated distributor mode).
+    const userId = user?.sub ?? user?.id;
+    const tenantId = user?.tenantId ?? null;
+
+    const dist = await this.prisma.distDistributor.findFirst({
+      where: {
+        OR: [
+          ...(userId ? [{ userId }] : []),
+          ...(tenantId ? [{ tenantId }] : []),
+        ],
+      },
+      select: { id: true, isActive: true },
+    });
+
+    if (!dist || !dist.isActive) {
+      throw new ForbiddenException(
+        'Distributor context is required. This account is not registered as a distributor.',
+      );
     }
 
-    // If request touches a specific retailer via URL param
+    // If request touches a specific retailer via URL param, verify the link is active
     const { retailerId } = request.params;
     if (retailerId) {
       const link = await this.prisma.distDistributorRetailer.findUnique({
         where: {
           distributorId_retailerId: {
-            distributorId,
+            distributorId: dist.id,
             retailerId,
           },
         },
@@ -34,7 +48,7 @@ export class DistributorScopeGuard implements CanActivate {
     }
 
     // Attach distributorId to request for service layer scoping
-    request.distributorContext = { distributorId };
+    request.distributorContext = { distributorId: dist.id };
     return true;
   }
 }

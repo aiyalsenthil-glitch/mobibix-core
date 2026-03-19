@@ -35,6 +35,12 @@ export interface DistAnalytics {
   };
   topProducts: any[];
   recentAttributions: any[];
+  partnerEarnings?: {
+    total: number;
+    paid: number;
+    pending: number;
+    code: string;
+  };
 }
 
 export const distributorApi = {

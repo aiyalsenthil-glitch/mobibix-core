@@ -36,6 +36,9 @@ import {
   BarChart2,
   Printer,
   ArrowLeftRight,
+  Network,
+  Boxes,
+  ListTodo,
 } from "lucide-react";
 import { AiQuotaBadge } from "@/components/common/AiQuotaBadge";
 
@@ -80,6 +83,14 @@ const navItems: NavItem[] = [
   { label: "Monthly Report",       href: "/tools/monthly-report",       icon: CalendarDays,    requiredPermission: "core.report.view",                 category: "Tools" },
   { label: "Shrinkage Intelligence",    href: "/tools/shrinkage",                          icon: Activity,   requiredPermission: "core.shrinkage.view",          category: "Tools" },
   { label: "Inventory Intelligence",    href: "/reports/inventory-intelligence",           icon: BarChart2,  requiredPermission: "core.report.inventory_view",   category: "Management" },
+
+  // --- Distributor Section ---
+  { label: "Distributor Hub",      href: "/distributor/dashboard",       icon: Network,  requiredPermission: "distributor.view",  category: "Distributor Network" },
+  { label: "Wholesale Catalog",    href: "/distributor/catalog",         icon: Boxes,    requiredPermission: "distributor.view",  category: "Distributor Network" },
+  { label: "Retailer Orders",      href: "/distributor/orders",          icon: ListTodo, requiredPermission: "distributor.view",  category: "Distributor Network" },
+  
+  // --- Retailer Supply View ---
+  { label: "Wholesale Network",    href: "/suppliers",                   icon: Truck,    requiredPermission: "mobile_shop.supplier.view",  category: "Management" },
 ];
 
 interface SidebarProps {
@@ -108,7 +119,13 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
         if (!isMobibix || isAccountant) return false;
       }
 
-      // 2. Standard RBAC check
+      // 2. Distributor Mode override
+      if (authUser.isDistributor) {
+        // Distributors ONLY see the Distributor Network Hub, Catalog, Orders, and Procurement
+        return item.category === "Distributor Network" || item.label === "Wholesale Network";
+      }
+
+      // 3. Standard RBAC check
       // System Owners and users with '*' permission see everything else in their module
       if (authUser.isSystemOwner || authUser.permissions?.includes("*")) return true;
       if (!item.requiredPermission) return true;

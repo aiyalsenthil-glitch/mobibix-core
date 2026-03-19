@@ -17,6 +17,7 @@ import { PlanRulesService } from '../billing/plan-rules.service';
 import { PartnersService } from '../../modules/partners/partners.service';
 import { normalizePhone } from '../../common/utils/phone.util';
 import { getCreateAudit } from '../audit/audit.helper';
+import { setCtx } from '../cls/async-context';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TenantWelcomeEvent } from '../../common/email/email.events';
 import { DocumentNumberService } from '../../common/services/document-number.service';
@@ -343,7 +344,7 @@ export class TenantService {
     const existingSub = await this.prisma.tenantSubscription.findFirst({
       where: {
         tenantId: tenant.id,
-        module: effectiveTenantType === 'MOBILE_SHOP' ? 'MOBILE_SHOP' : 'GYM',
+        module: trialPlanModule,
       },
     });
     
@@ -369,12 +370,14 @@ export class TenantService {
       `✅ Trial subscription created for tenant ${tenant.id} (${effectiveTenantType})`,
     );
 
-    const userTenant = await this.prisma.userTenant.create({
-      data: {
-        userId,
-        tenantId: tenant.id,
-        role: UserRole.OWNER,
-      },
+    // Switch CLS tenantId to the newly created tenant so the middleware
+    // injects the correct tenantId. The user may already have a different
+    // tenant in context (e.g. DIGITAL_LEDGER), which would cause P2002.
+    setCtx('tenantId', tenant.id);
+    const userTenant = await this.prisma.userTenant.upsert({
+      where: { userId_tenantId: { userId, tenantId: tenant.id } },
+      update: { role: UserRole.OWNER },
+      create: { userId, tenantId: tenant.id, role: UserRole.OWNER },
     });
 
     this.logger.log(

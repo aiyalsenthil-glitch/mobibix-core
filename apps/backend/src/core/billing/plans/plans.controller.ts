@@ -14,6 +14,7 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { TenantRequiredGuard } from '../../auth/guards/tenant.guard';
 import { Public } from '../../auth/decorators/public.decorator';
+import { SkipSubscriptionCheck } from '../../auth/decorators/skip-subscription-check.decorator';
 import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
 import { ModulePermission, RequirePermission } from '../../permissions/decorators/require-permission.decorator';
 import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
@@ -39,6 +40,7 @@ export class PlansController {
     return this.plansService.getPublicPricing(module as ModuleType);
   }
 
+  @SkipSubscriptionCheck()
   @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
@@ -47,6 +49,7 @@ export class PlansController {
     return this.plansService.getActivePlans();
   }
 
+  @SkipSubscriptionCheck()
   @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
@@ -55,6 +58,7 @@ export class PlansController {
     return this.plansService.getWaAddonPlans();
   }
 
+  @SkipSubscriptionCheck()
   @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @UseGuards(JwtAuthGuard, RolesGuard, TenantRequiredGuard)
   @Roles(UserRole.OWNER, UserRole.STAFF)
@@ -75,16 +79,13 @@ export class PlansController {
         throw new BadRequestException('Tenant type not found');
       }
 
-      const normalizedTenantType = tenant.tenantType
-        .toUpperCase()
-        .replace(/[\s_-]/g, '');
+      const typeMap: Record<string, ModuleType> = {
+        MOBILE_SHOP: ModuleType.MOBILE_SHOP,
+        GYM: ModuleType.GYM,
+        DIGITAL_LEDGER: ModuleType.CORE,
+      };
 
-      finalModule =
-        normalizedTenantType === 'MOBILESHOP'
-          ? ModuleType.MOBILE_SHOP
-          : normalizedTenantType === 'GYM'
-            ? ModuleType.GYM
-            : undefined;
+      finalModule = typeMap[tenant.tenantType as string];
 
       if (!finalModule) {
         throw new BadRequestException('Unsupported tenant module');

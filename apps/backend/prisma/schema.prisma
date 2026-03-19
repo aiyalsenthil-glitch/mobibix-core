@@ -650,7 +650,7 @@ model LedgerPayment {
   tenantId        String
   ledgerId        String
   customerId      String
-  collectionId    String
+  collectionId    String?
   collectedBy     String
   amount          Int
   method          LedgerPaymentMethod
@@ -659,7 +659,7 @@ model LedgerPayment {
   collectedAt     DateTime            @default(now())
   createdAt       DateTime            @default(now())
   collectedByUser User                @relation(fields: [collectedBy], references: [id])
-  collection      LedgerCollection    @relation(fields: [collectionId], references: [id])
+  collection      LedgerCollection?   @relation(fields: [collectionId], references: [id])
   customer        LedgerCustomer      @relation(fields: [customerId], references: [id])
   ledger          LedgerAccount       @relation(fields: [ledgerId], references: [id])
   tenant          Tenant              @relation(fields: [tenantId], references: [id])
@@ -4042,6 +4042,9 @@ enum DistPaymentType {
 
 model DistDistributor {
   id              String   @id @default(cuid())
+  userId          String?  @unique  // direct user link for pure distributors (no ERP tenant yet)
+  tenantId        String?  @unique  // set when distributor also subscribes to ERP
+  partnerId       String?  @unique
   name            String
   referralCode    String   @unique
   contactPerson   String?

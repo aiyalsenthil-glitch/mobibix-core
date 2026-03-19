@@ -2,7 +2,9 @@ import { Controller, Get, Param, Req, Post, Body, UseGuards } from '@nestjs/comm
 import { AnalyticsService } from './analytics.service';
 import { DistributorScopeGuard } from '../guards/distributor-scope.guard';
 import { CreateCreditEntryDto } from './dto/credit.dto';
+import { SkipSubscriptionCheck } from '../../../core/auth/decorators/skip-subscription-check.decorator';
 
+@SkipSubscriptionCheck()
 @Controller('distributor/analytics')
 @UseGuards(DistributorScopeGuard)
 export class AnalyticsController {

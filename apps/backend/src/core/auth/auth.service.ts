@@ -42,7 +42,7 @@ export class AuthService {
         ? dto.tenantCode.trim()
         : undefined;
 
-    return this.loginWithFirebase(dto.idToken, tenantCode);
+    return this.loginWithFirebase(dto.idToken, tenantCode, dto.preferredTenantType);
   }
 
   /**
@@ -128,7 +128,7 @@ export class AuthService {
   /**
    * 🔒 CORE AUTH LOGIC (MODULARIZED)
    */
-  async loginWithFirebase(REMOVED_AUTH_PROVIDERToken: string, tenantCode?: string) {
+  async loginWithFirebase(REMOVED_AUTH_PROVIDERToken: string, tenantCode?: string, preferredTenantType?: string) {
     try {
       // 1️⃣ Verify Firebase token
       const decoded =
@@ -150,6 +150,7 @@ export class AuthService {
       const activeUserTenant = await this.userResolution.resolveActiveTenant(
         user,
         tenantCode,
+        preferredTenantType,
       );
       const userTenantCount = user.userTenants.length;
 
@@ -211,6 +212,30 @@ export class AuthService {
           );
       }
 
+      // Resolve distributor context: check by userId first, then tenantId
+      const distRecord = await this.prisma.distDistributor.findFirst({
+        where: {
+          OR: [
+            { userId: user.id },
+            ...(tenantId ? [{ tenantId }] : []),
+          ],
+        },
+        select: { id: true },
+      });
+      const isDistributor = !!distRecord;
+
+      // hasActiveERP: true when tenant has an ACTIVE or TRIAL MOBILE_SHOP subscription
+      const hasActiveERP = tenantId
+        ? !!(await this.prisma.tenantSubscription.findFirst({
+            where: {
+              tenantId,
+              module: 'MOBILE_SHOP' as any,
+              status: { in: ['ACTIVE', 'TRIAL'] as any },
+            },
+            select: { id: true },
+          }))
+        : false;
+
       return {
         accessToken: token,
         accessTokenExpiresIn: this.tokenFactory.accessTokenTtlMs,
@@ -223,6 +248,8 @@ export class AuthService {
           tenantType: activeUserTenant?.tenant.tenantType ?? null,
           role: role as UserRole,
           isSystemOwner,
+          isDistributor,
+          hasActiveERP,
           name: user.fullName,
           email: user.email,
           permissions,

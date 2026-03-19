@@ -36,6 +36,7 @@ export interface AuthUser {
   tenantId?: string;
   tenantType?: string;
   planCode?: string;
+  isDistributor?: boolean;
   pendingInvite?: {
     id: string;
     inviteToken: string;

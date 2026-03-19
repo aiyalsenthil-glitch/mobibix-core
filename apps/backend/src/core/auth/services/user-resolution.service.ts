@@ -92,7 +92,7 @@ export class UserResolutionService {
     });
   }
 
-  async resolveActiveTenant(user: any, tenantCode?: string) {
+  async resolveActiveTenant(user: any, tenantCode?: string, preferredTenantType?: string) {
     const userTenants = user.userTenants;
 
     if (tenantCode) {
@@ -114,6 +114,15 @@ export class UserResolutionService {
       }
 
       return activeTenant;
+    }
+
+    // If a preferred tenant type is given (e.g. 'MOBILE_SHOP' from MobiBix),
+    // prefer the tenant matching that type so multi-module users get the right context.
+    if (preferredTenantType) {
+      const preferred = userTenants.find(
+        (ut) => ut.tenant.tenantType === preferredTenantType,
+      );
+      if (preferred) return preferred;
     }
 
     // Default to first tenant or null

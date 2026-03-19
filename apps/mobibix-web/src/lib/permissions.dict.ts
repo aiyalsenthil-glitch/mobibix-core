@@ -293,5 +293,23 @@ export const PERMISSION_DICTIONARY: WebModuleGroup[] = [
         ]
       }
     ]
+  },
+  {
+    moduleId: "CORE",
+    uiLabel: "Distributor Network",
+    resources: [
+      {
+        resourceId: "distributor_base",
+        uiLabel: "Management",
+        permissions: [
+          {
+            actionId: "distributor.view",
+            uiLabel: "Access Distributor Hub",
+            description: "View dashboard and manage wholesale network.",
+            isSensitive: true,
+          }
+        ]
+      }
+    ]
   }
 ];

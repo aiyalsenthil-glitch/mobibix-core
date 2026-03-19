@@ -66,7 +66,9 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (!hasSessionHint()) {
       router.push("/signin");
-    } else if (authUser?.tenantId) {
+    } else if (authUser?.tenantId && (!authUser?.tenantType || authUser?.tenantType === "MOBILE_SHOP")) {
+      // Only redirect to dashboard if the active tenant is a MOBILE_SHOP tenant.
+      // Users with only a DIGITAL_LEDGER tenant should still complete MobiBix onboarding.
       router.push("/dashboard");
     } else {
       setCheckingAuth(false);

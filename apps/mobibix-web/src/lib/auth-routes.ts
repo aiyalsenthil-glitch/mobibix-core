@@ -6,17 +6,14 @@ import type {
 
 // Compute post-login redirect path based on user status
 export function getRoleRedirect(user: AuthUserPayload): string {
-  // If user has a pending invite (from useAuth state), guide them to onboarding
-  if ((user as any)?.pendingInvite) {
+  if ((user as any)?.pendingInvite) return "/onboarding";
+  if (user.isSystemOwner && !user.tenantId) return "/onboarding";
+
+  // If active tenant is not MOBILE_SHOP (e.g. DIGITAL_LEDGER), needs MOBILE_SHOP onboarding
+  if (user.tenantId && user.tenantType && user.tenantType !== "MOBILE_SHOP") {
     return "/onboarding";
   }
 
-  // Owners without a tenant must complete setup
-  if (user.isSystemOwner && !user.tenantId) {
-    return "/onboarding";
-  }
-  
-  // Everyone else goes to dashboard if they have a tenant, or setup if they somehow don't
   return user.tenantId ? "/dashboard" : "/onboarding";
 }
 
@@ -28,19 +25,19 @@ export function getPostLoginRedirect(response: ExchangeTokenResponse): string {
   // 1️⃣ Priority: Pending Invitation
   if (pendingInvite) return "/onboarding";
 
-  // 2️⃣ No tenants yet
+  // 2️⃣ No tenants at all
   if (!count || count === 0) return "/onboarding";
 
-  // Multiple tenants → ask to select
+  // 3️⃣ Multiple tenants → tenant selector
   if (count > 1) return "/select-tenant";
 
-  // Single tenant: prefer returned tenant, fallback to user.tenantId
-  const tenantId = tenant?.id ?? tenants?.[0]?.id ?? user.tenantId;
-  // Owners without a tenant must complete setup
-  if (user.isSystemOwner && (!tenantId || tenantId === "")) {
+  // 4️⃣ Single tenant: if it's NOT MOBILE_SHOP (e.g. DIGITAL_LEDGER), needs MobiBix onboarding
+  if (user.tenantType && user.tenantType !== "MOBILE_SHOP") {
     return "/onboarding";
   }
 
-  // Everyone else goes to dashboard if they have a tenant, else onboarding
+  const tenantId = tenant?.id ?? tenants?.[0]?.id ?? user.tenantId;
+  if (user.isSystemOwner && (!tenantId || tenantId === "")) return "/onboarding";
+
   return tenantId ? "/dashboard" : "/onboarding";
 }

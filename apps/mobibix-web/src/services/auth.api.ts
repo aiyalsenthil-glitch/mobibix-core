@@ -180,6 +180,7 @@ export async function exchangeFirebaseToken(
       body: JSON.stringify({
         idToken,
         ...(tenantCode && { tenantCode }),
+        preferredTenantType: 'MOBILE_SHOP',
       }),
     });
 

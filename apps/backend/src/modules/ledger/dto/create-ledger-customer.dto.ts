@@ -1,9 +1,4 @@
-import {
-  IsNotEmpty,
-  IsString,
-  IsPhoneNumber,
-  IsOptional,
-} from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsEmail } from 'class-validator';
 
 export class CreateLedgerCustomerDto {
   @IsNotEmpty()
@@ -11,10 +6,18 @@ export class CreateLedgerCustomerDto {
   name: string;
 
   @IsNotEmpty()
-  @IsPhoneNumber('IN')
+  @IsString()
   phone: string;
 
   @IsOptional()
   @IsString()
   address?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

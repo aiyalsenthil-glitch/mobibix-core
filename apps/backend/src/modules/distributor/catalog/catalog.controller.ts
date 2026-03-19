@@ -5,7 +5,9 @@ import {
 import { CatalogService } from './catalog.service';
 import { CreateCatalogItemDto, UpdateCatalogItemDto, UpdateStockDto } from './dto/catalog.dto';
 import { DistributorScopeGuard } from '../guards/distributor-scope.guard';
+import { SkipSubscriptionCheck } from '../../../core/auth/decorators/skip-subscription-check.decorator';
 
+@SkipSubscriptionCheck()
 @Controller('distributor/catalog')
 @UseGuards(DistributorScopeGuard)
 export class CatalogController {

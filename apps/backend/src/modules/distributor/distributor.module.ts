@@ -9,6 +9,7 @@ import { AnalyticsController } from './analytics/analytics.controller';
 import { AnalyticsService } from './analytics/analytics.service';
 import { DistributorAttributionListener } from './events/attribution.listener';
 import { PrismaModule } from '../../core/prisma/prisma.module';
+import { DistributorRegisterController } from './distributor.register.controller';
 
 @Module({
   imports: [PrismaModule],
@@ -18,6 +19,7 @@ import { PrismaModule } from '../../core/prisma/prisma.module';
     OrdersController,
     RetailerOrdersController,
     AnalyticsController,
+    DistributorRegisterController,
   ],
   providers: [
     CatalogService,
