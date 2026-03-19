@@ -107,6 +107,14 @@ export default function DistributorSignupPage() {
         throw new Error(data.message || "Registration failed.");
       }
 
+      // Re-exchange Firebase token so the new JWT includes isDistributor: true.
+      // The JWT issued during Step 1 was created before the DistDistributor record existed.
+      const currentUser = auth?.currentUser;
+      if (currentUser) {
+        const freshToken = await currentUser.getIdToken(true); // force refresh
+        await exchangeFirebaseToken(freshToken);
+      }
+
       // Redirect to distributor hub
       window.location.href = "/distributor/dashboard";
     } catch (err: any) {

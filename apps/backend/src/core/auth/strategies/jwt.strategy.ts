@@ -46,6 +46,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       userTenantId: payload.userTenantId ?? null,
       role: payload.role,
       isSystemOwner: payload.isSystemOwner ?? false,
+      isDistributor: payload.isDistributor ?? false,
       tokenVersion: user.tokenVersion,
       permissions: payload.permissions ?? [],
     };

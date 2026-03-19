@@ -188,12 +188,24 @@ export class AuthService {
         );
       }
 
+      // Resolve distributor status before token (needed in JWT for guard bypassing)
+      const distRecordForToken = await this.prisma.distDistributor.findFirst({
+        where: {
+          OR: [
+            { userId: user.id },
+            ...(tenantId ? [{ tenantId }] : []),
+          ],
+        },
+        select: { id: true },
+      });
+
       const token = this.tokenFactory.generateAccessToken({
         sub: user.id,
         tenantId,
         userTenantId,
         role,
         isSystemOwner,
+        isDistributor: !!distRecordForToken,
         tokenVersion: user.tokenVersion,
         // 🚀 NOTE: Permissions removed from JWT to keep cookie size < 4KB.
       });
@@ -212,17 +224,7 @@ export class AuthService {
           );
       }
 
-      // Resolve distributor context: check by userId first, then tenantId
-      const distRecord = await this.prisma.distDistributor.findFirst({
-        where: {
-          OR: [
-            { userId: user.id },
-            ...(tenantId ? [{ tenantId }] : []),
-          ],
-        },
-        select: { id: true },
-      });
-      const isDistributor = !!distRecord;
+      const isDistributor = !!distRecordForToken;
 
       // hasActiveERP: true when tenant has an ACTIVE or TRIAL MOBILE_SHOP subscription
       const hasActiveERP = tenantId

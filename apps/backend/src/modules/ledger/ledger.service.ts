@@ -475,10 +475,22 @@ export class LedgerService {
         customerId: { in: customers.map((c) => c.id) },
         status: 'ACTIVE',
       },
-      include: { customer: { select: { name: true, phone: true } } },
+      include: { 
+        customer: { select: { name: true, phone: true } },
+        collections: {
+          where: { paid: false, dueDate: { lt: new Date() } },
+          select: { id: true, amount: true, paidAmount: true },
+        }
+      },
       orderBy: { createdAt: 'desc' },
     });
-    return accounts;
+    
+    return accounts.map(acc => ({
+      ...acc,
+      overdueCount: acc.collections.length,
+      overdueAmount: acc.collections.reduce((sum, col) => sum + (col.amount - col.paidAmount), 0),
+      collections: undefined, // remove raw collections from response
+    }));
   }
 
   async forecloseAccount(

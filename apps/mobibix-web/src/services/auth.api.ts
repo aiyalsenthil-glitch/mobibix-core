@@ -109,7 +109,10 @@ export interface AuthUserPayload {
   permissions?: string[];
   tenantId?: string;
   tenantCode?: string;
+  tenantType?: string;
   planCode?: string; // e.g., 'MOBIBIX_TRIAL', 'MOBIBIX_STANDARD'
+  isDistributor?: boolean;
+  hasActiveERP?: boolean;
 }
 
 export interface CurrentUserResponse {

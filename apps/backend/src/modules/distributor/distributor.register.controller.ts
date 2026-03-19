@@ -5,6 +5,7 @@ import {
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { SkipSubscriptionCheck } from '../../core/auth/decorators/skip-subscription-check.decorator';
+import { SkipTenant } from '../../core/auth/decorators/skip-tenant.decorator';
 import { IsString, MinLength, Matches } from 'class-validator';
 
 class RegisterDistributorDto {
@@ -19,6 +20,7 @@ class RegisterDistributorDto {
   referralCode: string;
 }
 
+@SkipTenant()
 @SkipSubscriptionCheck()
 @Controller('distributor/admin')
 @UseGuards(JwtAuthGuard)

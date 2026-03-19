@@ -127,7 +127,10 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
         return item.category === "Distributor Network";
       }
 
-      // 3. Standard RBAC check
+      // 3. Distributor-only items are gated on isDistributor regardless of role
+      if (item.category === "Distributor Network" && !authUser.isDistributor) return false;
+
+      // 4. Standard RBAC check
       // System Owners and users with '*' permission see everything else in their module
       if (authUser.isSystemOwner || authUser.permissions?.includes("*")) return true;
       if (!item.requiredPermission) return true;

@@ -1,18 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { 
-  Users, 
-  ShoppingBag, 
-  TrendingUp, 
-  ArrowUpRight, 
-  ArrowDownRight, 
+import {
+  Users,
+  ShoppingBag,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
   Clock,
   Package,
   CheckCircle2,
   AlertCircle,
   Network,
-  Gift
+  Gift,
+  QrCode,
+  Download,
+  X
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { distributorApi, DistAnalytics } from "@/services/distributor.api";
@@ -22,6 +25,7 @@ import { formatCurrency } from "@/lib/gst.utils";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { QRCodeCanvas } from "qrcode.react";
 
 export default function DistributorDashboard() {
   const [data, setData] = useState<DistAnalytics | null>(null);
@@ -29,6 +33,7 @@ export default function DistributorDashboard() {
   const [isNotRegistered, setIsNotRegistered] = useState(false);
   const [registerForm, setRegisterForm] = useState({ name: "", code: "" });
   const [isRegistering, setIsRegistering] = useState(false);
+  const [showQR, setShowQR] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -168,54 +173,109 @@ export default function DistributorDashboard() {
       </div>
 
       {/* Partner Commissions Section */}
-      {data?.partnerEarnings && (
-        <div className="grid gap-6 md:grid-cols-1">
-          <Card className="border-none shadow-xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-8 opacity-10">
-              <Network size={200} />
-            </div>
-            <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/20 rounded-lg">
-                    <Gift className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-xl font-bold opacity-90 uppercase tracking-wider">Partner Rewards</h3>
-                </div>
-                <div className="flex items-baseline gap-4">
-                  <h2 className="text-5xl font-black">{formatCurrency(data.partnerEarnings.total)}</h2>
-                  <p className="text-indigo-200 font-medium">Total Commission Earned</p>
-                </div>
-                <div className="flex gap-6">
-                  <div>
-                    <p className="text-indigo-200 text-xs font-bold uppercase">Pending Payout</p>
-                    <p className="text-xl font-bold">{formatCurrency(data.partnerEarnings.pending)}</p>
-                  </div>
-                  <div className="w-px h-10 bg-white/10" />
-                  <div>
-                    <p className="text-indigo-200 text-xs font-bold uppercase">Paid via Bank/UPI</p>
-                    <p className="text-xl font-bold">{formatCurrency(data.partnerEarnings.paid)}</p>
-                  </div>
-                </div>
-              </div>
+      {data?.partnerEarnings && (() => {
+        const referralCode = data.partnerEarnings.code;
+        const signupUrl = `${typeof window !== "undefined" ? window.location.origin : "https://app.mobibix.com"}/onboarding?ref=${referralCode}`;
 
-              <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2rem] border border-white/20 space-y-4 w-full md:w-auto">
-                <div className="space-y-1">
-                  <p className="text-xs font-bold uppercase text-indigo-200">Your Referral Code</p>
-                  <p className="text-3xl font-black tracking-widest">{data.partnerEarnings.code}</p>
-                </div>
-                <p className="text-sm text-indigo-100 max-w-[240px]">Share this code to onboard retailers and earn <span className="font-bold">30% upfront + 10% recurring</span> commissions.</p>
-                <Button className="w-full bg-white text-indigo-600 hover:bg-slate-100 font-bold rounded-xl" onClick={() => {
-                   navigator.clipboard.writeText(data.partnerEarnings?.code || "");
-                   toast({ title: "Code Copied!", description: "Share it with your prospective retailers." });
-                }}>
-                  Copy Referral Link
-                </Button>
+        const handleDownloadQR = () => {
+          const canvas = document.getElementById("dist-referral-qr") as HTMLCanvasElement | null;
+          if (!canvas) return;
+          const link = document.createElement("a");
+          link.download = `mobibix-referral-${referralCode}.png`;
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+        };
+
+        return (
+          <div className="grid gap-6 md:grid-cols-1">
+            <Card className="border-none shadow-xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-8 opacity-10">
+                <Network size={200} />
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Gift className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-xl font-bold opacity-90 uppercase tracking-wider">Partner Rewards</h3>
+                  </div>
+                  <div className="flex items-baseline gap-4">
+                    <h2 className="text-5xl font-black">{formatCurrency(data.partnerEarnings.total)}</h2>
+                    <p className="text-indigo-200 font-medium">Total Commission Earned</p>
+                  </div>
+                  <div className="flex gap-6">
+                    <div>
+                      <p className="text-indigo-200 text-xs font-bold uppercase">Pending Payout</p>
+                      <p className="text-xl font-bold">{formatCurrency(data.partnerEarnings.pending)}</p>
+                    </div>
+                    <div className="w-px h-10 bg-white/10" />
+                    <div>
+                      <p className="text-indigo-200 text-xs font-bold uppercase">Paid via Bank/UPI</p>
+                      <p className="text-xl font-bold">{formatCurrency(data.partnerEarnings.paid)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2rem] border border-white/20 space-y-4 w-full md:w-auto">
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold uppercase text-indigo-200">Your Referral Code</p>
+                    <p className="text-3xl font-black tracking-widest">{referralCode}</p>
+                  </div>
+                  <p className="text-sm text-indigo-100 max-w-[240px]">Share this code to onboard retailers and earn <span className="font-bold">30% upfront + 10% recurring</span> commissions.</p>
+                  <div className="flex gap-2">
+                    <Button className="flex-1 bg-white text-indigo-600 hover:bg-slate-100 font-bold rounded-xl" onClick={() => {
+                      navigator.clipboard.writeText(signupUrl);
+                      toast({ title: "Link Copied!", description: "Share it with your prospective retailers." });
+                    }}>
+                      Copy Link
+                    </Button>
+                    <Button variant="outline" className="border-white/30 bg-white/10 hover:bg-white/20 text-white rounded-xl" onClick={() => setShowQR(true)}>
+                      <QrCode className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* QR Code Modal */}
+            {showQR && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowQR(false)}>
+                <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between w-full">
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">Distributor QR Code</h2>
+                    <button onClick={() => setShowQR(false)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="p-4 bg-white rounded-2xl border border-slate-100">
+                    <QRCodeCanvas
+                      id="dist-referral-qr"
+                      value={signupUrl}
+                      size={220}
+                      level="H"
+                      marginSize={0}
+                    />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-mono font-bold text-indigo-600 tracking-widest">{referralCode}</p>
+                    <p className="text-xs text-slate-400 mt-1 break-all">{signupUrl}</p>
+                  </div>
+                  <div className="flex gap-3 w-full">
+                    <Button className="flex-1" variant="outline" onClick={() => {
+                      navigator.clipboard.writeText(signupUrl);
+                      toast({ title: "Link Copied!" });
+                    }}>Copy Link</Button>
+                    <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white" onClick={handleDownloadQR}>
+                      <Download className="w-4 h-4 mr-2" /> Download QR
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
         {/* Top Product Performance */}
