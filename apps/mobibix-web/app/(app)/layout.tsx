@@ -70,10 +70,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isReady || isLoading) return;
 
-    if (authUser && !authUser.tenantId) {
+    if (authUser && !authUser.tenantId && !authUser.isDistributor) {
+      // ERP user with no tenant → onboarding required.
+      // Pure distributors (isDistributor=true, no tenantId) are allowed through to /distributor/*
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsRedirecting(true);
       router.replace("/onboarding");
+    } else if (authUser?.isDistributor && !authUser?.tenantId) {
+      // Pure distributor landed on ERP dashboard — send them to their own dashboard
+      const path = typeof window !== "undefined" ? window.location.pathname : "";
+      if (path === "/dashboard" || path === "/") {
+        router.replace("/distributor/dashboard");
+      }
     }
   }, [authUser, isLoading, isReady, router]);
 

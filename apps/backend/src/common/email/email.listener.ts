@@ -14,7 +14,7 @@ import {
 } from '../../core/events/crm.events';
 
 type TenantWelcomePayload = {
-  module: 'GYM' | 'MOBILE_SHOP';
+  module: 'GYM' | 'MOBILE_SHOP' | 'DIGITAL_LEDGER';
   user: {
     id: string;
     email: string | null;
@@ -49,9 +49,19 @@ export class EmailListener {
       return;
     }
 
-    const baseUrl = event.module === 'MOBILE_SHOP' 
-      ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.REMOVED_DOMAIN'
-      : this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
+    const baseUrl =
+      event.module === 'MOBILE_SHOP'
+        ? this.configService.get('ERP_FRONTEND_URL') || 'https://shop.REMOVED_DOMAIN'
+        : event.module === 'DIGITAL_LEDGER'
+          ? this.configService.get('LEDGER_FRONTEND_URL') || 'https://ledger.digitalled.in'
+          : this.configService.get('GYM_FRONTEND_URL') || 'https://gym.mobibix.in';
+
+    const appName =
+      event.module === 'MOBILE_SHOP'
+        ? 'MobiBix'
+        : event.module === 'DIGITAL_LEDGER'
+          ? 'DigitalLedger'
+          : 'GymPilot';
 
     await this.emailService.send({
       tenantId: event.tenant.id,
@@ -60,7 +70,7 @@ export class EmailListener {
       referenceId: event.user.id, // Only one welcome per user
       module: event.module,
       to: event.user.email,
-      subject: `Welcome to ${event.module === 'MOBILE_SHOP' ? 'MobiBix' : 'GymPilot'}! 🚀`,
+      subject: `Welcome to ${appName}! 🚀`,
       data: {
         name: event.user.fullName || 'User',
         tenantName: event.tenant.name,

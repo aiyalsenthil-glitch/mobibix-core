@@ -10,6 +10,7 @@ import { BillingModule } from '../billing/billing.module';
 import { PlansModule } from '../billing/plans/plans.module';
 import { UsageSnapshotService } from '../analytics/usage-snapshot.service';
 import { PartnersModule } from '../../modules/partners/partners.module';
+import { CacheModule } from '../cache/cache.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { PartnersModule } from '../../modules/partners/partners.module';
     BillingModule,
     PlansModule,
     PartnersModule,
+    CacheModule,
   ],
   controllers: [TenantController, TenantUsageController],
   providers: [TenantService, UsageSnapshotService, TenantDeletionCron, TrialOnboardingCron],

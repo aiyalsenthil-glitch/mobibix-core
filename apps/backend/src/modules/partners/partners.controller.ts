@@ -7,6 +7,7 @@ import {
   Request,
   Param,
   Patch,
+  Query,
 } from '@nestjs/common';
 import { PartnersService } from './partners.service';
 import { PartnerJwtGuard } from './auth/guards/partner-jwt.guard';
@@ -40,6 +41,17 @@ export class PartnersController {
   @Post('apply')
   async apply(@Body() dto: CreatePartnerDto) {
     return this.partnersService.apply(dto);
+  }
+
+  // ─────────────────────────────────────────────
+  // MODULE 10: Promo Code Preview (Public — onboarding, no auth needed)
+  // Returns benefit info without applying the code.
+  // ─────────────────────────────────────────────
+  @Public()
+  @SkipSubscriptionCheck()
+  @Get('promo/preview')
+  async previewPromo(@Query('code') code: string) {
+    return this.partnersService.previewPromoCode(code);
   }
 
   // ─────────────────────────────────────────────

@@ -21,6 +21,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ModuleType, UserRole } from '@prisma/client';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { ModuleScope } from '../../auth/decorators/module-scope.decorator';
+import { SkipSubscriptionCheck } from '../../auth/decorators/skip-subscription-check.decorator';
 import { ModulePermission, RequirePermission } from '../../permissions/decorators/require-permission.decorator';
 import { GranularPermissionGuard } from '../../permissions/guards/granular-permission.guard';
 import { PERMISSIONS } from '../../../security/permission-registry';
@@ -42,6 +43,7 @@ export class PaymentsController {
   // 🔒 CREATE RAZORPAY ORDER (JWT REQUIRED)
   // Rate limited to 5 requests per 60 seconds to prevent abuse
   // ─────────────────────────────────────────────
+  @SkipSubscriptionCheck()
   @RequirePermission(PERMISSIONS.CORE.BILLING.MANAGE)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('create-order')
@@ -218,6 +220,7 @@ export class PaymentsController {
   // ─────────────────────────────────────────────
   // 🔒 PAYMENT HISTORY (JWT + TENANT)
   // ─────────────────────────────────────────────
+  @SkipSubscriptionCheck()
   @RequirePermission(PERMISSIONS.CORE.BILLING.VIEW)
   @Get('history')
   async getHistory(@Req() req: any) {
@@ -265,6 +268,7 @@ export class PaymentsController {
   // Webhook subscription.activated → activates the TenantSubscription.
   // Only MONTHLY and YEARLY are supported (QUARTERLY has no Razorpay plan).
   // ─────────────────────────────────────────────
+  @SkipSubscriptionCheck()
   @RequirePermission(PERMISSIONS.CORE.BILLING.MANAGE)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('create-subscription')

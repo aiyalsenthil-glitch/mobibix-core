@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "../../src/context/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Users, LogIn, BarChart3, FileText } from "lucide-react";
+import { ChevronDown, Users, LogIn, BarChart3, FileText, Network, UserPlus } from "lucide-react";
 
 export function Header() {
   const { theme, toggleTheme } = useTheme();
@@ -105,14 +105,14 @@ export function Header() {
           >
             <button
               className={`relative flex items-center gap-1 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors duration-300 z-10 ${
-                partnersOpen || pathname.startsWith("/partner")
+                partnersOpen || pathname.startsWith("/partner") || pathname.startsWith("/distributor")
                   ? "text-foreground"
                   : "text-muted-foreground"
               }`}
             >
-              Partners
+              Network
               <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${partnersOpen ? "rotate-180" : ""}`} />
-              {(partnersOpen || pathname.startsWith("/partner")) && (
+              {(partnersOpen || pathname.startsWith("/partner") || pathname.startsWith("/distributor")) && (
                 <motion.div
                   layoutId="nav-pill"
                   className="absolute inset-0 bg-primary/10 dark:bg-primary/20 rounded-full -z-10 border border-primary/20"
@@ -128,7 +128,7 @@ export function Header() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.96 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-52 bg-background/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-1.5 z-50"
+                  className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-64 bg-background/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-1.5 z-50"
                 >
                   <Link
                     href="/partner"
@@ -182,6 +182,36 @@ export function Header() {
                     <div>
                       <p className="text-xs font-bold text-foreground">Partner Portal</p>
                       <p className="text-[10px] text-muted-foreground">View commissions</p>
+                    </div>
+                  </Link>
+
+                  {/* Distributor Network section */}
+                  <div className="h-px bg-border mx-3 my-1" />
+                  <p className="px-4 pt-2 pb-1 text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Distributor Network</p>
+                  <Link
+                    href="/distributor"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors group"
+                    onClick={() => setPartnersOpen(false)}
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
+                      <Network className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Distributor Network</p>
+                      <p className="text-[10px] text-muted-foreground">B2B wholesale hub</p>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/distributor/signup"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors group"
+                    onClick={() => setPartnersOpen(false)}
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
+                      <UserPlus className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Become a Distributor</p>
+                      <p className="text-[10px] text-muted-foreground">Free account, no plan needed</p>
                     </div>
                   </Link>
                 </motion.div>

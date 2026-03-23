@@ -93,6 +93,7 @@ export async function createProduct(
     name: string;
     type: ProductType;
     category?: string;
+    brand?: string;
     hsnSac?: string;
     salePrice: number;
     costPrice?: number; // Add cost price support
@@ -111,6 +112,7 @@ export async function createProduct(
       name: data.name,
       type: data.type,
       category: data.category,
+      brand: data.brand,
       salePrice: data.salePrice,
       costPrice: data.costPrice,
       hsnCode: data.hsnSac,
@@ -140,6 +142,7 @@ export async function updateProduct(
     name?: string;
     type?: ProductType;
     category?: string;
+    brand?: string;
     hsnSac?: string;
     salePrice?: number;
     costPrice?: number;
@@ -159,6 +162,7 @@ export async function updateProduct(
         ...(data.name && { name: data.name }),
         ...(data.type && { type: data.type }),
         ...(data.category !== undefined && { category: data.category }),
+        ...(data.brand !== undefined && { brand: data.brand }),
         ...(data.salePrice && { salePrice: data.salePrice }),
         ...(data.costPrice !== undefined && { costPrice: data.costPrice }),
         ...(data.hsnSac && { hsnCode: data.hsnSac }),

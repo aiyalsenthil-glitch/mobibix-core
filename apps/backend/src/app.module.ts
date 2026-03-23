@@ -41,6 +41,7 @@ import { AppService } from './app.service';
 import { BullModule } from '@nestjs/bullmq';
 
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { DistributorModule } from './modules/distributor/distributor.module';
 
 type RequestUserContext = {
   tenantId?: string;
@@ -197,6 +198,7 @@ type LoggerRequest = {
         } as any;
       },
     }),
+    DistributorModule,
   ],
   controllers: [AppController],
   providers: [

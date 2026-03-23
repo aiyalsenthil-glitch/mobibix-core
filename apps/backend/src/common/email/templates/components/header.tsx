@@ -14,7 +14,7 @@ interface EmailHeaderProps {
   showDashboardButton?: boolean;
 }
 
-const BRAND = {
+const BRAND: Record<string, { name: string; primaryColor: string; logo: string; website: string; tagline: string }> = {
   GYM: {
     name: 'GymPilot',
     primaryColor: '#1D4ED8',
@@ -28,6 +28,13 @@ const BRAND = {
     logo: 'https://app.REMOVED_DOMAIN/assets/mobibix-main-logo.png',
     website: 'https://app.REMOVED_DOMAIN',
     tagline: 'The modern OS for mobile retailers',
+  },
+  DIGITAL_LEDGER: {
+    name: 'DigitalLedger',
+    primaryColor: '#7C3AED',
+    logo: 'https://mobibix.in/assets/logo-email.png',
+    website: 'https://ledger.digitalled.in',
+    tagline: 'Simple microfinance management',
   },
 };
 

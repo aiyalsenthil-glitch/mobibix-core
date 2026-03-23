@@ -12,21 +12,24 @@ import {
   NotificationRecord,
 } from "@/services/notifications.api";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
 
 export function NotificationDropdown() {
+  const { authUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Poll unread count every 60 seconds (background badge update)
+  // Poll unread count every 60 seconds — only for ERP users (tenantId required)
   const refreshUnreadCount = useCallback(async () => {
+    if (!authUser?.tenantId) return;
     try {
       const count = await getUnreadCount();
       setUnreadCount(count);
     } catch {}
-  }, []);
+  }, [authUser?.tenantId]);
 
   useEffect(() => {
     refreshUnreadCount();
@@ -35,11 +38,13 @@ export function NotificationDropdown() {
   }, [refreshUnreadCount]);
 
   const loadNotifications = async () => {
+    if (!authUser?.tenantId) return; // distributors have no tenantId — notifications not applicable
     try {
       setLoading(true);
       const data = await getNotifications();
-      setNotifications(data);
-      setUnreadCount(data.filter((n) => !n.isRead).length);
+      const list = Array.isArray(data) ? data : [];
+      setNotifications(list);
+      setUnreadCount(list.filter((n) => !n.isRead).length);
     } catch (err) {
       console.error("Failed to load notifications", err);
     } finally {
@@ -48,10 +53,10 @@ export function NotificationDropdown() {
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && authUser?.tenantId) {
       loadNotifications();
     }
-  }, [isOpen]);
+  }, [isOpen, authUser?.tenantId]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -114,6 +119,9 @@ export function NotificationDropdown() {
     }
     return "You have a new update in your account.";
   };
+
+  // Distributors have no tenantId — notifications don't apply to them
+  if (!authUser?.tenantId) return null;
 
   return (
     <div className="relative" ref={dropdownRef}>

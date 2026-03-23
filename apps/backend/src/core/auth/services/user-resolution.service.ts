@@ -27,25 +27,48 @@ export class UserResolutionService {
     const fullName = decodedToken.name ?? null;
 
     if (!user) {
-      // Create new user if not exists
-      user = await this.prisma.user.create({
-        data: {
-          REMOVED_AUTH_PROVIDERUid: decodedToken.uid,
-          email: normalizedEmail,
-          fullName: fullName,
-          role: UserRole.USER,
-          tenantId: null,
-        },
-        include: {
-          userTenants: {
-            include: {
-              tenant: {
-                select: { id: true, name: true, code: true, tenantType: true },
+      // Create new user if not exists.
+      // Use try/catch for P2002 (unique constraint) to handle concurrent requests
+      // where two sign-ins race through the findUnique null check simultaneously.
+      try {
+        user = await this.prisma.user.create({
+          data: {
+            REMOVED_AUTH_PROVIDERUid: decodedToken.uid,
+            email: normalizedEmail,
+            fullName: fullName,
+            role: UserRole.USER,
+            tenantId: null,
+          },
+          include: {
+            userTenants: {
+              include: {
+                tenant: {
+                  select: { id: true, name: true, code: true, tenantType: true },
+                },
               },
             },
           },
-        },
-      });
+        });
+      } catch (err: any) {
+        if (err?.code === 'P2002') {
+          // Race condition: another concurrent request created the user first — fetch it
+          user = await this.prisma.user.findUnique({
+            where: { REMOVED_AUTH_PROVIDERUid: decodedToken.uid },
+            include: {
+              userTenants: {
+                include: {
+                  tenant: {
+                    select: { id: true, name: true, code: true, tenantType: true },
+                  },
+                },
+              },
+            },
+          });
+          if (!user) throw err;
+        } else {
+          throw err;
+        }
+      }
     } else if (user.email !== normalizedEmail || user.fullName !== fullName) {
       // ⚡ Only update if critical metadata changed
       user = await this.prisma.user.update({
@@ -92,7 +115,7 @@ export class UserResolutionService {
     });
   }
 
-  async resolveActiveTenant(user: any, tenantCode?: string) {
+  async resolveActiveTenant(user: any, tenantCode?: string, preferredTenantType?: string) {
     const userTenants = user.userTenants;
 
     if (tenantCode) {
@@ -114,6 +137,15 @@ export class UserResolutionService {
       }
 
       return activeTenant;
+    }
+
+    // If a preferred tenant type is given (e.g. 'MOBILE_SHOP' from MobiBix),
+    // prefer the tenant matching that type so multi-module users get the right context.
+    if (preferredTenantType) {
+      const preferred = userTenants.find(
+        (ut) => ut.tenant.tenantType === preferredTenantType,
+      );
+      if (preferred) return preferred;
     }
 
     // Default to first tenant or null

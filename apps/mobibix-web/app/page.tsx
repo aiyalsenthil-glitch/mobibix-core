@@ -20,6 +20,9 @@ export const metadata: Metadata = {
     "cell phone store software",
     "mobile shop inventory management",
     "billing app for mobile shop",
+    "mobile distributor software India",
+    "B2B wholesale platform mobile shops",
+    "distributor network mobile shop",
   ],
   alternates: { canonical: "/" },
   openGraph: {
@@ -115,6 +118,14 @@ export default function HomePage() {
         "acceptedAnswer": {
           "@type": "Answer",
           "text": "Yes, MobiBix automates payment reminders and repair status updates via WhatsApp to help you get paid faster."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does MobiBix support distributor and wholesale management?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. MobiBix includes a free Distributor Network for mobile parts wholesalers. Distributors can publish a catalog, receive purchase orders, and track retailer stock visibility. ERP users can link to multiple distributors and control what each one can see."
         }
       }
     ]

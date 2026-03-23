@@ -209,6 +209,86 @@ export class PartnersService {
   }
 
   // ─────────────────────────────────────────────
+  // MODULE 10: Promo Code Preview (public, no side effects)
+  // Returns what a code does before it is applied.
+  // Also handles DIST- prefix (distributor referral codes).
+  // ─────────────────────────────────────────────
+  async previewPromoCode(code: string) {
+    if (!code || !code.trim()) {
+      return { valid: false, reason: 'No code provided' };
+    }
+    const upper = code.trim().toUpperCase();
+
+    // Distributor referral code
+    if (upper.startsWith('DIST-')) {
+      const dist = await this.prisma.distDistributor.findUnique({
+        where: { referralCode: upper },
+        select: { id: true, name: true, isActive: true },
+      });
+      if (!dist || !dist.isActive) {
+        return { valid: false, reason: 'Distributor code not found or inactive' };
+      }
+      return {
+        valid: true,
+        type: 'DISTRIBUTOR_REFERRAL',
+        distributorName: dist.name,
+        benefit: `You'll be linked to ${dist.name}'s distributor network. They can track orders and offer wholesale pricing.`,
+        badge: 'Distributor Referral',
+        color: 'purple',
+      };
+    }
+
+    // Partner / platform promo code
+    const promo = await this.prisma.promoCode.findUnique({
+      where: { code: upper },
+      select: {
+        id: true, type: true, durationDays: true, bonusMonths: true,
+        discountPercentage: true, isActive: true, maxUses: true,
+        usedCount: true, expiresAt: true, description: true,
+        partner: { select: { businessName: true } },
+      },
+    });
+
+    if (!promo || !promo.isActive) {
+      return { valid: false, reason: 'Invalid or expired promo code' };
+    }
+    if (promo.expiresAt && promo.expiresAt < new Date()) {
+      return { valid: false, reason: 'This promo code has expired' };
+    }
+    if (promo.usedCount >= promo.maxUses) {
+      return { valid: false, reason: 'This promo code has reached its usage limit' };
+    }
+
+    let benefit = '';
+    let badge = '';
+    let color = 'teal';
+
+    if (promo.type === 'FREE_TRIAL') {
+      const months = Math.round(promo.durationDays / 30);
+      benefit = `${months} month${months > 1 ? 's' : ''} free trial — no payment required during this period.`;
+      badge = `${months}M Free Trial`;
+      color = 'teal';
+    } else if (promo.type === 'SUBSCRIPTION_BONUS') {
+      benefit = `${promo.bonusMonths} bonus month${promo.bonusMonths > 1 ? 's' : ''} added to your subscription after your first payment.`;
+      badge = `+${promo.bonusMonths} Bonus Months`;
+      color = 'amber';
+    } else if (promo.type === 'DISCOUNT') {
+      benefit = `${promo.discountPercentage}% off your subscription.`;
+      badge = `${promo.discountPercentage}% Discount`;
+      color = 'blue';
+    }
+
+    return {
+      valid: true,
+      type: promo.type,
+      benefit: promo.description || benefit,
+      badge,
+      color,
+      partnerName: promo.partner?.businessName ?? null,
+    };
+  }
+
+  // ─────────────────────────────────────────────
   // MODULE 1: Promo Code Engine
   // ─────────────────────────────────────────────
   async createPromoCode(data: GeneratePromoDto & { adminId: string }) {

@@ -130,6 +130,12 @@ model Tenant {
   priceAlerts              SupplierPriceAlert[]
   emiApplications          EmiApplication[]
   installmentPlans         InstallmentPlan[]
+  staffTargets             StaffTarget[]
+  shopTargets              ShopTarget[]
+  staffMilestones          StaffMilestone[]
+  milestoneEarnings        MilestoneEarning[]
+  automationRules          AutomationRule[]
+  automationLogs           AutomationLog[]
 }
 
 model DeletionRequest {
@@ -584,6 +590,8 @@ model LedgerCustomer {
   name       String
   phone      String
   address    String?
+  email      String?
+  notes      String?
   isActive   Boolean         @default(true)
   createdAt  DateTime        @default(now())
   ledgers    LedgerAccount[]
@@ -602,6 +610,9 @@ model LedgerAccount {
   tenantId          String
   customerId        String
   principalAmount   Int
+  interestRate      Int                   @default(0)
+  interestRateType  String                @default("RUPEES")
+  interestAmount    Int                   @default(0)
   expectedTotal     Int
   installmentType   LedgerInstallmentType
   installmentAmount Int
@@ -620,16 +631,18 @@ model LedgerAccount {
 }
 
 model LedgerCollection {
-  id         String          @id @default(cuid())
-  tenantId   String
-  ledgerId   String
-  periodNo   Int
-  dueDate    DateTime
-  amount     Int
-  paidAmount Int             @default(0)
-  paid       Boolean         @default(false)
-  paidAt     DateTime?
-  createdAt  DateTime        @default(now())
+  id               String          @id @default(cuid())
+  tenantId         String
+  ledgerId         String
+  periodNo         Int
+  dueDate          DateTime
+  amount           Int
+  paidAmount       Int             @default(0)
+  paid             Boolean         @default(false)
+  paidAt           DateTime?
+  isInterestOnly   Boolean         @default(false)
+  collectionNote   String?
+  createdAt        DateTime        @default(now())
   ledger     LedgerAccount   @relation(fields: [ledgerId], references: [id])
   payments   LedgerPayment[]
 
@@ -643,15 +656,16 @@ model LedgerPayment {
   tenantId        String
   ledgerId        String
   customerId      String
-  collectionId    String
+  collectionId    String?
   collectedBy     String
   amount          Int
   method          LedgerPaymentMethod
+  paymentType     String              @default("FULL")
   note            String?
   collectedAt     DateTime            @default(now())
   createdAt       DateTime            @default(now())
   collectedByUser User                @relation(fields: [collectedBy], references: [id])
-  collection      LedgerCollection    @relation(fields: [collectionId], references: [id])
+  collection      LedgerCollection?   @relation(fields: [collectionId], references: [id])
   customer        LedgerCustomer      @relation(fields: [customerId], references: [id])
   ledger          LedgerAccount       @relation(fields: [ledgerId], references: [id])
   tenant          Tenant              @relation(fields: [tenantId], references: [id])
@@ -1260,6 +1274,9 @@ model Shop {
   priceAlerts                SupplierPriceAlert[]
   emiApplications            EmiApplication[]
   installmentPlans           InstallmentPlan[]
+  staffTargets               StaffTarget[]
+  shopTargets                ShopTarget[]
+  milestoneEarnings          MilestoneEarning[]
   featureFlags               FeatureFlag[]              @relation("ShopFeatureFlags")
   cashVariances              CashVariance[]
   creditNotes                CreditNote[]
@@ -1546,6 +1563,7 @@ model ShopProduct {
   updatedAt              DateTime                @updatedAt
   type                   ProductType
   category               String?
+  brand                  String?
   isSerialized           Boolean                 @default(false)
   hsnCode                String?
   gstRate                Float?                  @default(0)
@@ -3402,6 +3420,7 @@ enum ModuleType {
   MOBILE_SHOP
   MOBILE_REPAIR
   WHATSAPP_CRM
+  DIGITAL_LEDGER
   CORE
 }
 
@@ -3680,6 +3699,8 @@ enum CommissionScope {
   ALL_STAFF
   SPECIFIC_STAFF
   SPECIFIC_ROLE
+  CATEGORY_SPECIFIC
+  PRODUCT_SPECIFIC
 }
 
 enum CommissionType {
@@ -3692,26 +3713,32 @@ enum EarningStatus {
   PENDING
   APPROVED
   PAID
+  CANCELLED
 }
 
 model CommissionRule {
-  id        String          @id @default(cuid())
-  tenantId  String
-  shopId    String
-  name      String
-  applyTo   CommissionScope @default(ALL_STAFF)
-  staffId   String?
-  staffRole UserRole?
-  category  String?
-  type      CommissionType
-  value     Decimal
-  isActive  Boolean         @default(true)
-  createdAt DateTime        @default(now())
-  shop      Shop            @relation(fields: [shopId], references: [id])
-  tenant    Tenant          @relation(fields: [tenantId], references: [id])
-  earnings  StaffEarning[]
+  id            String          @id @default(cuid())
+  tenantId      String
+  shopId        String?
+  name          String
+  description   String?
+  applyTo       CommissionScope @default(ALL_STAFF)
+  staffId       String?
+  staffRole     UserRole?
+  category      String?
+  productId     String?
+  type          CommissionType
+  value         Decimal
+  minSaleAmount Int?
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  shop          Shop?           @relation(fields: [shopId], references: [id])
+  tenant        Tenant          @relation(fields: [tenantId], references: [id])
+  earnings      StaffEarning[]
 
-  @@index([tenantId, shopId])
+  @@index([tenantId])
+  @@index([shopId])
   @@map("mb_commission_rule")
 }
 
@@ -4002,4 +4029,409 @@ model MarketPriceIntel {
   @@unique([brand, model, storage])
   @@index([brand, model])
   @@map("mb_market_price_intel")
+}
+
+// --- DISTRIBUTOR NETWORK ENUMS & TYPES ---
+
+enum DistributorLinkStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum DistRefillStatus {
+  PENDING    // Distributor sent suggestion, awaiting retailer response
+  ACCEPTED   // Retailer accepted — converted to DistPurchaseOrder
+  REJECTED   // Retailer rejected
+  INVOICED   // Distributor has shipped and invoiced
+  RECEIVED   // Retailer marked as received → triggers GRN
+}
+
+enum DistOrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REJECTED
+}
+
+enum DistPaymentType {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CREDIT
+}
+
+// --- DISTRIBUTOR NETWORK MODELS ---
+
+model DistDistributor {
+  id              String   @id @default(cuid())
+  userId          String?  @unique  // direct user link for pure distributors (no ERP tenant yet)
+  tenantId        String?  @unique  // set when distributor also subscribes to ERP
+  partnerId       String?  @unique
+  name            String
+  referralCode    String   @unique
+  contactPerson   String?
+  phone           String?
+  email           String?  @unique
+  address         String?
+  logoUrl         String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  retailerLinks   DistDistributorRetailer[]
+  catalogItems    DistCatalogItem[]
+  purchaseOrders  DistPurchaseOrder[]
+  creditLedger    DistCreditLedger[]
+  salesLogs       DistSaleAttributionLog[]
+  linkInvites     DistLinkInvite[]
+  // Default commission rates — overridable per retailer in DistDistributorRetailer
+  defaultFirstCommissionPct     Float @default(30)
+  defaultRecurringCommissionPct Float @default(5)
+
+  @@map("dist_distributors")
+}
+
+model DistDistributorRetailer {
+  id                   String                 @id @default(cuid())
+  distributorId        String
+  retailerId           String                 // Refers to Tenant.id
+  status               DistributorLinkStatus  @default(PENDING)
+  linkedVia            String                 // 'REFERRAL_CODE' | 'MANUAL_DIST' | 'SELF_LINK'
+  // Commission rates for this specific retailer (inherits distributor defaults if null)
+  firstCommissionPct   Float?                 // 30% on first subscription payment
+  recurringCommissionPct Float?               // 5% on recurring payments
+  stockVisibilityEnabled Boolean              @default(false) // Retailer has granted stock access
+  linkedAt             DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  distributor          DistDistributor        @relation(fields: [distributorId], references: [id])
+  refillRequests       DistRefillRequest[]
+  stockVisibility      DistStockVisibility?
+
+  @@unique([distributorId, retailerId])
+  @@index([retailerId])
+  @@map("dist_distributor_retailers")
+}
+
+// Retailer grants the distributor visibility into their inventory levels
+// Default: all off. Retailer toggles per product category or specific items.
+model DistStockVisibility {
+  id                  String   @id @default(cuid())
+  linkId              String   @unique  // FK to DistDistributorRetailer
+  allowAllProducts    Boolean  @default(false)
+  allowedCategories   String[] @default([])  // If empty + allowAll=false, nothing is shared
+  allowedBrands       String[] @default([])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  link                DistDistributorRetailer @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@map("dist_stock_visibility")
+}
+
+// Distributor suggests a refill to a retailer based on visible low-stock data
+model DistRefillRequest {
+  id              String           @id @default(cuid())
+  linkId          String           // FK to DistDistributorRetailer
+  status          DistRefillStatus @default(PENDING)
+  notes           String?
+  // Set when retailer accepts — links to the resulting purchase order
+  purchaseOrderId String?          @unique
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  link            DistDistributorRetailer  @relation(fields: [linkId], references: [id])
+  items           DistRefillRequestItem[]
+
+  @@index([linkId])
+  @@map("dist_refill_requests")
+}
+
+model DistRefillRequestItem {
+  id              String   @id @default(cuid())
+  requestId       String
+  catalogItemId   String
+  suggestedQty    Int
+  acceptedQty     Int?     // Set when retailer modifies/accepts
+
+  request         DistRefillRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  catalogItem     DistCatalogItem   @relation(fields: [catalogItemId], references: [id])
+
+  @@map("dist_refill_request_items")
+}
+
+// Pending invite sent by distributor to an existing ERP user (manual link)
+model DistLinkInvite {
+  id            String   @id @default(cuid())
+  distributorId String
+  // Target identified by either phone or email
+  targetPhone   String?
+  targetEmail   String?
+  targetTenantId String? // Set if distributor knows the tenant
+  status        String   @default("PENDING")  // PENDING | ACCEPTED | REJECTED | EXPIRED
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  distributor   DistDistributor @relation(fields: [distributorId], references: [id])
+
+  @@index([distributorId])
+  @@index([targetPhone])
+  @@index([targetEmail])
+  @@map("dist_link_invites")
+}
+
+model DistCatalogItem {
+  id             String   @id @default(cuid())
+  distributorId  String
+  sku            String?
+  name           String
+  description    String?
+  brand          String?
+  category       String?
+  unitPrice      Decimal  @db.Decimal(12, 2)
+  stockQuantity  Int      @default(0)
+  images         String[] @default([])
+  compatibility  Json?    
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  distributor    DistDistributor @relation(fields: [distributorId], references: [id])
+  mappings       DistProductMapping[]
+  orderItems     DistPurchaseOrderItem[]
+  salesLogs      DistSaleAttributionLog[]
+  refillItems    DistRefillRequestItem[]
+
+  @@index([distributorId])
+  @@index([brand, category])
+  @@map("dist_catalog_items")
+}
+
+model DistPurchaseOrder {
+  id             String          @id @default(cuid())
+  distributorId  String
+  retailerId     String          
+  orderNumber    String          @unique 
+  status         DistOrderStatus @default(PENDING)
+  totalAmount    Decimal         @db.Decimal(12, 2)
+  paymentType    DistPaymentType @default(CASH)
+  notes          String?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  distributor    DistDistributor @relation(fields: [distributorId], references: [id])
+  items          DistPurchaseOrderItem[]
+
+  @@index([distributorId, status])
+  @@index([retailerId])
+  @@map("dist_purchase_orders")
+}
+
+model DistPurchaseOrderItem {
+  id                String   @id @default(cuid())
+  purchaseOrderId   String
+  catalogItemId     String
+  quantityOrdered   Int
+  quantityReceived  Int      @default(0)
+  unitPriceAtOrder  Decimal  @db.Decimal(12, 2)
+  
+  purchaseOrder     DistPurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  catalogItem       DistCatalogItem   @relation(fields: [catalogItemId], references: [id])
+
+  @@map("dist_purchase_order_items")
+}
+
+model DistProductMapping {
+  id                String   @id @default(cuid())
+  retailerId        String   
+  catalogItemId     String
+  retailerProductId String   
+  createdAt         DateTime @default(now())
+
+  catalogItem       DistCatalogItem @relation(fields: [catalogItemId], references: [id])
+
+  @@unique([retailerId, catalogItemId])
+  @@unique([retailerId, retailerProductId]) 
+  @@map("dist_product_mapping")
+}
+
+model DistCreditLedger {
+  id              String   @id @default(cuid())
+  distributorId   String
+  retailerId      String
+  entryType       String   
+  amount          Decimal  @db.Decimal(12, 2)
+  referenceType   String?
+  referenceId     String?
+  description     String?
+  runningBalance  Decimal  @db.Decimal(12, 2)
+  entryDate       DateTime @db.Date
+  createdAt       DateTime @default(now())
+
+  distributor     DistDistributor @relation(fields: [distributorId], references: [id])
+  
+  @@index([distributorId])
+  @@index([retailerId])
+  @@map("dist_credit_ledger")
+}
+
+model DistSaleAttributionLog {
+  id              String   @id @default(cuid())
+  distributorId   String
+  retailerId      String
+  catalogItemId   String?
+  saleItemRef     String?
+  quantitySold    Int
+  revenueAmount   Decimal? @db.Decimal(12, 2)
+  saleDate        DateTime @db.Date
+  weekBucket      String?  @db.VarChar(7)
+  monthBucket     String?  @db.VarChar(7)
+  createdAt       DateTime @default(now())
+
+  distributor     DistDistributor @relation(fields: [distributorId], references: [id])
+  catalogItem     DistCatalogItem? @relation(fields: [catalogItemId], references: [id])
+  
+  @@index([distributorId])
+  @@index([distributorId, monthBucket])
+  @@index([distributorId, retailerId])
+  @@map("dist_sale_attribution_log")
+}
+
+// ─── Feature: Targets, Milestones & Automation ───────────────────────────────
+
+model ShopTarget {
+  id             String   @id @default(cuid())
+  tenantId       String
+  shopId         String
+  month          Int      // 1-12
+  year           Int
+  revenueTarget  BigInt   // Total expected revenue in paisa
+  repairTarget   Int?     // Total expected repairs count
+  salesTarget    Int?     // Total expected units sold
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  shop           Shop     @relation(fields: [shopId], references: [id])
+
+  @@unique([shopId, month, year])
+  @@index([tenantId])
+  @@map("mb_shop_target")
+}
+
+model StaffTarget {
+  id             String   @id @default(cuid())
+  tenantId       String
+  shopId         String
+  staffId        String
+  month          Int
+  year           Int
+  revenueTarget  BigInt
+  repairTarget   Int?
+  salesTarget    Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  shop           Shop     @relation(fields: [shopId], references: [id])
+
+  @@unique([staffId, month, year])
+  @@index([tenantId])
+  @@index([shopId])
+  @@map("mb_staff_target")
+}
+
+model StaffMilestone {
+  id            String           @id @default(cuid())
+  tenantId      String
+  name          String
+  description   String?
+  metric        MilestoneMetric
+  targetValue   Int
+  rewardAmount  Int              // In paisa
+  isActive      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  tenant        Tenant           @relation(fields: [tenantId], references: [id])
+  earnings      MilestoneEarning[]
+
+  @@index([tenantId])
+  @@map("mb_staff_milestone")
+}
+
+model MilestoneEarning {
+  id            String         @id @default(cuid())
+  tenantId      String
+  shopId        String
+  staffId       String
+  milestoneId   String
+  rewardAmount  Int
+  achievedAt    DateTime       @default(now())
+  milestone     StaffMilestone @relation(fields: [milestoneId], references: [id])
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  shop          Shop           @relation(fields: [shopId], references: [id])
+
+  @@unique([staffId, milestoneId])
+  @@index([tenantId])
+  @@map("mb_milestone_earning")
+}
+
+model AutomationRule {
+  id           String            @id @default(cuid())
+  tenantId     String
+  name         String
+  trigger      AutomationTrigger
+  action       AutomationAction
+  conditions   Json?             // e.g. { "amount_min": 100000 }
+  actionConfig Json?             // e.g. { "type": "NOTIFY", "to": "owner" }
+  isEnabled    Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  tenant       Tenant            @relation(fields: [tenantId], references: [id])
+  logs         AutomationLog[]
+
+  @@index([tenantId])
+  @@map("mb_automation_rule")
+}
+
+model AutomationLog {
+  id            String         @id @default(cuid())
+  tenantId      String
+  ruleId        String
+  triggerData   Json
+  actionResults Json?
+  status        String         @default("SUCCESS") // SUCCESS | FAILED
+  error         String?
+  createdAt     DateTime       @default(now())
+  rule          AutomationRule @relation(fields: [ruleId], references: [id])
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([ruleId])
+  @@map("mb_automation_log")
+}
+
+enum MilestoneMetric {
+  REVENUE_TOTAL
+  REPAIRS_COUNT
+  SALES_COUNT
+  NEW_CUSTOMERS
+}
+
+enum AutomationTrigger {
+  INVOICE_CREATED
+  JOB_CARD_COMPLETED
+  PAYMENT_RECEIVED
+  LOW_STOCK_ALERT
+}
+
+enum AutomationAction {
+  SEND_WHATSAPP
+  ADD_LOYALTY_POINTS
+  CREATE_FOLLOW_UP
+  NOTIFY_STAFF
 }

@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
 import { getProfitSummary } from "@/services/reports.api";
 import { MetricCard } from "@/components/dashboard/MetricCard";
@@ -11,19 +10,9 @@ import { getUsageHistory, UsageSnapshot } from "@/services/tenant.api";
 import { authenticatedFetch } from "@/services/auth.api";
 import { getBottlenecks, getCustomerDelays } from "@/services/jobcard.api";
 import { UsageTrendsChart } from "@/components/dashboard/UsageTrendsChart";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
+import { SalesTrendChart } from "@/components/dashboard/SalesTrendChart";
+import { PaymentBreakdownChart } from "@/components/dashboard/PaymentBreakdownChart";
+import { RevenueTargetCard } from "@/components/dashboard/RevenueTargetCard";
 import {
   TrendingUp,
   DollarSign,
@@ -89,9 +78,7 @@ interface ShopBreakdownItem {
 export default function DashboardPage() {
   const router = useRouter();
   const { authUser } = useAuth();
-  const { theme } = useTheme();
   const { shops, selectedShopId, selectShop, hasMultipleShops } = useShop();
-  const isDark = theme === "dark";
 
   const [data, setData] = useState<DashboardData>({});
   const [todayProfit, setTodayProfit] = useState<number>(0);
@@ -104,6 +91,7 @@ export default function DashboardPage() {
   const [bottlenecks, setBottlenecks] = useState<any[]>([]);
   const [delays, setDelays] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [shopTarget, setShopTarget] = useState(0);
 
   const userRole = authUser?.role?.toLowerCase();
   const isOwner =
@@ -162,6 +150,22 @@ export default function DashboardPage() {
         isOwner ? getCustomerDelays().catch(() => []) : Promise.resolve([]),
       ]);
 
+      // Fetch shop target for the selected shop
+      if (selectedShopId) {
+        authenticatedFetch(
+          `/mobileshop/targets/shop?shopId=${selectedShopId}&year=${new Date().getFullYear()}`
+        )
+          .then((r) => r.json())
+          .then((targets: any[]) => {
+            const thisMonth = new Date().getMonth() + 1;
+            const found = Array.isArray(targets)
+              ? targets.find((t: any) => t.month === thisMonth)
+              : null;
+            setShopTarget(found ? Number(found.revenueTarget) : 0);
+          })
+          .catch(() => setShopTarget(0));
+      }
+
       if (dashRes?.ok) {
         const dashData = await dashRes.json();
         setData(dashData);
@@ -190,11 +194,7 @@ export default function DashboardPage() {
     fetchDashboard();
   }, [fetchDashboard]);
 
-  // Memoize chart colors to prevent recreation on every render
-  const COLORS = useMemo(
-    () => ["#0ea5e9", "#10b981", "#f59e0b", "##ef4444", "#8b5cf6"],
-    [],
-  );
+
 
   // Memoize computed payment values for better performance
   const cashCollection = useMemo(
@@ -327,102 +327,33 @@ export default function DashboardPage() {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 glass-card p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-base font-semibold text-foreground">
-              7-Day Sales Trend
-            </h3>
-            <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded-full font-medium">
-              {isAllShops ? "Consolidated" : "Single Shop"}
-            </span>
-          </div>
-          <div className="h-64 w-full">
-            {loading ? (
-              <div className="w-full h-full bg-muted/20 animate-pulse rounded-lg" />
-            ) : salesTrend.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={salesTrend}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke={isDark ? "#334155" : "#e2e8f0"}
-                  />
-                  <XAxis
-                    dataKey="date"
-                    stroke="#94a3b8"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    stroke="#94a3b8"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `₹${v / 1000}k`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: "8px",
-                      border: "none",
-                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                      backgroundColor: isDark ? "#1e293b" : "#fff",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="sales"
-                    name="Sales"
-                    stroke="#0ea5e9"
-                    strokeWidth={3}
-                    dot={{ r: 4, fill: "#0ea5e9" }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground opacity-50 text-sm">
-                No sales data available for this range
-              </div>
-            )}
-          </div>
+          <SalesTrendChart
+            data={salesTrend}
+            isLoading={loading}
+            currentMonthRevenue={data.valueSnapshot?.monthRevenue}
+            lastMonthRevenue={data.valueSnapshot?.lastMonthRevenue}
+          />
         </div>
 
         <div className="glass-card p-6">
-          <h3 className="text-base font-semibold text-foreground mb-6">
-            Payment Distribution
-          </h3>
-          <div className="h-64 w-full text-xs">
-            {loading ? (
-              <div className="w-1/2 h-1/2 mx-auto mt-10 rounded-full border-8 border-muted/20 border-t-muted/80 animate-spin" />
-            ) : paymentStats.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={paymentStats}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {paymentStats.map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend iconType="circle" />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
-                <p className="text-sm">No recent payments</p>
-              </div>
-            )}
-          </div>
+          <PaymentBreakdownChart
+            data={paymentStats}
+            isLoading={loading}
+          />
         </div>
       </div>
+
+      {/* Revenue Target Card – single shop view only */}
+      {isOwner && selectedShopId && (
+        <RevenueTargetCard
+          shopId={selectedShopId}
+          currentRevenue={data.valueSnapshot?.monthRevenue ?? data.month?.salesAmount ?? 0}
+          targetRevenue={shopTarget}
+          isLoading={loading}
+          canEdit={userRole === "owner" || userRole === "admin" || userRole === "manager"}
+          onTargetUpdated={(newTarget) => setShopTarget(newTarget)}
+        />
+      )}
 
       {/* Row: Shop Breakdown (Owner All Shops Only) */}
       {isOwner && isAllShops && shopBreakdown.length > 0 && (

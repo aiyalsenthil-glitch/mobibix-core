@@ -397,3 +397,22 @@ export async function getAiQuota(): Promise<AiQuotaResponse | null> {
     return null;
   }
 }
+
+export interface PromoPreview {
+  valid: boolean;
+  reason?: string;
+  type?: string;
+  benefit?: string;
+  badge?: string;
+  color?: 'teal' | 'amber' | 'blue' | 'purple';
+  distributorName?: string;
+  partnerName?: string;
+}
+
+export async function previewPromoCode(code: string): Promise<PromoPreview> {
+  const res = await fetch(
+    `${API_BASE_URL}/partners/promo/preview?code=${encodeURIComponent(code)}`,
+  );
+  const json = await res.json();
+  return json?.data ?? json;
+}

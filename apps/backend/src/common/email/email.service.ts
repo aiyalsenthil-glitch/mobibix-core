@@ -464,8 +464,9 @@ export class EmailService {
 
   private getSenderAddress(module: ModuleType, type: string): string {
     const isMobiBix = module === 'MOBILE_SHOP' || module === 'MOBILE_REPAIR';
-    const domain = isMobiBix ? 'REMOVED_DOMAIN' : 'mobibix.in';
-    const brandName = isMobiBix ? 'MobiBix' : 'GymPilot';
+    const isLedger = (module as string) === 'DIGITAL_LEDGER';
+    const domain = isMobiBix ? 'REMOVED_DOMAIN' : isLedger ? 'mobibix.in' : 'mobibix.in';
+    const brandName = isMobiBix ? 'MobiBix' : isLedger ? 'DigitalLedger' : 'GymPilot';
 
     // 1. BILLING EMAILS
     const billingTypes = [

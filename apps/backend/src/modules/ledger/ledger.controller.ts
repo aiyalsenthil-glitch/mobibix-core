@@ -8,8 +8,7 @@ import {
   Query,
   Param,
   ValidationPipe,
-  ParseIntPipe,
-  DefaultValuePipe,
+  HttpCode,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { TenantStatusGuard } from '../../core/tenant/guards/tenant-status.guard';
@@ -29,7 +28,7 @@ import {
 } from './dto';
 
 @Controller('ledger')
-@ModuleScope(ModuleType.MOBILE_SHOP)
+@ModuleScope(ModuleType.DIGITAL_LEDGER)
 @ModulePermission('ledger')
 @UseGuards(
   JwtAuthGuard,
@@ -59,19 +58,39 @@ export class LedgerController {
   ) {
     return this.ledgerService.createAccount(req.user.tenantId, body);
   }
-  // GET /ledger/customers — list with pagination
-  // FROZEN RESPONSE: { customers[], total, page, limit }
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.VIEW)
+  @Get('dashboard/stats')
+  getDashboardStats(@Req() req: any) {
+    return this.ledgerService.getDashboardStats(req.user.tenantId);
+  }
+
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.VIEW)
   @Get('customers')
   listCustomers(
     @Req() req: any,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     return this.ledgerService.listCustomers(
       req.user.tenantId,
-      page,
-      Math.min(limit, 50),
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
+  }
+
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
+  @Get('accounts')
+  listAccounts(
+    @Req() req: any,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.ledgerService.listAccounts(
+      req.user.tenantId,
+      status,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
     );
   }
 
@@ -80,38 +99,30 @@ export class LedgerController {
   searchCustomers(@Req() req: any, @Query('q') q: string) {
     return this.ledgerService.searchCustomers(req.user.tenantId, q);
   }
-  // GET /ledger/accounts — list with pagination + optional filters
-  // FROZEN RESPONSE: { accounts[], total, page, limit }
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
-  @Get('accounts')
-  listAccounts(
-    @Req() req: any,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-    @Query('status') status?: string,
-    @Query('customerId') customerId?: string,
-  ) {
-    return this.ledgerService.listAccounts(
-      req.user.tenantId,
-      page,
-      Math.min(limit, 50),
-      status,
-      customerId,
-    );
-  }
-
-  // GET /ledger/accounts/:id — full detail with collections + payments
-  // FROZEN RESPONSE: account + collections[] + recentPayments[]
-  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
-  @Get('accounts/:id')
-  getAccountDetail(@Req() req: any, @Param('id') id: string) {
-    return this.ledgerService.getAccountDetail(req.user.tenantId, id);
+  @Get('accounts/search')
+  searchAccounts(@Req() req: any, @Query('q') q: string) {
+    return this.ledgerService.searchAccounts(req.user.tenantId, q);
   }
 
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.COLLECT)
   @Get('accounts/:ledgerId/collect')
   getCollectScreen(@Req() req: any, @Param('ledgerId') ledgerId: string) {
     return this.ledgerService.getCollectScreen(req.user.tenantId, ledgerId);
+  }
+
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
+  @Post('accounts/:ledgerId/foreclose')
+  @HttpCode(200)
+  forecloseAccount(
+    @Req() req: any,
+    @Param('ledgerId') ledgerId: string,
+    @Body() body: { settlementAmount?: number; note?: string },
+  ) {
+    return this.ledgerService.forecloseAccount(req.user.tenantId, ledgerId, {
+      ...body,
+      collectedBy: req.user.id,
+    });
   }
   @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.COLLECT)
   @Post('collections/collect')
@@ -128,5 +139,39 @@ export class LedgerController {
   @Get('customers/:customerId/profile')
   getCustomerProfile(@Req() req: any, @Param('customerId') customerId: string) {
     return this.ledgerService.getCustomerProfile(req.user.tenantId, customerId);
+  }
+
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.CUSTOMER.VIEW)
+  @Get('customers/:customerId/performance')
+  getCustomerPerformance(@Req() req: any, @Param('customerId') customerId: string) {
+    return this.ledgerService.getCustomerPerformance(req.user.tenantId, customerId);
+  }
+
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
+  @Get('reports/portfolio')
+  getPortfolioReport(@Req() req: any) {
+    return this.ledgerService.getPortfolioReport(req.user.tenantId);
+  }
+
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
+  @Get('reports/pl')
+  getProfitLossReport(
+    @Req() req: any,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.ledgerService.getProfitLossReport(req.user.tenantId, from, to);
+  }
+
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.COLLECT)
+  @Get('reports/today')
+  getTodayCollectionSheet(@Req() req: any) {
+    return this.ledgerService.getTodayCollectionSheet(req.user.tenantId);
+  }
+
+  @RequirePermission(PERMISSIONS.MOBILE_SHOP.LEDGER.MANAGE)
+  @Get('reports/alerts')
+  getIntelligenceAlerts(@Req() req: any) {
+    return this.ledgerService.getIntelligenceAlerts(req.user.tenantId);
   }
 }

@@ -35,6 +35,10 @@ export class CreateProductDto {
   category?: string;
 
   @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @IsOptional()
   @IsBoolean()
   isSerialized?: boolean; // For GOODS: true = track IMEI per unit, false = quantity-based
 

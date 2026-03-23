@@ -35,6 +35,14 @@ const PRODUCTION_ORIGINS = [
   'https://www.REMOVED_DOMAIN',
   'https://gym-saas-prod.REMOVED_AUTH_PROVIDERapp.com',
   'https://gym-saas-cxg5.onrender.com',
+  // Vercel deployments (admin-master panel)
+  'https://gym-saas-4z8g.vercel.app',
+];
+
+// Regex patterns for dynamic origins (Vercel preview URLs)
+const DYNAMIC_ORIGIN_PATTERNS = [
+  /^https:\/\/gym-saas-.*\.vercel\.app$/,   // All Vercel preview/prod deployments
+  /^https:\/\/.*-aiyalsenthil-glitch.*\.vercel\.app$/, // User's Vercel team deployments
 ];
 
 const DEV_ORIGINS = [
@@ -162,7 +170,12 @@ async function bootstrap() {
     cors({
       origin: (requestOrigin, callback) => {
         if (!requestOrigin) return callback(null, true);
+        // Check exact match in static list
         if (allowedOrigins.includes(requestOrigin)) {
+          return callback(null, true);
+        }
+        // Check regex patterns (handles Vercel preview URLs like gym-saas-abc123-....vercel.app)
+        if (DYNAMIC_ORIGIN_PATTERNS.some((pattern) => pattern.test(requestOrigin))) {
           return callback(null, true);
         }
         callback(new Error(`CORS: origin '${requestOrigin}' not allowed`));

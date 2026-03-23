@@ -79,17 +79,31 @@ export class GranularPermissionGuard implements CanActivate {
       }
     }
 
-    if (!requiredPermission) {
-      throw new ForbiddenException(
-        'Endpoint missing RBAC permission configuration',
-      );
-    }
-
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
+    // No tenant context (pure distributor or unauthenticated) — RBAC is tenant-scoped,
+    // so skip the permission check entirely and let JwtAuthGuard/TenantGuard handle auth.
     if (!user || !user.tenantId) {
-      return true; // Let other guards handle base auth
+      return true;
+    }
+
+    // Distributor routes are guarded by DistributorScopeGuard instead of RBAC.
+    // ERP+Distributor users (tenantId + isDistributor) are allowed through with no
+    // RequirePermission config on distributor/* controllers.
+    if (user.isDistributor && !requiredPermission) {
+      return true;
+    }
+
+    if (!requiredPermission) {
+      // OWNER / MANAGER / isSystemOwner bypass unconfigured endpoints — matches
+      // permissionService.checkPermissionDB OWNER bypass but without a DB call.
+      const bypassRoles = ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MANAGER'];
+      if (user.isSystemOwner || bypassRoles.includes(user.role)) return true;
+
+      throw new ForbiddenException(
+        'Endpoint missing RBAC permission configuration',
+      );
     }
 
     // Resolve shopId

@@ -411,8 +411,9 @@ export class PlansService {
    */
   async getOrCreateTrialPlan(module: ModuleType) {
     const isMobileShop = module === ModuleType.MOBILE_SHOP;
-    const code = isMobileShop ? 'MOBIBIX_TRIAL' : 'GYM_TRIAL';
-    const name = isMobileShop ? 'MobiBix Trial' : 'Gym Trial';
+    const isDigitalLedger = module === ModuleType.DIGITAL_LEDGER;
+    const code = isMobileShop ? 'MOBIBIX_TRIAL' : isDigitalLedger ? 'LEDGER_TRIAL' : 'GYM_TRIAL';
+    const name = isMobileShop ? 'MobiBix Trial' : isDigitalLedger ? 'Digital Ledger Trial' : 'Gym Trial';
 
     let plan = await this.prisma.plan.findFirst({
       where: { code },
@@ -424,12 +425,12 @@ export class PlansService {
           code,
           name,
           level: 0,
-          module: isMobileShop ? ModuleType.MOBILE_SHOP : ModuleType.GYM,
+          module,
           isActive: true,
           isPublic: false,
           isAddon: false,
           maxStaff: 5,
-          maxMembers: isMobileShop ? null : 100,
+          maxMembers: isMobileShop ? null : isDigitalLedger ? null : 100,
           analyticsHistoryDays: 14,
         },
       });
@@ -439,8 +440,7 @@ export class PlansService {
     const defaultFeatures = [
       'STAFF',
       'REPORTS',
-      'WHATSAPP_UTILITY',
-      ...(isMobileShop ? [] : ['ATTENDANCE']),
+      ...(isMobileShop || isDigitalLedger ? [] : ['ATTENDANCE']),
     ];
 
     for (const feat of defaultFeatures) {

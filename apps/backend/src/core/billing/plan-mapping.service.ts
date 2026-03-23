@@ -42,7 +42,7 @@ export class PlanMappingService {
     publicName: string,
     module: ModuleType,
   ): string | null {
-    const mapping: Record<ModuleType, Record<string, string>> = {
+    const mapping: Record<string, Record<string, string>> = {
       CORE: {},
       GYM: {
         TRIAL: 'GYM_TRIAL',
@@ -65,6 +65,7 @@ export class PlanMappingService {
         GROWTH: 'WHATSAPP_GROWTH',
         ADVANCED: 'WHATSAPP_ADVANCED',
       },
+      DIGITAL_LEDGER: {},
     };
 
     return mapping[module]?.[publicName] || null;

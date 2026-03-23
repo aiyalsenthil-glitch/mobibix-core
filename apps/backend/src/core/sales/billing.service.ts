@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   ProductType,
   InvoiceStatus,
@@ -75,6 +76,7 @@ export class BillingService {
     private readonly receiptsService: ReceiptsService,
     private readonly documentNumberService: DocumentNumberService,
     private readonly loyaltyService: LoyaltyService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   private toPaisa(amount: number): number {
@@ -314,6 +316,7 @@ export class BillingService {
           options.referenceType === 'JOB' ? options.referenceId : undefined,
         items: { create: invoiceItemsData },
       },
+      include: { items: true },
     });
 
     // 9. Financial Entries
@@ -452,6 +455,23 @@ export class BillingService {
           `Atomic balance update for Customer ${options.customerId}: +₹${this.fromPaisa(creditPortion)}`,
         );
       }
+    }
+
+    // 13. Emit Event for Async Processing (e.g., Distributor Attribution)
+    try {
+      this.eventEmitter.emitAsync('sale.completed', {
+        tenantId: invoice.tenantId,
+        invoiceId: invoice.id,
+        items: invoice.items.map((item) => ({
+          invoiceItemId: item.id,
+          shopProductId: item.shopProductId,
+          quantity: item.quantity,
+          lineTotal: item.lineTotal,
+          invoiceDate: invoice.invoiceDate,
+        })),
+      });
+    } catch (err: any) {
+      this.logger.error(`Failed to emit sale.completed event: ${err.message}`);
     }
 
     return invoice;

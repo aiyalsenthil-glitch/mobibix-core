@@ -79,17 +79,18 @@ export class AuthController {
   @Post('REMOVED_AUTH_PROVIDER')
   @HttpCode(200)
   async loginWithFirebase(
-    @Body() body: { idToken?: string; tenantCode?: string },
+    @Body() body: { idToken?: string; tenantCode?: string; preferredTenantType?: string },
     @Res({ passthrough: true }) res: Response,
   ) {
     if (!body?.idToken) {
       throw new UnauthorizedException('Missing idToken');
     }
 
-    // Pass tenantCode to AuthService to ensure correct tenant context
+    // Pass tenantCode and preferredTenantType to AuthService to ensure correct tenant context
     const result = await this.authService.loginWithFirebase(
       body.idToken,
       body.tenantCode,
+      body.preferredTenantType,
     );
 
     if (result?.accessToken) {

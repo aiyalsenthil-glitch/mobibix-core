@@ -36,6 +36,8 @@ export interface AuthUser {
   tenantId?: string;
   tenantType?: string;
   planCode?: string;
+  isDistributor?: boolean;
+  hasActiveERP?: boolean;
   pendingInvite?: {
     id: string;
     inviteToken: string;

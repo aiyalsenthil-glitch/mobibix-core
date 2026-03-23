@@ -7,6 +7,7 @@ import StaffTab from "./components/StaffTab";
 import RolesTab from "./components/RolesTab";
 import ApprovalsTab from "./components/ApprovalsTab";
 import CommissionTab from "./components/CommissionTab";
+import LeaderboardTab from "./components/LeaderboardTab";
 import { HelpGuide } from "@/components/common/HelpGuide";
 
 const COMMISSION_GUIDE = [
@@ -76,7 +77,8 @@ function StaffManagementContent() {
           { id: "staff", label: "Staff Members" },
           { id: "roles", label: "Roles & Permissions" },
           { id: "approvals", label: "Approval Inbox" },
-          { id: "commission", label: "Commission" },
+          { id: "commission", label: "💰 Commission" },
+          { id: "leaderboard", label: "🏆 Leaderboard" },
         ]}
         activeTab={currentTab}
         onChange={handleTabChange}
@@ -87,6 +89,7 @@ function StaffManagementContent() {
         {currentTab === "roles" && <RolesTab />}
         {currentTab === "approvals" && <ApprovalsTab />}
         {currentTab === "commission" && <CommissionTab />}
+        {currentTab === "leaderboard" && <LeaderboardTab />}
       </div>
     </div>
   );
