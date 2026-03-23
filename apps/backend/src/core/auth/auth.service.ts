@@ -219,7 +219,7 @@ export class AuthService {
             tenantId,
             role,
           })
-          .catch((err) =>
+          .catch(() => {/* Firebase custom claims sync failed — non-critical */});
       }
 
       const isDistributor = !!distRecordForToken;
