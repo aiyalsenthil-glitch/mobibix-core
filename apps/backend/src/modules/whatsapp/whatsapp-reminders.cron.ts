@@ -1,12 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WhatsAppRemindersService } from './whatsapp-reminders.service';
+import { PrismaService } from '../../core/prisma/prisma.service';
 
 @Injectable()
 export class WhatsAppRemindersCron {
   private readonly logger = new Logger(WhatsAppRemindersCron.name);
 
-  constructor(private readonly remindersService: WhatsAppRemindersService) {}
+  constructor(
+    private readonly remindersService: WhatsAppRemindersService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   /**
    * ⏰ Process Pending WhatsApp Reminders
@@ -46,6 +50,29 @@ export class WhatsAppRemindersCron {
       this.logger.error(
         `Unexpected error in reminder job: ${err instanceof Error ? err.message : String(err)}`,
       );
+    }
+  }
+
+  /**
+   * 🧹 Expire stale SCHEDULED reminders older than 7 days
+   * Runs daily at 02:00 to keep the table clean and prevent slow scans
+   */
+  @Cron('0 2 * * *')
+  async expireStaleReminders() {
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    try {
+      const { count } = await this.prisma.customerReminder.updateMany({
+        where: {
+          status: 'SCHEDULED',
+          scheduledAt: { lt: cutoff },
+        },
+        data: { status: 'FAILED', failureReason: 'Expired — not processed within 7 days' },
+      });
+      if (count > 0) {
+        this.logger.log(`Expired ${count} stale SCHEDULED reminders older than 7 days`);
+      }
+    } catch (err) {
+      this.logger.error(`Failed to expire stale reminders: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 }

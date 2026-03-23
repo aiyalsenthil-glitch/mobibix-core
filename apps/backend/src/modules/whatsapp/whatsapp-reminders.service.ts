@@ -81,16 +81,17 @@ export class WhatsAppRemindersService {
     const remindersToProcess: string[] = [];
 
     try {
-      // 1️⃣ Find all pending WhatsApp reminders scheduled for now or past
+      // 1️⃣ Find pending WhatsApp reminders due now, capped to 7 days back to avoid stale backlog scans
+      const staleThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const pendingReminders = await this.prisma.customerReminder.findMany({
         where: {
           status: ReminderStatus.SCHEDULED,
           channel: ReminderChannel.WHATSAPP,
-          scheduledAt: { lte: now },
+          scheduledAt: { gte: staleThreshold, lte: now },
         },
-        take: 50, // Process in batches of 50 to avoid slow queries
+        take: 50,
         orderBy: {
-          scheduledAt: 'asc', // Process oldest first, utilizing index
+          scheduledAt: 'asc',
         },
         include: {
           customer: {

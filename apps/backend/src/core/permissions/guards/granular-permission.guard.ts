@@ -96,6 +96,11 @@ export class GranularPermissionGuard implements CanActivate {
     }
 
     if (!requiredPermission) {
+      // OWNER / MANAGER / isSystemOwner bypass unconfigured endpoints — matches
+      // permissionService.checkPermissionDB OWNER bypass but without a DB call.
+      const bypassRoles = ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MANAGER'];
+      if (user.isSystemOwner || bypassRoles.includes(user.role)) return true;
+
       throw new ForbiddenException(
         'Endpoint missing RBAC permission configuration',
       );

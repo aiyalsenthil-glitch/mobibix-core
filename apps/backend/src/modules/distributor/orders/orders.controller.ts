@@ -6,8 +6,10 @@ import { OrderStatusUpdateDto, ReceiveOrderDto } from './dto/orders.dto';
 import { PlaceOrderDto } from './dto/retailer-orders.dto';
 import { DistributorScopeGuard } from '../guards/distributor-scope.guard';
 import { SkipSubscriptionCheck } from '../../../core/auth/decorators/skip-subscription-check.decorator';
+import { SkipTenant } from '../../../core/auth/decorators/skip-tenant.decorator';
 
 /** /distributor/orders — distributor managing inbound orders from retailers */
+@SkipTenant()
 @SkipSubscriptionCheck()
 @Controller('distributor/orders')
 @UseGuards(DistributorScopeGuard)

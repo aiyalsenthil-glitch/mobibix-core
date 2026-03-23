@@ -159,8 +159,9 @@ export function HeroSlidesClient({ posts }: { posts: any[] }) {
                 {[
                   { title: "Never Lose Stock", desc: "Track every IMEI. Stop theft with serial-perfect accuracy.", icon: "/assets/landing/inventory-icon.png", alt: "IMEI tracking and inventory management interface icon" },
                   { title: "Control Repairs", desc: "Track technician parts. Stop disputes with digital proof.", icon: "/assets/landing/repairs-icon.png", alt: "Mobile repair job tracking and technician management icon" },
-                  { title: "Instant GST Build", desc: "Generate professional bills in 5 seconds. Look premium.", icon: "/assets/landing/billing-icon.png", alt: "GST compliant billing and invoice generation icon" },
+                  { title: "Instant GST Bill", desc: "Generate professional bills in 5 seconds. Look premium.", icon: "/assets/landing/billing-icon.png", alt: "GST compliant billing and invoice generation icon" },
                   { title: "WhatsApp Marketing", desc: "Auto-send reminders. Get paid faster and sell accessories.", icon: "/assets/landing/marketing-icon.png", alt: "WhatsApp CRM and automated customer notifications icon" },
+                  { title: "Distributor Network", desc: "Link wholesalers, share stock visibility, get restock suggestions — free for distributors.", icon: "/assets/landing/inventory-icon.png", alt: "B2B distributor network and wholesale management icon" },
                 ].map((feat, i) => (
                   <motion.div 
                     key={i}

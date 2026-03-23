@@ -42,6 +42,7 @@ export function ProductModal({
     name: "",
     type: ProductType.GOODS,
     category: "",
+    brand: "",
     hsnSac: "",
     salePrice: "",
     gstRate: "18",
@@ -67,7 +68,7 @@ export function ProductModal({
     let value = _value;
 
     // Prevent leading whitespace for specific text fields
-    if (["name", "category"].includes(name)) {
+    if (["name", "category", "brand"].includes(name)) {
       value = value.replace(/^\s+/, "");
     }
 
@@ -123,6 +124,7 @@ export function ProductModal({
         name: formData.name.trim(),
         type: formData.type,
         category: formData.category.trim() || undefined,
+        brand: formData.brand.trim() || undefined,
         hsnSac: formData.hsnSac.trim() || undefined,
         salePrice: parseFloat(formData.salePrice),
         gstRate: parseFloat(formData.gstRate),
@@ -363,30 +365,42 @@ export function ProductModal({
                   </div>
                 )}
 
-                {/* Category (Free text) */}
-                <div className="md:col-span-2">
-                  <label
-                    className={`block text-sm font-medium mb-2 ${
-                      theme === "dark" ? "text-gray-300" : "text-gray-700"
-                    }`}
-                  >
-                    Category{" "}
-                    <span className="text-xs text-gray-500 font-normal">
-                      (e.g. Charger, Cover)
-                    </span>
+                {/* Brand */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}>
+                    Brand <span className="text-xs text-gray-500 font-normal">(e.g. Vivo, Samsung)</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="brand"
+                    list="brand-suggestions"
+                    value={formData.brand}
+                    onChange={handleChange}
+                    placeholder="e.g. Vivo"
+                    className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${theme === "dark" ? "bg-gray-800 border-white/20 text-white" : "bg-white border-gray-300 text-gray-900"}`}
+                  />
+                  <datalist id="brand-suggestions">
+                    {["Vivo","Oppo","Samsung","Apple","Xiaomi","Realme","OnePlus","Nokia","Motorola","iQOO","Poco","Infinix","Tecno"].map(b => <option key={b} value={b} />)}
+                  </datalist>
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}>
+                    Category <span className="text-xs text-gray-500 font-normal">(e.g. Smartphone)</span>
                   </label>
                   <input
                     type="text"
                     name="category"
+                    list="category-suggestions"
                     value={formData.category}
                     onChange={handleChange}
-                    placeholder="Product Category/Type"
-                    className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                      theme === "dark"
-                        ? "bg-gray-800 border-white/20 text-white"
-                        : "bg-white border-gray-300 text-gray-900"
-                    }`}
+                    placeholder="e.g. Smartphone"
+                    className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${theme === "dark" ? "bg-gray-800 border-white/20 text-white" : "bg-white border-gray-300 text-gray-900"}`}
                   />
+                  <datalist id="category-suggestions">
+                    {["Smartphone","Earphones","Charger","Cover","Screen Guard","Battery","Spare Part","Accessory","Tablet","Laptop","Smartwatch"].map(c => <option key={c} value={c} />)}
+                  </datalist>
                 </div>
 
                 {/* HSN/SAC Code */}

@@ -172,9 +172,9 @@ export default function DistributorDashboard() {
         />
       </div>
 
-      {/* Partner Commissions Section */}
-      {data?.partnerEarnings && (() => {
-        const referralCode = data.partnerEarnings.code;
+      {/* Referral Code + Partner Commissions Section */}
+      {(data?.partnerEarnings || data?.distributorCode) && (() => {
+        const referralCode = data.partnerEarnings?.code ?? data.distributorCode;
         const signupUrl = `${typeof window !== "undefined" ? window.location.origin : "https://app.mobibix.com"}/onboarding?ref=${referralCode}`;
 
         const handleDownloadQR = () => {
@@ -193,6 +193,8 @@ export default function DistributorDashboard() {
                 <Network size={200} />
               </div>
               <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+                {/* Partner earnings — only if linked as partner */}
+                {data.partnerEarnings && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white/20 rounded-lg">
@@ -216,6 +218,7 @@ export default function DistributorDashboard() {
                     </div>
                   </div>
                 </div>
+                )}
 
                 <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2rem] border border-white/20 space-y-4 w-full md:w-auto">
                   <div className="space-y-1">

@@ -20,21 +20,26 @@ export class RefreshKpiCacheJob extends WorkerHost {
     this.logger.log(`Start refreshing KPI cached data... (Job: ${job.id})`);
 
     try {
-      // Refresh materialized views
       await this.prisma
         .$executeRaw`REFRESH MATERIALIZED VIEW admin_global_kpis;`;
       await this.prisma
         .$executeRaw`REFRESH MATERIALIZED VIEW admin_revenue_monthly;`;
 
-      // Invalidate existing cache
       await this.adminCache.invalidate('admin:global:kpis');
-      await this.adminCache.invalidatePattern('admin:revenue:*'); // e.g. monthly drops
+      await this.adminCache.invalidatePattern('admin:revenue:*');
 
       const durationMs = Math.round(performance.now() - startTime);
       this.logger.log(
         `✅ Refreshed KPI views and cache successfully in ${durationMs}ms`,
       );
     } catch (error: any) {
+      // 42P01 = relation does not exist — views not yet initialized, skip silently
+      if ((error as any)?.code === 'P2010' && error.message?.includes('42P01')) {
+        this.logger.warn(
+          'KPI materialized views not found — skipping refresh. Run the view-init SQL to create them.',
+        );
+        return;
+      }
       this.logger.error(
         `Failed to refresh KPI materialized views: ${error.message}`,
         error.stack,

@@ -94,6 +94,8 @@ export class AnalyticsService {
       currentMonth,
       totalRetailers,
       totalOrders,
+      distributorCode: distributor?.referralCode ?? null,
+      distributorName: distributor?.name ?? null,
       monthlyRevenue: {
         amount: Number(monthlyRevenue._sum.revenueAmount ?? 0),
         unitsSold: monthlyRevenue._sum.quantitySold ?? 0,
@@ -165,10 +167,14 @@ export class AnalyticsService {
       orderBy: { linkedAt: 'desc' },
     });
 
-    // Enrich each retailer with order count + attribution totals
+    // Enrich each retailer with name + order count + attribution totals
     const enriched = await Promise.all(
       links.map(async (link) => {
-        const [orderCount, attrTotal] = await Promise.all([
+        const [tenant, orderCount, attrTotal] = await Promise.all([
+          this.prisma.tenant.findUnique({
+            where: { id: link.retailerId },
+            select: { name: true },
+          }),
           this.prisma.distPurchaseOrder.count({
             where: { distributorId, retailerId: link.retailerId },
           }),
@@ -179,16 +185,22 @@ export class AnalyticsService {
         ]);
 
         return {
-          retailerId: link.retailerId,
+          id: link.retailerId,
+          name: tenant?.name ?? link.retailerId,
           linkedSince: link.linkedAt,
           linkedVia: link.linkedVia,
           totalOrders: orderCount,
-          totalAttributedRevenue: Number(attrTotal._sum.revenueAmount ?? 0),
+          totalRevenue: Number(attrTotal._sum.revenueAmount ?? 0),
         };
       }),
     );
 
-    return enriched;
+    // Deduplicate by retailerId — keep the most recently linked entry
+    const seen = new Map<string, typeof enriched[0]>();
+    for (const entry of enriched) {
+      if (!seen.has(entry.id)) seen.set(entry.id, entry);
+    }
+    return Array.from(seen.values());
   }
 
   // ─── Credit Ledger Management ──────────────────────────────────────────

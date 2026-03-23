@@ -1,4 +1,14 @@
-import { authenticatedFetch, extractData } from './auth.api';
+import { authenticatedFetch, extractData } from './auth.api'; // extractData used inside fetchDist
+
+async function fetchDist<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const response = await authenticatedFetch(endpoint, options);
+  if (!response.ok) {
+    const err: any = new Error(`Distributor API error: ${response.status}`);
+    err.response = { status: response.status };
+    throw err;
+  }
+  return extractData<T>(response);
+}
 
 export interface DistCatalogItem {
   id: string;
@@ -45,70 +55,40 @@ export interface DistAnalytics {
 
 export const distributorApi = {
   // Catalog
-  getCatalog: async () => {
-    const response = await authenticatedFetch('/distributor/catalog');
-    return await extractData(response) as DistCatalogItem[];
-  },
+  getCatalog: () => fetchDist<DistCatalogItem[]>('/distributor/catalog'),
 
-  createCatalogItem: async (data: any) => {
-    const response = await authenticatedFetch('/distributor/catalog', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return await extractData(response);
-  },
+  createCatalogItem: (data: any) => fetchDist('/distributor/catalog', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 
-  updateCatalogItem: async (itemId: string, data: any) => {
-    const response = await authenticatedFetch(`/distributor/catalog/${itemId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-    return await extractData(response);
-  },
+  updateCatalogItem: (itemId: string, data: any) => fetchDist(`/distributor/catalog/${itemId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
 
-  adjustStock: async (itemId: string, adjustment: number) => {
-    const response = await authenticatedFetch(`/distributor/catalog/${itemId}/stock`, {
-      method: 'PUT',
-      body: JSON.stringify({ adjustment }),
-    });
-    return await extractData(response);
-  },
+  adjustStock: (itemId: string, adjustment: number) => fetchDist(`/distributor/catalog/${itemId}/stock`, {
+    method: 'PUT',
+    body: JSON.stringify({ adjustment }),
+  }),
 
   // Orders
-  getInboundOrders: async () => {
-    const response = await authenticatedFetch('/distributor/orders');
-    return await extractData(response) as DistOrder[];
-  },
+  getInboundOrders: () => fetchDist<DistOrder[]>('/distributor/orders'),
 
-  updateOrderStatus: async (orderId: string, status: string, notes?: string) => {
-    const response = await authenticatedFetch(`/distributor/orders/${orderId}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ status, notes }),
-    });
-    return await extractData(response);
-  },
+  updateOrderStatus: (orderId: string, status: string, notes?: string) => fetchDist(`/distributor/orders/${orderId}/status`, {
+    method: 'PUT',
+    body: JSON.stringify({ status, notes }),
+  }),
 
   // Analytics
-  getOverview: async () => {
-    const response = await authenticatedFetch('/distributor/analytics/overview');
-    return await extractData(response) as DistAnalytics;
-  },
+  getOverview: () => fetchDist<DistAnalytics>('/distributor/analytics/overview'),
 
-  getRetailers: async () => {
-    const response = await authenticatedFetch('/distributor/analytics/retailers');
-    return await extractData(response);
-  },
+  getRetailers: () => fetchDist('/distributor/analytics/retailers'),
 
-  getRetailerBalance: async (retailerId: string) => {
-    const response = await authenticatedFetch(`/distributor/analytics/retailers/${retailerId}/balance`);
-    return await extractData(response);
-  },
+  getRetailerBalance: (retailerId: string) => fetchDist(`/distributor/analytics/retailers/${retailerId}/balance`),
 
-  recordCreditEntry: async (data: any) => {
-    const response = await authenticatedFetch('/distributor/analytics/credit', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return await extractData(response);
-  },
+  recordCreditEntry: (data: any) => fetchDist('/distributor/analytics/credit', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 };

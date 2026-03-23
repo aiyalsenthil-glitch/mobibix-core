@@ -3,7 +3,9 @@ import { AnalyticsService } from './analytics.service';
 import { DistributorScopeGuard } from '../guards/distributor-scope.guard';
 import { CreateCreditEntryDto } from './dto/credit.dto';
 import { SkipSubscriptionCheck } from '../../../core/auth/decorators/skip-subscription-check.decorator';
+import { SkipTenant } from '../../../core/auth/decorators/skip-tenant.decorator';
 
+@SkipTenant()
 @SkipSubscriptionCheck()
 @Controller('distributor/analytics')
 @UseGuards(DistributorScopeGuard)

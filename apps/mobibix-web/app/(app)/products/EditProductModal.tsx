@@ -27,6 +27,8 @@ export function EditProductModal({
   const [formData, setFormData] = useState({
     name: product.name,
     type: (product.type as ProductType) || ProductType.GOODS,
+    brand: product.brand || "",
+    category: product.category || "",
     hsnSac: product.hsnCode || "",
     salePrice: ((product.salePrice || 0) / 100).toString(),
     gstRate: product.gstRate?.toString() || "18",
@@ -86,6 +88,8 @@ export function EditProductModal({
       const updatedProduct = await updateProduct(shopId, product.id, {
         name: formData.name.trim(),
         type: formData.type,
+        brand: formData.brand.trim() || undefined,
+        category: formData.category.trim() || undefined,
         hsnSac: formData.hsnSac.trim() || undefined,
         salePrice: parseFloat(formData.salePrice),
         gstRate: parseFloat(formData.gstRate),
@@ -198,6 +202,44 @@ export function EditProductModal({
                 <option value={ProductType.SPARE}>Spare Part</option>
                 <option value={ProductType.SERVICE}>Service</option>
               </select>
+            </div>
+
+            {/* Brand */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}>
+                Brand <span className="text-xs text-gray-500 font-normal">(e.g. Vivo, Samsung)</span>
+              </label>
+              <input
+                type="text"
+                name="brand"
+                list="edit-brand-suggestions"
+                value={formData.brand}
+                onChange={handleChange}
+                placeholder="e.g. Vivo"
+                className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${theme === "dark" ? "bg-gray-800 border-white/20 text-white" : "bg-white border-gray-300 text-gray-900"}`}
+              />
+              <datalist id="edit-brand-suggestions">
+                {["Vivo","Oppo","Samsung","Apple","Xiaomi","Realme","OnePlus","Nokia","Motorola","iQOO","Poco","Infinix","Tecno"].map(b => <option key={b} value={b} />)}
+              </datalist>
+            </div>
+
+            {/* Category */}
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}>
+                Category <span className="text-xs text-gray-500 font-normal">(e.g. Smartphone)</span>
+              </label>
+              <input
+                type="text"
+                name="category"
+                list="edit-category-suggestions"
+                value={formData.category}
+                onChange={handleChange}
+                placeholder="e.g. Smartphone"
+                className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-teal-500 ${theme === "dark" ? "bg-gray-800 border-white/20 text-white" : "bg-white border-gray-300 text-gray-900"}`}
+              />
+              <datalist id="edit-category-suggestions">
+                {["Smartphone","Earphones","Charger","Cover","Screen Guard","Battery","Spare Part","Accessory","Tablet","Laptop","Smartwatch"].map(c => <option key={c} value={c} />)}
+              </datalist>
             </div>
 
             {/* HSN/SAC Code */}

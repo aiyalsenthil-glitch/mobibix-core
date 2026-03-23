@@ -58,10 +58,41 @@ export default function OnboardingPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
 
+  // Promo preview state
+  const [promoPreview, setPromoPreview] = useState<PromoPreview | null>(null);
+  const [promoChecking, setPromoChecking] = useState(false);
+  const promoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Load country list from backend on mount
   useEffect(() => {
     fetchCountries().then(setCountries);
   }, []);
+
+  // Debounced promo code preview
+  useEffect(() => {
+    const code = formData.promoCode?.trim() ?? "";
+    if (!code) {
+      setPromoPreview(null);
+      setPromoChecking(false);
+      return;
+    }
+    setPromoChecking(true);
+    setPromoPreview(null);
+    if (promoDebounceRef.current) clearTimeout(promoDebounceRef.current);
+    promoDebounceRef.current = setTimeout(async () => {
+      try {
+        const result = await previewPromoCode(code);
+        setPromoPreview(result);
+      } catch {
+        setPromoPreview({ valid: false, reason: "Could not verify code" });
+      } finally {
+        setPromoChecking(false);
+      }
+    }, 600);
+    return () => {
+      if (promoDebounceRef.current) clearTimeout(promoDebounceRef.current);
+    };
+  }, [formData.promoCode]);
 
   useEffect(() => {
     if (!hasSessionHint()) {
@@ -429,8 +460,78 @@ export default function OnboardingPage() {
                       <Input name="businessType" value={formData.businessType || ""} onChange={handleChange} placeholder="e.g. Mobile Retailer, Electronics Repair" className="bg-stone-900 border-white/10" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Promo Code (Optional)</Label>
-                      <Input name="promoCode" value={formData.promoCode || ""} onChange={handleChange} placeholder="Have a referral or promo code?" className="bg-stone-900 border-white/10 text-teal-400 uppercase font-bold" />
+                      <Label>Promo / Referral Code (Optional)</Label>
+                      <div className="relative">
+                        <Input
+                          name="promoCode"
+                          value={formData.promoCode || ""}
+                          onChange={handleChange}
+                          placeholder="Have a referral or promo code?"
+                          className="bg-stone-900 border-white/10 text-teal-400 uppercase font-bold pr-10"
+                        />
+                        {promoChecking && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400 animate-spin" />
+                        )}
+                        {!promoChecking && promoPreview?.valid && (
+                          <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-teal-400" />
+                        )}
+                        {!promoChecking && promoPreview && !promoPreview.valid && (
+                          <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-400" />
+                        )}
+                      </div>
+
+                      {/* Promo Preview Card */}
+                      {promoPreview && !promoChecking && (
+                        <div className={`rounded-lg border p-3 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300 ${
+                          promoPreview.valid
+                            ? promoPreview.color === 'purple'
+                              ? 'border-purple-500/30 bg-purple-500/10'
+                              : promoPreview.color === 'amber'
+                              ? 'border-amber-500/30 bg-amber-500/10'
+                              : promoPreview.color === 'blue'
+                              ? 'border-blue-500/30 bg-blue-500/10'
+                              : 'border-teal-500/30 bg-teal-500/10'
+                            : 'border-red-500/20 bg-red-500/10'
+                        }`}>
+                          {promoPreview.valid ? (
+                            promoPreview.color === 'purple' ? (
+                              <Network className="h-4 w-4 mt-0.5 shrink-0 text-purple-400" />
+                            ) : (
+                              <Tag className="h-4 w-4 mt-0.5 shrink-0 text-teal-400" style={{
+                                color: promoPreview.color === 'amber' ? '#f59e0b'
+                                  : promoPreview.color === 'blue' ? '#60a5fa'
+                                  : undefined
+                              }} />
+                            )
+                          ) : (
+                            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-red-400" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            {promoPreview.valid ? (
+                              <>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                                    promoPreview.color === 'purple' ? 'bg-purple-500/20 text-purple-300'
+                                    : promoPreview.color === 'amber' ? 'bg-amber-500/20 text-amber-300'
+                                    : promoPreview.color === 'blue' ? 'bg-blue-500/20 text-blue-300'
+                                    : 'bg-teal-500/20 text-teal-300'
+                                  }`}>
+                                    {promoPreview.badge}
+                                  </span>
+                                  {(promoPreview.partnerName || promoPreview.distributorName) && (
+                                    <span className="text-xs text-stone-400">
+                                      via {promoPreview.partnerName ?? promoPreview.distributorName}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-stone-300 mt-1">{promoPreview.benefit}</p>
+                              </>
+                            ) : (
+                              <p className="text-xs text-red-300">{promoPreview.reason}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -50,7 +50,7 @@ export class DistributorRegisterController {
       throw new BadRequestException('User identity could not be resolved.');
     }
 
-    // Prevent duplicate registration by userId
+    // Check 1: already registered by userId (normal path)
     const existingByUser = await this.prisma.distDistributor.findUnique({
       where: { userId },
     });
@@ -58,7 +58,36 @@ export class DistributorRegisterController {
       throw new ConflictException('This account is already registered as a distributor.');
     }
 
-    // If user has a tenant, prevent duplicate by tenantId as well
+    // Check 2: orphaned record — userId was null (created before userId column existed).
+    // Look up this user's email and see if a DistDistributor already exists for it.
+    // If found, claim it by linking the userId instead of creating a duplicate.
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    if (dbUser?.email) {
+      const orphan = await this.prisma.distDistributor.findUnique({
+        where: { email: dbUser.email },
+      });
+      if (orphan && !orphan.userId) {
+        // Reclaim the orphaned record — link userId and return it
+        const claimed = await this.prisma.distDistributor.update({
+          where: { id: orphan.id },
+          data: { userId },
+        });
+        return {
+          id: claimed.id,
+          name: claimed.name,
+          referralCode: claimed.referralCode,
+          tenantId: claimed.tenantId,
+        };
+      }
+      if (orphan) {
+        throw new ConflictException('This account is already registered as a distributor.');
+      }
+    }
+
+    // Check 3: If user has a tenant, prevent duplicate by tenantId
     if (tenantId) {
       const existingByTenant = await this.prisma.distDistributor.findUnique({
         where: { tenantId },
@@ -68,7 +97,7 @@ export class DistributorRegisterController {
       }
     }
 
-    // Check referral code uniqueness
+    // Check 4: referral code uniqueness
     const codeInUse = await this.prisma.distDistributor.findUnique({
       where: { referralCode: body.referralCode.toUpperCase() },
     });
@@ -76,14 +105,24 @@ export class DistributorRegisterController {
       throw new ConflictException('Referral code is already taken. Please choose another.');
     }
 
-    const distributor = await this.prisma.distDistributor.create({
-      data: {
-        userId,
-        tenantId,          // null for pure distributors, set for ERP users
-        name: body.name,
-        referralCode: body.referralCode.toUpperCase(),
-      },
-    });
+    let distributor: any;
+    try {
+      distributor = await this.prisma.distDistributor.create({
+        data: {
+          userId,
+          tenantId,
+          email: dbUser?.email ?? null,
+          name: body.name,
+          referralCode: body.referralCode.toUpperCase(),
+        },
+      });
+    } catch (err: any) {
+      // P2002 = unique constraint violation (race condition)
+      if (err?.code === 'P2002') {
+        throw new ConflictException('This account is already registered as a distributor.');
+      }
+      throw err;
+    }
 
     return {
       id: distributor.id,

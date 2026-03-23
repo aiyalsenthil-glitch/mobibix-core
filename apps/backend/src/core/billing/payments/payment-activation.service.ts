@@ -5,6 +5,8 @@ import { InvoiceService } from '../invoices/invoice.service';
 import { PaymentRetryService } from './payment-retry.service';
 import { PartnersService } from '../../../modules/partners/partners.service';
 import { PaymentStatus } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { SubscriptionPaymentEvent } from '../../../modules/distributor/events/commission.listener';
 
 /**
  * Payment Activation Service
@@ -25,6 +27,7 @@ export class PaymentActivationService {
     private readonly invoiceService: InvoiceService,
     private readonly paymentRetryService: PaymentRetryService,
     private readonly partnersService: PartnersService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -237,6 +240,30 @@ export class PaymentActivationService {
         throw err;
       }
     });
+
+    // 💰 Emit distributor commission event (fire-and-forget, handled by DistributorCommissionListener)
+    if (activatedSubscriptionId && result.status === 'activated') {
+      try {
+        const payment = await this.prisma.payment.findUnique({
+          where: { id: paymentId },
+          select: { tenantId: true, amount: true },
+        });
+        if (payment?.tenantId) {
+          // Determine if first payment by counting prior successful payments
+          const priorCount = await this.prisma.payment.count({
+            where: { tenantId: payment.tenantId, status: PaymentStatus.SUCCESS, id: { not: paymentId } },
+          });
+          setImmediate(() =>
+            this.eventEmitter.emit(
+              'subscription.payment.completed',
+              new SubscriptionPaymentEvent(payment.tenantId!, payment.amount, priorCount === 0),
+            ),
+          );
+        }
+      } catch (err: any) {
+        this.logger.warn(`[DIST_COMMISSION] Failed to emit commission event: ${err.message}`);
+      }
+    }
 
     // ✅ Generate invoice AFTER the outer transaction commits.
     // Must be outside to avoid nesting a Serializable $transaction inside the outer one

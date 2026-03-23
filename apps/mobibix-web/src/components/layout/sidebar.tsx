@@ -75,6 +75,7 @@ const navItems: NavItem[] = [
   { label: "Shops", href: "/shops", icon: Store, requiredPermission: "core.settings.manage", category: "Management" },
   { label: "Staff Management", href: "/staff-management", icon: ShieldCheck, requiredPermission: "core.staff.manage", category: "Management" },
   { label: "Settings", href: "/settings", icon: Settings, requiredPermission: "core.settings.manage", category: "Management" },
+  { label: "Distributor Network",  href: "/settings/distributor",        icon: Network,  requiredPermission: "core.settings.manage",      category: "Management" },
   { label: "Barcode Labels",       href: "/tools/barcode-labels",       icon: Printer,          requiredPermission: "mobile_shop.inventory.view",      category: "Tools" },
   { label: "Compatibility Finder", href: "/tools/compatibility-finder", icon: Sparkles,       requiredPermission: "mobile_shop.compatibility.view", category: "Tools" },
   { label: "Daily Closing",        href: "/tools/daily-closing",        icon: Lock,            requiredPermission: "core.daily_closing.view",         category: "Tools" },
@@ -88,7 +89,8 @@ const navItems: NavItem[] = [
   { label: "Distributor Hub",      href: "/distributor/dashboard",       icon: Network,  requiredPermission: "distributor.view",  category: "Distributor Network" },
   { label: "Wholesale Catalog",    href: "/distributor/catalog",         icon: Boxes,    requiredPermission: "distributor.view",  category: "Distributor Network" },
   { label: "Retailer Orders",      href: "/distributor/orders",          icon: ListTodo, requiredPermission: "distributor.view",  category: "Distributor Network" },
-  
+  { label: "My Retailers",         href: "/distributor/retailers",       icon: Users,    requiredPermission: "distributor.view",  category: "Distributor Network" },
+
   // --- Retailer Supply View ---
   { label: "Wholesale Network",    href: "/suppliers",                   icon: Truck,    requiredPermission: "mobile_shop.supplier.view",  category: "Management" },
 ];
@@ -149,7 +151,8 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   }, [visibleItems]);
 
   useEffect(() => {
-    if (!mounted || !authUser) return;
+    // Pure distributors have no tenantId — ERP CRM endpoints require it
+    if (!mounted || !authUser || !authUser.tenantId) return;
 
     async function loadCounts() {
       try {
@@ -161,7 +164,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     }
 
     loadCounts();
-    
+
     const handleRefresh = () => loadCounts();
     window.addEventListener("refresh-followup-counts", handleRefresh);
 

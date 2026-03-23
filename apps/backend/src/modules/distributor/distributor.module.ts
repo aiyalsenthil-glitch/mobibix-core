@@ -8,8 +8,13 @@ import { DistributorScopeGuard } from './guards/distributor-scope.guard';
 import { AnalyticsController } from './analytics/analytics.controller';
 import { AnalyticsService } from './analytics/analytics.service';
 import { DistributorAttributionListener } from './events/attribution.listener';
+import { DistributorCommissionListener } from './events/commission.listener';
 import { PrismaModule } from '../../core/prisma/prisma.module';
 import { DistributorRegisterController } from './distributor.register.controller';
+import { DistributorLinkingController, RetailerLinkingController } from './linking/linking.controller';
+import { LinkingService } from './linking/linking.service';
+import { DistributorStockController, RetailerStockController } from './stock/stock.controller';
+import { StockService } from './stock/stock.service';
 
 @Module({
   imports: [PrismaModule],
@@ -20,14 +25,21 @@ import { DistributorRegisterController } from './distributor.register.controller
     RetailerOrdersController,
     AnalyticsController,
     DistributorRegisterController,
+    DistributorLinkingController,
+    RetailerLinkingController,
+    DistributorStockController,
+    RetailerStockController,
   ],
   providers: [
     CatalogService,
     OrdersService,
     AnalyticsService,
+    LinkingService,
+    StockService,
     DistributorAttributionListener,
+    DistributorCommissionListener,
     DistributorScopeGuard,
   ],
-  exports: [CatalogService, OrdersService, AnalyticsService],
+  exports: [CatalogService, OrdersService, AnalyticsService, LinkingService, StockService],
 })
 export class DistributorModule {}

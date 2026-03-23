@@ -90,6 +90,7 @@ export class InventoryService {
           name: dto.name,
           type: normalizedType,
           category: dto.category,
+          brand: dto.brand,
           isSerialized,
           salePrice: this.toPaisa(dto.salePrice),
           costPrice: this.toPaisa(dto.costPrice),
@@ -161,6 +162,7 @@ export class InventoryService {
     if (dto.name !== undefined) updateData.name = dto.name;
     if (dto.type !== undefined) updateData.type = normalizedType;
     if (dto.category !== undefined) updateData.category = dto.category;
+    if (dto.brand !== undefined) updateData.brand = dto.brand;
     if (dto.isSerialized !== undefined) updateData.isSerialized = isSerialized;
     if (dto.salePrice !== undefined)
       updateData.salePrice = this.toPaisa(dto.salePrice);

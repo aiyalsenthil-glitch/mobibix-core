@@ -16,6 +16,7 @@ import { RepairIntelligenceModule } from './repair-intelligence/repair-intellige
 import { TradeInModule } from './tradein/tradein.module';
 import { FinanceModule } from './finance/finance.module';
 import { EWayBillModule } from './ewaybill/ewaybill.module';
+import { TargetsModule } from './targets/targets.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { EWayBillModule } from './ewaybill/ewaybill.module';
     TradeInModule,
     FinanceModule,
     EWayBillModule,
+    TargetsModule,
   ],
 })
 export class MobileShopModule {}
