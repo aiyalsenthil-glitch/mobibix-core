@@ -1,0 +1,2 @@
+ALTER TABLE "mb_shop"
+  ADD COLUMN IF NOT EXISTS "autoGenerateEwayBill" BOOLEAN NOT NULL DEFAULT false;

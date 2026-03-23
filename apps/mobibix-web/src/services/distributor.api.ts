@@ -39,6 +39,8 @@ export interface DistAnalytics {
   currentMonth: string;
   totalRetailers: number;
   totalOrders: number;
+  distributorCode: string | null;
+  distributorName: string | null;
   monthlyRevenue: {
     amount: number;
     unitsSold: number;
@@ -50,7 +52,7 @@ export interface DistAnalytics {
     paid: number;
     pending: number;
     code: string;
-  };
+  } | null;
 }
 
 export const distributorApi = {
